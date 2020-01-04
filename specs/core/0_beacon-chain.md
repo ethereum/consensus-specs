@@ -199,6 +199,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
+| `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
 | `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 
 ### Time parameters
@@ -780,7 +781,7 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Version=GENESIS_FORK_VERSION) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
@@ -1063,8 +1064,14 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
+    fork = Fork(
+        previous_version=GENESIS_FORK_VERSION,
+        current_version=GENESIS_FORK_VERSION,
+        epoch=GENESIS_EPOCH,
+    )
     state = BeaconState(
         genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
+        fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
