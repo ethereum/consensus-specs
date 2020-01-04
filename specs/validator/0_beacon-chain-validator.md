@@ -117,7 +117,7 @@ To submit a deposit:
 - Set `deposit_data.withdrawal_credentials` to `withdrawal_credentials`.
 - Set `deposit_data.amount` to `amount`.
 - Let `deposit_message` be a `DepositMessage` with all the `DepositData` contents except the `signature`.
-- Let `signature` be the result of `bls_sign` of the `hash_tree_root(deposit_message)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `compute_domain` will default to zeroes there).
+- Let `signature` be the result of `bls_sign` of the `hash_tree_root(deposit_message)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (_Warning_: Deposits _must_ be signed with `GENESIS_FORK_VERSION`, calling `compute_domain` without a second argument defaults to the correct version).
 - Let `deposit_data_root` be `hash_tree_root(deposit_data)`.
 - Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32)` along with a deposit of `amount` Gwei.
 
