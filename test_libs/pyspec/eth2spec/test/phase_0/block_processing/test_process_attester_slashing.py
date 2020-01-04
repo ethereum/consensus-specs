@@ -169,7 +169,11 @@ def test_same_data(spec, state):
 def test_no_double_or_surround(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
-    attester_slashing.attestation_1.data.target.epoch += 1
+    if spec.version == 'phase0':
+        attester_slashing.attestation_1.data.target.epoch += 1
+    else:
+        attester_slashing.attestation_1.attestation.data.target.epoch += 1
+
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)

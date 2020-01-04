@@ -112,6 +112,7 @@ def objects_to_spec(functions: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     imports: Dict[str, str],
+                    version: str,
                     ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -135,6 +136,7 @@ def objects_to_spec(functions: Dict[str, str],
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     spec = (
         imports
+        + '\n\n' + f"version = \'{version}\'\n"
         + '\n\n' + new_type_definitions
         + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
         + '\n\n' + constants_spec
@@ -227,7 +229,7 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
     for value in [fork_choice_spec, v_guide]:
         spec_objects = combine_spec_objects(spec_objects, value)
     dependency_order_spec(spec_objects)
-    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
+    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS, 'phase0')
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -256,7 +258,7 @@ def build_phase1_spec(phase0_beacon_sourcefile: str,
     for value in all_spescs[1:]:
         spec_objects = combine_spec_objects(spec_objects, value)
     dependency_order_spec(spec_objects)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, 'phase1')
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)

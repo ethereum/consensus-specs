@@ -82,8 +82,18 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
-    participants = indexed_attestation.attesting_indices
-    indexed_attestation.signature = sign_aggregate_attestation(spec, state, indexed_attestation.data, participants)
+    if spec.version == 'phase0':
+        participants = indexed_attestation.attesting_indices
+        data = indexed_attestation.data
+        indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
+    else:
+        participants = spec.get_indices_from_committee(
+            indexed_attestation.committee,
+            indexed_attestation.attestation.aggregation_bits,
+        )
+        data = indexed_attestation.attestation.data
+        indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
+
 
 
 def sign_attestation(spec, state, attestation):
