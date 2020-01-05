@@ -31,6 +31,8 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
       - [Eth1 Data](#eth1-data)
+        - [`Eth1Block`](#eth1block)
+        - [`get_eth1_data`](#get_eth1_data)
       - [Proposer slashings](#proposer-slashings)
       - [Attester slashings](#attester-slashings)
       - [Attestations](#attestations)
@@ -85,6 +87,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
+| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | |
 
 ## Becoming a validator
 
@@ -239,28 +242,50 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 ##### Eth1 Data
 
-The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
+The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates immediately allowing new deposits to be processed. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `eth1_data.block_hash` found in the state at the _start_ of the current Eth1 voting period. Note that `eth1_data` can be updated in the middle of a voting period and thus the starting `eth1_data.block_hash` must be stored separately.
+###### `Eth1Block`
 
-An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` field available.
 
 ```python
-def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
-    new_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)]
-    all_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, previous_eth1_distance)]
+class Eth1Block(Container):
+    timestamp: uint64
+    # All other eth1 block fields
+```
 
-    period_tail = state.slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_squareroot(SLOTS_PER_ETH1_VOTING_PERIOD)
-    if period_tail:
-        votes_to_consider = all_eth1_data
-    else:
-        votes_to_consider = new_eth1_data
+###### `get_eth1_data`
+
+Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
+
+An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` where:
+
+```python
+def voting_period_start_time(state: BeaconState) -> uint64:
+    eth1_voting_period_start_slot = state.slot % SLOTS_PER_ETH1_VOTING_PERIOD
+    return state.genesis_time + eth1_voting_period_start_slot * SECONDS_PER_SLOT
+```
+
+```python
+def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
+    return (
+        block.timestamp <= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE
+        and block.timestamp >= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2
+    )
+```
+
+```python
+def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
+    period_start = voting_period_start_time(state)
+    # `eth1_chain` abstractly represents all blocks in the eth1 chain.
+    votes_to_consider = [get_eth1_data(block) for block in eth1_chain if
+                         is_candidate_block(block, period_start)]
 
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     return max(
         valid_votes,
-        key=lambda v: (valid_votes.count(v), -all_eth1_data.index(v)),  # Tiebreak by smallest distance
+        key=lambda v: (valid_votes.count(v), -valid_votes.index(v)),  # Tiebreak by smallest distance
         default=get_eth1_data(ETH1_FOLLOW_DISTANCE),
     )
 ```
