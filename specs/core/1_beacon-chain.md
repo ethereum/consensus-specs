@@ -29,11 +29,11 @@
     - [Crypto](#crypto)
       - [`bls_verify_multiple`](#bls_verify_multiple)
     - [Misc](#misc-1)
+      - [`get_previous_slot`](#get_previous_slot)
       - [`pack_compact_validator`](#pack_compact_validator)
       - [`committee_to_compact_committee`](#committee_to_compact_committee)
       - [`chunks_to_body_root`](#chunks_to_body_root)
     - [Beacon state accessors](#beacon-state-accessors)
-      - [`get_previous_slot`](#get_previous_slot)
       - [`get_online_validator_indices`](#get_online_validator_indices)
       - [`get_shard_committee`](#get_shard_committee)
       - [`get_shard_proposer_index`](#get_shard_proposer_index)
@@ -98,7 +98,6 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | Name | Value | Unit | Duration |
 | - | - | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
-| `ACTIVE_SHARDS` | `2**6` (= 64) |
 | `ONLINE_PERIOD` | `Epoch(2**3)` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
@@ -372,6 +371,16 @@ class AttestationCustodyBitWrapper(Container):
 
 ### Misc
 
+#### `get_previous_slot`
+
+```python
+def get_previous_slot(slot: Slot) -> Slot:
+    if slot > 0:
+        return Slot(slot - 1)
+    else:
+        return Slot(0)
+```
+
 #### `pack_compact_validator`
 
 ```python
@@ -410,16 +419,6 @@ def chunks_to_body_root(chunks: List[Bytes32, MAX_SHARD_BLOCK_CHUNKS]) -> Root:
 ```
 
 ### Beacon state accessors
-
-#### `get_previous_slot`
-
-```python
-def get_previous_slot(state: BeaconState) -> Slot:
-    if state.slot > 0:
-        return Slot(state.slot - 1)
-    else:
-        return Slot(0)
-```
 
 #### `get_online_validator_indices`
 
@@ -626,7 +625,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct data root count
         assert len(attestation.custody_bits) == len(get_offset_slots(state, shard_start_slot))
         # Correct parent block root
-        assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state))
+        assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
     # Type 2: delayed attestations
     else:
         assert state.slot - compute_start_slot_at_epoch(compute_epoch_at_slot(data.slot)) < SLOTS_PER_EPOCH
@@ -658,7 +657,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         if any(transition.shard_data_roots):
             headers.append(ShardSignableHeader(
                 shard_parent_root=shard_parent_root,
-                parent_hash=get_block_root_at_slot(state, get_previous_slot(state)),
+                parent_hash=get_block_root_at_slot(state, get_previous_slot(state.slot)),
                 slot=offset_slots[i],
                 body_root=chunks_to_body_root(transition.shard_data_roots[i])
             ))
@@ -863,7 +862,7 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(signer_keys),
-        message_hash=get_block_root_at_slot(state, get_previous_slot(state)),
+        message_hash=get_block_root_at_slot(state, get_previous_slot(state.slot)),
         signature=block_body.light_client_signature,
         domain=DOMAIN_LIGHT_CLIENT
     )
