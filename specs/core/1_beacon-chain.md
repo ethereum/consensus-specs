@@ -88,6 +88,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `Shard` | `uint64` | a shard number |
+| `OnlineEpochs` | `uint8` | online countdown epochs |
 
 ## Configuration
 
@@ -99,7 +100,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | Name | Value | Unit | Duration |
 | - | - | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
-| `ONLINE_PERIOD` | `Epoch(2**3)` (= 8) | epochs | ~51 min |
+| `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
@@ -281,7 +282,7 @@ class BeaconState(Container):
     finalized_checkpoint: Checkpoint
     # Phase 1
     shard_states: List[ShardState, MAX_SHARDS]
-    online_countdown: ByteList[VALIDATOR_REGISTRY_LIMIT]
+    online_countdown: List[OnlineEpochs, VALIDATOR_REGISTRY_LIMIT]  # not a raw byte array, considered its large size.
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
     # Custody game
@@ -515,7 +516,7 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
 
 ```python
 def get_next_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
-    return Slot(state.shard_transitions[shard].slot + 1)
+    return Slot(state.shard_states[shard].slot + 1)
 ```
 
 
@@ -851,7 +852,7 @@ def verify_shard_transition_false_positives(state: BeaconState, block_body: Beac
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
     for shard in range(get_active_shard_count(state)):
         if state.shard_states[shard].slot != state.slot - 1:
-            assert block_body.shard_transition[shard] == ShardTransition()
+            assert block_body.shard_transitions[shard] == ShardTransition()
 ```
 
 #### Light client processing

@@ -107,9 +107,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
                 latest_block_root=Root(),
             ) for i in range(INITIAL_ACTIVE_SHARDS)
         ),
-        online_countdown=ByteList[VALIDATOR_REGISTRY_LIMIT](
-            ONLINE_PERIOD for i in range(len(pre.validators))
-        ),
+        online_countdown=[ONLINE_PERIOD] * len(pre.validators),  # all online
         current_light_committee=CompactCommittee(),  # computed after state creation
         next_light_committee=CompactCommittee(),
         # Custody game
