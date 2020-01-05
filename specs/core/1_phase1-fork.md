@@ -30,13 +30,13 @@ This document describes the process of moving from Phase 0 to Phase 1 of Ethereu
 
 ## Configuration
 
-TODO: very unstable/experimental. PLACEHOLDER.
+Warning: this configuration is not definitive.
 
-| Name | Value | Unit |
+| Name | Value |
 | - | - | - |
-| `PHASE_1_FORK_VERSION` | `0x00000001` | `Version` |
-| `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) | `uint64` |
-| `INITIAL_GASPRICE` | `10` | `Gwei` |
+| `PHASE_1_FORK_VERSION` | `Version('0x00000001')` |
+| `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
+| `INITIAL_GASPRICE` | `Gwei(10)` |
 
 ## Fork to Phase 1
 
@@ -55,7 +55,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         genesis_time=pre.genesis_time,
         slot=pre.slot,
         fork=Fork(
-            previous_version=pre.current_version,
+            previous_version=pre.fork.current_version,
             current_version=PHASE_1_FORK_VERSION,
             epoch=epoch,
         ),
@@ -114,10 +114,10 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         next_light_committee=CompactCommittee(),
         # Custody game
         custody_challenge_index=0,
-        exposed_derived_secrets=Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
-                                       EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]()
+        # exposed_derived_secrets will fully default to zeroes
     )
-    post.current_light_committee = committee_to_compact_committee(post, get_light_client_committee(post, post.epoch))
-    post.next_light_committee = committee_to_compact_committee(post, get_light_client_committee(post, post.epoch + 1))
+    epoch = get_current_epoch(post)
+    post.current_light_committee = committee_to_compact_committee(post, get_light_client_committee(post, epoch))
+    post.next_light_committee = committee_to_compact_committee(post, get_light_client_committee(post, epoch + 1))
     return post
 ```
