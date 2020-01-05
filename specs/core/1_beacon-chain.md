@@ -219,7 +219,7 @@ class BeaconBlockBody(Container):
     # Shards
     shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     # Light clients
-    light_client_signature_bitfield: Bitlist[LIGHT_CLIENT_COMMITTEE_SIZE]
+    light_client_signature_bitfield: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
 ```
 
@@ -862,11 +862,11 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     assert len(block_body.light_client_signature_bitfield) == len(committee)
     total_reward = Gwei(0)
     signer_keys = []
-    for i, participant_bit in enumerate(block_body.light_client_signature_bitfield):
-        if participant_bit:
-            signer_keys.append(state.validators[committee[i]].pubkey)
-            increase_balance(state, committee[i], get_base_reward(state, committee[i]))
-            total_reward += get_base_reward(state, committee[i])
+    for bit_index, participant_index in enumerate(committee):
+        if block_body.light_client_signature_bitfield[bit_index]:
+            signer_keys.append(state.validators[participant_index].pubkey)
+            increase_balance(state, participant_index, get_base_reward(state, participant_index))
+            total_reward += get_base_reward(state, participant_index)
 
     increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
     
