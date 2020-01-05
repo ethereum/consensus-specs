@@ -29,7 +29,8 @@ class Phase0(Spec):
 
 
 class Phase1(Spec):
-    def upgrade_to_phase1(self, state: spec_phase0.BeaconState) -> spec_phase1.BeaconState: ...
+    def upgrade_to_phase1(self, state: spec_phase0.BeaconState) -> spec_phase1.BeaconState:
+        ...
 
 
 # add transfer, bridge, etc. as the spec evolves

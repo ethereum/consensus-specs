@@ -95,7 +95,6 @@ def sign_indexed_attestation(spec, state, indexed_attestation):
         indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
 
 
-
 def sign_attestation(spec, state, attestation):
     participants = spec.get_attesting_indices(
         state,
