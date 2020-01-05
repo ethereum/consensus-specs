@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_test, with_phases
+from eth2spec.test.context import spec_test, with_phases, single_phase
 from eth2spec.test.helpers.deposits import (
     prepare_genesis_deposits,
 )
@@ -6,6 +6,7 @@ from eth2spec.test.helpers.deposits import (
 
 @with_phases(['phase0'])
 @spec_test
+@single_phase
 def test_initialize_beacon_state_from_eth1(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, deposit_root, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
@@ -33,6 +34,7 @@ def test_initialize_beacon_state_from_eth1(spec):
 
 @with_phases(['phase0'])
 @spec_test
+@single_phase
 def test_initialize_beacon_state_some_small_balances(spec):
     main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_genesis_deposits(spec, main_deposit_count,
