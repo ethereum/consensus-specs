@@ -859,7 +859,6 @@ def verify_shard_transition_false_positives(state: BeaconState, block_body: Beac
 ```python
 def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockBody) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
-    assert len(block_body.light_client_signature_bitfield) == len(committee)
     total_reward = Gwei(0)
     signer_keys = []
     for bit_index, participant_index in enumerate(committee):
