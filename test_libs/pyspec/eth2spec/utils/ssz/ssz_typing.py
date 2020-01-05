@@ -119,6 +119,8 @@ def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
         return typ(v)
     elif isinstance(v, GeneratorType):
         return typ(v)
+    elif issubclass(typ, Container) and not isinstance(v, typ):
+        return typ(**{field_name: getattr(v, field_name) for field_name in typ.get_field_names()})
 
     # just return as-is, Value-checkers will take care of it not being coerced, if we are not strict.
     if strict and not isinstance(v, typ):
@@ -192,7 +194,7 @@ class Container(Series, metaclass=SSZType):
         return dict(cls.__annotations__)
 
     @classmethod
-    def get_field_names(cls) -> Iterable[SSZType]:
+    def get_field_names(cls) -> Iterable[str]:
         if not hasattr(cls, '__annotations__'):  # no container fields
             return ()
         return list(cls.__annotations__.keys())
