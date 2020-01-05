@@ -112,7 +112,7 @@ def single_phase(fn):
     def entry(*args, **kw):
         if 'phases' in kw:
             kw.pop('phases')
-        fn(*args, **kw)
+        return fn(*args, **kw)
     return entry
 
 
