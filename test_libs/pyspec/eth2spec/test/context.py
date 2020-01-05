@@ -236,6 +236,10 @@ def with_phases(phases, other_phases=None):
             if other_phases is not None:
                 available_phases += set(other_phases)
 
+            # TODO: test state is dependent on phase0 but is immediately transitioned to phase1.
+            #  A new state-creation helper for phase 1 may be in place, and then phase1+ tests can run without phase0
+            available_phases.add('phase0')
+
             phase_dir = {}
             if 'phase0' in available_phases:
                 phase_dir['phase0'] = spec_phase0
