@@ -263,7 +263,8 @@ An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` wher
 ```python
 def voting_period_start_time(state: BeaconState) -> uint64:
     eth1_voting_period_start_slot = state.slot % SLOTS_PER_ETH1_VOTING_PERIOD
-    return state.genesis_time + eth1_voting_period_start_slot * SECONDS_PER_SLOT
+    time_since_genesis = (eth1_voting_period_start_slot - GENESIS_SLOT) * SECONDS_PER_SLOT
+    return state.genesis_time + time_since_genesis
 ```
 
 ```python
