@@ -571,8 +571,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    verify_shard_transition_false_positives(state, block)
-    process_light_client_signatures(state, block)
+    verify_shard_transition_false_positives(state, block.body)
+    process_light_client_signatures(state, block.body)
     process_operations(state, block.body)
 ```
 
