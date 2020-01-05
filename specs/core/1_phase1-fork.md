@@ -35,6 +35,7 @@ TODO: very unstable/experimental. PLACEHOLDER.
 | Name | Value | Unit |
 | - | - | - |
 | `PHASE_1_FORK_VERSION` | `0x00000001` | `Version` |
+| `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) | `uint64` |
 | `INITIAL_GASPRICE` | `10` | `Gwei` |
 
 ## Fork to Phase 1
@@ -104,7 +105,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
                 gasprice=INITIAL_GASPRICE,
                 data=Root(),
                 latest_block_root=Root(),
-            ) for i in range(ACTIVE_SHARDS)
+            ) for i in range(INITIAL_ACTIVE_SHARDS)
         ),
         online_countdown=ByteList[VALIDATOR_REGISTRY_LIMIT](
             ONLINE_PERIOD for i in range(len(pre.validators))

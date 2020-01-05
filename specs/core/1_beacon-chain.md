@@ -34,6 +34,7 @@
       - [`committee_to_compact_committee`](#committee_to_compact_committee)
       - [`chunks_to_body_root`](#chunks_to_body_root)
     - [Beacon state accessors](#beacon-state-accessors)
+      - [`get_active_shard_count`](#get_active_shard_count)
       - [`get_online_validator_indices`](#get_online_validator_indices)
       - [`get_shard_committee`](#get_shard_committee)
       - [`get_shard_proposer_index`](#get_shard_proposer_index)
@@ -420,6 +421,13 @@ def chunks_to_body_root(chunks: List[Bytes32, MAX_SHARD_BLOCK_CHUNKS]) -> Root:
 
 ### Beacon state accessors
 
+#### `get_active_shard_count`
+
+```python
+def get_active_shard_count(state: BeaconState) -> uint64:
+    return len(state.shard_states)  # May adapt in the future, or change over time.
+```
+
 #### `get_online_validator_indices`
 
 ```python
@@ -437,7 +445,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    return compute_committee(active_validator_indices, seed, shard, ACTIVE_SHARDS)
+    return compute_committee(active_validator_indices, seed, shard, get_active_shard_count(beacon_state))
 ```
 
 #### `get_shard_proposer_index`
@@ -458,7 +466,8 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
         source_epoch -= LIGHT_CLIENT_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
-    return compute_committee(active_validator_indices, seed, 0, ACTIVE_SHARDS)[:TARGET_COMMITTEE_SIZE]
+    active_shards = get_active_shard_count(beacon_state)
+    return compute_committee(active_validator_indices, seed, 0, active_shards)[:TARGET_COMMITTEE_SIZE]
 ```
 
 #### `get_indexed_attestation`
@@ -498,7 +507,8 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
 
 ```python
 def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    return Shard((attestation.data.index + get_start_shard(state, attestation.data.slot)) % ACTIVE_SHARDS)
+    active_shards = get_active_shard_count(state)
+    return Shard((attestation.data.index + get_start_shard(state, attestation.data.slot)) % active_shards)
 ```
 
 #### `get_next_slot_for_shard`
@@ -601,7 +611,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < get_committee_count_at_slot(state, data.slot)
-    assert data.index < ACTIVE_SHARDS
+    assert data.index < get_active_shard_count(state)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
@@ -753,7 +763,7 @@ def process_crosslinks(state: BeaconState,
                        block_body: BeaconBlockBody,
                        attestations: Sequence[Attestation]) -> Set[Tuple[Shard, Root]]:
     winners: Set[Tuple[Shard, Root]] = set()
-    for shard in map(Shard, range(ACTIVE_SHARDS)):
+    for shard in range(get_active_shard_count(state)):
         # All attestations in the block for this shard
         shard_attestations = [
             attestation for attestation in attestations
@@ -839,7 +849,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 ```python
 def verify_shard_transition_false_positives(state: BeaconState, block_body: BeaconBlockBody) -> None:
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
-    for shard in range(ACTIVE_SHARDS):
+    for shard in range(get_active_shard_count(state)):
         if state.shard_states[shard].slot != state.slot - 1:
             assert block_body.shard_transition[shard] == ShardTransition()
 ```
