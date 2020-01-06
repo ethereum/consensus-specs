@@ -105,6 +105,7 @@ def test_invalid_sig_other_version(spec, state):
     privkey = privkeys[validator_index]
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
 
+    # Go through the effort of manually signing, not something normally done. This sig domain will be invalid.
     deposit_data = spec.DepositData(
         pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
         signature=bls_sign(
@@ -121,6 +122,18 @@ def test_invalid_sig_other_version(spec, state):
     state.eth1_data.deposit_count = 1
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_valid_sig_but_forked_state(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    # deposits will always be valid, regardless of the current fork
+    state.fork.current_version = spec.Version('0x1234abcd')
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
 
 
 @with_all_phases
@@ -185,7 +198,6 @@ def test_wrong_deposit_for_deposit_count(spec, state):
     privkey_1 = privkeys[index_1]
     _, _, deposit_data_leaves = build_deposit(
         spec,
-        state,
         deposit_data_leaves,
         pubkey_1,
         privkey_1,
@@ -201,7 +213,6 @@ def test_wrong_deposit_for_deposit_count(spec, state):
     privkey_2 = privkeys[index_2]
     deposit_2, root_2, deposit_data_leaves = build_deposit(
         spec,
-        state,
         deposit_data_leaves,
         pubkey_2,
         privkey_2,
