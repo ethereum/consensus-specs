@@ -238,6 +238,6 @@ def test_bad_merkle_proof(spec, state):
     # mess up merkle branch
     deposit.proof[5] = spec.Bytes32()
 
-    sign_deposit_data(spec, deposit.data, privkeys[validator_index], state=state)
+    sign_deposit_data(spec, deposit.data, privkeys[validator_index])
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
