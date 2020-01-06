@@ -261,10 +261,14 @@ Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns t
 An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` where:
 
 ```python
+def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
+    return state.genesis_time + slot * SECONDS_PER_SLOT
+```
+
+```python
 def voting_period_start_time(state: BeaconState) -> uint64:
-    eth1_voting_period_start_slot = state.slot % SLOTS_PER_ETH1_VOTING_PERIOD
-    time_since_genesis = (eth1_voting_period_start_slot - GENESIS_SLOT) * SECONDS_PER_SLOT
-    return state.genesis_time + time_since_genesis
+    eth1_voting_period_start_slot = Slot(state.slot % SLOTS_PER_ETH1_VOTING_PERIOD)
+    return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
 
 ```python
