@@ -343,7 +343,7 @@ def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: 
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet one-third of the way through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT / 3` seconds after the start of `slot`.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` hash transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded fork, and should be made.
 
