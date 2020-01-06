@@ -3,9 +3,10 @@ from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
     sign_deposit_data,
-)
+    deposit_from_context)
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.utils.bls import bls_sign
 
 
 def run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True):
@@ -91,6 +92,35 @@ def test_new_deposit_over_max(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_invalid_sig_other_version(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    pubkey = pubkeys[validator_index]
+    privkey = privkeys[validator_index]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+
+    deposit_data = spec.DepositData(
+        pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
+        signature=bls_sign(
+            message_hash=spec.hash_tree_root(
+                spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)),
+            privkey=privkey,
+            domain=spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=spec.Version('0xaabbccdd')),
+        )
+    )
+    deposit, root, _ = deposit_from_context(spec, [deposit_data], 0)
+
+    state.eth1_deposit_index = 0
+    state.eth1_data.deposit_root = root
+    state.eth1_data.deposit_count = 1
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
 
 
 @with_all_phases
