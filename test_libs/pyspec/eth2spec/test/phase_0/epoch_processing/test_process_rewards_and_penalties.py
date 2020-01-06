@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from eth2spec.test.context import spec_state_test, with_all_phases, spec_test, \
-    misc_balances, with_custom_state, default_activation_threshold
+    misc_balances, with_custom_state, default_activation_threshold, single_phase
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -96,6 +96,7 @@ def test_full_attestations(spec, state):
 @with_all_phases
 @spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@single_phase
 def test_full_attestations_misc_balances(spec, state):
     attestations = prepare_state_with_full_attestations(spec, state)
 
