@@ -39,6 +39,8 @@ TARGET_AGGREGATORS_PER_COMMITTEE: 16
 RANDOM_SUBNETS_PER_VALIDATOR: 1
 # 2**8 (= 256)
 EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION: 256
+# 14 (estimate from Eth1 mainnet)
+SECONDS_PER_ETH1_BLOCK: 14
 
 
 # Deposit contract
@@ -61,13 +63,15 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000
 
 # Initial values
 # ---------------------------------------------------------------
-# 0, GENESIS_EPOCH is derived from this constant
-GENESIS_SLOT: 0
+# Mainnet initial fork version, recommend altering for testnets
+GENESIS_FORK_VERSION: 0x00000000
 BLS_WITHDRAWAL_PREFIX: 0x00
 
 
 # Time parameters
 # ---------------------------------------------------------------
+# 86400 seconds (1 day)
+MIN_GENESIS_DELAY: 86400
 # 12 seconds
 SECONDS_PER_SLOT: 12
 # 2**0 (= 1) slots 12 seconds

@@ -5,46 +5,42 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
 
 
-def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, state=None, signed=False):
+def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=False):
     deposit_data = spec.DepositData(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         amount=amount,
     )
     if signed:
-        sign_deposit_data(spec, deposit_data, privkey, state)
+        sign_deposit_data(spec, deposit_data, privkey)
     return deposit_data
 
 
-def sign_deposit_data(spec, deposit_data, privkey, state=None):
-    if state is None:
-        # Genesis
-        domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
-    else:
-        domain = spec.get_domain(
-            state,
-            spec.DOMAIN_DEPOSIT,
-        )
-
+def sign_deposit_data(spec, deposit_data, privkey):
     deposit_message = spec.DepositMessage(
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount)
+    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
     signing_root = spec.compute_signing_root(deposit_message, domain)
     deposit_data.signature = bls.Sign(privkey, signing_root)
 
 
 def build_deposit(spec,
-                  state,
                   deposit_data_list,
                   pubkey,
                   privkey,
                   amount,
                   withdrawal_credentials,
                   signed):
-    deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed)
+    deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed)
     index = len(deposit_data_list)
     deposit_data_list.append(deposit_data)
+    return deposit_from_context(spec, deposit_data_list, index)
+
+
+def deposit_from_context(spec, deposit_data_list, index):
+    deposit_data = deposit_data_list[index]
     root = hash_tree_root(List[spec.DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
     proof = list(get_merkle_proof(tree, item_index=index, tree_len=32)) + [(index + 1).to_bytes(32, 'little')]
@@ -66,7 +62,6 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
-            None,
             deposit_data_list,
             pubkey,
             privkey,
@@ -94,7 +89,6 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
 
     deposit, root, deposit_data_list = build_deposit(
         spec,
-        state,
         deposit_data_list,
         pubkey,
         privkey,
