@@ -108,10 +108,10 @@ def test_invalid_block_sig(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
-    message = spec.compute_signing_root(block, domain)
+    signing_root = spec.compute_signing_root(block, domain)
     invalid_signed_block = spec.SignedBeaconBlock(
         message=block,
-        signature=bls.Sign(123456, message)
+        signature=bls.Sign(123456, signing_root)
     )
     expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
 
@@ -417,10 +417,10 @@ def test_voluntary_exit(spec, state):
         validator_index=validator_index,
     )
     domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
-    message = spec.compute_signing_root(voluntary_exit, domain)
+    signing_root = spec.compute_signing_root(voluntary_exit, domain)
     signed_voluntary_exit = spec.SignedVoluntaryExit(
         message=voluntary_exit,
-        signature=bls.Sign(privkeys[validator_index], message)
+        signature=bls.Sign(privkeys[validator_index], signing_root)
     )
 
     # Add to state via block transition

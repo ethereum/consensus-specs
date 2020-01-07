@@ -30,8 +30,8 @@ def sign_deposit_data(spec, deposit_data, privkey, state=None):
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount)
-    message = spec.compute_signing_root(deposit_message, domain)
-    deposit_data.signature = bls.Sign(privkey, message)
+    signing_root = spec.compute_signing_root(deposit_message, domain)
+    deposit_data.signature = bls.Sign(privkey, signing_root)
 
 
 def build_deposit(spec,

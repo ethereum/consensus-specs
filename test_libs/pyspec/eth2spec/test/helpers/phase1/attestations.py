@@ -26,5 +26,5 @@ def sign_shard_attestation(spec, beacon_state, shard_state, block, participants)
 
 def get_attestation_signature(spec, beacon_state, shard_state, message_hash, block_epoch, privkey):
     domain = spec.get_domain(beacon_state, spec.DOMAIN_SHARD_ATTESTER, block_epoch)
-    message = spec.compute_signing_root(message_hash, domain)
-    return bls.Sign(privkey, message)
+    signing_root = spec.compute_signing_root(message_hash, domain)
+    return bls.Sign(privkey, signing_root)

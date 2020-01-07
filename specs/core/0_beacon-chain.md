@@ -799,6 +799,9 @@ def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> 
 
 ```python
 def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
+    """
+    Return the signing root of an object by calculating the root of the object-domain tree.
+    """
     domain_wrapped_object = SigningRoot(
         object_root=hash_tree_root(ssz_object),
         domain=domain,
@@ -959,11 +962,11 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: DomainType, message_epoch: Epoch=None) -> Domain:
+def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch=None) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
-    epoch = get_current_epoch(state) if message_epoch is None else message_epoch
+    epoch = get_current_epoch(state) if epoch is None else epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
     return compute_domain(domain_type, fork_version)
 ```
