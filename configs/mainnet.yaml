@@ -63,8 +63,6 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000
 
 # Initial values
 # ---------------------------------------------------------------
-# 0, GENESIS_EPOCH is derived from this constant
-GENESIS_SLOT: 0
 # Mainnet initial fork version, recommend altering for testnets
 GENESIS_FORK_VERSION: 0x00000000
 BLS_WITHDRAWAL_PREFIX: 0x00

@@ -158,6 +158,8 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
+| `GENESIS_SLOT` | `Slot(0)` |
+| `GENESIS_EPOCH` | `Epoch(0)` |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
 | `BASE_REWARDS_PER_EPOCH` | `4` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
@@ -196,8 +198,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `GENESIS_SLOT` | `Slot(0)` |
-| `GENESIS_EPOCH` | `Epoch(0)` |
 | `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
 | `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 
