@@ -5,7 +5,7 @@ DIR = os.path.dirname(__file__)
 
 
 def get_deposit_contract_code():
-    file_path = os.path.join(DIR, './../../contracts/validator_registration.v.py')
+    file_path = os.path.join(DIR, './../../contracts/validator_registration.vy')
     deposit_contract_code = open(file_path).read()
     return deposit_contract_code
 
