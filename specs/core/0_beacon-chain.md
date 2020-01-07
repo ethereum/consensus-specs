@@ -590,6 +590,7 @@ Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specificati
 - `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
 - `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
+- `def AggregateVerify(pairs: Sequence[PK: BLSSignature, message: Bytes], signature: BLSSignature) -> bool`
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 

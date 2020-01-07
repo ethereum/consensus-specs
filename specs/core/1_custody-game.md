@@ -483,7 +483,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
 
     domain = get_domain(state, DOMAIN_RANDAO, reveal.epoch)
     signing_roots = [compute_signing_root(root, domain) for root in [hash_tree_root(reveal.epoch), reveal.mask]]
-    assert bls.AggregateVerify(pubkeys, signing_roots, reveal.reveal)
+    assert bls.AggregateVerify(zip(pubkeys, signing_roots), reveal.reveal)
 
     if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         # Full slashing when the secret was revealed so early it may be a valid custody
