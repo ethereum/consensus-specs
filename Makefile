@@ -91,7 +91,7 @@ install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
 
 compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
-	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
+	python tool/compile_deposit_contract.py contracts/validator_registration.vy;
 
 test_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
