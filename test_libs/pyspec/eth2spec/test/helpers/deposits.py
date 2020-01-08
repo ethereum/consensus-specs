@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.keys import pubkeys, privkeys
-from eth2spec.utils.bls import bls_sign
+from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
@@ -21,12 +21,9 @@ def sign_deposit_data(spec, deposit_data, privkey):
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount)
-    signature = bls_sign(
-        message_hash=hash_tree_root(deposit_message),
-        privkey=privkey,
-        domain=spec.compute_domain(spec.DOMAIN_DEPOSIT),
-    )
-    deposit_data.signature = signature
+    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+    signing_root = spec.compute_signing_root(deposit_message, domain)
+    deposit_data.signature = bls.Sign(privkey, signing_root)
 
 
 def build_deposit(spec,

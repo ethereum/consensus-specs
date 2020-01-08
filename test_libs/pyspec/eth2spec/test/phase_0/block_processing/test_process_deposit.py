@@ -6,7 +6,7 @@ from eth2spec.test.helpers.deposits import (
     deposit_from_context)
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.utils.bls import bls_sign
+from eth2spec.utils import bls
 
 
 def run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True):
@@ -106,14 +106,11 @@ def test_invalid_sig_other_version(spec, state):
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
 
     # Go through the effort of manually signing, not something normally done. This sig domain will be invalid.
+    deposit_message = spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)
+    domain = spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=spec.Version('0xaabbccdd'))
     deposit_data = spec.DepositData(
         pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
-        signature=bls_sign(
-            message_hash=spec.hash_tree_root(
-                spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)),
-            privkey=privkey,
-            domain=spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=spec.Version('0xaabbccdd')),
-        )
+        signature=bls.Sign(privkey, spec.compute_signing_root(deposit_message, domain))
     )
     deposit, root, _ = deposit_from_context(spec, [deposit_data], 0)
 

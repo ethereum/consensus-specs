@@ -1,7 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.bls import bls_sign
+from eth2spec.utils import bls
 
 from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
@@ -108,15 +107,11 @@ def test_invalid_block_sig(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
+    signing_root = spec.compute_signing_root(block, domain)
     invalid_signed_block = spec.SignedBeaconBlock(
         message=block,
-        signature=bls_sign(
-            message_hash=hash_tree_root(block),
-            privkey=123456,
-            domain=spec.get_domain(
-                state,
-                spec.DOMAIN_BEACON_PROPOSER,
-                spec.compute_epoch_at_slot(block.slot)))
+        signature=bls.Sign(123456, signing_root)
     )
     expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
 
@@ -421,16 +416,11 @@ def test_voluntary_exit(spec, state):
         epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
+    domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
+    signing_root = spec.compute_signing_root(voluntary_exit, domain)
     signed_voluntary_exit = spec.SignedVoluntaryExit(
         message=voluntary_exit,
-        signature=bls_sign(
-            message_hash=hash_tree_root(voluntary_exit),
-            privkey=privkeys[validator_index],
-            domain=spec.get_domain(
-                state=state,
-                domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
-            )
-        )
+        signature=bls.Sign(privkeys[validator_index], signing_root)
     )
 
     # Add to state via block transition
