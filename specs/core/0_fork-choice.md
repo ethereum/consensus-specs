@@ -196,7 +196,7 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
 ```python
 def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
     """
-    Retrieve a filtered block true from ``store``, only returning branches
+    Retrieve a filtered block tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
     """
     base = store.justified_checkpoint.root

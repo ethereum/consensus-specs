@@ -77,6 +77,9 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 	diff -q $* $*.tmp && \
 	rm $*.tmp
 
+codespell:
+	codespell . --skip ./.git -I .codespell-whitelist
+
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec \
@@ -88,7 +91,7 @@ install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
 
 compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
-	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
+	python tool/compile_deposit_contract.py contracts/validator_registration.vy;
 
 test_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \

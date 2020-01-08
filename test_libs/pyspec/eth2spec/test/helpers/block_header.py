@@ -1,5 +1,4 @@
-from eth2spec.utils.bls import bls_sign
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils import bls
 
 
 def sign_block_header(spec, state, header, privkey):
@@ -7,8 +6,6 @@ def sign_block_header(spec, state, header, privkey):
         state=state,
         domain_type=spec.DOMAIN_BEACON_PROPOSER,
     )
-    return spec.SignedBeaconBlockHeader(message=header, signature=bls_sign(
-        message_hash=hash_tree_root(header),
-        privkey=privkey,
-        domain=domain,
-    ))
+    signing_root = spec.compute_signing_root(header, domain)
+    signature = bls.Sign(privkey, signing_root)
+    return spec.SignedBeaconBlockHeader(message=header, signature=signature)

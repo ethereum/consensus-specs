@@ -150,7 +150,7 @@ Template:
 
 Data:
 
-{container name}: Any of the container names listed below (exluding the `(Container)` python super type)
+{container name}: Any of the container names listed below (excluding the `(Container)` python super type)
 ```
 
 ```python

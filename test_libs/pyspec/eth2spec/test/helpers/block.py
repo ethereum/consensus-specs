@@ -1,7 +1,8 @@
 from copy import deepcopy
 
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import bls_sign, only_with_bls
+from eth2spec.utils import bls
+from eth2spec.utils.bls import only_with_bls
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
@@ -28,15 +29,9 @@ def apply_randao_reveal(spec, state, block, proposer_index=None):
     proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
 
-    block.body.randao_reveal = bls_sign(
-        privkey=privkey,
-        message_hash=hash_tree_root(spec.compute_epoch_at_slot(block.slot)),
-        domain=spec.get_domain(
-            state,
-            message_epoch=spec.compute_epoch_at_slot(block.slot),
-            domain_type=spec.DOMAIN_RANDAO,
-        )
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot))
+    signing_root = spec.compute_signing_root(spec.compute_epoch_at_slot(block.slot), domain)
+    block.body.randao_reveal = bls.Sign(privkey, signing_root)
 
 
 # Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.
@@ -46,14 +41,10 @@ def apply_sig(spec, state, signed_block, proposer_index=None):
 
     proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
+    signing_root = spec.compute_signing_root(block, domain)
 
-    signed_block.signature = bls_sign(
-        message_hash=hash_tree_root(block),
-        privkey=privkey,
-        domain=spec.get_domain(
-            state,
-            spec.DOMAIN_BEACON_PROPOSER,
-            spec.compute_epoch_at_slot(block.slot)))
+    signed_block.signature = bls.Sign(privkey, signing_root)
 
 
 def sign_block(spec, state, block, proposer_index=None):

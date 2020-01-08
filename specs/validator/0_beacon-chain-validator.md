@@ -31,6 +31,8 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
       - [Eth1 Data](#eth1-data)
+        - [`Eth1Block`](#eth1block)
+        - [`get_eth1_data`](#get_eth1_data)
       - [Proposer slashings](#proposer-slashings)
       - [Attester slashings](#attester-slashings)
       - [Attestations](#attestations)
@@ -85,6 +87,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
+| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | |
 
 ## Becoming a validator
 
@@ -117,7 +120,7 @@ To submit a deposit:
 - Set `deposit_data.withdrawal_credentials` to `withdrawal_credentials`.
 - Set `deposit_data.amount` to `amount`.
 - Let `deposit_message` be a `DepositMessage` with all the `DepositData` contents except the `signature`.
-- Let `signature` be the result of `bls_sign` of the `hash_tree_root(deposit_message)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `compute_domain` will default to zeroes there).
+- Let `signature` be the result of `bls.Sign` of the `compute_signing_root(deposit_message, domain)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (_Warning_: Deposits _must_ be signed with `GENESIS_FORK_VERSION`, calling `compute_domain` without a second argument defaults to the correct version).
 - Let `deposit_data_root` be `hash_tree_root(deposit_data)`.
 - Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32)` along with a deposit of `amount` Gwei.
 
@@ -197,8 +200,8 @@ The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahe
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 * Join the pubsub topic -- `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
-    * If any current peers are subscribed to the topic, the validator simply sends `subscribe` messages for the new topic.
-    * If no current peers are subscribed to the topic, the validator must discover new peers on this topic. If "topic discovery" is available, use topic discovery to find peers that advertise subscription to the topic. If not, "guess and check" by connecting with a number of random new peers, persisting connections with peers subscribed to the topic and (potentially) dropping the new peers otherwise.
+    * For any current peer subscribed to the topic, the validator simply sends a `subscribe` message for the new topic.
+    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`.
 
 ## Beacon chain responsibilities
 
@@ -234,33 +237,61 @@ Set `block.body.randao_reveal = epoch_signature` where `epoch_signature` is obta
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
-    return bls_sign(privkey, hash_tree_root(compute_epoch_at_slot(block.slot)), domain)
+    signing_root = compute_signing_root(compute_epoch_at_slot(block.slot), domain)
+    return bls.Sign(privkey, signing_root)
 ```
 
 ##### Eth1 Data
 
-The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
+The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates immediately allowing new deposits to be processed. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `eth1_data.block_hash` found in the state at the _start_ of the current Eth1 voting period. Note that `eth1_data` can be updated in the middle of a voting period and thus the starting `eth1_data.block_hash` must be stored separately.
+###### `Eth1Block`
 
-An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` field available.
 
 ```python
-def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
-    new_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)]
-    all_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, previous_eth1_distance)]
+class Eth1Block(Container):
+    timestamp: uint64
+    # All other eth1 block fields
+```
 
-    period_tail = state.slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_squareroot(SLOTS_PER_ETH1_VOTING_PERIOD)
-    if period_tail:
-        votes_to_consider = all_eth1_data
-    else:
-        votes_to_consider = new_eth1_data
+###### `get_eth1_data`
+
+Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
+
+An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` where:
+
+```python
+def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
+    return state.genesis_time + slot * SECONDS_PER_SLOT
+```
+
+```python
+def voting_period_start_time(state: BeaconState) -> uint64:
+    eth1_voting_period_start_slot = Slot(state.slot - state.slot % SLOTS_PER_ETH1_VOTING_PERIOD)
+    return compute_time_at_slot(state, eth1_voting_period_start_slot)
+```
+
+```python
+def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
+    return (
+        block.timestamp <= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE
+        and block.timestamp >= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2
+    )
+```
+
+```python
+def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
+    period_start = voting_period_start_time(state)
+    # `eth1_chain` abstractly represents all blocks in the eth1 chain.
+    votes_to_consider = [get_eth1_data(block) for block in eth1_chain if
+                         is_candidate_block(block, period_start)]
 
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     return max(
         valid_votes,
-        key=lambda v: (valid_votes.count(v), -all_eth1_data.index(v)),  # Tiebreak by smallest distance
+        key=lambda v: (valid_votes.count(v), -valid_votes.index(v)),  # Tiebreak by smallest distance
         default=get_eth1_data(ETH1_FOLLOW_DISTANCE),
     )
 ```
@@ -311,14 +342,15 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 ```python
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-    return bls_sign(privkey, hash_tree_root(header), domain)
+    signing_root = compute_signing_root(header, domain)
+    return bls.Sign(privkey, signing_root)
 ```
 
 ### Attesting
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet one-third of the way through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT / 3` seconds after the start of `slot`.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` hash transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded fork, and should be made.
 
@@ -369,7 +401,8 @@ Set `attestation.signature = signed_attestation_data` where `signed_attestation_
 ```python
 def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    return bls_sign(privkey, hash_tree_root(attestation.data), domain)
+    signing_root = compute_signing_root(attestation.data, domain)
+    return bls.Sign(privkey, signing_root)
 ```
 
 #### Broadcast attestation
@@ -387,7 +420,8 @@ A validator is selected to aggregate based upon the return value of `is_aggregat
 ```python
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
-    return bls_sign(privkey, hash_tree_root(slot), domain)
+    signing_root = compute_signing_root(slot, domain)
+    return bls.Sign(privkey, signing_root)
 ```
 
 ```python
@@ -418,7 +452,7 @@ Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_sig
 ```python
 def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
     signatures = [attestation.signature for attestation in attestations]
-    return bls_aggregate_signatures(signatures)
+    return bls.Aggregate(signatures)
 ```
 
 #### Broadcast aggregate
@@ -443,7 +477,11 @@ Where
 
 ## Phase 0 attestation subnet stability
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets. The lifetime of each random subscription should be a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`.
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must:
+
+* Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
+* Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
+* Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
 
 ## How to avoid slashing
 

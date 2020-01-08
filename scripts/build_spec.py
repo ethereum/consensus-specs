@@ -11,7 +11,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, Tuple, Optional
+    Any, Dict, Set, Sequence, Tuple, Optional, TypeVar
 )
 
 from dataclasses import (
@@ -21,20 +21,17 @@ from dataclasses import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    boolean, Container, List, Vector, uint64,
+    boolean, Container, List, Vector, uint64, SSZType,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
-from eth2spec.utils.bls import (
-    bls_aggregate_signatures,
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_sign,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
+
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, MutableSequence, NewType, Tuple, Union,
+    Any, Dict, Set, Sequence, MutableSequence, NewType, Tuple, Union, TypeVar
 )
 from math import (
     log2,
@@ -55,18 +52,14 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, bit, boolean, byte,
 )
-from eth2spec.utils.bls import (
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_verify_multiple,
-    bls_signature_to_G2,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
 
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
@@ -163,8 +156,6 @@ def objects_to_spec(functions: Dict[str, str],
             del functions[k]
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
-        if k.startswith('DOMAIN_'):
-            constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
         if k == "BLS12_381_Q":
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
@@ -252,7 +243,7 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     return old_objects
 
 
-# inserts are handeled the same way as functions
+# inserts are handled the same way as functions
 combine_inserts = combine_functions
 
 

@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
+from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
 from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector
 from eth2spec.utils.ssz.ssz_impl import chunkify, pack, hash_tree_root
@@ -17,28 +17,15 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
         epoch = current_epoch + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING
 
     # Generate the secret that is being revealed
-    reveal = bls_sign(
-        message_hash=hash_tree_root(spec.Epoch(epoch)),
-        privkey=privkeys[revealed_index],
-        domain=spec.get_domain(
-            state=state,
-            domain_type=spec.DOMAIN_RANDAO,
-            message_epoch=epoch,
-        ),
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch)
+    signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
+    reveal = bls.Sign(privkeys[revealed_index], signing_root)
     # Generate the mask (any random 32 bytes that don't reveal the masker's secret will do)
     mask = hash(reveal)
     # Generate masker's signature on the mask
-    masker_signature = bls_sign(
-        message_hash=mask,
-        privkey=privkeys[masker_index],
-        domain=spec.get_domain(
-            state=state,
-            domain_type=spec.DOMAIN_RANDAO,
-            message_epoch=epoch,
-        ),
-    )
-    masked_reveal = bls_aggregate_signatures([reveal, masker_signature])
+    signing_root = spec.compute_signing_root(mask, domain)
+    masker_signature = bls.Sign(privkeys[masker_index], signing_root)
+    masked_reveal = bls.Aggregate([reveal, masker_signature])
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,
@@ -60,15 +47,9 @@ def get_valid_custody_key_reveal(spec, state, period=None):
     epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, revealer_index)
 
     # Generate the secret that is being revealed
-    reveal = bls_sign(
-        message_hash=hash_tree_root(spec.Epoch(epoch_to_sign)),
-        privkey=privkeys[revealer_index],
-        domain=spec.get_domain(
-            state=state,
-            domain_type=spec.DOMAIN_RANDAO,
-            message_epoch=epoch_to_sign,
-        ),
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
+    signing_root = spec.compute_signing_root(spec.Epoch(epoch_to_sign), domain)
+    reveal = bls.Sign(privkeys[revealer_index], signing_root)
     return spec.CustodyKeyReveal(
         revealer_index=revealer_index,
         reveal=reveal,
@@ -92,15 +73,9 @@ def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False)
                                                      responder_index)
 
     # Generate the responder key
-    responder_key = bls_sign(
-        message_hash=hash_tree_root(spec.Epoch(epoch)),
-        privkey=privkeys[responder_index],
-        domain=spec.get_domain(
-            state=state,
-            domain_type=spec.DOMAIN_RANDAO,
-            message_epoch=epoch,
-        ),
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch)
+    signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
+    responder_key = bls.Sign(privkeys[responder_index], signing_root)
 
     chunk_count = spec.get_custody_chunk_count(attestation.data.crosslink)
 

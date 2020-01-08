@@ -53,10 +53,10 @@ It consists of four main sections:
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
+      - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [Interop](#interop-5)
       - [Mainnet](#mainnet-5)
     - [Topic advertisement](#topic-advertisement)
-      - [Interop](#interop-6)
       - [Mainnet](#mainnet-6)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
@@ -81,6 +81,7 @@ It consists of four main sections:
     - [How do we upgrade gossip channels (e.g. changes in encoding, compression)?](#how-do-we-upgrade-gossip-channels-eg-changes-in-encoding-compression)
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
+  - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
     - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
     - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
     - [Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?](#why-are-aggregate-attestations-broadcast-to-the-global-topic-as-aggregateandproofs-rather-than-just-as-attestations)
@@ -92,6 +93,7 @@ It consists of four main sections:
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
+    - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
     - [What is the difference between an ENR and a multiaddr, and why are we using ENRs?](#what-is-the-difference-between-an-enr-and-a-multiaddr-and-why-are-we-using-enrs)
@@ -212,6 +214,13 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
+The `message-id` of a gossipsub message MUST be:
+
+```python
+   message-id: base64(SHA256(message.data))
+```
+where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc4648#section-3.2) with padding characters omitted.
+
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
 | Topic                                  | Message Type      |
@@ -314,14 +323,14 @@ Request/response messages MUST adhere to the encoding specified in the protocol 
 
 ```
 request   ::= <encoding-dependent-header> | <encoded-payload>
-response  ::= <response_chunk>+
+response  ::= <response_chunk>*
 response_chunk  ::= <result> | <encoding-dependent-header> | <encoded-payload>
 result    ::= “0” | “1” | “2” | [“128” ... ”255”]
 ```
 
 The encoding-dependent header may carry metadata or assertions such as the encoded payload length, for integrity and attack proofing purposes. Because req/resp streams are single-use and stream closures implicitly delimit the boundaries, it is not strictly necessary to length-prefix payloads; however, certain encodings like SSZ do, for added security.
 
-A `response` is formed by one or more `response_chunk`s. The exact request determines whether a response consists of a single `response_chunk` or possibly many. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
+A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
 
 Clients MUST ensure the each encoded payload of a `response_chunk` is less than or equal to `MAX_CHUNK_SIZE`; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
@@ -344,7 +353,7 @@ The responder MUST:
 1. Use the encoding strategy to read the optional header.
 2. If there are any length assertions for length `N`, it should read exactly `N` bytes from the stream, at which point an EOF should arise (no more bytes). Should this not be the case, it should be treated as a failure.
 3. Deserialize the expected type, and process the request.
-4. Write the response which may consist of one or more `response_chunk`s (result, optional header, payload).
+4. Write the response which may consist of zero or more `response_chunk`s (result, optional header, payload).
 5. Close their write side of the stream. At this point, the stream will be fully closed.
 
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error. Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
@@ -398,7 +407,7 @@ All messages that contain only a single field MUST be encoded directly as the ty
 
 Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]SignedBeaconBlock` response type sends one or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
+`[]SignedBeaconBlock` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -436,6 +445,8 @@ Clients SHOULD immediately disconnect from one another following the handshake a
 2. If the (`finalized_root`, `finalized_epoch`) shared by the peer is not in the client's chain at the expected epoch. For example, if Peer 1 sends (root, epoch) of (A, 5) and Peer 2 sends (B, 3) but Peer 1 has root C at epoch 3, then Peer 1 would disconnect because it knows that their chains are irreparably disjoint.
 
 Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange` request.
+
+*Note*: Under abnormal network condition or after some rounds of `BeaconBlocksByRange` requests, the client might need to send `Status` request again to learn if the peer has a higher head. Implementers are free to implement such behavior in their own way.
 
 #### Goodbye
 
@@ -486,7 +497,7 @@ Requests count beacon blocks from the peer starting from `start_slot` on the cha
 
 The request MUST be encoded as an SSZ-container.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+The response MUST consist of zero or more `response_chunk`. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -494,7 +505,7 @@ Clients MUST support requesting blocks since the start of the weak subjectivity 
 
 Clients MUST support `head_block_root` values since the latest finalized epoch.
 
-Clients MUST respond with at least one block, if they have it.
+Clients MUST respond with at least one block, if they have it and it exists in the range. Clients MAY limit the number of blocks in the response.
 
 Clients MUST order blocks by increasing slot number.
 
@@ -524,11 +535,11 @@ Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). T
 
 The request MUST be encoded as an SSZ-field.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+The response MUST consist of zero or more `response_chunk`. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 
-Clients MUST respond with at least one block, if they have it.
+Clients MUST respond with at least one block, if they have it. Clients MAY limit the number of blocks in the response.
 
 ## The discovery domain: discv5
 
@@ -557,6 +568,14 @@ The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the follo
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
 
+#### Attestation subnet bitfield
+
+The ENR MAY contain an entry (`attnets`) signifying the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
+
+| Key          | Value                                            |
+|:-------------|:-------------------------------------------------|
+| `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+
 #### Interop
 
 In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth2 capability information, as it would be superfluous.
@@ -569,13 +588,11 @@ On mainnet, ENRs MUST include a structure enumerating the capabilities offered b
 
 ### Topic advertisement
 
-#### Interop
-
-This feature will not be used in the interoperability testnet.
-
 #### Mainnet
 
-In mainnet, we plan to use discv5’s topic advertisement feature as a rendezvous facility for peers on shards (thus subscribing to the relevant gossipsub topics).
+discv5's topic advertisement feature is not expected to be ready for mainnet launch of Phase 0.
+
+Once this feature is built out and stable, we expect to use topic advertisement as a rendezvous facility for peers on shards. Until then, the ENR [attestation subnet bitfield](#attestation-subnet-bitfield) will be used for discovery of peers on particular subnets.
 
 # Design decision rationale
 
@@ -738,6 +755,16 @@ No security or privacy guarantees are lost as a result of choosing plaintext top
 
 Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
+## Why are we overriding the default libp2p pubsub `message-id`?
+
+For our current purposes, there is no need to address messages based on source peer, and it seems likely we might even override the message `from` to obfuscate the peer. By overriding the default `message-id` to use content-addressing we can filter unnecessary duplicates before hitting the application layer.
+
+Some examples of where messages could be duplicated:
+
+* A validator client connected to multiple beacon nodes publishing duplicate gossip messages
+* Attestation aggregation strategies where clients partially aggregate attestations and propagate them. Partial aggregates could be duplicated
+* Clients re-publishing seen messages
+
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet). The value is currently set to to be equal `MAX_COMMITTEES_PER_SLOT` until network tests indicate otherwise.
@@ -764,9 +791,9 @@ The prohibition of unverified-block-gossiping extends to nodes that cannot verif
 
 ### How are we going to discover peers in a gossipsub topic?
 
-Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location, and capability information, not volatile [advertisements](#topic-advertisement).
+In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
 
-In the interoperability testnet, all peers will be subscribed to all global beacon chain topics, so discovering peers in specific shard topics will be unnecessary.
+Although this method will be sufficient for early phases of Eth2, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future. ENRs should ultimately not be used for this purpose. They are best suited to store identity, location, and capability information, rather than more volatile advertisements.
 
 ## Req/Resp
 
@@ -826,6 +853,26 @@ For this reason, we remove and replace semver with ordinals that require explici
 ### Why is it called Req/Resp and not RPC?
 
 Req/Resp is used to avoid confusion with JSON-RPC and similar user-client interaction mechanisms.
+
+### Why do we allow empty responses in block requests?
+
+When requesting blocks by range or root, it may happen that there are no blocks in the selected range or the responding node does not have the requested blocks.
+
+Thus, it may happen that we need to transmit an empty list - there are several ways to encode this:
+
+0) Close the stream without sending any data
+1) Add a `null` option to the `success` response, for example by introducing an additional byte
+2) Respond with an error result, using a specific error code for "No data"
+
+Semantically, it is not an error that a block is missing during a slot making option 2 unnatural.
+
+Option 1 allows allows the responder to signal "no block", but this information may be wrong - for example in the case of a malicious node.
+
+Under option 0, there is no way for a client to distinguish between a slot without a block and an incomplete response, but given that it already must contain logic to handle the uncertainty of a malicious peer, option 0 was chosen. Clients should mark any slots missing blocks as unknown until they can be verified as not containing a block by successive blocks.
+
+Assuming option 0 with no special `null` encoding, consider a request for slots `2, 3, 4` - if there was no block produced at slot 4, the response would be `2, 3, EOF`. Now consider the same situation, but where only `4` is requested - closing the stream with only `EOF` (without any `response_chunk`) is consistent.
+
+Failing to provide blocks that nodes "should" have is reason to trust a peer less - for example, if a particular peer gossips a block, it should have access to its parent. If a request for the parent fails, it's indicative of poor peer quality since peers should validate blocks before gossiping them.
 
 ## Discovery
 
