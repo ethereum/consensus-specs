@@ -1,11 +1,12 @@
-from py_ecc import bls
+from py_ecc.bls import G2ProofOfPossession as bls
+from py_ecc.bls.g2_primatives import signature_to_G2 as _signature_to_G2
 
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
-STUB_COORDINATES = bls.api.signature_to_G2(bls.sign(b"", 0, b"\0" * 8))
+STUB_COORDINATES = _signature_to_G2(bls.Sign(0, b""))
 
 
 def only_with_bls(alt_return=None):
@@ -23,33 +24,30 @@ def only_with_bls(alt_return=None):
 
 
 @only_with_bls(alt_return=True)
-def bls_verify(pubkey, message_hash, signature, domain):
-    return bls.verify(message_hash=message_hash, pubkey=pubkey,
-                      signature=signature, domain=domain)
+def Verify(PK, message, signature):
+    return bls.Verify(PK, message, signature)
 
 
 @only_with_bls(alt_return=True)
-def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
-    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=message_hashes,
-                               signature=signature, domain=domain)
+def AggregateVerify(pairs, signature):
+    return bls.AggregateVerify(pairs, signature)
 
 
-@only_with_bls(alt_return=STUB_PUBKEY)
-def bls_aggregate_pubkeys(pubkeys):
-    return bls.aggregate_pubkeys(pubkeys)
-
-
-@only_with_bls(alt_return=STUB_SIGNATURE)
-def bls_aggregate_signatures(signatures):
-    return bls.aggregate_signatures(signatures)
+@only_with_bls(alt_return=True)
+def FastAggregateVerify(PKs, message, signature):
+    return bls.FastAggregateVerify(PKs, message, signature)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
-def bls_sign(message_hash, privkey, domain):
-    return bls.sign(message_hash=message_hash, privkey=privkey,
-                    domain=domain)
+def Aggregate(signatures):
+    return bls.Aggregate(signatures)
+
+
+@only_with_bls(alt_return=STUB_SIGNATURE)
+def Sign(SK, message):
+    return bls.Sign(SK, message)
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)
-def bls_signature_to_G2(signature):
-    return bls.api.signature_to_G2(signature)
+def signature_to_G2(signature):
+    return _signature_to_G2(signature)

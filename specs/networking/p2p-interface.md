@@ -93,6 +93,7 @@ It consists of four main sections:
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
+    - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
     - [What is the difference between an ENR and a multiaddr, and why are we using ENRs?](#what-is-the-difference-between-an-enr-and-a-multiaddr-and-why-are-we-using-enrs)
@@ -322,14 +323,14 @@ Request/response messages MUST adhere to the encoding specified in the protocol 
 
 ```
 request   ::= <encoding-dependent-header> | <encoded-payload>
-response  ::= <response_chunk>+
+response  ::= <response_chunk>*
 response_chunk  ::= <result> | <encoding-dependent-header> | <encoded-payload>
 result    ::= “0” | “1” | “2” | [“128” ... ”255”]
 ```
 
 The encoding-dependent header may carry metadata or assertions such as the encoded payload length, for integrity and attack proofing purposes. Because req/resp streams are single-use and stream closures implicitly delimit the boundaries, it is not strictly necessary to length-prefix payloads; however, certain encodings like SSZ do, for added security.
 
-A `response` is formed by one or more `response_chunk`s. The exact request determines whether a response consists of a single `response_chunk` or possibly many. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
+A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
 
 Clients MUST ensure the each encoded payload of a `response_chunk` is less than or equal to `MAX_CHUNK_SIZE`; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
@@ -352,7 +353,7 @@ The responder MUST:
 1. Use the encoding strategy to read the optional header.
 2. If there are any length assertions for length `N`, it should read exactly `N` bytes from the stream, at which point an EOF should arise (no more bytes). Should this not be the case, it should be treated as a failure.
 3. Deserialize the expected type, and process the request.
-4. Write the response which may consist of one or more `response_chunk`s (result, optional header, payload).
+4. Write the response which may consist of zero or more `response_chunk`s (result, optional header, payload).
 5. Close their write side of the stream. At this point, the stream will be fully closed.
 
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error. Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
@@ -406,7 +407,7 @@ All messages that contain only a single field MUST be encoded directly as the ty
 
 Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]SignedBeaconBlock` response type sends one or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
+`[]SignedBeaconBlock` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -496,7 +497,7 @@ Requests count beacon blocks from the peer starting from `start_slot` on the cha
 
 The request MUST be encoded as an SSZ-container.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+The response MUST consist of zero or more `response_chunk`. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -504,7 +505,7 @@ Clients MUST support requesting blocks since the start of the weak subjectivity 
 
 Clients MUST support `head_block_root` values since the latest finalized epoch.
 
-Clients MUST respond with at least one block, if they have it.
+Clients MUST respond with at least one block, if they have it and it exists in the range. Clients MAY limit the number of blocks in the response.
 
 Clients MUST order blocks by increasing slot number.
 
@@ -534,11 +535,11 @@ Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). T
 
 The request MUST be encoded as an SSZ-field.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+The response MUST consist of zero or more `response_chunk`. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 
-Clients MUST respond with at least one block, if they have it.
+Clients MUST respond with at least one block, if they have it. Clients MAY limit the number of blocks in the response.
 
 ## The discovery domain: discv5
 
@@ -852,6 +853,26 @@ For this reason, we remove and replace semver with ordinals that require explici
 ### Why is it called Req/Resp and not RPC?
 
 Req/Resp is used to avoid confusion with JSON-RPC and similar user-client interaction mechanisms.
+
+### Why do we allow empty responses in block requests?
+
+When requesting blocks by range or root, it may happen that there are no blocks in the selected range or the responding node does not have the requested blocks.
+
+Thus, it may happen that we need to transmit an empty list - there are several ways to encode this:
+
+0) Close the stream without sending any data
+1) Add a `null` option to the `success` response, for example by introducing an additional byte
+2) Respond with an error result, using a specific error code for "No data"
+
+Semantically, it is not an error that a block is missing during a slot making option 2 unnatural.
+
+Option 1 allows allows the responder to signal "no block", but this information may be wrong - for example in the case of a malicious node.
+
+Under option 0, there is no way for a client to distinguish between a slot without a block and an incomplete response, but given that it already must contain logic to handle the uncertainty of a malicious peer, option 0 was chosen. Clients should mark any slots missing blocks as unknown until they can be verified as not containing a block by successive blocks.
+
+Assuming option 0 with no special `null` encoding, consider a request for slots `2, 3, 4` - if there was no block produced at slot 4, the response would be `2, 3, EOF`. Now consider the same situation, but where only `4` is requested - closing the stream with only `EOF` (without any `response_chunk`) is consistent.
+
+Failing to provide blocks that nodes "should" have is reason to trust a peer less - for example, if a particular peer gossips a block, it should have access to its parent. If a request for the parent fails, it's indicative of poor peer quality since peers should validate blocks before gossiping them.
 
 ## Discovery
 

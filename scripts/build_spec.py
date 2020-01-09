@@ -15,7 +15,7 @@ apply_constants_preset(globals())
 
 PHASE0_IMPORTS = '''from eth2spec.config.apply_config import apply_constants_preset
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
 )
 
 from dataclasses import (
@@ -25,22 +25,19 @@ from dataclasses import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    boolean, Container, List, Vector, uint64,
+    boolean, Container, List, Vector, uint64, SSZType,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
-from eth2spec.utils.bls import (
-    bls_aggregate_signatures,
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_sign,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
+
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.apply_config import apply_constants_preset
 from typing import (
-    Any, Callable, Dict, Set, Sequence, NewType, Tuple, Union,
+    Any, Callable, Dict, Set, Sequence, NewType, Tuple, Union, TypeVar
 )
 from math import (
     log2,
@@ -58,18 +55,14 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, uint8, bit, boolean,
 )
-from eth2spec.utils.bls import (
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_verify_multiple,
-    bls_signature_to_G2,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
 
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:

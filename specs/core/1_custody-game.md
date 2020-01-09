@@ -186,7 +186,7 @@ def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
 
 ```python
 def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
-    full_G2_element = bls_signature_to_G2(key)
+    full_G2_element = bls.signature_to_G2(key)
     s = full_G2_element[0].coeffs
     bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(atom, "little"), BLS12_381_Q)
             for i, atom in enumerate(get_custody_atoms(data))]
@@ -246,16 +246,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     assert is_slashable_validator(revealer, get_current_epoch(state))
 
     # Verify signature
-    assert bls_verify(
-        pubkey=revealer.pubkey,
-        message_hash=hash_tree_root(epoch_to_sign),
-        signature=reveal.reveal,
-        domain=get_domain(
-            state=state,
-            domain_type=DOMAIN_RANDAO,
-            message_epoch=epoch_to_sign,
-        ),
-    )
+    domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
+    signing_root = compute_signing_root(epoch_to_sign, domain)
+    assert bls.Verify(revealer.pubkey, signing_root, reveal.reveal)
 
     # Decrement max reveal lateness if response is timely
     if epoch_to_sign + EPOCHS_PER_CUSTODY_PERIOD >= get_current_epoch(state):
@@ -300,21 +293,10 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
     # Verify signature correctness
     masker = state.validators[reveal.masker_index]
     pubkeys = [revealed_validator.pubkey, masker.pubkey]
-    message_hashes = [
-        hash_tree_root(reveal.epoch),
-        reveal.mask,
-    ]
 
-    assert bls_verify_multiple(
-        pubkeys=pubkeys,
-        message_hashes=message_hashes,
-        signature=reveal.reveal,
-        domain=get_domain(
-            state=state,
-            domain_type=DOMAIN_RANDAO,
-            message_epoch=reveal.epoch,
-        ),
-    )
+    domain = get_domain(state, DOMAIN_RANDAO, reveal.epoch)
+    signing_roots = [compute_signing_root(root, domain) for root in [hash_tree_root(reveal.epoch), reveal.mask]]
+    assert bls.AggregateVerify(zip(pubkeys, signing_roots), reveal.reveal)
 
     if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         # Full slashing when the secret was revealed so early it may be a valid custody
@@ -392,7 +374,8 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         custody_slashing.malefactor_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    assert bls_verify(malefactor.pubkey, hash_tree_root(epoch_to_sign), custody_slashing.malefactor_secret, domain)
+    signing_root = compute_signing_root(epoch_to_sign, domain)
+    assert bls.Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
 
     # Get the custody bit
     custody_bits = attestation.custody_bits[custody_slashing.data_index]

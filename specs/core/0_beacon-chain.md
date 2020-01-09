@@ -34,6 +34,7 @@
     - [`DepositMessage`](#depositmessage)
     - [`DepositData`](#depositdata)
     - [`BeaconBlockHeader`](#beaconblockheader)
+    - [`SigningRoot`](#signingroot)
   - [Beacon operations](#beacon-operations)
     - [`ProposerSlashing`](#proposerslashing)
     - [`AttesterSlashing`](#attesterslashing)
@@ -58,8 +59,7 @@
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
-    - [`bls_verify`](#bls_verify)
-    - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+    - [BLS Signatures](#bls-signatures)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
     - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
@@ -76,6 +76,7 @@
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
     - [`compute_domain`](#compute_domain)
+  - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_current_epoch`](#get_current_epoch)
     - [`get_previous_epoch`](#get_previous_epoch)
@@ -158,10 +159,11 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
+| `GENESIS_SLOT` | `Slot(0)` |
+| `GENESIS_EPOCH` | `Epoch(0)` |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
 | `BASE_REWARDS_PER_EPOCH` | `4` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
-| `SECONDS_PER_DAY` | `86400` |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
 | `ENDIANNESS` | `'little'` |
 
@@ -197,24 +199,24 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `GENESIS_SLOT` | `Slot(0)` |
-| `GENESIS_EPOCH` | `Epoch(0)` |
+| `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
 | `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
+| `MIN_GENESIS_DELAY` | `86400` | seconds | 1 day |
 | `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
 | `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~3.4 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | 9 days |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
 
 ### State list lengths
 
@@ -223,7 +225,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
 | `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots |
+| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validators |
 
 ### Rewards and penalties
 
@@ -364,7 +366,7 @@ class DepositData(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
-    signature: BLSSignature  # signing over DepositMessage
+    signature: BLSSignature  # Signing over DepositMessage
 ```
 
 #### `BeaconBlockHeader`
@@ -375,6 +377,14 @@ class BeaconBlockHeader(Container):
     parent_root: Root
     state_root: Root
     body_root: Root
+```
+
+#### `SigningRoot`
+
+```python
+class SigningRoot(Container):
+    object_root: Root
+    domain: Domain
 ```
 
 ### Beacon operations
@@ -409,7 +419,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
+    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit root
     data: DepositData
 ```
 
@@ -485,8 +495,6 @@ class BeaconState(Container):
 ```
 
 ### Signed envelopes
-
-Some messages in the protocol are wrapped in an envelope to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
 
 #### `SignedVoluntaryExit`
 
@@ -573,13 +581,17 @@ def bytes_to_int(data: bytes) -> uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
 
-#### `bls_verify`
+#### BLS Signatures
 
-`bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00). Specifically, eth2 uses the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite which implements the following interfaces:
 
-#### `bls_aggregate_pubkeys`
+- `def Sign(SK: int, message: Bytes) -> BLSSignature`
+- `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
+- `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
+- `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
+- `def AggregateVerify(pairs: Sequence[PK: BLSSignature, message: Bytes], signature: BLSSignature) -> bool`
 
-`bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, as defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
+Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
 ### Predicates
 
@@ -662,14 +674,10 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
-    if not bls_verify(
-        pubkey=bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
-        message_hash=hash_tree_root(indexed_attestation.data),
-        signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
-    ):
-        return False
-    return True
+    pubkeys = [state.validators[i].pubkey for i in indices]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
+    signing_root = compute_signing_root(indexed_attestation.data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
 
 #### `is_valid_merkle_branch`
@@ -780,11 +788,25 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Version=GENESIS_FORK_VERSION) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
     return Domain(domain_type + fork_version)
+```
+
+### `compute_signing_root`
+
+```python
+def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
+    """
+    Return the signing root of an object by calculating the root of the object-domain tree.
+    """
+    domain_wrapped_object = SigningRoot(
+        object_root=hash_tree_root(ssz_object),
+        domain=domain,
+    )
+    return hash_tree_root(domain_wrapped_object)
 ```
 
 ### Beacon state accessors
@@ -940,11 +962,11 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: DomainType, message_epoch: Epoch=None) -> Domain:
+def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch=None) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
-    epoch = get_current_epoch(state) if message_epoch is None else message_epoch
+    epoch = get_current_epoch(state) if epoch is None else epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
     return compute_domain(domain_type, fork_version)
 ```
@@ -1014,7 +1036,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
+    exit_queue_epoch = max(exit_epochs, default=compute_activation_exit_epoch(get_current_epoch(state)))
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += Epoch(1)
@@ -1063,8 +1085,14 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
+    fork = Fork(
+        previous_version=GENESIS_FORK_VERSION,
+        current_version=GENESIS_FORK_VERSION,
+        epoch=GENESIS_EPOCH,
+    )
     state = BeaconState(
-        genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
+        genesis_time=eth1_timestamp - eth1_timestamp % MIN_GENESIS_DELAY + 2 * MIN_GENESIS_DELAY,
+        fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
@@ -1109,19 +1137,21 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
+The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
 def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> BeaconState:
+    block = signed_block.message
     # Process slots (including those with no blocks) since block
-    process_slots(state, signed_block.message.slot)
+    process_slots(state, block.slot)
     # Verify signature
     if validate_result:
         assert verify_block_signature(state, signed_block)
     # Process block
-    process_block(state, signed_block.message)
+    process_block(state, block)
+    # Verify state root
     if validate_result:
-        assert signed_block.message.state_root == hash_tree_root(state)  # Validate state root
+        assert block.state_root == hash_tree_root(state)
     # Return post-state
     return state
 ```
@@ -1129,8 +1159,8 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[get_beacon_proposer_index(state)]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
-    return bls_verify(proposer.pubkey, hash_tree_root(signed_block.message), signed_block.signature, domain)
+    signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
 ```python
@@ -1291,9 +1321,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
         rewards[attestation.proposer_index] += proposer_reward
         max_attester_reward = get_base_reward(state, index) - proposer_reward
-        rewards[index] += Gwei(
-            max_attester_reward // attestation.inclusion_delay
-        )
+        rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
     # Inactivity penalty
     finality_delay = previous_epoch - state.finalized_checkpoint.epoch
@@ -1302,9 +1330,8 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         for index in eligible_validator_indices:
             penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
             if index not in matching_target_attesting_indices:
-                penalties[index] += Gwei(
-                    state.validators[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
-                )
+                effective_balance = state.validators[index].effective_balance
+                penalties[index] += Gwei(effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
 
     return rewards, penalties
 ```
@@ -1404,13 +1431,14 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     assert block.slot == state.slot
     # Verify that the parent matches
     assert block.parent_root == hash_tree_root(state.latest_block_header)
-    # Save current block as the new latest block
+    # Cache current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        # `state_root` is zeroed and overwritten in the next `process_slot` call
+        state_root=Bytes32(),  # Overwritten in the next process_slot call
         body_root=hash_tree_root(block.body),
     )
+
     # Verify proposer is not slashed
     proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
@@ -1423,7 +1451,8 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
-    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
+    assert bls.Verify(proposer.pubkey, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -1460,17 +1489,18 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
-    proposer = state.validators[proposer_slashing.proposer_index]
-    # Verify slots match
+    # Verify header slots match
     assert proposer_slashing.signed_header_1.message.slot == proposer_slashing.signed_header_2.message.slot
-    # But the headers are different
-    assert proposer_slashing.signed_header_1.message != proposer_slashing.signed_header_2.message
-    # Check proposer is slashable
+    # Verify the headers are different
+    assert proposer_slashing.signed_header_1 != proposer_slashing.signed_header_2
+    # Verify the proposer is slashable
+    proposer = state.validators[proposer_slashing.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
-    # Signatures are valid
+    # Verify signatures
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
         domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        assert bls_verify(proposer.pubkey, hash_tree_root(signed_header.message), signed_header.signature, domain)
+        signing_root = compute_signing_root(signed_header.message, domain)
+        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1521,7 +1551,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert data.source == state.previous_justified_checkpoint
         state.previous_epoch_attestations.append(pending_attestation)
 
-    # Check signature
+    # Verify signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
 
@@ -1533,7 +1563,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the `List` length mix-in
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )
@@ -1545,15 +1575,15 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) for new validators.
-        # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-        domain = compute_domain(DOMAIN_DEPOSIT)
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
             pubkey=deposit.data.pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount)
-        if not bls_verify(pubkey, hash_tree_root(deposit_message), deposit.data.signature, domain):
+            amount=deposit.data.amount,
+        )
+        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+        signing_root = compute_signing_root(deposit_message, domain)
+        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
             return
 
         # Add validator and balance entries
@@ -1581,7 +1611,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     validator = state.validators[voluntary_exit.validator_index]
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
-    # Verify the validator has not yet exited
+    # Verify exit has not been initiated
     assert validator.exit_epoch == FAR_FUTURE_EPOCH
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= voluntary_exit.epoch
@@ -1589,7 +1619,8 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
-    assert bls_verify(validator.pubkey, hash_tree_root(voluntary_exit), signed_voluntary_exit.signature, domain)
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```

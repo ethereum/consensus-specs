@@ -26,8 +26,6 @@
     - [`CompactCommittee`](#compactcommittee)
     - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
   - [Helper functions](#helper-functions)
-    - [Crypto](#crypto)
-      - [`bls_verify_multiple`](#bls_verify_multiple)
     - [Misc](#misc-1)
       - [`get_previous_slot`](#get_previous_slot)
       - [`pack_compact_validator`](#pack_compact_validator)
@@ -364,13 +362,6 @@ class AttestationCustodyBitWrapper(Container):
 
 ## Helper functions
 
-### Crypto
-
-#### `bls_verify_multiple`
-
-`bls_verify_multiple` is a function for verifying a BLS signature constructed from multiple messages, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify_multiple).
-
-
 ### Misc
 
 #### `get_previous_slot`
@@ -540,8 +531,9 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     """
     # Verify aggregate signature
     all_pubkeys = []
-    all_message_hashes = []
+    all_signing_roots = []
     attestation = indexed_attestation.attestation
+    domain=get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     aggregation_bits = attestation.aggregation_bits
     assert len(aggregation_bits) == len(indexed_attestation.committee)
     for i, custody_bits in enumerate(attestation.custody_bits):
@@ -550,18 +542,12 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
             if abit:
                 all_pubkeys.append(state.validators[participant].pubkey)
                 # Note: only 2N distinct message hashes
-                all_message_hashes.append(hash_tree_root(
-                    AttestationCustodyBitWrapper(hash_tree_root(attestation.data), i, cbit)
-                ))
+                all_signing_roots.append(compute_signing_root(
+                    AttestationCustodyBitWrapper(hash_tree_root(attestation.data), i, cbit), domain))
             else:
                 assert not cbit
 
-    return bls_verify_multiple(
-        pubkeys=all_pubkeys,
-        message_hashes=all_message_hashes,
-        signature=attestation.signature,
-        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch),
-    )
+    return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
 ```
 
 
@@ -686,13 +672,11 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
         prev_gasprice = shard_state.gasprice
 
+    pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
+    signing_roots = [compute_signing_root(header, 
+                    get_domain(state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(header.slot))) for header in headers]
     # Verify combined proposer signature
-    assert bls_verify_multiple(
-        pubkeys=[state.validators[proposer].pubkey for proposer in proposers],
-        message_hashes=[hash_tree_root(header) for header in headers],
-        signature=transition.proposer_signature_aggregate,
-        domain=DOMAIN_SHARD_PROPOSAL
-    )
+    assert bls.AggregateVerify(zip(pubkeys, signing_roots), signature=transition.proposer_signature_aggregate)
 
     # Save updated state
     state.shard_states[shard] = transition.shard_states[-1]
@@ -861,21 +845,19 @@ def verify_shard_transition_false_positives(state: BeaconState, block_body: Beac
 def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockBody) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
     total_reward = Gwei(0)
-    signer_keys = []
+    signer_pubkeys = []
     for bit_index, participant_index in enumerate(committee):
         if block_body.light_client_signature_bitfield[bit_index]:
-            signer_keys.append(state.validators[participant_index].pubkey)
+            signer_pubkeys.append(state.validators[participant_index].pubkey)
             increase_balance(state, participant_index, get_base_reward(state, participant_index))
             total_reward += get_base_reward(state, participant_index)
 
     increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
     
-    assert bls_verify(
-        pubkey=bls_aggregate_pubkeys(signer_keys),
-        message_hash=get_block_root_at_slot(state, get_previous_slot(state.slot)),
-        signature=block_body.light_client_signature,
-        domain=DOMAIN_LIGHT_CLIENT
-    )
+    slot = get_previous_slot(state.slot)
+    signing_root = compute_signing_root(get_block_root_at_slot(state, slot), 
+                                       get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
+    return bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
 ```
 
 
