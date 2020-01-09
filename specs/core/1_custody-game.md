@@ -91,7 +91,7 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 ```python
 class CustodySlashing(Container):
-    # Attestation.custody_bits[data_index][committee.index(malefactor_index)] is the target custody bit to check.
+    # Attestation.custody_bits_blocks[data_index][committee.index(malefactor_index)] is the target custody bit to check.
     # (Attestation.data.shard_transition_root as ShardTransition).shard_data_roots[data_index] is the root of the data.
     data_index: uint64
     malefactor_index: ValidatorIndex
@@ -378,7 +378,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     assert bls.Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
 
     # Get the custody bit
-    custody_bits = attestation.custody_bits[custody_slashing.data_index]
+    custody_bits = attestation.custody_bits_blocks[custody_slashing.data_index]
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     claimed_custody_bit = custody_bits[committee.index(custody_slashing.malefactor_index)]
     

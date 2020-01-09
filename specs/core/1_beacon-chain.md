@@ -142,7 +142,7 @@ class AttestationData(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    custody_bits_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -536,7 +536,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     domain=get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     aggregation_bits = attestation.aggregation_bits
     assert len(aggregation_bits) == len(indexed_attestation.committee)
-    for i, custody_bits in enumerate(attestation.custody_bits):
+    for i, custody_bits in enumerate(attestation.custody_bits_blocks):
         assert len(custody_bits) == len(indexed_attestation.committee)
         for participant, abit, cbit in zip(indexed_attestation.committee, aggregation_bits, custody_bits):
             if abit:
@@ -546,7 +546,10 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
                     AttestationCustodyBitWrapper(hash_tree_root(attestation.data), i, cbit), domain))
             else:
                 assert not cbit
-
+    # WARNING: this is BROKEN. If no custody_bits_blocks,
+    #  a valid empty signature can pass validation, even though aggregate bits are set.
+    # Decide between: force at least 1 shard block (even if empty data),
+    #  or fast-aggregate-verify with attestation data with empty shard data as message (alike to phase0)
     return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
 ```
 
@@ -616,11 +619,11 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Signature check
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Type 1: on-time attestations
-    if attestation.custody_bits != []:
+    if attestation.custody_bits_blocks != []:
         # Correct slot
         assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
         # Correct data root count
-        assert len(attestation.custody_bits) == len(get_offset_slots(state, shard_start_slot))
+        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard_start_slot))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
     # Type 2: delayed attestations
