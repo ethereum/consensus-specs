@@ -223,15 +223,15 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Topic                                  | Message Type      |
-|----------------------------------------|-------------------|
-| beacon_block                           | SignedBeaconBlock |
-| beacon_aggregate_and_proof             | AggregateAndProof |
-| beacon_attestation\*                   | Attestation       |
-| committee_index{subnet_id}\_beacon_attestation | Attestation       |
-| voluntary_exit                         | VoluntaryExit     |
-| proposer_slashing                      | ProposerSlashing  |
-| attester_slashing                      | AttesterSlashing  |
+| Topic                                          | Message Type         |
+|------------------------------------------------|----------------------|
+| beacon_block                                   | SignedBeaconBlock    |
+| beacon_aggregate_and_proof                     | AggregateAndProof    |
+| beacon_attestation\*                           | Attestation          |
+| committee_index{subnet_id}\_beacon_attestation | Attestation          |
+| voluntary_exit                                 | SignedVoluntaryExit  |
+| proposer_slashing                              | ProposerSlashing     |
+| attester_slashing                              | AttesterSlashing     |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
@@ -245,7 +245,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
     - The proposer signature, `signed_beacon_block.signature` is valid.
-    - The block is not from a future slot -- i.e. validate that `signed_beacon_block.message.slot < current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+    - The block is not from a future slot -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
     - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
     - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
@@ -257,7 +257,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
 
 Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
 
-- `voluntary_exit` - This topic is used solely for propagating voluntary validator exits to proposers on the network. Voluntary exits are sent in their entirety. Clients who receive a voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
+- `voluntary_exit` - This topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety. Clients who receive a signed voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
 - `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. Clients who receive a proposer slashing on this topic MUST validate the conditions within `process_proposer_slashing` before forwarding it across the network.
 - `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
 
