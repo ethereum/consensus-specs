@@ -11,7 +11,7 @@ It consists of four main sections:
 
 ## Table of contents
 
-<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
+<!-- cmd: doctoc maxlevel=2 p2p-interface.md -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -243,7 +243,9 @@ When processing incoming gossip, clients MAY descore or disconnect peers who fai
 
 There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
 
-- `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
+- `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
+    - The proposer signature, `signed_beacon_block.signature` is valid.
+    - The block is not from a future slot -- i.e. validate that `signed_beacon_block.message.slot < current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
     - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
     - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
