@@ -35,13 +35,13 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v6-pyspec
+          venv_name: v7-pyspec
           reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "tests/core/pyspec/requirements-testing.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v6-pyspec
+          venv_name: v7-pyspec
           reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "tests/core/pyspec/requirements-testing.txt" }}
           venv_path: ./tests/core/pyspec/venv
   restore_deposit_contract_cached_venv:
