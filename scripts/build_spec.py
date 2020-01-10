@@ -308,18 +308,18 @@ if __name__ == '__main__':
     description = '''
 Build the specs from the md docs.
 If building phase 0:
-    1st argument is input /core/0_beacon-chain.md
-    2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /core/0_beacon-chain-validator.md
+    1st argument is input phase0/beacon-chain.md
+    2nd argument is input phase0/fork-choice.md
+    3rd argument is input phase0/validator.md
     4th argument is output spec.py
 
 If building phase 1:
-    1st argument is input /core/0_beacon-chain.md
-    2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /light_client/merkle_proofs.md
-    4th argument is input /core/1_custody-game.md
-    5th argument is input /core/1_shard-data-chains.md
-    6th argument is input /core/1_beacon-chain-misc.md
+    1st argument is input phase0/beacon-chain.md
+    2nd argument is input phase0/fork-choice.md
+    3rd argument is input ssz/merkle-proofs.md
+    4th argument is input phase1/custody-game.md
+    5th argument is input phase1/shard-data-chains.md
+    6th argument is input phase1/beacon-chain-misc.md
     7th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
@@ -338,9 +338,9 @@ If building phase 1:
         else:
             print(
                 " Phase 1 requires input files as well as an output file:\n"
-                "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
-                "\t light_client: (merkle_proofs.md)\n"
-                "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md, 1_beacon-chain-misc.md)\n"
+                "\t phase0: (beacon-chain.md, fork-choice.md)\n"
+                "\t ssz: (merkle-proofs.md)\n"
+                "\t phase1: (custody-game.md, shard-data-chains.md, beacon-chain-misc.md)\n"
                 "\t and output.py"
             )
     else:
