@@ -10,8 +10,7 @@ It consists of four main sections:
 4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.
 
 ## Table of contents
-
-<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -82,6 +81,7 @@ It consists of four main sections:
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
   - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
+    - [Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?](#why-is-there-maximum_gossip_clock_disparity-when-validating-slot-ranges-of-messages-in-gossip-subnets)
     - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
     - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
     - [Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?](#why-are-aggregate-attestations-broadcast-to-the-global-topic-as-aggregateandproofs-rather-than-just-as-attestations)
@@ -105,6 +105,7 @@ It consists of four main sections:
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 # Network fundamentals
 
@@ -186,6 +187,7 @@ This section outlines constants that are used in this spec.
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
 
 ## The gossip domain: gossipsub
 
@@ -223,15 +225,15 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Topic                                  | Message Type      |
-|----------------------------------------|-------------------|
-| beacon_block                           | SignedBeaconBlock |
-| beacon_aggregate_and_proof             | AggregateAndProof |
-| beacon_attestation\*                   | Attestation       |
-| committee_index{subnet_id}\_beacon_attestation | Attestation       |
-| voluntary_exit                         | VoluntaryExit     |
-| proposer_slashing                      | ProposerSlashing  |
-| attester_slashing                      | AttesterSlashing  |
+| Topic                                          | Message Type         |
+|------------------------------------------------|----------------------|
+| beacon_block                                   | SignedBeaconBlock    |
+| beacon_aggregate_and_proof                     | AggregateAndProof    |
+| beacon_attestation\*                           | Attestation          |
+| committee_index{subnet_id}\_beacon_attestation | Attestation          |
+| voluntary_exit                                 | SignedVoluntaryExit  |
+| proposer_slashing                              | ProposerSlashing     |
+| attester_slashing                              | AttesterSlashing     |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
@@ -243,11 +245,13 @@ When processing incoming gossip, clients MAY descore or disconnect peers who fai
 
 There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
 
-- `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
+- `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
+    - The proposer signature, `signed_beacon_block.signature` is valid.
+    - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
     - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
     - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
-    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`aggregate_and_proof.aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate_and_proof.aggregate.data.slot`).
+    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate_and_proof.aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate_and_proof.aggregate.data.slot`.
     - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
     - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.slot, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
     - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
@@ -255,7 +259,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
 
 Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
 
-- `voluntary_exit` - This topic is used solely for propagating voluntary validator exits to proposers on the network. Voluntary exits are sent in their entirety. Clients who receive a voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
+- `voluntary_exit` - This topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety. Clients who receive a signed voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
 - `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. Clients who receive a proposer slashing on this topic MUST validate the conditions within `process_proposer_slashing` before forwarding it across the network.
 - `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
 
@@ -267,7 +271,7 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
     - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
     - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
-    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`).
+    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`.
     - The signature of `attestation` is valid.
 
 #### Interop
@@ -764,6 +768,14 @@ Some examples of where messages could be duplicated:
 * A validator client connected to multiple beacon nodes publishing duplicate gossip messages
 * Attestation aggregation strategies where clients partially aggregate attestations and propagate them. Partial aggregates could be duplicated
 * Clients re-publishing seen messages
+
+### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
+
+For some gossip channels (e.g. those for Attestations and BeaconBlocks), there are designated ranges of slots during which particular messages can be sent, limiting messages gossiped to those that can be reasonably used in the consensus at the current time/slot. This is to reduce optionality in DoS attacks.
+
+`MAXIMUM_GOSSIP_CLOCK_DISPARITY` provides some leeway in validating slot ranges to prevent the gossip network from becoming overly brittle with respect to clock disparity. For minimum and maximum allowable slot broadcast times, `MAXIMUM_GOSSIP_CLOCK_DISPARITY` MUST be subtracted and added respectively, marginally extending the valid range. Although messages can at times be eagerly gossiped to the network, the node's fork choice prevents integration of these messages into the actual consensus until the _actual local start_ of the designated slot.
+
+The value of this constant is currently a placeholder and will be tuned based on data observed in testnets.
 
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
