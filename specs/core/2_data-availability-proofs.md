@@ -252,6 +252,7 @@ def process_data_extension_slashing(state: BeaconState, signed_proof: SignedData
         generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'rows', proof.axis_index))
         coordinates = [(proof.axis_index, index) for index in proof.indices]
     # Each individual element can be come from the row/extension trees, or from the column tree
+    assert proof.indices == sorted(set(proof.indices))
     for source_is_column, (row, column) in zip(proof.source_is_column, proof.coordinates):
         assert row < proof.row_count and column < CHUNKS_PER_ROW * 2
         if source_is_column:
