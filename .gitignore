@@ -14,12 +14,12 @@ eth2.0-spec-tests/
 .mypy_cache
 
 # Dynamically built from Markdown spec
-test_libs/pyspec/eth2spec/phase0/spec.py
-test_libs/pyspec/eth2spec/phase1/spec.py
+tests/core/pyspec/eth2spec/phase0/spec.py
+tests/core/pyspec/eth2spec/phase1/spec.py
 
 # coverage reports
 .htmlcov
 .coverage
 
 # local CI testing output
-test_libs/pyspec/test-reports
+tests/core/pyspec/test-reports

@@ -35,27 +35,27 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v4-pyspec
-          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}
+          venv_name: v7-pyspec
+          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "tests/core/pyspec/requirements-testing.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v4-pyspec
-          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}
-          venv_path: ./test_libs/pyspec/venv
+          venv_name: v7-pyspec
+          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "tests/core/pyspec/requirements-testing.txt" }}
+          venv_path: ./tests/core/pyspec/venv
   restore_deposit_contract_cached_venv:
     description: "Restore the cache with deposit_contract keys"
     steps:
       - restore_cached_venv:
-          venv_name: v6-deposit-contract
-          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
+          venv_name: v9-deposit-contract
+          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
   save_deposit_contract_cached_venv:
     description: Save a venv into a cache with deposit_contract keys"
     steps:
       - save_cached_venv:
-          venv_name: v6-deposit-contract
-          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
+          venv_name: v9-deposit-contract
+          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
           venv_path: ./deposit_contract/venv
 jobs:
   checkout_specs:
@@ -66,16 +66,16 @@ jobs:
       # Restore git repo at point close to target branch/revision, to speed up checkout
       - restore_cache:
           keys:
-            - v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-            - v1-specs-repo-{{ .Branch }}-
-            - v1-specs-repo-
+            - v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+            - v2-specs-repo-{{ .Branch }}-
+            - v2-specs-repo-
       - checkout
       - run:
           name: Clean up git repo to reduce cache size
           command: git gc
       # Save the git checkout as a cache, to make cloning next time faster.
       - save_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/specs-repo
   install_pyspec_test:
@@ -84,7 +84,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
@@ -96,13 +96,13 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
           command: make citest
       - store_test_results:
-          path: test_libs/pyspec/test-reports
+          path: tests/core/pyspec/test-reports
   table_of_contents:
     docker:
       - image: circleci/node:10.16.3
@@ -127,7 +127,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
           name: Run linter
@@ -138,7 +138,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_cached_venv
       - run:
           name: Install deposit contract requirements
@@ -150,7 +150,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_cached_venv
       - run:
           name: Run deposit contract test

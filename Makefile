@@ -1,9 +1,10 @@
 SPEC_DIR = ./specs
+SSZ_DIR = ./ssz
 SCRIPT_DIR = ./scripts
-TEST_LIBS_DIR = ./test_libs
+TEST_LIBS_DIR = ./tests/core
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 TEST_VECTOR_DIR = ./eth2.0-spec-tests/tests
-GENERATOR_DIR = ./test_generators
+GENERATOR_DIR = ./tests/generators
 DEPOSIT_CONTRACT_DIR = ./deposit_contract
 CONFIGS_DIR = ./configs
 
@@ -16,17 +17,19 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
+PHASE0_SPEC_DIR = $(SPEC_DIR)/phase0
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
-PY_SPEC_PHASE_0_DEPS = $(wildcard $(SPEC_DIR)/core/0_*.md)
+PY_SPEC_PHASE_0_DEPS = $(wildcard $(SPEC_DIR)/phase0/*.md)
 
+PHASE1_SPEC_DIR = $(SPEC_DIR)/phase1
 PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/spec.py
-PY_SPEC_PHASE_1_DEPS = $(wildcard $(SPEC_DIR)/core/1_*.md)
+PY_SPEC_PHASE_1_DEPS = $(wildcard $(SPEC_DIR)/phase1/*.md)
 
 PY_SPEC_ALL_DEPS = $(PY_SPEC_PHASE_0_DEPS) $(PY_SPEC_PHASE_1_DEPS)
 
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
-MARKDOWN_FILES = $(PY_SPEC_ALL_DEPS) $(wildcard $(SPEC_DIR)/*.md) $(wildcard $(SPEC_DIR)/light_client/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
+MARKDOWN_FILES = $(PY_SPEC_ALL_DEPS) $(wildcard $(SPEC_DIR)/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
@@ -91,7 +94,7 @@ install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
 
 compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
-	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
+	python tool/compile_deposit_contract.py contracts/validator_registration.vy;
 
 test_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
@@ -101,10 +104,10 @@ test_deposit_contract:
 pyspec: $(PY_SPEC_ALL_TARGETS)
 
 $(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
-	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/0_fork-choice.md $(SPEC_DIR)/validator/0_beacon-chain-validator.md $@
+	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(PHASE0_SPEC_DIR)/beacon-chain.md $(PHASE0_SPEC_DIR)/fork-choice.md $(PHASE0_SPEC_DIR)/validator.md $@
 
 $(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
-	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/0_fork-choice.md $(SPEC_DIR)/light_client/merkle_proofs.md $(SPEC_DIR)/core/1_custody-game.md $(SPEC_DIR)/core/1_shard-data-chains.md $(SPEC_DIR)/core/1_beacon-chain-misc.md $@
+	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(PHASE0_SPEC_DIR)/beacon-chain.md $(PHASE0_SPEC_DIR)/fork-choice.md $(SSZ_DIR)/merkle-proofs.md $(PHASE1_SPEC_DIR)/custody-game.md $(PHASE1_SPEC_DIR)/shard-data-chains.md $(PHASE1_SPEC_DIR)/beacon-chain-misc.md $@
 
 CURRENT_DIR = ${CURDIR}
 

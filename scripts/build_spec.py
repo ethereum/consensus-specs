@@ -11,7 +11,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, Tuple, Optional
+    Any, Dict, Set, Sequence, Tuple, Optional, TypeVar
 )
 
 from dataclasses import (
@@ -21,20 +21,17 @@ from dataclasses import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    boolean, Container, List, Vector, uint64,
+    boolean, Container, List, Vector, uint64, SSZType,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
-from eth2spec.utils.bls import (
-    bls_aggregate_signatures,
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_sign,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
+
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, MutableSequence, NewType, Tuple, Union,
+    Any, Dict, Set, Sequence, MutableSequence, NewType, Tuple, Union, TypeVar
 )
 from math import (
     log2,
@@ -51,22 +48,18 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     BasicValue, Elements, BaseBytes, BaseList, SSZType,
-    Container, List, Vector, Bytes, BytesN, Bitlist, Bitvector, Bits,
+    Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector, Bits,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, bit, boolean, byte,
 )
-from eth2spec.utils.bls import (
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_verify_multiple,
-    bls_signature_to_G2,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
 
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
@@ -163,8 +156,6 @@ def objects_to_spec(functions: Dict[str, str],
             del functions[k]
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
-        if k.startswith('DOMAIN_'):
-            constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
         if k == "BLS12_381_Q":
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
@@ -206,10 +197,10 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
 
 
 ignored_dependencies = [
-    'bit', 'boolean', 'Vector', 'List', 'Container', 'Root', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'ByteList', 'ByteVector'
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
-    'bytes', 'byte', 'BytesN'  # to be removed after updating spec doc
+    'bytes', 'byte', 'ByteVector'  # to be removed after updating spec doc
 ]
 
 
@@ -317,18 +308,18 @@ if __name__ == '__main__':
     description = '''
 Build the specs from the md docs.
 If building phase 0:
-    1st argument is input /core/0_beacon-chain.md
-    2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /core/0_beacon-chain-validator.md
+    1st argument is input phase0/beacon-chain.md
+    2nd argument is input phase0/fork-choice.md
+    3rd argument is input phase0/validator.md
     4th argument is output spec.py
 
 If building phase 1:
-    1st argument is input /core/0_beacon-chain.md
-    2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /light_client/merkle_proofs.md
-    4th argument is input /core/1_custody-game.md
-    5th argument is input /core/1_shard-data-chains.md
-    6th argument is input /core/1_beacon-chain-misc.md
+    1st argument is input phase0/beacon-chain.md
+    2nd argument is input phase0/fork-choice.md
+    3rd argument is input ssz/merkle-proofs.md
+    4th argument is input phase1/custody-game.md
+    5th argument is input phase1/shard-data-chains.md
+    6th argument is input phase1/beacon-chain-misc.md
     7th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
@@ -347,9 +338,9 @@ If building phase 1:
         else:
             print(
                 " Phase 1 requires input files as well as an output file:\n"
-                "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
-                "\t light_client: (merkle_proofs.md)\n"
-                "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md, 1_beacon-chain-misc.md)\n"
+                "\t phase0: (beacon-chain.md, fork-choice.md)\n"
+                "\t ssz: (merkle-proofs.md)\n"
+                "\t phase1: (custody-game.md, shard-data-chains.md, beacon-chain-misc.md)\n"
                 "\t and output.py"
             )
     else:
