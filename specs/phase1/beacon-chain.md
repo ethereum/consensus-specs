@@ -35,7 +35,6 @@
     - [`get_previous_slot`](#get_previous_slot)
     - [`pack_compact_validator`](#pack_compact_validator)
     - [`committee_to_compact_committee`](#committee_to_compact_committee)
-    - [`chunks_to_body_root`](#chunks_to_body_root)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_active_shard_count`](#get_active_shard_count)
@@ -905,4 +904,3 @@ def process_light_client_committee_updates(state: BeaconState) -> None:
         new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
-
