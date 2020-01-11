@@ -44,6 +44,8 @@ Not yet in scope: the procedure for verifying that data in a crosslink is availa
 | `CHUNKS_PER_ROW` | `2**13 = 8,192` | 256 kB |
 | `ROWS_PER_BLOCK` | `MAX_SHARD_BLOCK_SIZE // 32 // CHUNKS_PER_ROW = 4` | |
 | `CHUNKS_PER_BLOCK` | `CHUNKS_PER_ROW * ROWS_PER_BLOCK = 32,768` | |
+| `DOMAIN_DATA_AVAILABILITY` | `144` | |
+| `DOMAIN_DATA_AVAILABILITY_SLASH` | `145` | |
 
 ## Data structures
 
@@ -53,8 +55,18 @@ Not yet in scope: the procedure for verifying that data in a crosslink is availa
 {
     'rows': List[Vector[Bytes32, CHUNKS_PER_ROW], ROWS_PER_BLOCK * MAX_SHARDS * MAX_SHARD_BLOCKS_PER_ATTESTATION],
     'extension': List[Vector[Bytes32, CHUNKS_PER_ROW], ROWS_PER_BLOCK * MAX_SHARDS * MAX_SHARD_BLOCKS_PER_ATTESTATION],
-    'columns': Vector[List[Bytes32, ROWS_PER_BLOCK * MAX_SHARDS * MAX_SHARD_BLOCKS_PER_ATTESTATION], CHUNKS_PER_ROW * 2]
+    'columns': Vector[List[Bytes32, ROWS_PER_BLOCK * MAX_SHARDS * MAX_SHARD_BLOCKS_PER_ATTESTATION], CHUNKS_PER_ROW * 2],
     'row_cutoff': uint64
+    'row_count': uint64
+}
+```
+
+### `SignedDataAvailabilityProof`
+
+```python
+{
+    'data': DataAvailabilityProof,
+    'signature': BLSSignature
 }
 ```
 
@@ -62,7 +74,6 @@ Not yet in scope: the procedure for verifying that data in a crosslink is availa
 
 ```python
 {
-    'attestation': Attestation,
     'is_column': bool,
     'checking_extension': bool,
     'indices': List[int],
@@ -70,9 +81,21 @@ Not yet in scope: the procedure for verifying that data in a crosslink is availa
     'source_is_column': List[bool],
     'values': List[Bytes32],
     'row_cutoff': uint64,
+    'row_count': uint64,
     'actual_full_axis_root': Bytes32,
     'data_availability_root': Bytes32,
+    'data_availability_root_signature': BLSSignature,
     'proof': SSZMultiProof,
+    'slasher_index': ValidatorIndex,
+}
+```
+
+### `SignedDataExtensionSlashing`
+
+```python
+{
+    'data': DataExtensionSlashing,
+    'slasher_signature': BLSSignature
 }
 ```
 
@@ -154,40 +177,43 @@ def fill_axis(xs: List[int], values: List[Bytes32], length: int) -> List[Bytes32
 ### `get_full_data_availability_proof`
 
 ```python
-def get_full_data_availability_proof(blocks: List[Bytes]) -> DataAvailabilityProof:
+def get_full_data_availability_proof(blocks: List[Bytes[MAX_SHARD_BLOCK_SIZE]]) -> DataAvailabilityProof:
     """
     Converts data into a row_count * ROW_SIZE rectangle, padding with zeroes if necessary,
     and then extends both dimensions by 2x, in the row case only adding one new row per
     nonzero row
     """
-    # Chunkify blocks
+    # Split blocks into rows, express rows as sequences of 32-byte chunks
     rows = []
     for block in blocks:
         block = block + b'\x00' * (MAX_SHARD_BLOCK_SIZE - len(block))
         for pos in range(0, CHUNKS_PER_BLOCK, CHUNKS_PER_ROW):
             rows.append([block[i: i+32] for i in range(pos, pos + CHUNKS_PER_ROW, 32)])
+    # Number of rows that are not entirely zero bytes
     nonzero_row_count = len([row for row in rows if row != [ZERO_HASH] * CHUNKS_PER_ROW])
-    # Add vertical extension rows
+    # Add one vertical extension row for every nonzero row
     new_rows = [[] for _ in range(nonzero_row_count)]
     for i in range(CHUNKS_PER_ROW):
         vertical_extension = fill_axis(list(range(len(rows))), [row[i] for row in rows], len(rows) + nonzero_row_count)
         for new_row, new_value in zip(new_rows, vertical_extension[len(rows):]):
             new_row.append(new_value)
     rows.extend(new_rows)
+    # Extend all rows horizontally
     extension = []
     for row in rows:
         extension.append(fill_axis(list(range(CHUNKS_PER_ROW)), row, CHUNKS_PER_ROW * 2)[CHUNKS_PER_ROW:])
+    # Compute columns
     columns = (
         [[row[i] for row in rows] for i in range(CHUNKS_PER_ROW)] +
         [[row[i] for row in extension] for i in range(CHUNKS_PER_ROW)]
     )
-    return DataAvailabilityProof(rows, extension, columns, len(blocks) * ROWS_PER_BLOCK)
+    return DataAvailabilityProof(rows, extension, columns, len(blocks) * ROWS_PER_BLOCK, len(rows))
 ```
 
 ### `process_data_extension_slashing`
 
 ```python
-def process_data_extension_slashing(state: BeaconState, proof: DataExtensionSlashing):
+def process_data_extension_slashing(state: BeaconState, signed_proof: SignedDataExtensionSlashing):
     """
     Slashes for an invalid extended data root. Covers both mismatches within a
     row and column and mismatches between rows and columns.
@@ -197,20 +223,37 @@ def process_data_extension_slashing(state: BeaconState, proof: DataExtensionSlas
     the column-then-row tree.
     """
     # Verify the signature
-    # TODO: who signs?
+    assert bls_verify(
+        pubkey=state.validators[get_signer_index(proof)].pubkey,
+        message_hash=proof.data_availability_root,
+        signature=proof.data_availability_root_signature,
+        domain=get_domain(state, DOMAIN_DATA_AVAILABILITY, get_current_epoch(state))
+    )
+    proof = signed_proof.data
+    assert bls_verify(
+        pubkey=state.validators[proof.slasher_index].pubkey,
+        message_hash=proof,
+        signature=signed_proof.signature,
+        domain=get_domain(state, DOMAIN_DATA_AVAILABILITY_SLASH, get_current_epoch(state))
+    )
     # Get generalized indices (for proof verification)
     generalized_indices = [get_generalized_index(DataAvailabilityProof, 'row_cutoff')]
     if proof.is_column:
+        # Case 1: proof is getting indices along a column
         assert proof.checking_extension is False
         generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'columns', proof.axis_index))
         coordinates = [(index, proof.axis_index) for index in proof.indices]
     elif proof.checking_extension:
+        # Case 2: proof is getting indices along a row, we are checking against the extension root
         generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'extension', proof.axis_index - CHUNKS_PER_ROW))
         coordinates = [(proof.axis_index, index) for index in proof.indices]
     else:
+        # Case 3: proof is getting indices along a row, we are checking against the row root
         generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'rows', proof.axis_index))
         coordinates = [(proof.axis_index, index) for index in proof.indices]
+    # Each individual element can be come from the row/extension trees, or from the column tree
     for source_is_column, (row, column) in zip(proof.source_is_column, proof.coordinates):
+        assert row < proof.row_count and column < CHUNKS_PER_ROW * 2
         if source_is_column:
             new_index = get_generalized_index(DataAvailabilityProof, 'columns', column, row)
         else:
@@ -228,16 +271,9 @@ def process_data_extension_slashing(state: BeaconState, proof: DataExtensionSlas
         proof.data_availability_root
     )
     # Verify erasure code extension mismatches
-    if proof.is_column:
-        filled_values = fill_axis(proof.indices, proof.values, CHUNKS_PER_ROW * 2)
-    else:
-        # Extract total row length from proof
-        index_in_proof = get_helper_indices(generalized_indices).index(get_generalized_index(DataAvailabilityProof, 'rows', '__len__'))
-        row_length = bytes32_to_int(proof.proof[index_in_proof])
-        filled_values = fill_axis(proof.indices, proof.values, row_length)
+    axis_length = CHUNKS_PER_ROW * 2 if proof.is_column else proof.row_count
+    filled_values = fill_axis(proof.indices, proof.values, axis_length)
     assert root(filled_values) != proof.actual_full_axis_root
         
     # Slash every attester
-    for participant in get_attesting_indices(state, proof.attestation):
-        slash_validator(state, participant)
-```
+    slash_validator(state, get_signer_index(proof), proof.slasher_index)
