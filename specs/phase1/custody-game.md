@@ -45,18 +45,20 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 ## Constants
 
 ### Misc
+
 | Name | Value | Unit |
 | - | - |
 | `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` |
-| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 | `BYTES_PER_CUSTODY_ATOM` | `48` | bytes |
+
+## Configuration
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `RANDAO_PENALTY_EPOCHS` | `2**1` (= 2) | epochs | 12.8 minutes |
-| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` (= 16,384) | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 | `MAX_REVEAL_LATENESS_DECREMENT` | `2**7` (= 128) | epochs | ~14 hours |
@@ -74,6 +76,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
+| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 
 ### Signature domain types
 

@@ -34,7 +34,7 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - | - |
-| `PHASE_1_FORK_VERSION` | `Version('0x00000001')` |
+| `PHASE_1_FORK_VERSION` | `Version('0x01000000')` |
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 | `INITIAL_GASPRICE` | `Gwei(10)` |
 

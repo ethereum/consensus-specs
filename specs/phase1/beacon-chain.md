@@ -107,7 +107,6 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `TARGET_SHARD_BLOCK_SIZE` | `3 * 2**16` (= 196,608) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
-| `EMPTY_CHUNK_ROOT` | `hash_tree_root(ByteList[SHARD_BLOCK_CHUNK_SIZE]())` | |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
@@ -406,8 +405,9 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 
 ```python
 def chunks_to_body_root(chunks: List[Bytes32, MAX_SHARD_BLOCK_CHUNKS]) -> Root:
+    empty_chunk_root = hash_tree_root(ByteList[SHARD_BLOCK_CHUNK_SIZE]())
     return hash_tree_root(Vector[Bytes32, MAX_SHARD_BLOCK_CHUNKS](
-        chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
+        chunks + [empty_chunk_root] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
     ))
 ```
 
