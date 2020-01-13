@@ -65,7 +65,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
-| `MAX_CUSTODY_KEY_REVEALS` | `2**4` (= 16) |
+| `MAX_CUSTODY_KEY_REVEALS` | `2**8` (= 256) |
 | `MAX_EARLY_DERIVED_SECRET_REVEALS` | `1` |
 | `MAX_CUSTODY_SLASHINGS` | `1` |
 
