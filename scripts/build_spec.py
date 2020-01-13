@@ -37,10 +37,7 @@ SSZObject = TypeVar('SSZObject', bound=SSZType)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.apply_config import apply_constants_preset
 from typing import (
-    Any, Callable, Dict, Set, Sequence, NewType, Tuple, Union, TypeVar
-)
-from math import (
-    log2,
+    Any, Callable, Dict, Set, Sequence, NewType, Tuple, TypeVar
 )
 
 from dataclasses import (
@@ -50,8 +47,7 @@ from dataclasses import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    BasicValue, Elements, BaseBytes, BaseList, SSZType,
-    Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector, Bits,
+    SSZType, Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, uint8, bit, boolean,
 )
@@ -231,7 +227,6 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
 
 def build_phase1_spec(phase0_beacon_sourcefile: str,
                       phase0_fork_choice_sourcefile: str,
-                      merkle_proofs_sourcefile: str,
                       phase1_custody_sourcefile: str,
                       phase1_beacon_sourcefile: str,
                       phase1_fraud_sourcefile: str,
@@ -240,7 +235,6 @@ def build_phase1_spec(phase0_beacon_sourcefile: str,
     all_sourcefiles = (
         phase0_beacon_sourcefile,
         phase0_fork_choice_sourcefile,
-        merkle_proofs_sourcefile,
         phase1_custody_sourcefile,
         phase1_beacon_sourcefile,
         phase1_fraud_sourcefile,
@@ -262,20 +256,19 @@ if __name__ == '__main__':
     description = '''
 Build the specs from the md docs.
 If building phase 0:
-    1st argument is input /core/0_beacon-chain.md
-    2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /core/0_beacon-chain-validator.md
+    1st argument is input phase0/beacon-chain.md
+    2nd argument is input phase0/fork-choice.md
+    3rd argument is input phase0/validator.md
     4th argument is output spec.py
 
 If building phase 1:
-    1st argument is input /core/0_beacon-chain.md
-    2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /light_client/merkle_proofs.md
-    4th argument is input /core/1_custody-game.md
-    5th argument is input /core/1_beacon-chain.md
-    6th argument is input /core/1_fraud-proofs.md
-    7th argument is input /core/1_phase1-fork.md
-    8th argument is output spec.py
+    1st argument is input phase0/beacon-chain.md
+    2nd argument is input phase0/fork-choice.md
+    3rd argument is input phase1/custody-game.md
+    4th argument is input phase1/beacon-chain.md
+    5th argument is input phase1/fraud-proofs.md
+    6th argument is input phase1/phase1-fork.md
+    7th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -288,14 +281,13 @@ If building phase 1:
         else:
             print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 8:
+        if len(args.files) == 7:
             build_phase1_spec(*args.files)
         else:
             print(
                 " Phase 1 requires input files as well as an output file:\n"
-                "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
-                "\t light_client: (merkle_proofs.md)\n"
-                "\t core/phase_1: (1_custody-game.md, 1_beacon-chain.md, 1_fraud-proofs.md, 1_phase1-fork.md)\n"
+                "\t phase0: (beacon-chain.md, fork-choice.md)\n"
+                "\t phase1: (custody-game.md, beacon-chain.md, fraud-proofs.md, phase1-fork.md)\n"
                 "\t and output.py"
             )
     else:

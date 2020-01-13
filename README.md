@@ -9,19 +9,21 @@ This repository hosts the current Eth2 specifications. Discussions about design 
 
 ## Specs
 
-Core specifications for Eth2 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+Core specifications for Eth2 clients be found in [specs/](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
-* [The Beacon Chain](specs/core/0_beacon-chain.md)
-* [Fork Choice](specs/core/0_fork-choice.md)
-* [Deposit Contract](specs/core/0_deposit-contract.md)
-* [Honest Validator](specs/validator/0_beacon-chain-validator.md)
+* [The Beacon Chain](specs/phase0/beacon-chain.md)
+* [Fork Choice](specs/phase0/fork-choice.md)
+* [Deposit Contract](specs/phase0/deposit-contract.md)
+* [Honest Validator](specs/phase0/validator.md)
+* [P2P Networking](specs/phase0/p2p-interface.md)
 
 ### Phase 1
-* [From Phase 0 to Phase 1](specs/core/1_phase1_fork.md)
-* [The Beacon Chain for Shards](specs/core/1_beacon-chain.md)
-* [Custody Game](specs/core/1_custody-game.md)
-* [Shard Transition and Fraud Proofs](specs/core/1_fraud_proofs.md)
+* [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)
+* [The Beacon Chain for Shards](specs/phase1/beacon-chain.md)
+* [Custody Game](specs/phase1/custody-game.md)
+* [Shard Transition and Fraud Proofs](specs/phase1/fraud-proofs.md)
+* [Light client syncing protocol](specs/phase1/light-client-sync.md)
 
 ### Phase 2
 
@@ -31,11 +33,9 @@ See the [Eth2 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for c
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
-* [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
-* [BLS signature verification](specs/bls_signature.md)
-* [General test format](specs/test_formats/README.md)
-* [Merkle proof formats](specs/light_client/merkle_proofs.md)
-* [Light client syncing protocol](specs/light_client/sync_protocol.md)
+* [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
+* [Merkle proof formats](ssz/merkle-proofs.md)
+* [General test format](tests/formats/README.md)
 
 ## Additional specifications for client implementers
 
@@ -64,6 +64,6 @@ The following are the broad design goals for Ethereum 2.0:
 ## For spec contributors
 
 Documentation on the different components used during spec writing can be found here:
-* [YAML Test Generators](test_generators/README.md)
-* [Executable Python Spec, with Py-tests](test_libs/pyspec/README.md)
+* [YAML Test Generators](tests/generators/README.md)
+* [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
 

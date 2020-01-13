@@ -1,0 +1,3 @@
+py_ecc==2.0.0
+eth-utils==1.6.0
+../../core/gen_helpers
