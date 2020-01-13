@@ -188,7 +188,7 @@ def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
 def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
     full_G2_element = bls.signature_to_G2(key)
     s = full_G2_element[0].coeffs
-    bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(atom, "little"), BLS12_381_Q)
+    bits = [legendre_bit(sum(s[i % 2]**i * int.from_bytes(atom, "little")), BLS12_381_Q)
             for i, atom in enumerate(get_custody_atoms(data))]
     # XOR all atom bits
     return bit(sum(bits) % 2)
