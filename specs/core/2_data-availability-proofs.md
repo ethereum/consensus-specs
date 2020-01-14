@@ -29,7 +29,7 @@
 
 ## Introduction
 
-This document describes the expected formula for calculating data availability proofs and the beacon chain changes (namely, slashing conditions) needed to enforce them.
+This document describes the expected formula for calculating the Merkle root used for data availability checks and the beacon chain changes (namely, slashing conditions) needed to enforce them.
 
 Not yet in scope: the procedure for verifying that data in a crosslink is available, and modifications to the fork choice rule around this.
 
