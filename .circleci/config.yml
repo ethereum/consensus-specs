@@ -48,13 +48,13 @@ commands:
     description: "Restore the cache with deposit_contract keys"
     steps:
       - restore_cached_venv:
-          venv_name: v10-deposit-contract
+          venv_name: v11-deposit-contract
           reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
   save_deposit_contract_cached_venv:
     description: Save a venv into a cache with deposit_contract keys"
     steps:
       - save_cached_venv:
-          venv_name: v10-deposit-contract
+          venv_name: v11-deposit-contract
           reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
           venv_path: ./deposit_contract/venv
 jobs:
@@ -134,7 +134,7 @@ jobs:
           command: make lint
   install_deposit_contract_test:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -146,7 +146,7 @@ jobs:
       - save_deposit_contract_cached_venv
   deposit_contract:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
