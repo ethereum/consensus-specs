@@ -633,9 +633,9 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard_start_slot))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
-    # Type 2: delayed attestations
+    # Type 2: no shard transition, no custody bits  # TODO: could only allow for older attestations.
     else:
-        assert state.slot - compute_start_slot_at_epoch(compute_epoch_at_slot(data.slot)) < SLOTS_PER_EPOCH
+        # assert state.slot - compute_start_slot_at_epoch(compute_epoch_at_slot(data.slot)) < SLOTS_PER_EPOCH
         assert data.shard_transition_root == Root()
 ```
 
