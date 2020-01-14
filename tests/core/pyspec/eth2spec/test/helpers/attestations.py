@@ -77,6 +77,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
                 privkey
             )
         )
+    # TODO: we should try signing custody bits if spec.version == 'phase1'
     return bls.Aggregate(signatures)
 
 

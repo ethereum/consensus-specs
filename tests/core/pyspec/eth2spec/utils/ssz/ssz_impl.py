@@ -2,7 +2,7 @@ from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bits, boolean, Container, List, ByteList,
-    Bitlist, Bitvector, uint,
+    Bitlist, Bitvector, uint, Bytes32
 )
 
 # SSZ Serialization
@@ -140,7 +140,7 @@ def chunk_count(typ: SSZType) -> int:
         raise Exception(f"Type not supported: {typ}")
 
 
-def hash_tree_root(obj: SSZValue):
+def hash_tree_root(obj: SSZValue) -> Bytes32:
     if isinstance(obj, Series):
         if is_bottom_layer_kind(obj.type()):
             leaves = chunkify(pack(obj))
@@ -152,6 +152,6 @@ def hash_tree_root(obj: SSZValue):
         raise Exception(f"Type not supported: {type(obj)}")
 
     if isinstance(obj, (List, ByteList, Bitlist)):
-        return mix_in_length(merkleize_chunks(leaves, limit=chunk_count(obj.type())), len(obj))
+        return Bytes32(mix_in_length(merkleize_chunks(leaves, limit=chunk_count(obj.type())), len(obj)))
     else:
-        return merkleize_chunks(leaves)
+        return Bytes32(merkleize_chunks(leaves))
