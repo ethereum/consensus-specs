@@ -6,7 +6,7 @@
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 2 -- Data Availability Proofs](#ethereum-20-phase-2----data-availability-proofs)
+- [Ethereum 2.0 Phase 2 -- Data Availability Checks](#ethereum-20-phase-2----data-availability-checks)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
