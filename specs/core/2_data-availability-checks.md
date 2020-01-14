@@ -49,7 +49,7 @@ Not yet in scope: the procedure for verifying that data in a crosslink is availa
 
 ## Data structures
 
-### `DataAvailabilityProof`
+### `DataAvailabilityClaim`
 
 ```python
 {
@@ -61,11 +61,11 @@ Not yet in scope: the procedure for verifying that data in a crosslink is availa
 }
 ```
 
-### `SignedDataAvailabilityProof`
+### `SignedDataAvailabilityClaim`
 
 ```python
 {
-    'data': DataAvailabilityProof,
+    'data': DataAvailabilityClaim,
     'signature': BLSSignature
 }
 ```
@@ -174,10 +174,10 @@ def fill_axis(xs: List[int], values: List[Bytes32], length: int) -> List[Bytes32
     return [b''.join([int_to_bytes(n[i], FIELD_ELEMENT_BITS//8) for n in newdata]) for i in range(length)]
 ```
 
-### `get_full_data_availability_proof`
+### `get_full_data_availability_claim`
 
 ```python
-def get_full_data_availability_proof(blocks: List[Bytes[MAX_SHARD_BLOCK_SIZE]]) -> DataAvailabilityProof:
+def get_full_data_availability_claim(blocks: List[Bytes[MAX_SHARD_BLOCK_SIZE]]) -> DataAvailabilityClaim:
     """
     Converts data into a row_count * ROW_SIZE rectangle, padding with zeroes if necessary,
     and then extends both dimensions by 2x, in the row case only adding one new row per
@@ -207,7 +207,7 @@ def get_full_data_availability_proof(blocks: List[Bytes[MAX_SHARD_BLOCK_SIZE]]) 
         [[row[i] for row in rows] for i in range(CHUNKS_PER_ROW)] +
         [[row[i] for row in extension] for i in range(CHUNKS_PER_ROW)]
     )
-    return DataAvailabilityProof(rows, extension, columns, len(blocks) * ROWS_PER_BLOCK, len(rows))
+    return DataAvailabilityClaim(rows, extension, columns, len(blocks) * ROWS_PER_BLOCK, len(rows))
 ```
 
 ### `process_data_extension_slashing`
@@ -237,31 +237,31 @@ def process_data_extension_slashing(state: BeaconState, signed_proof: SignedData
         domain=get_domain(state, DOMAIN_DATA_AVAILABILITY_SLASH, get_current_epoch(state))
     )
     # Get generalized indices (for proof verification)
-    generalized_indices = [get_generalized_index(DataAvailabilityProof, 'row_cutoff')]
+    generalized_indices = [get_generalized_index(DataAvailabilityClaim, 'row_cutoff')]
     if proof.is_column:
         # Case 1: proof is getting indices along a column
         assert proof.checking_extension is False
-        generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'columns', proof.axis_index))
+        generalized_indices.append(get_generalized_index(DataAvailabilityClaim, 'columns', proof.axis_index))
         coordinates = [(index, proof.axis_index) for index in proof.indices]
     elif proof.checking_extension:
         # Case 2: proof is getting indices along a row, we are checking against the extension root
-        generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'extension', proof.axis_index - CHUNKS_PER_ROW))
+        generalized_indices.append(get_generalized_index(DataAvailabilityClaim, 'extension', proof.axis_index - CHUNKS_PER_ROW))
         coordinates = [(proof.axis_index, index) for index in proof.indices]
     else:
         # Case 3: proof is getting indices along a row, we are checking against the row root
-        generalized_indices.append(get_generalized_index(DataAvailabilityProof, 'rows', proof.axis_index))
+        generalized_indices.append(get_generalized_index(DataAvailabilityClaim, 'rows', proof.axis_index))
         coordinates = [(proof.axis_index, index) for index in proof.indices]
     # Each individual element can be come from the row/extension trees, or from the column tree
     assert proof.indices == sorted(set(proof.indices))
     for source_is_column, (row, column) in zip(proof.source_is_column, proof.coordinates):
         assert row < proof.row_count and column < CHUNKS_PER_ROW * 2
         if source_is_column:
-            new_index = get_generalized_index(DataAvailabilityProof, 'columns', column, row)
+            new_index = get_generalized_index(DataAvailabilityClaim, 'columns', column, row)
         else:
             if proof.axis_index < CHUNKS_PER_ROW:
-                new_index = get_generalized_index(DataAvailabilityProof, 'rows', row, column)
+                new_index = get_generalized_index(DataAvailabilityClaim, 'rows', row, column)
             else:
-                new_index = get_generalized_index(DataAvailabilityProof, 'extension', row - CHUNKS_PER_ROW, column)
+                new_index = get_generalized_index(DataAvailabilityClaim, 'extension', row - CHUNKS_PER_ROW, column)
         generalized_indices.append(new_index)
     assert len(proof.indices) >= (proof.row_cutoff if proof.is_column else CHUNKS_PER_ROW)
     # Verify Merkle proof
