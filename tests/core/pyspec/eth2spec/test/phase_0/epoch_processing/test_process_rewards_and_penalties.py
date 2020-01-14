@@ -10,6 +10,7 @@ from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     get_valid_attestation,
 )
+from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
 
@@ -142,7 +143,7 @@ def test_duplicate_attestation(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
-    participants = indexed_attestation.attesting_indices
+    participants = get_indexed_attestation_participants(spec, indexed_attestation)
 
     assert len(participants) > 0
 
