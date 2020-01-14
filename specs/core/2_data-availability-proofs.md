@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 2 -- Data Availability Proofs
+# Ethereum 2.0 Phase 2 -- Data Availability Checks
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
