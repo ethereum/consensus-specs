@@ -11,6 +11,7 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Configuration](#configuration)
   - [Time parameters](#time-parameters)
   - [Max operations per block](#max-operations-per-block)
   - [Reward and penalty quotients](#reward-and-penalty-quotients)
