@@ -34,7 +34,7 @@ def add_attestation_to_store(spec, store, attestation):
 @spec_state_test
 def test_genesis(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
     assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
 
@@ -43,7 +43,7 @@ def test_genesis(spec, state):
 @spec_state_test
 def test_chain_no_attestations(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
     assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
 
@@ -66,7 +66,7 @@ def test_split_tie_breaker_no_attestations(spec, state):
     genesis_state = state.copy()
 
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
     assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
 
@@ -94,7 +94,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     genesis_state = state.copy()
 
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
     assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
 
@@ -123,7 +123,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
 def test_filtered_block_tree(spec, state):
     # Initialization
     genesis_state_root = state.hash_tree_root()
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     genesis_block = spec.BeaconBlock(state_root=genesis_state_root)
 
     # transition state past initial couple of epochs

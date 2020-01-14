@@ -19,14 +19,14 @@ def run_on_tick(spec, store, time, new_justified_checkpoint=False):
 @with_all_phases
 @spec_state_test
 def test_basic(spec, state):
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     run_on_tick(spec, store, store.time + 1)
 
 
 @with_all_phases
 @spec_state_test
 def test_update_justified_single(spec, state):
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
@@ -40,7 +40,7 @@ def test_update_justified_single(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_same_slot_at_epoch_boundary(spec, state):
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
@@ -57,7 +57,7 @@ def test_no_update_same_slot_at_epoch_boundary(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_not_epoch_boundary(spec, state):
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
 
     store.best_justified_checkpoint = spec.Checkpoint(
         epoch=store.justified_checkpoint.epoch + 1,
@@ -70,7 +70,7 @@ def test_no_update_not_epoch_boundary(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_new_justified_equal_epoch(spec, state):
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
@@ -89,7 +89,7 @@ def test_no_update_new_justified_equal_epoch(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_new_justified_later_epoch(spec, state):
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
