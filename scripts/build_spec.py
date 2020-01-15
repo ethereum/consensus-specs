@@ -230,6 +230,7 @@ def build_phase1_spec(phase0_beacon_sourcefile: str,
                       phase1_custody_sourcefile: str,
                       phase1_beacon_sourcefile: str,
                       phase1_fraud_sourcefile: str,
+                      phase1_fork_choice_sourcefile: str,
                       phase1_fork_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     all_sourcefiles = (
@@ -238,6 +239,7 @@ def build_phase1_spec(phase0_beacon_sourcefile: str,
         phase1_custody_sourcefile,
         phase1_beacon_sourcefile,
         phase1_fraud_sourcefile,
+        phase1_fork_choice_sourcefile,
         phase1_fork_sourcefile,
     )
     all_spescs = [get_spec(spec) for spec in all_sourcefiles]
@@ -267,8 +269,9 @@ If building phase 1:
     3rd argument is input phase1/custody-game.md
     4th argument is input phase1/beacon-chain.md
     5th argument is input phase1/fraud-proofs.md
-    6th argument is input phase1/phase1-fork.md
-    7th argument is output spec.py
+    6th argument is input phase1/fork-choice.md
+    7th argument is input phase1/phase1-fork.md
+    8th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -281,13 +284,13 @@ If building phase 1:
         else:
             print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 7:
+        if len(args.files) == 8:
             build_phase1_spec(*args.files)
         else:
             print(
                 " Phase 1 requires input files as well as an output file:\n"
                 "\t phase0: (beacon-chain.md, fork-choice.md)\n"
-                "\t phase1: (custody-game.md, beacon-chain.md, fraud-proofs.md, phase1-fork.md)\n"
+                "\t phase1: (custody-game.md, beacon-chain.md, fraud-proofs.md, fork-choice.md, phase1-fork.md)\n"
                 "\t and output.py"
             )
     else:

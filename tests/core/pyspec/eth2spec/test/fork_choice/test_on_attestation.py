@@ -15,8 +15,17 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
     spec.on_attestation(store, attestation)
+
+    if spec.version == 'phase0':
+        sample_index = indexed_attestation.attesting_indices[0]
+    else:
+        attesting_indices = [
+            index for i, index in enumerate(indexed_attestation.committee)
+            if attestation.aggregation_bits[i]
+        ]
+        sample_index = attesting_indices[0]
     assert (
-        store.latest_messages[indexed_attestation.attesting_indices[0]] ==
+        store.latest_messages[sample_index] ==
         spec.LatestMessage(
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,

@@ -24,6 +24,10 @@
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
+    - [`on_attestation` helpers](#on_attestation-helpers)
+      - [`validate_on_attestation`](#validate_on_attestation)
+      - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
+      - [`update_latest_messages`](#update_latest_messages)
   - [Handlers](#handlers)
     - [`on_tick`](#on_tick)
     - [`on_block`](#on_block)
@@ -257,6 +261,59 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
     return True
 ```
 
+#### `on_attestation` helpers
+
+##### `validate_on_attestation`
+
+```python
+def validate_on_attestation(store: Store, attestation: Attestation) -> None:
+    target = attestation.data.target
+
+    # Attestations must be from the current or previous epoch
+    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    # Use GENESIS_EPOCH for previous when genesis to avoid underflow
+    previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
+    assert target.epoch in [current_epoch, previous_epoch]
+    assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
+
+    # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
+    assert target.root in store.blocks
+    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
+    assert get_current_slot(store) >= compute_start_slot_at_epoch(target.epoch)
+
+    # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
+    assert attestation.data.beacon_block_root in store.blocks
+    # Attestations must not be for blocks in the future. If not, the attestation should not be considered
+    assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
+
+    # Attestations can only affect the fork choice of subsequent slots.
+    # Delay consideration in the fork choice until their slot is in the past.
+    assert get_current_slot(store) >= attestation.data.slot + 1
+```
+
+##### `store_target_checkpoint_state`
+
+```python
+def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
+    # Store target checkpoint state if not yet seen
+    if target not in store.checkpoint_states:
+        base_state = store.block_states[target.root].copy()
+        process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
+        store.checkpoint_states[target] = base_state
+```
+
+##### `update_latest_messages`
+
+```python
+def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
+    target = attestation.data.target
+    beacon_block_root = attestation.data.beacon_block_root
+    for i in attesting_indices:
+        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
+            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
+```
+
+
 ### Handlers
 
 #### `on_tick`
@@ -323,42 +380,14 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     An ``attestation`` that is asserted as invalid may be valid at a later time,
     consider scheduling it for later processing in such case.
     """
-    target = attestation.data.target
+    validate_on_attestation(store, attestation)
+    store_target_checkpoint_state(store, attestation.data.target)
 
-    # Attestations must be from the current or previous epoch 
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
-    # Use GENESIS_EPOCH for previous when genesis to avoid underflow
-    previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
-    assert target.epoch in [current_epoch, previous_epoch]
-    assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
-
-    # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
-    assert target.root in store.blocks
-    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
-    base_state = store.block_states[target.root].copy()
-    assert get_current_slot(store) >= compute_start_slot_at_epoch(target.epoch)
-
-    # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
-    assert attestation.data.beacon_block_root in store.blocks
-    # Attestations must not be for blocks in the future. If not, the attestation should not be considered
-    assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
-
-    # Store target checkpoint state if not yet seen
-    if target not in store.checkpoint_states:
-        process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
-        store.checkpoint_states[target] = base_state
-    target_state = store.checkpoint_states[target]
-
-    # Attestations can only affect the fork choice of subsequent slots.
-    # Delay consideration in the fork choice until their slot is in the past.
-    assert get_current_slot(store) >= attestation.data.slot + 1
-
-    # Get state at the `target` to validate attestation and calculate the committees
+    # Get state at the `target` to fully validate attestation
+    target_state = store.checkpoint_states[attestation.data.target]
     indexed_attestation = get_indexed_attestation(target_state, attestation)
     assert is_valid_indexed_attestation(target_state, indexed_attestation)
 
-    # Update latest messages
-    for i in indexed_attestation.attesting_indices:
-        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
-            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=attestation.data.beacon_block_root)
+    # Update latest messages for attesting indices
+    update_latest_messages(store, indexed_attestation.attesting_indices, attestation)
 ```
