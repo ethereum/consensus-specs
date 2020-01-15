@@ -76,7 +76,7 @@
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
     - [`compute_domain`](#compute_domain)
-  - [`compute_signing_root`](#compute_signing_root)
+    - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_current_epoch`](#get_current_epoch)
     - [`get_previous_epoch`](#get_previous_epoch)
@@ -795,7 +795,7 @@ def compute_domain(domain_type: DomainType, fork_version: Version=GENESIS_FORK_V
     return Domain(domain_type + fork_version)
 ```
 
-### `compute_signing_root`
+#### `compute_signing_root`
 
 ```python
 def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
