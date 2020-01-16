@@ -413,6 +413,14 @@ def chunks_to_body_root(chunks: List[Bytes32, MAX_SHARD_BLOCK_CHUNKS]) -> Root:
     ))
 ```
 
+#### `compute_shard_from_committee_index`
+
+```python
+def compute_shard_from_committee_index(state: BeaconState, index: CommitteeIndex, slot: Slot) -> Shard:
+    active_shards = get_active_shard_count(state)
+    return Shard((index + get_start_shard(state, slot)) % active_shards)
+```
+
 ### Beacon state accessors
 
 #### `get_active_shard_count`
@@ -501,8 +509,7 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
 
 ```python
 def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    active_shards = get_active_shard_count(state)
-    return Shard((attestation.data.index + get_start_shard(state, attestation.data.slot)) % active_shards)
+    return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
 ```
 
 #### `get_next_slot_for_shard`
@@ -760,7 +767,9 @@ def process_crosslinks(state: BeaconState,
                        block_body: BeaconBlockBody,
                        attestations: Sequence[Attestation]) -> Set[Tuple[Shard, Root]]:
     winners: Set[Tuple[Shard, Root]] = set()
-    for shard in map(Shard, range(get_active_shard_count(state))):
+    committee_count = get_committee_count_at_slot(state, state.slot)
+    for committee_index in map(CommitteeIndex, range(committee_count)):
+        shard = compute_shard_from_committee_index(state, committee_index, state.slot)
         # All attestations in the block for this shard
         shard_attestations = [
             attestation for attestation in attestations
