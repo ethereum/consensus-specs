@@ -32,6 +32,7 @@
       - [`pack_compact_validator`](#pack_compact_validator)
       - [`committee_to_compact_committee`](#committee_to_compact_committee)
       - [`chunks_to_body_root`](#chunks_to_body_root)
+      - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
     - [Beacon state accessors](#beacon-state-accessors)
       - [`get_active_shard_count`](#get_active_shard_count)
       - [`get_online_validator_indices`](#get_online_validator_indices)

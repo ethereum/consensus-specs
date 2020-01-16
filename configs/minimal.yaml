@@ -87,8 +87,8 @@ SLOTS_PER_ETH1_VOTING_PERIOD: 16
 SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**8 (= 256) epochs
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-# 2**11 (= 2,048) epochs
-PERSISTENT_COMMITTEE_PERIOD: 2048
+# [customized] higher frequency of committee turnover and faster time to acceptable voluntary exit
+PERSISTENT_COMMITTEE_PERIOD: 128
 # [customized] fast catchup crosslinks
 MAX_EPOCHS_PER_CROSSLINK: 4
 # 2**2 (= 4) epochs
