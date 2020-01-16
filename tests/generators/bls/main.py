@@ -20,6 +20,7 @@ def hash(x):
 
 F2Q_COEFF_LEN = 48
 G2_COMPRESSED_Z_LEN = 48
+DST = b'BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_'
 
 
 def int_to_hex(n: int, byte_length: int = None) -> str:
@@ -27,6 +28,13 @@ def int_to_hex(n: int, byte_length: int = None) -> str:
     if byte_length:
         byte_value = byte_value.rjust(byte_length, b'\x00')
     return encode_hex(byte_value)
+
+
+def int_to_bytes(n: int, byte_length: int = None) -> bytes:
+    byte_value = int_to_big_endian(n)
+    if byte_length:
+        byte_value = byte_value.rjust(byte_length, b'\x00')
+    return byte_value
 
 
 def hex_to_int(x: str) -> int:
@@ -57,13 +65,11 @@ PRIVKEYS = [
 ]
 
 
-def hash_message(msg: bytes,
-                 domain: bytes) -> Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
+def hash_message(msg: bytes) -> Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
     """
     Hash message
     Input:
         - Message as bytes32
-        - domain as bytes8
     Output:
         - Message hash as a G2 point
     """
@@ -72,49 +78,44 @@ def hash_message(msg: bytes,
             int_to_hex(fq2.coeffs[0], F2Q_COEFF_LEN),
             int_to_hex(fq2.coeffs[1], F2Q_COEFF_LEN),
         ]
-        for fq2 in bls.utils.hash_to_G2(msg, domain)
+        for fq2 in bls.hash_to_curve.hash_to_G2(msg, DST)
     ]
 
 
-def hash_message_compressed(msg: bytes, domain: bytes) -> Tuple[str, str]:
+def hash_message_compressed(msg: bytes) -> Tuple[str, str]:
     """
     Hash message
     Input:
         - Message as bytes32
-        - domain as bytes8
     Output:
         - Message hash as a compressed G2 point
     """
-    z1, z2 = bls.utils.compress_G2(bls.utils.hash_to_G2(msg, domain))
+    z1, z2 = bls.point_compression.compress_G2(bls.hash_to_curve.hash_to_G2(msg, DST))
     return [int_to_hex(z1, G2_COMPRESSED_Z_LEN), int_to_hex(z2, G2_COMPRESSED_Z_LEN)]
 
 
 def case01_message_hash_G2_uncompressed():
     for msg in MESSAGES:
-        for domain in DOMAINS:
-            yield f'uncom_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
-                'input': {
-                    'message': encode_hex(msg),
-                    'domain': encode_hex(domain),
-                },
-                'output': hash_message(msg, domain)
-            }
+        yield f'uncom_g2_hash_{encode_hex(msg)}', {
+            'input': {
+                'message': encode_hex(msg),
+            },
+            'output': hash_message(msg)
+        }
 
 
 def case02_message_hash_G2_compressed():
     for msg in MESSAGES:
-        for domain in DOMAINS:
-            yield f'com_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
-                'input': {
-                    'message': encode_hex(msg),
-                    'domain': encode_hex(domain),
-                },
-                'output': hash_message_compressed(msg, domain)
-            }
+        yield f'com_g2_hash_{encode_hex(msg)}', {
+            'input': {
+                'message': encode_hex(msg),
+            },
+            'output': hash_message_compressed(msg)
+        }
 
 
 def case03_private_to_public_key():
-    pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
+    pubkeys = [bls.G2Basic.PrivToPub(privkey) for privkey in PRIVKEYS]
     pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
     for privkey, pubkey_serial in zip(PRIVKEYS, pubkeys_serial):
         yield f'priv_to_pub_{int_to_hex(privkey)}', {
@@ -126,17 +127,15 @@ def case03_private_to_public_key():
 def case04_sign_messages():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
-            for domain in DOMAINS:
-                sig = bls.sign(message, privkey, domain)
-                full_name = f'{int_to_hex(privkey)}_{encode_hex(message)}_{encode_hex(domain)}'
-                yield f'sign_msg_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
-                    'input': {
-                        'privkey': int_to_hex(privkey),
-                        'message': encode_hex(message),
-                        'domain': encode_hex(domain),
-                    },
-                    'output': encode_hex(sig)
-                }
+            sig = bls.G2ProofOfPossession.Sign(privkey, message)
+            full_name = f'{int_to_hex(privkey)}_{encode_hex(message)}'
+            yield f'sign_msg_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+                'input': {
+                    'privkey': int_to_hex(privkey),
+                    'message': encode_hex(message),
+                },
+                'output': encode_hex(sig)
+            }
 
 
 # TODO: case05_verify_messages: Verify messages signed in case04
@@ -144,21 +143,20 @@ def case04_sign_messages():
 
 
 def case06_aggregate_sigs():
-    for domain in DOMAINS:
-        for message in MESSAGES:
-            sigs = [bls.sign(message, privkey, domain) for privkey in PRIVKEYS]
-            yield f'agg_sigs_{encode_hex(message)}_{encode_hex(domain)}', {
-                'input': [encode_hex(sig) for sig in sigs],
-                'output': encode_hex(bls.aggregate_signatures(sigs)),
-            }
+    for message in MESSAGES:
+        sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in PRIVKEYS]
+        yield f'agg_sigs_{encode_hex(message)}', {
+            'input': [encode_hex(sig) for sig in sigs],
+            'output': encode_hex(bls.G2ProofOfPossession.Aggregate(sigs)),
+        }
 
 
 def case07_aggregate_pubkeys():
-    pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
+    pubkeys = [bls.G2Basic.PrivToPub(privkey) for privkey in PRIVKEYS]
     pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
     yield f'agg_pub_keys', {
         'input': pubkeys_serial,
-        'output': encode_hex(bls.aggregate_pubkeys(pubkeys)),
+        'output': encode_hex(bls.G2ProofOfPossession._AggregatePKs(pubkeys)),
     }
 
 
