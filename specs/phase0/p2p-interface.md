@@ -371,10 +371,11 @@ The response code can have one of the following values, encoded as a single unsi
 -  0: **Success** -- a normal response follows, with contents matching the expected message schema and encoding specified in the request.
 -  1: **InvalidRequest** -- the contents of the request are semantically invalid, or the payload is malformed, or could not be understood. The response payload adheres to the `ErrorMessage` schema (described below).
 -  2: **ServerError** -- the responder encountered an error while processing the request. The response payload adheres to the `ErrorMessage` schema (described below).
+-  3: **RateLimited** -- the responder has served too many requests or sent too much data recently, either overall or to the requestor specifically. The response payload adheres to the `ErrorMessage` schema (described below).
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous request-specific responses.
 
-The range `[3, 127]` is RESERVED for future usages, and should be treated as error if not recognized expressly.
+The range `[4, 127]` is RESERVED for future usages, and should be treated as error if not recognized expressly.
 
 The `ErrorMessage` schema is:
 
