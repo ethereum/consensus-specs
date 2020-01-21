@@ -46,6 +46,8 @@ def test_success(spec, state):
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
+    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
+
 
 @with_all_phases
 @spec_state_test
@@ -108,6 +110,28 @@ def test_success_exit_queue(spec, state):
         state.validators[validator_index].exit_epoch ==
         state.validators[initial_indices[0]].exit_epoch + 1
     )
+
+
+@with_all_phases
+@spec_state_test
+def test_default_exit_epoch_subsequent_exit(spec, state):
+    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
+
+    signed_voluntary_exit = sign_voluntary_exit(
+        spec, state, spec.VoluntaryExit(epoch=current_epoch, validator_index=validator_index), privkey)
+
+    # Exit one validator prior to this new one
+    exited_index = spec.get_active_validator_indices(state, current_epoch)[-1]
+    state.validators[exited_index].exit_epoch = current_epoch - 1
+
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
+
+    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
 @with_all_phases
