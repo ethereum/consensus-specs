@@ -788,7 +788,7 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Version=None) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
