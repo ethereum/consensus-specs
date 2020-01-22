@@ -283,7 +283,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
-    # Check block is a descendant of the finalized block
+    # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, hash_tree_root(block), finalized_slot) == store.finalized_checkpoint.root
 
     # Check the block is valid and compute the post-state
