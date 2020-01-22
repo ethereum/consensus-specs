@@ -256,3 +256,51 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     assert store.justified_checkpoint == previously_justified
     # ensure the best from the series was stored
     assert store.best_justified_checkpoint == best_justified_checkpoint
+
+
+@with_all_phases
+@spec_state_test
+def test_on_block_outside_safe_slots_but_finality(spec, state):
+    # Initialization
+    store = spec.get_genesis_store(state)
+    time = 100
+    spec.on_tick(store, time)
+
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    last_block_root = hash_tree_root(last_signed_block.message)
+
+    # Mock justified block in store
+    just_block = build_empty_block_for_next_slot(spec, state)
+    # Slot is same as justified checkpoint so does not trigger an override in the store
+    just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
+    store.blocks[just_block.hash_tree_root()] = just_block
+
+    # Step time past safe slots
+    spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
+    assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH >= spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
+
+    # Mock justified and finalized update in state
+    just_fin_state = store.block_states[last_block_root]
+    new_justified = spec.Checkpoint(
+        epoch=store.justified_checkpoint.epoch + 1,
+        root=just_block.hash_tree_root(),
+    )
+    new_finalized = spec.Checkpoint(
+        epoch=store.finalized_checkpoint.epoch + 1,
+        root=just_block.parent_root,
+    )
+    just_fin_state.current_justified_checkpoint = new_justified
+    just_fin_state.finalized_checkpoint = new_finalized
+
+    # Build and add block that includes the new justified/finalized info
+    block = build_empty_block_for_next_slot(spec, just_fin_state)
+    signed_block = state_transition_and_sign_block(spec, deepcopy(just_fin_state), block)
+
+    run_on_block(spec, store, signed_block)
+
+    assert store.finalized_checkpoint == new_finalized
+    assert store.justified_checkpoint == new_justified
