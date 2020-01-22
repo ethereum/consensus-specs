@@ -97,7 +97,7 @@ A validator must initialize many parameters locally before submitting a deposit 
 
 #### BLS public key
 
-Validator public keys are [G1 points](../bls_signature.md#g1-points) on the [BLS12-381 curve](https://z.cash/blog/new-snark-curve). A private key, `privkey`, must be securely generated along with the resultant `pubkey`. This `privkey` must be "hot", that is, constantly available to sign data throughout the lifetime of the validator.
+Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BLS12-381 curve](https://z.cash/blog/new-snark-curve). A private key, `privkey`, must be securely generated along with the resultant `pubkey`. This `privkey` must be "hot", that is, constantly available to sign data throughout the lifetime of the validator.
 
 #### BLS withdrawal key
 
