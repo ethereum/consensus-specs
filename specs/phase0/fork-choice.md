@@ -136,7 +136,8 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     elif block.slot == slot:
         return root
     else:
-        return Bytes32()  # root is older than queried slot: no results. 
+        # root is older than queried slot, thus a skip slot. Return earliest root prior to slot
+        return root
 ```
 
 #### `get_latest_attesting_balance`
@@ -239,13 +240,8 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
     if compute_slots_since_epoch_start(get_current_slot(store)) < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
         return True
 
-    new_justified_block = store.blocks[new_justified_checkpoint.root]
-    if new_justified_block.slot <= compute_start_slot_at_epoch(store.justified_checkpoint.epoch):
-        return False
-    if not (
-        get_ancestor(store, new_justified_checkpoint.root, store.blocks[store.justified_checkpoint.root].slot)
-        == store.justified_checkpoint.root
-    ):
+    justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
+    if not get_ancestor(store, new_justified_checkpoint.root, justified_slot) == store.justified_checkpoint.root:
         return False
 
     return True
@@ -283,13 +279,13 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert get_current_slot(store) >= block.slot
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
-    # Check block is a descendant of the finalized block
-    assert (
-        get_ancestor(store, hash_tree_root(block), store.blocks[store.finalized_checkpoint.root].slot) ==
-        store.finalized_checkpoint.root
-    )
-    # Check that block is later than the finalized epoch slot
-    assert block.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+
+    # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    assert block.slot > finalized_slot
+    # Check block is a descendant of the finalized block at the checkpoint finalized slot
+    assert get_ancestor(store, hash_tree_root(block), finalized_slot) == store.finalized_checkpoint.root
+
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, signed_block, True)
     # Add new state for this block to the store

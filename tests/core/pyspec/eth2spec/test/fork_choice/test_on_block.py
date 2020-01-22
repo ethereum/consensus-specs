@@ -137,6 +137,48 @@ def test_on_block_before_finalized(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_on_block_finalized_skip_slots(spec, state):
+    # Initialization
+    store = spec.get_genesis_store(state)
+    time = 100
+    spec.on_tick(store, time)
+
+    store.finalized_checkpoint = spec.Checkpoint(
+        epoch=store.finalized_checkpoint.epoch + 2,
+        root=store.finalized_checkpoint.root
+    )
+
+    # Build block that includes the skipped slots up to finality in chain
+    block = build_empty_block(spec, state, spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    run_on_block(spec, store, signed_block)
+
+
+@with_all_phases
+@spec_state_test
+def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
+    # Initialization
+    store = spec.get_genesis_store(state)
+
+    store.finalized_checkpoint = spec.Checkpoint(
+        epoch=store.finalized_checkpoint.epoch + 2,
+        root=store.finalized_checkpoint.root
+    )
+
+    # First transition through the epoch to ensure no skipped slots
+    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
+
+    # Now build a block at later slot than finalized epoch
+    # Includes finalized block in chain, but not at appropriate skip slot
+    block = build_empty_block(spec, state, spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    run_on_block(spec, store, signed_block, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
     # Initialization
     store = spec.get_genesis_store(state)
