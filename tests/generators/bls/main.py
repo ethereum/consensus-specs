@@ -115,7 +115,7 @@ def case02_message_hash_G2_compressed():
 
 
 def case03_private_to_public_key():
-    pubkeys = [bls.G2Basic.PrivToPub(privkey) for privkey in PRIVKEYS]
+    pubkeys = [bls. G2ProofOfPossession.PrivToPub(privkey) for privkey in PRIVKEYS]
     pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
     for privkey, pubkey_serial in zip(PRIVKEYS, pubkeys_serial):
         yield f'priv_to_pub_{int_to_hex(privkey)}', {
