@@ -5,7 +5,8 @@ TEST_LIBS_DIR = ./tests/core
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 TEST_VECTOR_DIR = ./eth2.0-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
-DEPOSIT_CONTRACT_DIR = ./deposit_contract
+DEPOSIT_CONTRACT_COMPILER_DIR = ./deposit_contract/compiler
+DEPOSIT_CONTRACT_TESTER_DIR = ./deposit_contract/tester
 CONFIGS_DIR = ./configs
 
 # Collect a list of generator names
@@ -35,7 +36,8 @@ COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec phase0 phase1 install_test open_cov \
-        install_deposit_contract_test test_deposit_contract compile_deposit_contract check_toc
+        install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
+        compile_deposit_contract test_compile_deposit_contract check_toc
 
 all: $(PY_SPEC_ALL_TARGETS)
 
@@ -45,14 +47,16 @@ partial_clean:
 	rm -rf $(GENERATOR_VENVS)
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
-	rm -rf $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
+	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/.pytest_cache
+	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
 	rm -rf $(PY_SPEC_DIR)/.coverage
 	rm -rf $(PY_SPEC_DIR)/test-reports
 
 clean: partial_clean
 	rm -rf $(PY_SPEC_DIR)/venv
-	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv
+	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/venv
+	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/venv
 
 # "make generate_tests" to run all generators
 generate_tests: $(PY_SPEC_ALL_TARGETS) $(GENERATOR_TARGETS)
@@ -66,7 +70,7 @@ test: $(PY_SPEC_ALL_TARGETS)
 	python -m pytest -n 4 --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; \
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; export PYTHONPATH="./"; \
 	python -m pytest -n 4 --junitxml=test-reports/eth2spec/test_results.xml eth2spec
 
 open_cov:
@@ -89,16 +93,23 @@ lint: $(PY_SPEC_ALL_TARGETS)
 	&& cd ./eth2spec && mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase0 \
 	&& mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase1;
 
-install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
-	cd $(DEPOSIT_CONTRACT_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt
-
-compile_deposit_contract:
-	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
-	python tool/compile_deposit_contract.py contracts/validator_registration.vy;
+install_deposit_contract_tester: $(PY_SPEC_ALL_TARGETS)
+	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt
 
 test_deposit_contract:
-	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
+	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
 	python -m pytest .
+
+install_deposit_contract_compiler:
+	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); python3.7 -m venv venv; . venv/bin/activate; pip3.7 install -r requirements.txt
+
+compile_deposit_contract:
+	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
+	python3.7 deposit_contract/compile.py contracts/validator_registration.vy
+
+test_compile_deposit_contract:
+	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
+	python3.7 -m pytest .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)

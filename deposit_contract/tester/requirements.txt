@@ -1,0 +1,4 @@
+eth-tester[py-evm]>=0.3.0b1,<0.4
+web3==5.4.0
+pytest==3.6.1
+../../tests/core/pyspec

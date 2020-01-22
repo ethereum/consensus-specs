@@ -11,5 +11,6 @@ setup(
         "py_ecc==2.0.0",
         "ssz==0.1.3",
         "dataclasses==0.6",
+        "pytest"
     ]
 )
