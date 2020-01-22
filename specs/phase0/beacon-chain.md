@@ -41,6 +41,7 @@
     - [`Attestation`](#attestation)
     - [`Deposit`](#deposit)
     - [`VoluntaryExit`](#voluntaryexit)
+    - [`MultiSlashingClaim`](#multislashingclaim)
   - [Beacon blocks](#beacon-blocks)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconBlock`](#beaconblock)
@@ -248,6 +249,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
+| `MAX_MULTI_SLASHING_CLAIMS` | `2**2` (= 4) |
 
 ### Domain types
 
@@ -431,6 +433,14 @@ class VoluntaryExit(Container):
     validator_index: ValidatorIndex
 ```
 
+#### `MultiSlashingClaim`
+
+```python
+class MultiSlashingClaim(Container):
+    slot: Slot
+    index: CommitteeIndex
+```
+
 ### Beacon blocks
 
 #### `BeaconBlockBody`
@@ -446,6 +456,7 @@ class BeaconBlockBody(Container):
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    multi_slashing_claims: List[MultiSlashingClaim, MAX_MULTI_SLASHING_CLAIMS]
 ```
 
 #### `BeaconBlock`
@@ -482,8 +493,6 @@ class BeaconState(Container):
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
@@ -1377,20 +1386,6 @@ def process_registry_updates(state: BeaconState) -> None:
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
-#### Slashings
-
-```python
-def process_slashings(state: BeaconState) -> None:
-    epoch = get_current_epoch(state)
-    total_balance = get_total_active_balance(state)
-    for index, validator in enumerate(state.validators):
-        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
-            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
-            penalty_numerator = validator.effective_balance // increment * min(sum(state.slashings) * 3, total_balance)
-            penalty = penalty_numerator // total_balance * increment
-            decrease_balance(state, ValidatorIndex(index), penalty)
-```
-
 #### Final updates
 
 ```python
@@ -1486,6 +1481,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.attestations, process_attestation),
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
+        (body.multi_slashing_claims, process_multi_slashing_claim),
         # @process_shard_receipt_proofs
     ):
         for operation in operations:
@@ -1630,4 +1626,19 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
+```
+
+##### Multi slashing claims
+
+```python
+def process_multi_slashing_claim(state: BeaconState, claim: MultiSlashingClaim) -> None:
+    committee = get_beacon_committee(state, claim.slot, claim.committee_index)
+    slashed_committee = [c for c in committee if state.validators[c].slashed]
+    if len(slashed_committee) * 3 >= len(committee):
+        new_penalty_balance = 0
+    else:
+        new_penalty_balance = MAX_EFFECTIVE_BALANCE * (len(committee) - 3 * len(slashed_committee)) // len(committee)
+    assert any(c for c in slashed_committee if state.balances[c] >= new_penalty_balance + EFFECTIVE_BALANCE_INCREMENT)
+    for c in slashed_committee:
+        state.balances[c] = min(state.balances[c], new_penalty_balance)
 ```
