@@ -118,7 +118,9 @@ $(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
 	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(PHASE0_SPEC_DIR)/beacon-chain.md $(PHASE0_SPEC_DIR)/fork-choice.md $(PHASE0_SPEC_DIR)/validator.md $@
 
 $(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
-	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(PHASE0_SPEC_DIR)/beacon-chain.md $(PHASE0_SPEC_DIR)/fork-choice.md $(SSZ_DIR)/merkle-proofs.md $(PHASE1_SPEC_DIR)/custody-game.md $(PHASE1_SPEC_DIR)/shard-data-chains.md $(PHASE1_SPEC_DIR)/beacon-chain-misc.md $@
+	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(PHASE0_SPEC_DIR)/beacon-chain.md $(PHASE0_SPEC_DIR)/fork-choice.md $(PHASE1_SPEC_DIR)/custody-game.md $(PHASE1_SPEC_DIR)/beacon-chain.md $(PHASE1_SPEC_DIR)/fraud-proofs.md $(PHASE1_SPEC_DIR)/fork-choice.md $(PHASE1_SPEC_DIR)/phase1-fork.md $@
+
+# TODO: also build validator spec and light-client-sync
 
 CURRENT_DIR = ${CURDIR}
 

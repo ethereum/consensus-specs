@@ -16,11 +16,13 @@ Core specifications for Eth2 clients be found in [specs/](specs/). These are div
 * [Fork Choice](specs/phase0/fork-choice.md)
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
+* [P2P Networking](specs/phase0/p2p-interface.md)
 
 ### Phase 1
+* [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)
+* [The Beacon Chain for Shards](specs/phase1/beacon-chain.md)
 * [Custody Game](specs/phase1/custody-game.md)
-* [Shard Data Chains](specs/phase1/shard-data-chains.md)
-* [Misc beacon chain updates](specs/phase1/beacon-chain-misc.md)
+* [Shard Transition and Fraud Proofs](specs/phase1/fraud-proofs.md)
 * [Light client syncing protocol](specs/phase1/light-client-sync.md)
 
 ### Phase 2

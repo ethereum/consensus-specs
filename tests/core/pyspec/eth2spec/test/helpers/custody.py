@@ -1,6 +1,5 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
-from eth2spec.utils.hash_function import hash
 from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector
 from eth2spec.utils.ssz.ssz_impl import chunkify, pack, hash_tree_root
 from eth2spec.utils.merkle_minimal import get_merkle_tree, get_merkle_proof
@@ -21,7 +20,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
     reveal = bls.Sign(privkeys[revealed_index], signing_root)
     # Generate the mask (any random 32 bytes that don't reveal the masker's secret will do)
-    mask = hash(reveal)
+    mask = spec.hash(reveal)
     # Generate masker's signature on the mask
     signing_root = spec.compute_signing_root(mask, domain)
     masker_signature = bls.Sign(privkeys[masker_index], signing_root)

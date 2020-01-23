@@ -1,6 +1,7 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
+from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
+    get_indexed_attestation_participants, get_attestation_2_data, get_attestation_1_data
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.state import (
     get_balance,
@@ -25,7 +26,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         yield 'post', None
         return
 
-    slashed_indices = attester_slashing.attestation_1.attesting_indices
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
 
     proposer_index = spec.get_beacon_proposer_index(state)
     pre_proposer_balance = get_balance(state, proposer_index)
@@ -92,12 +93,12 @@ def test_success_surround(spec, state):
 
     state.current_justified_checkpoint.epoch += 1
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
-    attestation_1 = attester_slashing.attestation_1
-    attestation_2 = attester_slashing.attestation_2
+    att_1_data = get_attestation_1_data(spec, attester_slashing)
+    att_2_data = get_attestation_2_data(spec, attester_slashing)
 
     # set attestion1 to surround attestation 2
-    attestation_1.data.source.epoch = attestation_2.data.source.epoch - 1
-    attestation_1.data.target.epoch = attestation_2.data.target.epoch + 1
+    att_1_data.source.epoch = att_2_data.source.epoch - 1
+    att_1_data.target.epoch = att_2_data.target.epoch + 1
 
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
@@ -109,7 +110,7 @@ def test_success_surround(spec, state):
 @always_bls
 def test_success_already_exited_recent(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    slashed_indices = attester_slashing.attestation_1.attesting_indices
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
 
@@ -121,7 +122,7 @@ def test_success_already_exited_recent(spec, state):
 @always_bls
 def test_success_already_exited_long_ago(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    slashed_indices = attester_slashing.attestation_1.attesting_indices
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
         state.validators[index].withdrawable_epoch = spec.get_current_epoch(state) + 2
@@ -158,7 +159,12 @@ def test_invalid_sig_1_and_2(spec, state):
 def test_same_data(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
-    attester_slashing.attestation_1.data = attester_slashing.attestation_2.data
+    indexed_att_1 = attester_slashing.attestation_1
+    att_2_data = get_attestation_2_data(spec, attester_slashing)
+    if spec.version == 'phase1':
+        indexed_att_1.attestation.data = att_2_data
+    else:
+        indexed_att_1.data = att_2_data
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
@@ -169,7 +175,9 @@ def test_same_data(spec, state):
 def test_no_double_or_surround(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
-    attester_slashing.attestation_1.data.target.epoch += 1
+    att_1_data = get_attestation_1_data(spec, attester_slashing)
+    att_1_data.target.epoch += 1
+
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
@@ -181,20 +189,23 @@ def test_participants_already_slashed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
     # set all indices to slashed
-    validator_indices = attester_slashing.attestation_1.attesting_indices
+    validator_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in validator_indices:
         state.validators[index].slashed = True
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+# Some of the following tests are phase0 only: phase 1 lists participants with bitfields instead of index list.
+
+
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att1_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
-    indices = attester_slashing.attestation_1.attesting_indices
+    indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     options = list(set(range(len(state.validators))) - set(indices))
     indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
     attester_slashing.attestation_1.attesting_indices = sorted(indices)
@@ -204,7 +215,7 @@ def test_att1_bad_extra_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att1_bad_replaced_index(spec, state):
@@ -220,7 +231,7 @@ def test_att1_bad_replaced_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att2_bad_extra_index(spec, state):
@@ -236,7 +247,7 @@ def test_att2_bad_extra_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att2_bad_replaced_index(spec, state):
@@ -252,7 +263,7 @@ def test_att2_bad_replaced_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att1_duplicate_index_normal_signed(spec, state):
@@ -272,7 +283,7 @@ def test_att1_duplicate_index_normal_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att2_duplicate_index_normal_signed(spec, state):
@@ -292,7 +303,7 @@ def test_att2_duplicate_index_normal_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att1_duplicate_index_double_signed(spec, state):
@@ -307,7 +318,7 @@ def test_att1_duplicate_index_double_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 @always_bls
 def test_att2_duplicate_index_double_signed(spec, state):
@@ -322,7 +333,7 @@ def test_att2_duplicate_index_double_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 def test_unsorted_att_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
@@ -335,7 +346,7 @@ def test_unsorted_att_1(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 def test_unsorted_att_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)

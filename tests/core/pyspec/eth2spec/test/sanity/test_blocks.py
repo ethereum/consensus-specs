@@ -6,7 +6,7 @@ from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_b
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
     transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
+from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
@@ -220,7 +220,7 @@ def test_attester_slashing(spec, state):
     pre_state = deepcopy(state)
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = attester_slashing.attestation_1.attesting_indices[0]
+    validator_index = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)[0]
 
     assert not state.validators[validator_index].slashed
 

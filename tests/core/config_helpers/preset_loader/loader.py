@@ -18,7 +18,9 @@ def load_presets(configs_dir, presets_name) -> Dict[str, Any]:
     loaded = yaml.load(path)
     out = dict()
     for k, v in loaded.items():
-        if v.startswith("0x"):
+        if isinstance(v, list):
+            out[k] = v
+        elif isinstance(v, str) and v.startswith("0x"):
             out[k] = bytes.fromhex(v[2:])
         else:
             out[k] = int(v)
