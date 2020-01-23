@@ -30,25 +30,9 @@ def int_to_hex(n: int, byte_length: int = None) -> str:
     return encode_hex(byte_value)
 
 
-def int_to_bytes(n: int, byte_length: int = None) -> bytes:
-    byte_value = int_to_big_endian(n)
-    if byte_length:
-        byte_value = byte_value.rjust(byte_length, b'\x00')
-    return byte_value
-
-
 def hex_to_int(x: str) -> int:
     return int(x, 16)
 
-
-DOMAINS = [
-    b'\x00\x00\x00\x00\x00\x00\x00\x00',
-    b'\x00\x00\x00\x00\x00\x00\x00\x01',
-    b'\x01\x00\x00\x00\x00\x00\x00\x00',
-    b'\x80\x00\x00\x00\x00\x00\x00\x00',
-    b'\x01\x23\x45\x67\x89\xab\xcd\xef',
-    b'\xff\xff\xff\xff\xff\xff\xff\xff'
-]
 
 MESSAGES = [
     bytes(b'\x00' * 32),
