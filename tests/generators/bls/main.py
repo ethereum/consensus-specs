@@ -65,35 +65,6 @@ PRIVKEYS = [
 ]
 
 
-def hash_message(msg: bytes) -> Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
-    """
-    Hash message
-    Input:
-        - Message as bytes32
-    Output:
-        - Message hash as a G2 point
-    """
-    return [
-        [
-            int_to_hex(fq2.coeffs[0], F2Q_COEFF_LEN),
-            int_to_hex(fq2.coeffs[1], F2Q_COEFF_LEN),
-        ]
-        for fq2 in bls.hash_to_curve.hash_to_G2(msg, DST)
-    ]
-
-
-def hash_message_compressed(msg: bytes) -> Tuple[str, str]:
-    """
-    Hash message
-    Input:
-        - Message as bytes32
-    Output:
-        - Message hash as a compressed G2 point
-    """
-    z1, z2 = bls.point_compression.compress_G2(bls.hash_to_curve.hash_to_G2(msg, DST))
-    return [int_to_hex(z1, G2_COMPRESSED_Z_LEN), int_to_hex(z2, G2_COMPRESSED_Z_LEN)]
-
-
 def case01_sign():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
@@ -113,7 +84,7 @@ def case02_verify():
         for message in MESSAGES:
             # Valid signature
             signature = bls.G2ProofOfPossession.Sign(privkey, message)
-            pubkey = bls.G2Basic.PrivToPub(privkey)
+            pubkey = bls.G2ProofOfPossession.PrivToPub(privkey)
             full_name = f'{encode_hex(pubkey)}_{encode_hex(message)}_valid'
             yield f'verify_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
                 'input': {
@@ -125,7 +96,7 @@ def case02_verify():
             }
 
             # Invalid signatures -- wrong pubkey
-            wrong_pubkey = bls.G2Basic.PrivToPub(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
+            wrong_pubkey = bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
             full_name = f'{encode_hex(wrong_pubkey)}_{encode_hex(message)}_wrong_pubkey'
             yield f'verify_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
                 'input': {
@@ -163,7 +134,7 @@ def case04_fast_aggregate_verify():
         privkeys = PRIVKEYS[:i + 1]
         sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in privkeys]
         aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
-        pubkeys = [bls.G2Basic.PrivToPub(privkey) for privkey in privkeys]
+        pubkeys = [bls.G2ProofOfPossession.PrivToPub(privkey) for privkey in privkeys]
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
         # Valid signature
@@ -178,7 +149,7 @@ def case04_fast_aggregate_verify():
         }
 
         # Invalid signature -- extra pubkey
-        pubkeys_extra = pubkeys + [bls.G2Basic.PrivToPub(PRIVKEYS[-1])]
+        pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys]
         full_name = f'{pubkeys_extra_serial}_{encode_hex(message)}_extra_pubkey'
         yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
@@ -208,7 +179,7 @@ def case05_aggregate_verify():
     sigs = []
     for privkey, message in zip(PRIVKEYS, MESSAGES):
         sig = bls.G2ProofOfPossession.Sign(privkey, message)
-        pubkey = bls.G2Basic.PrivToPub(privkey)
+        pubkey = bls.G2ProofOfPossession.PrivToPub(privkey)
         pairs.append({
             'pubkey': encode_hex(pubkey),
             'message': encode_hex(message),
