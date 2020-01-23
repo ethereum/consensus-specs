@@ -76,7 +76,7 @@
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
     - [`compute_domain`](#compute_domain)
-  - [`compute_signing_root`](#compute_signing_root)
+    - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_current_epoch`](#get_current_epoch)
     - [`get_previous_epoch`](#get_previous_epoch)
@@ -588,8 +588,8 @@ Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specificati
 - `def Sign(SK: int, message: Bytes) -> BLSSignature`
 - `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
-- `def AggregateVerify(pairs: Sequence[PK: BLSSignature, message: Bytes], signature: BLSSignature) -> bool`
+- `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
+- `def AggregateVerify(pairs: Sequence[PK: BLSPubkey, message: Bytes], signature: BLSSignature) -> bool`
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
@@ -788,14 +788,16 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Version=GENESIS_FORK_VERSION) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
+    if fork_version is None:
+        fork_version = GENESIS_FORK_VERSION
     return Domain(domain_type + fork_version)
 ```
 
-### `compute_signing_root`
+#### `compute_signing_root`
 
 ```python
 def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
@@ -1036,7 +1038,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = max(exit_epochs, default=compute_activation_exit_epoch(get_current_epoch(state)))
+    exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += Epoch(1)

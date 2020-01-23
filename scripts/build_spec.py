@@ -31,7 +31,7 @@ from eth2spec.utils.hash_function import hash
 SSZObject = TypeVar('SSZObject', bound=SSZType)
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, MutableSequence, NewType, Tuple, Union, TypeVar
+    Any, Dict, Set, Sequence, MutableSequence, NewType, Optional, Tuple, Union, TypeVar
 )
 from math import (
     log2,
