@@ -1,21 +1,14 @@
-from random import (
-    randint,
-)
-
+from random import randint
 import pytest
-
 import eth_utils
-from tests.contracts.conftest import (
+
+from eth2spec.phase0.spec import DepositData
+from eth2spec.utils.ssz.ssz_typing import List
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+
+from deposit_contract.conftest import (
     FULL_DEPOSIT_AMOUNT,
     MIN_DEPOSIT_AMOUNT,
-)
-
-from eth2spec.phase0.spec import (
-    DepositData,
-)
-from eth2spec.utils.ssz.ssz_typing import List
-from eth2spec.utils.ssz.ssz_impl import (
-    hash_tree_root,
 )
 
 

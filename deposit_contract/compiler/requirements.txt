@@ -1,0 +1,7 @@
+# Vyper beta version used to generate the bytecode that was then formally verified.
+# On top of this beta version, a later change was backported, and included in the formal verification:
+#   https://github.com/vyperlang/vyper/issues/1761
+# The resulting vyper version is pinned and maintained as protected branch.
+git+https://github.com/vyperlang/vyper@1761-HOTFIX-v0.1.0-beta.13
+
+pytest==3.6.1
