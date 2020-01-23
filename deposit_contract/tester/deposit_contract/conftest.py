@@ -1,8 +1,3 @@
-from random import (
-    randint,
-)
-import re
-
 import pytest
 
 import eth_tester
@@ -10,17 +5,19 @@ from eth_tester import (
     EthereumTester,
     PyEVMBackend,
 )
-from vyper import (
-    compiler,
-)
 from web3 import Web3
-from web3.providers.eth_tester import (
-    EthereumTesterProvider,
-)
-from .utils import (
-    get_deposit_contract_code,
-    get_deposit_contract_json,
-)
+from web3.providers.eth_tester import EthereumTesterProvider
+
+import json
+import os
+
+DIR = os.path.dirname(__file__)
+
+
+def get_deposit_contract_json():
+    file_path = os.path.join(DIR, '../../contracts/validator_registration.json')
+    deposit_contract_json = open(file_path).read()
+    return json.loads(deposit_contract_json)
 
 
 # Constants
