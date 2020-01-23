@@ -20,6 +20,7 @@ def hash(x):
 
 F2Q_COEFF_LEN = 48
 G2_COMPRESSED_Z_LEN = 48
+DST = bls.G2ProofOfPossession.DST
 
 
 def int_to_hex(n: int, byte_length: int = None) -> str:
@@ -27,6 +28,13 @@ def int_to_hex(n: int, byte_length: int = None) -> str:
     if byte_length:
         byte_value = byte_value.rjust(byte_length, b'\x00')
     return encode_hex(byte_value)
+
+
+def int_to_bytes(n: int, byte_length: int = None) -> bytes:
+    byte_value = int_to_big_endian(n)
+    if byte_length:
+        byte_value = byte_value.rjust(byte_length, b'\x00')
+    return byte_value
 
 
 def hex_to_int(x: str) -> int:
@@ -57,116 +65,144 @@ PRIVKEYS = [
 ]
 
 
-def hash_message(msg: bytes,
-                 domain: bytes) -> Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
-    """
-    Hash message
-    Input:
-        - Message as bytes32
-        - domain as bytes8
-    Output:
-        - Message hash as a G2 point
-    """
-    return [
-        [
-            int_to_hex(fq2.coeffs[0], F2Q_COEFF_LEN),
-            int_to_hex(fq2.coeffs[1], F2Q_COEFF_LEN),
-        ]
-        for fq2 in bls.utils.hash_to_G2(msg, domain)
-    ]
-
-
-def hash_message_compressed(msg: bytes, domain: bytes) -> Tuple[str, str]:
-    """
-    Hash message
-    Input:
-        - Message as bytes32
-        - domain as bytes8
-    Output:
-        - Message hash as a compressed G2 point
-    """
-    z1, z2 = bls.utils.compress_G2(bls.utils.hash_to_G2(msg, domain))
-    return [int_to_hex(z1, G2_COMPRESSED_Z_LEN), int_to_hex(z2, G2_COMPRESSED_Z_LEN)]
-
-
-def case01_message_hash_G2_uncompressed():
-    for msg in MESSAGES:
-        for domain in DOMAINS:
-            yield f'uncom_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
+def case01_sign():
+    for privkey in PRIVKEYS:
+        for message in MESSAGES:
+            sig = bls.G2ProofOfPossession.Sign(privkey, message)
+            full_name = f'{int_to_hex(privkey)}_{encode_hex(message)}'
+            yield f'sign_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
                 'input': {
-                    'message': encode_hex(msg),
-                    'domain': encode_hex(domain),
+                    'privkey': int_to_hex(privkey),
+                    'message': encode_hex(message),
                 },
-                'output': hash_message(msg, domain)
+                'output': encode_hex(sig)
             }
 
 
-def case02_message_hash_G2_compressed():
-    for msg in MESSAGES:
-        for domain in DOMAINS:
-            yield f'com_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
+def case02_verify():
+    for i, privkey in enumerate(PRIVKEYS):
+        for message in MESSAGES:
+            # Valid signature
+            signature = bls.G2ProofOfPossession.Sign(privkey, message)
+            pubkey = bls.G2ProofOfPossession.PrivToPub(privkey)
+            full_name = f'{encode_hex(pubkey)}_{encode_hex(message)}_valid'
+            yield f'verify_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
                 'input': {
-                    'message': encode_hex(msg),
-                    'domain': encode_hex(domain),
+                    'pubkey': encode_hex(pubkey),
+                    'message': encode_hex(message),
+                    'signature': encode_hex(signature),
                 },
-                'output': hash_message_compressed(msg, domain)
+                'output': True,
+            }
+
+            # Invalid signatures -- wrong pubkey
+            wrong_pubkey = bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
+            full_name = f'{encode_hex(wrong_pubkey)}_{encode_hex(message)}_wrong_pubkey'
+            yield f'verify_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+                'input': {
+                    'pubkey': encode_hex(wrong_pubkey),
+                    'message': encode_hex(message),
+                    'signature': encode_hex(signature),
+                },
+                'output': False,
+            }
+
+            # Invalid signature -- tampered with signature
+            tampered_signature = signature[:-4] + b'\xFF\xFF\xFF\xFF'
+            full_name = f'{encode_hex(pubkey)}_{encode_hex(message)}_tampered_signature'
+            yield f'verify_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+                'input': {
+                    'pubkey': encode_hex(pubkey),
+                    'message': encode_hex(message),
+                    'signature': encode_hex(tampered_signature),
+                },
+                'output': False,
             }
 
 
-def case03_private_to_public_key():
-    pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
-    pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
-    for privkey, pubkey_serial in zip(PRIVKEYS, pubkeys_serial):
-        yield f'priv_to_pub_{int_to_hex(privkey)}', {
-            'input': int_to_hex(privkey),
-            'output': pubkey_serial,
+def case03_aggregate():
+    for message in MESSAGES:
+        sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in PRIVKEYS]
+        yield f'aggregate_{encode_hex(message)}', {
+            'input': [encode_hex(sig) for sig in sigs],
+            'output': encode_hex(bls.G2ProofOfPossession.Aggregate(sigs)),
         }
 
 
-def case04_sign_messages():
-    for privkey in PRIVKEYS:
-        for message in MESSAGES:
-            for domain in DOMAINS:
-                sig = bls.sign(message, privkey, domain)
-                full_name = f'{int_to_hex(privkey)}_{encode_hex(message)}_{encode_hex(domain)}'
-                yield f'sign_msg_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
-                    'input': {
-                        'privkey': int_to_hex(privkey),
-                        'message': encode_hex(message),
-                        'domain': encode_hex(domain),
-                    },
-                    'output': encode_hex(sig)
-                }
+def case04_fast_aggregate_verify():
+    for i, message in enumerate(MESSAGES):
+        privkeys = PRIVKEYS[:i + 1]
+        sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in privkeys]
+        aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
+        pubkeys = [bls.G2ProofOfPossession.PrivToPub(privkey) for privkey in privkeys]
+        pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
+
+        # Valid signature
+        full_name = f'{pubkeys_serial}_{encode_hex(message)}_valid'
+        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'pubkeys': pubkeys_serial,
+                'message': encode_hex(message),
+                'signature': encode_hex(aggregate_signature),
+            },
+            'output': True,
+        }
+
+        # Invalid signature -- extra pubkey
+        pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[-1])]
+        pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys]
+        full_name = f'{pubkeys_extra_serial}_{encode_hex(message)}_extra_pubkey'
+        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'pubkeys': pubkeys_extra_serial,
+                'message': encode_hex(message),
+                'signature': encode_hex(aggregate_signature),
+            },
+            'output': False,
+        }
+
+        # Invalid signature -- tampered with signature
+        tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
+        full_name = f'{pubkeys_serial}_{encode_hex(message)}_tampered_signature'
+        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'pubkeys': pubkeys_serial,
+                'message': encode_hex(message),
+                'signature': encode_hex(tampered_signature),
+            },
+            'output': False,
+        }
 
 
-# TODO: case05_verify_messages: Verify messages signed in case04
-# It takes too long, empty for now
+def case05_aggregate_verify():
+    pairs = []
+    sigs = []
+    for privkey, message in zip(PRIVKEYS, MESSAGES):
+        sig = bls.G2ProofOfPossession.Sign(privkey, message)
+        pubkey = bls.G2ProofOfPossession.PrivToPub(privkey)
+        pairs.append({
+            'pubkey': encode_hex(pubkey),
+            'message': encode_hex(message),
+        })
+        sigs.append(sig)
 
-
-def case06_aggregate_sigs():
-    for domain in DOMAINS:
-        for message in MESSAGES:
-            sigs = [bls.sign(message, privkey, domain) for privkey in PRIVKEYS]
-            yield f'agg_sigs_{encode_hex(message)}_{encode_hex(domain)}', {
-                'input': [encode_hex(sig) for sig in sigs],
-                'output': encode_hex(bls.aggregate_signatures(sigs)),
-            }
-
-
-def case07_aggregate_pubkeys():
-    pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
-    pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
-    yield f'agg_pub_keys', {
-        'input': pubkeys_serial,
-        'output': encode_hex(bls.aggregate_pubkeys(pubkeys)),
+    aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
+    yield f'fast_aggregate_verify_valid', {
+        'input': {
+            'pairs': pairs,
+            'signature': encode_hex(aggregate_signature),
+        },
+        'output': True,
     }
 
-
-# TODO
-# Aggregate verify
-
-# TODO
-# Proof-of-possession
+    tampered_signature = aggregate_signature[:4] + b'\xff\xff\xff\xff'
+    yield f'fast_aggregate_verify_tampered_signature', {
+        'input': {
+            'pairs': pairs,
+            'signature': encode_hex(tampered_signature),
+        },
+        'output': False,
+    }
 
 
 def create_provider(handler_name: str,
@@ -195,10 +231,9 @@ def create_provider(handler_name: str,
 
 if __name__ == "__main__":
     gen_runner.run_generator("bls", [
-        create_provider('msg_hash_uncompressed', case01_message_hash_G2_uncompressed),
-        create_provider('msg_hash_compressed', case02_message_hash_G2_compressed),
-        create_provider('priv_to_pub', case03_private_to_public_key),
-        create_provider('sign_msg', case04_sign_messages),
-        create_provider('aggregate_sigs', case06_aggregate_sigs),
-        create_provider('aggregate_pubkeys', case07_aggregate_pubkeys),
+        create_provider('sign', case01_sign),
+        create_provider('verify', case02_verify),
+        create_provider('aggregate', case03_aggregate),
+        create_provider('fast_aggregate_verify', case04_fast_aggregate_verify),
+        create_provider('aggregate_verify', case05_aggregate_verify),
     ])
