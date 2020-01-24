@@ -1,6 +1,6 @@
 from ssz_test_case import invalid_test_case, valid_test_case
 from eth2spec.utils.ssz.ssz_typing import SSZType, Container, byte, uint8, uint16, \
-    uint32, uint64, List, Bytes, Vector, Bitvector, Bitlist
+    uint32, uint64, List, ByteList, Vector, Bitvector, Bitlist
 from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
 from typing import Dict, Tuple, Sequence, Callable
@@ -32,7 +32,7 @@ class ComplexTestStruct(Container):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: Bytes[256]
+    D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
     G: Vector[VarTestStruct, 2]

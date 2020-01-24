@@ -788,10 +788,12 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Version=GENESIS_FORK_VERSION) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
+    if fork_version is None:
+        fork_version = GENESIS_FORK_VERSION
     return Domain(domain_type + fork_version)
 ```
 
@@ -1036,7 +1038,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = max(exit_epochs, default=compute_activation_exit_epoch(get_current_epoch(state)))
+    exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += Epoch(1)
