@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from eth2spec.debug.encode import encode
-from eth2spec.utils.ssz.ssz_typing import SSZValue
+from eth2spec.utils.ssz.ssz_typing import View
 from eth2spec.utils.ssz.ssz_impl import serialize
 
 
@@ -38,15 +38,15 @@ def vector_test(description: str = None):
                     (key, value) = data
                     if value is None:
                         continue
-                    if isinstance(value, SSZValue):
+                    if isinstance(value, View):
                         yield key, 'data', encode(value)
                         yield key, 'ssz', serialize(value)
                     elif isinstance(value, bytes):
                         yield key, 'data', encode(value)
                         yield key, 'ssz', value
-                    elif isinstance(value, list) and all([isinstance(el, (SSZValue, bytes)) for el in value]):
+                    elif isinstance(value, list) and all([isinstance(el, (View, bytes)) for el in value]):
                         for i, el in enumerate(value):
-                            if isinstance(el, SSZValue):
+                            if isinstance(el, View):
                                 yield f'{key}_{i}', 'data', encode(el)
                                 yield f'{key}_{i}', 'ssz', serialize(el)
                             elif isinstance(el, bytes):

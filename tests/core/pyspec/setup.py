@@ -10,8 +10,7 @@ setup(
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
         "py_ecc==2.0.0",
-        "ssz==0.1.3",
         "dataclasses==0.6",
-        "pytest"
+        "remerkleable==0.1.10",
     ]
 )
