@@ -30,22 +30,29 @@ def add_attestation_to_store(spec, store, attestation):
     spec.on_attestation(store, attestation)
 
 
+def get_anchor_root(spec, state):
+    anchor_block_header = state.latest_block_header.copy()
+    if anchor_block_header.state_root == spec.Bytes32():
+        anchor_block_header.state_root = spec.hash_tree_root(state)
+    return spec.hash_tree_root(anchor_block_header)
+
+
 @with_all_phases
 @spec_state_test
 def test_genesis(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
-    genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
-    assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
+    store = spec.get_forkchoice_store(state)
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
 
 
 @with_all_phases
 @spec_state_test
 def test_chain_no_attestations(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
-    genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
-    assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
+    store = spec.get_forkchoice_store(state)
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block_1 = build_empty_block_for_next_slot(spec, state)
@@ -66,9 +73,9 @@ def test_split_tie_breaker_no_attestations(spec, state):
     genesis_state = state.copy()
 
     # Initialization
-    store = spec.get_genesis_store(state)
-    genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
-    assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
+    store = spec.get_forkchoice_store(state)
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
 
     # block at slot 1
     block_1_state = genesis_state.copy()
@@ -94,9 +101,9 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     genesis_state = state.copy()
 
     # Initialization
-    store = spec.get_genesis_store(state)
-    genesis_block = spec.BeaconBlock(state_root=state.hash_tree_root())
-    assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
+    store = spec.get_forkchoice_store(state)
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
 
     # build longer tree
     long_state = genesis_state.copy()
@@ -122,15 +129,14 @@ def test_shorter_chain_but_heavier_weight(spec, state):
 @spec_state_test
 def test_filtered_block_tree(spec, state):
     # Initialization
-    genesis_state_root = state.hash_tree_root()
-    store = spec.get_genesis_store(state)
-    genesis_block = spec.BeaconBlock(state_root=genesis_state_root)
+    store = spec.get_forkchoice_store(state)
+    anchor_root = get_anchor_root(spec, state)
 
     # transition state past initial couple of epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
 
-    assert spec.get_head(store) == spec.hash_tree_root(genesis_block)
+    assert spec.get_head(store) == anchor_root
 
     # fill in attestations for entire epoch, justifying the recent epoch
     prev_state, signed_blocks, state = next_epoch_with_attestations(spec, state, True, False)

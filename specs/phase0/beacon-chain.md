@@ -1191,19 +1191,13 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
-*Note*: The `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
-
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
-    # @process_reveal_deadlines
-    # @process_challenge_deadlines
     process_slashings(state)
-    # @update_period_committee
     process_final_updates(state)
-    # @after_process_final_updates
 ```
 
 #### Helper functions
@@ -1482,16 +1476,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
 
-    for operations, function in (
-        (body.proposer_slashings, process_proposer_slashing),
-        (body.attester_slashings, process_attester_slashing),
-        (body.attestations, process_attestation),
-        (body.deposits, process_deposit),
-        (body.voluntary_exits, process_voluntary_exit),
-        # @process_shard_receipt_proofs
-    ):
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
-            function(state, operation)
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
 ```
 
 ##### Proposer slashings

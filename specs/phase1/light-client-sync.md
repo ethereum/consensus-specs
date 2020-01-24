@@ -49,7 +49,7 @@ We define the following Python custom types for type hinting and readability:
 ### `LightClientUpdate`
 
 ```python
-class LightClientUpdate(container):
+class LightClientUpdate(Container):
     # Shard block root (and authenticating signature data)
     shard_block_root: Root
     fork_version: Version

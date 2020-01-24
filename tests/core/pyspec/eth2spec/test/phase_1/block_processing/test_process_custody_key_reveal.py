@@ -55,8 +55,8 @@ def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=Tru
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_success(spec, state):
     state.slot += spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)
@@ -65,8 +65,8 @@ def test_success(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_reveal_too_early(spec, state):
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)
 
@@ -74,8 +74,8 @@ def test_reveal_too_early(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_wrong_period(spec, state):
     custody_key_reveal = get_valid_custody_key_reveal(spec, state, period=5)
 
@@ -83,8 +83,8 @@ def test_wrong_period(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_late_reveal(spec, state):
     state.slot += spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH * 3 + 150
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)
@@ -93,8 +93,8 @@ def test_late_reveal(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_double_reveal(spec, state):
     state.slot += spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH * 2
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)
@@ -105,8 +105,8 @@ def test_double_reveal(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_max_decrement(spec, state):
     state.slot += spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH * 3 + 150
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)

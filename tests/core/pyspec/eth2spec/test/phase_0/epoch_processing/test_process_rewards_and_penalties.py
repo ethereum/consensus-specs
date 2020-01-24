@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from eth2spec.test.context import spec_state_test, with_all_phases, spec_test, \
-    misc_balances, with_custom_state, default_activation_threshold
+    misc_balances, with_custom_state, default_activation_threshold, single_phase
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -10,6 +10,7 @@ from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     get_valid_attestation,
 )
+from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
 
@@ -96,6 +97,7 @@ def test_full_attestations(spec, state):
 @with_all_phases
 @spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@single_phase
 def test_full_attestations_misc_balances(spec, state):
     attestations = prepare_state_with_full_attestations(spec, state)
 
@@ -141,7 +143,7 @@ def test_duplicate_attestation(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
-    participants = indexed_attestation.attesting_indices
+    participants = get_indexed_attestation_participants(spec, indexed_attestation)
 
     assert len(participants) > 0
 

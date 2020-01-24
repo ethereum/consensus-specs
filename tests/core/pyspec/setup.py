@@ -3,6 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='pyspec',
     packages=find_packages(),
+    python_requires=">=3.8, <4",
     tests_require=["pytest"],
     install_requires=[
         "eth-utils>=1.3.0,<2",
@@ -11,5 +12,6 @@ setup(
         "py_ecc==2.0.0",
         "ssz==0.1.3",
         "dataclasses==0.6",
+        "pytest"
     ]
 )
