@@ -1,6 +1,7 @@
 from eth2spec.config import apply_config
 from eth2spec.test.context import reload_specs
 
+
 # We import pytest only when it's present, i.e. when we are running tests.
 # The test-cases themselves can be generated without installing pytest.
 

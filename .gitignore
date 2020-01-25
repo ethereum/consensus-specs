@@ -20,6 +20,9 @@ tests/core/pyspec/eth2spec/phase1/spec.py
 # coverage reports
 .htmlcov
 .coverage
+.coverage.*
 
 # local CI testing output
 tests/core/pyspec/test-reports
+
+*.egg-info

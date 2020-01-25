@@ -25,14 +25,14 @@ from dataclasses import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    boolean, Container, List, Vector, uint64, SSZType,
+    View, boolean, Container, List, Vector, uint64,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
-SSZObject = TypeVar('SSZObject', bound=SSZType)
+SSZObject = TypeVar('SSZObject', bound=View)
 '''
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.apply_config import apply_constants_preset
@@ -47,9 +47,8 @@ from dataclasses import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    SSZType, Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector,
-    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
-    uint64, uint8, bit, boolean,
+    View, boolean, Container, List, Vector, uint64, uint8, bit,
+    ByteVector, ByteList, Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
@@ -58,7 +57,7 @@ from eth2spec.utils.hash_function import hash
 
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
-SSZObject = TypeVar('SSZObject', bound=SSZType)
+SSZObject = TypeVar('SSZObject', bound=View)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
@@ -80,27 +79,40 @@ def hash(x: bytes) -> Bytes32:  # type: ignore
     return hash_cache[x]
 
 
-# Monkey patch validator compute committee code
-_compute_committee = compute_committee
-committee_cache: Dict[Tuple[Bytes32, Bytes32, int, int], Sequence[ValidatorIndex]] = {}
+def cache_this(key_fn, value_fn):  # type: ignore
+    cache_dict = {}  # type: ignore
+
+    def wrapper(*args, **kw):  # type: ignore
+        key = key_fn(*args, **kw)
+        nonlocal cache_dict
+        if key not in cache_dict:
+            cache_dict[key] = value_fn(*args, **kw)
+        return cache_dict[key]
+    return wrapper
 
 
-def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
-                      seed: Bytes32,
-                      index: int,
-                      count: int) -> Sequence[ValidatorIndex]:
-    param_hash = (hash(b''.join(index.to_bytes(length=4, byteorder='little') for index in indices)), seed, index, count)
+get_base_reward = cache_this(
+    lambda state, index: (state.validators.hash_tree_root(), state.slot),
+    get_base_reward)
 
-    if param_hash not in committee_cache:
-        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
-    return committee_cache[param_hash]'''
+get_committee_count_at_slot = cache_this(
+    lambda state, epoch: (state.validators.hash_tree_root(), epoch),
+    get_committee_count_at_slot)
+
+get_active_validator_indices = cache_this(
+    lambda state, epoch: (state.validators.hash_tree_root(), epoch),
+    get_active_validator_indices)
+
+get_beacon_committee = cache_this(
+    lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
+    get_beacon_committee)'''
 
 
 def objects_to_spec(functions: Dict[str, str],
                     custom_types: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
-                    imports: Dict[str, str],
+                    imports: str,
                     version: str,
                     ) -> str:
     """
@@ -201,7 +213,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
     ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
-    return functions, custom_types, constants, ssz_objects
+    return SpecObject((functions, custom_types, constants, ssz_objects))
 
 
 def dependency_order_spec(objs: SpecObject):

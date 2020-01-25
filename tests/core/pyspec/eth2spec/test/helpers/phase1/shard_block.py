@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -32,12 +30,12 @@ def build_empty_shard_block(spec,
     if slot is None:
         slot = shard_state.slot
 
-    previous_beacon_header = deepcopy(beacon_state.latest_block_header)
+    previous_beacon_header = beacon_state.latest_block_header.copy()
     if previous_beacon_header.state_root == spec.Bytes32():
         previous_beacon_header.state_root = beacon_state.hash_tree_root()
     beacon_block_root = hash_tree_root(previous_beacon_header)
 
-    previous_block_header = deepcopy(shard_state.latest_block_header)
+    previous_block_header = shard_state.latest_block_header.copy()
     if previous_block_header.state_root == spec.Bytes32():
         previous_block_header.state_root = shard_state.hash_tree_root()
     parent_root = hash_tree_root(previous_block_header)
