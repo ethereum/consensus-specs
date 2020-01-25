@@ -1,7 +1,0 @@
--r requirements.txt
-pytest>=4.4
-../config_helpers
-flake8==3.7.7
-mypy==0.750
-pytest-cov
-pytest-xdist

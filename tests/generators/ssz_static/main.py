@@ -10,7 +10,11 @@ from eth2spec.utils.ssz.ssz_impl import (
     serialize,
 )
 from gen_base import gen_runner, gen_typing
-from preset_loader import loader
+
+
+from importlib import reload
+from eth2spec.config import config_util
+
 
 MAX_BYTES_LENGTH = 100
 MAX_LIST_LENGTH = 10
@@ -54,8 +58,8 @@ def create_provider(config_name: str, seed: int, mode: random_value.Randomizatio
                     cases_if_random: int) -> gen_typing.TestProvider:
     def prepare_fn(configs_path: str) -> str:
         # Apply changes to presets, this affects some of the vector types.
-        presets = loader.load_presets(configs_path, config_name)
-        spec.apply_constants_preset(presets)
+        config_util.prepare_config(configs_path, config_name)
+        reload(spec)
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
