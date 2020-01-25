@@ -164,21 +164,25 @@ def cache_this(key_fn, value_fn):  # type: ignore
     return wrapper
 
 
+_get_base_reward = get_base_reward
 get_base_reward = cache_this(
     lambda state, index: (state.validators.hash_tree_root(), state.slot),
-    get_base_reward)
+    _get_base_reward)
 
+_get_committee_count_at_slot = get_committee_count_at_slot
 get_committee_count_at_slot = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
-    get_committee_count_at_slot)
+    _get_committee_count_at_slot)
 
+_get_active_validator_indices = get_active_validator_indices
 get_active_validator_indices = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
-    get_active_validator_indices)
+    _get_active_validator_indices)
 
+_get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
-    get_beacon_committee)'''
+    _get_beacon_committee)'''
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, version: str) -> str:
@@ -283,11 +287,6 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     return SpecObject(functions, custom_types, constants, ssz_objects)
 
 
-def dependency_order_spec(objs: SpecObject):
-    functions, custom_types, constants, ssz_objects = objs
-    dependency_order_ssz_objects(ssz_objects, custom_types)
-
-
 version_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
@@ -295,13 +294,13 @@ version_imports = {
 
 
 def build_spec(version: str, source_files: List[str]) -> str:
-    all_spescs = [get_spec(spec) for spec in source_files]
+    all_specs = [get_spec(spec) for spec in source_files]
 
-    spec_object = all_spescs[0]
-    for value in all_spescs[1:]:
+    spec_object = all_specs[0]
+    for value in all_specs[1:]:
         spec_object = combine_spec_objects(spec_object, value)
 
-    dependency_order_spec(spec_object)
+    dependency_order_ssz_objects(spec_object.ssz_objects, spec_object.custom_types)
 
     return objects_to_spec(spec_object, version_imports[version], version)
 
@@ -333,6 +332,8 @@ class PySpecCommand(Command):
     def finalize_options(self):
         """Post-process options."""
         if len(self.md_doc_paths) == 0:
+            print("no paths were specified, using default markdown file paths for pyspec"
+                  " build (spec version: %s)" % self.spec_version)
             if self.spec_version == "phase0":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
@@ -351,7 +352,6 @@ class PySpecCommand(Command):
                 """
             else:
                 raise Exception('no markdown files specified, and spec version "%s" is unknown', self.spec_version)
-            print("no paths were specified, using default markdown file paths for pyspec build (spec version: %s)" % self.spec_version)
 
         self.parsed_md_doc_paths = self.md_doc_paths.split()
 
@@ -388,8 +388,8 @@ class BuildPyCommand(build_py):
         self.run_command('pyspec')
 
     def run(self):
-        self.run_pyspec_cmd(spec_version="phase0")
-        self.run_pyspec_cmd(spec_version="phase1")
+        for spec_version in version_imports:
+            self.run_pyspec_cmd(spec_version=spec_version)
 
         super(BuildPyCommand, self).run()
 
@@ -416,9 +416,8 @@ class PyspecDevCommand(Command):
 
     def run(self):
         print("running build_py command")
-        self.run_pyspec_cmd(spec_version="phase0", package_inplace=False)
-        self.run_pyspec_cmd(spec_version="phase1", package_inplace=False)
-
+        for spec_version in version_imports:
+            self.run_pyspec_cmd(spec_version=spec_version)
 
 commands = {
     'pyspec': PySpecCommand,
@@ -448,10 +447,9 @@ setup(
     py_modules=["eth2spec"],
     cmdclass=commands,
     python_requires=">=3.8, <4",
-    tests_require=[],  # avoid old style tests require. Enable explicit (re-)installs, e.g. `pip install .[testing]`
     extras_require={
-        "testing": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "linting": ["flake8==3.7.7", "mypy==0.750"],
+        "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
+        "lint": ["flake8==3.7.7", "mypy==0.750"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",

@@ -1,6 +1,5 @@
 SPEC_DIR = ./specs
 SSZ_DIR = ./ssz
-SCRIPT_DIR = ./scripts
 TEST_LIBS_DIR = ./tests/core
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 TEST_VECTOR_DIR = ../eth2.0-spec-tests/tests
@@ -61,7 +60,7 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3 -m venv venv; . venv/bin/activate; pip3 install .[testing] .[linting]
+	python3 -m venv venv; . venv/bin/activate; pip3 install .[test] .[lint]
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \

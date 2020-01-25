@@ -9,7 +9,7 @@ With this executable spec,
 
 ## Building
 
-Building the pyspec is simply: `python setup.py build`
+To build the pyspec: `python setup.py build`
  (or `pip install .`, but beware that ignored files will still be copied over to a temporary dir, due to pip issue 2195).
 This outputs the build files to the `./build/lib/eth2spec/...` dir, and can't be used for local test running. Instead, use the dev-install as described below. 
 

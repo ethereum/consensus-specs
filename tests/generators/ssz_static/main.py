@@ -1,19 +1,18 @@
 from random import Random
 from typing import Iterable
+from importlib import reload
 from inspect import getmembers, isclass
 
+from gen_base import gen_runner, gen_typing
+
 from eth2spec.debug import random_value, encode
+from eth2spec.config import config_util
 from eth2spec.phase0 import spec
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     serialize,
 )
-from gen_base import gen_runner, gen_typing
-
-
-from importlib import reload
-from eth2spec.config import config_util
 
 
 MAX_BYTES_LENGTH = 100
