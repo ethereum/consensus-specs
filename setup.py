@@ -457,7 +457,7 @@ setup(
         "pycryptodome==3.9.4",
         "py_ecc==2.0.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.10",
+        "remerkleable==0.1.11",
         "ruamel.yaml==0.16.5"
     ]
 )
