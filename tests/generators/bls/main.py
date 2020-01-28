@@ -134,7 +134,7 @@ def case04_fast_aggregate_verify():
 
         # Invalid signature -- extra pubkey
         pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[-1])]
-        pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys]
+        pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         full_name = f'{pubkeys_extra_serial}_{encode_hex(message)}_extra_pubkey'
         yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
             'input': {
