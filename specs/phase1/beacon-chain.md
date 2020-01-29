@@ -35,7 +35,6 @@
     - [`get_previous_slot`](#get_previous_slot)
     - [`pack_compact_validator`](#pack_compact_validator)
     - [`committee_to_compact_committee`](#committee_to_compact_committee)
-    - [`chunks_to_body_root`](#chunks_to_body_root)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_active_shard_count`](#get_active_shard_count)
@@ -97,9 +96,8 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
-| `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
-| `TARGET_SHARD_BLOCK_SIZE` | `3 * 2**16` (= 196,608) | |
+| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
+| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
@@ -297,7 +295,7 @@ class ShardBlockWrapper(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
-    body: ByteList[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
+    body: ByteList[MAX_SHARD_BLOCK_SIZE]
     signature: BLSSignature
 ```
 
@@ -330,7 +328,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
-    shard_data_roots: List[List[Bytes32, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
@@ -394,16 +392,6 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
     ]
     pubkeys = [v.pubkey for v in validators]
     return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
-```
-
-#### `chunks_to_body_root`
-
-```python
-def chunks_to_body_root(chunks: List[Bytes32, MAX_SHARD_BLOCK_CHUNKS]) -> Root:
-    empty_chunk_root = hash_tree_root(ByteList[SHARD_BLOCK_CHUNK_SIZE]())
-    return hash_tree_root(Vector[Bytes32, MAX_SHARD_BLOCK_CHUNKS](
-        chunks + [empty_chunk_root] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
-    ))
 ```
 
 #### `compute_shard_from_committee_index`
@@ -666,20 +654,18 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
                 shard_parent_root=shard_parent_root,
                 parent_hash=get_block_root_at_slot(state, get_previous_slot(state.slot)),
                 slot=offset_slots[i],
-                body_root=chunks_to_body_root(transition.shard_data_roots[i])
+                body_root=transition.shard_data_roots[i]
             ))
             proposers.append(get_shard_proposer_index(state, shard, offset_slots[i]))
             shard_parent_root = hash_tree_root(headers[-1])
 
-    # Verify correct calculation of gas prices and slots and chunk roots
+    # Verify correct calculation of gas prices and slots
     prev_gasprice = state.shard_states[shard].gasprice
     for i in range(len(offset_slots)):
         shard_state = transition.shard_states[i]
         block_length = transition.shard_block_lengths[i]
-        chunks = transition.shard_data_roots[i]
         assert shard_state.gasprice == get_updated_gasprice(prev_gasprice, block_length)
         assert shard_state.slot == offset_slots[i]
-        assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
         prev_gasprice = shard_state.gasprice
 
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
@@ -724,10 +710,7 @@ def process_crosslink_for_shard(state: BeaconState,
 
         # Attestation <-> shard transition consistency
         assert shard_transition_root == hash_tree_root(shard_transition)
-        assert (
-            attestation.data.head_shard_root
-            == chunks_to_body_root(shard_transition.shard_data_roots[-1])
-        )
+        assert attestation.data.head_shard_root == shard_transition.shard_data_roots[-1]
 
         # Apply transition
         apply_shard_transition(state, shard, shard_transition)
@@ -921,4 +904,3 @@ def process_light_client_committee_updates(state: BeaconState) -> None:
         new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
-
