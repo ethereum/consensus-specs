@@ -189,7 +189,7 @@ def is_proposer(state: BeaconState,
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
 
-*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at different a different slot.
+*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at a different slot.
 
 ### Lookahead
 
