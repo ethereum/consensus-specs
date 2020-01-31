@@ -161,7 +161,7 @@ def test_same_data(spec, state):
 
     indexed_att_1 = attester_slashing.attestation_1
     att_2_data = get_attestation_2_data(spec, attester_slashing)
-    if spec.version == 'phase1':
+    if spec.fork == 'phase1':
         indexed_att_1.attestation.data = att_2_data
     else:
         indexed_att_1.data = att_2_data

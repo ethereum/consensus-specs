@@ -50,7 +50,7 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
 
                 state = create_genesis_state(spec=p0, validator_balances=balances,
                                              activation_threshold=activation_threshold)
-                if spec.version == 'phase1':
+                if spec.fork == 'phase1':
                     # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
                     # Decide based on performance/consistency results later.
                     state = phases["phase1"].upgrade_to_phase1(state)

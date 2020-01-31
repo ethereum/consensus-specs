@@ -185,7 +185,7 @@ get_beacon_committee = cache_this(
     _get_beacon_committee)'''
 
 
-def objects_to_spec(spec_object: SpecObject, imports: str, version: str) -> str:
+def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
@@ -208,7 +208,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, version: str) -> str:
     ssz_objects_instantiation_spec = '\n\n'.join(spec_object.ssz_objects.values())
     spec = (
             imports
-            + '\n\n' + f"version = \'{version}\'\n"
+            + '\n\n' + f"fork = \'{fork}\'\n"
             + '\n\n' + new_type_definitions
             + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
             + '\n\n' + constants_spec
@@ -267,7 +267,7 @@ def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str
 def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
-    and returns the newer versions of the objects in dependency order.
+    and returns the newer forks of the objects in dependency order.
     """
     for key, value in new_objects.items():
         old_objects[key] = value
@@ -287,13 +287,13 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     return SpecObject(functions, custom_types, constants, ssz_objects)
 
 
-version_imports = {
+fork_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
 }
 
 
-def build_spec(version: str, source_files: List[str]) -> str:
+def build_spec(fork: str, source_files: List[str]) -> str:
     all_specs = [get_spec(spec) for spec in source_files]
 
     spec_object = all_specs[0]
@@ -302,7 +302,7 @@ def build_spec(version: str, source_files: List[str]) -> str:
 
     dependency_order_ssz_objects(spec_object.ssz_objects, spec_object.custom_types)
 
-    return objects_to_spec(spec_object, version_imports[version], version)
+    return objects_to_spec(spec_object, fork_imports[fork], fork)
 
 
 class PySpecCommand(Command):
@@ -310,14 +310,14 @@ class PySpecCommand(Command):
 
     description = "Convert spec markdown files to a spec python file"
 
-    spec_version: str
+    spec_fork: str
     md_doc_paths: str
     parsed_md_doc_paths: List[str]
     out_dir: str
 
     # The format is (long option, short option, description).
     user_options = [
-        ('spec-version=', None, "Spec version to tag build with. Used to select md-docs defaults."),
+        ('spec-fork=', None, "Spec fork to tag build with. Used to select md-docs defaults."),
         ('md-doc-paths=', None, "List of paths of markdown files to build spec with"),
         ('out-dir=', None, "Output directory to write spec package to")
     ]
@@ -325,7 +325,7 @@ class PySpecCommand(Command):
     def initialize_options(self):
         """Set default values for options."""
         # Each user option must be listed here with their default value.
-        self.spec_version = 'phase0'
+        self.spec_fork = 'phase0'
         self.md_doc_paths = ''
         self.out_dir = 'pyspec_output'
 
@@ -333,14 +333,14 @@ class PySpecCommand(Command):
         """Post-process options."""
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
-                  " build (spec version: %s)" % self.spec_version)
-            if self.spec_version == "phase0":
+                  " build (spec fork: %s)" % self.spec_fork)
+            if self.spec_fork == "phase0":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                 """
-            elif self.spec_version == "phase1":
+            elif self.spec_fork == "phase1":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
@@ -351,7 +351,7 @@ class PySpecCommand(Command):
                     specs/phase1/phase1-fork.md
                 """
             else:
-                raise Exception('no markdown files specified, and spec version "%s" is unknown', self.spec_version)
+                raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
         self.parsed_md_doc_paths = self.md_doc_paths.split()
 
@@ -360,10 +360,10 @@ class PySpecCommand(Command):
                 raise Exception('Pyspec markdown input file "%s" does not exist.' % filename)
 
     def run(self):
-        spec_str = build_spec(self.spec_version, self.parsed_md_doc_paths)
+        spec_str = build_spec(self.spec_fork, self.parsed_md_doc_paths)
         if self.dry_run:
             self.announce('dry run successfully prepared contents for spec.'
-                          f' out dir: "{self.out_dir}", spec version: "{self.spec_version}"')
+                          f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}"')
             self.debug_print(spec_str)
         else:
             dir_util.mkpath(self.out_dir)
@@ -379,17 +379,17 @@ class BuildPyCommand(build_py):
     def initialize_options(self):
         super(BuildPyCommand, self).initialize_options()
 
-    def run_pyspec_cmd(self, spec_version: str, **opts):
+    def run_pyspec_cmd(self, spec_fork: str, **opts):
         cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
-        cmd_obj.spec_version = spec_version
-        cmd_obj.out_dir = os.path.join(self.build_lib, 'eth2spec', spec_version)
+        cmd_obj.spec_fork = spec_fork
+        cmd_obj.out_dir = os.path.join(self.build_lib, 'eth2spec', spec_fork)
         for k, v in opts.items():
             setattr(cmd_obj, k, v)
         self.run_command('pyspec')
 
     def run(self):
-        for spec_version in version_imports:
-            self.run_pyspec_cmd(spec_version=spec_version)
+        for spec_fork in fork_imports:
+            self.run_pyspec_cmd(spec_fork=spec_fork)
 
         super(BuildPyCommand, self).run()
 
@@ -405,19 +405,19 @@ class PyspecDevCommand(Command):
     def finalize_options(self):
         pass
 
-    def run_pyspec_cmd(self, spec_version: str, **opts):
+    def run_pyspec_cmd(self, spec_fork: str, **opts):
         cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
-        cmd_obj.spec_version = spec_version
+        cmd_obj.spec_fork = spec_fork
         eth2spec_dir = convert_path(self.distribution.package_dir['eth2spec'])
-        cmd_obj.out_dir = os.path.join(eth2spec_dir, spec_version)
+        cmd_obj.out_dir = os.path.join(eth2spec_dir, spec_fork)
         for k, v in opts.items():
             setattr(cmd_obj, k, v)
         self.run_command('pyspec')
 
     def run(self):
         print("running build_py command")
-        for spec_version in version_imports:
-            self.run_pyspec_cmd(spec_version=spec_version)
+        for spec_fork in fork_imports:
+            self.run_pyspec_cmd(spec_fork=spec_fork)
 
 commands = {
     'pyspec': PySpecCommand,

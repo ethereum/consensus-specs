@@ -16,7 +16,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
     spec.on_attestation(store, attestation)
 
-    if spec.version == 'phase0':
+    if spec.fork == 'phase0':
         sample_index = indexed_attestation.attesting_indices[0]
     else:
         attesting_indices = [
