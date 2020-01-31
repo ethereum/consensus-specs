@@ -117,7 +117,7 @@ from dataclasses import (
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64, uint8, bit,
-    ByteVector, ByteList, Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    ByteList, Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
@@ -267,7 +267,7 @@ def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str
 def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
-    and returns the newer forks of the objects in dependency order.
+    and returns the newer versions of the objects in dependency order.
     """
     for key, value in new_objects.items():
         old_objects[key] = value

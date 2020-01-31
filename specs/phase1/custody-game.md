@@ -103,7 +103,7 @@ class CustodySlashing(Container):
     whistleblower_index: ValidatorIndex
     shard_transition: ShardTransition
     attestation: Attestation
-    data: ByteList[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
+    data: ByteList[MAX_SHARD_BLOCK_SIZE]
 ```
 
 #### `SignedCustodySlashing`
@@ -366,8 +366,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     shard_transition = custody_slashing.shard_transition
     assert hash_tree_root(shard_transition) == attestation.shard_transition_root
     # Verify that the provided data matches the shard-transition
-    shard_chunk_roots = shard_transition.shard_data_roots[custody_slashing.data_index]
-    assert hash_tree_root(custody_slashing.data) == chunks_to_body_root(shard_chunk_roots)
+    assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
 
     # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
