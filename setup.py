@@ -430,6 +430,7 @@ with open("README.md", "rt", encoding="utf8") as f:
 
 setup(
     name='eth2spec',
+    version='0.0.1',  # initial version, see #1584 and #1596
     description="Eth2 spec, provided as Python package for tooling and testing",
     long_description=readme,
     long_description_content_type="text/markdown",
