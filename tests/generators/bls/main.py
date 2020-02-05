@@ -122,8 +122,8 @@ def case04_fast_aggregate_verify():
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
         # Valid signature
-        full_name = f'{pubkeys_serial}_{encode_hex(message)}_valid'
-        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+        full_name = f'{pubkeys_serial}_{encode_hex(message)}'
+        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}_valid', {
             'input': {
                 'pubkeys': pubkeys_serial,
                 'message': encode_hex(message),
@@ -135,8 +135,8 @@ def case04_fast_aggregate_verify():
         # Invalid signature -- extra pubkey
         pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys]
-        full_name = f'{pubkeys_extra_serial}_{encode_hex(message)}_extra_pubkey'
-        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+        full_name = f'{pubkeys_extra_serial}_{encode_hex(message)}'
+        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}_extra_pubkey', {
             'input': {
                 'pubkeys': pubkeys_extra_serial,
                 'message': encode_hex(message),
@@ -147,8 +147,8 @@ def case04_fast_aggregate_verify():
 
         # Invalid signature -- tampered with signature
         tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
-        full_name = f'{pubkeys_serial}_{encode_hex(message)}_tampered_signature'
-        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
+        full_name = f'{pubkeys_serial}_{encode_hex(message)}'
+        yield f'fast_aggregate_verify_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}_tampered_signature', {
             'input': {
                 'pubkeys': pubkeys_serial,
                 'message': encode_hex(message),
