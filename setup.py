@@ -428,9 +428,20 @@ commands = {
 with open("README.md", "rt", encoding="utf8") as f:
     readme = f.read()
 
+# How to use "VERSION.txt" file:
+# - dev branch contains "X.Y.Z.dev", where "X.Y.Z" is the target version to release dev into.
+#    -> Changed as part of 'master' backport to 'dev'
+# - master branch contains "X.Y.Z", where "X.Y.Z" is the current version.
+#    -> Changed as part of 'dev' release (or other branch) into 'master'
+#    -> In case of a commit on master without git tag, target the next version
+#        with ".postN" (release candidate, numbered) suffixed.
+# See https://www.python.org/dev/peps/pep-0440/#public-version-identifiers
+with open(os.path.join('tests', 'core', 'pyspec', 'eth2spec', 'VERSION.txt')) as f:
+    spec_version = f.read().strip()
+
 setup(
     name='eth2spec',
-    version='0.0.1',  # initial version, see #1584 and #1596
+    version=spec_version,
     description="Eth2 spec, provided as Python package for tooling and testing",
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -438,7 +449,8 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
-                  'specs': ['**/*.md']},
+                  'specs': ['**/*.md'],
+                  'eth2spec': ['VERSION.txt']},
     package_dir={
         "eth2spec": "tests/core/pyspec/eth2spec",
         "configs": "configs",

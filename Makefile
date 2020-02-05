@@ -51,6 +51,17 @@ clean: partial_clean
 	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/venv
 
+# The pyspec is rebuilt to enforce the /specs being part of eth2specs source distribution. It could be forgotten otherwise.
+dist_build: pyspec
+	python3 setup.py sdist bdist_wheel
+
+dist_check:
+	python3 -m twine check dist/*
+
+dist_upload:
+	python3 -m twine upload dist/*
+
+
 # "make generate_tests" to run all generators
 generate_tests: $(GENERATOR_TARGETS)
 
