@@ -149,9 +149,11 @@ The following SecIO parameters MUST be supported by all stacks:
 
 #### Mainnet
 
-[Noise Framework](http://www.noiseprotocol.org/) handshakes will be used for mainnet. libp2p Noise support [is in the process of being standardized](https://github.com/libp2p/specs/issues/195) in the libp2p project.
+The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
+channel handshake with `secp256k1` identities will be used for mainnet.
 
-Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue (Eth2 implementers are welcome to comment and contribute to the discussion).
+As specified in the libp2p specification, clients MUST support the `XX` handshake pattern and
+can optionally implement the `IK` and `XXfallback` patterns for optimistic 0-RTT.
 
 ## Protocol Negotiation
 
