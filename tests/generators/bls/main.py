@@ -171,7 +171,7 @@ def case05_aggregate_verify():
         sigs.append(sig)
 
     aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
-    yield f'fast_aggregate_verify_valid', {
+    yield f'aggregate_verify_valid', {
         'input': {
             'pairs': pairs,
             'signature': encode_hex(aggregate_signature),
@@ -180,7 +180,7 @@ def case05_aggregate_verify():
     }
 
     tampered_signature = aggregate_signature[:4] + b'\xff\xff\xff\xff'
-    yield f'fast_aggregate_verify_tampered_signature', {
+    yield f'aggregate_verify_tampered_signature', {
         'input': {
             'pairs': pairs,
             'signature': encode_hex(tampered_signature),
