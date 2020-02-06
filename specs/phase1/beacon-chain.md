@@ -568,22 +568,22 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
-    
+
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
             fn(state, operation)
-    
+
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-
     # New attestation processing
-    process_attestations(state, body, body.attestations)
-
+    for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
 
     # See custody game spec.
     process_custody_game_operations(state, body)
+
+    process_crosslinks(state, body.shard_transitions, body.attestations)
 
     # TODO process_operations(body.shard_receipt_proofs, process_shard_receipt_proofs)
 ```
@@ -598,6 +598,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.index < get_committee_count_at_slot(state, data.slot)
     assert data.index < get_active_shard_count(state)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
     committee = get_beacon_committee(state, data.slot, data.index)
@@ -740,49 +741,46 @@ def process_crosslink_for_shard(state: BeaconState,
 
 ```python
 def process_crosslinks(state: BeaconState,
-                       block_body: BeaconBlockBody,
-                       attestations: Sequence[Attestation]) -> Set[Tuple[Shard, Root]]:
-    winners: Set[Tuple[Shard, Root]] = set()
+                       shard_transitions: Sequence[ShardTransition],
+                       attestations: Sequence[Attestation]) -> None:
     committee_count = get_committee_count_at_slot(state, state.slot)
     for committee_index in map(CommitteeIndex, range(committee_count)):
         shard = compute_shard_from_committee_index(state, committee_index, state.slot)
-        # All attestations in the block for this shard
+        # All attestations in the block for this committee/shard and current slot
         shard_attestations = [
             attestation for attestation in attestations
-            if get_shard(state, attestation) == shard and attestation.data.slot == state.slot
+            if attestation.data.index == committee_index and attestation.data.slot == state.slot
         ]
-        shard_transition = block_body.shard_transitions[shard]
+        shard_transition = shard_transitions[shard]
         winning_root = process_crosslink_for_shard(state, shard, shard_transition, shard_attestations)
         if winning_root != Root():
-            winners.add((shard, winning_root))
-    return winners
+            # Mark relevant pending attestations as creating a successful crosslink
+            for pending_attestation in state.current_epoch_attestations:
+                if (
+                    pending_attestation.slot == state.slot and pending_attestation
+                    and pending_attestation.data.index == committee_index
+                    and pending_attestation.data.shard_transition_root == winning_root
+                ):
+                    pending_attestation.crosslink_success = True
 ```
 
-###### `process_attestations`
+###### `process_attestation`
 
 ```python
-def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attestations: Sequence[Attestation]) -> None:
-    # Basic validation
-    for attestation in attestations:
-        validate_attestation(state, attestation)
-
-    # Process crosslinks
-    winners = process_crosslinks(state, block_body, attestations)
-
-    # Store pending attestations for epoch processing
-    for attestation in attestations:
-        is_winning_transition = (get_shard(state, attestation), attestation.data.shard_transition_root) in winners
-        pending_attestation = PendingAttestation(
-            aggregation_bits=attestation.aggregation_bits,
-            data=attestation.data,
-            inclusion_delay=state.slot - attestation.data.slot,
-            crosslink_success=is_winning_transition and attestation.data.slot == state.slot,
-            proposer_index=get_beacon_proposer_index(state),
-        )
-        if attestation.data.target.epoch == get_current_epoch(state):
-            state.current_epoch_attestations.append(pending_attestation)
-        else:
-            state.previous_epoch_attestations.append(pending_attestation)
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    validate_attestation(state, attestation)
+    # Store pending attestation for epoch processing
+    pending_attestation = PendingAttestation(
+        aggregation_bits=attestation.aggregation_bits,
+        data=attestation.data,
+        inclusion_delay=state.slot - attestation.data.slot,
+        crosslink_success=False,  # To be filled in during process_crosslinks
+        proposer_index=get_beacon_proposer_index(state),
+    )
+    if attestation.data.target.epoch == get_current_epoch(state):
+        state.current_epoch_attestations.append(pending_attestation)
+    else:
+        state.previous_epoch_attestations.append(pending_attestation)
 ```
 
 ##### New Attester slashing processing
