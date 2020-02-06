@@ -356,7 +356,7 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` hash transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
 
-*Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded fork, and should be made.
+*Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
 #### Attestation data
 
