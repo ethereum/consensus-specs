@@ -480,7 +480,7 @@ The response MUST consist of a single `response_chunk`.
 
 #### BeaconBlocksByRange
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/1/`
 
 Request Content:
 ```
