@@ -61,13 +61,13 @@ commands:
     description: "Restore the venv from cache for the deposit contract tester"
     steps:
       - restore_cached_venv:
-          venv_name: v18-deposit-contract-tester
+          venv_name: v19-deposit-contract-tester
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
   save_deposit_contract_tester_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract tester"
     steps:
       - save_cached_venv:
-          venv_name: v18-deposit-contract-tester
+          venv_name: v19-deposit-contract-tester
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
           venv_path: ./deposit_contract/tester/venv
 jobs:
