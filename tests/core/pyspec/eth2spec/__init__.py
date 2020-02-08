@@ -1,3 +1,4 @@
 # See setup.py about usage of VERSION.txt
-with open('VERSION.txt') as f:
+import os
+with open(os.path.join(os.path.dirname(__file__), 'VERSION.txt')) as f:
     __version__ = f.read().strip()
