@@ -495,13 +495,13 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 ### Proposer slashing
 
-To avoid "proposer slashings", a validator must not sign two conflicting [`BeaconBlock`](./beacon-chain.md#beaconblock) where conflicting is defined as two distinct blocks within the same epoch.
+To avoid "proposer slashings", a validator must not sign two conflicting [`BeaconBlock`](./beacon-chain.md#beaconblock) where conflicting is defined as two distinct blocks within the same slot.
 
-*In Phase 0, as long as the validator does not sign two different beacon blocks for the same epoch, the validator is safe against proposer slashings.*
+*In Phase 0, as long as the validator does not sign two different beacon blocks for the same slot, the validator is safe against proposer slashings.*
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_at_slot(block.slot)`.
+1. Save a record to hard disk that a beacon block has been signed for the `slot=block.slot`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast block and can effectively avoid slashing.
