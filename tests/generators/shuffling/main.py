@@ -1,8 +1,11 @@
-from eth2spec.phase0 import spec as spec
 from eth_utils import to_tuple
-from gen_base import gen_runner, gen_typing
-from preset_loader import loader
 from typing import Iterable
+from importlib import reload
+
+from gen_base import gen_runner, gen_typing
+
+from eth2spec.config import config_util
+from eth2spec.phase0 import spec as spec
 
 
 def shuffling_case_fn(seed, count):
@@ -27,8 +30,8 @@ def shuffling_test_cases():
 def create_provider(config_name: str) -> gen_typing.TestProvider:
 
     def prepare_fn(configs_path: str) -> str:
-        presets = loader.load_presets(configs_path, config_name)
-        spec.apply_constants_preset(presets)
+        config_util.prepare_config(configs_path, config_name)
+        reload(spec)
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:

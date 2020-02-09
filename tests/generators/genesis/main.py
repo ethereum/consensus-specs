@@ -4,15 +4,16 @@ from eth2spec.test.genesis import test_initialization, test_validity
 
 from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
-from preset_loader import loader
 from eth2spec.phase0 import spec as spec
+from importlib import reload
+from eth2spec.config import config_util
 
 
 def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
 
     def prepare_fn(configs_path: str) -> str:
-        presets = loader.load_presets(configs_path, config_name)
-        spec.apply_constants_preset(presets)
+        config_util.prepare_config(configs_path, config_name)
+        reload(spec)
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:

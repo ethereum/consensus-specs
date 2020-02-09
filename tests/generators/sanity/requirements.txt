@@ -1,3 +1,2 @@
 ../../core/gen_helpers
-../../core/config_helpers
-../../core/pyspec
+../../../

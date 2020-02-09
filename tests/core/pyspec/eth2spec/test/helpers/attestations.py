@@ -77,12 +77,12 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
                 privkey
             )
         )
-    # TODO: we should try signing custody bits if spec.version == 'phase1'
+    # TODO: we should try signing custody bits if spec.fork == 'phase1'
     return bls.Aggregate(signatures)
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
-    if spec.version == 'phase0':
+    if spec.fork == 'phase0':
         participants = indexed_attestation.attesting_indices
         data = indexed_attestation.data
         indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)

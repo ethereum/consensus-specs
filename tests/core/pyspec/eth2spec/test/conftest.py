@@ -1,4 +1,4 @@
-from eth2spec.config import apply_config
+from eth2spec.config import config_util
 from eth2spec.test.context import reload_specs
 
 
@@ -34,6 +34,6 @@ def pytest_addoption(parser):
 @fixture(autouse=True)
 def config(request):
     config_name = request.config.getoption("--config")
-    apply_config.load_presets('../../../configs/', config_name)
+    config_util.prepare_config('../../../configs/', config_name)
     # now that the presets are loaded, reload the specs to apply them
     reload_specs()
