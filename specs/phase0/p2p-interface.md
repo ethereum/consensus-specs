@@ -94,6 +94,8 @@ It consists of four main sections:
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
+    - [Why does `BeaconBlocksByRange` let the server choose which chain to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-chain-to-send-blocks-from)
+    - [What's the effect of empty slots on the sync algorithm?](#whats-the-effect-of-empty-slots-on-the-sync-algorithm)
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
     - [What is the difference between an ENR and a multiaddr, and why are we using ENRs?](#what-is-the-difference-between-an-enr-and-a-multiaddr-and-why-are-we-using-enrs)
@@ -485,7 +487,6 @@ The response MUST consist of a single `response_chunk`.
 Request Content:
 ```
 (
-  head_block_root: Bytes32
   start_slot: uint64
   count: uint64
   step: uint64
@@ -499,21 +500,22 @@ Response Content:
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root` (= `hash_tree_root(SignedBeaconBlock.message)`). The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests count beacon blocks from the peer starting from `start_slot`, leading up to the current head block as selected by fork choice. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+
+`BeaconBlocksByRange` is primarily used to sync historical blocks.
 
 The request MUST be encoded as an SSZ-container.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
-
-`BeaconBlocksByRange` is primarily used to sync historical blocks.
-
 Clients MUST support requesting blocks since the start of the weak subjectivity period and up to the given `head_block_root`.
-
-Clients MUST support `head_block_root` values since the latest finalized epoch.
 
 Clients MUST respond with at least one block, if they have it and it exists in the range. Clients MAY limit the number of blocks in the response.
 
+The response MUST contain no more than `count` blocks.
+
 Clients MUST order blocks by increasing slot number.
+
+Clients MUST respond with blocks from their view of the current fork choice. In particular, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
 #### BeaconBlocksByRoot
 
@@ -887,6 +889,18 @@ Under option 0, there is no way for a client to distinguish between a slot witho
 Assuming option 0 with no special `null` encoding, consider a request for slots `2, 3, 4` - if there was no block produced at slot 4, the response would be `2, 3, EOF`. Now consider the same situation, but where only `4` is requested - closing the stream with only `EOF` (without any `response_chunk`) is consistent.
 
 Failing to provide blocks that nodes "should" have is reason to trust a peer less - for example, if a particular peer gossips a block, it should have access to its parent. If a request for the parent fails, it's indicative of poor peer quality since peers should validate blocks before gossiping them.
+
+### Why does `BeaconBlocksByRange` let the server choose which chain to send blocks from?
+
+When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time. By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale, and the responding side might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
+
+To avoid this race condition, we allow the responding side to choose which chain to send to the requesting client. The requesting client then goes on to validate the blocks and incorporate them in their own database - because they follow the same rules, they should at this point arrive at the same chain.
+
+### What's the effect of empty slots on the sync algorithm?
+
+When syncing one can only tell that a slot has been skipped on a particular chain by examining subsequent blocks and analyzing the graph formed by the parent root. Because the server side may choose to omit blocks in the response for any reason, clients must validate the graph and be prepared to fill in gaps.
+
+For example, if a peer responds with blocks [2, 3] when asked for [2, 3, 4], clients may not assume that block 4 doesn't exist - it merely means that the responding peer did not send it (they may not have it yet or may maliciously be trying to hide it) and successive blocks will be needed to determine if there exists a block at slot 4 in this particular chain.
 
 ## Discovery
 
