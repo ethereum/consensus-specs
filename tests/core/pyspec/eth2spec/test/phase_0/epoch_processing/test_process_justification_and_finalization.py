@@ -46,9 +46,10 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
                 else:
                     break
 
-            # remove just one attester to make the marginal support insufficient
+            # remove 1/5th of attesters so that support is insufficient
             if not sufficient_support:
-                aggregation_bits[aggregation_bits.index(1)] = 0
+                for i in range(max(len(committee) // 5, 1)):
+                    aggregation_bits[i] = 0
 
             attestations.append(spec.PendingAttestation(
                 aggregation_bits=aggregation_bits,

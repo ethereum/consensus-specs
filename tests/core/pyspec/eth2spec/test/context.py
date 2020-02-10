@@ -76,7 +76,7 @@ def default_balances(spec):
     Helper method to create a series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.SLOTS_PER_EPOCH * 256
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 

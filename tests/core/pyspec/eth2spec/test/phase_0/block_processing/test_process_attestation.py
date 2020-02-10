@@ -153,9 +153,11 @@ def test_wrong_index_for_committee_signature(spec, state):
 @spec_state_test
 @never_bls
 def test_wrong_index_for_slot(spec, state):
-    committees_per_slot = spec.get_committee_count_at_slot(state, state.slot)
-    assert committees_per_slot < spec.MAX_COMMITTEES_PER_SLOT
-    index = committees_per_slot
+    while spec.get_committee_count_at_slot(state, state.slot) >= spec.MAX_COMMITTEES_PER_SLOT:
+        state.validators = state.validators[:len(state.validators) // 2]
+        state.balances = state.balances[:len(state.balances) // 2]
+
+    index = spec.MAX_COMMITTEES_PER_SLOT - 1
 
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY

@@ -169,15 +169,24 @@ get_base_reward = cache_this(
     lambda state, index: (state.validators.hash_tree_root(), state.slot),
     _get_base_reward)
 
+
 _get_committee_count_at_slot = get_committee_count_at_slot
 get_committee_count_at_slot = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
     _get_committee_count_at_slot)
 
+
 _get_active_validator_indices = get_active_validator_indices
 get_active_validator_indices = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
     _get_active_validator_indices)
+
+
+_get_total_active_balance = get_total_active_balance
+get_total_active_balance = cache_this(
+    lambda state: (state.validators.hash_tree_root(), get_current_epoch(state)),
+    _get_total_active_balance)
+
 
 _get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(

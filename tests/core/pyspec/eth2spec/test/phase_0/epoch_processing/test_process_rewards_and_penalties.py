@@ -18,6 +18,27 @@ def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
 
 
+def prepare_state_with_full_attestations(spec, state):
+    attestations = []
+    for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        # create an attestation for each index in each slot in epoch
+        if slot < spec.SLOTS_PER_EPOCH:
+            for committee_index in range(spec.get_committee_count_at_slot(state, slot)):
+                attestation = get_valid_attestation(spec, state, index=committee_index, signed=True)
+                attestations.append(attestation)
+        # fill each created slot in state after inclusion delay
+        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
+            inclusion_slot = slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
+            include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
+            add_attestations_to_state(spec, state, include_attestations, state.slot)
+        next_slot(spec, state)
+
+    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
+    assert len(state.previous_epoch_attestations) == len(attestations)
+
+    return attestations
+
+
 @with_all_phases
 @spec_state_test
 def test_genesis_epoch_no_attestations_no_penalties(spec, state):
@@ -57,25 +78,6 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-def prepare_state_with_full_attestations(spec, state):
-    attestations = []
-    for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        # create an attestation for each slot in epoch
-        if slot < spec.SLOTS_PER_EPOCH:
-            attestation = get_valid_attestation(spec, state, signed=True)
-            attestations.append(attestation)
-        # fill each created slot in state after inclusion delay
-        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
-            include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
-            add_attestations_to_state(spec, state, [include_att], state.slot)
-        next_slot(spec, state)
-
-    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
-    assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
-
-    return attestations
-
-
 @with_all_phases
 @spec_state_test
 def test_full_attestations(spec, state):
@@ -86,7 +88,7 @@ def test_full_attestations(spec, state):
     yield from run_process_rewards_and_penalties(spec, state)
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) > 0
+    assert len(attesting_indices) == len(pre_state.validators)
     for index in range(len(pre_state.validators)):
         if index in attesting_indices:
             assert state.balances[index] > pre_state.balances[index]
@@ -173,18 +175,7 @@ def test_duplicate_attestation(spec, state):
 @spec_state_test
 # Case when some eligible attestations are slashed. Modifies attesting_balance and consequently rewards/penalties.
 def test_attestations_some_slashed(spec, state):
-    attestations = []
-    for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        # create an attestation for each slot in epoch
-        if slot < spec.SLOTS_PER_EPOCH:
-            attestation = get_valid_attestation(spec, state, signed=True)
-            attestations.append(attestation)
-        # fill each created slot in state after inclusion delay
-        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
-            include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
-            add_attestations_to_state(spec, state, [include_att], state.slot)
-        next_slot(spec, state)
-
+    attestations = prepare_state_with_full_attestations(spec, state)
     attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
 
     # Slash maximum amount of validators allowed per epoch.
@@ -192,7 +183,7 @@ def test_attestations_some_slashed(spec, state):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
     assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
-    assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
+    assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = deepcopy(state)
 
@@ -203,6 +194,8 @@ def test_attestations_some_slashed(spec, state):
     assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
     for index in range(len(pre_state.validators)):
         if index in attesting_indices:
+            # non-slashed attester should gain reward
             assert state.balances[index] > pre_state.balances[index]
         else:
+            # Slashed non-proposer attester should have penalty
             assert state.balances[index] < pre_state.balances[index]
