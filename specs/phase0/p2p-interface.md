@@ -604,6 +604,12 @@ Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that 
 
 #### Mainnet
 
+ENRs MUST carry a generic `eth2` with a 4-byte value of the node's current fork version to ensure connections are made with peers on the intended eth2 network.
+
+| Key          | Value               |
+|:-------------|:--------------------|
+| `eth2`       | SSZ `Bytes4`        |
+
 On mainnet, ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner. The concrete solution is currently undefined. Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
 
 ### Topic advertisement
