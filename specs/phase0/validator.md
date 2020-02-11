@@ -59,6 +59,7 @@
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
       - [`AggregateAndProof`](#aggregateandproof)
+      - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
@@ -465,7 +466,7 @@ If the validator is selected to aggregate (`is_aggregator`), then they broadcast
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
 
-`AggregateAndProof` messages are signed and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
+`AggregateAndProof` messages are signed by the aggregator and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
 
 ##### `AggregateAndProof`
 
