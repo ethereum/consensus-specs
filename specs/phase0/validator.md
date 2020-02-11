@@ -468,12 +468,12 @@ Selection proofs are provided in `AggregateAndProof` to prove to the gossip chan
 
 `AggregateAndProof` messages are signed by the aggregator and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
 
-First, `aggregate_and_proof = get_aggregate_and_proof(state, aggregate_attestation, validator_index, privkey)` is contructed.
+First, `aggregate_and_proof = get_aggregate_and_proof(state, validator_index, aggregate_attestation, privkey)` is constructed.
 
 ```python
 def get_aggregate_and_proof(state: BeaconState,
-                            aggregate: Attestation,
                             aggregator_index: ValidatorIndex,
+                            aggregate: Attestation,
                             privkey: int) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
@@ -502,11 +502,6 @@ class AggregateAndProof(Container):
     aggregate: Attestation
     selection_proof: BLSSignature
 ```
-
-Where
-* `aggregator_index` is the validator's `ValidatorIndex`.
-* `aggregate` is the `aggregate_attestation` constructed in the previous section.
-* `selection_proof` is the signature of the slot (`get_slot_signature()`).
 
 ##### `SignedAggregateAndProof`
 
