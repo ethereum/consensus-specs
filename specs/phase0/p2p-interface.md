@@ -229,15 +229,15 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Topic                                          | Message Type         |
-|------------------------------------------------|----------------------|
-| beacon_block                                   | SignedBeaconBlock    |
-| beacon_aggregate_and_proof                     | AggregateAndProof    |
-| beacon_attestation\*                           | Attestation          |
-| committee_index{subnet_id}\_beacon_attestation | Attestation          |
-| voluntary_exit                                 | SignedVoluntaryExit  |
-| proposer_slashing                              | ProposerSlashing     |
-| attester_slashing                              | AttesterSlashing     |
+| Topic                                          | Message Type            |
+|------------------------------------------------|-------------------------|
+| beacon_block                                   | SignedBeaconBlock       |
+| beacon_aggregate_and_proof                     | SignedAggregateAndProof |
+| beacon_attestation\*                           | Attestation             |
+| committee_index{subnet_id}\_beacon_attestation | Attestation             |
+| voluntary_exit                                 | SignedVoluntaryExit     |
+| proposer_slashing                              | ProposerSlashing        |
+| attester_slashing                              | AttesterSlashing        |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
@@ -250,16 +250,18 @@ When processing incoming gossip, clients MAY descore or disconnect peers who fai
 There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
-    - The proposer signature, `signed_beacon_block.signature` is valid.
+    - The proposer signature, `signed_beacon_block.signature`, is valid.
     - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
-- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
-    - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
-    - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
-    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate_and_proof.aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate_and_proof.aggregate.data.slot`.
-    - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
-    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.slot, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
-    - The signature of `aggregate_and_proof.aggregate` is valid.
+- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
+    - The aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
+    - The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+    - `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`.
+    - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`.
+    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - The `signed_aggregate_and_proof` is the first aggregate received for the aggregator for the slot `aggregate.data.slot`
+    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
+    - The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
+    - The signature of `aggregate` is valid.
 
 Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
 
