@@ -250,6 +250,7 @@ When processing incoming gossip, clients MAY descore or disconnect peers who fai
 There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
+    - The block is the first block received for the proposer for the slot, `signed_beacon_block.message.slot`.
     - The proposer signature, `signed_beacon_block.signature`, is valid.
     - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
@@ -258,7 +259,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`.
     - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`.
     - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - The `signed_aggregate_and_proof` is the first aggregate received for the aggregator for the slot `aggregate.data.slot`
+    - The `signed_aggregate_and_proof` is the first aggregate received for the aggregator for the slot, `aggregate.data.slot`
     - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
     - The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
     - The signature of `aggregate` is valid.
@@ -275,7 +276,7 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
 
 - `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
-    - The attestation is the first attestation received for the participating validator for the slot `attestation.data.slot`
+    - The attestation is the first attestation received for the participating validator for the slot, `attestation.data.slot`
     - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`.
     - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
     - This is the first attestation for the participating validator at this slot.
