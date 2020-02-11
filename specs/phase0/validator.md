@@ -461,9 +461,11 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 #### Broadcast aggregate
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
 
-Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
+Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
+
+`AggregateAndProof` messages are signed and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
 
 ##### `AggregateAndProof`
 
@@ -478,6 +480,14 @@ Where
 * `aggregator_index` is the validator's `ValidatorIndex`.
 * `aggregate` is the `aggregate_attestation` constructed in the previous section.
 * `selection_proof` is the signature of the slot (`get_slot_signature()`).
+
+##### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof
+    signature: BLSSignature
+```
 
 ## Phase 0 attestation subnet stability
 
