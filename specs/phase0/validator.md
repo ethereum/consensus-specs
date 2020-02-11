@@ -424,7 +424,7 @@ A validator is selected to aggregate based upon the return value of `is_aggregat
 
 ```python
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
     return bls.Sign(privkey, signing_root)
 ```
@@ -467,6 +467,32 @@ If the validator is selected to aggregate (`is_aggregator`), then they broadcast
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
 
 `AggregateAndProof` messages are signed by the aggregator and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
+
+First, `aggregate_and_proof = get_aggregate_and_proof(state, aggregate_attestation, validator_index, privkey)` is contructed.
+
+```python
+def get_aggregate_and_proof(state: BeaconState,
+                            aggregate: Attestation,
+                            aggregator_index: ValidatorIndex,
+                            privkey: int) -> AggregateAndProof:
+    return AggregateAndProof(
+        aggregator_index=aggregator_index,
+        aggregate=aggregate,
+        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
+    )
+```
+
+Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+
+```python
+def get_aggregate_and_proof_signature(state: BeaconState,
+                                      aggregate_and_proof: AggregateAndProof,
+                                      privkey: int) -> BLSSignature:
+    aggregate = aggregate_and_proof.aggregate
+    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 ##### `AggregateAndProof`
 
