@@ -253,11 +253,14 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `DomainType('0x00000000')` |
-| `DOMAIN_BEACON_ATTESTER` | `DomainType('0x01000000')` |
-| `DOMAIN_RANDAO` | `DomainType('0x02000000')` |
-| `DOMAIN_DEPOSIT` | `DomainType('0x03000000')` |
-| `DOMAIN_VOLUNTARY_EXIT` | `DomainType('0x04000000')` |
+| `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
+| `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
+| `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
+| `DOMAIN_DEPOSIT`             | `DomainType('0x03000000')` |
+| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
+| `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
+| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
+
 
 ## Containers
 

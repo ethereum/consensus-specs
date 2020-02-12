@@ -59,6 +59,7 @@
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
       - [`AggregateAndProof`](#aggregateandproof)
+      - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
@@ -423,7 +424,7 @@ A validator is selected to aggregate based upon the return value of `is_aggregat
 
 ```python
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
     return bls.Sign(privkey, signing_root)
 ```
@@ -461,9 +462,37 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 #### Broadcast aggregate
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
 
-Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
+Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
+
+`AggregateAndProof` messages are signed by the aggregator and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
+
+First, `aggregate_and_proof = get_aggregate_and_proof(state, validator_index, aggregate_attestation, privkey)` is constructed.
+
+```python
+def get_aggregate_and_proof(state: BeaconState,
+                            aggregator_index: ValidatorIndex,
+                            aggregate: Attestation,
+                            privkey: int) -> AggregateAndProof:
+    return AggregateAndProof(
+        aggregator_index=aggregator_index,
+        aggregate=aggregate,
+        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
+    )
+```
+
+Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+
+```python
+def get_aggregate_and_proof_signature(state: BeaconState,
+                                      aggregate_and_proof: AggregateAndProof,
+                                      privkey: int) -> BLSSignature:
+    aggregate = aggregate_and_proof.aggregate
+    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 ##### `AggregateAndProof`
 
@@ -474,10 +503,13 @@ class AggregateAndProof(Container):
     selection_proof: BLSSignature
 ```
 
-Where
-* `aggregator_index` is the validator's `ValidatorIndex`.
-* `aggregate` is the `aggregate_attestation` constructed in the previous section.
-* `selection_proof` is the signature of the slot (`get_slot_signature()`).
+##### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof
+    signature: BLSSignature
+```
 
 ## Phase 0 attestation subnet stability
 
