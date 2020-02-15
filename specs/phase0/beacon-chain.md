@@ -224,7 +224,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | :-: | :-: |
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
+| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~52,262 years |
 | `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validators |
 
 ### Rewards and penalties
