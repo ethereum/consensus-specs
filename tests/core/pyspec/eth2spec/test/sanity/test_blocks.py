@@ -187,7 +187,7 @@ def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
     pre_state = deepcopy(state)
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = proposer_slashing.proposer_index
+    validator_index = proposer_slashing.signed_header_1.message.proposer_index
 
     assert not state.validators[validator_index].slashed
 

@@ -10,6 +10,7 @@ def get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False):
 
     header_1 = spec.BeaconBlockHeader(
         slot=slot,
+        proposer_index=validator_index,
         parent_root=b'\x33' * 32,
         state_root=b'\x44' * 32,
         body_root=b'\x55' * 32,
@@ -27,7 +28,6 @@ def get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False):
         signed_header_2 = spec.SignedBeaconBlockHeader(message=header_2)
 
     return spec.ProposerSlashing(
-        proposer_index=validator_index,
         signed_header_1=signed_header_1,
         signed_header_2=signed_header_2,
     )

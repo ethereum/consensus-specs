@@ -27,6 +27,7 @@
   - [Block proposal](#block-proposal)
     - [Preparing for a `BeaconBlock`](#preparing-for-a-beaconblock)
       - [Slot](#slot)
+      - [Proposer index](#proposer-index)
       - [Parent root](#parent-root)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
@@ -183,8 +184,7 @@ def get_committee_assignment(state: BeaconState,
 A validator can use the following function to see if they are supposed to propose during a slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
-def is_proposer(state: BeaconState,
-                validator_index: ValidatorIndex) -> bool:
+def is_proposer(state: BeaconState, validator_index: ValidatorIndex) -> bool:
     return get_beacon_proposer_index(state) == validator_index
 ```
 
@@ -224,10 +224,13 @@ Set `block.slot = slot` where `slot` is the current slot at which the validator 
 
 *Note*: There might be "skipped" slots between the `parent` and `block`. These skipped slots are processed in the state transition function without per-block processing.
 
+##### Proposer index
+
+Set `block.proposer_index = validator_index` where `validator_index` is the validator chosen to propose at this slot. The private key mapping to `state.validators[validator_index].pubkey` is used to sign the block.
+
 ##### Parent root
 
 Set `block.parent_root = hash_tree_root(parent)`.
-
 
 #### Constructing the `BeaconBlockBody`
 
