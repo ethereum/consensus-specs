@@ -216,7 +216,17 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 
 ### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkVersion/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+
+- `ForkVersion` - the hex-encoded bytes from `state.fork.current_version` of the head state of the client, as also seen in `Status.head_fork_version`.
+- `Name` - see table below
+- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
+
+The fork version is hex-encoded using the following scheme:
+```python
+  ForkVersion = ''.join('{:02x}'.format(x) for x in state.fork.current_version)
+```
+For example, the fork version `[0, 1, 2, 10]` will be encoded as `0001020a`.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
@@ -229,7 +239,7 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Topic                                          | Message Type            |
+| Name                                           | Message Type            |
 |------------------------------------------------|-------------------------|
 | beacon_block                                   | SignedBeaconBlock       |
 | beacon_aggregate_and_proof                     | SignedAggregateAndProof |
