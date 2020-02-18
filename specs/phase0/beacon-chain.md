@@ -1402,8 +1402,11 @@ def process_final_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
-        if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
+        QUARTER_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 4
+        if (
+            balance + QUARTER_INCREMENT < validator.effective_balance
+            or validator.effective_balance + 7 * QUARTER_INCREMENT < balance
+        ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)

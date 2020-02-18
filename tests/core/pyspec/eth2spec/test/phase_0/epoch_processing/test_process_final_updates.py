@@ -51,19 +51,22 @@ def test_effective_balance_hysteresis(spec, state):
     max = spec.MAX_EFFECTIVE_BALANCE
     min = spec.EJECTION_BALANCE
     inc = spec.EFFECTIVE_BALANCE_INCREMENT
-    half_inc = inc // 2
+    quar_inc = inc // 4
     cases = [
         (max, max, max, "as-is"),
-        (max, max - 1, max - inc, "round down, step lower"),
+        (max, max - 1, max, "round up"),
         (max, max + 1, max, "round down"),
+        (max, max - quar_inc, max, "lower balance, but not low enough"),
+        (max, max - quar_inc, max, "lower balance, step down"),
+        (max, max + (3 * quar_inc) + 1, max, "already at max, as is"),
         (max, max - inc, max - inc, "exactly 1 step lower"),
-        (max, max - inc - 1, max - (2 * inc), "just 1 over 1 step lower"),
+        (max, max - inc - 1, max - (2 * inc), "past 1 step lower, double step"),
         (max, max - inc + 1, max - inc, "close to 1 step lower"),
-        (min, min + (half_inc * 3), min, "bigger balance, but not high enough"),
-        (min, min + (half_inc * 3) + 1, min + inc, "bigger balance, high enough, but small step"),
-        (min, min + (half_inc * 4) - 1, min + inc, "bigger balance, high enough, close to double step"),
-        (min, min + (half_inc * 4), min + (2 * inc), "exact two step balance increment"),
-        (min, min + (half_inc * 4) + 1, min + (2 * inc), "over two steps, round down"),
+        (min, min + (quar_inc * 7), min, "bigger balance, but not high enough"),
+        (min, min + (quar_inc * 7) + 1, min + inc, "bigger balance, high enough, but small step"),
+        (min, min + (quar_inc * 8) - 1, min + inc, "bigger balance, high enough, close to double step"),
+        (min, min + (quar_inc * 8), min + (2 * inc), "exact two step balance increment"),
+        (min, min + (quar_inc * 8) + 1, min + (2 * inc), "over two steps, round down"),
     ]
     current_epoch = spec.get_current_epoch(state)
     for i, (pre_eff, bal, _, _) in enumerate(cases):
