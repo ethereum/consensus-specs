@@ -8,6 +8,22 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+- [New containers](#new-containers)
+  - [`ExecutionEnvironmentData`](#executionenvironmentdata)
+  - [New `EETransaction`](#new-eetransaction)
+  - [New `EECall`](#new-eecall)
+  - [New `ShardStateContents`](#new-shardstatecontents)
+  - [New `ShardBlockContents`](#new-shardblockcontents)
+- [Updated containers](#updated-containers)
+  - [Extended `ShardState`](#extended-shardstate)
+  - [Extended `BeaconState`](#extended-beaconstate)
+  - [Extended `BeaconBlockBody`](#extended-beaconblockbody)
+  - [Extended `BeaconBlock`](#extended-beaconblock)
+    - [Extended `SignedBeaconBlock`](#extended-signedbeaconblock)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

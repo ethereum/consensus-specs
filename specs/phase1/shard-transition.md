@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Fraud proofs](#fraud-proofs)
+- [Proposals](#proposals)
 - [Shard state transition function](#shard-state-transition-function)
 - [Honest committee member behavior](#honest-committee-member-behavior)
 
