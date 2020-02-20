@@ -98,7 +98,7 @@ def make_shard_data_proposal(shard: Shard,
                              previous_beacon_root: Root,
                              proposer_pubkey: BLSPubkey) -> ByteList[MAX_SHARD_BLOCK_SIZE]:
     block_contents = ShardBlockContents()
-    for tx in reversed(get_shard_transactions(shard, slot, shard_state, previous_beacon_root, proposer_pubkey)):
+    for tx in get_shard_transactions(shard, slot, shard_state, previous_beacon_root, proposer_pubkey):
         assert tx.shard == shard
 
         # Init a witness for the EE if it does not exist yet.
