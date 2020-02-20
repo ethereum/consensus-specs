@@ -226,7 +226,7 @@ The fork version is hex-encoded using the following scheme:
 ```python
   ForkVersion = ''.join('{:02x}'.format(x) for x in state.fork.current_version)
 ```
-For example, the fork version `[0, 1, 2, 10]` will be encoded as `0001020a`.
+For example, the fork version `Version('0x0001020a')` will be encoded as `0001020a`.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
