@@ -30,7 +30,7 @@ PY_SPEC_ALL_DEPS = $(PY_SPEC_PHASE_0_DEPS) $(PY_SPEC_PHASE_1_DEPS)
 
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
-MARKDOWN_FILES = $(PY_SPEC_ALL_DEPS) $(wildcard $(SPEC_DIR)/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
+MARKDOWN_FILES = $(PY_SPEC_ALL_DEPS) $(wildcard $(SPEC_DIR)/phase2/*.md) $(wildcard $(SPEC_DIR)/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html

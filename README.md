@@ -22,12 +22,15 @@ Core specifications for Eth2 clients be found in [specs/](specs/). These are div
 * [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)
 * [The Beacon Chain for Shards](specs/phase1/beacon-chain.md)
 * [Custody Game](specs/phase1/custody-game.md)
-* [Shard Transition and Fraud Proofs](specs/phase1/fraud-proofs.md)
+* [Shard Transition and Fraud Proofs](specs/phase1/shard-transition.md)
 * [Light client syncing protocol](specs/phase1/light-client-sync.md)
 
 ### Phase 2
 
-Phase 2 is still actively in R&D and does not yet have any formal specifications.
+Phase 2 is still actively in R&D and has experimental specifications.
+
+* [The Beacon Chain for Sharded Execution Environments](specs/phase2/beacon-chain.md)
+* [Execution in Shard Transitions](specs/phase2/shard-transition.md)
 
 See the [Eth2 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
 
