@@ -14,6 +14,13 @@ def next_slot(spec, state):
     spec.process_slots(state, state.slot + 1)
 
 
+def next_slots(spec, state, slots):
+    """
+    Transition given slots forward.
+    """
+    spec.process_slots(state, state.slot + slots)
+
+
 def transition_to(spec, state, slot):
     """
     Transition to ``slot``.

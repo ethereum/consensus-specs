@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch, next_slots
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
@@ -101,7 +101,7 @@ def test_activation_queue_sorting(spec, state):
     state.validators[mock_activations - 1].activation_eligibility_epoch = epoch
 
     # move state forward and finalize to allow for activations
-    state.slot += spec.SLOTS_PER_EPOCH * 3
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
     state.finalized_checkpoint.epoch = epoch + 1
 
     yield from run_process_registry_updates(spec, state)
@@ -113,10 +113,10 @@ def test_activation_queue_sorting(spec, state):
     # the second last is at the end of the queue, and did not make the churn,
     #  hence is not assigned an activation_epoch yet.
     assert state.validators[mock_activations - 2].activation_epoch == spec.FAR_FUTURE_EPOCH
-    # the one at churn_limit - 1 did not make it, it was out-prioritized
-    assert state.validators[churn_limit - 1].activation_epoch == spec.FAR_FUTURE_EPOCH
+    # the one at churn_limit did not make it, it was out-prioritized
+    assert state.validators[churn_limit].activation_epoch == spec.FAR_FUTURE_EPOCH
     # but the the one in front of the above did
-    assert state.validators[churn_limit - 2].activation_epoch != spec.FAR_FUTURE_EPOCH
+    assert state.validators[churn_limit - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases
@@ -131,7 +131,8 @@ def test_activation_queue_efficiency(spec, state):
         state.validators[i].activation_eligibility_epoch = epoch + 1
 
     # move state forward and finalize to allow for activations
-    state.slot += spec.SLOTS_PER_EPOCH * 3
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
+
     state.finalized_checkpoint.epoch = epoch + 1
 
     # Run first registry update. Do not yield test vectors

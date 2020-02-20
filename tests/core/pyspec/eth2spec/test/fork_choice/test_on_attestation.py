@@ -1,7 +1,7 @@
 from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
-from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block
+from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch
 
 
 def run_on_attestation(spec, state, store, attestation, valid=True):
@@ -179,7 +179,7 @@ def test_on_attestation_future_epoch(spec, state):
     spec.on_block(store, signed_block)
 
     # move state forward but not store
-    state.slot = block.slot + spec.SLOTS_PER_EPOCH
+    next_epoch(spec, state)
 
     attestation = get_valid_attestation(spec, state, slot=state.slot, signed=True)
     run_on_attestation(spec, state, store, attestation, False)
