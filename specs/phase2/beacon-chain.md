@@ -78,7 +78,15 @@ class EETransaction(Container):
     # Passed as CALL input to the EE (contains account-abstracted signature and fee payment)
     call_data: ByteList[MAX_TRANSACTION_CALL_SIZE]
     # Passed as WITNESS input to the EE, aggregated with other transactions before execution
-    witness: ByteList[MAX_TRANSACTION_WITNESS_SIZE]
+    witnesses: List[EEWitness, MAX_EXECUTION_ENVIRONMENTS]
+```
+
+### New `EEWitness`
+
+```python
+class EEWitness(Container):
+    ee_index: EEIndex
+    witness: ByteList[MAX_EE_WITNESS_SIZE]
 ```
 
 ### New `EECall`

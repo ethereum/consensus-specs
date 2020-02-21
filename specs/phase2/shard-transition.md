@@ -70,8 +70,6 @@ class ExecutionEnvironment(Protocol):
 class EnvironmentHost(Protocol):
     def cross_ee_call(self, EECall) -> bool:
         ...
-    def cross_shard_ee_call(self, shard: Shard, EECall) -> bool:
-        ...
     def slot(self) -> Slot:
         ...
     # TODO: other EE host functions
@@ -104,15 +102,16 @@ def make_shard_data_proposal(shard: Shard,
     block_contents = ShardBlockContents()
     for tx in get_shard_transactions(shard, slot, shard_state, previous_beacon_root, proposer_pubkey):
         assert tx.shard == shard
+    
+        for ee_witness in tx.witnesses:
+            # Init a witness for the EE if it does not exist yet.
+            ee = EXECUTION_ENVIRONMENTS[ee_witness.ee_index]
+            if ee_index not in block_contents.ee_witnesses:
+                block_contents.ee_witnesses[ee_witness.ee_index] = ee.init_witness(shard, slot, shard_state, previous_beacon_root, proposer_pubkey)
 
-        # Init a witness for the EE if it does not exist yet.
-        ee = EXECUTION_ENVIRONMENTS[tx.ee_index]
-        if tx.ee_index not in block_contents.ee_witnesses:
-            block_contents.ee_witnesses[tx.ee_index] = ee.init_witness(shard, slot, shard_state, previous_beacon_root, proposer_pubkey)
-        
-        # Merge the witness (EEs can choose to anything between pure aggregation and simple enumeration)        
-        block_contents.ee_witnesses[tx.ee_index] = ee.merge_witness(block_contents.ee_witnesses[tx.ee_index], tx.witness)
-        
+            # Merge the witness (EEs can choose to anything between pure aggregation and simple enumeration)        
+            block_contents.ee_witnesses[ee_witness.ee_index] = ee.merge_witness(block_contents.ee_witnesses[ee_witness.ee_index], ee_witness.witness)
+
         # Add Call
         block_contents.ee_calls.append(EECall(ee_index=tx.ee_index, call_data=tx.call_data))
 
@@ -153,9 +152,6 @@ def shard_state_transition(shard: Shard,
     class TransitionHost(EnvironmentHost):
         def cross_ee_call(self, ee_call: EECall) -> bool:
                 return environment_runners[ee_call.ee_index].make_call(ee_call.call_data, self)
-
-        def cross_shard_ee_call(self, shard: Shard, EECall) -> bool:
-            ...  # FIXME
 
         def slot(self) -> Slot:
             return shard_state.slot
