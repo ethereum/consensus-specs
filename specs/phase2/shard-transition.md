@@ -150,8 +150,8 @@ def shard_state_transition(shard: Shard,
     
     # Create and initialize a host for the execution.
     class TransitionHost(EnvironmentHost):
-        def cross_ee_call(self, ee_call: EECall) -> bool:
-                return environment_runners[ee_call.ee_index].make_call(ee_call.call_data, self)
+        def ee_call(self, ee_call: EECall) -> bool:
+            return environment_runners[ee_call.ee_index].make_call(ee_call.call_data, self)
 
         def slot(self) -> Slot:
             return shard_state.slot
@@ -160,7 +160,7 @@ def shard_state_transition(shard: Shard,
 
     # Run all EE calls, using the host
     for ee_call in block_contents.ee_calls:
-        host.run_ee_call(ee_call)
+        host.ee_call(ee_call)
 
     # Update EE roots
     for ee_index in block_contents.ee_witnesses.keys():
