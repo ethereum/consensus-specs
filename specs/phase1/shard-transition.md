@@ -22,6 +22,8 @@ This document describes the shard transition function and fraud proofs as part o
 
 ## Fraud proofs
 
+**TODO: pre-phase-2 SSA pivot; remaining fraud-proofs ideas, to be revisited.**
+
 TODO. The intent is to have a single universal fraud proof type, which contains the following parts:
 
 1. An on-time attestation on some `shard` signing a `ShardTransition`
@@ -41,25 +43,26 @@ The proof verifies that one of the two conditions is false:
 
 ## Proposals
 
-```python
-def make_empty_proposal(shard: Shard,
-                        slot: Slot,
-                        shard_state: ShardState,
-                        previous_beacon_root: Root,
-                        proposer_pubkey: BLSPubkey):
-    # We will add something more substantive in phase 2
-    return ByteList[MAX_SHARD_BLOCK_SIZE]()  # empty byte list
-```
+A proposer builds a data blob by following the proposer protocol:
 
 ```python
-def make_shard_data_proposal(shard: Shard,
-                             slot: Slot,
-                             shard_state: ShardState,
-                             previous_beacon_root: Root,
-                             proposer_pubkey: BLSPubkey) -> ByteList[MAX_SHARD_BLOCK_SIZE]:
-    # We will add something more substantive in phase 2
-    # insert your shard block data, Phase 1 has no formatting constraints.
-    return ByteList[MAX_SHARD_BLOCK_SIZE](bytes.fromhex('65746832206973206d6f6e6579'))
+# We will add something more substantive in phase 2
+class Proposer(Protocol):
+    def make_empty_proposal(self, 
+                            shard: Shard,
+                            slot: Slot,
+                            shard_state: ShardState,
+                            previous_beacon_root: Root,
+                            proposer_pubkey: BLSPubkey):
+        return ByteList[MAX_SHARD_BLOCK_SIZE]()  # empty byte list
+
+    def make_shard_data_proposal(self,
+                                 shard: Shard,
+                                 slot: Slot,
+                                 shard_state: ShardState,
+                                 previous_beacon_root: Root,
+                                 proposer_pubkey: BLSPubkey) -> ByteList[MAX_SHARD_BLOCK_SIZE]:
+        ...  # Proposer can choose the include any bytes data.
 ```
 
 ## Shard state transition function
@@ -79,24 +82,24 @@ def shard_state_transition(shard: Shard,
 
 ## Honest committee member behavior
 
-Suppose you are a committee member on shard `shard` at slot `current_slot`. Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `slot`, run the following procedure:
+Suppose you are a committee member on shard `shard` at slot `current_slot`.
+Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `slot`, run the following procedure:
 
 * Initialize `data_proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
 * `offset_slots = get_offset_slots(state, start_slot)`
+* `proposer` is the `Proposer` agent.
 * For `slot in offset_slots`, do the following:
     * Get previous block root of the beacon chain. Let `prev_beacon_root = get_beacon_block_root(state, state.slot - 1)`
     * Get shard proposer. Let `shard_proposer_index = get_shard_proposer_index(state, shard, slot)`
-    * Build data-proposals candidates (shard block data): `make_shard_data_proposal(shard, slot, shard_state, prev_beacon_root, shard_proposer_index)`
-    * Look for all valid data-proposals for `slot`; that is, `shard_state_transition(shard, slot, shard_state, prev_beacon_root, shard_proposer_index, proposal)` raises no exception.
-      Let `choices` be the set of non-empty valid proposal candidates you discover.
-    * If `len(choices) == 0`, do `data_proposals.append(make_empty_proposal(shard_state, slot))`
-    * If `len(choices) == 1`, do `data_proposals.append(choices[0])`
-    * If `len(choices) > 1`, let `winning_proposal` be the proposal with the largest number of total attestations from 
-      slots in `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants,
-      breaking ties by choosing the first proposal locally seen. Do `data_proposals.append(winning_proposal)`.
-    * If `data_proposals[-1]` is NOT an empty proposal, then transition the shard state forward: 
-     `shard_state_transition(shard, slot, shard_state, prev_block_root, shard_proposer_index)` and do `shard_states.append(shard_state.copy())`.
+    * Build data-proposal (shard block data): `data_proposal = proposer.make_shard_data_proposal(shard, slot, shard_state, prev_beacon_root, shard_proposer_index)`
+    * Verify that `shard_state_transition(shard, slot, shard_state, prev_beacon_root, shard_proposer_index, proposal)` raises no exception.
+    * If failing to build any proposal (no transactions), make an empty proposal: `proposer.make_empty_proposal(shard_state, slot)`
+    * If `data_proposal` is NOT an empty proposal, then transition the shard state forward: 
+     `shard_state_transition(shard, slot, shard_state, prev_block_root, shard_proposer_index)`
       If it is an empty proposal, leave `shard_state` unchanged.
+    * Append a the proposal and resulting shard state:
+        * A copy of the shard-state: `shard_states.append(shard_state.copy())`.
+        * The proposal: `data_proposals.append(data_proposal)`
 
 To make a `ShardBlock` for `offset_slots[i]`:
  * `shard_parent_root = hash_tree_root(parent_shard_block)`
