@@ -27,7 +27,7 @@ def make_empty_proposal(shard: Shard,
                         slot: Slot,
                         shard_state: ShardState,
                         previous_beacon_root: Root,
-                        proposer_pubkey: BLSPubkey):
+                        proposer_pubkey: BLSPubkey) -> ByteList[MAX_SHARD_BLOCK_SIZE]:
     # We will add something more substantive in phase 2
     return ByteList[MAX_SHARD_BLOCK_SIZE]()  # empty byte list
 ```
@@ -51,9 +51,12 @@ class ExecutionEnvironment(Protocol):
                      previous_beacon_root: Root,
                      proposer_pubkey: BLSPubkey) -> ByteList[MAX_EE_WITNESS_SIZE]:
         ...
+    
+    def verify_access_list(self, access_list) -> bool:
+        ...
 
     # Add witness data to the state. Do not overwrite any branches, items, etc. in the witness if the first EE call has priority.
-    def merge_witness(self, prev:  ByteList[MAX_EE_WITNESS_SIZE], addition: ByteList[MAX_TRANSACTION_WITNESS_SIZE]):
+    def merge_witness(self, prev:  ByteList[MAX_EE_WITNESS_SIZE], addition: ByteList[MAX_TRANSACTION_WITNESS_SIZE]) -> ByteList[MAX_EE_WITNESS_SIZE]:
         ...
 
     # False if witness_data is invalid for given ee_state_root.
@@ -63,6 +66,10 @@ class ExecutionEnvironment(Protocol):
 
     # Prepare an EE runner that is loaded with the given EE state witness. 
     def prepare_runner(self, witness_data: ByteList[MAX_TRANSACTION_WITNESS_SIZE]) -> EnvironmentRunner:
+        ...
+
+    # Prepare an EE runner that can  
+    def sourced_runner(self, ) -> EnvironmentRunner:
         ...
 ```
 
@@ -77,8 +84,10 @@ class EnvironmentHost(Protocol):
 
 ```python
 class EnvironmentRunner(Protocol):
+    TODO: def check_transaction(self, tx: EETransaction) -> Wei:
+        
     # Make a call. If failing, return false and rollback state to its contents from before this call. 
-    def make_call(self, call_data: ByteList[MAX_TRANSACTION_CALL_SIZE], host: EnvironmentHost) -> bool:
+    def make_call(self, call_data: ByteList[MAX_TRANSACTION_CALL_SIZE], host: EnvironmentHost) -> (bytes, bool, bool):  # out: call output, call pass/fail, access ok
         ...
     # Return the latest state root
     def ee_state_root(self) -> Root:
@@ -150,7 +159,7 @@ def shard_state_transition(shard: Shard,
     
     # Create and initialize a host for the execution.
     class TransitionHost(EnvironmentHost):
-        def ee_call(self, ee_call: EECall) -> bool:
+        def ee_call(self, ee_call: EECall) -> (bytes, bool, bool):  # out: call output, call pass/fail, access ok
             return environment_runners[ee_call.ee_index].make_call(ee_call.call_data, self)
 
         def slot(self) -> Slot:
@@ -160,7 +169,10 @@ def shard_state_transition(shard: Shard,
 
     # Run all EE calls, using the host
     for ee_call in block_contents.ee_calls:
-        host.ee_call(ee_call)
+        # ignore call output. Check fail/pass
+        _, tx_ok, witness_ok = host.ee_call(ee_call)
+        assert witness_ok
+        # TODO: tx_ok -> mark the TX as passed/failed in the block.
 
     # Update EE roots
     for ee_index in block_contents.ee_witnesses.keys():
