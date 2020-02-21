@@ -56,9 +56,13 @@ class ExecutionEnvironment(Protocol):
     def merge_witness(self, prev:  ByteList[MAX_EE_WITNESS_SIZE], addition: ByteList[MAX_TRANSACTION_WITNESS_SIZE]):
         ...
 
-    # Prepare an EE runner that is loaded with the given EE state witness. Aborts if witness_data is invalid for given ee_state_root.
+    # False if witness_data is invalid for given ee_state_root.
     # (i.e. witness verification bubbles up an exception / error return)
-    def prepare_runner(self, ee_state_root: Root, witness_data: ByteList[MAX_TRANSACTION_WITNESS_SIZE]) -> EnvironmentRunner:
+    def verify_witness(self, ee_state_root: Root, witness_data: ByteList[MAX_TRANSACTION_WITNESS_SIZE]) -> bool:
+        ...
+
+    # Prepare an EE runner that is loaded with the given EE state witness. 
+    def prepare_runner(self, witness_data: ByteList[MAX_TRANSACTION_WITNESS_SIZE]) -> EnvironmentRunner:
         ...
 ```
 
@@ -130,13 +134,20 @@ def shard_state_transition(shard: Shard,
     shard_state.shard_parent_root = hash_tree_root(shard_state)
 
     block_contents = ShardBlockContents.deserialize(bytes(block_data))
-    environment_runners = {}
+    
+    # Verify witnesses against EE state roots
     for ee_index, ee_witness in block_contents.ee_witnesses.items():
         # Witnesses must be aggregated, do not run a call on an EE with multiple different witnesses
         assert ee_index not in environment_runners
+
         ee_root = shard_state.shard_state_contents.ee_roots[ee_index]
+        assert EXECUTION_ENVIRONMENTS[ee_index].verify_witness(ee_root, ee_witness)
+
+    # Collect EE runners: prepared witness state to run EE with
+    environment_runners = {}
+    for ee_index, ee_witness in block_contents.ee_witnesses.items():
         # Runner preparation aborts the state-transition if the witness data is invalid for the given state root.
-        environment_runners[ee_index] = EXECUTION_ENVIRONMENTS[ee_index].prepare_runner(ee_root, ee_witness)
+        environment_runners[ee_index] = EXECUTION_ENVIRONMENTS[ee_index].prepare_runner(ee_witness)
     
     # Create and initialize a host for the execution.
     class TransitionHost(EnvironmentHost):
@@ -151,6 +162,7 @@ def shard_state_transition(shard: Shard,
     
     host = TransitionHost()
 
+    # Run all EE calls, using the host
     for ee_call in block_contents.ee_calls:
         host.run_ee_call(ee_call)
 
