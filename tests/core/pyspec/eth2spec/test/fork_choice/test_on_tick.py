@@ -27,14 +27,16 @@ def test_basic(spec, state):
 @spec_state_test
 def test_update_justified_single(spec, state):
     store = spec.get_forkchoice_store(state)
-    seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    next_epoch = spec.get_current_epoch(state) + 1
+    next_epoch_start_slot = spec.compute_start_slot_at_epoch(next_epoch)
+    seconds_until_next_epoch = next_epoch_start_slot * spec.SECONDS_PER_SLOT - store.time
 
     store.best_justified_checkpoint = spec.Checkpoint(
         epoch=store.justified_checkpoint.epoch + 1,
         root=b'\x55' * 32,
     )
 
-    run_on_tick(spec, store, store.time + seconds_per_epoch, True)
+    run_on_tick(spec, store, store.time + seconds_until_next_epoch, True)
 
 
 @with_all_phases

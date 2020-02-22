@@ -1,7 +1,10 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, with_all_phases, spec_test, \
+from eth2spec.test.context import (
+    spec_state_test, spec_test,
+    with_all_phases, with_phases,
     misc_balances, with_custom_state, default_activation_threshold, single_phase
+)
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -19,27 +22,30 @@ def run_process_rewards_and_penalties(spec, state):
 
 
 def prepare_state_with_full_attestations(spec, state):
+    start_slot = state.slot
+    start_epoch = spec.get_current_epoch(state)
+    next_start_epoch = spec.compute_start_slot_at_epoch(start_epoch + 1)
     attestations = []
     for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
         # create an attestation for each index in each slot in epoch
-        if slot < spec.SLOTS_PER_EPOCH:
-            for committee_index in range(spec.get_committee_count_at_slot(state, slot)):
+        if state.slot < next_start_epoch:
+            for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
                 attestation = get_valid_attestation(spec, state, index=committee_index, signed=True)
                 attestations.append(attestation)
         # fill each created slot in state after inclusion delay
-        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
-            inclusion_slot = slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
+        if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
+            inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
             include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
             add_attestations_to_state(spec, state, include_attestations, state.slot)
         next_slot(spec, state)
 
-    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
+    assert spec.compute_epoch_at_slot(state.slot) == start_epoch + 1
     assert len(state.previous_epoch_attestations) == len(attestations)
 
     return attestations
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 def test_genesis_epoch_no_attestations_no_penalties(spec, state):
     pre_state = deepcopy(state)
@@ -52,7 +58,7 @@ def test_genesis_epoch_no_attestations_no_penalties(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @spec_state_test
 def test_genesis_epoch_full_attestations_no_rewards(spec, state):
     attestations = []
@@ -81,6 +87,8 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_attestations(spec, state):
+    # Go to start of next epoch to ensure can have full participation
+    next_epoch(spec, state)
     attestations = prepare_state_with_full_attestations(spec, state)
 
     pre_state = deepcopy(state)
@@ -101,6 +109,8 @@ def test_full_attestations(spec, state):
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 @single_phase
 def test_full_attestations_misc_balances(spec, state):
+    # Go to start of next epoch to ensure can have full participation
+    next_epoch(spec, state)
     attestations = prepare_state_with_full_attestations(spec, state)
 
     pre_state = deepcopy(state)

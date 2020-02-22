@@ -160,6 +160,7 @@ def test_on_block_finalized_skip_slots(spec, state):
 @spec_state_test
 def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     # Initialization
+    next_epoch(spec, state)
     store = spec.get_forkchoice_store(state)
 
     store.finalized_checkpoint = spec.Checkpoint(

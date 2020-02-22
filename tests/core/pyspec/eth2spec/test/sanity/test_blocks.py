@@ -381,7 +381,7 @@ def test_attestation(spec, state):
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
-    attestation_block = build_empty_block(spec, state, state.slot + 1 + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
     attestation_block.body.attestations.append(attestation)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 

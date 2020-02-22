@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls,
 )
-from eth2spec.test.helpers.state import next_slot, transition_to
+from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
     get_valid_late_attestation,
@@ -15,7 +15,6 @@ from eth2spec.test.helpers.attestations import (
 @spec_state_test
 @always_bls
 def test_on_time_success(spec, state):
-    next_slot(spec, state)
     attestation = get_valid_on_time_attestation(spec, state, signed=True)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
@@ -27,7 +26,6 @@ def test_on_time_success(spec, state):
 @spec_state_test
 @always_bls
 def test_on_time_empty_custody_bits_blocks(spec, state):
-    next_slot(spec, state)
     attestation = get_valid_late_attestation(spec, state, signed=True)
 
     assert not any(attestation.custody_bits_blocks)
@@ -41,7 +39,6 @@ def test_on_time_empty_custody_bits_blocks(spec, state):
 @spec_state_test
 @always_bls
 def test_late_with_custody_bits_blocks(spec, state):
-    next_slot(spec, state)
     attestation = get_valid_on_time_attestation(spec, state, signed=True)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY + 1)

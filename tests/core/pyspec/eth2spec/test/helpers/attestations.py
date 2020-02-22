@@ -2,7 +2,7 @@ from typing import List
 
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.state import next_slot, state_transition_and_sign_block
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -213,7 +213,7 @@ def get_attestation_custody_signature(spec, state, attestation_data, block_index
 
 def sign_attestation(spec, state, attestation):
     if spec.fork == 'phase1' and any(attestation.custody_bits_blocks):
-        sign_on_time_attestation(spec, state,attestation)
+        sign_on_time_attestation(spec, state, attestation)
         return
 
     participants = spec.get_attesting_indices(

@@ -1,5 +1,5 @@
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.block import sign_block, build_empty_block_for_next_slot, transition_unsigned_block
+from eth2spec.test.helpers.block import sign_block, transition_unsigned_block
 
 
 def get_balance(state, index):

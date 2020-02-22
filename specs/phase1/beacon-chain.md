@@ -544,6 +544,9 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
                         AttestationCustodyBitWrapper(hash_tree_root(attestation.data), i, cbit), domain))
                 else:
                     assert not cbit
+        print(all_pubkeys)
+        print(all_signing_roots)
+        print(attestation.signature)
         return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
 ```
 

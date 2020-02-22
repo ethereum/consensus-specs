@@ -13,10 +13,10 @@ from eth2spec.test.helpers.attestations import (
     sign_attestation,
 )
 from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_slots,
     next_slot,
+    next_slots,
     next_epoch,
+    transition_to,
 )
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -46,8 +46,8 @@ def test_success_multi_proposer_index_iterations(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_previous_epoch(spec, state):
-    attestation = get_valid_attestation(spec, state, signed=True)
-    state.slot = spec.SLOTS_PER_EPOCH - 1
+    attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH - 1)
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
@@ -76,10 +76,10 @@ def test_before_inclusion_delay(spec, state):
 @with_all_phases
 @spec_state_test
 def test_after_epoch_slots(spec, state):
-    attestation = get_valid_attestation(spec, state, signed=True)
-    state.slot = spec.SLOTS_PER_EPOCH - 1
+    attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
+
     # increment past latest inclusion slot
-    spec.process_slots(state, state.slot + 2)
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH + 1)
     apply_empty_block(spec, state)
 
     yield from run_attestation_processing(spec, state, attestation, False)
@@ -154,7 +154,7 @@ def test_mismatched_target_and_slot(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
 
-    attestation = get_valid_attestation(spec, state)
+    attestation = get_valid_attestation(spec, state, on_time=False)
     attestation.data.slot = attestation.data.slot - spec.SLOTS_PER_EPOCH
 
     sign_attestation(spec, state, attestation)
@@ -167,9 +167,9 @@ def test_mismatched_target_and_slot(spec, state):
 def test_old_target_epoch(spec, state):
     assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
 
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 2)  # target epoch will be too old to handle
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)  # target epoch will be too old to handle
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -225,14 +225,14 @@ def test_source_root_is_target_root(spec, state):
 @with_all_phases
 @spec_state_test
 def test_invalid_current_source_root(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 5)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 5)
 
     state.finalized_checkpoint.epoch = 2
 
     state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
     state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32' * 32)
 
-    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1, on_time=False)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Test logic sanity checks:
