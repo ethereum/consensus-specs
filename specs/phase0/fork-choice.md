@@ -317,13 +317,11 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 ```python
 def on_tick(store: Store, time: uint64) -> None:
     previous_slot = get_current_slot(store)
-    print(previous_slot)
 
     # update store time
     store.time = time
 
     current_slot = get_current_slot(store)
-    print(current_slot)
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
