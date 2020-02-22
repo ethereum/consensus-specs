@@ -622,8 +622,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Type 2: no shard transition, no custody bits  # TODO: could only allow for older attestations.
     else:
         # Ensure delayed attestation
-        # Currently commented out because breaks a ton of phase 0 tests
-        # assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY < state.slot  
+        assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY < state.slot  
         # Late attestations cannot have a shard transition root
         assert data.shard_transition_root == Root()
 

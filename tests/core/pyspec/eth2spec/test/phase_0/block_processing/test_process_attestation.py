@@ -13,7 +13,10 @@ from eth2spec.test.helpers.attestations import (
     sign_attestation,
 )
 from eth2spec.test.helpers.state import (
-    next_epoch, next_slots
+    next_epoch,
+    next_slots,
+    next_slot,
+    next_epoch,
 )
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -166,7 +169,7 @@ def test_old_target_epoch(spec, state):
 
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    state.slot = spec.SLOTS_PER_EPOCH * 2  # target epoch will be too old to handle
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 2)  # target epoch will be too old to handle
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -222,7 +225,8 @@ def test_source_root_is_target_root(spec, state):
 @with_all_phases
 @spec_state_test
 def test_invalid_current_source_root(spec, state):
-    state.slot = spec.SLOTS_PER_EPOCH * 5
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 5)
+
     state.finalized_checkpoint.epoch = 2
 
     state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
@@ -259,6 +263,7 @@ def test_bad_source_root(spec, state):
 @with_all_phases
 @spec_state_test
 def test_empty_aggregation_bits(spec, state):
+    next_slot(spec, state)
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
