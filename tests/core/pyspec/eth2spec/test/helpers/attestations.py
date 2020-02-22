@@ -1,9 +1,45 @@
 from typing import List
 
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
+
+
+def run_attestation_processing(spec, state, attestation, valid=True):
+    """
+    Run ``process_attestation``, yielding:
+      - pre-state ('pre')
+      - attestation ('attestation')
+      - post-state ('post').
+    If ``valid == False``, run expecting ``AssertionError``
+    """
+    # yield pre-state
+    yield 'pre', state
+
+    yield 'attestation', attestation
+
+    # If the attestation is invalid, processing is aborted, and there is no post-state.
+    if not valid:
+        expect_assertion_error(lambda: spec.process_attestation(state, attestation))
+        yield 'post', None
+        return
+
+    current_epoch_count = len(state.current_epoch_attestations)
+    previous_epoch_count = len(state.previous_epoch_attestations)
+
+    # process attestation
+    spec.process_attestation(state, attestation)
+
+    # Make sure the attestation has been processed
+    if attestation.data.target.epoch == spec.get_current_epoch(state):
+        assert len(state.current_epoch_attestations) == current_epoch_count + 1
+    else:
+        assert len(state.previous_epoch_attestations) == previous_epoch_count + 1
+
+    # yield post-state
+    yield 'post', state
 
 
 def build_attestation_data(spec, state, slot, index):
@@ -111,7 +147,6 @@ def get_attestation_signature(spec, state, attestation_data, privkey):
 
 
 def fill_aggregate_attestation(spec, state, attestation, signed=False):
-
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,

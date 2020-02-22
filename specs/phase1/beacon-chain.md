@@ -57,7 +57,7 @@
         - [`apply_shard_transition`](#apply_shard_transition)
         - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
         - [`process_crosslinks`](#process_crosslinks)
-        - [`process_attestations`](#process_attestations)
+        - [`process_attestation`](#process_attestation)
       - [New Attester slashing processing](#new-attester-slashing-processing)
     - [Shard transition false positives](#shard-transition-false-positives)
     - [Light client processing](#light-client-processing)
@@ -98,7 +98,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
 | `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
+| `SHARD_BLOCK_OFFSETS` | `[0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
@@ -500,7 +500,6 @@ def get_next_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
     return Slot(state.shard_states[shard].slot + 1)
 ```
 
-
 #### `get_offset_slots`
 
 ```python
@@ -526,7 +525,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     aggregation_bits = attestation.aggregation_bits
     assert len(aggregation_bits) == len(indexed_attestation.committee)
-    
+
     if len(attestation.custody_bits_blocks) == 0:
         # fall back on phase0 behavior if there is no shard data.
         for participant, abit in zip(indexed_attestation.committee, aggregation_bits):
@@ -612,11 +611,9 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     shard = get_shard(state, attestation)
     shard_start_slot = get_next_slot_for_shard(state, shard)
 
-    # Signature check
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Type 1: on-time attestations
     if attestation.custody_bits_blocks != []:
-        # Correct slot
+        # Ensure on-time attestation
         assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
         # Correct data root count
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard_start_slot))
@@ -624,8 +621,14 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
     # Type 2: no shard transition, no custody bits  # TODO: could only allow for older attestations.
     else:
-        # assert state.slot - compute_start_slot_at_epoch(compute_epoch_at_slot(data.slot)) < SLOTS_PER_EPOCH
+        # Ensure delayed attestation
+        # Currently commented out because breaks a ton of phase 0 tests
+        # assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY < state.slot  
+        # Late attestations cannot have a shard transition root
         assert data.shard_transition_root == Root()
+
+    # Signature check
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
 
 ###### `apply_shard_transition`
