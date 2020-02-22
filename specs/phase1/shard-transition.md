@@ -38,7 +38,7 @@ The proof verifies that one of the two conditions is false:
 2. Check transition:
     * `shard_state = transition.shard_states[i-1].copy()`
     * `proposer_pubkey = get_pubkey(get_shard_proposer_index(state, shard, slot), block_contents))`
-    * `shard_state_transition(shard, slot, shard_state, hash_tree_root(parent), proposer_pubkey)`
+    * `shard_state_transition(shard, slot, shard_state, shard_count, hash_tree_root(parent), proposer_pubkey)`
     * Verify `hash_tree_root(shard_state) != transition.shard_states[i]` (if `i=0` then instead use `parent.shard_states[shard][-1]`)
 
 ## Proposals
@@ -71,6 +71,7 @@ class Proposer(Protocol):
 def shard_state_transition(shard: Shard,
                            slot: Slot,
                            shard_state: ShardState,
+                           shard_count: uint64,
                            previous_beacon_root: Root,
                            proposer_pubkey: BLSPubkey,
                            block_data: ByteList[MAX_SHARD_BLOCK_SIZE]):
@@ -85,17 +86,17 @@ def shard_state_transition(shard: Shard,
 Suppose you are a committee member on shard `shard` at slot `current_slot`.
 Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `slot`, run the following procedure:
 
-* Initialize `data_proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
+* Initialize `data_proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`, `shard_count = len(state.shard_states)`
 * `offset_slots = get_offset_slots(state, start_slot)`
 * `proposer` is the `Proposer` agent.
 * For `slot in offset_slots`, do the following:
     * Get previous block root of the beacon chain. Let `prev_beacon_root = get_beacon_block_root(state, state.slot - 1)`
     * Get shard proposer. Let `shard_proposer_index = get_shard_proposer_index(state, shard, slot)`
     * Build data-proposal (shard block data): `data_proposal = proposer.make_shard_data_proposal(shard, slot, shard_state, prev_beacon_root, shard_proposer_index)`
-    * Verify that `shard_state_transition(shard, slot, shard_state, prev_beacon_root, shard_proposer_index, proposal)` raises no exception.
+    * Verify that `shard_state_transition(shard, slot, shard_state, shard_count, prev_beacon_root, shard_proposer_index, proposal)` raises no exception.
     * If failing to build any proposal (no transactions), make an empty proposal: `proposer.make_empty_proposal(shard_state, slot)`
     * If `data_proposal` is NOT an empty proposal, then transition the shard state forward: 
-     `shard_state_transition(shard, slot, shard_state, prev_block_root, shard_proposer_index)`
+     `shard_state_transition(shard, slot, shard_state, shard_count, prev_block_root, shard_proposer_index)`
       If it is an empty proposal, leave `shard_state` unchanged.
     * Append a the proposal and resulting shard state:
         * A copy of the shard-state: `shard_states.append(shard_state.copy())`.

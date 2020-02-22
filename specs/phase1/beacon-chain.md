@@ -92,7 +92,8 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 | Name | Value | Unit | Duration |
 | - | - | - | - | 
-| `MAX_SHARDS` | `2**10` (= 1024) |
+| `MAX_SHARDS_DEPTH` | `10` | Shard array SSZ tree depth |
+| `MAX_SHARDS` | `2**MAX_SHARDS_DEPTH (= 1024)` |
 | `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |

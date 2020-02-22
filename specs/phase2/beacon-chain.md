@@ -99,11 +99,43 @@ class EECall(Container):
 
 ### New `ShardStateContents`
 
-The `ShardState.shard_state_contents_root` gets an enshrined meaning in Phase 2:
+The `ShardState.shard_state_contents_root` gets an enshrined expansion to `shard_state_contents` in Phase 2:
 
 ```python
 class ShardStateContents(Container):
-    ee_roots: List[Root, MAX_EXECUTION_ENVIRONMENTS]
+    ee_roots: List[Root, MAX_EXECUTION_ENVIRONMENTS]  # Roots of 'EEHeader' entries for respective EE.
+```
+
+### New `EEHeader`
+
+```python
+class EEHeader(Container):
+    state_root: Root    # Root produced by the ExecutionEnvironment runtime.
+    ee_funds: Gwei
+```
+
+### New `NettingRow`
+
+```python
+class NettingRow(Container):
+    outgoing_shard_funds: List[Gwei, MAX_SHARDS]
+```
+
+#### New `NettingProof`
+
+```python
+class NettingProof(Container):
+    # The values packed in the root are packed along the row, sourced from a single shard.
+    # Note: the value of interest is in (let i = (shard % (32 // 8))): root[i * 8:(i+1) * 8]
+    leaf_root: Root
+    proof: Vector[Root, MAX_SHARDS_DEPTH]
+```
+
+#### New `NettingColumn`
+
+```python
+class NettingColumn(Container):
+    incoming_shard_funds: List[NettingProof, MAX_SHARDS]
 ```
 
 ### New `ShardBlockContents`
@@ -114,8 +146,11 @@ TODO: mixing in serialization is not pretty, try to enable merkle-proofs through
 
 ```python
 class ShardBlockContents(Container):
-    ee_calls: List[EECall, MAX_SHARD_BLOCK_CALLS]
+    shard_roots: SparseList[Root, MAX_SHARDS]  # Roots of other ShardState we depend on. TODO: can also rely on beacon chain with (or without, but more complicated fraud proofs) witnesses to verify against beacon root.
+    ee_headers: SparseList[EEHeader, MAX_EXECUTION_ENVIRONMENTS]
     ee_witnesses: SparseList[ByteList[MAX_EE_WITNESS_SIZE], MAX_EXECUTION_ENVIRONMENTS]
+    ee_calls: List[EECall, MAX_SHARD_BLOCK_CALLS]
+    shard_incoming_funds: SparseList[NettingColumn, MAX_SHARDS]
 ```
 
 ## Updated containers
@@ -177,55 +212,4 @@ class BeaconState(Container):
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                     EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
-    # Phase 2
-    execution_environments: List[ExecutionEnvironmentData, MAX_EXECUTION_ENVIRONMENTS]
-```
-
-### Extended `BeaconBlockBody`
-
-```python
-class BeaconBlockBody(Container):
-    randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Slashings
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    # Attesting
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    # Entry & exit
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    # Custody game
-    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
-    custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
-    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
-    # Shards
-    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
-    # Light clients
-    light_client_signature_bitfield: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
-    light_client_signature: BLSSignature
-    # TODO: execution environment deployment? Or fork it in?
-```
-
-### Extended `BeaconBlock`
-
-Note that the `body` has a new `BeaconBlockBody` definition.
-
-```python
-class BeaconBlock(Container):
-    slot: Slot
-    parent_root: Root
-    state_root: Root
-    body: BeaconBlockBody
-```
-
-#### Extended `SignedBeaconBlock`
-
-Note that the `message` has a new `BeaconBlock` definition.
-
-```python
-class SignedBeaconBlock(Container):
-    message: BeaconBlock
-    signature: BLSSignature
 ```
