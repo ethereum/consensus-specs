@@ -313,7 +313,7 @@ class ShardBlockHeader(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
-    body_root: Root
+    body_root: Root  # Root of the shard data as plain bytes
 ```
 
 ### `ShardState`
@@ -322,7 +322,7 @@ class ShardBlockHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    shard_state_contents_root: Bytes32
+    shard_state_contents_root: Bytes32  # Expanded in phase 2 through block witness data.
     shard_parent_root: Root
 ```
 
@@ -335,7 +335,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
-    shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    shard_body_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate

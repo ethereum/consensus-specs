@@ -22,6 +22,8 @@ This document describes the shard transition function as part of Phase 2 of Ethe
 
 ## Proposals
 
+# TODO: refactor to same Protocol layout as phase1 to model proposer interface.
+
 ```python
 def make_empty_proposal(shard: Shard,
                         slot: Slot,
@@ -105,7 +107,7 @@ EXECUTION_ENVIRONMENTS = {
 def make_shard_data_proposal(shard: Shard,
                              slot: Slot,
                              shard_state: ShardState,
-                             previous_beacon_root: Root,
+                             beacon_partial: Root,
                              proposer_pubkey: BLSPubkey) -> ByteList[MAX_SHARD_BLOCK_SIZE]:
     block_contents = ShardBlockContents()
     for tx in get_shard_transactions(shard, slot, shard_state, previous_beacon_root, proposer_pubkey):
@@ -143,11 +145,28 @@ def shard_state_transition(shard: Shard,
     # We will add something more substantive in phase 2
     shard_state.shard_parent_root = hash_tree_root(shard_state)
 
-    block_contents = ShardBlockContents.deserialize(bytes(block_data))
-    
+    block_contents = deserialize(ShardBlockContents, bytes(block_data))
+
+    partial_beacon_state = partial(BeaconState, block_contents.beacon_multiproof)  # TODO express additional expansion into shard-states.
+    # Verify Beacon multiproof
+    assert previous_beacon_root == hash_tree_root(partial_beacon_state)
+
+    shard_state.shard_state_contents
+    ee_roots = ... # Extract from beacon state proof
+
+    process_shard_block_contents(shard_state, ee_roots, block_contents)
+
+    # TODO construct new shard state contents root from updated EE roots and other shard contents
+    shard_state.shard_state_contents_root = ...
+
+    # Update shard slot
+    shard_state.slot += 1
+
+
+def process_shard_block_contents(shard_state: ShardState, ee_roots: Dict[EEIndex, Root], block_contents: ShardBlockContents):
     # Verify EE headers against EE roots
     for ee_index, ee_header in block_contents.ee_headers.items():
-        ee_root = shard_state.shard_state_contents.ee_roots[ee_index]
+        
         assert ee_root == hash_tree_root(ee_header)
 
     # Verify witnesses against EE state roots
@@ -166,8 +185,6 @@ def shard_state_transition(shard: Shard,
 
         # Runner preparation aborts the state-transition if the witness data is invalid for the given state root.
         environment_runners[ee_index] = EXECUTION_ENVIRONMENTS[ee_index].prepare_runner(ee_witness)
-    
-    # TODO: verify block_contents.shard_roots
 
     # Verify and aggregate the proven incoming funds
     incoming_sum = Gwei(0)
@@ -213,8 +230,6 @@ def shard_state_transition(shard: Shard,
 
     # Update EE roots
     for ee_index in block_contents.ee_witnesses.keys():
-        shard_state.shard_state_contents.ee_roots[ee_index] = environment_runners[ee_index].ee_state_root()
-    
-    # Update shard slot
-    shard_state.slot += 1
+        ee_roots[ee_index] = environment_runners[ee_index].ee_state_root()
+  
 ```

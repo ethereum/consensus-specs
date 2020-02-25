@@ -56,6 +56,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `MAX_TRANSACTION_WITNESS_SIZE` | `2**12` (= 4 KiB) | TBD: how big can a transaction witness be? |
 | `MAX_EE_CALL_SIZE` | `2**18` (= 1/4 MiB) | TBD: when transaction calls merge/enumerate, what is a suitable maximum resulting CALL data to pass to an EE? |
 | `MAX_SHARD_BLOCK_CALLS` | `2**10` (= 1024) | TBD: calls per block per shard |
+| `MAX_BEACON_MULTIPROOF_SIZE` | 2**12 (= 4 KiB) | TBD: maximum proof size of BeaconState |
 
 ## New containers
 
@@ -146,7 +147,7 @@ TODO: mixing in serialization is not pretty, try to enable merkle-proofs through
 
 ```python
 class ShardBlockContents(Container):
-    shard_roots: SparseList[Root, MAX_SHARDS]  # Roots of other ShardState we depend on. TODO: can also rely on beacon chain with (or without, but more complicated fraud proofs) witnesses to verify against beacon root.
+    beacon_multiproof: ByteList[MAX_BEACON_MULTIPROOF_SIZE]  # contains shard_states with shard roots expanded into 
     ee_headers: SparseList[EEHeader, MAX_EXECUTION_ENVIRONMENTS]
     ee_witnesses: SparseList[ByteList[MAX_EE_WITNESS_SIZE], MAX_EXECUTION_ENVIRONMENTS]
     ee_calls: List[EECall, MAX_SHARD_BLOCK_CALLS]
@@ -157,59 +158,21 @@ class ShardBlockContents(Container):
 
 The following containers have updated definitions in Phase 2.
 
-### Extended `ShardState`
-
-Note that instead of just a root, contents are expanded, but constrained by EE count. 
-```python
-class ShardState(Container):
-    slot: Slot
-    gasprice: Gwei
-    shard_state_contents: ShardStateContents
-    shard_parent_root: Root
-```
-
 ### Extended `BeaconState`
 
-Note that `ShardState` in the Phase1 `shard_states` has a new definition.
+TODO: We can register EEs in the BeaconState.
+
+## Partials
+
+To make state partially available to shards, a multi-proof is provided in the shard block data, covering just those parts of the state the shard-transition needs.
+
+### `BeaconInformation`
 
 ```python
-class BeaconState(Container):
-    # Versioning
-    genesis_time: uint64
-    slot: Slot
-    fork: Fork
-    # History
-    latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    # Eth1
-    eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
-    eth1_deposit_index: uint64
-    # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
-    randao_mixes: Vector[Root, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Attestations
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
-    previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
-    current_justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
-    # Phase 1
-    shard_states: List[ShardState, MAX_SHARDS]
-    online_countdown: List[OnlineEpochs, VALIDATOR_REGISTRY_LIMIT]  # not a raw byte array, considered its large size.
-    current_light_committee: CompactCommittee
-    next_light_committee: CompactCommittee
-    # Custody game
-    # Future derived secrets already exposed; contains the indices of the exposed validator
-    # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
-                                    EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+BeaconInformation = partial(BeaconState, [
+    'slot'
+    'shard_states' / ... # TODO with expansion into Shard state data (e.g. EE roots)
+])
 ```
+
+### `ShardStatePartial`
