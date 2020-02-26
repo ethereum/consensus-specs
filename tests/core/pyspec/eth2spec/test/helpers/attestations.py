@@ -202,9 +202,9 @@ def get_attestation_custody_signature(spec, state, attestation_data, block_index
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(
         spec.AttestationCustodyBitWrapper(
-            attestation_data.hash_tree_root(),
-            block_index,
-            bit,
+            attestation_data_root=attestation_data.hash_tree_root(),
+            block_index=block_index,
+            bit=bit,
         ),
         domain,
     )

@@ -143,10 +143,6 @@ def test_invalid_sig_1(spec, state):
 @always_bls
 def test_invalid_sig_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
-    """
-    SOMETHING WRONG WITH HASH CACHE OF SEPARATE ATTESTATIONS MAKING SIGS
-    LOOK CORRECT
-    """
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 

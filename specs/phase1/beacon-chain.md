@@ -540,8 +540,12 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
                 if abit:
                     all_pubkeys.append(state.validators[participant].pubkey)
                     # Note: only 2N distinct message hashes
-                    all_signing_roots.append(compute_signing_root(
-                        AttestationCustodyBitWrapper(hash_tree_root(attestation.data), i, cbit), domain))
+                    attestation_wrapper = AttestationCustodyBitWrapper(
+                        attestation_data_root=hash_tree_root(attestation.data),
+                        block_index=i,
+                        bit=cbit
+                    )
+                    all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
                 else:
                     assert not cbit
         return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
@@ -801,6 +805,7 @@ def get_indices_from_committee(
 def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
     indexed_attestation_1 = attester_slashing.attestation_1
     indexed_attestation_2 = attester_slashing.attestation_2
+
     assert is_slashable_attestation_data(
         indexed_attestation_1.attestation.data,
         indexed_attestation_2.attestation.data,
