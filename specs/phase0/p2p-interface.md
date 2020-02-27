@@ -420,11 +420,20 @@ If Snappy is applied, it can be passed through a buffered Snappy writer to compr
 *Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
 If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
-A reader:
-- SHOULD NOT read more than `max_encoded_len(n)` bytes (`32 + n + n // 6`) after reading the SSZ length prefix `n` from the header, [this is considered the worst-case compression result by Snappy](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98).
-- SHOULD NOT accept an SSZ length prefix that is bigger than the expected maximum length for the SSZ type (derived from SSZ type information such as vector lengths and list limits).
-- MUST consider remaining bytes, after having read the `n` SSZ bytes, as an invalid input. An EOF is expected.
-- MUST consider an early EOF, before fully reading the declared length prefix worth of SSZ bytes, as an invalid input.
+A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length prefix `n` from the header.
+- For `ssz` this is: `n`
+- For `ssz_snappy` this is: `32 + n + n // 6`. This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
+
+A reader SHOULD consider the following cases as invalid input:
+- A SSZ length prefix that, compared against the SSZ type information (vector lengths, list limits, integer sizes, etc.), is:
+    - Smaller than the expected minimum serialized length.
+    - Bigger than the expected maximum serialized length.
+- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected.
+- An early EOF, before fully reading the declared length prefix worth of SSZ bytes.
+
+In case of an invalid input, a reader MUST:
+- From requests: send back an error message, response code `InvalidRequest`. The request itself is ignored.
+- From responses: ignore the response, the response MUST be considered bad server behavior.
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
