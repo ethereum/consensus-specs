@@ -414,15 +414,15 @@ Since snappy frame contents [have a maximum size of `65536` bytes](https://githu
 
 **Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes, encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints). 
 
-*Writing*: By first computing and writing the SSZ byte length the SSZ encoder can then directly write the chunk contents to the stream.
+*Writing*: By first computing and writing the SSZ byte length, the SSZ encoder can then directly write the chunk contents to the stream.
 If Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
 
 *Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
 If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
 A reader:
-- SHOULD not read more than `max_encoded_len(n)` bytes (`32 + n + n/6`) after reading the SSZ length prefix `n` from the header, [this is considered the worst-case compression result by Snappy](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98).
-- SHOULD not accept a SSZ length prefix that is bigger than the expected maximum length for the SSZ type (derived from SSZ type information such as vector lengths and list limits).
+- SHOULD NOT read more than `max_encoded_len(n)` bytes (`32 + n + n // 6`) after reading the SSZ length prefix `n` from the header, [this is considered the worst-case compression result by Snappy](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98).
+- SHOULD NOT accept an SSZ length prefix that is bigger than the expected maximum length for the SSZ type (derived from SSZ type information such as vector lengths and list limits).
 - MUST consider remaining bytes, after having read the `n` SSZ bytes, as an invalid input. An EOF is expected.
 - MUST consider an early EOF, before fully reading the declared length prefix worth of SSZ bytes, as an invalid input.
 
