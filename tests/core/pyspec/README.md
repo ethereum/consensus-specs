@@ -20,7 +20,7 @@ Unlike the regular install, this outputs spec files to their original source loc
 
 Alternatively, you can build a sub-set of the pyspec with the distutil command: 
 ```bash
-python setup.py pyspec --spec-version=phase0 --md-doc-paths="specs/phase0/beacon-chain.md specs/phase0/fork-choice.md" --out-dir=my_spec_dir
+python setup.py pyspec --spec-fork=phase0 --md-doc-paths="specs/phase0/beacon-chain.md specs/phase0/fork-choice.md" --out-dir=my_spec_dir
 ```
 
 ## Py-tests
