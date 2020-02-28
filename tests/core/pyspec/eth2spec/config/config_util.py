@@ -36,7 +36,8 @@ def load_config_file(configs_dir, presets_name) -> Dict[str, Any]:
     out = dict()
     for k, v in loaded.items():
         if isinstance(v, list):
-            out[k] = v
+            # Clean up integer values. YAML parser renders lists of ints as list of str
+            out[k] = [int(item) if item.isdigit() else item for item in v]
         elif isinstance(v, str) and v.startswith("0x"):
             out[k] = bytes.fromhex(v[2:])
         else:
