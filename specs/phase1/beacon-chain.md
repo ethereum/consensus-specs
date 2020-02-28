@@ -46,7 +46,7 @@
     - [`get_updated_gasprice`](#get_updated_gasprice)
     - [`get_start_shard`](#get_start_shard)
     - [`get_shard`](#get_shard)
-    - [`get_next_slot_for_shard`](#get_next_slot_for_shard)
+    - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
@@ -98,7 +98,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
 | `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
-| `SHARD_BLOCK_OFFSETS` | `[0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
@@ -493,18 +493,18 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
     return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
 ```
 
-#### `get_next_slot_for_shard`
+#### `get_latest_slot_for_shard`
 
 ```python
-def get_next_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
-    return Slot(state.shard_states[shard].slot + 1)
+def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
+    return state.shard_states[shard].slot
 ```
 
 #### `get_offset_slots`
 
 ```python
-def get_offset_slots(state: BeaconState, start_slot: Slot) -> Sequence[Slot]:
-    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
+def get_offset_slots(state: BeaconState, latest_shard_slot: Slot) -> Sequence[Slot]:
+    return [Slot(latest_shard_slot + x) for x in SHARD_BLOCK_OFFSETS if latest_shard_slot + x < state.slot]
 ```
 
 ### Predicates
@@ -613,14 +613,14 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert attestation.data.source == state.previous_justified_checkpoint
 
     shard = get_shard(state, attestation)
-    shard_start_slot = get_next_slot_for_shard(state, shard)
+    latest_shard_slot = get_latest_slot_for_shard(state, shard)
 
     # Type 1: on-time attestations
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
         assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
         # Correct data root count
-        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard_start_slot))
+        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, latest_shard_slot))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
     # Type 2: no shard transition, no custody bits  # TODO: could only allow for older attestations.
@@ -639,17 +639,17 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```python
 def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
     # Slot the attestation starts counting from
-    start_slot = get_next_slot_for_shard(state, shard)
+    latest_slot = get_latest_slot_for_shard(state, shard)
 
     # Correct data root count
-    offset_slots = get_offset_slots(state, start_slot)
+    offset_slots = get_offset_slots(state, latest_slot)
     assert (
         len(transition.shard_data_roots)
         == len(transition.shard_states)
         == len(transition.shard_block_lengths)
         == len(offset_slots)
     )
-    assert transition.start_slot == start_slot
+    assert transition.start_slot == offset_slots[0]
 
     # Reconstruct shard headers
     headers = []
@@ -728,7 +728,7 @@ def process_crosslink_for_shard(state: BeaconState,
         increase_balance(state, beacon_proposer_index, proposer_reward)
         states_slots_lengths = zip(
             shard_transition.shard_states,
-            get_offset_slots(state, get_next_slot_for_shard(state, shard)),
+            get_offset_slots(state, get_latest_slot_for_shard(state, shard)),
             shard_transition.shard_block_lengths
         )
         for shard_state, slot, length in states_slots_lengths:

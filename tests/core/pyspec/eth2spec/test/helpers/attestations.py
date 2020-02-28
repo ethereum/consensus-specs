@@ -80,7 +80,7 @@ def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False)
 
     next_state = state.copy()
     next_slot(spec, next_state)
-    offset_slots = spec.get_offset_slots(next_state, spec.get_next_slot_for_shard(next_state, shard))
+    offset_slots = spec.get_offset_slots(next_state, spec.get_latest_slot_for_shard(next_state, shard))
     for offset_slot in offset_slots:
         attestation.custody_bits_blocks.append(
             Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])
