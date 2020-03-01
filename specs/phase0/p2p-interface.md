@@ -763,9 +763,9 @@ For future extensibility with almost zero overhead now (besides the extra bytes 
 
 ### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
-Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, for example during a hard fork.
+Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, during a hard fork.
 
-One can envision a two-phase deployment as well where clients start listening to the new topic in the first phase then start publishing some time later, letting the traffic naturally move over to the new topic.
+When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a gossipsub topic, the node should join the topic of the future epoch in which the task is to occur in addition to listening to the topics for the current epoch.
 
 ### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
 
