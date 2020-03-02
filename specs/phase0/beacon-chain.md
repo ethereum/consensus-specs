@@ -1405,7 +1405,7 @@ def process_final_updates(state: BeaconState) -> None:
         QUARTER_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 4
         if (
             balance + QUARTER_INCREMENT < validator.effective_balance
-            or validator.effective_balance + 7 * QUARTER_INCREMENT < balance
+            or validator.effective_balance + 5 * QUARTER_INCREMENT < balance
         ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Reset slashings
