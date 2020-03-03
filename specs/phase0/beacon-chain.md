@@ -183,6 +183,10 @@ The following values are (non-configurable) constants used throughout the specif
 | `SHUFFLE_ROUND_COUNT` | `90` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
+| `HYSTERESIS_QUOTIENT` | `4` |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
+| `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
+
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -1402,10 +1406,12 @@ def process_final_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        QUARTER_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 4
+        HYSTERESIS_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT
+        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
+        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         if (
-            balance + QUARTER_INCREMENT < validator.effective_balance
-            or validator.effective_balance + 5 * QUARTER_INCREMENT < balance
+            balance + DOWNWARD_THRESHOLD < validator.effective_balance
+            or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Reset slashings
