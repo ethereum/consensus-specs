@@ -194,7 +194,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
 | `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
 | `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
-| `REWARD_OVERFLOW_INCREMENT` | `Gwei(2**6)` (= 64) |
 
 ### Initial values
 
@@ -1314,9 +1313,9 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         attesting_balance = get_total_balance(state, unslashed_attesting_indices)
         for index in eligible_validator_indices:
             if index in unslashed_attesting_indices:
-                increment = REWARD_OVERFLOW_INCREMENT  # Factored out from reward numerator to avoid uint64 overflow
-                reward_numerator = get_base_reward(state, index) // increment * attesting_balance
-                rewards[index] = reward_numerator // total_balance * increment
+                increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
+                rewards[index] = reward_numerator // (total_balance // increment)
             else:
                 penalties[index] += get_base_reward(state, index)
 
