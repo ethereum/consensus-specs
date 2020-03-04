@@ -55,6 +55,8 @@ It consists of four main sections:
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [Interop](#interop-5)
       - [Mainnet](#mainnet-5)
+        - [`eth2` field](#eth2-field)
+        - [General capabilities](#general-capabilities)
     - [Topic advertisement](#topic-advertisement)
       - [Mainnet](#mainnet-6)
 - [Design decision rationale](#design-decision-rationale)
@@ -88,6 +90,7 @@ It consists of four main sections:
     - [Why are we sending entire objects in the pubsub and not just hashes?](#why-are-we-sending-entire-objects-in-the-pubsub-and-not-just-hashes)
     - [Should clients gossip blocks if they *cannot* validate the proposer signature due to not yet being synced, not knowing the head block, etc?](#should-clients-gossip-blocks-if-they-cannot-validate-the-proposer-signature-due-to-not-yet-being-synced-not-knowing-the-head-block-etc)
     - [How are we going to discover peers in a gossipsub topic?](#how-are-we-going-to-discover-peers-in-a-gossipsub-topic)
+    - [How should fork version be used in practice?](#how-should-fork-version-be-used-in-practice)
   - [Req/Resp](#reqresp)
     - [Why segregate requests into dedicated protocol IDs?](#why-segregate-requests-into-dedicated-protocol-ids)
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
@@ -604,11 +607,35 @@ Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that 
 
 #### Mainnet
 
-ENRs MUST carry a generic `eth2` with a 4-byte value of the node's current fork version to ensure connections are made with peers on the intended eth2 network.
+##### `eth2` field
+
+ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork version, next fork version, and next fork epoch to ensure connections are made with peers on the intended eth2 network.
 
 | Key          | Value               |
 |:-------------|:--------------------|
-| `eth2`       | SSZ `Bytes4`        |
+| `eth2`       | SSZ `ENRForkID`        |
+
+Specifically, the value of the `eth2` key MUST be the following SSZ encoded object (`ENRForkID`), where
+
+```
+(
+    current_fork_version: Fork
+    next_fork_version: Fork
+    next_fork_epoch: Epoch
+)
+```
+
+where the fields of `ENRForkID` are defined as
+
+* `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
+* `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
+* `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated. If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
+
+Clients SHOULD connect to peers with `current_fork_version`, `next_fork_version`, and `next_fork_epoch` that match local values.
+
+Clients MAY connect to peers with the same `current_fork_version` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these type of connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
+
+##### General capabilities
 
 On mainnet, ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner. The concrete solution is currently undefined. Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
 
@@ -828,6 +855,14 @@ The prohibition of unverified-block-gossiping extends to nodes that cannot verif
 In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
 
 Although this method will be sufficient for early phases of Eth2, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future. ENRs should ultimately not be used for this purpose. They are best suited to store identity, location, and capability information, rather than more volatile advertisements.
+
+### How should fork version be used in practice?
+
+Fork versions are to be manually updated (likely via incrementing or using the less collision-prone git spec hash) at each hard fork. This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs) and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
+
+To reap the full benefit of the native versioning scheme, networks SHOULD avoid collisions. For example, a testnet might us mainnet versioning but use a unique higher order byte to signal the testnet.
+
+A node locally stores all previous and future planned fork versions along with the each fork epoch. This allows for handling sync starting from past forks/epochs and for connections to safely be made with peers syncing from past forks/epochs.
 
 ## Req/Resp
 
