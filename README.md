@@ -78,3 +78,20 @@ $ sudo apt-get install xclip
 
 $ xclip -sel clip < ~/.ssh/id_rsa.pub
 # Copies the contents of the id_rsa.pub file to your clipboard
+import http.client
+
+conn = http.client.HTTPSConnection("api.bountyblok.io")
+
+payload = "{\"app_id\":\"c81f7974-d08e-451f-9405-6818478cadf0\",\"account_name\":\"jeanguy\",\"param\":\"PEP\",\"quantity\":1}"
+
+headers = {
+ 'authorization': "Bearer <<YOUR_API_KEY>>",
+ 'content-type': "application/json"
+}
+
+conn.request("POST", "/v1/log_app", payload, headers)
+
+res = conn.getresponse()
+data = res.read()
+
+print(data.decode("utf-8"))
