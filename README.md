@@ -59,6 +59,7 @@ The following are the broad design goals for Ethereum 2.0:
 
 * [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 * [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+* [Gasper paper](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf)
 
 
 ## For spec contributors
