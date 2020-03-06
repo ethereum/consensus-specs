@@ -68,3 +68,13 @@ Documentation on the different components used during spec writing can be found 
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
 
+$ git remote set-url sofake https://github.com/octocat/Spoon-Knife
+> fatal: No such remote 'sofake'
+
+https://min-api.cryptocompare.com/data/exchange/symbol/histoday?fsym=BTC&tsym=USD&limit=10&e=Binance
+
+$ sudo apt-get install xclip
+# Downloads and installs xclip. If you don't have `apt-get`, you might need to use another installer (like `yum`)
+
+$ xclip -sel clip < ~/.ssh/id_rsa.pub
+# Copies the contents of the id_rsa.pub file to your clipboard
