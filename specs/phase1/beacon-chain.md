@@ -859,7 +859,7 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     slot = get_previous_slot(state.slot)
     signing_root = compute_signing_root(get_block_root_at_slot(state, slot), 
                                         get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
-    return bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
+    assert bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
 ```
 
 
