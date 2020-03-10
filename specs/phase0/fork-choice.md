@@ -83,7 +83,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
-    blocks: Dict[Root, BeaconBlockHeader] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
