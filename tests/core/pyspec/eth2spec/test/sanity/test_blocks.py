@@ -121,6 +121,49 @@ def test_invalid_block_sig(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
+def test_invalid_proposer_index_sig_from_expected_proposer(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    expect_proposer_index = block.proposer_index
+
+    # Set invalid proposer index but correct signature wrt expected proposer
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    active_indices = [i for i in active_indices if i != block.proposer_index]
+    block.proposer_index = active_indices[0]  # invalid proposer index
+
+    invalid_signed_block = sign_block(spec, state, block, expect_proposer_index)
+
+    expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
+
+    yield 'blocks', [invalid_signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_invalid_proposer_index_sig_from_proposer_index(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Set invalid proposer index but correct signature wrt proposer_index
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    active_indices = [i for i in active_indices if i != block.proposer_index]
+    block.proposer_index = active_indices[0]  # invalid proposer index
+
+    invalid_signed_block = sign_block(spec, state, block, block.proposer_index)
+
+    expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
+
+    yield 'blocks', [invalid_signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
 def test_skipped_slots(spec, state):
     pre_slot = state.slot
     yield 'pre', state
@@ -187,7 +230,7 @@ def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
     pre_state = deepcopy(state)
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = proposer_slashing.proposer_index
+    validator_index = proposer_slashing.signed_header_1.message.proposer_index
 
     assert not state.validators[validator_index].slashed
 

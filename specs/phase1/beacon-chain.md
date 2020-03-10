@@ -221,6 +221,7 @@ Note that the `body` has a new `BeaconBlockBody` definition.
 ```python
 class BeaconBlock(Container):
     slot: Slot
+    proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody

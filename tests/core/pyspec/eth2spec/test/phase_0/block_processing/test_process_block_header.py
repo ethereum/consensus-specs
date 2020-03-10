@@ -49,6 +49,18 @@ def test_invalid_slot_block_header(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_invalid_proposer_index(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    active_indices = [i for i in active_indices if i != block.proposer_index]
+    block.proposer_index = active_indices[0]  # invalid proposer index
+
+    yield from run_block_header_processing(spec, state, block, valid=False)
+
+
+@with_all_phases
+@spec_state_test
 def test_invalid_parent_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     block.parent_root = b'\12' * 32  # invalid prev root

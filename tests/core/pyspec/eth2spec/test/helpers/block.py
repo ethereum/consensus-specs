@@ -65,10 +65,22 @@ def apply_empty_block(spec, state):
 
 
 def build_empty_block(spec, state, slot=None):
+    """
+    Build empty block for ``slot``, built upon the latest block header seen by ``state``.
+    Slot must be greater than or equal to the current slot in ``state``.
+    """
     if slot is None:
         slot = state.slot
+    if slot < state.slot:
+        raise Exception("build_empty_block cannot build blocks for past slots")
+    if slot > state.slot:
+        # transition forward in copied state to grab relevant data from state
+        state = state.copy()
+        spec.process_slots(state, slot)
+
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
+    empty_block.proposer_index = spec.get_beacon_proposer_index(state)
     empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     previous_block_header = state.latest_block_header.copy()
     if previous_block_header.state_root == spec.Root():

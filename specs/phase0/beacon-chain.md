@@ -382,6 +382,7 @@ class DepositData(Container):
 ```python
 class BeaconBlockHeader(Container):
     slot: Slot
+    proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
     body_root: Root
@@ -401,7 +402,6 @@ class SigningRoot(Container):
 
 ```python
 class ProposerSlashing(Container):
-    proposer_index: ValidatorIndex
     signed_header_1: SignedBeaconBlockHeader
     signed_header_2: SignedBeaconBlockHeader
 ```
@@ -461,6 +461,7 @@ class BeaconBlockBody(Container):
 ```python
 class BeaconBlock(Container):
     slot: Slot
+    proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
@@ -1175,7 +1176,7 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    proposer = state.validators[signed_block.message.proposer_index]
     signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
@@ -1453,18 +1454,21 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
+    # Verify that proposer index is the correct index
+    assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches
     assert block.parent_root == hash_tree_root(state.latest_block_header)
     # Cache current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
+        proposer_index=block.proposer_index,
         parent_root=block.parent_root,
         state_root=Bytes32(),  # Overwritten in the next process_slot call
         body_root=hash_tree_root(block.body),
     )
 
     # Verify proposer is not slashed
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
 ```
 
@@ -1513,12 +1517,17 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+
     # Verify header slots match
-    assert proposer_slashing.signed_header_1.message.slot == proposer_slashing.signed_header_2.message.slot
+    assert header_1.slot == header_2.slot
+    # Verify header proposer indices match
+    assert header_1.proposer_index == header_2.proposer_index
     # Verify the headers are different
-    assert proposer_slashing.signed_header_1 != proposer_slashing.signed_header_2
+    assert header_1 != header_2
     # Verify the proposer is slashable
-    proposer = state.validators[proposer_slashing.proposer_index]
+    proposer = state.validators[header_1.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Verify signatures
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
@@ -1526,7 +1535,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, proposer_slashing.proposer_index)
+    slash_validator(state, header_1.proposer_index)
 ```
 
 ##### Attester slashings
