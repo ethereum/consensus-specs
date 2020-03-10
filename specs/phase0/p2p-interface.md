@@ -615,7 +615,7 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 |:-------------|:--------------------|
 | `eth2`       | SSZ `ENRForkID`        |
 
-First we define `current_fork` as the following SSZ encoded object
+First we define `current_fork_data` as the following SSZ encoded object
 
 ```
 (
@@ -633,7 +633,7 @@ Specifically, the value of the `eth2` key MUST be the following SSZ encoded obje
 
 ```
 (
-    current_fork_digest: Bytes4
+    current_fork_digest: ForkDigest
     next_fork_version: Version
     next_fork_epoch: Epoch
 )
@@ -641,7 +641,7 @@ Specifically, the value of the `eth2` key MUST be the following SSZ encoded obje
 
 where the fields of `ENRForkID` are defined as
 
-* `current_fork_digest` is `hash_tree_root(current_fork)[:4]`
+* `current_fork_digest` is `ForkDigest(hash_tree_root(current_fork_data)[:4])`
 * `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
 * `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated. If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
@@ -872,9 +872,9 @@ Although this method will be sufficient for early phases of Eth2, we aim to use 
 
 ### How should fork version be used in practice?
 
-Fork versions are to be manually updated (likely via incrementing or using the less collision-prone git spec hash) at each hard fork. This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs) and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
+Fork versions are to be manually updated (likely via incrementing) at each hard fork. This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs) and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
 
-To reap the full benefit of the native versioning scheme, networks SHOULD avoid collisions. For example, a testnet might us mainnet versioning but use a unique higher order byte to signal the testnet.
+`BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains to aid in the ease of domain separation between chains. This allows fork versions to safely be reused across chains except for the case of contentious forks using the same genesis. In these cases, extra care should be taken to isolate fork versions (e.g. flip a high order bit in all future versions of one of the chains).
 
 A node locally stores all previous and future planned fork versions along with the each fork epoch. This allows for handling sync starting from past forks/epochs and for connections to safely be made with peers syncing from past forks/epochs.
 

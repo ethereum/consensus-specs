@@ -149,6 +149,7 @@ We define the following Python custom types for type hinting and readability:
 | `Root` | `Bytes32` | a Merkle root |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a domain type |
+| `ForkDigest` | `Bytes4` | a digest of the current fork data |
 | `Domain` | `Bytes32` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
@@ -803,7 +804,7 @@ def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None
     if fork_version is None:
         fork_version = GENESIS_FORK_VERSION
     if genesis_root is None:
-        genesis_root = Root()
+        genesis_root = Root()  # all bytes zero by default
     return Domain(domain_type + fork_version + genesis_root[:24])
 ```
 
