@@ -218,7 +218,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~3.4 hours |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | 9 days |
@@ -484,7 +484,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
@@ -1411,7 +1411,7 @@ def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = Epoch(current_epoch + 1)
     # Reset eth1 data votes
-    if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
+    if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
@@ -1487,7 +1487,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
     state.eth1_data_votes.append(body.eth1_data)
-    if state.eth1_data_votes.count(body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+    if state.eth1_data_votes.count(body.eth1_data) * 2 > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH:
         state.eth1_data = body.eth1_data
 ```
 

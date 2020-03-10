@@ -486,10 +486,12 @@ def test_historical_batch(spec, state):
 @spec_state_test
 def test_eth1_data_votes_consensus(spec, state):
     # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
-    if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
+    if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
         return
 
-    offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
+
+    offset_block = build_empty_block(spec, state, slot=voting_period_slots - 1)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -499,14 +501,14 @@ def test_eth1_data_votes_consensus(spec, state):
 
     blocks = []
 
-    for i in range(0, spec.SLOTS_PER_ETH1_VOTING_PERIOD):
+    for i in range(0, voting_period_slots):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for over 50% for A, then start voting B
-        block.body.eth1_data.block_hash = b if i * 2 > spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        block.body.eth1_data.block_hash = b if i * 2 > voting_period_slots else a
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(signed_block)
 
-    assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
+    assert len(state.eth1_data_votes) == voting_period_slots
     assert state.eth1_data.block_hash == a
 
     # transition to next eth1 voting period
@@ -519,7 +521,7 @@ def test_eth1_data_votes_consensus(spec, state):
     yield 'post', state
 
     assert state.eth1_data.block_hash == a
-    assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
+    assert state.slot % voting_period_slots == 0
     assert len(state.eth1_data_votes) == 1
     assert state.eth1_data_votes[0].block_hash == c
 
@@ -528,12 +530,14 @@ def test_eth1_data_votes_consensus(spec, state):
 @spec_state_test
 def test_eth1_data_votes_no_consensus(spec, state):
     # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
-    if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
+    if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
         return
+
+    voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
 
     pre_eth1_hash = state.eth1_data.block_hash
 
-    offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    offset_block = build_empty_block(spec, state, slot=voting_period_slots - 1)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -542,14 +546,14 @@ def test_eth1_data_votes_no_consensus(spec, state):
 
     blocks = []
 
-    for i in range(0, spec.SLOTS_PER_ETH1_VOTING_PERIOD):
+    for i in range(0, voting_period_slots):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for precisely 50% for A, then start voting B for other 50%
-        block.body.eth1_data.block_hash = b if i * 2 >= spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        block.body.eth1_data.block_hash = b if i * 2 >= voting_period_slots else a
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(signed_block)
 
-    assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
+    assert len(state.eth1_data_votes) == voting_period_slots
     assert state.eth1_data.block_hash == pre_eth1_hash
 
     yield 'blocks', blocks

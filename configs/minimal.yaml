@@ -89,7 +89,7 @@ MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs
 MAX_SEED_LOOKAHEAD: 4
 # [customized] higher frequency new deposits from eth1 for testing
-SLOTS_PER_ETH1_VOTING_PERIOD: 16
+EPOCHS_PER_ETH1_VOTING_PERIOD: 2
 # [customized] smaller state
 SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**8 (= 256) epochs

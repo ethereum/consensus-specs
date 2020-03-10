@@ -129,7 +129,7 @@ To submit a deposit:
 
 ### Process deposit
 
-Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `SLOTS_PER_ETH1_VOTING_PERIOD` slots (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
+Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -269,7 +269,7 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 ```python
 def voting_period_start_time(state: BeaconState) -> uint64:
-    eth1_voting_period_start_slot = Slot(state.slot - state.slot % SLOTS_PER_ETH1_VOTING_PERIOD)
+    eth1_voting_period_start_slot = Slot(state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH))
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
 
