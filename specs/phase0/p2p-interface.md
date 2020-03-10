@@ -219,7 +219,17 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 
 ### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkVersion/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+
+- `ForkVersion` - the hex-encoded bytes from `state.fork.current_version` of the head state of the client, as also seen in `Status.head_fork_version`.
+- `Name` - see table below
+- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
+
+The fork version is hex-encoded using the following scheme:
+```python
+  ForkVersion = ''.join('{:02x}'.format(x) for x in state.fork.current_version)
+```
+For example, the fork version `Version('0x0001020a')` will be encoded as `0001020a`.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
@@ -232,7 +242,7 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Topic                                          | Message Type            |
+| Name                                           | Message Type            |
 |------------------------------------------------|-------------------------|
 | beacon_block                                   | SignedBeaconBlock       |
 | beacon_aggregate_and_proof                     | SignedAggregateAndProof |
@@ -829,9 +839,9 @@ For future extensibility with almost zero overhead now (besides the extra bytes 
 
 ### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
-Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, for example during a hard fork.
+Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, during a hard fork.
 
-One can envision a two-phase deployment as well where clients start listening to the new topic in the first phase then start publishing some time later, letting the traffic naturally move over to the new topic.
+When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a gossipsub topic, the node should join the topic of the future epoch in which the task is to occur in addition to listening to the topics for the current epoch.
 
 ### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
 
