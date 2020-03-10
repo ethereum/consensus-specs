@@ -419,9 +419,37 @@ The token of the negotiated protocol ID specifies the type of encoding to be use
 
 #### SSZ-encoding strategy (with or without Snappy)
 
-The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md) outlines how objects are SSZ-encoded. If the Snappy variant is selected, we feed the serialized form to the Snappy compressor on encoding. The inverse happens on decoding.
+The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md) outlines how objects are SSZ-encoded.
 
-**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST prefix all encoded and compressed (if applicable) payloads with an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
+If the Snappy variant is selected, we feed the serialized form of the object to the Snappy compressor on encoding. The inverse happens on decoding.
+
+Snappy has two formats: "block" and "frames" (streaming). To support large requests and response chunks, snappy-framing is used.
+
+Since snappy frame contents [have a maximum size of `65536` bytes](https://github.com/google/snappy/blob/master/framing_format.txt#L104)
+ and frame headers are just `identifier (1) + checksum (4)` bytes, the expected buffering of a single frame is acceptable.
+
+**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes, encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints). 
+
+*Writing*: By first computing and writing the SSZ byte length, the SSZ encoder can then directly write the chunk contents to the stream.
+If Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
+
+*Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
+If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
+
+A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length prefix `n` from the header.
+- For `ssz` this is: `n`
+- For `ssz_snappy` this is: `32 + n + n // 6`. This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
+
+A reader SHOULD consider the following cases as invalid input:
+- A SSZ length prefix that, compared against the SSZ type information (vector lengths, list limits, integer sizes, etc.), is:
+    - Smaller than the expected minimum serialized length.
+    - Bigger than the expected maximum serialized length.
+- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected.
+- An early EOF, before fully reading the declared length prefix worth of SSZ bytes.
+
+In case of an invalid input, a reader MUST:
+- From requests: send back an error message, response code `InvalidRequest`. The request itself is ignored.
+- From responses: ignore the response, the response MUST be considered bad server behavior.
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
@@ -845,23 +873,14 @@ Requests are segregated by protocol ID to:
 
 We are using single-use streams where each stream is closed at the end of the message. Thus, libp2p transparently handles message delimiting in the underlying stream. libp2p streams are full-duplex, and each party is responsible for closing their write side (like in TCP). We can therefore use stream closure to mark the end of the request and response independently.
 
-Nevertheless, messages are still length-prefixed—this is now being considered for removal.
-
-Advantages of length-prefixing include:
-
-* Reader can prepare a correctly sized buffer before reading message
+Nevertheless, in the case of `ssz` and `ssz_snappy`, messages are still length-prefixed with the length of the underlying data:
+* A basic reader can prepare a correctly sized buffer before reading the message
+* A more advanced reader can stream-decode SSZ given the length of the SSZ data.
 * Alignment with protocols like gRPC over HTTP/2 that prefix with length
-* Sanity checking of stream closure / message length
+* Sanity checking of message length, and enabling much stricter message length limiting based on SSZ type information,
+  to provide even more DOS protection than the global message length already does. E.g. a small `Status` message does not nearly require `MAX_CHUNK_SIZE` bytes.
 
-Disadvantages include:
-
-* Redundant methods of message delimiting—both stream end marker and length prefix
-* Harder to stream as length must be known up-front
-* Additional code path required to verify length
-
-In some protocols, adding a length prefix serves as a form of DoS protection against very long messages, allowing the client to abort if an overlong message is about to be sent. In this protocol, we are globally limiting message sizes using `MAX_CHUNK_SIZE`, thus the length prefix does not afford any additional protection.
-
-[Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length ints. Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
+[Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length (unsigned here) ints. Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
 
 ### Why do we version protocol strings with ordinals instead of semver?
 
