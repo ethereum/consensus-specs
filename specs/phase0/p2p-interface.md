@@ -219,17 +219,13 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 
 ### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkVersion/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkDigest/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
-- `ForkVersion` - the hex-encoded bytes from `state.fork.current_version` of the head state of the client, as also seen in `Status.head_fork_version`.
+- `ForkDigest` - the hex-encoded bytes of `ForkDigest(compute_fork_data_root(current_fork_version, genesis_validators_root)[:4])` where
+    - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
+    - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `Name` - see table below
 - `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
-
-The fork version is hex-encoded using the following scheme:
-```python
-  ForkVersion = ''.join('{:02x}'.format(x) for x in state.fork.current_version)
-```
-For example, the fork version `Version('0x0001020a')` will be encoded as `0001020a`.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
@@ -260,7 +256,7 @@ When processing incoming gossip, clients MAY descore or disconnect peers who fai
 
 #### Global topics
 
-There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
+There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `Name`s are:
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
     - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
@@ -278,7 +274,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
     - The signature of `aggregate` is valid.
 
-Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
+Additional global topics are used to propagate lower frequency validator messages. Their `Name`s are:
 
 - `voluntary_exit` - This topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety. The following validations MUST pass before forwarding the `signed_voluntary_exit` on to the network
     - The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
@@ -293,7 +289,7 @@ Additional global topics are used to propagate lower frequency validator message
 
 #### Attestation subnets
 
-Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `Name`s are:
 
 - `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
@@ -654,25 +650,11 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 |:-------------|:--------------------|
 | `eth2`       | SSZ `ENRForkID`        |
 
-First we define `current_fork_data` as the following SSZ encoded object
-
-```
-(
-    current_fork_version: Version
-    genesis_validators_root: Root
-)
-```
-
-where
-
-* `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
-* `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded object (`ENRForkID`)
 
 ```
 (
-    current_fork_digest: ForkDigest
+    fork_digest: ForkDigest
     next_fork_version: Version
     next_fork_epoch: Epoch
 )
@@ -680,13 +662,15 @@ Specifically, the value of the `eth2` key MUST be the following SSZ encoded obje
 
 where the fields of `ENRForkID` are defined as
 
-* `current_fork_digest` is `ForkDigest(hash_tree_root(current_fork_data)[:4])`
+* `fork_digest` is `ForkDigest(compute_fork_data_root(current_fork_version, genesis_validators_root)[:4])` where
+    * `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
+    * `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 * `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
 * `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated. If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
-Clients SHOULD connect to peers with `current_fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
+Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
 
-Clients MAY connect to peers with the same `current_fork_version` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these type of connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
+Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these type of connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
 ##### General capabilities
 

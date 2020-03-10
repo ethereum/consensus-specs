@@ -24,6 +24,7 @@
 - [Containers](#containers)
   - [Misc dependencies](#misc-dependencies)
     - [`Fork`](#fork)
+    - [`ForkData`](#forkdata)
     - [`Checkpoint`](#checkpoint)
     - [`Validator`](#validator)
     - [`AttestationData`](#attestationdata)
@@ -75,6 +76,7 @@
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
+    - [`compute_fork_data_root`](#compute_fork_data_root)
     - [`compute_domain`](#compute_domain)
     - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -284,6 +286,14 @@ class Fork(Container):
     previous_version: Version
     current_version: Version
     epoch: Epoch  # Epoch of latest fork
+```
+
+#### `ForkData`
+
+```python
+class ForkData(Container):
+    current_version: Version
+    genesis_root: Root
 ```
 
 #### `Checkpoint`
@@ -794,6 +804,19 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     return Epoch(epoch + 1 + MAX_SEED_LOOKAHEAD)
 ```
 
+#### `compute_fork_data_root`
+
+```python
+def compute_fork_data_root(current_version: Version, genesis_validators_root: Root) -> Root:
+    """
+    Return the fork digest for the ``current_fork_version`` and ``genesis_validators_root``
+    """
+    return hash_tree_root(ForkData(
+        current_version=current_version,
+        genesis_validators_root=genesis_validators_root,
+    ))
+```
+
 #### `compute_domain`
 
 ```python
@@ -805,7 +828,8 @@ def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None
         fork_version = GENESIS_FORK_VERSION
     if genesis_root is None:
         genesis_root = Root()  # all bytes zero by default
-    return Domain(domain_type + fork_version + genesis_root[:24])
+    fork_data_root = compute_fork_data_root(fork_version, genesis_root)
+    return Domain(domain_type + fork_data_root[:28])
 ```
 
 #### `compute_signing_root`
