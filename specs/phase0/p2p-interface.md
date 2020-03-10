@@ -221,7 +221,7 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 
 Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkDigest/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
-- `ForkDigest` - the hex-encoded bytes of `ForkDigest(compute_fork_data_root(current_fork_version, genesis_validators_root)[:4])` where
+- `ForkDigest` - the lowercase hex-encoded (no "0x" prefix) bytes of `ForkDigest(compute_fork_data_root(current_fork_version, genesis_validators_root)[:4])` where
     - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `Name` - see table below
