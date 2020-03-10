@@ -373,6 +373,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
             or get_ancestor(store, store.justified_checkpoint.root, finalized_slot) != store.finalized_checkpoint.root
         ):
             store.justified_checkpoint = state.current_justified_checkpoint
+    
+    # Update latest messages for all attestations in the block
+    for attestation in block.body.attestations:
+        target_state = store.checkpoint_states[attestation.data.target] 
+        indexed_attestation = get_indexed_attestation(target_state, attestation)
+        update_latest_messages(store, indexed_attestation.attesting_indices, attestation)
 ```
 
 #### `on_attestation`
