@@ -244,6 +244,7 @@ Note that aside from the new additions, `Validator` and `PendingAttestation` hav
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
+    genesis_validators_root: Root
     slot: Slot
     fork: Fork
     # History

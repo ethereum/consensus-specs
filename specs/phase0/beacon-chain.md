@@ -149,7 +149,8 @@ We define the following Python custom types for type hinting and readability:
 | `Root` | `Bytes32` | a Merkle root |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a domain type |
-| `Domain` | `Bytes8` | a signature domain |
+| `ForkDigest` | `Bytes4` | a digest of the current fork data |
+| `Domain` | `Bytes32` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -473,6 +474,7 @@ class BeaconBlock(Container):
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
+    genesis_validators_root: Root
     slot: Slot
     fork: Fork
     # History
@@ -795,13 +797,15 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None, genesis_root: Root=None) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
     if fork_version is None:
         fork_version = GENESIS_FORK_VERSION
-    return Domain(domain_type + fork_version)
+    if genesis_root is None:
+        genesis_root = Root()  # all bytes zero by default
+    return Domain(domain_type + fork_version + genesis_root[:24])
 ```
 
 #### `compute_signing_root`
@@ -977,7 +981,7 @@ def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch=None) -
     """
     epoch = get_current_epoch(state) if epoch is None else epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return compute_domain(domain_type, fork_version)
+    return compute_domain(domain_type, fork_version, state.genesis_validators_root)
 ```
 
 #### `get_indexed_attestation`
@@ -1121,6 +1125,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
+
+    # Set genesis validators root for domain separation and chain versioning
+    state.genesis_validators_root = hash_tree_root(state.validators)
 
     return state
 ```
