@@ -1,10 +1,10 @@
 from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root
 from eth2spec.debug.encode import encode
-from eth2spec.utils.ssz.ssz_typing import SSZValue, Container
+from eth2spec.utils.ssz.ssz_typing import View
 from typing import Callable
 
 
-def valid_test_case(value_fn: Callable[[], SSZValue]):
+def valid_test_case(value_fn: Callable[[], View]):
     def case_fn():
         value = value_fn()
         yield "value", "data", encode(value)
