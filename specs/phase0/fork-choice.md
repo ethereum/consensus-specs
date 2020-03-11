@@ -42,7 +42,7 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_checkpoint_store(genesis_state)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
 
 - `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
 - `on_block(block)` whenever a block `block: SignedBeaconBlock` is received
