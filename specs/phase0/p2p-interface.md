@@ -97,7 +97,7 @@ It consists of four main sections:
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
-    - [Why does `BeaconBlocksByRange` let the server choose which chain to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-chain-to-send-blocks-from)
+    - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
     - [What's the effect of empty slots on the sync algorithm?](#whats-the-effect-of-empty-slots-on-the-sync-algorithm)
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
@@ -646,7 +646,7 @@ Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that 
 
 ##### `eth2` field
 
-ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork version, next fork version, and next fork epoch to ensure connections are made with peers on the intended eth2 network.
+ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork digest, next fork version, and next fork epoch to ensure connections are made with peers on the intended eth2 network.
 
 | Key          | Value               |
 |:-------------|:--------------------|
@@ -973,17 +973,17 @@ Assuming option 0 with no special `null` encoding, consider a request for slots 
 
 Failing to provide blocks that nodes "should" have is reason to trust a peer less - for example, if a particular peer gossips a block, it should have access to its parent. If a request for the parent fails, it's indicative of poor peer quality since peers should validate blocks before gossiping them.
 
-### Why does `BeaconBlocksByRange` let the server choose which chain to send blocks from?
+### Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?
 
 When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time. By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale, and the responding side might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
 
-To avoid this race condition, we allow the responding side to choose which chain to send to the requesting client. The requesting client then goes on to validate the blocks and incorporate them in their own database - because they follow the same rules, they should at this point arrive at the same chain.
+To avoid this race condition, we allow the responding side to choose which branch to send to the requesting client. The requesting client then goes on to validate the blocks and incorporate them in their own database - because they follow the same rules, they should at this point arrive at the same canonical chain.
 
 ### What's the effect of empty slots on the sync algorithm?
 
-When syncing one can only tell that a slot has been skipped on a particular chain by examining subsequent blocks and analyzing the graph formed by the parent root. Because the server side may choose to omit blocks in the response for any reason, clients must validate the graph and be prepared to fill in gaps.
+When syncing one can only tell that a slot has been skipped on a particular branch by examining subsequent blocks and analyzing the graph formed by the parent root. Because the server side may choose to omit blocks in the response for any reason, clients must validate the graph and be prepared to fill in gaps.
 
-For example, if a peer responds with blocks [2, 3] when asked for [2, 3, 4], clients may not assume that block 4 doesn't exist - it merely means that the responding peer did not send it (they may not have it yet or may maliciously be trying to hide it) and successive blocks will be needed to determine if there exists a block at slot 4 in this particular chain.
+For example, if a peer responds with blocks [2, 3] when asked for [2, 3, 4], clients may not assume that block 4 doesn't exist - it merely means that the responding peer did not send it (they may not have it yet or may maliciously be trying to hide it) and successive blocks will be needed to determine if there exists a block at slot 4 in this particular branch.
 
 ## Discovery
 
