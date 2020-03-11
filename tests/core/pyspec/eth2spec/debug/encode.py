@@ -1,27 +1,30 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, serialize
 from eth2spec.utils.ssz.ssz_typing import (
     uint, boolean,
-    Bitlist, Bitvector, Container
+    Bitlist, Bitvector, Container, Vector, List
 )
 
 
 def encode(value, include_hash_tree_roots=False):
     if isinstance(value, uint):
         # Larger uints are boxed and the class declares their byte length
-        if value.type().byte_len > 8:
+        if value.__class__.type_byte_length() > 8:
             return str(int(value))
         return int(value)
     elif isinstance(value, boolean):
         return value == 1
     elif isinstance(value, (Bitlist, Bitvector)):
         return '0x' + serialize(value).hex()
-    elif isinstance(value, list):  # normal python lists, ssz-List, Vector
+    elif isinstance(value, list):  # normal python lists
         return [encode(element, include_hash_tree_roots) for element in value]
-    elif isinstance(value, bytes):  # both bytes and ByteVector
+    elif isinstance(value, (List, Vector)):
+        return [encode(element, include_hash_tree_roots) for element in value]
+    elif isinstance(value, bytes):  # bytes, ByteList, ByteVector
         return '0x' + value.hex()
     elif isinstance(value, Container):
         ret = {}
-        for field_value, field_name in zip(value, value.get_fields().keys()):
+        for field_name in value.fields().keys():
+            field_value = getattr(value, field_name)
             ret[field_name] = encode(field_value, include_hash_tree_roots)
             if include_hash_tree_roots:
                 ret[field_name + "_hash_tree_root"] = '0x' + hash_tree_root(field_value).hex()

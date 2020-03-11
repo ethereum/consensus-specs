@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 
@@ -12,11 +10,12 @@ def get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False):
 
     header_1 = spec.BeaconBlockHeader(
         slot=slot,
+        proposer_index=validator_index,
         parent_root=b'\x33' * 32,
         state_root=b'\x44' * 32,
-        block_body_root=b'\x55' * 32,
+        body_root=b'\x55' * 32,
     )
-    header_2 = deepcopy(header_1)
+    header_2 = header_1.copy()
     header_2.parent_root = b'\x99' * 32
 
     if signed_1:
@@ -29,7 +28,6 @@ def get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False):
         signed_header_2 = spec.SignedBeaconBlockHeader(message=header_2)
 
     return spec.ProposerSlashing(
-        proposer_index=validator_index,
         signed_header_1=signed_header_1,
         signed_header_2=signed_header_2,
     )

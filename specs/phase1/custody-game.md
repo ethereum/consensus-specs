@@ -4,107 +4,62 @@
 
 ## Table of contents
 
-<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
 - [Introduction](#introduction)
-- [Terminology](#terminology)
 - [Constants](#constants)
   - [Misc](#misc)
-  - [Custody game parameters](#custody-game-parameters)
+- [Configuration](#configuration)
   - [Time parameters](#time-parameters)
   - [Max operations per block](#max-operations-per-block)
   - [Reward and penalty quotients](#reward-and-penalty-quotients)
   - [Signature domain types](#signature-domain-types)
-  - [TODO PLACEHOLDER](#todo-placeholder)
 - [Data structures](#data-structures)
-  - [Custody objects](#custody-objects)
-    - [`CustodyChunkChallenge`](#custodychunkchallenge)
-    - [`CustodyBitChallenge`](#custodybitchallenge)
-    - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
-    - [`CustodyBitChallengeRecord`](#custodybitchallengerecord)
-    - [`CustodyResponse`](#custodyresponse)
-  - [New beacon operations](#new-beacon-operations)
+  - [New Beacon Chain operations](#new-beacon-chain-operations)
+    - [`CustodySlashing`](#custodyslashing)
+    - [`SignedCustodySlashing`](#signedcustodyslashing)
     - [`CustodyKeyReveal`](#custodykeyreveal)
     - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
-  - [Phase 0 container updates](#phase-0-container-updates)
-    - [`Validator`](#validator)
-    - [`BeaconState`](#beaconstate)
-    - [`BeaconBlockBody`](#beaconblockbody)
 - [Helpers](#helpers)
-  - [`ceillog2`](#ceillog2)
-  - [`is_valid_merkle_branch_with_mixin`](#is_valid_merkle_branch_with_mixin)
-  - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
   - [`legendre_bit`](#legendre_bit)
-  - [`custody_subchunkify`](#custody_subchunkify)
-  - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
-  - [`get_chunk_bits_root`](#get_chunk_bits_root)
+  - [`custody_atoms`](#custody_atoms)
+  - [`compute_custody_bit`](#compute_custody_bit)
   - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
   - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
-  - [`replace_empty_or_append`](#replace_empty_or_append)
 - [Per-block processing](#per-block-processing)
-  - [Operations](#operations)
+  - [Custody Game Operations](#custody-game-operations)
     - [Custody key reveals](#custody-key-reveals)
     - [Early derived secret reveals](#early-derived-secret-reveals)
-    - [Chunk challenges](#chunk-challenges)
-    - [Bit challenges](#bit-challenges)
-    - [Custody responses](#custody-responses)
+    - [Custody Slashings](#custody-slashings)
 - [Per-epoch processing](#per-epoch-processing)
-  - [Handling of custody-related deadlines](#handling-of-custody-related-deadlines)
+  - [Handling of reveal deadlines](#handling-of-reveal-deadlines)
+  - [Final updates](#final-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
 
 ## Introduction
 
 This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [Phase 0](../phase0/beacon-chain.md) specification.
 
-## Terminology
-
-- **Custody game**—
-- **Custody period**—
-- **Custody chunk**—
-- **Custody chunk bit**—
-- **Custody chunk challenge**—
-- **Custody bit**—
-- **Custody bit challenge**—
-- **Custody key**—
-- **Custody key reveal**—
-- **Custody key mask**—
-- **Custody response**—
-- **Custody response deadline**—
-
 ## Constants
 
 ### Misc
-| Name | Value |
-| - | - |
-| `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` |
-| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
-| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 
-### Custody game parameters
+| Name | Value | Unit |
+| - | - | - |
+| `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` | - |
+| `BYTES_PER_CUSTODY_ATOM` | `48` | bytes |
 
-| Name | Value |
-| - | - |
-| `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
-| `BYTES_PER_CUSTODY_CHUNK` | `2**9` (= 512) |
-| `BYTES_PER_CUSTODY_SUBCHUNK` | `48` |
-| `CHUNKS_PER_EPOCH` | `2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK` |
-| `MAX_CUSTODY_CHUNKS` | `MAX_EPOCHS_PER_CROSSLINK * CHUNKS_PER_EPOCH` |
-| `CUSTODY_DATA_DEPTH` | `ceillog2(MAX_CUSTODY_CHUNKS) + 1` |
-| `CUSTODY_CHUNK_BIT_DEPTH` | `ceillog2(MAX_EPOCHS_PER_CROSSLINK * CHUNKS_PER_EPOCH // 256) + 2` |
+## Configuration
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
-| `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 | `RANDAO_PENALTY_EPOCHS` | `2**1` (= 2) | epochs | 12.8 minutes |
-| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` (= 16,384) | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 | `MAX_REVEAL_LATENESS_DECREMENT` | `2**7` (= 128) | epochs | ~14 hours |
@@ -113,17 +68,16 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
-| `MAX_CUSTODY_KEY_REVEALS` | `2**4` (= 16) |
+| `MAX_CUSTODY_KEY_REVEALS` | `2**8` (= 256) |
 | `MAX_EARLY_DERIVED_SECRET_REVEALS` | `1` |
-| `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
-| `MAX_CUSTODY_BIT_CHALLENGES` | `2**2` (= 4) |
-| `MAX_CUSTODY_RESPONSES` | `2**5` (= 32) |
+| `MAX_CUSTODY_SLASHINGS` | `1` |
 
 ### Reward and penalty quotients
 
 | Name | Value |
 | - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
+| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 
 ### Signature domain types
 
@@ -131,79 +85,35 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
-| `DOMAIN_CUSTODY_BIT_CHALLENGE` | `DomainType('0x06000000')` |
-
-### TODO PLACEHOLDER
-
-| Name | Value |
-| - | - |
-| `PLACEHOLDER` | `2**32` |
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
 
 ## Data structures
 
-### Custody objects
+### New Beacon Chain operations
 
-#### `CustodyChunkChallenge`
+#### `CustodySlashing`
 
 ```python
-class CustodyChunkChallenge(Container):
-    responder_index: ValidatorIndex
+class CustodySlashing(Container):
+    # Attestation.custody_bits_blocks[data_index][committee.index(malefactor_index)] is the target custody bit to check.
+    # (Attestation.data.shard_transition_root as ShardTransition).shard_data_roots[data_index] is the root of the data.
+    data_index: uint64
+    malefactor_index: ValidatorIndex
+    malefactor_secret: BLSSignature
+    whistleblower_index: ValidatorIndex
+    shard_transition: ShardTransition
     attestation: Attestation
-    chunk_index: uint64
+    data: ByteList[MAX_SHARD_BLOCK_SIZE]
 ```
 
-#### `CustodyBitChallenge`
+#### `SignedCustodySlashing`
 
 ```python
-class CustodyBitChallenge(Container):
-    responder_index: ValidatorIndex
-    attestation: Attestation
-    challenger_index: ValidatorIndex
-    responder_key: BLSSignature
-    chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]
+class SignedCustodySlashing(Container):
+    message: CustodySlashing
     signature: BLSSignature
 ```
 
-#### `CustodyChunkChallengeRecord`
-
-```python
-class CustodyChunkChallengeRecord(Container):
-    challenge_index: uint64
-    challenger_index: ValidatorIndex
-    responder_index: ValidatorIndex
-    inclusion_epoch: Epoch
-    data_root: Root
-    depth: uint64
-    chunk_index: uint64
-```
-
-#### `CustodyBitChallengeRecord`
-
-```python
-class CustodyBitChallengeRecord(Container):
-    challenge_index: uint64
-    challenger_index: ValidatorIndex
-    responder_index: ValidatorIndex
-    inclusion_epoch: Epoch
-    data_root: Root
-    chunk_count: uint64
-    chunk_bits_merkle_root: Root
-    responder_key: BLSSignature
-```
-
-#### `CustodyResponse`
-
-```python
-class CustodyResponse(Container):
-    challenge_index: uint64
-    chunk_index: uint64
-    chunk: ByteVector[BYTES_PER_CUSTODY_CHUNK]
-    data_branch: List[Bytes32, CUSTODY_DATA_DEPTH]
-    chunk_bits_branch: List[Bytes32, CUSTODY_CHUNK_BIT_DEPTH]
-    chunk_bits_leaf: Bitvector[256]
-```
-
-### New beacon operations
 
 #### `CustodyKeyReveal`
 
@@ -233,81 +143,8 @@ class EarlyDerivedSecretReveal(Container):
     mask: Bytes32
 ```
 
-### Phase 0 container updates
-
-Add the following fields to the end of the specified container objects. Fields with underlying type `uint64` are initialized to `0` and list fields are initialized to `[]`.
-
-#### `Validator`
-
-```python
-class Validator(Container):
-    # next_custody_secret_to_reveal is initialised to the custody period
-    # (of the particular validator) in which the validator is activated
-    # = get_custody_period_for_validator(...)
-    next_custody_secret_to_reveal: uint64
-    max_reveal_lateness: Epoch
-```
-
-#### `BeaconState`
-
-```python
-class BeaconState(Container):
-    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, PLACEHOLDER]
-    custody_bit_challenge_records: List[CustodyBitChallengeRecord, PLACEHOLDER]
-    custody_challenge_index: uint64
-
-    # Future derived secrets already exposed; contains the indices of the exposed validator
-    # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    exposed_derived_secrets: Vector[List[ValidatorIndex, PLACEHOLDER],
-                                    EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
-```
-
-#### `BeaconBlockBody`
-
-```python
-class BeaconBlockBody(Container):
-    custody_chunk_challenges: List[CustodyChunkChallenge, PLACEHOLDER]
-    custody_bit_challenges: List[CustodyBitChallenge, PLACEHOLDER]
-    custody_responses: List[CustodyResponse, PLACEHOLDER]
-    custody_key_reveals: List[CustodyKeyReveal, PLACEHOLDER]
-    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, PLACEHOLDER]
-```
 
 ## Helpers
-
-### `ceillog2`
-
-```python
-def ceillog2(x: uint64) -> int:
-    return (x - 1).bit_length()
-```
-
-### `is_valid_merkle_branch_with_mixin`
-
-```python
-def is_valid_merkle_branch_with_mixin(leaf: Bytes32,
-                                      branch: Sequence[Bytes32],
-                                      depth: uint64,
-                                      index: uint64,
-                                      root: Root,
-                                      mixin: uint64) -> bool:
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    value = hash(value + mixin.to_bytes(32, "little"))
-    return value == root
-```
-
-### `get_crosslink_chunk_count`
-
-```python
-def get_custody_chunk_count(crosslink: Crosslink) -> int:
-    crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, crosslink.end_epoch - crosslink.start_epoch)
-    return crosslink_length * CHUNKS_PER_EPOCH
-```
 
 ### `legendre_bit`
 
@@ -338,37 +175,27 @@ def legendre_bit(a: int, q: int) -> int:
         return 0
 ```
 
-### `custody_subchunkify`
+### `custody_atoms`
 
-Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
+Given one set of data, return the custody atoms: each atom will be combined with one legendre bit.
 
 ```python
-def custody_subchunkify(bytez: bytes) -> Sequence[bytes]:
-    bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_SUBCHUNK)
-    return [bytez[i:i + BYTES_PER_CUSTODY_SUBCHUNK]
-            for i in range(0, len(bytez), BYTES_PER_CUSTODY_SUBCHUNK)]
+def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
+    bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_ATOM)  # right-padding
+    return [bytez[i:i + BYTES_PER_CUSTODY_ATOM]
+            for i in range(0, len(bytez), BYTES_PER_CUSTODY_ATOM)]
 ```
 
-### `get_custody_chunk_bit`
+### `compute_custody_bit`
 
 ```python
-def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
+def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
     full_G2_element = bls.signature_to_G2(key)
     s = full_G2_element[0].coeffs
-    bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(subchunk, "little"), BLS12_381_Q)
-            for i, subchunk in enumerate(custody_subchunkify(chunk))]
-
-    return bool(sum(bits) % 2)
-```
-
-### `get_chunk_bits_root`
-
-```python
-def get_chunk_bits_root(chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bit:
-    aggregated_bits = 0
-    for i, b in enumerate(chunk_bits):
-        aggregated_bits += 2**i * b
-    return legendre_bit(aggregated_bits, BLS12_381_Q)
+    bits = [legendre_bit(sum(s[i % 2]**i * int.from_bytes(atom, "little")), BLS12_381_Q)
+            for i, atom in enumerate(get_custody_atoms(data))]
+    # XOR all atom bits
+    return bit(sum(bits) % 2)
 ```
 
 ### `get_randao_epoch_for_custody_period`
@@ -382,37 +209,30 @@ def get_randao_epoch_for_custody_period(period: uint64, validator_index: Validat
 ### `get_custody_period_for_validator`
 
 ```python
-def get_custody_period_for_validator(state: BeaconState, validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
+def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epoch) -> int:
     '''
     Return the reveal period for a given validator.
     '''
-    epoch = get_current_epoch(state) if epoch is None else epoch
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
-### `replace_empty_or_append`
-
-```python
-def replace_empty_or_append(list: MutableSequence[Any], new_element: Any) -> int:
-    for i in range(len(list)):
-        if is_zero(list[i]):
-            list[i] = new_element
-            return i
-    list.append(new_element)
-    return len(list) - 1
-```
 
 ## Per-block processing
 
-### Operations
+### Custody Game Operations
 
-Add the following operations to the per-block processing, in the order given below and after all other operations in Phase 0.
+```python
+def process_custody_game_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.custody_key_reveals, process_custody_key_reveal)
+    for_ops(body.early_derived_secret_reveals, process_early_derived_secret_reveal)
+    for_ops(body.custody_slashings, process_custody_slashing)
+```
 
 #### Custody key reveals
-
-Verify that `len(block.body.custody_key_reveals) <= MAX_CUSTODY_KEY_REVEALS`.
-
-For each `reveal` in `block.body.custody_key_reveals`, run the following function:
 
 ```python
 def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> None:
@@ -423,7 +243,8 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
 
-    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(state, reveal.revealer_index)
+    custody_reveal_period = get_custody_period_for_validator(reveal.revealer_index, get_current_epoch(state))
+    assert revealer.next_custody_secret_to_reveal < custody_reveal_period
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -448,7 +269,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     # Process reveal
     revealer.next_custody_secret_to_reveal += 1
 
-    # Reward Block Preposer
+    # Reward Block Proposer
     proposer_index = get_beacon_proposer_index(state)
     increase_balance(
         state,
@@ -458,10 +279,6 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
 ```
 
 #### Early derived secret reveals
-
-Verify that `len(block.body.early_derived_secret_reveals) <= MAX_EARLY_DERIVED_SECRET_REVEALS`.
-
-For each `reveal` in `block.body.early_derived_secret_reveals`, run the following function:
 
 ```python
 def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerivedSecretReveal) -> None:
@@ -520,252 +337,94 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
         state.exposed_derived_secrets[derived_secret_location].append(reveal.revealed_index)
 ```
 
-#### Chunk challenges
-
-Verify that `len(block.body.custody_chunk_challenges) <= MAX_CUSTODY_CHUNK_CHALLENGES`.
-
-For each `challenge` in `block.body.custody_chunk_challenges`, run the following function:
+#### Custody Slashings
 
 ```python
-def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge) -> None:
+def process_custody_slashing(state: BeaconState, signed_custody_slashing: SignedCustodySlashing) -> None:
+    custody_slashing = signed_custody_slashing.message
+    attestation = custody_slashing.attestation
+
+    # Any signed custody-slashing should result in at least one slashing.
+    # If the custody bits are valid, then the claim itself is slashed.
+    malefactor = state.validators[custody_slashing.malefactor_index] 
+    whistleblower = state.validators[custody_slashing.whistleblower_index]
+    domain = get_domain(state, DOMAIN_CUSTODY_BIT_SLASHING, get_current_epoch(state))
+    signing_root = compute_signing_root(custody_slashing, domain)
+    assert bls.Verify(whistleblower.pubkey, signing_root, signed_custody_slashing.signature)
+    # Verify that the whistleblower is slashable
+    assert is_slashable_validator(whistleblower, get_current_epoch(state))
+    # Verify that the claimed malefactor is slashable
+    assert is_slashable_validator(malefactor, get_current_epoch(state))
+
     # Verify the attestation
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
-    # Verify it is not too late to challenge
-    assert (compute_epoch_at_slot(challenge.attestation.data.slot)
-            >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
-    responder = state.validators[challenge.responder_index]
-    assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
-    # Verify the responder participated in the attestation
-    attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bits)
-    assert challenge.responder_index in attesters
-    # Verify the challenge is not a duplicate
-    for record in state.custody_chunk_challenge_records:
-        assert (
-            record.data_root != challenge.attestation.data.crosslink.data_root or
-            record.chunk_index != challenge.chunk_index
-        )
-    # Verify depth
-    depth = ceillog2(get_custody_chunk_count(challenge.attestation.data.crosslink))
-    assert challenge.chunk_index < 2**depth
-    # Add new chunk challenge record
-    new_record = CustodyChunkChallengeRecord(
-        challenge_index=state.custody_challenge_index,
-        challenger_index=get_beacon_proposer_index(state),
-        responder_index=challenge.responder_index,
-        inclusion_epoch=get_current_epoch(state),
-        data_root=challenge.attestation.data.crosslink.data_root,
-        depth=depth,
-        chunk_index=challenge.chunk_index,
-    )
-    replace_empty_or_append(state.custody_chunk_challenge_records, new_record)
-
-    state.custody_challenge_index += 1
-    # Postpone responder withdrawability
-    responder.withdrawable_epoch = FAR_FUTURE_EPOCH
-```
-
-#### Bit challenges
-
-Verify that `len(block.body.custody_bit_challenges) <= MAX_CUSTODY_BIT_CHALLENGES`.
-
-For each `challenge` in `block.body.custody_bit_challenges`, run the following function:
-
-```python
-def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) -> None:
-    attestation = challenge.attestation
-    epoch = attestation.data.target.epoch
-    shard = attestation.data.crosslink.shard
-
-    # Verify challenge signature
-    challenger = state.validators[challenge.challenger_index]
-    domain = get_domain(state, DOMAIN_CUSTODY_BIT_CHALLENGE, get_current_epoch(state))
-    # TODO incorrect hash-tree-root, but this changes with phase 1 PR #1483
-    assert bls.Verify(challenger.pubkey, compute_signing_root(challenge, domain), challenge.signature)
-    # Verify challenger is slashable
-    assert is_slashable_validator(challenger, get_current_epoch(state))
-    # Verify attestation
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
-    # Verify attestation is eligible for challenging
-    responder = state.validators[challenge.responder_index]
-    assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
-        get_custody_period_for_validator(state, challenge.responder_index, epoch),
-        challenge.responder_index
-    ) + 2 * EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
 
-    # Verify the responder participated in the attestation
+    # TODO: custody_slashing.data is not chunked like shard blocks yet, result is lots of padding.
+
+    # TODO: can do a single combined merkle proof of data being attested.
+    # Verify the shard transition is indeed attested by the attestation
+    shard_transition = custody_slashing.shard_transition
+    assert hash_tree_root(shard_transition) == attestation.shard_transition_root
+    # Verify that the provided data matches the shard-transition
+    assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
+
+    # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-    assert challenge.responder_index in attesters
-    # Verifier challenger is not already challenging
-    for record in state.custody_bit_challenge_records:
-        assert record.challenger_index != challenge.challenger_index
-    # Verify the responder custody key
+    assert custody_slashing.malefactor_index in attesters
+    
+    # Verify the malefactor custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
-        get_custody_period_for_validator(state, challenge.responder_index, epoch),
-        challenge.responder_index,
+        get_custody_period_for_validator(custody_slashing.malefactor_index, attestation.data.target.epoch),
+        custody_slashing.malefactor_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    assert bls.Verify(responder.pubkey, compute_signing_root(epoch_to_sign, domain), challenge.responder_key)
-    # Verify the chunk count
-    chunk_count = get_custody_chunk_count(attestation.data.crosslink)
-    assert chunk_count == len(challenge.chunk_bits)
-    # Verify custody bit is incorrect
-    committee = get_beacon_committee(state, epoch, shard)
-    custody_bit = attestation.custody_bits[committee.index(challenge.responder_index)]
-    assert custody_bit != get_chunk_bits_root(challenge.chunk_bits)
-    # Add new bit challenge record
-    new_record = CustodyBitChallengeRecord(
-        challenge_index=state.custody_challenge_index,
-        challenger_index=challenge.challenger_index,
-        responder_index=challenge.responder_index,
-        inclusion_epoch=get_current_epoch(state),
-        data_root=attestation.data.crosslink.data_root,
-        chunk_count=chunk_count,
-        chunk_bits_merkle_root=hash_tree_root(challenge.chunk_bits),
-        responder_key=challenge.responder_key,
-    )
-    replace_empty_or_append(state.custody_bit_challenge_records, new_record)
-    state.custody_challenge_index += 1
-    # Postpone responder withdrawability
-    responder.withdrawable_epoch = FAR_FUTURE_EPOCH
+    signing_root = compute_signing_root(epoch_to_sign, domain)
+    assert bls.Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
+
+    # Get the custody bit
+    custody_bits = attestation.custody_bits_blocks[custody_slashing.data_index]
+    committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    claimed_custody_bit = custody_bits[committee.index(custody_slashing.malefactor_index)]
+    
+    # Compute the custody bit
+    computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_secret, custody_slashing.data)
+    
+    # Verify the claim
+    if claimed_custody_bit != computed_custody_bit:
+        # Slash the malefactor, reward the other committee members
+        slash_validator(state, custody_slashing.malefactor_index)
+        others_count = len(committee) - 1
+        whistleblower_reward = Gwei(malefactor.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT // others_count)
+        for attester_index in attesters:
+            if attester_index != custody_slashing.malefactor_index:
+                increase_balance(state, attester_index, whistleblower_reward)
+        # No special whisteblower reward: it is expected to be an attester. Others are free to slash too however. 
+    else:
+        # The claim was false, the custody bit was correct. Slash the whistleblower that induced this work.
+        slash_validator(state, custody_slashing.whistleblower_index)
 ```
 
-#### Custody responses
-
-Verify that `len(block.body.custody_responses) <= MAX_CUSTODY_RESPONSES`.
-
-For each `response` in `block.body.custody_responses`, run the following function:
-
-```python
-def process_custody_response(state: BeaconState, response: CustodyResponse) -> None:
-    chunk_challenge = next((record for record in state.custody_chunk_challenge_records
-                            if record.challenge_index == response.challenge_index), None)
-    if chunk_challenge is not None:
-        return process_chunk_challenge_response(state, response, chunk_challenge)
-
-    bit_challenge = next((record for record in state.custody_bit_challenge_records
-                          if record.challenge_index == response.challenge_index), None)
-    if bit_challenge is not None:
-        return process_bit_challenge_response(state, response, bit_challenge)
-
-    assert False
-```
-
-```python
-def process_chunk_challenge_response(state: BeaconState,
-                                     response: CustodyResponse,
-                                     challenge: CustodyChunkChallengeRecord) -> None:
-    # Verify chunk index
-    assert response.chunk_index == challenge.chunk_index
-    # Verify bit challenge data is null
-    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Bytes32()
-    # Verify minimum delay
-    assert get_current_epoch(state) >= challenge.inclusion_epoch + MAX_SEED_LOOKAHEAD
-    # Verify the chunk matches the crosslink data root
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(response.chunk),
-        branch=response.data_branch,
-        depth=challenge.depth,
-        index=response.chunk_index,
-        root=challenge.data_root,
-    )
-    # Clear the challenge
-    records = state.custody_chunk_challenge_records
-    records[records.index(challenge)] = CustodyChunkChallengeRecord()
-    # Reward the proposer
-    proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
-```
-
-```python
-def process_bit_challenge_response(state: BeaconState,
-                                   response: CustodyResponse,
-                                   challenge: CustodyBitChallengeRecord) -> None:
-    # Verify chunk index
-    assert response.chunk_index < challenge.chunk_count
-    # Verify responder has not been slashed
-    responder = state.validators[challenge.responder_index]
-    assert not responder.slashed
-    # Verify the chunk matches the crosslink data root
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(response.chunk),
-        branch=response.data_branch,
-        depth=ceillog2(challenge.chunk_count),
-        index=response.chunk_index,
-        root=challenge.data_root,
-    )
-    # Verify the chunk bit leaf matches the challenge data
-    assert is_valid_merkle_branch_with_mixin(
-        leaf=hash_tree_root(response.chunk_bits_leaf),
-        branch=response.chunk_bits_branch,
-        depth=ceillog2(MAX_CUSTODY_CHUNKS // 256),
-        index=response.chunk_index // 256,
-        root=challenge.chunk_bits_merkle_root,
-        mixin=challenge.chunk_count,
-    )
-    # Verify the chunk bit does not match the challenge chunk bit
-    assert (get_custody_chunk_bit(challenge.responder_key, response.chunk)
-            != response.chunk_bits_leaf[response.chunk_index % 256])
-    # Clear the challenge
-    records = state.custody_bit_challenge_records
-    records[records.index(challenge)] = CustodyBitChallengeRecord()
-    # Slash challenger
-    slash_validator(state, challenge.challenger_index, challenge.responder_index)
-```
 
 ## Per-epoch processing
 
-### Handling of custody-related deadlines
+### Handling of reveal deadlines
 
-Run `process_reveal_deadlines(state)` immediately after `process_registry_updates(state)`:
+Run `process_reveal_deadlines(state)` after `process_registry_updates(state)`:
 
 ```python
-# begin insert @process_reveal_deadlines
-    process_reveal_deadlines(state)
-# end insert @process_reveal_deadlines
 def process_reveal_deadlines(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
     for index, validator in enumerate(state.validators):
-        deadline = validator.next_custody_secret_to_reveal + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
-        if get_custody_period_for_validator(state, ValidatorIndex(index)) > deadline:
+        if get_custody_period_for_validator(ValidatorIndex(index), epoch) > validator.next_custody_secret_to_reveal:
             slash_validator(state, ValidatorIndex(index))
 ```
 
-Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadlines(state)`:
+### Final updates
+
+After `process_final_updates(state)`, additional updates are made for the custody game:
 
 ```python
-# begin insert @process_challenge_deadlines
-    process_challenge_deadlines(state)
-# end insert @process_challenge_deadlines
-def process_challenge_deadlines(state: BeaconState) -> None:
-    for custody_chunk_challenge in state.custody_chunk_challenge_records:
-        if get_current_epoch(state) > custody_chunk_challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
-            slash_validator(state, custody_chunk_challenge.responder_index, custody_chunk_challenge.challenger_index)
-            records = state.custody_chunk_challenge
-            records[records.index(custody_chunk_challenge)] = CustodyChunkChallengeRecord()
-
-    for custody_bit_challenge in state.custody_bit_challenge_records:
-        if get_current_epoch(state) > custody_bit_challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
-            slash_validator(state, custody_bit_challenge.responder_index, custody_bit_challenge.challenger_index)
-            records = state.custody_bit_challenge_records
-            records[records.index(custody_bit_challenge)] = CustodyBitChallengeRecord()
-```
-
-Append this to `process_final_updates(state)`:
-
-```python
-# begin insert @after_process_final_updates
-    after_process_final_updates(state)
-# end insert @after_process_final_updates
-def after_process_final_updates(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
+def process_custody_final_updates(state: BeaconState) -> None:
     # Clean up exposed RANDAO key reveals
-    state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
-    # Reset withdrawable epochs if challenge records are empty
-    records = state.custody_chunk_challenge_records + state.custody_bit_challenge_records
-    validator_indices_in_records = set(
-        [record.challenger_index for record in records] + [record.responder_index for record in records]
-    )
-    for index, validator in enumerate(state.validators):
-        if index not in validator_indices_in_records:
-            if validator.exit_epoch != FAR_FUTURE_EPOCH and validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
-                validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+    state.exposed_derived_secrets[get_current_epoch(state) % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```

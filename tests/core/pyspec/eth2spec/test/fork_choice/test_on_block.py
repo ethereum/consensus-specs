@@ -36,7 +36,7 @@ def apply_next_epoch_with_attestations(spec, state, store):
 @spec_state_test
 def test_basic(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
     assert store.time == time
@@ -60,7 +60,7 @@ def test_basic(spec, state):
 @spec_state_test
 def test_on_block_checkpoints(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 
@@ -86,7 +86,7 @@ def test_on_block_checkpoints(spec, state):
 @spec_state_test
 def test_on_block_future_block(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
 
     # do not tick time
 
@@ -100,7 +100,7 @@ def test_on_block_future_block(spec, state):
 @spec_state_test
 def test_on_block_bad_parent_root(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 
@@ -120,7 +120,7 @@ def test_on_block_bad_parent_root(spec, state):
 @spec_state_test
 def test_on_block_before_finalized(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 
@@ -139,7 +139,7 @@ def test_on_block_before_finalized(spec, state):
 @spec_state_test
 def test_on_block_finalized_skip_slots(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 
@@ -159,7 +159,7 @@ def test_on_block_finalized_skip_slots(spec, state):
 @spec_state_test
 def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
 
     store.finalized_checkpoint = spec.Checkpoint(
         epoch=store.finalized_checkpoint.epoch + 2,
@@ -181,7 +181,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
 @spec_state_test
 def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 
@@ -212,7 +212,7 @@ def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
 @spec_state_test
 def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 
@@ -262,7 +262,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
 @spec_state_test
 def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Initialization
-    store = spec.get_genesis_store(state)
+    store = spec.get_forkchoice_store(state)
     time = 100
     spec.on_tick(store, time)
 

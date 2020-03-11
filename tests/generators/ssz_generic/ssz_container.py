@@ -1,9 +1,9 @@
 from ssz_test_case import invalid_test_case, valid_test_case
-from eth2spec.utils.ssz.ssz_typing import SSZType, Container, byte, uint8, uint16, \
+from eth2spec.utils.ssz.ssz_typing import View, Container, byte, uint8, uint16, \
     uint32, uint64, List, ByteList, Vector, Bitvector, Bitlist
 from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
-from typing import Dict, Tuple, Sequence, Callable
+from typing import Dict, Tuple, Sequence, Callable, Type
 from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
 
 
@@ -46,14 +46,14 @@ class BitsStruct(Container):
     E: Bitvector[8]
 
 
-def container_case_fn(rng: Random, mode: RandomizationMode, typ: SSZType):
+def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View]):
     return get_random_ssz_object(rng, typ,
                                  max_bytes_length=2000,
                                  max_list_length=2000,
                                  mode=mode, chaos=False)
 
 
-PRESET_CONTAINERS: Dict[str, Tuple[SSZType, Sequence[int]]] = {
+PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
     'SingleFieldTestStruct': (SingleFieldTestStruct, []),
     'SmallTestStruct': (SmallTestStruct, []),
     'FixedTestStruct': (FixedTestStruct, []),

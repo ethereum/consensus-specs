@@ -6,7 +6,7 @@ from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_b
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
     transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
+from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
@@ -121,6 +121,49 @@ def test_invalid_block_sig(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
+def test_invalid_proposer_index_sig_from_expected_proposer(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    expect_proposer_index = block.proposer_index
+
+    # Set invalid proposer index but correct signature wrt expected proposer
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    active_indices = [i for i in active_indices if i != block.proposer_index]
+    block.proposer_index = active_indices[0]  # invalid proposer index
+
+    invalid_signed_block = sign_block(spec, state, block, expect_proposer_index)
+
+    expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
+
+    yield 'blocks', [invalid_signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_invalid_proposer_index_sig_from_proposer_index(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Set invalid proposer index but correct signature wrt proposer_index
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    active_indices = [i for i in active_indices if i != block.proposer_index]
+    block.proposer_index = active_indices[0]  # invalid proposer index
+
+    invalid_signed_block = sign_block(spec, state, block, block.proposer_index)
+
+    expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
+
+    yield 'blocks', [invalid_signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
 def test_skipped_slots(spec, state):
     pre_slot = state.slot
     yield 'pre', state
@@ -187,7 +230,7 @@ def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
     pre_state = deepcopy(state)
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = proposer_slashing.proposer_index
+    validator_index = proposer_slashing.signed_header_1.message.proposer_index
 
     assert not state.validators[validator_index].slashed
 
@@ -220,7 +263,7 @@ def test_attester_slashing(spec, state):
     pre_state = deepcopy(state)
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = attester_slashing.attestation_1.attesting_indices[0]
+    validator_index = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)[0]
 
     assert not state.validators[validator_index].slashed
 
@@ -486,10 +529,12 @@ def test_historical_batch(spec, state):
 @spec_state_test
 def test_eth1_data_votes_consensus(spec, state):
     # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
-    if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
+    if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
         return
 
-    offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
+
+    offset_block = build_empty_block(spec, state, slot=voting_period_slots - 1)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -499,14 +544,14 @@ def test_eth1_data_votes_consensus(spec, state):
 
     blocks = []
 
-    for i in range(0, spec.SLOTS_PER_ETH1_VOTING_PERIOD):
+    for i in range(0, voting_period_slots):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for over 50% for A, then start voting B
-        block.body.eth1_data.block_hash = b if i * 2 > spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        block.body.eth1_data.block_hash = b if i * 2 > voting_period_slots else a
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(signed_block)
 
-    assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
+    assert len(state.eth1_data_votes) == voting_period_slots
     assert state.eth1_data.block_hash == a
 
     # transition to next eth1 voting period
@@ -519,7 +564,7 @@ def test_eth1_data_votes_consensus(spec, state):
     yield 'post', state
 
     assert state.eth1_data.block_hash == a
-    assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
+    assert state.slot % voting_period_slots == 0
     assert len(state.eth1_data_votes) == 1
     assert state.eth1_data_votes[0].block_hash == c
 
@@ -528,12 +573,14 @@ def test_eth1_data_votes_consensus(spec, state):
 @spec_state_test
 def test_eth1_data_votes_no_consensus(spec, state):
     # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
-    if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
+    if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
         return
+
+    voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
 
     pre_eth1_hash = state.eth1_data.block_hash
 
-    offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    offset_block = build_empty_block(spec, state, slot=voting_period_slots - 1)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -542,14 +589,14 @@ def test_eth1_data_votes_no_consensus(spec, state):
 
     blocks = []
 
-    for i in range(0, spec.SLOTS_PER_ETH1_VOTING_PERIOD):
+    for i in range(0, voting_period_slots):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for precisely 50% for A, then start voting B for other 50%
-        block.body.eth1_data.block_hash = b if i * 2 >= spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        block.body.eth1_data.block_hash = b if i * 2 >= voting_period_slots else a
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(signed_block)
 
-    assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
+    assert len(state.eth1_data_votes) == voting_period_slots
     assert state.eth1_data.block_hash == pre_eth1_hash
 
     yield 'blocks', blocks

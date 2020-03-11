@@ -11,7 +11,7 @@ def run_process_final_updates(spec, state):
 @with_all_phases
 @spec_state_test
 def test_eth1_vote_no_reset(spec, state):
-    assert spec.SLOTS_PER_ETH1_VOTING_PERIOD > spec.SLOTS_PER_EPOCH
+    assert spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 1
     # skip ahead to the end of the epoch
     state.slot = spec.SLOTS_PER_EPOCH - 1
     for i in range(state.slot + 1):  # add a vote for each skipped slot.
@@ -29,7 +29,7 @@ def test_eth1_vote_no_reset(spec, state):
 @spec_state_test
 def test_eth1_vote_reset(spec, state):
     # skip ahead to the end of the voting period
-    state.slot = spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1
+    state.slot = (spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH) - 1
     for i in range(state.slot + 1):  # add a vote for each skipped slot.
         state.eth1_data_votes.append(
             spec.Eth1Data(deposit_root=b'\xaa' * 32,
@@ -51,19 +51,25 @@ def test_effective_balance_hysteresis(spec, state):
     max = spec.MAX_EFFECTIVE_BALANCE
     min = spec.EJECTION_BALANCE
     inc = spec.EFFECTIVE_BALANCE_INCREMENT
-    half_inc = inc // 2
+    div = spec.HYSTERESIS_QUOTIENT
+    hys_inc = inc // div
+    down = spec.HYSTERESIS_DOWNWARD_MULTIPLIER
+    up = spec.HYSTERESIS_UPWARD_MULTIPLIER
     cases = [
         (max, max, max, "as-is"),
-        (max, max - 1, max - inc, "round down, step lower"),
+        (max, max - 1, max, "round up"),
         (max, max + 1, max, "round down"),
+        (max, max - down * hys_inc, max, "lower balance, but not low enough"),
+        (max, max - down * hys_inc - 1, max - inc, "lower balance, step down"),
+        (max, max + (up * hys_inc) + 1, max, "already at max, as is"),
         (max, max - inc, max - inc, "exactly 1 step lower"),
-        (max, max - inc - 1, max - (2 * inc), "just 1 over 1 step lower"),
+        (max, max - inc - 1, max - (2 * inc), "past 1 step lower, double step"),
         (max, max - inc + 1, max - inc, "close to 1 step lower"),
-        (min, min + (half_inc * 3), min, "bigger balance, but not high enough"),
-        (min, min + (half_inc * 3) + 1, min + inc, "bigger balance, high enough, but small step"),
-        (min, min + (half_inc * 4) - 1, min + inc, "bigger balance, high enough, close to double step"),
-        (min, min + (half_inc * 4), min + (2 * inc), "exact two step balance increment"),
-        (min, min + (half_inc * 4) + 1, min + (2 * inc), "over two steps, round down"),
+        (min, min + (hys_inc * up), min, "bigger balance, but not high enough"),
+        (min, min + (hys_inc * up) + 1, min + inc, "bigger balance, high enough, but small step"),
+        (min, min + (hys_inc * div * 2) - 1, min + inc, "bigger balance, high enough, close to double step"),
+        (min, min + (hys_inc * div * 2), min + (2 * inc), "exact two step balance increment"),
+        (min, min + (hys_inc * div * 2) + 1, min + (2 * inc), "over two steps, round down"),
     ]
     current_epoch = spec.get_current_epoch(state)
     for i, (pre_eff, bal, _, _) in enumerate(cases):

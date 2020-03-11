@@ -7,6 +7,7 @@ venv
 
 build/
 output/
+dist/
 
 eth2.0-spec-tests/
 
@@ -14,12 +15,16 @@ eth2.0-spec-tests/
 .mypy_cache
 
 # Dynamically built from Markdown spec
-tests/core/pyspec/eth2spec/phase0/spec.py
-tests/core/pyspec/eth2spec/phase1/spec.py
+tests/core/pyspec/eth2spec/phase0/
+tests/core/pyspec/eth2spec/phase1/
 
 # coverage reports
 .htmlcov
 .coverage
+.coverage.*
 
 # local CI testing output
 tests/core/pyspec/test-reports
+tests/core/pyspec/eth2spec/test_results.xml
+
+*.egg-info

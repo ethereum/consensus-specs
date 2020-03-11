@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.block import sign_block, build_empty_block_for_next_slot, transition_unsigned_block
@@ -61,7 +59,7 @@ def next_epoch_with_attestations(spec,
                                  fill_prev_epoch):
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
 
-    post_state = deepcopy(state)
+    post_state = state.copy()
     signed_blocks = []
     for _ in range(spec.SLOTS_PER_EPOCH):
         block = build_empty_block_for_next_slot(spec, post_state)

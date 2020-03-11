@@ -24,6 +24,7 @@
 - [Containers](#containers)
   - [Misc dependencies](#misc-dependencies)
     - [`Fork`](#fork)
+    - [`ForkData`](#forkdata)
     - [`Checkpoint`](#checkpoint)
     - [`Validator`](#validator)
     - [`AttestationData`](#attestationdata)
@@ -75,6 +76,8 @@
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
+    - [`compute_fork_data_root`](#compute_fork_data_root)
+    - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_domain`](#compute_domain)
     - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -149,7 +152,8 @@ We define the following Python custom types for type hinting and readability:
 | `Root` | `Bytes32` | a Merkle root |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a domain type |
-| `Domain` | `Bytes8` | a signature domain |
+| `ForkDigest` | `Bytes4` | a digest of the current fork data |
+| `Domain` | `Bytes32` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -183,6 +187,10 @@ The following values are (non-configurable) constants used throughout the specif
 | `SHUFFLE_ROUND_COUNT` | `90` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
+| `HYSTERESIS_QUOTIENT` | `4` |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
+| `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
+
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -213,7 +221,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~3.4 hours |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | 9 days |
@@ -224,7 +232,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | :-: | :-: |
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
+| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~52,262 years |
 | `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validators |
 
 ### Rewards and penalties
@@ -253,11 +261,14 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `DomainType('0x00000000')` |
-| `DOMAIN_BEACON_ATTESTER` | `DomainType('0x01000000')` |
-| `DOMAIN_RANDAO` | `DomainType('0x02000000')` |
-| `DOMAIN_DEPOSIT` | `DomainType('0x03000000')` |
-| `DOMAIN_VOLUNTARY_EXIT` | `DomainType('0x04000000')` |
+| `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
+| `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
+| `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
+| `DOMAIN_DEPOSIT`             | `DomainType('0x03000000')` |
+| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
+| `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
+| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
+
 
 ## Containers
 
@@ -276,6 +287,14 @@ class Fork(Container):
     previous_version: Version
     current_version: Version
     epoch: Epoch  # Epoch of latest fork
+```
+
+#### `ForkData`
+
+```python
+class ForkData(Container):
+    current_version: Version
+    genesis_validators_root: Root
 ```
 
 #### `Checkpoint`
@@ -374,6 +393,7 @@ class DepositData(Container):
 ```python
 class BeaconBlockHeader(Container):
     slot: Slot
+    proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
     body_root: Root
@@ -393,7 +413,6 @@ class SigningRoot(Container):
 
 ```python
 class ProposerSlashing(Container):
-    proposer_index: ValidatorIndex
     signed_header_1: SignedBeaconBlockHeader
     signed_header_2: SignedBeaconBlockHeader
 ```
@@ -453,6 +472,7 @@ class BeaconBlockBody(Container):
 ```python
 class BeaconBlock(Container):
     slot: Slot
+    proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
@@ -466,6 +486,7 @@ class BeaconBlock(Container):
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
+    genesis_validators_root: Root
     slot: Slot
     fork: Fork
     # History
@@ -475,7 +496,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
@@ -785,16 +806,45 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     return Epoch(epoch + 1 + MAX_SEED_LOOKAHEAD)
 ```
 
+#### `compute_fork_data_root`
+
+```python
+def compute_fork_data_root(current_version: Version, genesis_validators_root: Root) -> Root:
+    """
+    Return the 32-byte fork data root for the ``current_version`` and ``genesis_validators_root``.
+    This is used primarily in signature domains to avoid collisions across forks/chains.
+    """
+    return hash_tree_root(ForkData(
+        current_version=current_version,
+        genesis_validators_root=genesis_validators_root,
+    ))
+```
+
+#### `compute_fork_digest`
+
+```python
+def compute_fork_digest(current_version: Version, genesis_validators_root: Root) -> ForkDigest:
+    """
+    Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``.
+    This is a digest primarily used for domain separation on the p2p layer.
+    4-bytes suffices for practical separation of forks/chains.
+    """
+    return ForkDigest(compute_fork_data_root(current_version, genesis_validators_root)[:4])
+```
+
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Optional[Version]=None) -> Domain:
+def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_validators_root: Root=None) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
     if fork_version is None:
         fork_version = GENESIS_FORK_VERSION
-    return Domain(domain_type + fork_version)
+    if genesis_validators_root is None:
+        genesis_validators_root = Root()  # all bytes zero by default
+    fork_data_root = compute_fork_data_root(fork_version, genesis_validators_root)
+    return Domain(domain_type + fork_data_root[:28])
 ```
 
 #### `compute_signing_root`
@@ -947,6 +997,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
+    Math safe up to ~10B ETH, afterwhich this overflows uint64.
     """
     return Gwei(max(1, sum([state.validators[index].effective_balance for index in indices])))
 ```
@@ -970,7 +1021,7 @@ def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch=None) -
     """
     epoch = get_current_epoch(state) if epoch is None else epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return compute_domain(domain_type, fork_version)
+    return compute_domain(domain_type, fork_version, state.genesis_validators_root)
 ```
 
 #### `get_indexed_attestation`
@@ -1115,6 +1166,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
+    # Set genesis validators root for domain separation and chain versioning
+    state.genesis_validators_root = hash_tree_root(state.validators)
+
     return state
 ```
 
@@ -1160,7 +1214,7 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    proposer = state.validators[signed_block.message.proposer_index]
     signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
@@ -1191,19 +1245,13 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
-*Note*: The `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
-
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
-    # @process_reveal_deadlines
-    # @process_challenge_deadlines
     process_slashings(state)
-    # @update_period_committee
     process_final_updates(state)
-    # @after_process_final_updates
 ```
 
 #### Helper functions
@@ -1225,7 +1273,7 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> Sequen
 ```python
 def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence[PendingAttestation]:
     return [
-        a for a in get_matching_source_attestations(state, epoch)
+        a for a in get_matching_target_attestations(state, epoch)
         if a.data.beacon_block_root == get_block_root_at_slot(state, a.data.slot)
     ]
 ```
@@ -1316,7 +1364,9 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         attesting_balance = get_total_balance(state, unslashed_attesting_indices)
         for index in eligible_validator_indices:
             if index in unslashed_attesting_indices:
-                rewards[index] += get_base_reward(state, index) * attesting_balance // total_balance
+                increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
+                rewards[index] = reward_numerator // (total_balance // increment)
             else:
                 penalties[index] += get_base_reward(state, index)
 
@@ -1400,13 +1450,18 @@ def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = Epoch(current_epoch + 1)
     # Reset eth1 data votes
-    if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
+    if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
-        if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
+        HYSTERESIS_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT
+        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
+        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
+        if (
+            balance + DOWNWARD_THRESHOLD < validator.effective_balance
+            or validator.effective_balance + UPWARD_THRESHOLD < balance
+        ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
@@ -1437,18 +1492,21 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
+    # Verify that proposer index is the correct index
+    assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches
     assert block.parent_root == hash_tree_root(state.latest_block_header)
     # Cache current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
+        proposer_index=block.proposer_index,
         parent_root=block.parent_root,
         state_root=Bytes32(),  # Overwritten in the next process_slot call
         body_root=hash_tree_root(block.body),
     )
 
     # Verify proposer is not slashed
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
 ```
 
@@ -1471,7 +1529,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
     state.eth1_data_votes.append(body.eth1_data)
-    if state.eth1_data_votes.count(body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+    if state.eth1_data_votes.count(body.eth1_data) * 2 > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH:
         state.eth1_data = body.eth1_data
 ```
 
@@ -1482,28 +1540,32 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
 
-    for operations, function in (
-        (body.proposer_slashings, process_proposer_slashing),
-        (body.attester_slashings, process_attester_slashing),
-        (body.attestations, process_attestation),
-        (body.deposits, process_deposit),
-        (body.voluntary_exits, process_voluntary_exit),
-        # @process_shard_receipt_proofs
-    ):
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
-            function(state, operation)
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
 ```
 
 ##### Proposer slashings
 
 ```python
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+
     # Verify header slots match
-    assert proposer_slashing.signed_header_1.message.slot == proposer_slashing.signed_header_2.message.slot
+    assert header_1.slot == header_2.slot
+    # Verify header proposer indices match
+    assert header_1.proposer_index == header_2.proposer_index
     # Verify the headers are different
-    assert proposer_slashing.signed_header_1 != proposer_slashing.signed_header_2
+    assert header_1 != header_2
     # Verify the proposer is slashable
-    proposer = state.validators[proposer_slashing.proposer_index]
+    proposer = state.validators[header_1.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Verify signatures
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
@@ -1511,7 +1573,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, proposer_slashing.proposer_index)
+    slash_validator(state, header_1.proposer_index)
 ```
 
 ##### Attester slashings

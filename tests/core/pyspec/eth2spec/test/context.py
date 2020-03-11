@@ -1,29 +1,64 @@
 from eth2spec.phase0 import spec as spec_phase0
-# from eth2spec.phase1 import spec as spec_phase1
+from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
 
 from .utils import vector_test, with_meta_tags
 
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Sequence, TypedDict, Protocol
+
+from importlib import reload
+
+
+def reload_specs():
+    reload(spec_phase0)
+    reload(spec_phase1)
+
+
+# Some of the Spec module functionality is exposed here to deal with phase-specific changes.
+
+# TODO: currently phases are defined as python modules.
+# It would be better if they would be more well-defined interfaces for stronger typing.
+class Spec(Protocol):
+    version: str
+
+
+class Phase0(Spec):
+    ...
+
+
+class Phase1(Spec):
+    def upgrade_to_phase1(self, state: spec_phase0.BeaconState) -> spec_phase1.BeaconState:
+        ...
+
+
+# add transfer, bridge, etc. as the spec evolves
+class SpecForks(TypedDict, total=False):
+    phase0: Phase0
+    phase1: Phase1
 
 
 def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
                       threshold_fn: Callable[[Any], int]):
     def deco(fn):
-        def entry(*args, **kw):
+        def entry(*args, spec: Spec, phases: SpecForks, **kw):
             try:
-                spec = kw['spec']
+                p0 = phases["phase0"]
+                balances = balances_fn(p0)
+                activation_threshold = threshold_fn(p0)
 
-                balances = balances_fn(spec)
-                activation_threshold = threshold_fn(spec)
+                state = create_genesis_state(spec=p0, validator_balances=balances,
+                                             activation_threshold=activation_threshold)
+                if spec.fork == 'phase1':
+                    # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
+                    # Decide based on performance/consistency results later.
+                    state = phases["phase1"].upgrade_to_phase1(state)
 
-                kw['state'] = create_genesis_state(spec=spec, validator_balances=balances,
-                                                   activation_threshold=activation_threshold)
+                kw['state'] = state
             except KeyError:
                 raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
-            return fn(*args, **kw)
+            return fn(*args, spec=spec, phases=phases, **kw)
         return entry
     return deco
 
@@ -69,6 +104,19 @@ def misc_balances(spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators + [spec.MIN_DEPOSIT_AMOUNT] * num_misc_validators
 
 
+def single_phase(fn):
+    """
+    Decorator that filters out the phases data.
+    most state tests only focus on behavior of a single phase (the "spec").
+    This decorator is applied as part of spec_state_test(fn).
+    """
+    def entry(*args, **kw):
+        if 'phases' in kw:
+            kw.pop('phases')
+        return fn(*args, **kw)
+    return entry
+
+
 # BLS is turned off by default *for performance purposes during TESTING*.
 # The runner of the test can indicate the preferred setting (test generators prefer BLS to be ON).
 # - Some tests are marked as BLS-requiring, and ignore this setting.
@@ -88,9 +136,9 @@ def spec_test(fn):
     return vector_test()(bls_switch(fn))
 
 
-# shorthand for decorating @spectest() @with_state
+# shorthand for decorating @spectest() @with_state @single_phase
 def spec_state_test(fn):
-    return spec_test(with_state(fn))
+    return spec_test(with_state(single_phase(fn)))
 
 
 def expect_assertion_error(fn):
@@ -169,15 +217,12 @@ def with_all_phases_except(exclusion_phases):
     return decorator
 
 
-def with_phases(phases):
+def with_phases(phases, other_phases=None):
     """
-    Decorator factory that returns a decorator that runs a test for the appropriate phases
+    Decorator factory that returns a decorator that runs a test for the appropriate phases.
+    Additional phases that do not initially run, but are made available through the test, are optional.
     """
     def decorator(fn):
-        def run_with_spec_version(spec, *args, **kw):
-            kw['spec'] = spec
-            return fn(*args, **kw)
-
         def wrapper(*args, **kw):
             run_phases = phases
 
@@ -188,12 +233,25 @@ def with_phases(phases):
                     return
                 run_phases = [phase]
 
+            available_phases = set(run_phases)
+            if other_phases is not None:
+                available_phases += set(other_phases)
+
+            # TODO: test state is dependent on phase0 but is immediately transitioned to phase1.
+            #  A new state-creation helper for phase 1 may be in place, and then phase1+ tests can run without phase0
+            available_phases.add('phase0')
+
+            phase_dir = {}
+            if 'phase0' in available_phases:
+                phase_dir['phase0'] = spec_phase0
+            if 'phase1' in available_phases:
+                phase_dir['phase1'] = spec_phase1
+
+            # return is ignored whenever multiple phases are ran. If
             if 'phase0' in run_phases:
-                ret = run_with_spec_version(spec_phase0, *args, **kw)
+                ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if 'phase1' in run_phases:
-                # temporarily disable phase 1 tests
-                return
-                # ret = run_with_spec_version(spec_phase1, *args, **kw)
+                ret = fn(spec=spec_phase1, phases=phase_dir, *args, **kw)
             return ret
         return wrapper
     return decorator

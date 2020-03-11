@@ -1,4 +1,3 @@
 eth-utils==1.6.0
 ../../core/gen_helpers
-../../core/config_helpers
-../../core/pyspec
+../../../

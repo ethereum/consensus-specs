@@ -27,6 +27,7 @@
   - [Block proposal](#block-proposal)
     - [Preparing for a `BeaconBlock`](#preparing-for-a-beaconblock)
       - [Slot](#slot)
+      - [Proposer index](#proposer-index)
       - [Parent root](#parent-root)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
@@ -59,6 +60,7 @@
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
       - [`AggregateAndProof`](#aggregateandproof)
+      - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
@@ -128,7 +130,7 @@ To submit a deposit:
 
 ### Process deposit
 
-Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `SLOTS_PER_ETH1_VOTING_PERIOD` slots (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
+Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -182,14 +184,13 @@ def get_committee_assignment(state: BeaconState,
 A validator can use the following function to see if they are supposed to propose during a slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
-def is_proposer(state: BeaconState,
-                validator_index: ValidatorIndex) -> bool:
+def is_proposer(state: BeaconState, validator_index: ValidatorIndex) -> bool:
     return get_beacon_proposer_index(state) == validator_index
 ```
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
 
-*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at different a different slot.
+*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at a different slot.
 
 ### Lookahead
 
@@ -223,10 +224,13 @@ Set `block.slot = slot` where `slot` is the current slot at which the validator 
 
 *Note*: There might be "skipped" slots between the `parent` and `block`. These skipped slots are processed in the state transition function without per-block processing.
 
+##### Proposer index
+
+Set `block.proposer_index = validator_index` where `validator_index` is the validator chosen to propose at this slot. The private key mapping to `state.validators[validator_index].pubkey` is used to sign the block.
+
 ##### Parent root
 
 Set `block.parent_root = hash_tree_root(parent)`.
-
 
 #### Constructing the `BeaconBlockBody`
 
@@ -268,7 +272,7 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 ```python
 def voting_period_start_time(state: BeaconState) -> uint64:
-    eth1_voting_period_start_slot = Slot(state.slot - state.slot % SLOTS_PER_ETH1_VOTING_PERIOD)
+    eth1_voting_period_start_slot = Slot(state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH))
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
 
@@ -354,9 +358,9 @@ def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: 
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` hash transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
 
-*Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded fork, and should be made.
+*Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
 #### Attestation data
 
@@ -411,7 +415,7 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
 
 #### Broadcast attestation
 
-Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
+Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
 
 ### Attestation aggregation
 
@@ -423,7 +427,7 @@ A validator is selected to aggregate based upon the return value of `is_aggregat
 
 ```python
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
     return bls.Sign(privkey, signing_root)
 ```
@@ -461,9 +465,37 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 #### Broadcast aggregate
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
 
-Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
+Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
+
+`AggregateAndProof` messages are signed by the aggregator and broadcast inside of `SignedAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
+
+First, `aggregate_and_proof = get_aggregate_and_proof(state, validator_index, aggregate_attestation, privkey)` is constructed.
+
+```python
+def get_aggregate_and_proof(state: BeaconState,
+                            aggregator_index: ValidatorIndex,
+                            aggregate: Attestation,
+                            privkey: int) -> AggregateAndProof:
+    return AggregateAndProof(
+        aggregator_index=aggregator_index,
+        aggregate=aggregate,
+        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
+    )
+```
+
+Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+
+```python
+def get_aggregate_and_proof_signature(state: BeaconState,
+                                      aggregate_and_proof: AggregateAndProof,
+                                      privkey: int) -> BLSSignature:
+    aggregate = aggregate_and_proof.aggregate
+    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 ##### `AggregateAndProof`
 
@@ -474,10 +506,13 @@ class AggregateAndProof(Container):
     selection_proof: BLSSignature
 ```
 
-Where
-* `aggregator_index` is the validator's `ValidatorIndex`.
-* `aggregate` is the `aggregate_attestation` constructed in the previous section.
-* `selection_proof` is the signature of the slot (`get_slot_signature()`).
+##### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof
+    signature: BLSSignature
+```
 
 ## Phase 0 attestation subnet stability
 
@@ -487,6 +522,8 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 * Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
 * Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
 
+*Note*: When preparing for a hard fork, a validator must select and subscribe to random subnets of the future fork versioning at least `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
+
 ## How to avoid slashing
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed: [proposer slashing](#proposer-slashing) and [attester slashing](#attester-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages a validator has previously signed.
@@ -495,13 +532,13 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 ### Proposer slashing
 
-To avoid "proposer slashings", a validator must not sign two conflicting [`BeaconBlock`](./beacon-chain.md#beaconblock) where conflicting is defined as two distinct blocks within the same epoch.
+To avoid "proposer slashings", a validator must not sign two conflicting [`BeaconBlock`](./beacon-chain.md#beaconblock) where conflicting is defined as two distinct blocks within the same slot.
 
-*In Phase 0, as long as the validator does not sign two different beacon blocks for the same epoch, the validator is safe against proposer slashings.*
+*In Phase 0, as long as the validator does not sign two different beacon blocks for the same slot, the validator is safe against proposer slashings.*
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_at_slot(block.slot)`.
+1. Save a record to hard disk that a beacon block has been signed for the `slot=block.slot`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast block and can effectively avoid slashing.

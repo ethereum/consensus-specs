@@ -7,22 +7,31 @@ With this executable spec,
  test-generators can easily create test-vectors for client implementations,
  and the spec itself can be verified to be consistent and coherent through sanity tests implemented with pytest.
 
-
 ## Building
 
-All the dynamic parts of the spec can be build at once with `make pyspec`.
+To build the pyspec: `python setup.py build`
+ (or `pip install .`, but beware that ignored files will still be copied over to a temporary dir, due to pip issue 2195).
+This outputs the build files to the `./build/lib/eth2spec/...` dir, and can't be used for local test running. Instead, use the dev-install as described below. 
 
-Alternatively, you can build a sub-set of the pyspec: `make phase0`.
+## Dev Install
 
-Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2spec/phase0/spec.py`.
+All the dynamic parts of the spec are automatically built with `python setup.py pyspecdev`.
+Unlike the regular install, this outputs spec files to their original source location, instead of build output only.
 
+Alternatively, you can build a sub-set of the pyspec with the distutil command: 
+```bash
+python setup.py pyspec --spec-fork=phase0 --md-doc-paths="specs/phase0/beacon-chain.md specs/phase0/fork-choice.md" --out-dir=my_spec_dir
+```
 
 ## Py-tests
 
-After building, you can install the dependencies for running the `pyspec` tests with `make install_test`.
+After installing, you can install the optional dependencies for testing and linting.
+With makefile: `make install_test`.
+Or manually: run `pip install .[testing]` and `pip install .[linting]`.
 
 These tests are not intended for client-consumption.
-These tests are sanity tests, to verify if the spec itself is consistent.
+These tests are testing the spec itself, to verify consistency and provide feedback on modifications of the spec.
+However, most of the tests can be run in generator-mode, to output test vectors for client-consumption.
 
 ### How to run tests
 
@@ -32,23 +41,19 @@ Run `make test` from the root of the specs repository (after running `make insta
 
 #### Manual
 
-From within the `pyspec` folder:
+From the repository root:
 
-Install dependencies:
+Install venv and install:
 ```bash
 python3 -m venv venv
 . venv/bin/activate
-pip3 install -r requirements-testing.txt
+python setup.py pyspecdev
 ```
-*Note*: Make sure to run `make -B pyspec` from the root of the specs repository,
- to build the parts of the pyspec module derived from the markdown specs.
-The `-B` flag may be helpful to force-overwrite the `pyspec` output after you made a change to the markdown source files.
 
-Run the tests:
+Run the test command from the `tests/core/pyspec` directory:
 ```
 pytest --config=minimal eth2spec
 ```
-Note the package-name, this is to locate the tests.
 
 ### How to view code coverage report
 

@@ -16,11 +16,13 @@ Core specifications for Eth2 clients be found in [specs/](specs/). These are div
 * [Fork Choice](specs/phase0/fork-choice.md)
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
+* [P2P Networking](specs/phase0/p2p-interface.md)
 
 ### Phase 1
+* [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)
+* [The Beacon Chain for Shards](specs/phase1/beacon-chain.md)
 * [Custody Game](specs/phase1/custody-game.md)
-* [Shard Data Chains](specs/phase1/shard-data-chains.md)
-* [Misc beacon chain updates](specs/phase1/beacon-chain-misc.md)
+* [Shard Transition and Fraud Proofs](specs/phase1/fraud-proofs.md)
 * [Light client syncing protocol](specs/phase1/light-client-sync.md)
 
 ### Phase 2
@@ -57,6 +59,7 @@ The following are the broad design goals for Ethereum 2.0:
 
 * [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 * [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+* [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
 
 
 ## For spec contributors
@@ -64,4 +67,3 @@ The following are the broad design goals for Ethereum 2.0:
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
-

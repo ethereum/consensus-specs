@@ -6,7 +6,7 @@ from eth2spec.test.context import (
     spec_test,
     low_balances,
     with_custom_state,
-)
+    single_phase)
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_aggregate_attestation,
@@ -66,6 +66,7 @@ def test_success(spec, state):
 @with_all_phases
 @spec_test
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@single_phase
 def test_success_multi_proposer_index_iterations(spec, state):
     state.slot += spec.SLOTS_PER_EPOCH * 2
     attestation = get_valid_attestation(spec, state, signed=True)

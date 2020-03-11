@@ -1,4 +1,3 @@
-import copy
 from eth2spec.test.helpers.keys import pubkeys
 
 
@@ -35,7 +34,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = copy.deepcopy(validator_balances)
+    state.balances = validator_balances
     state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))]
 
     # Process genesis activations
@@ -43,5 +42,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
+
+    # Set genesis validators root for domain separation and chain versioning
+    state.genesis_validators_root = spec.hash_tree_root(state.validators)
 
     return state

@@ -2,9 +2,7 @@ import argparse
 import json
 import os
 
-from vyper import (
-    compiler,
-)
+from vyper import compiler
 
 DIR = os.path.dirname(__file__)
 

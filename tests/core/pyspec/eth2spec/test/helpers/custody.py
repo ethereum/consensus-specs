@@ -1,9 +1,10 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
-from eth2spec.utils.hash_function import hash
 from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector
-from eth2spec.utils.ssz.ssz_impl import chunkify, pack, hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.merkle_minimal import get_merkle_tree, get_merkle_proof
+from remerkleable.core import pack_bits_to_chunks
+from remerkleable.tree import subtree_fill_to_contents, get_depth
 
 BYTES_PER_CHUNK = 32
 
@@ -21,7 +22,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
     reveal = bls.Sign(privkeys[revealed_index], signing_root)
     # Generate the mask (any random 32 bytes that don't reveal the masker's secret will do)
-    mask = hash(reveal)
+    mask = spec.hash(reveal)
     # Generate masker's signature on the mask
     signing_root = spec.compute_signing_root(mask, domain)
     masker_signature = bls.Sign(privkeys[masker_index], signing_root)
@@ -120,10 +121,11 @@ def get_valid_custody_response(spec, state, bit_challenge, custody_data, challen
     data_branch = get_merkle_proof(data_tree, chunk_index)
 
     bitlist_chunk_index = chunk_index // BYTES_PER_CHUNK
-    bitlist_chunks = chunkify(pack(bit_challenge.chunk_bits))
-    bitlist_tree = get_merkle_tree(bitlist_chunks, pad_to=spec.MAX_CUSTODY_CHUNKS // 256)
-    bitlist_chunk_branch = get_merkle_proof(bitlist_tree, chunk_index // 256) + \
-        [len(bit_challenge.chunk_bits).to_bytes(32, "little")]
+    print(bitlist_chunk_index)
+    bitlist_chunk_nodes = pack_bits_to_chunks(bit_challenge.chunk_bits)
+    bitlist_tree = subtree_fill_to_contents(bitlist_chunk_nodes, get_depth(spec.MAX_CUSTODY_CHUNKS))
+    print(bitlist_tree)
+    bitlist_chunk_branch = None  # TODO; extract proof from merkle tree
 
     bitlist_chunk_index = chunk_index // 256
 
@@ -146,4 +148,4 @@ def get_custody_test_vector(bytelength):
 
 
 def get_custody_merkle_root(data):
-    return get_merkle_tree(chunkify(data))[-1][0]
+    return None  # get_merkle_tree(chunkify(data))[-1][0]

@@ -35,32 +35,45 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v7-pyspec
-          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "tests/core/pyspec/requirements-testing.txt" }}
+          venv_name: v19-pyspec
+          reqs_checksum: cache-{{ checksum "setup.py" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v7-pyspec
-          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "tests/core/pyspec/requirements-testing.txt" }}
-          venv_path: ./tests/core/pyspec/venv
-  restore_deposit_contract_cached_venv:
-    description: "Restore the cache with deposit_contract keys"
+          venv_name: v19-pyspec
+          reqs_checksum: cache-{{ checksum "setup.py" }}
+          venv_path: ./venv
+  restore_deposit_contract_compiler_cached_venv:
+    description: "Restore the venv from cache for the deposit contract compiler"
     steps:
       - restore_cached_venv:
-          venv_name: v9-deposit-contract
-          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
-  save_deposit_contract_cached_venv:
-    description: Save a venv into a cache with deposit_contract keys"
+          venv_name: v18-deposit-contract-compiler
+          reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
+  save_deposit_contract_compiler_cached_venv:
+    description: "Save the venv to cache for later use of the deposit contract compiler"
     steps:
       - save_cached_venv:
-          venv_name: v9-deposit-contract
-          reqs_checksum: cache-{{ checksum "tests/core/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
-          venv_path: ./deposit_contract/venv
+          venv_name: v18-deposit-contract-compiler
+          reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
+          venv_path: ./deposit_contract/compiler/venv
+  restore_deposit_contract_tester_cached_venv:
+    description: "Restore the venv from cache for the deposit contract tester"
+    steps:
+      - restore_cached_venv:
+          venv_name: v19-deposit-contract-tester
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
+  save_deposit_contract_tester_cached_venv:
+    description: "Save the venv to cache for later use of the deposit contract tester"
+    steps:
+      - save_cached_venv:
+          venv_name: v19-deposit-contract-tester
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
+          venv_path: ./deposit_contract/tester/venv
 jobs:
   checkout_specs:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     working_directory: ~/specs-repo
     steps:
       # Restore git repo at point close to target branch/revision, to speed up checkout
@@ -80,7 +93,7 @@ jobs:
             - ~/specs-repo
   install_pyspec_test:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -92,7 +105,7 @@ jobs:
       - save_pyspec_cached_venv
   test:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -114,7 +127,7 @@ jobs:
           command: sudo npm install -g doctoc && make check_toc
   codespell:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     working_directory: ~/specs-repo
     steps:
       - checkout
@@ -123,7 +136,7 @@ jobs:
           command: pip install codespell --user &&  make codespell
   lint:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -132,29 +145,54 @@ jobs:
       - run:
           name: Run linter
           command: make lint
-  install_deposit_contract_test:
+  install_deposit_contract_compiler:
     docker:
-      - image: circleci/python:3.6
+        # The deposit contract compiler is pinned to python 3.7 because of the vyper version pin.
+        - image: circleci/python:3.7
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
           key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_deposit_contract_cached_venv
+      - restore_deposit_contract_compiler_cached_venv
       - run:
-          name: Install deposit contract requirements
-          command: make install_deposit_contract_test
-      - save_deposit_contract_cached_venv
-  deposit_contract:
+          name: Install deposit contract compiler requirements
+          command: make install_deposit_contract_compiler
+      - save_deposit_contract_compiler_cached_venv
+  install_deposit_contract_tester:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
           key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_deposit_contract_cached_venv
+      - restore_deposit_contract_tester_cached_venv
+      - run:
+          name: Install deposit contract tester requirements
+          command: make install_deposit_contract_tester
+      - save_deposit_contract_tester_cached_venv
+  test_compile_deposit_contract:
+    docker:
+      - image: circleci/python:3.7
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_deposit_contract_compiler_cached_venv
+      - run:
+          name: Run deposit contract compile test
+          command: make test_compile_deposit_contract
+  test_deposit_contract:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_deposit_contract_tester_cached_venv
       - run:
           name: Run deposit contract test
           command: make test_deposit_contract
+
 workflows:
   version: 2.1
   test_spec:
@@ -171,9 +209,15 @@ workflows:
       - lint:
           requires:
             - test
-      - install_deposit_contract_test:
+      - install_deposit_contract_compiler:
           requires:
             - checkout_specs
-      - deposit_contract:
+      - test_compile_deposit_contract:
           requires:
-            - install_deposit_contract_test
+            - install_deposit_contract_compiler
+      - install_deposit_contract_tester:
+          requires:
+            - checkout_specs
+      - test_deposit_contract:
+          requires:
+            - install_deposit_contract_tester
