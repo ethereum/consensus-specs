@@ -98,6 +98,29 @@ def test_full_attestations(spec, state):
 
 
 @with_all_phases
+@spec_state_test
+def test_full_attestations_random_incorrect_fields(spec, state):
+    attestations = prepare_state_with_full_attestations(spec, state)
+    for i, attestation in enumerate(state.previous_epoch_attestations):
+        if i % 3 == 0:
+            # Mess up some head votes
+            attestation.data.beacon_block_root = b'\x56' * 32
+        if i % 3 == 1:
+            # Message up some target votes
+            attestation.data.target.root = b'\x23' * 32
+        if i % 3 == 2:
+            # Keep some votes 100% correct
+            pass
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) > 0
+    # No balance checks, non-trivial base on group rewards
+    # Mainly for consensus tests
+
+
+@with_all_phases
 @spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 @single_phase
