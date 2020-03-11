@@ -94,6 +94,10 @@ class Store(object):
 The provided anchor-state will be regarded as a trusted state, to not roll back beyond.
 This should be the genesis state for a full client.
 
+*Note* With regards to fork choice, block headers are interchangeable with blocks. The spec is likely to move to headers for reduced overhead in test vectors and better encapsulation. Full implementations store blocks as part of their database and will often use full blocks when dealing with production fork choice.
+
+_The block for `anchor_root` is incorrectly initialized to the block header, rather than the full block. This does not affect functionality but will be cleaned up in subsequent releases._
+
 ```python
 def get_forkchoice_store(anchor_state: BeaconState) -> Store:
     anchor_block_header = anchor_state.latest_block_header.copy()
