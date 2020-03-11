@@ -219,9 +219,9 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 
 ### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkDigest/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkDigestValue/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
-- `ForkDigest` - the lowercase hex-encoded (no "0x" prefix) bytes of `ForkDigest(compute_fork_data_root(current_fork_version, genesis_validators_root)[:4])` where
+- `ForkDigestValue` - the lowercase hex-encoded (no "0x" prefix) bytes of `compute_fork_digest(current_fork_version, genesis_validators_root)` where
     - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `Name` - see table below
@@ -423,7 +423,7 @@ Here, `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Bytes32`'s.
+-  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
 -  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)
@@ -475,16 +475,18 @@ constituents individually as `response_chunk`s. For example, the
 Request, Response Content:
 ```
 (
-  head_fork_version: Bytes4
-  finalized_root: Bytes32
-  finalized_epoch: uint64
-  head_root: Bytes32
-  head_slot: uint64
+  fork_digest: ForkDigest
+  finalized_root: Root
+  finalized_epoch: Epoch
+  head_root: Root
+  head_slot: Slot
 )
 ```
 The fields are, as seen by the client at the time of sending the message:
 
-- `head_fork_version`: The beacon_state `Fork` version.
+- `fork_digest`: The node's `ForkDigest` (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
+    - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
+    - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
 - `head_root`: The hash_tree_root root of the current head block.
@@ -498,7 +500,7 @@ The response MUST consist of a single `response_chunk`.
 
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
 
-1. If `head_fork_version` does not match the expected fork version at the epoch of the `head_slot`, since the client’s chain is on another fork. `head_fork_version` can also be used to segregate testnets.
+1. If `fork_digest` does not match the node's local `fork_digest`, since the client’s chain is on another fork.
 2. If the (`finalized_root`, `finalized_epoch`) shared by the peer is not in the client's chain at the expected epoch. For example, if Peer 1 sends (root, epoch) of (A, 5) and Peer 2 sends (B, 3) but Peer 1 has root C at epoch 3, then Peer 1 would disconnect because it knows that their chains are irreparably disjoint.
 
 Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange` request.
@@ -536,7 +538,7 @@ The response MUST consist of a single `response_chunk`.
 Request Content:
 ```
 (
-  start_slot: uint64
+  start_slot: Slot
   count: uint64
   step: uint64
 )
@@ -575,7 +577,7 @@ Request Content:
 
 ```
 (
-  []Bytes32
+  []Root
 )
 ```
 
@@ -662,7 +664,7 @@ Specifically, the value of the `eth2` key MUST be the following SSZ encoded obje
 
 where the fields of `ENRForkID` are defined as
 
-* `fork_digest` is `ForkDigest(compute_fork_data_root(current_fork_version, genesis_validators_root)[:4])` where
+* `fork_digest` is `compute_fork_digest(current_fork_version, genesis_validators_root)` where
     * `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
     * `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 * `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
@@ -670,7 +672,7 @@ where the fields of `ENRForkID` are defined as
 
 Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
 
-Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these type of connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
+Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
 ##### General capabilities
 
@@ -897,9 +899,9 @@ Although this method will be sufficient for early phases of Eth2, we aim to use 
 
 Fork versions are to be manually updated (likely via incrementing) at each hard fork. This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs) and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
 
-`BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains to aid in the ease of domain separation between chains. This allows fork versions to safely be reused across chains except for the case of contentious forks using the same genesis. In these cases, extra care should be taken to isolate fork versions (e.g. flip a high order bit in all future versions of one of the chains).
+`BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains (`ForkDigest`) to aid in the ease of domain separation between chains. This allows fork versions to safely be reused across chains except for the case of contentious forks using the same genesis. In these cases, extra care should be taken to isolate fork versions (e.g. flip a high order bit in all future versions of one of the chains).
 
-A node locally stores all previous and future planned fork versions along with the each fork epoch. This allows for handling sync starting from past forks/epochs and for connections to safely be made with peers syncing from past forks/epochs.
+A node locally stores all previous and future planned fork versions along with the each fork epoch. This allows for handling sync and processing messages starting from past forks/epochs.
 
 ## Req/Resp
 

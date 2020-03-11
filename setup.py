@@ -106,7 +106,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable
 )
 
 from dataclasses import (
