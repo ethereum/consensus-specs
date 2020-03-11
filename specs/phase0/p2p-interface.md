@@ -219,7 +219,13 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 
 ### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/ForkDigestValue/Name/Encoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
+
+- `ForkDigestValue` - the lowercase hex-encoded (no "0x" prefix) bytes of `compute_fork_digest(current_fork_version, genesis_validators_root)` where
+    - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
+    - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
+- `Name` - see table below
+- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
@@ -232,7 +238,7 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Topic                                          | Message Type            |
+| Name                                           | Message Type            |
 |------------------------------------------------|-------------------------|
 | beacon_block                                   | SignedBeaconBlock       |
 | beacon_aggregate_and_proof                     | SignedAggregateAndProof |
@@ -250,7 +256,7 @@ When processing incoming gossip, clients MAY descore or disconnect peers who fai
 
 #### Global topics
 
-There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
+There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `Name`s are:
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
     - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
@@ -268,7 +274,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
     - The signature of `aggregate` is valid.
 
-Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
+Additional global topics are used to propagate lower frequency validator messages. Their `Name`s are:
 
 - `voluntary_exit` - This topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety. The following validations MUST pass before forwarding the `signed_voluntary_exit` on to the network
     - The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
@@ -283,7 +289,7 @@ Additional global topics are used to propagate lower frequency validator message
 
 #### Attestation subnets
 
-Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `Name`s are:
 
 - `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
@@ -417,7 +423,7 @@ Here, `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Bytes32`'s.
+-  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
 -  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)
@@ -469,16 +475,18 @@ constituents individually as `response_chunk`s. For example, the
 Request, Response Content:
 ```
 (
-  head_fork_version: Bytes4
-  finalized_root: Bytes32
-  finalized_epoch: uint64
-  head_root: Bytes32
-  head_slot: uint64
+  fork_digest: ForkDigest
+  finalized_root: Root
+  finalized_epoch: Epoch
+  head_root: Root
+  head_slot: Slot
 )
 ```
 The fields are, as seen by the client at the time of sending the message:
 
-- `head_fork_version`: The beacon_state `Fork` version.
+- `fork_digest`: The node's `ForkDigest` (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
+    - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
+    - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
 - `head_root`: The hash_tree_root root of the current head block.
@@ -492,7 +500,7 @@ The response MUST consist of a single `response_chunk`.
 
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
 
-1. If `head_fork_version` does not match the expected fork version at the epoch of the `head_slot`, since the client’s chain is on another fork. `head_fork_version` can also be used to segregate testnets.
+1. If `fork_digest` does not match the node's local `fork_digest`, since the client’s chain is on another fork.
 2. If the (`finalized_root`, `finalized_epoch`) shared by the peer is not in the client's chain at the expected epoch. For example, if Peer 1 sends (root, epoch) of (A, 5) and Peer 2 sends (B, 3) but Peer 1 has root C at epoch 3, then Peer 1 would disconnect because it knows that their chains are irreparably disjoint.
 
 Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange` request.
@@ -530,7 +538,7 @@ The response MUST consist of a single `response_chunk`.
 Request Content:
 ```
 (
-  start_slot: uint64
+  start_slot: Slot
   count: uint64
   step: uint64
 )
@@ -569,7 +577,7 @@ Request Content:
 
 ```
 (
-  []Bytes32
+  []Root
 )
 ```
 
@@ -644,25 +652,11 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 |:-------------|:--------------------|
 | `eth2`       | SSZ `ENRForkID`        |
 
-First we define `current_fork_data` as the following SSZ encoded object
-
-```
-(
-    current_fork_version: Version
-    genesis_validators_root: Root
-)
-```
-
-where
-
-* `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
-* `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded object (`ENRForkID`)
 
 ```
 (
-    current_fork_digest: ForkDigest
+    fork_digest: ForkDigest
     next_fork_version: Version
     next_fork_epoch: Epoch
 )
@@ -670,13 +664,15 @@ Specifically, the value of the `eth2` key MUST be the following SSZ encoded obje
 
 where the fields of `ENRForkID` are defined as
 
-* `current_fork_digest` is `ForkDigest(hash_tree_root(current_fork_data)[:4])`
+* `fork_digest` is `compute_fork_digest(current_fork_version, genesis_validators_root)` where
+    * `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
+    * `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 * `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
 * `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated. If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
-Clients SHOULD connect to peers with `current_fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
+Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
 
-Clients MAY connect to peers with the same `current_fork_version` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these type of connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
+Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
 ##### General capabilities
 
@@ -829,9 +825,9 @@ For future extensibility with almost zero overhead now (besides the extra bytes 
 
 ### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
-Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, for example during a hard fork.
+Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, during a hard fork.
 
-One can envision a two-phase deployment as well where clients start listening to the new topic in the first phase then start publishing some time later, letting the traffic naturally move over to the new topic.
+When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a gossipsub topic, the node should join the topic of the future epoch in which the task is to occur in addition to listening to the topics for the current epoch.
 
 ### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
 
@@ -903,9 +899,9 @@ Although this method will be sufficient for early phases of Eth2, we aim to use 
 
 Fork versions are to be manually updated (likely via incrementing) at each hard fork. This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs) and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
 
-`BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains to aid in the ease of domain separation between chains. This allows fork versions to safely be reused across chains except for the case of contentious forks using the same genesis. In these cases, extra care should be taken to isolate fork versions (e.g. flip a high order bit in all future versions of one of the chains).
+`BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains (`ForkDigest`) to aid in the ease of domain separation between chains. This allows fork versions to safely be reused across chains except for the case of contentious forks using the same genesis. In these cases, extra care should be taken to isolate fork versions (e.g. flip a high order bit in all future versions of one of the chains).
 
-A node locally stores all previous and future planned fork versions along with the each fork epoch. This allows for handling sync starting from past forks/epochs and for connections to safely be made with peers syncing from past forks/epochs.
+A node locally stores all previous and future planned fork versions along with the each fork epoch. This allows for handling sync and processing messages starting from past forks/epochs.
 
 ## Req/Resp
 
