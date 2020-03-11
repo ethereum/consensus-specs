@@ -822,7 +822,7 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
 #### `compute_fork_digest`
 
 ```python
-def compute_fork_digest(current_version: Version, genesis_validators_root: Root) -> Root:
+def compute_fork_digest(current_version: Version, genesis_validators_root: Root) -> ForkDigest:
     """
     Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``.
     This is a digest primarily used for domain separation on the p2p layer.
