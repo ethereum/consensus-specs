@@ -182,7 +182,17 @@ get_active_validator_indices = cache_this(
 _get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
-    _get_beacon_committee)'''
+    _get_beacon_committee)
+
+_get_matching_target_attestations = get_matching_target_attestations
+get_matching_target_attestations = cache_this(
+    lambda state, epoch: (state.hash_tree_root(), epoch),
+    _get_matching_target_attestations)
+
+_get_matching_head_attestations = get_matching_head_attestations
+get_matching_head_attestations = cache_this(
+    lambda state, epoch: (state.hash_tree_root(), epoch),
+    _get_matching_head_attestations)'''
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:

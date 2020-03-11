@@ -1235,7 +1235,7 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> Sequen
 ```python
 def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence[PendingAttestation]:
     return [
-        a for a in get_matching_source_attestations(state, epoch)
+        a for a in get_matching_target_attestations(state, epoch)
         if a.data.beacon_block_root == get_block_root_at_slot(state, a.data.slot)
     ]
 ```
