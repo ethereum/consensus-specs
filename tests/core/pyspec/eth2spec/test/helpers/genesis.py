@@ -43,4 +43,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
+    # Set genesis validators root for domain separation and chain versioning
+    state.genesis_validators_root = spec.hash_tree_root(state.validators)
+
     return state

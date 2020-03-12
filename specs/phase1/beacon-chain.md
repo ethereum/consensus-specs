@@ -221,6 +221,7 @@ Note that the `body` has a new `BeaconBlockBody` definition.
 ```python
 class BeaconBlock(Container):
     slot: Slot
+    proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
@@ -244,6 +245,7 @@ Note that aside from the new additions, `Validator` and `PendingAttestation` hav
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
+    genesis_validators_root: Root
     slot: Slot
     fork: Fork
     # History
@@ -253,7 +255,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]

@@ -27,6 +27,7 @@
   - [Block proposal](#block-proposal)
     - [Preparing for a `BeaconBlock`](#preparing-for-a-beaconblock)
       - [Slot](#slot)
+      - [Proposer index](#proposer-index)
       - [Parent root](#parent-root)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
@@ -129,7 +130,7 @@ To submit a deposit:
 
 ### Process deposit
 
-Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `SLOTS_PER_ETH1_VOTING_PERIOD` slots (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
+Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -183,8 +184,7 @@ def get_committee_assignment(state: BeaconState,
 A validator can use the following function to see if they are supposed to propose during a slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
-def is_proposer(state: BeaconState,
-                validator_index: ValidatorIndex) -> bool:
+def is_proposer(state: BeaconState, validator_index: ValidatorIndex) -> bool:
     return get_beacon_proposer_index(state) == validator_index
 ```
 
@@ -224,10 +224,13 @@ Set `block.slot = slot` where `slot` is the current slot at which the validator 
 
 *Note*: There might be "skipped" slots between the `parent` and `block`. These skipped slots are processed in the state transition function without per-block processing.
 
+##### Proposer index
+
+Set `block.proposer_index = validator_index` where `validator_index` is the validator chosen to propose at this slot. The private key mapping to `state.validators[validator_index].pubkey` is used to sign the block.
+
 ##### Parent root
 
 Set `block.parent_root = hash_tree_root(parent)`.
-
 
 #### Constructing the `BeaconBlockBody`
 
@@ -269,7 +272,7 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 ```python
 def voting_period_start_time(state: BeaconState) -> uint64:
-    eth1_voting_period_start_slot = Slot(state.slot - state.slot % SLOTS_PER_ETH1_VOTING_PERIOD)
+    eth1_voting_period_start_slot = Slot(state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH))
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
 
@@ -518,6 +521,8 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 * Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
 * Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
 * Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
+
+*Note*: When preparing for a hard fork, a validator must select and subscribe to random subnets of the future fork versioning at least `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 
 ## How to avoid slashing
 

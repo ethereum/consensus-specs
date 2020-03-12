@@ -22,22 +22,20 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
         yield 'post', None
         return
 
-    pre_proposer_balance = get_balance(state, proposer_slashing.proposer_index)
+    proposer_index = proposer_slashing.signed_header_1.message.proposer_index
+    pre_proposer_balance = get_balance(state, proposer_index)
 
     spec.process_proposer_slashing(state, proposer_slashing)
     yield 'post', state
 
     # check if slashed
-    slashed_validator = state.validators[proposer_slashing.proposer_index]
+    slashed_validator = state.validators[proposer_index]
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
     # lost whistleblower reward
-    assert (
-        get_balance(state, proposer_slashing.proposer_index) <
-        pre_proposer_balance
-    )
+    assert get_balance(state, proposer_index) < pre_proposer_balance
 
 
 @with_all_phases
@@ -77,7 +75,24 @@ def test_invalid_sig_1_and_2(spec, state):
 def test_invalid_proposer_index(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
     # Index just too high (by 1)
-    proposer_slashing.proposer_index = len(state.validators)
+    proposer_slashing.signed_header_1.message.proposer_index = len(state.validators)
+    proposer_slashing.signed_header_2.message.proposer_index = len(state.validators)
+
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_invalid_different_proposer_indices(spec, state):
+    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
+    # set different index and sign
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    active_indices = [i for i in active_indices if i != header_1.proposer_index]
+
+    header_2.proposer_index = active_indices[0]
+    proposer_slashing.signed_header_2 = sign_block_header(spec, state, header_2, privkeys[header_2.proposer_index])
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -89,9 +104,9 @@ def test_epochs_are_different(spec, state):
 
     # set slots to be in different epochs
     header_2 = proposer_slashing.signed_header_2.message
+    proposer_index = header_2.proposer_index
     header_2.slot += spec.SLOTS_PER_EPOCH
-    proposer_slashing.signed_header_2 = sign_block_header(
-        spec, state, header_2, privkeys[proposer_slashing.proposer_index])
+    proposer_slashing.signed_header_2 = sign_block_header(spec, state, header_2, privkeys[proposer_index])
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -113,7 +128,8 @@ def test_proposer_is_not_activated(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     # set proposer to be not active yet
-    state.validators[proposer_slashing.proposer_index].activation_epoch = spec.get_current_epoch(state) + 1
+    proposer_index = proposer_slashing.signed_header_1.message.proposer_index
+    state.validators[proposer_index].activation_epoch = spec.get_current_epoch(state) + 1
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -124,7 +140,8 @@ def test_proposer_is_slashed(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     # set proposer to slashed
-    state.validators[proposer_slashing.proposer_index].slashed = True
+    proposer_index = proposer_slashing.signed_header_1.message.proposer_index
+    state.validators[proposer_index].slashed = True
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -138,7 +155,7 @@ def test_proposer_is_withdrawn(spec, state):
     next_epoch(spec, state)
     # set proposer withdrawable_epoch in past
     current_epoch = spec.get_current_epoch(state)
-    proposer_index = proposer_slashing.proposer_index
+    proposer_index = proposer_slashing.signed_header_1.message.proposer_index
     state.validators[proposer_index].withdrawable_epoch = current_epoch - 1
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)

@@ -59,7 +59,7 @@ The following are the broad design goals for Ethereum 2.0:
 
 * [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 * [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
-* [Gasper paper](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf)
+* [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
 
 
 ## For spec contributors
@@ -67,4 +67,3 @@ The following are the broad design goals for Ethereum 2.0:
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
-

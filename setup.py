@@ -95,7 +95,7 @@ from dataclasses import (
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64,
-    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
@@ -106,7 +106,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable
 )
 
 from dataclasses import (
@@ -117,7 +117,7 @@ from dataclasses import (
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64, uint8, bit,
-    ByteList, Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    ByteList, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
@@ -191,7 +191,17 @@ get_total_active_balance = cache_this(
 _get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
-    _get_beacon_committee)'''
+    _get_beacon_committee)
+
+_get_matching_target_attestations = get_matching_target_attestations
+get_matching_target_attestations = cache_this(
+    lambda state, epoch: (state.hash_tree_root(), epoch),
+    _get_matching_target_attestations)
+
+_get_matching_head_attestations = get_matching_head_attestations
+get_matching_head_attestations = cache_this(
+    lambda state, epoch: (state.hash_tree_root(), epoch),
+    _get_matching_head_attestations)'''
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
@@ -479,7 +489,7 @@ setup(
         "pycryptodome==3.9.4",
         "py_ecc==2.0.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.11",
+        "remerkleable==0.1.12",
         "ruamel.yaml==0.16.5"
     ]
 )

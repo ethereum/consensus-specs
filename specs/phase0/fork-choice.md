@@ -42,7 +42,7 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_checkpoint_store(genesis_state)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
 
 - `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
 - `on_block(block)` whenever a block `block: SignedBeaconBlock` is received
@@ -83,7 +83,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
-    blocks: Dict[Root, BeaconBlockHeader] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
@@ -93,6 +93,10 @@ class Store(object):
 
 The provided anchor-state will be regarded as a trusted state, to not roll back beyond.
 This should be the genesis state for a full client.
+
+*Note* With regards to fork choice, block headers are interchangeable with blocks. The spec is likely to move to headers for reduced overhead in test vectors and better encapsulation. Full implementations store blocks as part of their database and will often use full blocks when dealing with production fork choice.
+
+_The block for `anchor_root` is incorrectly initialized to the block header, rather than the full block. This does not affect functionality but will be cleaned up in subsequent releases._
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState) -> Store:
