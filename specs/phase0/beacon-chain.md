@@ -996,10 +996,11 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 ```python
 def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
-    Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
+    Return the combined effective balance of the ``indices``.
+    ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
     Math safe up to ~10B ETH, afterwhich this overflows uint64.
     """
-    return Gwei(max(1, sum([state.validators[index].effective_balance for index in indices])))
+    return Gwei(max(EFFECTIVE_BALANCE_INCREMENT, sum([state.validators[index].effective_balance for index in indices])))
 ```
 
 #### `get_total_active_balance`
