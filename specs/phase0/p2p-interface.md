@@ -622,6 +622,9 @@ This integration enables the libp2p stack to subsequently form connections and s
 The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the following entries (exclusive of the sequence number and signature, which MUST be present in an ENR):
 
 -  The compressed secp256k1 publickey, 33 bytes (`secp256k1` field).
+
+The ENR MAY contain the following entries:
+
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
 -  A TCP port (`tcp` field) representing the local libp2p listening port.
 -  A UDP port (`udp` field) representing the local discv5 listening port.
