@@ -1009,6 +1009,7 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
 def get_total_active_balance(state: BeaconState) -> Gwei:
     """
     Return the combined effective balance of the active validators.
+    Note: ``get_total_balance`` returns ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
     """
     return get_total_balance(state, set(get_active_validator_indices(state, get_current_epoch(state))))
 ```
@@ -1290,6 +1291,10 @@ def get_unslashed_attesting_indices(state: BeaconState,
 
 ```python
 def get_attesting_balance(state: BeaconState, attestations: Sequence[PendingAttestation]) -> Gwei:
+    """
+    Return the combined effective balance of the set of unslashed validators participating in ``attestations``.
+    Note: ``get_total_balance`` returns ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
+    """
     return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
 ```
 

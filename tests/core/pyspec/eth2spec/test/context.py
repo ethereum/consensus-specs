@@ -73,8 +73,8 @@ def default_activation_threshold(spec):
 
 def zero_activation_threshold(spec):
     """
-    Helper method to use the default balance activation threshold for state creation for tests.
-    Usage: `@with_custom_state(threshold_fn=one_gwei_activation_threshold, ...)`
+    Helper method to use 0 gwei as the activation threshold for state creation for tests.
+    Usage: `@with_custom_state(threshold_fn=zero_activation_threshold, ...)`
     """
     return 0
 
