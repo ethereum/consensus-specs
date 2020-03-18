@@ -157,8 +157,7 @@ The following SecIO parameters MUST be supported by all stacks:
 The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
 channel handshake with `secp256k1` identities will be used for mainnet.
 
-As specified in the libp2p specification, clients MUST support the `XX` handshake pattern and
-can optionally implement the `IK` and `XXfallback` patterns for optimistic 0-RTT.
+As specified in the libp2p specification, clients MUST support the `XX` handshake pattern.
 
 ## Protocol Negotiation
 
