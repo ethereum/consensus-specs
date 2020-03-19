@@ -407,9 +407,9 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 Set `attestation.signature = attestation_signature` where `attestation_signature` is obtained from:
 
 ```python
-def get_attestation_signature(state: BeaconState, attestation: AttestationData, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.target.epoch)
-    signing_root = compute_signing_root(attestation, domain)
+def get_attestation_signature(state: BeaconState, attestation_data: AttestationData, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
