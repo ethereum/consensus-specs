@@ -2,7 +2,9 @@ from copy import deepcopy
 
 from eth2spec.test.context import (
     spec_state_test, with_all_phases, spec_test,
-    misc_balances, with_custom_state, default_activation_threshold,
+    misc_balances, low_single_balance,
+    with_custom_state,
+    default_activation_threshold, zero_activation_threshold,
     single_phase,
 )
 from eth2spec.test.helpers.state import (
@@ -60,12 +62,12 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-def prepare_state_with_full_attestations(spec, state):
+def prepare_state_with_full_attestations(spec, state, empty=False):
     attestations = []
     for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
         # create an attestation for each slot in epoch
         if slot < spec.SLOTS_PER_EPOCH:
-            attestation = get_valid_attestation(spec, state, signed=True)
+            attestation = get_valid_attestation(spec, state, empty=empty, signed=True)
             attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
@@ -144,6 +146,20 @@ def test_full_attestations_misc_balances(spec, state):
 
 
 @with_all_phases
+@spec_test
+@with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
+@single_phase
+def test_full_attestations_one_validaor_one_gwei(spec, state):
+    attestations = prepare_state_with_full_attestations(spec, state)
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    # Few assertions. Mainly to check that this extreme case can run without exception
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) == 1
+
+
+@with_all_phases
 @spec_state_test
 def test_no_attestations_all_penalties(spec, state):
     next_epoch(spec, state)
@@ -152,6 +168,22 @@ def test_no_attestations_all_penalties(spec, state):
     assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
 
     yield from run_process_rewards_and_penalties(spec, state)
+
+    for index in range(len(pre_state.validators)):
+        assert state.balances[index] < pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_test
+def test_empty_attestations(spec, state):
+    attestations = prepare_state_with_full_attestations(spec, state, empty=True)
+
+    pre_state = deepcopy(state)
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) == 0
 
     for index in range(len(pre_state.validators)):
         assert state.balances[index] < pre_state.balances[index]
