@@ -404,12 +404,12 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregate signature
 
-Set `attestation.signature = signed_attestation_data` where `signed_attestation_data` is obtained from:
+Set `attestation.signature = attestation_signature` where `attestation_signature` is obtained from:
 
 ```python
-def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    signing_root = compute_signing_root(attestation.data, domain)
+def get_attestation_signature(state: BeaconState, attestation: AttestationData, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.target.epoch)
+    signing_root = compute_signing_root(attestation, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
