@@ -92,6 +92,8 @@ from dataclasses import (
     field,
 )
 
+from lru import LRU
+
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64,
@@ -113,6 +115,8 @@ from dataclasses import (
     dataclass,
     field,
 )
+
+from lru import LRU
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
@@ -152,8 +156,8 @@ def hash(x: bytes) -> Bytes32:  # type: ignore
     return hash_cache[x]
 
 
-def cache_this(key_fn, value_fn):  # type: ignore
-    cache_dict = {}  # type: ignore
+def cache_this(key_fn, value_fn, lru_size):  # type: ignore
+    cache_dict = LRU(size=lru_size)
 
     def wrapper(*args, **kw):  # type: ignore
         key = key_fn(*args, **kw)
@@ -164,35 +168,50 @@ def cache_this(key_fn, value_fn):  # type: ignore
     return wrapper
 
 
+_compute_shuffled_index = compute_shuffled_index
+compute_shuffled_index = cache_this(
+    lambda index, index_count, seed: (index, index_count, seed),
+    _compute_shuffled_index, lru_size=SLOTS_PER_EPOCH * 3)
+
+_get_total_active_balance = get_total_active_balance
+get_total_active_balance = cache_this(
+    lambda state: (state.validators.hash_tree_root(), state.slot),
+    _get_total_active_balance, lru_size=10)
+
 _get_base_reward = get_base_reward
 get_base_reward = cache_this(
-    lambda state, index: (state.validators.hash_tree_root(), state.slot),
-    _get_base_reward)
+    lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
+    _get_base_reward, lru_size=10)
 
 _get_committee_count_at_slot = get_committee_count_at_slot
 get_committee_count_at_slot = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
-    _get_committee_count_at_slot)
+    _get_committee_count_at_slot, lru_size=SLOTS_PER_EPOCH * 3)
 
 _get_active_validator_indices = get_active_validator_indices
 get_active_validator_indices = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
-    _get_active_validator_indices)
+    _get_active_validator_indices, lru_size=3)
 
 _get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
-    _get_beacon_committee)
+    _get_beacon_committee, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)
 
 _get_matching_target_attestations = get_matching_target_attestations
 get_matching_target_attestations = cache_this(
     lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_target_attestations)
+    _get_matching_target_attestations, lru_size=10)
 
 _get_matching_head_attestations = get_matching_head_attestations
 get_matching_head_attestations = cache_this(
     lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_head_attestations)'''
+    _get_matching_head_attestations, lru_size=10)
+
+_get_attesting_indices = get_attesting_indices
+get_attesting_indices = cache_this(lambda state, data, bits:
+                                   (state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()),
+                                   _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
@@ -481,6 +500,7 @@ setup(
         "py_ecc==2.0.0",
         "dataclasses==0.6",
         "remerkleable==0.1.12",
-        "ruamel.yaml==0.16.5"
+        "ruamel.yaml==0.16.5",
+        "lru-dict==1.1.6"
     ]
 )

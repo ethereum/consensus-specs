@@ -77,6 +77,10 @@ test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	python -m pytest -n 4 --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
+find_test: pyspec
+	. venv/bin/activate; cd $(PY_SPEC_DIR); \
+	python -m pytest -k=$(K) --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+
 citest: pyspec
 	mkdir -p tests/core/pyspec/test-reports/eth2spec; . venv/bin/activate; cd $(PY_SPEC_DIR); \
 	python -m pytest -n 4 --junitxml=eth2spec/test_results.xml eth2spec
