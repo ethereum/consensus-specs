@@ -175,13 +175,13 @@ compute_shuffled_index = cache_this(
 
 _get_total_active_balance = get_total_active_balance
 get_total_active_balance = cache_this(
-    lambda state: (state.validators.hash_tree_root(), state.slot),
+    lambda state: (state.validators.hash_tree_root(), compute_epoch_at_slot(state.slot)),
     _get_total_active_balance, lru_size=10)
 
 _get_base_reward = get_base_reward
 get_base_reward = cache_this(
     lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
-    _get_base_reward, lru_size=10)
+    _get_base_reward, lru_size=2048)
 
 _get_committee_count_at_slot = get_committee_count_at_slot
 get_committee_count_at_slot = cache_this(
@@ -209,9 +209,9 @@ get_matching_head_attestations = cache_this(
     _get_matching_head_attestations, lru_size=10)
 
 _get_attesting_indices = get_attesting_indices
-get_attesting_indices = cache_this(lambda state, data, bits:
-                                   (state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()),
-                                   _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
+get_attesting_indices = cache_this(
+    lambda state, data, bits: (state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()),
+    _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
