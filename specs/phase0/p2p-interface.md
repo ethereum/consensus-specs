@@ -601,6 +601,69 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 
 Clients MUST respond with at least one block, if they have it. Clients MAY limit the number of blocks in the response.
 
+#### Ping
+
+**Protocol ID:** `/eth2/beacon_chain/req/ping/1/`
+
+Request Content:
+
+```
+(
+  uint64
+)
+```
+
+Response Content:
+
+```
+(
+  uint64
+)
+```
+
+Sent intermittently, the PING protocol checks liveness of connected peers.
+Peers send and respond with their local ENR sequence number.
+
+A client may then determine if their local record of a peer's ENR is up to date
+and may request an updated version via the ENR RPC method if not.
+
+The request MUST be encoded as an SSZ-field.
+
+The response MUST consist of a single `response_chunk`.
+
+#### Enr
+
+**Protocol ID:** `/eth2/beacon_chain/req/enr/1/`
+
+No Request Content.
+
+
+Response Content:
+
+```
+(
+  enr: Bytes,
+  subnet_expiries: []Slot
+)
+```
+
+Requests the ENR of a peer. The request opens and negotiates the stream without
+sending any request content. Once established the receiving peer responds with
+it's local up-to-date ENR along with a list of `Slot` corresponding to
+the expiry of all long-lived subnets specified by the `attnets` field in the
+sent ENR.
+
+The `subnet_expiries` list MUST have a length corresponding to the number of
+true values in the `attnets` bitfield. The order of the slots in `subnet_expiries`
+MUST correspond to the order of long-lived subnets specified in the `attnets`
+bitfield.
+
+The `enr` field represents the rlp-encoded bytes of the local ENR.
+
+The response MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk`.
+
 ## The discovery domain: discv5
 
 Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery, both in the interoperability testnet and mainnet.
