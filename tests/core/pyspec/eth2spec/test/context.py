@@ -72,6 +72,14 @@ def default_activation_threshold(spec):
     return spec.MAX_EFFECTIVE_BALANCE
 
 
+def zero_activation_threshold(spec):
+    """
+    Helper method to use 0 gwei as the activation threshold for state creation for tests.
+    Usage: `@with_custom_state(threshold_fn=zero_activation_threshold, ...)`
+    """
+    return 0
+
+
 def default_balances(spec):
     """
     Helper method to create a series of default balances.
@@ -105,6 +113,14 @@ def misc_balances(spec):
     rng = Random(1234)
     rng.shuffle(balances)
     return balances
+
+
+def low_single_balance(spec):
+    """
+    Helper method to create a single of balance of 1 Gwei.
+    Usage: `@with_custom_state(balances_fn=low_single_balance, ...)`
+    """
+    return [1]
 
 
 def single_phase(fn):
