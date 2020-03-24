@@ -18,11 +18,11 @@ A YAML-encoded `BeaconState`, the state before applying the operation.
 
 Also available as `pre.ssz`.
 
-### `<operation-name>.yaml`
+### `<input-name>.yaml`
 
 A YAML-encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
-Also available as `<operation-name>.ssz`.
+Also available as `<input-name>.ssz`.
 
 ### `post.yaml`
 
@@ -39,14 +39,14 @@ This excludes the other parts of the block-transition.
 
 Operations:
 
-| *`operation-name`*      | *`operation-object`* | *`input name`*       | *`processing call`*                                    |
-|-------------------------|----------------------|----------------------|--------------------------------------------------------|
-| `attestation`           | `Attestation`        | `attestation`        | `process_attestation(state, attestation)`              |
-| `attester_slashing`     | `AttesterSlashing`   | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`  |
-| `block_header`          | `Block`              | **`block`**          | `process_block_header(state, block)`                   |
-| `deposit`               | `Deposit`            | `deposit`            | `process_deposit(state, deposit)`                      |
-| `proposer_slashing`     | `ProposerSlashing`   | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`  |
-| `voluntary_exit`        | `VoluntaryExit`      | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`        |
+| *`operation-name`*      | *`operation-object`*  | *`input name`*       | *`processing call`*                                    |
+|-------------------------|-----------------------|----------------------|--------------------------------------------------------|
+| `attestation`           | `Attestation`         | `attestation`        | `process_attestation(state, attestation)`              |
+| `attester_slashing`     | `AttesterSlashing`    | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`  |
+| `block_header`          | `BeaconBlock`         | **`block`**          | `process_block_header(state, block)`                   |
+| `deposit`               | `Deposit`             | `deposit`            | `process_deposit(state, deposit)`                      |
+| `proposer_slashing`     | `ProposerSlashing`    | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`  |
+| `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`        |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 
