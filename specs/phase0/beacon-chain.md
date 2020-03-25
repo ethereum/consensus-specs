@@ -1372,7 +1372,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
             if index in unslashed_attesting_indices:
                 increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
                 reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
-                rewards[index] = reward_numerator // (total_balance // increment)
+                rewards[index] += reward_numerator // (total_balance // increment)
             else:
                 penalties[index] += get_base_reward(state, index)
 
