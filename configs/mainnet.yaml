@@ -162,9 +162,6 @@ DOMAIN_CUSTODY_BIT_SLASHING: 0x83000000
 # ---------------------------------------------------------------
 PHASE_1_FORK_VERSION: 0x01000000
 INITIAL_ACTIVE_SHARDS: 64
-# Placeholder
-INITIAL_GASPRICE: 10
-
 
 # Phase 1: General
 # ---------------------------------------------------------------
@@ -190,8 +187,8 @@ SHARD_BLOCK_OFFSETS: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]
 MAX_SHARD_BLOCKS_PER_ATTESTATION: 12
 # 2**14 (= 16,384) Gwei
 MAX_GASPRICE: 16384
-# 2**5 (= 32) Gwei
-MIN_GASPRICE: 32
+# 2**3 (= 8) Gwei
+MIN_GASPRICE: 8
 #  2**3 (= 8)
 GASPRICE_ADJUSTMENT_COEFFICIENT: 8
 

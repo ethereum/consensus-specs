@@ -101,7 +101,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
-| `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
+| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 | `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
