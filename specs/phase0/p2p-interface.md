@@ -28,6 +28,7 @@ It consists of four main sections:
   - [Multiplexing](#multiplexing)
 - [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
+  - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -49,6 +50,8 @@ It consists of four main sections:
       - [Goodbye](#goodbye)
       - [BeaconBlocksByRange](#beaconblocksbyrange)
       - [BeaconBlocksByRoot](#beaconblocksbyroot)
+      - [Ping](#ping)
+      - [GetMetaData](#getmetadata)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -194,6 +197,22 @@ This section outlines constants that are used in this spec.
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
+
+## MetaData
+
+Clients MUST locally store the following `MetaData`:
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+)
+```
+
+Where
+
+- `seq_number` is a `uint64` starting at `0` used to version the node's metadata. If any other field in the local `MetaData` changes, the node MUST increment `seq_number` by 1.
+- `attnets` is a `Bitvector` representing the node's persistent attestation subnet subscriptions.
 
 ## The gossip domain: gossipsub
 
@@ -621,44 +640,35 @@ Response Content:
 )
 ```
 
-Sent intermittently, the PING protocol checks liveness of connected peers.
-Peers send and respond with their local ENR sequence number.
+Sent intermittently, the `Ping` protocol checks liveness of connected peers.
+Peers send and respond with their local metadata sequence number (`MetaData.seq_number`).
 
-A client may then determine if their local record of a peer's ENR is up to date
-and may request an updated version via the ENR RPC method if not.
+If the peer does not respond to the `Ping` request, the client MAY disconnect from the peer.
+
+A client can then determine if their local record of a peer's MetaData is up to date
+and MAY request an updated version via the `MetaData` RPC method if not.
 
 The request MUST be encoded as an SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-#### Enr
+#### GetMetaData
 
-**Protocol ID:** `/eth2/beacon_chain/req/enr/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/1/`
 
 No Request Content.
-
 
 Response Content:
 
 ```
 (
-  enr: Bytes,
-  subnet_expiries: []Slot
+  MetaData
 )
 ```
 
-Requests the ENR of a peer. The request opens and negotiates the stream without
+Requests the MetaData of a peer. The request opens and negotiates the stream without
 sending any request content. Once established the receiving peer responds with
-it's local up-to-date ENR along with a list of `Slot` corresponding to
-the expiry of all long-lived subnets specified by the `attnets` field in the
-sent ENR.
-
-The `subnet_expiries` list MUST have a length corresponding to the number of
-true values in the `attnets` bitfield. The order of the slots in `subnet_expiries`
-MUST correspond to the order of long-lived subnets specified in the `attnets`
-bitfield.
-
-The `enr` field represents the rlp-encoded bytes of the local ENR.
+it's local most up-to-date MetaData.
 
 The response MUST be encoded as an SSZ-container.
 
@@ -693,11 +703,15 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 
 #### Attestation subnet bitfield
 
-The ENR MAY contain an entry (`attnets`) signifying the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
+The ENR `attnets` entry signifies the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
 
 | Key          | Value                                            |
 |:-------------|:-------------------------------------------------|
 | `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+
+If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `attnets` entry with the same value as `MetaData.attnets`.
+
+If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally include the `attnets` entry or leave it out entirely.
 
 #### Interop
 
