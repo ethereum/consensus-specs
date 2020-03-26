@@ -200,9 +200,11 @@ The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahe
 
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
-* Join the pubsub topic -- `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
-    * For any current peer subscribed to the topic, the validator simply sends a `subscribe` message for the new topic.
-    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`. Then validate that the peers are still persisted on the desired topic by sending a `GetMetaData` and checking the resulting `attnets` field.
+* Find peers of the pubsub topic `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
+    * If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
+
+*Note*: If the validator is _not_ assigned to be an aggregator, the validator only needs sufficient number of peers on the topic to be able to publish messages. The validator does not need to _subscribe_ and listen to all messages on the topic.
 
 ## Beacon chain responsibilities
 
