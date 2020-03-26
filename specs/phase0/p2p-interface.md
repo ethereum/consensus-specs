@@ -214,6 +214,8 @@ Where
 - `seq_number` is a `uint64` starting at `0` used to version the node's metadata. If any other field in the local `MetaData` changes, the node MUST increment `seq_number` by 1.
 - `attnets` is a `Bitvector` representing the node's persistent attestation subnet subscriptions.
 
+*Note*: `MetaData.seq_number` is used for versioning of the node's metadata, is entirely independent of the ENR sequence number, and will in most cases be out of sync with the ENR sequence number.
+
 ## The gossip domain: gossipsub
 
 Clients MUST support the [gossipsub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) libp2p protocol.
@@ -641,7 +643,7 @@ Response Content:
 ```
 
 Sent intermittently, the `Ping` protocol checks liveness of connected peers.
-Peers send and respond with their local metadata sequence number (`MetaData.seq_number`).
+Peers request and respond with their local metadata sequence number (`MetaData.seq_number`).
 
 If the peer does not respond to the `Ping` request, the client MAY disconnect from the peer.
 
