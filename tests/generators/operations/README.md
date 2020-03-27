@@ -6,7 +6,7 @@ Operations (or "transactions" in previous spec iterations),
 An operation test-runner can consume these operation test-suites,
  and handle different kinds of operations by processing the cases using the specified test handler.
 
-Information on the format of the tests can be found in the [operations test formats documentation](../../specs/test_formats/operations/README.md).
+Information on the format of the tests can be found in the [operations test formats documentation](../../formats/operations/README.md).
 
  
 
