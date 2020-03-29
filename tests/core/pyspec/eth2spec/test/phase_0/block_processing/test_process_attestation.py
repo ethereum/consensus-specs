@@ -264,13 +264,11 @@ def test_bad_source_root(spec, state):
 @spec_state_test
 def test_empty_aggregation_bits(spec, state):
     next_slot(spec, state)
-    attestation = get_valid_attestation(spec, state)
+    attestation = get_valid_attestation(spec, state, empty=True)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+    assert attestation.aggregation_bits == Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
         *([0b0] * len(attestation.aggregation_bits)))
-
-    sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation)
 

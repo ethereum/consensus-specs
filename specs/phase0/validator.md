@@ -200,9 +200,11 @@ The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahe
 
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
-* Join the pubsub topic -- `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
-    * For any current peer subscribed to the topic, the validator simply sends a `subscribe` message for the new topic.
-    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`.
+* Find peers of the pubsub topic `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
+    * If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
+
+*Note*: If the validator is _not_ assigned to be an aggregator, the validator only needs sufficient number of peers on the topic to be able to publish messages. The validator does not need to _subscribe_ and listen to all messages on the topic.
 
 ## Beacon chain responsibilities
 
@@ -404,12 +406,12 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregate signature
 
-Set `attestation.signature = signed_attestation_data` where `signed_attestation_data` is obtained from:
+Set `attestation.signature = attestation_signature` where `attestation_signature` is obtained from:
 
 ```python
-def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    signing_root = compute_signing_root(attestation.data, domain)
+def get_attestation_signature(state: BeaconState, attestation_data: AttestationData, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 ```
 

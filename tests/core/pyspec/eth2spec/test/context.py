@@ -6,6 +6,7 @@ from .helpers.genesis import create_genesis_state
 
 from .utils import vector_test, with_meta_tags
 
+from random import Random
 from typing import Any, Callable, Sequence, TypedDict, Protocol
 
 from importlib import reload
@@ -73,6 +74,14 @@ def default_activation_threshold(spec):
     return spec.MAX_EFFECTIVE_BALANCE
 
 
+def zero_activation_threshold(spec):
+    """
+    Helper method to use 0 gwei as the activation threshold for state creation for tests.
+    Usage: `@with_custom_state(threshold_fn=zero_activation_threshold, ...)`
+    """
+    return 0
+
+
 def default_balances(spec):
     """
     Helper method to create a series of default balances.
@@ -102,8 +111,18 @@ def misc_balances(spec):
     Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
     """
     num_validators = spec.SLOTS_PER_EPOCH * 8
-    num_misc_validators = spec.SLOTS_PER_EPOCH
-    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators + [spec.MIN_DEPOSIT_AMOUNT] * num_misc_validators
+    balances = [spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators for i in range(num_validators)]
+    rng = Random(1234)
+    rng.shuffle(balances)
+    return balances
+
+
+def low_single_balance(spec):
+    """
+    Helper method to create a single of balance of 1 Gwei.
+    Usage: `@with_custom_state(balances_fn=low_single_balance, ...)`
+    """
+    return [1]
 
 
 def single_phase(fn):

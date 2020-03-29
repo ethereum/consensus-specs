@@ -101,7 +101,7 @@ def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=Fal
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot, index, signed, True)
+    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=True)
 
 
 def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False):
@@ -113,10 +113,10 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False)
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot, index, signed, False)
+    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False)
 
 
-def get_valid_attestation(spec, state, slot=None, index=None, signed=False, on_time=True):
+def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True):
     if slot is None:
         slot = state.slot
     if index is None:
@@ -136,7 +136,8 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False, on_t
         aggregation_bits=aggregation_bits,
         data=attestation_data,
     )
-    fill_aggregate_attestation(spec, state, attestation)
+    if not empty:
+        fill_aggregate_attestation(spec, state, attestation)
     if signed:
         sign_attestation(spec, state, attestation)
 
