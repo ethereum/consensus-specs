@@ -39,7 +39,7 @@ def build_attestation_data(spec, state, slot, index):
     )
 
 
-def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
+def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False):
     if slot is None:
         slot = state.slot
     if index is None:
@@ -59,7 +59,8 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
         aggregation_bits=aggregation_bits,
         data=attestation_data,
     )
-    fill_aggregate_attestation(spec, state, attestation)
+    if not empty:
+        fill_aggregate_attestation(spec, state, attestation)
     if signed:
         sign_attestation(spec, state, attestation)
     return attestation

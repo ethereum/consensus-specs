@@ -28,6 +28,7 @@ It consists of four main sections:
   - [Multiplexing](#multiplexing)
 - [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
+  - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -49,6 +50,8 @@ It consists of four main sections:
       - [Goodbye](#goodbye)
       - [BeaconBlocksByRange](#beaconblocksbyrange)
       - [BeaconBlocksByRoot](#beaconblocksbyroot)
+      - [Ping](#ping)
+      - [GetMetaData](#getmetadata)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -157,8 +160,7 @@ The following SecIO parameters MUST be supported by all stacks:
 The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
 channel handshake with `secp256k1` identities will be used for mainnet.
 
-As specified in the libp2p specification, clients MUST support the `XX` handshake pattern and
-can optionally implement the `IK` and `XXfallback` patterns for optimistic 0-RTT.
+As specified in the libp2p specification, clients MUST support the `XX` handshake pattern.
 
 ## Protocol Negotiation
 
@@ -195,6 +197,24 @@ This section outlines constants that are used in this spec.
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
+
+## MetaData
+
+Clients MUST locally store the following `MetaData`:
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+)
+```
+
+Where
+
+- `seq_number` is a `uint64` starting at `0` used to version the node's metadata. If any other field in the local `MetaData` changes, the node MUST increment `seq_number` by 1.
+- `attnets` is a `Bitvector` representing the node's persistent attestation subnet subscriptions.
+
+*Note*: `MetaData.seq_number` is used for versioning of the node's metadata, is entirely independent of the ENR sequence number, and will in most cases be out of sync with the ENR sequence number.
 
 ## The gossip domain: gossipsub
 
@@ -260,9 +280,10 @@ There are two primary global topics used to propagate beacon blocks and aggregat
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
     - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
-    - The block is from a slot greater than the latest finalized slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)` (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
+    - The block is from a slot greater than the latest finalized slot -- i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)` (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
     - The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
-    - The proposer signature, `signed_beacon_block.signature`, is valid.
+    - The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
+    - The block is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`). If the `proposer_index` cannot immediately be verified against the expected shuffling, the block MAY be queued for later processing while proposers for the block's branch are calculated.
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
     - `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot` (a client MAY queue future aggregates for processing at the appropriate slot).
     - The aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
@@ -601,6 +622,60 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 
 Clients MUST respond with at least one block, if they have it. Clients MAY limit the number of blocks in the response.
 
+#### Ping
+
+**Protocol ID:** `/eth2/beacon_chain/req/ping/1/`
+
+Request Content:
+
+```
+(
+  uint64
+)
+```
+
+Response Content:
+
+```
+(
+  uint64
+)
+```
+
+Sent intermittently, the `Ping` protocol checks liveness of connected peers.
+Peers request and respond with their local metadata sequence number (`MetaData.seq_number`).
+
+If the peer does not respond to the `Ping` request, the client MAY disconnect from the peer.
+
+A client can then determine if their local record of a peer's MetaData is up to date
+and MAY request an updated version via the `MetaData` RPC method if not.
+
+The request MUST be encoded as an SSZ-field.
+
+The response MUST consist of a single `response_chunk`.
+
+#### GetMetaData
+
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/1/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  MetaData
+)
+```
+
+Requests the MetaData of a peer. The request opens and negotiates the stream without
+sending any request content. Once established the receiving peer responds with
+it's local most up-to-date MetaData.
+
+The response MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk`.
+
 ## The discovery domain: discv5
 
 Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery, both in the interoperability testnet and mainnet.
@@ -622,6 +697,9 @@ This integration enables the libp2p stack to subsequently form connections and s
 The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the following entries (exclusive of the sequence number and signature, which MUST be present in an ENR):
 
 -  The compressed secp256k1 publickey, 33 bytes (`secp256k1` field).
+
+The ENR MAY contain the following entries:
+
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
 -  A TCP port (`tcp` field) representing the local libp2p listening port.
 -  A UDP port (`udp` field) representing the local discv5 listening port.
@@ -630,11 +708,15 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 
 #### Attestation subnet bitfield
 
-The ENR MAY contain an entry (`attnets`) signifying the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
+The ENR `attnets` entry signifies the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
 
 | Key          | Value                                            |
 |:-------------|:-------------------------------------------------|
 | `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+
+If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `attnets` entry with the same value as `MetaData.attnets`.
+
+If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally include the `attnets` entry or leave it out entirely.
 
 #### Interop
 
