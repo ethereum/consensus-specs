@@ -24,8 +24,9 @@
     - [Extended `SignedBeaconBlock`](#extended-signedbeaconblock)
   - [Extended `BeaconState`](#extended-beaconstate)
 - [New containers](#new-containers)
-  - [`ShardBlockWrapper`](#shardblockwrapper)
-  - [`ShardSignableHeader`](#shardsignableheader)
+  - [`ShardBlock`](#shardblock)
+  - [`SignedShardBlock`](#signedshardblock)
+  - [`ShardBlockHeader`](#shardblockheader)
   - [`ShardState`](#shardstate)
   - [`ShardTransition`](#shardtransition)
   - [`CompactCommittee`](#compactcommittee)
@@ -291,23 +292,28 @@ class BeaconState(Container):
 
 The following containers are new in Phase 1.
 
-### `ShardBlockWrapper`
-
-_Wrapper for being broadcasted over the network._
+### `ShardBlock`
 
 ```python
-class ShardBlockWrapper(Container):
+class ShardBlock(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
     body: ByteList[MAX_SHARD_BLOCK_SIZE]
+```
+
+### `SignedShardBlock`
+
+```python
+class SignedShardBlock(Container):
+    message: ShardBlock
     signature: BLSSignature
 ```
 
-### `ShardSignableHeader`
+### `ShardBlockHeader`
 
 ```python
-class ShardSignableHeader(Container):
+class ShardBlockHeader(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
@@ -700,7 +706,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     shard_parent_root = state.shard_states[shard].latest_block_root
     for i in range(len(offset_slots)):
         if any(transition.shard_data_roots):
-            headers.append(ShardSignableHeader(
+            headers.append(ShardBlockHeader(
                 shard_parent_root=shard_parent_root,
                 parent_hash=get_block_root_at_slot(state, get_previous_slot(state.slot)),
                 slot=offset_slots[i],
