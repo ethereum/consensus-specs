@@ -34,6 +34,7 @@
   - [Misc](#misc-1)
     - [`get_previous_slot`](#get_previous_slot)
     - [`pack_compact_validator`](#pack_compact_validator)
+    - [`unpack_compact_validator`](#unpack_compact_validator)
     - [`committee_to_compact_committee`](#committee_to_compact_committee)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -371,13 +372,27 @@ def get_previous_slot(slot: Slot) -> Slot:
 #### `pack_compact_validator`
 
 ```python
-def pack_compact_validator(index: int, slashed: bool, balance_in_increments: int) -> int:
+def pack_compact_validator(index: ValidatorIndex, slashed: bool, balance_in_increments: uint64) -> uint64:
     """
-    Creates a compact validator object representing index, slashed status, and compressed balance.
+    Create a compact validator object representing index, slashed status, and compressed balance.
     Takes as input balance-in-increments (// EFFECTIVE_BALANCE_INCREMENT) to preserve symmetry with
     the unpacking function.
     """
     return (index << 16) + (slashed << 15) + balance_in_increments
+```
+
+#### `unpack_compact_validator`
+
+```python
+def unpack_compact_validator(compact_validator: uint64) -> Tuple[ValidatorIndex, bool, uint64]:
+    """
+    Return validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
+    """
+    return (
+        ValidatorIndex(compact_validator >> 16),
+        bool((compact_validator >> 15) % 2),
+        compact_validator & (2**15 - 1),
+    )
 ```
 
 #### `committee_to_compact_committee`
