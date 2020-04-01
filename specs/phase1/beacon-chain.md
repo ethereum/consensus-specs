@@ -709,11 +709,12 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
 
 ```python
 def process_crosslink_for_shard(state: BeaconState,
-                                shard: Shard,
+                                committee_index: CommitteeIndex,
                                 shard_transition: ShardTransition,
                                 attestations: Sequence[Attestation]) -> Root:
-    committee = get_beacon_committee(state, get_current_epoch(state), shard)
+    committee = get_beacon_committee(state, state.slot, committee_index)
     online_indices = get_online_validator_indices(state)
+    shard = compute_shard_from_committee_index(state, committee_index, state.slot)
 
     # Loop over all shard transition roots
     shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
@@ -775,7 +776,7 @@ def process_crosslinks(state: BeaconState,
             if attestation.data.index == committee_index and attestation.data.slot == state.slot
         ]
         shard_transition = shard_transitions[shard]
-        winning_root = process_crosslink_for_shard(state, shard, shard_transition, shard_attestations)
+        winning_root = process_crosslink_for_shard(state, committee_index, shard_transition, shard_attestations)
         if winning_root != Root():
             # Mark relevant pending attestations as creating a successful crosslink
             for pending_attestation in state.current_epoch_attestations:
