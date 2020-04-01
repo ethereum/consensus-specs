@@ -30,6 +30,7 @@
   - [`ShardTransition`](#shardtransition)
   - [`CompactCommittee`](#compactcommittee)
   - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
+  - [`LightClientVote`](#lightclientvote)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
     - [`get_previous_slot`](#get_previous_slot)
@@ -211,7 +212,7 @@ class BeaconBlockBody(Container):
     # Shards
     shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     # Light clients
-    light_client_signature_bitfield: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
+    light_client_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
 ```
 
@@ -353,6 +354,16 @@ class AttestationCustodyBitWrapper(Container):
     attestation_data_root: Root
     block_index: uint64
     bit: boolean
+```
+
+### `LightClientVote`
+
+```python
+class LightClientVote(Container):
+    slot: Slot
+    block_root: Root
+    aggregation_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
+    signature: BLSSignature
 ```
 
 ## Helper functions
@@ -577,7 +588,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     verify_shard_transition_false_positives(state, block.body)
-    process_light_client_signatures(state, block.body)
+    process_light_client_aggregate(state, block.body)
     process_operations(state, block.body)
 ```
 
@@ -862,21 +873,24 @@ def verify_shard_transition_false_positives(state: BeaconState, block_body: Beac
 #### Light client processing
 
 ```python
-def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockBody) -> None:
+def process_light_client_aggregate(state: BeaconState, block_body: BeaconBlockBody) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
+    previous_slot = get_previous_slot(state.slot)
+    previous_block_root = get_block_root_at_slot(state, previous_slot)
+
     total_reward = Gwei(0)
     signer_pubkeys = []
     for bit_index, participant_index in enumerate(committee):
-        if block_body.light_client_signature_bitfield[bit_index]:
+        if block_body.light_client_bits[bit_index]:
             signer_pubkeys.append(state.validators[participant_index].pubkey)
-            increase_balance(state, participant_index, get_base_reward(state, participant_index))
-            total_reward += get_base_reward(state, participant_index)
+            if not state.validators[participant_index].slashed:
+                increase_balance(state, participant_index, get_base_reward(state, participant_index))
+                total_reward += get_base_reward(state, participant_index)
 
     increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
-    
-    slot = get_previous_slot(state.slot)
-    signing_root = compute_signing_root(get_block_root_at_slot(state, slot), 
-                                        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
+
+    signing_root = compute_signing_root(previous_block_root,
+                                        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(previous_slot)))
     assert bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
 ```
 
