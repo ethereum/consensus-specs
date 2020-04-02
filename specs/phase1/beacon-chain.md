@@ -43,8 +43,8 @@
     - [`get_active_shard_count`](#get_active_shard_count)
     - [`get_online_validator_indices`](#get_online_validator_indices)
     - [`get_shard_committee`](#get_shard_committee)
-    - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_light_client_committee`](#get_light_client_committee)
+    - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_indexed_attestation`](#get_indexed_attestation)
     - [`get_updated_gasprice`](#get_updated_gasprice)
     - [`get_start_shard`](#get_start_shard)
@@ -465,7 +465,30 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    return compute_committee(active_validator_indices, seed, shard, get_active_shard_count(beacon_state))
+    return compute_committee(
+        indices=active_validator_indices,
+        seed=seed,
+        index=shard,
+        count=get_active_shard_count(beacon_state)
+    )
+```
+
+#### `get_light_client_committee`
+
+```python
+def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+    source_epoch = epoch - epoch % LIGHT_CLIENT_COMMITTEE_PERIOD
+    if source_epoch > 0:
+        source_epoch -= LIGHT_CLIENT_COMMITTEE_PERIOD
+    active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
+    seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
+    active_shards_count = get_active_shard_count(beacon_state)
+    return compute_committee(
+        indices=active_validator_indices,
+        seed=seed,
+        index=0,
+        count=active_shards_count,
+    )[:TARGET_COMMITTEE_SIZE]
 ```
 
 #### `get_shard_proposer_index`
@@ -475,19 +498,6 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     committee = get_shard_committee(beacon_state, compute_epoch_at_slot(slot), shard)
     r = bytes_to_int(get_seed(beacon_state, get_current_epoch(beacon_state), DOMAIN_SHARD_COMMITTEE)[:8])
     return committee[r % len(committee)]
-```
-
-#### `get_light_client_committee`
-
-```python
-def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
-    source_epoch = epoch - epoch % LIGHT_CLIENT_COMMITTEE_PERIOD 
-    if source_epoch > 0:
-        source_epoch -= LIGHT_CLIENT_COMMITTEE_PERIOD
-    active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
-    seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
-    active_shards = get_active_shard_count(beacon_state)
-    return compute_committee(active_validator_indices, seed, 0, active_shards)[:TARGET_COMMITTEE_SIZE]
 ```
 
 #### `get_indexed_attestation`
