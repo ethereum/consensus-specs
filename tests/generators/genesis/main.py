@@ -1,5 +1,6 @@
 from typing import Iterable
 
+from eth2spec.test.context import PHASE0
 from eth2spec.test.genesis import test_initialization, test_validity
 
 from gen_base import gen_runner, gen_typing
@@ -21,7 +22,7 @@ def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typin
             runner_name='genesis',
             handler_name=handler_name,
             src=tests_src,
-            fork_name='phase0'
+            fork_name=PHASE0,
         )
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
