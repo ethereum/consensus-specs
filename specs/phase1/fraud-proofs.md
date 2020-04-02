@@ -6,7 +6,8 @@
   - [Table of contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Fraud proofs](#fraud-proofs)
-  - [Shard state transition function](#shard-state-transition-function)
+    - [Shard state transition function](#shard-state-transition-function)
+    - [Verifying the proof](#verifying-the-proof)
   - [Honest committee member behavior](#honest-committee-member-behavior)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -32,17 +33,12 @@ This document describes the shard transition function and fraud proofs as part o
 TODO. The intent is to have a single universal fraud proof type, which contains the following parts:
 
 1. An on-time attestation on some `shard` signing a `ShardTransition`
-2. An index `i` of a particular position to focus on
+2. An index `index` of a particular position to focus on
 3. The `ShardTransition` itself
-4. The full body of the block
-5. A Merkle proof to the `shard_states` in the parent block the attestation is referencing
+4. The full body of the block `ShardBlock`
+5. A Merkle proof to the `shard_states` in the parent block `parent_block` the attestation is referencing
 
-The proof verifies that one of the two conditions is false:
-
-1. `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
-2. `execute_state_transition(shard, slot, transition.shard_states[i-1].data, hash_tree_root(parent), get_shard_proposer_index(state, shard, slot), block_contents) != transition.shard_states[i].data` (if `i=0` then instead use `parent.shard_states[shard][-1].data`)
-
-## Shard state transition function
+### Shard state transition function
 
 ```python
 def shard_state_transition(beacon_state: BeaconState,
@@ -69,6 +65,50 @@ def verify_shard_block_signature(beacon_state: BeaconState,
     proposer = beacon_state.validators[signed_block.message.proposer_index]
     signing_root = compute_signing_root(signed_block.message, get_domain(beacon_state, DOMAIN_SHARD_PROPOSAL))
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
+```
+
+### Verifying the proof
+
+```python
+def verify_fraud_proof(beacon_state: BeaconState,
+                       subkey: BLSPubkey,
+                       attestation: Attestation,
+                       index: uint64,
+                       transition: ShardTransition,
+                       signed_block: SignedShardBlock,
+                       parent_block: ShardBlock) -> bool:
+    # 1. Check if `custody_bits[index][j] != generate_custody_bit(subkey, block_contents)` for any `j`
+    shard = get_shard(beacon_state, attestation)
+    slot = attestation.data.slot
+    custody_bits = attestation.custody_bits_blocks
+    for j in range(custody_bits[index]):
+        if custody_bits[index][j] != generate_custody_bit(subkey, signed_block):
+            return True
+
+    # 2. Verify the shard state transition
+    if index == 0:
+        parent_data = parent_block.shard_states[shard][-1].data
+    else:
+        parent_data = parent_block.shard_states[shard][index].data
+
+    if shard_state_transition(
+        beacon_state,
+        shard,
+        slot,
+        transition.shard_states[index - 1].data,
+        hash_tree_root(parent_block),
+        get_shard_proposer_index(beacon_state, slot, shard),
+        signed_block,
+    ) != parent_data:
+        return True
+
+    return False
+```
+
+```python
+def generate_custody_bit(subkey: BLSPubkey, block: ShardBlock) -> bool:
+    # TODO
+    ...
 ```
 
 ## Honest committee member behavior
