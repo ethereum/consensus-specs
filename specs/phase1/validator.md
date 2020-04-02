@@ -12,6 +12,7 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
+  - [Misc](#misc)
 - [Becoming a validator](#becoming-a-validator)
 - [Beacon chain validator assignments](#beacon-chain-validator-assignments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -34,6 +35,20 @@
     - [Construct attestation](#construct-attestation)
       - [Custody bits blocks](#custody-bits-blocks)
       - [Signature](#signature)
+  - [Light client committee](#light-client-committee)
+    - [Preparation](#preparation)
+    - [Light clent vote](#light-clent-vote)
+      - [Light client vote data](#light-client-vote-data)
+        - [`LightClientVoteData`](#lightclientvotedata)
+      - [Construct vote](#construct-vote)
+        - [`LightClientVote`](#lightclientvote)
+      - [Broadcast](#broadcast)
+    - [Light client vote aggregation](#light-client-vote-aggregation)
+    - [Aggregation selection](#aggregation-selection)
+    - [Construct aggregate](#construct-aggregate)
+    - [Broadcast aggregate](#broadcast-aggregate)
+      - [`LightAggregateAndProof`](#lightaggregateandproof)
+      - [`SignedLightAggregateAndProof`](#signedlightaggregateandproof)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -54,6 +69,12 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 See constants from [Phase 0 validator guide](../phase0/validator.md#constants).
 
+### Misc
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `TARGET_LIGHT_CLIENT_AGGREGATORS_PER_SLOT` | `2**2` (= 8) | validators | |
+
 ## Becoming a validator
 
 Becoming a validator in Phase 1 is unchanged from Phase 0. See the [Phase 0 validator guide](../phase0/validator.md#becoming-a-validator) for details.
@@ -67,6 +88,8 @@ Beacon chain validator assignments to beacon committees and beacon block proposa
 A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
 
 These responsibilities are largely unchanged from Phase 0, but utilize the updated `SignedBeaconBlock`, `BeaconBlock`,  `BeaconBlockBody`, `Attestation`, and `AttestationData` definitions found in Phase 1. Below notes only the additional and modified behavior with respect to Phase 0.
+
+Phase 1 adds light client committees and associated responsibilities, discussed [below](#light-client-committee).
 
 ### Block proposal
 
@@ -120,9 +143,12 @@ def get_successful_shard_transitions(state: BeaconState,
         committee = get_beacon_committee(state, state.slot, committee_index)
 
         # Loop over all shard transition roots, looking for a winning root
-        shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
+        shard_transition_roots = set([a.data.shard_transition_root for a in shard_attestations])
         for shard_transition_root in sorted(shard_transition_roots):
-            transition_attestations = [a for a in attestations if a.data.shard_transition_root == shard_transition_root]
+            transition_attestations = [
+                a for a in shard_attestations
+                if a.data.shard_transition_root == shard_transition_root
+            ]
             transition_participants: Set[ValidatorIndex] = set()
             for attestation in transition_attestations:
                 participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
@@ -149,10 +175,10 @@ Then:
 * Set `light_client_signature = best_aggregate.signature`
 
 ```python
-def select_best_light_client_aggregate(block: BeaconBlock,
-                                       aggregates: Sequence[LightClientVote]) -> LightClientVote:
+def get_best_light_client_aggregate(block: BeaconBlock,
+                                    aggregates: Sequence[LightClientVote]) -> LightClientVote:
     viable_aggregates = [
-        aggregate in aggregates
+        aggregate for aggregate in aggregates
         if aggregate.slot == get_previous_slot(block.slot) and aggregate.beacon_block_root == block.parent_root
     ]
 
@@ -225,7 +251,7 @@ Set `attestation_data.head_shard_root = hash_tree_root(head_shard_block)`.
 Set `shard_transition` to the value returned by `get_shard_transition()`.
 
 ```python
-def get_shard_transition(state: BeaconState, shard: Shard, shard_blocks: Sequence[ShardBlock])
+def get_shard_transition(state: BeaconState, shard: Shard, shard_blocks: Sequence[ShardBlock]) -> ShardTransition:
     latest_shard_slot = get_latest_slot_for_shard(state, shard)
     offset_slots = [Slot(latest_shard_slot + x) for x in SHARD_BLOCK_OFFSETS if latest_shard_slot + x <= state.slot]
     return ShardTransition()
@@ -254,8 +280,170 @@ Set `attestation.signature = attestation_signature` where `attestation_signature
 def get_attestation_signature(state: BeaconState,
                               attestation_data: AttestationData,
                               custody_bits_blocks,
-                              privkey: int) -> List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]:
+                              privkey: int
+                              ) -> List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]:
     pass
 ```
 
+### Light client committee
+
+In addition to the core beacon chain responsibilities, Phase 1 adds an additional role -- the Light Client Committee -- to aid in light client functionality.
+
+Validators serve on the light client committee for `LIGHT_CLIENT_COMMITTEE_PERIOD` epochs and the assignment to be on a committee is known `LIGHT_CLIENT_COMMITTEE_PERIOD` epochs in advance.
+
+#### Preparation
+
+When `get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == LIGHT_CLIENT_COMMITTEE_PERIOD - LIGHT_CLIENT_PREPARATION_EPOCHS` each validator must check if they are in the next period light client committee by calling `is_in_next_light_client_committee()`.
+
+If the validator is in the next light client committee, they must join the `light_client_votes` pubsub topic to begin duties at the start of the next period.
+
+```python
+def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex) -> boolean:
+    period_start_epoch = get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD % get_current_epoch(state)
+    next_committee = get_light_client_committee(state, period_start_epoch)
+    return index in next_committee
+```
+
+#### Light clent vote
+
+During a period of epochs that the validator is a part of the light client committee (`validator_index in get_light_client_committee(state, epoch)`), the validator creates and broadcasts a `LightClientVote` at each slot.
+
+A validator should create and broadcast the `light_client_vote` to the `light_client_votes` pubsub topic when either (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) two-thirds of the `slot` have transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
+
+- Let `light_client_committee = get_light_client_committee(state, compute_epoch_at_slot(slot))`
+
+##### Light client vote data
+
+First the validator constructs `light_client_vote_data`, a [`LightClientVoteData`](#lightclientvotedata) object.
+
+* Let `head_block` be the result of running the fork choice during the assigned slot.
+* Set `light_client_vote.slot = slot`.
+* Set `light_client_vote.beacon_block_root = hash_tree_root(head_block)`.
+
+###### `LightClientVoteData`
+
+```python
+class LightClientVoteData(Container):
+    slot: Slot
+    beacon_block_root: Root
+```
+
+##### Construct vote
+
+Then the validator constructs `light_client_vote`, a [`LightClientVote`](#lightclientvote) object.
+
+* Set `light_client_vote.data = light_client_vote_data`.
+* Set `light_client_vote.aggregation_bits` to be a `Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]`, where the bit of the index of the validator in the `light_client_committee` is set to `0b1` and all other bits are are set to `0b0`.
+* Set `light_client_vote.signature = vote_signature` where `vote_signature` is obtained from:
+
+```python
+def get_light_client_vote_signature(state: BeaconState,
+                                    light_client_vote_data: LightClientVoteData,
+                                    privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(light_client_vote_data.slot))
+    signing_root = compute_signing_root(light_client_vote_data, domain)
+    return bls.Sign(privkey, signing_root)
+```
+
+###### `LightClientVote`
+
+```python
+class LightClientVote(Container):
+    data: LightClientVoteData
+    aggregation_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
+    signature: BLSSignature
+```
+
+##### Broadcast
+
+Finally, the validator broadcasts `light_client_vote` to the `light_client_votes` pubsub topic.
+
+#### Light client vote aggregation
+
+Some validators in the light client committee are selected to locally aggregate light client votes with a similar `light_client_vote_data` to their constructed `light_client_vote` for the assigned `slot`.
+
+#### Aggregation selection
+
+A validator is selected to aggregate based upon the return value of `is_light_client_aggregator()`.
+
+```python
+def get_light_client_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_LIGHT_SELECTION_PROOF, compute_epoch_at_slot(slot))
+    signing_root = compute_signing_root(slot, domain)
+    return bls.Sign(privkey, signing_root)
+```
+
+```python
+def is_light_client_aggregator(state: BeaconState, slot: Slot, slot_signature: BLSSignature) -> bool:
+    committee = get_light_client_committee(state, compute_epoch_at_slot(slot))
+    modulo = max(1, len(committee) // TARGET_LIGHT_CLIENT_AGGREGATORS_PER_SLOT)
+    return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
+```
+
+#### Construct aggregate
+
+If the validator is selected to aggregate (`is_light_client_aggregator()`), they construct an aggregate light client vote via the following.
+
+Collect `light_client_votes` seen via gossip during the `slot` that have an equivalent `light_client_vote_data` to that constructed by the validator, and create a `aggregate_light_client_vote: LightClientVote` with the following fields.
+
+* Set `aggregate_light_client_vote.data = light_client_vote_data` where `light_client_vote_data` is the `LightClientVoteData` object that is the same for each individual light client vote being aggregated.
+* Set `aggregate_light_client_vote.aggregation_bits` to be a `Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]`, where each bit set from each individual light client vote is set to `0b1`.
+* Set `aggregate_light_client_vote.signature = aggregate_light_client_signature` where `aggregate_light_client_signature` is obtained from `get_aggregate_light_client_signature`.
+
+```python
+def get_aggregate_light_client_signature(light_client_votes: Sequence[LightClientVote]) -> BLSSignature:
+    signatures = [light_client_vote.signature for light_client_vote in light_client_votes]
+    return bls.Aggregate(signatures)
+```
+
+#### Broadcast aggregate
+
+If the validator is selected to aggregate (`is_light_client_aggregator`), then they broadcast their best aggregate light client vote as a `SignedLightAggregateAndProof` to the global aggregate light client vote channel (`aggregate_light_client_votes`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+
+Selection proofs are provided in `LightAggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
+
+`LightAggregateAndProof` messages are signed by the aggregator and broadcast inside of `SignedLightAggregateAndProof` objects to prevent a class of DoS attacks and message forgeries.
+
+First, `light_aggregate_and_proof = get_light_aggregate_and_proof(state, validator_index, aggregate_light_client_vote, privkey)` is constructed.
+
+```python
+def get_light_aggregate_and_proof(state: BeaconState,
+                                         aggregator_index: ValidatorIndex,
+                                         aggregate: Attestation,
+                                         privkey: int) -> LightAggregateAndProof:
+    return LightAggregateAndProof(
+        aggregator_index=aggregator_index,
+        aggregate=aggregate,
+        selection_proof=get_light_client_slot_signature(state, aggregate.data.slot, privkey),
+    )
+```
+
+Then `signed_light_aggregate_and_proof = SignedLightAggregateAndProof(message=light_aggregate_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+
+```python
+def get_light_aggregate_and_proof_signature(state: BeaconState,
+                                                   aggregate_and_proof: LightAggregateAndProof,
+                                                   privkey: int) -> BLSSignature:
+    aggregate = aggregate_and_proof.aggregate
+    domain = get_domain(state, DOMAIN_CLIENT_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    return bls.Sign(privkey, signing_root)
+```
+
+##### `LightAggregateAndProof`
+
+```python
+class LightAggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation
+    selection_proof: BLSSignature
+```
+
+##### `SignedLightAggregateAndProof`
+
+```python
+class SignedLightAggregateAndProof(Container):
+    message: LightAggregateAndProof
+    signature: BLSSignature
+```
 

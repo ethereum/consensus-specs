@@ -12,6 +12,7 @@
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Misc](#misc)
+  - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
   - [Extended `Attestation`](#extended-attestation)
@@ -30,7 +31,6 @@
   - [`ShardTransition`](#shardtransition)
   - [`CompactCommittee`](#compactcommittee)
   - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
-  - [`LightClientVote`](#lightclientvote)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
     - [`get_previous_slot`](#get_previous_slot)
@@ -105,9 +105,16 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
-| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
-| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` |
+| `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x83000000')` |
+| `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x84000000')` |
 
 ## Updated containers
 
@@ -354,16 +361,6 @@ class AttestationCustodyBitWrapper(Container):
     attestation_data_root: Root
     block_index: uint64
     bit: boolean
-```
-
-### `LightClientVote`
-
-```python
-class LightClientVote(Container):
-    slot: Slot
-    block_root: Root
-    aggregation_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
-    signature: BLSSignature
 ```
 
 ## Helper functions
