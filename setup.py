@@ -108,7 +108,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable
+    Any, Dict, Set, Sequence, NewType, Tuple, Optional, TypeVar, Callable
 )
 
 from dataclasses import (
@@ -373,11 +373,13 @@ class PySpecCommand(Command):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
+                    specs/phase0/validator.md
                     specs/phase1/custody-game.md
                     specs/phase1/beacon-chain.md
                     specs/phase1/fraud-proofs.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
+                    specs/phase1/validator.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)

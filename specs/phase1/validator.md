@@ -132,6 +132,7 @@ def get_successful_shard_transitions(state: BeaconState,
                                      attestations: Attestation) -> Tuple[Sequence[Shard], Sequence[Root]]:
     shards = []
     winning_roots = []
+    online_indices = get_online_validator_indices(state)
     committee_count = get_committee_count_at_slot(state, slot)
     for committee_index in map(CommitteeIndex, range(committee_count)):
         shard = compute_shard_from_committee_index(state, committee_index, slot)
@@ -160,7 +161,7 @@ def get_successful_shard_transitions(state: BeaconState,
             )
             if enough_online_stake:
                 shards.append(shard)
-                transitions.append(shard_transition_root)
+                winning_roots.append(shard_transition_root)
                 break
 
     return shards, winning_roots
@@ -184,7 +185,7 @@ def get_best_light_client_aggregate(block: BeaconBlock,
 
     return max(
         viable_aggregates,
-        key=lambda a: len([_ for i in a.aggregation_bits if i == 1]),
+        key=lambda a: len([i for i in a.aggregation_bits if i == 1]),
         default=LightClientVote(),
     )
 ```
@@ -251,9 +252,13 @@ Set `attestation_data.head_shard_root = hash_tree_root(head_shard_block)`.
 Set `shard_transition` to the value returned by `get_shard_transition()`.
 
 ```python
-def get_shard_transition(state: BeaconState, shard: Shard, shard_blocks: Sequence[ShardBlock]) -> ShardTransition:
+def get_shard_transition(state: BeaconState,
+                         shard: Shard,
+                         shard_blocks: Sequence[ShardBlockWrapper]) -> ShardTransition:
+    """
     latest_shard_slot = get_latest_slot_for_shard(state, shard)
     offset_slots = [Slot(latest_shard_slot + x) for x in SHARD_BLOCK_OFFSETS if latest_shard_slot + x <= state.slot]
+    """
     return ShardTransition()
 ```
 
@@ -279,9 +284,8 @@ Set `attestation.signature = attestation_signature` where `attestation_signature
 ```python
 def get_attestation_signature(state: BeaconState,
                               attestation_data: AttestationData,
-                              custody_bits_blocks,
-                              privkey: int
-                              ) -> List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]:
+                              cb_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION],
+                              privkey: int) -> BLSSignature:
     pass
 ```
 
@@ -408,9 +412,9 @@ First, `light_aggregate_and_proof = get_light_aggregate_and_proof(state, validat
 
 ```python
 def get_light_aggregate_and_proof(state: BeaconState,
-                                         aggregator_index: ValidatorIndex,
-                                         aggregate: Attestation,
-                                         privkey: int) -> LightAggregateAndProof:
+                                  aggregator_index: ValidatorIndex,
+                                  aggregate: Attestation,
+                                  privkey: int) -> LightAggregateAndProof:
     return LightAggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
@@ -422,10 +426,10 @@ Then `signed_light_aggregate_and_proof = SignedLightAggregateAndProof(message=li
 
 ```python
 def get_light_aggregate_and_proof_signature(state: BeaconState,
-                                                   aggregate_and_proof: LightAggregateAndProof,
-                                                   privkey: int) -> BLSSignature:
+                                            aggregate_and_proof: LightAggregateAndProof,
+                                            privkey: int) -> BLSSignature:
     aggregate = aggregate_and_proof.aggregate
-    domain = get_domain(state, DOMAIN_CLIENT_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
+    domain = get_domain(state, DOMAIN_LIGHT_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     return bls.Sign(privkey, signing_root)
 ```
