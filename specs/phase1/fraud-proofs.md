@@ -45,14 +45,30 @@ The proof verifies that one of the two conditions is false:
 ## Shard state transition function
 
 ```python
-def shard_state_transition(shard: Shard,
+def shard_state_transition(beacon_state: BeaconState,
+                           shard: Shard,
                            slot: Slot,
                            pre_state: Root,
                            previous_beacon_root: Root,
-                           proposer_pubkey: BLSPubkey,
-                           block_data: ByteList[MAX_SHARD_BLOCK_SIZE]) -> Root:
+                           proposer_index: ValidatorIndex,
+                           signed_block: SignedShardBlock,
+                           validate_result: bool=True) -> Root:
     # We will add something more substantive in phase 2
-    return hash(pre_state + hash_tree_root(previous_beacon_root) + hash_tree_root(block_data))
+
+    # Verify the proposer_index and signature
+    assert proposer_index == signed_block.message.proposer_index
+    if validate_result:
+        assert verify_shard_block_signature(beacon_state, signed_block)
+
+    return hash(pre_state + hash_tree_root(previous_beacon_root) + hash_tree_root(signed_block.message.data))
+```
+
+```python
+def verify_shard_block_signature(beacon_state: BeaconState,
+                                 signed_block: SignedShardBlock) -> bool:
+    proposer = beacon_state.validators[signed_block.message.proposer_index]
+    signing_root = compute_signing_root(signed_block.message, get_domain(beacon_state, DOMAIN_SHARD_PROPOSAL))
+    return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
 ## Honest committee member behavior
@@ -61,10 +77,10 @@ Suppose you are a committee member on shard `shard` at slot `current_slot`. Let 
 
 * Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
 * For `slot in get_offset_slots(state, start_slot)`, do the following:
-    * Look for all valid proposals for `slot`; that is, a Bytes `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, shard, slot), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
+    * Look for all valid proposals for `slot`; that is, a SignedShardBlock `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, slot, shard), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
     * If `len(choices) == 0`, do `proposals.append(make_empty_proposal(shard_state, slot))`
     * If `len(choices) == 1`, do `proposals.append(choices[0])`
     * If `len(choices) > 1`, let `winning_proposal` be the proposal with the largest number of total attestations from slots in `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants, breaking ties by choosing the first proposal locally seen. Do `proposals.append(winning_proposal)`.
-    * If `proposals[-1]` is NOT an empty proposal, set `shard_state = shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, shard, slot), proposals[-1])` and do `shard_states.append(shard_state)`. If it is an empty proposal, leave `shard_state` unchanged.
+    * If `proposals.message.data[-1]` is NOT an empty proposal, set `shard_state = shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, slot, shard), proposals[-1])` and do `shard_states.append(shard_state)`. If it is an empty proposal, leave `shard_state` unchanged.
 
-Make an attestation using `shard_data_roots = [hash_tree_root(proposal) for proposal in proposals]` and `shard_state_roots = shard_states`.
+Make an attestation using `shard_data_roots = [hash_tree_root(proposal.message.data) for proposal in proposals]` and `shard_state_roots = shard_states`.
