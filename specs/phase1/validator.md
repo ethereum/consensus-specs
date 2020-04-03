@@ -15,6 +15,7 @@
   - [Misc](#misc)
 - [Becoming a validator](#becoming-a-validator)
 - [Beacon chain validator assignments](#beacon-chain-validator-assignments)
+  - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Preparing for a `BeaconBlock`](#preparing-for-a-beaconblock)
@@ -82,6 +83,14 @@ Becoming a validator in Phase 1 is unchanged from Phase 0. See the [Phase 0 vali
 ## Beacon chain validator assignments
 
 Beacon chain validator assignments to beacon committees and beacon block proposal are unchanged from Phase 0. See the [Phase 0 validator guide](../phase0/validator.md#validator-assignments) for details.
+
+### Lookahead
+
+Lookahead for beacon committee assignments operates in the same manner as Phase 0, but committee members must join a shard block pubsub topic in addition to the committee attestation topic.o
+
+Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a validator should:
+* Let `shard = compute_shard_from_committee_index(committe_index)`
+* Subscribe to the pubsub topic `shard_{shard}_shard_block` (attestation subnet peers should have this topic available).
 
 ## Beacon chain responsibilities
 
