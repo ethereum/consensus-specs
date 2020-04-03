@@ -48,8 +48,10 @@
     - [`get_start_shard`](#get_start_shard)
     - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
+    - [`compute_offset_slots`](#compute_offset_slots)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
+    - [`is_winning_attestation`](#is_winning_attestation)
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
   - [Block processing](#block-processing)
     - [Operations](#operations)
@@ -533,6 +535,24 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 
 ### Predicates
 
+#### `is_winning_attestation`
+
+```python
+def is_winning_attestation(state: BeaconState,
+                           attestation: PendingAttestation,
+                           committee_index: CommitteeIndex,
+                           winning_root: Root) -> bool:
+    """
+    Check if ``attestation`` helped contribute to the successful crosslink of
+    ``winning_root`` formed by ``committee_index`` committee at the current slot.
+    """
+    return (
+        attestation.slot == state.slot
+        and attestation.data.index == committee_index
+        and attestation.data.shard_transition_root == winning_root
+    )
+```
+
 #### Updated `is_valid_indexed_attestation`
 
 Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
@@ -638,7 +658,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     shard = get_shard(state, attestation)
 
-    # Type 1: on-time attestations
+    # Type 1: on-time attestations, the custody bits should be non-empty.
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
         assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
@@ -646,7 +666,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
-    # Type 2: no shard transition, no custody bits  # TODO: could only allow for older attestations.
+    # Type 2: no shard transition, no custody bits
     else:
         # Ensure delayed attestation
         assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY < state.slot  
@@ -783,11 +803,7 @@ def process_crosslinks(state: BeaconState,
         if winning_root != Root():
             # Mark relevant pending attestations as creating a successful crosslink
             for pending_attestation in state.current_epoch_attestations:
-                if (
-                    pending_attestation.slot == state.slot and pending_attestation
-                    and pending_attestation.data.index == committee_index
-                    and pending_attestation.data.shard_transition_root == winning_root
-                ):
+                if is_winning_attestation(state, pending_attestation, committee_index, winning_root):
                     pending_attestation.crosslink_success = True
 ```
 
@@ -801,8 +817,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         aggregation_bits=attestation.aggregation_bits,
         data=attestation.data,
         inclusion_delay=state.slot - attestation.data.slot,
-        crosslink_success=False,  # To be filled in during process_crosslinks
         proposer_index=get_beacon_proposer_index(state),
+        crosslink_success=False,  # To be filled in during process_crosslinks
     )
     if attestation.data.target.epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)

@@ -22,13 +22,16 @@ def run_process_rewards_and_penalties(spec, state):
 
 
 def prepare_state_with_full_attestations(spec, state, empty=False):
+    # Go to start of next epoch to ensure can have full participation
+    next_epoch(spec, state)
+
     start_slot = state.slot
     start_epoch = spec.get_current_epoch(state)
-    next_start_epoch = spec.compute_start_slot_at_epoch(start_epoch + 1)
+    next_epoch_start_slot = spec.compute_start_slot_at_epoch(start_epoch + 1)
     attestations = []
-    for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
+    for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
         # create an attestation for each index in each slot in epoch
-        if state.slot < next_start_epoch:
+        if state.slot < next_epoch_start_slot:
             for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
                 attestation = get_valid_attestation(spec, state, index=committee_index, empty=empty, signed=True)
                 attestations.append(attestation)
@@ -39,7 +42,7 @@ def prepare_state_with_full_attestations(spec, state, empty=False):
             add_attestations_to_state(spec, state, include_attestations, state.slot)
         next_slot(spec, state)
 
-    assert spec.compute_epoch_at_slot(state.slot) == start_epoch + 1
+    assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
     assert len(state.previous_epoch_attestations) == len(attestations)
 
     return attestations
@@ -87,8 +90,6 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_attestations(spec, state):
-    # Go to start of next epoch to ensure can have full participation
-    next_epoch(spec, state)
     attestations = prepare_state_with_full_attestations(spec, state)
 
     pre_state = state.copy()
@@ -132,8 +133,6 @@ def test_full_attestations_random_incorrect_fields(spec, state):
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.MAX_EFFECTIVE_BALANCE // 2)
 @single_phase
 def test_full_attestations_misc_balances(spec, state):
-    # Go to start of next epoch to ensure can have full participation
-    next_epoch(spec, state)
     attestations = prepare_state_with_full_attestations(spec, state)
 
     pre_state = state.copy()
@@ -178,6 +177,7 @@ def test_full_attestations_one_validaor_one_gwei(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_attestations_all_penalties(spec, state):
+    # Move to next epoch to ensure rewards/penalties are processed
     next_epoch(spec, state)
     pre_state = state.copy()
 
@@ -254,7 +254,6 @@ def test_attestations_some_slashed(spec, state):
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
     assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = state.copy()
