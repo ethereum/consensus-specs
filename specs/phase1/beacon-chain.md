@@ -37,6 +37,7 @@
     - [`unpack_compact_validator`](#unpack_compact_validator)
     - [`committee_to_compact_committee`](#committee_to_compact_committee)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
+    - [`compute_offset_slots`](#compute_offset_slots)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_active_shard_count`](#get_active_shard_count)
     - [`get_online_validator_indices`](#get_online_validator_indices)
@@ -48,7 +49,6 @@
     - [`get_start_shard`](#get_start_shard)
     - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
-    - [`compute_offset_slots`](#compute_offset_slots)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
     - [`is_winning_attestation`](#is_winning_attestation)
@@ -421,6 +421,16 @@ def compute_shard_from_committee_index(state: BeaconState, index: CommitteeIndex
     return Shard((index + get_start_shard(state, slot)) % active_shards)
 ```
 
+#### `compute_offset_slots`
+
+```python
+def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
+    """
+    Return the offset slots that are greater than ``start_slot`` and less than ``end_slot``.
+    """
+    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS if start_slot + x < end_slot]
+```
+
 ### Beacon state accessors
 
 #### `get_active_shard_count`
@@ -517,13 +527,6 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
 ```python
 def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
     return state.shard_states[shard].slot
-```
-
-#### `compute_offset_slots`
-
-```python
-def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
-    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS if start_slot + x < end_slot]
 ```
 
 #### `get_offset_slots`
