@@ -1,4 +1,4 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.context import PHASE0, with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block
@@ -16,7 +16,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
     spec.on_attestation(store, attestation)
 
-    if spec.fork == 'phase0':
+    if spec.fork == PHASE0:
         sample_index = indexed_attestation.attesting_indices[0]
     else:
         attesting_indices = [

@@ -1,5 +1,6 @@
 from typing import List
 
+from eth2spec.test.context import PHASE0
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block, \
     build_empty_block
 from eth2spec.test.helpers.keys import privkeys
@@ -78,12 +79,12 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
                 privkey
             )
         )
-    # TODO: we should try signing custody bits if spec.fork == 'phase1'
+    # TODO: we should try signing custody bits if spec.fork == PHASE1
     return bls.Aggregate(signatures)
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
-    if spec.fork == 'phase0':
+    if spec.fork == PHASE0:
         participants = indexed_attestation.attesting_indices
         data = indexed_attestation.data
         indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
