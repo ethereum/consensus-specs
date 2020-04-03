@@ -92,7 +92,7 @@ from dataclasses import (
     field,
 )
 
-from lru import LRU
+from lru import LRU  # type: ignore
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
@@ -116,7 +116,7 @@ from dataclasses import (
     field,
 )
 
-from lru import LRU
+from lru import LRU  # type: ignore
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
@@ -156,7 +156,7 @@ def hash(x: bytes) -> Bytes32:  # type: ignore
     return hash_cache[x]
 
 
-def cache_this(key_fn, value_fn, lru_size):  # type: ignore
+def cache_this(key_fn, value_fn, lru_size):
     cache_dict = LRU(size=lru_size)
 
     def wrapper(*args, **kw):  # type: ignore
@@ -491,7 +491,7 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.750"],
+        "lint": ["flake8==3.7.7", "mypy==0.770", "mypy-extensions==0.4.3"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
