@@ -63,6 +63,9 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
                     # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
                     # Decide based on performance/consistency results later.
                     state = phases[PHASE1].upgrade_to_phase1(state)
+                    # Shard state slot must lag behind BeaconState slot by at least 1
+                    # Will handle this more elegantly with fork mechanics
+                    spec.process_slots(state, state.slot + 1)
 
                 kw['state'] = state
             except KeyError:

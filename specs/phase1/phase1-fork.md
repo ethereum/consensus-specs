@@ -36,7 +36,6 @@ Warning: this configuration is not definitive.
 | - | - |
 | `PHASE_1_FORK_VERSION` | `Version('0x01000000')` |
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
-| `INITIAL_GASPRICE` | `Gwei(10)` |
 
 ## Fork to Phase 1
 
@@ -102,7 +101,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         shard_states=List[ShardState, MAX_SHARDS](
             ShardState(
                 slot=pre.slot,
-                gasprice=INITIAL_GASPRICE,
+                gasprice=MIN_GASPRICE,
                 data=Root(),
                 latest_block_root=Root(),
             ) for i in range(INITIAL_ACTIVE_SHARDS)

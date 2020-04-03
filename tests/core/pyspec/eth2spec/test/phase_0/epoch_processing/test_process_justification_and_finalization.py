@@ -2,6 +2,7 @@ from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import (
     run_epoch_processing_with
 )
+from eth2spec.test.helpers.state import transition_to
 
 
 def run_process_just_and_fin(spec, state):
@@ -46,9 +47,10 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
                 else:
                     break
 
-            # remove just one attester to make the marginal support insufficient
+            # remove 1/5th of attesters so that support is insufficient
             if not sufficient_support:
-                aggregation_bits[aggregation_bits.index(1)] = 0
+                for i in range(max(len(committee) // 5, 1)):
+                    aggregation_bits[i] = 0
 
             attestations.append(spec.PendingAttestation(
                 aggregation_bits=aggregation_bits,
@@ -81,7 +83,7 @@ def put_checkpoints_in_block_roots(spec, state, checkpoints):
 
 def finalize_on_234(spec, state, epoch, sufficient_support):
     assert epoch > 4
-    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * epoch - 1)  # skip ahead to just before epoch
 
     # 43210 -- epochs ago
     # 3210x -- justification bitfield indices
@@ -116,7 +118,7 @@ def finalize_on_234(spec, state, epoch, sufficient_support):
 
 def finalize_on_23(spec, state, epoch, sufficient_support):
     assert epoch > 3
-    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * epoch - 1)  # skip ahead to just before epoch
 
     # 43210 -- epochs ago
     # 210xx  -- justification bitfield indices (pre shift)
@@ -194,7 +196,7 @@ def finalize_on_123(spec, state, epoch, sufficient_support):
 
 def finalize_on_12(spec, state, epoch, sufficient_support, messed_up_target):
     assert epoch > 2
-    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * epoch - 1)  # skip ahead to just before epoch
 
     # 43210 -- epochs ago
     # 210xx  -- justification bitfield indices (pre shift)

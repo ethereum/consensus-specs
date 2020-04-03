@@ -1,30 +1,63 @@
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.utils.ssz.ssz_typing import Bitlist
 from eth2spec.utils import bls
 
+from eth2spec.test.helpers.keys import privkeys
+import eth2spec.test.helpers.attestations as phase0_attestations
 
-def sign_shard_attestation(spec, beacon_state, shard_state, block, participants):
-    signatures = []
-    message_hash = spec.ShardAttestationData(
-        slot=block.slot,
-        parent_root=block.parent_root,
-    ).hash_tree_root()
-    block_epoch = spec.compute_epoch_of_shard_slot(block.slot)
-    for validator_index in participants:
-        privkey = privkeys[validator_index]
-        signatures.append(
-            get_attestation_signature(
-                spec,
-                beacon_state,
-                shard_state,
-                message_hash,
-                block_epoch,
-                privkey,
-            )
+
+def get_valid_on_time_attestation(spec, state, index=None, signed=False):
+    '''
+    Construct on-time attestation for next slot
+    '''
+    if index is None:
+        index = 0
+
+    attestation = phase0_attestations.get_valid_attestation(spec, state, state.slot, index, False)
+    shard = spec.get_shard(state, attestation)
+    offset_slots = spec.compute_offset_slots(spec.get_latest_slot_for_shard(state, shard), state.slot + 1)
+
+    for _ in offset_slots:
+        attestation.custody_bits_blocks.append(
+            Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])
         )
-    return bls.Aggregate(signatures)
+
+    if signed:
+        sign_attestation(spec, state, attestation)
+
+    return attestation
 
 
-def get_attestation_signature(spec, beacon_state, shard_state, message_hash, block_epoch, privkey):
-    domain = spec.get_domain(beacon_state, spec.DOMAIN_SHARD_ATTESTER, block_epoch)
-    signing_root = spec.compute_signing_root(message_hash, domain)
+def sign_attestation(spec, state, attestation):
+    if not any(attestation.custody_bits_blocks):
+        phase0_attestations.sign_attestation(spec, state, attestation)
+        return
+
+    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    signatures = []
+    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
+        for participant, abit, cbit in zip(committee, attestation.aggregation_bits, custody_bits):
+            if not abit:
+                continue
+            signatures.append(get_attestation_custody_signature(
+                spec,
+                state,
+                attestation.data,
+                block_index,
+                cbit,
+                privkeys[participant]
+            ))
+
+    attestation.signature = bls.Aggregate(signatures)
+
+
+def get_attestation_custody_signature(spec, state, attestation_data, block_index, bit, privkey):
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    signing_root = spec.compute_signing_root(
+        spec.AttestationCustodyBitWrapper(
+            attestation_data.hash_tree_root(),
+            block_index,
+            bit,
+        ),
+        domain,
+    )
     return bls.Sign(privkey, signing_root)

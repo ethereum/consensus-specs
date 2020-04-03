@@ -1,9 +1,8 @@
 from eth2spec.test.context import with_all_phases, spec_state_test
-from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.state import (
     next_epoch,
-    next_epoch_with_attestations,
     state_transition_and_sign_block,
 )
 

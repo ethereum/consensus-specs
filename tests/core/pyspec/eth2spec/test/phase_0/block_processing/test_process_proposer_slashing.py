@@ -2,7 +2,7 @@ from eth2spec.test.context import spec_state_test, expect_assertion_error, alway
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth2spec.test.helpers.state import get_balance
+from eth2spec.test.helpers.state import get_balance, next_epoch
 
 
 def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True):
@@ -152,7 +152,7 @@ def test_proposer_is_withdrawn(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     # move 1 epoch into future, to allow for past withdrawable epoch
-    state.slot += spec.SLOTS_PER_EPOCH
+    next_epoch(spec, state)
     # set proposer withdrawable_epoch in past
     current_epoch = spec.get_current_epoch(state)
     proposer_index = proposer_slashing.signed_header_1.message.proposer_index
