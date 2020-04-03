@@ -517,11 +517,18 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
     return state.shard_states[shard].slot
 ```
 
+#### `compute_offset_slots`
+
+```python
+def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
+    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS if start_slot + x < end_slot]
+```
+
 #### `get_offset_slots`
 
 ```python
-def get_offset_slots(state: BeaconState, latest_shard_slot: Slot) -> Sequence[Slot]:
-    return [Slot(latest_shard_slot + x) for x in SHARD_BLOCK_OFFSETS if latest_shard_slot + x < state.slot]
+def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
+    return compute_offset_slots(state.shard_states[shard].slot, state.slot)
 ```
 
 ### Predicates
@@ -630,14 +637,13 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert attestation.data.source == state.previous_justified_checkpoint
 
     shard = get_shard(state, attestation)
-    latest_shard_slot = get_latest_slot_for_shard(state, shard)
 
     # Type 1: on-time attestations
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
         assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
         # Correct data root count
-        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, latest_shard_slot))
+        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state.slot))
     # Type 2: no shard transition, no custody bits  # TODO: could only allow for older attestations.
@@ -655,11 +661,8 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
-    # Slot the attestation starts counting from
-    latest_slot = get_latest_slot_for_shard(state, shard)
-
     # Correct data root count
-    offset_slots = get_offset_slots(state, latest_slot)
+    offset_slots = get_offset_slots(state, shard)
     assert (
         len(transition.shard_data_roots)
         == len(transition.shard_states)

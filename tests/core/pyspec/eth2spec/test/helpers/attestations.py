@@ -1,7 +1,7 @@
 from typing import List
 
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.state import next_slot, state_transition_and_sign_block
+from eth2spec.test.helpers.state import state_transition_and_sign_block
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
@@ -77,10 +77,7 @@ def build_attestation_data(spec, state, slot, index):
 
 def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False):
     shard = spec.get_shard(state, attestation)
-
-    next_state = state.copy()
-    next_slot(spec, next_state)
-    offset_slots = spec.get_offset_slots(next_state, spec.get_latest_slot_for_shard(next_state, shard))
+    offset_slots = spec.compute_offset_slots(spec.get_latest_slot_for_shard(state, shard), state.slot + 1)
     for offset_slot in offset_slots:
         attestation.custody_bits_blocks.append(
             Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])

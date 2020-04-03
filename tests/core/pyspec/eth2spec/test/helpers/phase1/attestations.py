@@ -3,7 +3,6 @@ from eth2spec.utils import bls
 
 from eth2spec.test.helpers.keys import privkeys
 import eth2spec.test.helpers.attestations as phase0_attestations
-from eth2spec.test.helpers.state import next_slot
 
 
 def get_valid_on_time_attestation(spec, state, index=None, signed=False):
@@ -15,10 +14,8 @@ def get_valid_on_time_attestation(spec, state, index=None, signed=False):
 
     attestation = phase0_attestations.get_valid_attestation(spec, state, state.slot, index, False)
     shard = spec.get_shard(state, attestation)
+    offset_slots = spec.compute_offset_slots(spec.get_latest_slot_for_shard(state, shard), state.slot + 1)
 
-    next_state = state.copy()
-    next_slot(spec, next_state)
-    offset_slots = spec.get_offset_slots(next_state, spec.get_latest_slot_for_shard(next_state, shard))
     for offset_slot in offset_slots:
         attestation.custody_bits_blocks.append(
             Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])
