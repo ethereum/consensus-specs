@@ -13,6 +13,7 @@ from gen_base import gen_runner, gen_typing
 from py_ecc import bls
 from hashlib import sha256
 
+from eth2spec.test.context import PHASE0
 
 def hash(x):
     return sha256(x).digest()
@@ -202,7 +203,7 @@ def create_provider(handler_name: str,
             print(data)
             (case_name, case_content) = data
             yield gen_typing.TestCase(
-                fork_name='phase0',
+                fork_name=PHASE0,
                 runner_name='bls',
                 handler_name=handler_name,
                 suite_name='small',

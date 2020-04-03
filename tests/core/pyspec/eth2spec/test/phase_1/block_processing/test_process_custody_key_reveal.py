@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.custody import get_valid_custody_key_reveal
 from eth2spec.test.context import (
+    PHASE0,
     with_all_phases_except,
     spec_state_test,
     expect_assertion_error,
@@ -54,7 +55,7 @@ def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=Tru
     yield 'post', state
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_success(spec, state):
@@ -64,7 +65,7 @@ def test_success(spec, state):
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_reveal_too_early(spec, state):
@@ -73,7 +74,7 @@ def test_reveal_too_early(spec, state):
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal, False)
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_wrong_period(spec, state):
@@ -82,7 +83,7 @@ def test_wrong_period(spec, state):
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal, False)
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_late_reveal(spec, state):
@@ -92,7 +93,7 @@ def test_late_reveal(spec, state):
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_double_reveal(spec, state):
@@ -104,7 +105,7 @@ def test_double_reveal(spec, state):
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal, False)
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_max_decrement(spec, state):
