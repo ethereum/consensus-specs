@@ -193,11 +193,12 @@ def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
 Extract the custody secrets from the signature
 
 ```python
-def get_custody_secrets(key: BLSSignature):
+def get_custody_secrets(key: BLSSignature) -> Sequence[int]:
     full_G2_element = bls.signature_to_G2(key)
     signature = full_G2_element[0].coeffs
-    signature_bytes = sum(x.to_bytes(48, "little") for x in signature)
-    secrets = [int.from_bytes(x[i:i+BYTES_PER_CUSTODY_ATOM]) for i in range(0, len(signature_bytes), 32)]
+    signature_bytes = b"".join(x.to_bytes(48, "little") for x in signature)
+    secrets = [int.from_bytes(signature_bytes[i:i + BYTES_PER_CUSTODY_ATOM], "little") 
+               for i in range(0, len(signature_bytes), 32)]
     return secrets
 ```
 
@@ -208,8 +209,9 @@ def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
     secrets = get_custody_secrets(key)
     custody_atoms = get_custody_atoms(data)
     n = len(custody_atoms)
-    uhf = sum(secrets[i % CUSTORY_SECRETS]**i * int.from_bytes(atom, "little") for i, atom in enumerate(custody_atoms)) + secrets[n % CUSTORY_SECRETS]**n
-    return legendre_bit(uhf + secrets[0], BLS12_381_Q)
+    uhf = (sum(secrets[i % CUSTODY_SECRETS]**i * int.from_bytes(atom, "little") % CUSTODY_PRIME
+           for i, atom in enumerate(custody_atoms)) + secrets[n % CUSTODY_SECRETS]**n) % CUSTODY_PRIME
+    return legendre_bit(uhf + secrets[0], CUSTODY_PRIME)
 ```
 
 ### `get_randao_epoch_for_custody_period`
