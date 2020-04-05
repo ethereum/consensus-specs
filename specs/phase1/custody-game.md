@@ -49,8 +49,9 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value | Unit |
 | - | - | - |
-| `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` | - |
-| `BYTES_PER_CUSTODY_ATOM` | `48` | bytes |
+| `CUSTODY_PRIME` | `2 ** 256 - 189` | - |
+| `CUSTODY_SECRETS` | `3` | - |
+| `BYTES_PER_CUSTODY_ATOM` | `32` | bytes |
 
 ## Configuration
 
@@ -175,7 +176,7 @@ def legendre_bit(a: int, q: int) -> int:
         return 0
 ```
 
-### `custody_atoms`
+### `get_custody_atoms`
 
 Given one set of data, return the custody atoms: each atom will be combined with one legendre bit.
 
@@ -186,16 +187,28 @@ def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
             for i in range(0, len(bytez), BYTES_PER_CUSTODY_ATOM)]
 ```
 
+### `get_custody_secrets`
+
+Extract the custody secrets from the signature
+
+```python
+def get_custody_secrets(key: BLSSignature):
+    full_G2_element = bls.signature_to_G2(key)
+    signature = full_G2_element[0].coeffs
+    signature_bytes = sum(x.to_bytes(48, "little") for x in signature)
+    secrets = [int.from_bytes(x[i:i+BYTES_PER_CUSTODY_ATOM]) for i in range(0, len(signature_bytes), 32)]
+    return secrets
+```
+
 ### `compute_custody_bit`
 
 ```python
 def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
-    full_G2_element = bls.signature_to_G2(key)
-    s = full_G2_element[0].coeffs
+    secrets = get_custody_secrets(key)
     custody_atoms = get_custody_atoms(data)
     n = len(custody_atoms)
-    a = sum(s[i % 2]**i * int.from_bytes(atom, "little") for i, atom in enumerate(custody_atoms) + s[n % 2]**n)
-    return legendre_bit(a, BLS12_381_Q)
+    uhf = sum(secrets[i % CUSTORY_SECRETS]**i * int.from_bytes(atom, "little") for i, atom in enumerate(custody_atoms)) + secrets[n % CUSTORY_SECRETS]**n
+    return legendre_bit(uhf + secrets[0], BLS12_381_Q)
 ```
 
 ### `get_randao_epoch_for_custody_period`
