@@ -720,7 +720,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         if any(transition.shard_data_roots):
             headers.append(ShardBlockHeader(
                 shard_parent_root=shard_parent_root,
-                parent_hash=get_block_root_at_slot(state, get_previous_slot(state.slot)),
+                beacon_parent_root=get_block_root_at_slot(state, get_previous_slot(state.slot)),
                 slot=offset_slots[i],
                 body_root=transition.shard_data_roots[i]
             ))
