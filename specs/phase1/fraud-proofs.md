@@ -9,6 +9,8 @@
     - [Shard state transition function](#shard-state-transition-function)
     - [Verifying the proof](#verifying-the-proof)
   - [Honest committee member behavior](#honest-committee-member-behavior)
+    - [Helper functions](#helper-functions)
+    - [Make attestations](#make-attestations)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -30,33 +32,29 @@ This document describes the shard transition function and fraud proofs as part o
 
 ## Fraud proofs
 
-TODO. The intent is to have a single universal fraud proof type, which contains the following parts:
-
-1. An on-time attestation on some `shard` signing a `ShardTransition`
-2. An index `index` of a particular position to focus on
-3. The `ShardTransition` itself
-4. The full body of the block `ShardBlock`
-5. A Merkle proof to the `shard_states` in the parent block `parent_block` the attestation is referencing
-
 ### Shard state transition function
 
 ```python
 def shard_state_transition(beacon_state: BeaconState,
                            shard: Shard,
                            slot: Slot,
-                           pre_state: Root,
-                           previous_beacon_root: Root,
+                           shard_state: ShardState,
+                           beacon_parent_root: Root,
                            proposer_index: ValidatorIndex,
                            signed_block: SignedShardBlock,
-                           validate_result: bool=True) -> Root:
-    # We will add something more substantive in phase 2
+                           validate_result: bool=True) -> None:
+    # TODO: We will add something more substantive in phase 2
 
     # Verify the proposer_index and signature
     assert proposer_index == signed_block.message.proposer_index
     if validate_result:
         assert verify_shard_block_signature(beacon_state, signed_block)
 
-    return hash(pre_state + hash_tree_root(previous_beacon_root) + hash_tree_root(signed_block.message.data))
+    # Update shard state
+    shard_state.slot = slot
+    shard_state.latest_block_root = hash(
+        hash_tree_root(shard_state) + hash_tree_root(beacon_parent_root) + hash_tree_root(signed_block.message.body)
+    )
 ```
 
 ```python
@@ -69,37 +67,49 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 
 ### Verifying the proof
 
+TODO. The intent is to have a single universal fraud proof type, which contains the following parts:
+
+1. An on-time attestation `attestation` on some shard `shard` signing a `transition: ShardTransition`
+2. An index `offset_index` of a particular position to focus on
+3. The `transition: ShardTransition` itself
+4. The full body of the shard block `shard_block`
+5. A Merkle proof to the `shard_states` in the parent block the attestation is referencing
+
+Call the following function to verify the proof:
+
 ```python
 def verify_fraud_proof(beacon_state: BeaconState,
-                       subkey: BLSPubkey,
                        attestation: Attestation,
-                       index: uint64,
+                       offset_index: uint64,
                        transition: ShardTransition,
                        signed_block: SignedShardBlock,
-                       parent_block: ShardBlock) -> bool:
-    # 1. Check if `custody_bits[index][j] != generate_custody_bit(subkey, block_contents)` for any `j`
+                       subkey: BLSPubkey,
+                       beacon_parent_block: BeaconBlock) -> bool:
+    # 1. Check if `custody_bits[offset_index][j] != generate_custody_bit(subkey, block_contents)` for any `j`.
     shard = get_shard(beacon_state, attestation)
     slot = attestation.data.slot
     custody_bits = attestation.custody_bits_blocks
-    for j in range(custody_bits[index]):
-        if custody_bits[index][j] != generate_custody_bit(subkey, signed_block):
+    for j in range(custody_bits[offset_index]):
+        if custody_bits[offset_index][j] != generate_custody_bit(subkey, signed_block):
             return True
 
-    # 2. Verify the shard state transition
-    if index == 0:
-        parent_data = parent_block.shard_states[shard][-1].data
+    # 2. Check if the shard state transition result is wrong between
+    # `transition.shard_states[offset_index - 1]` to `transition.shard_states[offset_index]`.
+    if offset_index == 0:
+        shard_state = beacon_parent_block.shard_transitions[shard][-1]
     else:
-        parent_data = parent_block.shard_states[shard][index].data
+        shard_state = transition.shard_states[offset_index - 1].copy()  # Not doing the actual state updates here.
 
-    if shard_state_transition(
-        beacon_state,
-        shard,
-        slot,
-        transition.shard_states[index - 1].data,
-        hash_tree_root(parent_block),
-        get_shard_proposer_index(beacon_state, slot, shard),
-        signed_block,
-    ) != parent_data:
+    shard_state_transition(
+        beacon_state=beacon_state,
+        shard=shard,
+        slot=slot,
+        shard_state=shard_state,
+        beacon_parent_root=hash_tree_root(beacon_parent_block),
+        proposer_index=get_shard_proposer_index(beacon_state, slot, shard),
+        signed_block=signed_block,
+    )
+    if shard_state.latest_block_root != transition.shard_states[offset_index].data:
         return True
 
     return False
@@ -113,14 +123,118 @@ def generate_custody_bit(subkey: BLSPubkey, block: ShardBlock) -> bool:
 
 ## Honest committee member behavior
 
-Suppose you are a committee member on shard `shard` at slot `current_slot`. Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `slot`, run the following procedure:
+### Helper functions
 
-* Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
-* For `slot in get_offset_slots(state, start_slot)`, do the following:
-    * Look for all valid proposals for `slot`; that is, a SignedShardBlock `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, slot, shard), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
-    * If `len(choices) == 0`, do `proposals.append(make_empty_proposal(shard_state, slot))`
-    * If `len(choices) == 1`, do `proposals.append(choices[0])`
-    * If `len(choices) > 1`, let `winning_proposal` be the proposal with the largest number of total attestations from slots in `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants, breaking ties by choosing the first proposal locally seen. Do `proposals.append(winning_proposal)`.
-    * If `proposals.message.data[-1]` is NOT an empty proposal, set `shard_state = shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, slot, shard), proposals[-1])` and do `shard_states.append(shard_state)`. If it is an empty proposal, leave `shard_state` unchanged.
+```python
+def get_winning_proposal(beacon_state: BeaconState, proposals: Sequence[SignedShardBlock]) -> SignedShardBlock:
+    # TODO: Let `winning_proposal` be the proposal with the largest number of total attestationsfrom slots in
+    # `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants, breaking ties by choosing
+    # the first proposal locally seen. Do `proposals.append(winning_proposal)`.
+    return proposals[-1]  # stub
+```
 
-Make an attestation using `shard_data_roots = [hash_tree_root(proposal.message.data) for proposal in proposals]` and `shard_state_roots = shard_states`.
+```python
+def get_empty_proposal(shard_state: ShardState, slot: Slot) -> SignedShardBlock:
+    # TODO
+    return SignedShardBlock()
+```
+
+```python
+def is_empty_proposal(proposal: SignedShardBlock) -> bool:
+    # TODO
+    return proposal == SignedShardBlock()  # stub
+```
+
+```python
+def compute_shard_data_roots(proposals: Sequence[SignedShardBlock]) -> Sequence[Root]:
+    return [hash_tree_root(proposal.message.body) for proposal in proposals]
+```
+
+### Make attestations
+
+Suppose you are a committee member on shard `shard` at slot `current_slot` and you have received shard blocks `shard_blocks`. Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `current_slot`, run `get_shard_transition(beacon_state, shard, shard_blocks)` to get `shard_transition`.
+
+```python
+def get_shard_transition(beacon_state: BeaconState,
+                         shard: Shard,
+                         shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
+    proposals, shard_states, shard_data_roots = get_shard_state_transition_result(beacon_state, shard, shard_blocks)
+    start_slot = shard_states[0].slot
+
+    shard_block_lengths = [len(proposal.message.body) for proposal in proposals]
+    proposer_signature_aggregate = bls.Aggregate([proposal.signature for proposal in proposals])
+
+    return ShardTransition(
+        start_slot=start_slot,
+        shard_block_lengths=shard_block_lengths,
+        shard_data_roots=shard_data_roots,
+        shard_states=shard_states,
+        proposer_signature_aggregate=proposer_signature_aggregate,
+    )
+```
+
+```python
+def get_shard_state_transition_result(
+    beacon_state: BeaconState,
+    shard: Shard,
+    shard_blocks: Sequence[SignedShardBlock]
+) -> Tuple[Sequence[SignedShardBlock], Sequence[ShardState], Sequence[Root]]:
+    proposals = []
+    shard_states = []
+    shard_state = beacon_state.shard_states[shard].copy()
+
+    for slot in get_offset_slots(beacon_state, shard):
+        choices = []
+        beacon_parent_root = get_block_root_at_slot(beacon_state, get_previous_slot(beacon_state.slot))
+        shard_blocks_at_slot = [block for block in shard_blocks if block.message.slot == slot]
+        for block in shard_blocks_at_slot:
+            temp_shard_state = shard_state.copy()  # Not doing the actual state updates here.
+            # Try to apply state transition to temp_shard_state.
+            try:
+                shard_state_transition(
+                    beacon_state=beacon_state,
+                    shard=shard,
+                    slot=slot,
+                    shard_state=temp_shard_state,
+                    beacon_parent_root=beacon_parent_root,
+                    proposer_index=get_shard_proposer_index(
+                        beacon_state,
+                        slot,
+                        shard
+                    ),
+                    signed_block=block,
+                )
+            except Exception:
+                pass
+            else:
+                choices.append(block)
+
+        if len(choices) == 0:
+            proposals.append(get_empty_proposal(shard_state, slot))
+        elif len(choices) == 1:
+            proposals.append(choices[0])
+        else:
+            proposals.append(get_winning_proposal(beacon_state, choices))
+
+        if not is_empty_proposal(proposals[-1]):
+            # Apply state transition to shard_state.
+            shard_state_transition(
+                beacon_state=beacon_state,
+                shard=shard,
+                slot=slot,
+                shard_state=shard_state,
+                beacon_parent_root=beacon_parent_root,
+                proposer_index=get_shard_proposer_index(
+                    beacon_state,
+                    slot,
+                    shard
+                ),
+                signed_block=block,
+            )
+
+        shard_states.append(shard_state)
+
+    shard_data_roots = compute_shard_data_roots(proposals)
+
+    return proposals, shard_states, shard_data_roots
+```
