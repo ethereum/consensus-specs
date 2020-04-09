@@ -1,6 +1,6 @@
 from typing import List
 
-from eth2spec.test.context import expect_assertion_error, PHASE0
+from eth2spec.test.context import expect_assertion_error, PHASE0, PHASE1
 from eth2spec.test.helpers.state import state_transition_and_sign_block
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
@@ -43,7 +43,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index):
+def build_attestation_data(spec, state, slot, index, shard_transition=None):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -66,12 +66,21 @@ def build_attestation_data(spec, state, slot, index):
         source_epoch = state.current_justified_checkpoint.epoch
         source_root = state.current_justified_checkpoint.root
 
+    if spec.fork == PHASE1 and shard_transition is not None:
+        shard_transition_root = shard_transition.hash_tree_root()
+        head_shard_root = shard_transition.shard_data_roots[len(shard_transition.shard_data_roots) - 1]
+    else:
+        shard_transition_root = spec.Root()
+        head_shard_root = spec.Root()
+
     return spec.AttestationData(
         slot=slot,
         index=index,
         beacon_block_root=block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
+        head_shard_root=head_shard_root,
+        shard_transition_root=shard_transition_root,
     )
 
 
@@ -89,7 +98,7 @@ def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False)
     return attestation
 
 
-def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=False):
+def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_transition=None, signed=False):
     '''
     Construct on-time attestation for next slot
     '''
@@ -98,7 +107,15 @@ def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=Fal
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=True)
+    return get_valid_attestation(
+        spec,
+        state,
+        slot=slot,
+        index=index,
+        shard_transition=shard_transition,
+        signed=signed,
+        on_time=True,
+    )
 
 
 def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False):
@@ -113,13 +130,20 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False)
     return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False)
 
 
-def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True):
+def get_valid_attestation(spec,
+                          state,
+                          slot=None,
+                          index=None,
+                          shard_transition=None,
+                          empty=False,
+                          signed=False,
+                          on_time=True):
     if slot is None:
         slot = state.slot
     if index is None:
         index = 0
 
-    attestation_data = build_attestation_data(spec, state, slot, index)
+    attestation_data = build_attestation_data(spec, state, slot=slot, index=index, shard_transition=shard_transition)
 
     beacon_committee = spec.get_beacon_committee(
         state,
@@ -138,7 +162,7 @@ def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signe
     if signed:
         sign_attestation(spec, state, attestation)
 
-    if spec.fork == 'phase1' and on_time:
+    if spec.fork == PHASE1 and on_time:
         attestation = convert_to_valid_on_time_attestation(spec, state, attestation, signed)
 
     return attestation
@@ -210,7 +234,7 @@ def get_attestation_custody_signature(spec, state, attestation_data, block_index
 
 
 def sign_attestation(spec, state, attestation):
-    if spec.fork == 'phase1' and any(attestation.custody_bits_blocks):
+    if spec.fork == PHASE1 and any(attestation.custody_bits_blocks):
         sign_on_time_attestation(spec, state, attestation)
         return
 
