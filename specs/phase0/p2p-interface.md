@@ -105,6 +105,7 @@ It consists of four main sections:
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
     - [What is the difference between an ENR and a multiaddr, and why are we using ENRs?](#what-is-the-difference-between-an-enr-and-a-multiaddr-and-why-are-we-using-enrs)
+    - [Why do we not form ENRs and find peers until genesis block/state is known?](#why-do-we-not-form-enrs-and-find-peers-until-genesis-blockstate-is-known)
   - [Compression/Encoding](#compressionencoding)
     - [Why are we using SSZ for encoding?](#why-are-we-using-ssz-for-encoding)
     - [Why are we compressing, and at which layers?](#why-are-we-compressing-and-at-which-layers)
@@ -247,6 +248,8 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
 - `Name` - see table below
 - `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
 
+*Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available. Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
+
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
 The `message-id` of a gossipsub message MUST be:
@@ -287,7 +290,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
     - `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot` (a client MAY queue future aggregates for processing at the appropriate slot).
     - The aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
-    - The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the slot `aggregate.data.slot`.
+    - The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
     - The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
     - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
     - The aggregator's validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`.
@@ -316,7 +319,7 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
     - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
     - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
-    - The attestation is the first valid attestation received for the participating validator for the slot, `attestation.data.slot`.
+    - There has been no other attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
     - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
     - The signature of `attestation` is valid.
 
@@ -752,6 +755,8 @@ where the fields of `ENRForkID` are defined as
 * `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
 * `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated. If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
+*Note*: `fork_digest` is composed of values that are not not known until the genesis block/state are available. Due to this, clients SHOULD NOT form ENRs and begin peer discovery until genesis values are known.
+
 Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
 
 Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
@@ -1091,6 +1096,12 @@ discv5 uses ENRs and we will presumably need to:
 
 1. Add `multiaddr` to the dictionary, so that nodes can advertise their multiaddr under a reserved namespace in ENRs. – and/or –
 2. Define a bi-directional conversion function between multiaddrs and the corresponding denormalized fields in an ENR (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Eth 1.0 nodes).
+
+### Why do we not form ENRs and find peers until genesis block/state is known?
+
+Although client software might very well be running locally prior to the solidification of the eth2 genesis state and block, clients cannot form valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the `genesis_validators_root` for a cleaner separation between chains so prior to knowing genesis, we cannot use `fork_digest` to cleanly find peers on our intended chain. Once genesis data is known, we can then form ENRs and safely find peers.
+
+When using an eth1 deposit contract for deposits, `fork_digest` will be known at least `MIN_GENESIS_DELAY` (24 hours in mainnet configuration) before `genesis_time`, providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
 
 ## Compression/Encoding
 
