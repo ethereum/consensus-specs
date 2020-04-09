@@ -460,7 +460,7 @@ def get_online_validator_indices(state: BeaconState) -> Set[ValidatorIndex]:
 
 ```python
 def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -> Sequence[ValidatorIndex]:
-    source_epoch = epoch - epoch % SHARD_COMMITTEE_PERIOD 
+    source_epoch = epoch - epoch % SHARD_COMMITTEE_PERIOD
     if source_epoch > 0:
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
@@ -712,29 +712,36 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     )
     assert transition.start_slot == offset_slots[0]
 
-    # Reconstruct shard headers
     headers = []
+    header = ShardBlockHeader()
     proposers = []
-    shard_parent_root = state.shard_states[shard].latest_block_root
-    for i in range(len(offset_slots)):
-        if any(transition.shard_data_roots):
-            headers.append(ShardBlockHeader(
-                shard_parent_root=shard_parent_root,
-                beacon_parent_root=get_block_root_at_slot(state, get_previous_slot(state.slot)),
-                slot=offset_slots[i],
-                body_root=transition.shard_data_roots[i]
-            ))
-            proposers.append(get_shard_proposer_index(state, offset_slots[i], shard))
-            shard_parent_root = hash_tree_root(headers[-1])
-
-    # Verify correct calculation of gas prices and slots
     prev_gasprice = state.shard_states[shard].gasprice
+    pubkeys = []
+    shard_parent_root = state.shard_states[shard].latest_block_root
+    beacon_parent_root = get_block_root_at_slot(state, get_previous_slot(state.slot))
     for i in range(len(offset_slots)):
+        shard_block_length = transition.shard_block_lengths[i]
+        is_empty_proposal = (shard_block_length == 0)
         shard_state = transition.shard_states[i]
-        block_length = transition.shard_block_lengths[i]
-        assert shard_state.gasprice == get_updated_gasprice(prev_gasprice, block_length)
-        assert shard_state.slot == offset_slots[i]
-        prev_gasprice = shard_state.gasprice
+        proposal_index = get_shard_proposer_index(state, offset_slots[i], shard)
+        # Reconstruct shard headers
+        header = ShardBlockHeader(
+            shard_parent_root=shard_parent_root,
+            beacon_parent_root=beacon_parent_root,
+            proposer_index=proposal_index,
+            slot=offset_slots[i],
+            body_root=transition.shard_data_roots[i]
+        )
+        shard_parent_root = hash_tree_root(header)
+
+        if not is_empty_proposal:
+            # Only add non-empty signature
+            headers.append(header)
+            proposers.append(proposal_index)
+            # Verify correct calculation of gas prices and slots
+            assert shard_state.gasprice == get_updated_gasprice(prev_gasprice, shard_block_length)
+            assert shard_state.slot == offset_slots[i]
+            prev_gasprice = shard_state.gasprice
 
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
     signing_roots = [
@@ -745,7 +752,11 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     assert bls.AggregateVerify(zip(pubkeys, signing_roots), signature=transition.proposer_signature_aggregate)
 
     # Save updated state
-    state.shard_states[shard] = transition.shard_states[-1]
+    state.shard_states[shard].data = hash(
+        hash_tree_root(shard_state) + hash_tree_root(beacon_parent_root) + hash_tree_root(headers[-1])
+    )
+    state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]
+    assert state.slot > 0
     state.shard_states[shard].slot = state.slot - 1
 ```
 
@@ -779,7 +790,9 @@ def process_crosslink_for_shard(state: BeaconState,
 
         # Attestation <-> shard transition consistency
         assert shard_transition_root == hash_tree_root(shard_transition)
-        assert attestation.data.head_shard_root == shard_transition.shard_data_roots[-1]
+        assert attestation.data.head_shard_root == shard_transition.shard_data_roots[
+            len(shard_transition.shard_data_roots) - 1
+        ]
 
         # Apply transition
         apply_shard_transition(state, shard, shard_transition)
@@ -790,7 +803,7 @@ def process_crosslink_for_shard(state: BeaconState,
         increase_balance(state, beacon_proposer_index, proposer_reward)
         states_slots_lengths = zip(
             shard_transition.shard_states,
-            get_offset_slots(state, get_latest_slot_for_shard(state, shard)),
+            get_offset_slots(state, shard),
             shard_transition.shard_block_lengths
         )
         for shard_state, slot, length in states_slots_lengths:
@@ -913,13 +926,12 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
             total_reward += get_base_reward(state, participant_index)
 
     increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
-    
+
     slot = get_previous_slot(state.slot)
-    signing_root = compute_signing_root(get_block_root_at_slot(state, slot), 
+    signing_root = compute_signing_root(get_block_root_at_slot(state, slot),
                                         get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
     assert bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
 ```
-
 
 ### Epoch transition
 
