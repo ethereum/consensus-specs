@@ -722,9 +722,9 @@ def is_valid_merkle_branch(leaf: Bytes32, branch: Sequence[Bytes32], depth: uint
 #### `compute_shuffled_index`
 
 ```python
-def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Bytes32) -> ValidatorIndex:
+def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) -> uint64:
     """
-    Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
+    Return the shuffled index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
 
@@ -732,14 +732,14 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Byt
     # See the 'generalized domain' algorithm on page 3
     for current_round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=1))[0:8]) % index_count
-        flip = ValidatorIndex((pivot + index_count - index) % index_count)
+        flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
         source = hash(seed + int_to_bytes(current_round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
 
-    return ValidatorIndex(index)
+    return index
 ```
 
 #### `compute_proposer_index`
@@ -753,11 +753,11 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
     MAX_RANDOM_BYTE = 2**8 - 1
     i = 0
     while True:
-        candidate_index = indices[compute_shuffled_index(ValidatorIndex(i % len(indices)), len(indices), seed)]
+        candidate_index = indices[compute_shuffled_index(i % len(indices), len(indices), seed)]
         random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            return ValidatorIndex(candidate_index)
+            return candidate_index
         i += 1
 ```
 
