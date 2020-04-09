@@ -716,7 +716,6 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     header = ShardBlockHeader()
     proposers = []
     prev_gasprice = state.shard_states[shard].gasprice
-    pubkeys = []
     shard_parent_root = state.shard_states[shard].latest_block_root
     beacon_parent_root = get_block_root_at_slot(state, get_previous_slot(state.slot))
     for i in range(len(offset_slots)):
