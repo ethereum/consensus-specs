@@ -465,11 +465,12 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
+    active_shards_count = get_active_shard_count(beacon_state)
     return compute_committee(
         indices=active_validator_indices,
         seed=seed,
         index=shard,
-        count=get_active_shard_count(beacon_state)
+        count=active_shards_count,
     )
 ```
 
@@ -751,9 +752,6 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     assert bls.AggregateVerify(zip(pubkeys, signing_roots), signature=transition.proposer_signature_aggregate)
 
     # Save updated state
-    state.shard_states[shard].data = hash(
-        hash_tree_root(shard_state) + hash_tree_root(beacon_parent_root) + hash_tree_root(headers[-1])
-    )
     state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]
     assert state.slot > 0
     state.shard_states[shard].slot = state.slot - 1
