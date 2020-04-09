@@ -724,7 +724,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
                 slot=offset_slots[i],
                 body_root=transition.shard_data_roots[i]
             ))
-            proposers.append(get_shard_proposer_index(state, shard, offset_slots[i]))
+            proposers.append(get_shard_proposer_index(state, offset_slots[i], shard))
             shard_parent_root = hash_tree_root(headers[-1])
 
     # Verify correct calculation of gas prices and slots
@@ -794,7 +794,7 @@ def process_crosslink_for_shard(state: BeaconState,
             shard_transition.shard_block_lengths
         )
         for shard_state, slot, length in states_slots_lengths:
-            proposer_index = get_shard_proposer_index(state, shard, slot)
+            proposer_index = get_shard_proposer_index(state, slot, shard)
             decrease_balance(state, proposer_index, shard_state.gasprice * length)
 
         # Return winning transition root
