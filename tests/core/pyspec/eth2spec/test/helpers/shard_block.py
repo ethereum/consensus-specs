@@ -15,12 +15,12 @@ def sign_shard_block(spec, beacon_state, shard, block, proposer_index=None):
     block.signature = bls.Sign(privkey, signing_root)
 
 
-def build_empty_shard_block(spec,
-                            beacon_state,
-                            shard,
-                            slot,
-                            body=None,
-                            signed=False):
+def build_shard_block(spec,
+                      beacon_state,
+                      shard,
+                      slot,
+                      body=None,
+                      signed=False):
     shard_state = beacon_state.shard_states[shard]
     if slot is None:
         slot = shard_state.slot

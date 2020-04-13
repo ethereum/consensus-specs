@@ -9,7 +9,7 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.crosslinks import (
     run_crosslinks_processing,
 )
-from eth2spec.test.helpers.shard_block import build_empty_shard_block
+from eth2spec.test.helpers.shard_block import build_shard_block
 from eth2spec.test.helpers.state import next_epoch, next_slot
 
 
@@ -24,7 +24,7 @@ def test_basic_crosslinks(spec, state):
 
     committee_index = spec.CommitteeIndex(0)
     shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
-    shard_block = build_empty_shard_block(spec, state, shard, body=b'\x12' * 10, slot=state.slot, signed=True)
+    shard_block = build_shard_block(spec, state, shard, body=b'\x12' * 10, slot=state.slot, signed=True)
     shard_blocks = [shard_block]
 
     next_slot(spec, state)
