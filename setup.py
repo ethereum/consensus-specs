@@ -115,6 +115,7 @@ from dataclasses import (
     dataclass,
     field,
 )
+import math
 
 from lru import LRU
 
@@ -378,6 +379,7 @@ class PySpecCommand(Command):
                     specs/phase1/fraud-proofs.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
+                    specs/phase1/light-client-sync.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
