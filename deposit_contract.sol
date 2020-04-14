@@ -37,11 +37,36 @@ contract DepositContract is IDepositContract {
     bytes32[DEPOSIT_CONTRACT_TREE_DEPTH] branch;
     uint256 deposit_count;
 
-    // TODO: add constructor
+    // TODO: use immutable for this
+    bytes32[DEPOSIT_CONTRACT_TREE_DEPTH] zero_hashes;
 
-    // TODO: add get_deposit_root
+    // Compute hashes in empty sparse Merkle tree
+    constructor() public {
+        for (uint height = 0; height < DEPOSIT_CONTRACT_TREE_DEPTH - 1; height++)
+            zero_hashes[height + 1] = sha256(abi.encodePacked(zero_hashes[height], zero_hashes[height]));
+    }
 
-    // TODO: add get_deposit_count
+    function get_deposit_root() external view returns (bytes32) {
+        bytes24 zero_bytes24;
+        bytes32 node;
+        uint size = deposit_count;
+        for (uint height = 0; height < DEPOSIT_CONTRACT_TREE_DEPTH; height++) {
+            if ((size & 1) == 1)
+                node = sha256(abi.encodePacked(branch[height], node));
+            else
+                node = sha256(abi.encodePacked(node, zero_hashes[height]));
+            size /= 2;
+        }
+        return sha256(abi.encodePacked(
+            node,
+            to_little_endian_64(uint64(deposit_count)),
+            zero_bytes24
+        ));
+    }
+
+    function get_deposit_count() external view returns (bytes memory) {
+        return to_little_endian_64(uint64(deposit_count));
+    }
 
     function deposit(
         bytes calldata pubkey,
