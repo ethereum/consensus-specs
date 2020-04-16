@@ -32,7 +32,7 @@ def build_shard_block(spec,
 
     block = spec.ShardBlock(
         shard_parent_root=shard_state.latest_block_root,
-        beacon_parent_root=spec.get_block_root_at_slot(beacon_state, spec.get_previous_slot(beacon_state.slot)),
+        beacon_parent_root=spec.get_block_root_at_slot(beacon_state, spec.get_previous_slot(slot)),
         slot=slot,
         proposer_index=proposer_index,
         body=body,

@@ -7,7 +7,7 @@
   - [Introduction](#introduction)
   - [Configuration](#configuration)
   - [Fork to Phase 1](#fork-to-phase-1)
-    - [Fork trigger.](#fork-trigger)
+    - [Fork trigger](#fork-trigger)
     - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -35,17 +35,18 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `PHASE_1_FORK_VERSION` | `Version('0x01000000')` |
+| `PHASE_1_GENESIS_SLOT` | `2**5` **TBD** |
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 
 ## Fork to Phase 1
 
-### Fork trigger.
+### Fork trigger
 
-TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork.
+TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `PHASE_1_GENESIS_SLOT`, where `PHASE_1_GENESIS_SLOT % SLOTS_PER_EPOCH == 0`.
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, but before the first Phase 1 block is processed, an irregular state change is made to upgrade to Phase 1.
+After `process_slots` of Phase 0 finishes, if `state.slot == PHASE_1_GENESIS_SLOT`, an irregular state change is made to upgrade to Phase 1.
 
 ```python
 def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
