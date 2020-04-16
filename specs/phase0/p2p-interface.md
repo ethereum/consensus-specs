@@ -345,7 +345,9 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Mainnet
 
-- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon aggregate attestation topic string is `/eth2/beacon_aggregate_and_proof/ssz_snappy`, and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
+- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) block compression. Example: The beacon aggregate attestation topic string is `/eth2/beacon_aggregate_and_proof/ssz_snappy`, and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
+
+Snappy has two formats: "block" and "frames" (streaming). Gossip messages remain relatively small (100s of bytes to 100s of kilobytes) so [basic snappy block compression](https://github.com/google/snappy/blob/master/format_description.txt) is used to avoid the additional overhead associated with snappy frames.
 
 Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
 
@@ -448,7 +450,7 @@ Here, `result` represents the 1-byte response code.
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
 -  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
--  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
+-  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) frames compression. MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)
 
