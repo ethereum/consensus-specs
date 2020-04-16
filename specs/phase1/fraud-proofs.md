@@ -89,7 +89,7 @@ def verify_fraud_proof(beacon_state: BeaconState,
     # 2. Check if the shard state transition result is wrong between
     # `transition.shard_states[offset_index - 1]` to `transition.shard_states[offset_index]`.
     if offset_index == 0:
-        shard_state = beacon_parent_block.shard_transitions[shard][-1]
+        shard_state = beacon_parent_block.shard_transitions[shard].shard_states[-1]
     else:
         shard_state = transition.shard_states[offset_index - 1].copy()  # Not doing the actual state updates here.
 
@@ -119,7 +119,7 @@ def generate_custody_bit(subkey: BLSPubkey, block: ShardBlock) -> bool:
 
 ```python
 def get_winning_proposal(beacon_state: BeaconState, proposals: Sequence[SignedShardBlock]) -> SignedShardBlock:
-    # TODO: Let `winning_proposal` be the proposal with the largest number of total attestationsfrom slots in
+    # TODO: Let `winning_proposal` be the proposal with the largest number of total attestations from slots in
     # `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants, breaking ties by choosing
     # the first proposal locally seen. Do `proposals.append(winning_proposal)`.
     return proposals[-1]  # stub
@@ -263,7 +263,7 @@ def get_shard_state_transition_result(
 
 ### Make attestations
 
-Suppose you are a committee member on shard `shard` at slot `current_slot` and you have received shard blocks `shard_blocks`. Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `current_slot`, run `get_shard_transition(beacon_state, shard, shard_blocks)` to get `shard_transition`.
+Suppose you are a committee member on shard `shard` at slot `current_slot` and you have received shard blocks `shard_blocks` since the latest successful crosslink for `shard` into the beacon chain. Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `current_slot`, run `get_shard_transition(beacon_state, shard, shard_blocks)` to get `shard_transition`.
 
 ```python
 def get_shard_transition(beacon_state: BeaconState,
