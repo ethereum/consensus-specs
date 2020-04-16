@@ -465,12 +465,12 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    active_shards_count = get_active_shard_count(beacon_state)
+    active_shard_count = get_active_shard_count(beacon_state)
     return compute_committee(
         indices=active_validator_indices,
         seed=seed,
         index=shard,
-        count=active_shards_count,
+        count=active_shard_count,
     )
 ```
 
@@ -483,12 +483,12 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
         source_epoch -= LIGHT_CLIENT_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
-    active_shards_count = get_active_shard_count(beacon_state)
+    active_shard_count = get_active_shard_count(beacon_state)
     return compute_committee(
         indices=active_validator_indices,
         seed=seed,
         index=0,
-        count=active_shards_count,
+        count=active_shard_count,
     )[:TARGET_COMMITTEE_SIZE]
 ```
 
