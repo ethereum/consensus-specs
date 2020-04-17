@@ -24,12 +24,12 @@ def apply_constants_config(spec_globals: Dict[str, Any], warn_if_unknown: bool =
 
 # Load presets from a file, and then prepares the global config setting. This does not apply the config.
 # To apply the config, reload the spec module (it will re-initialize with the config taken from here).
-def prepare_config(configs_path, config_name):
+def prepare_config(configs_path: str, config_name: str) -> None:
     global config
     config = load_config_file(configs_path, config_name)
 
 
-def load_config_file(configs_dir, presets_name) -> Dict[str, Any]:
+def load_config_file(configs_dir: str, presets_name: str) -> Dict[str, Any]:
     """
     Loads the given preset
     :param presets_name: The name of the presets. (lowercase snake_case)
@@ -38,7 +38,7 @@ def load_config_file(configs_dir, presets_name) -> Dict[str, Any]:
     path = Path(join(configs_dir, presets_name + '.yaml'))
     yaml = YAML(typ='base')
     loaded = yaml.load(path)
-    out = dict()
+    out: Dict[str, Any] = dict()
     for k, v in loaded.items():
         if isinstance(v, list):
             # Clean up integer values. YAML parser renders lists of ints as list of str
