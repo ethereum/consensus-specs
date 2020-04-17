@@ -1125,7 +1125,7 @@ def slash_validator(state: BeaconState,
     whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
     proposer_reward = Gwei(whistleblower_reward // PROPOSER_REWARD_QUOTIENT)
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
+    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
 
 ## Genesis
@@ -1229,7 +1229,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
         # Process epoch on the start slot of the next epoch
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
             process_epoch(state)
-        state.slot += Slot(1)
+        state.slot = Slot(state.slot + 1)
 ```
 
 ```python
