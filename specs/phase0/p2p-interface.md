@@ -463,7 +463,7 @@ Snappy has two formats: "block" and "frames" (streaming). To support large reque
 Since snappy frame contents [have a maximum size of `65536` bytes](https://github.com/google/snappy/blob/master/framing_format.txt#L104)
  and frame headers are just `identifier (1) + checksum (4)` bytes, the expected buffering of a single frame is acceptable.
 
-**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes, encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints). 
+**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes, encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
 *Writing*: By first computing and writing the SSZ byte length, the SSZ encoder can then directly write the chunk contents to the stream.
 If Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
@@ -577,7 +577,7 @@ Response Content:
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot`, leading up to the current head block as selected by fork choice. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests beacon blocks in the slot range `[start_slot, start_slot + count * step)`, leading up to the current head block as selected by fork choice. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …].
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
