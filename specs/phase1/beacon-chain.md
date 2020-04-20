@@ -328,7 +328,7 @@ class ShardBlockHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    data: Bytes32
+    transition_digest: Bytes32
     latest_block_root: Root
 ```
 
@@ -701,6 +701,9 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
+    # TODO: only need to check it once when phase 1 starts
+    assert state.slot > PHASE_1_GENESIS_SLOT
+
     # Correct data root count
     offset_slots = get_offset_slots(state, shard)
     assert (
