@@ -46,7 +46,7 @@
     - [`BeaconBlock`](#beaconblock)
   - [Beacon state](#beacon-state)
     - [`BeaconState`](#beaconstate)
-  - [Signatures](#signed-envelopes)
+  - [Signed envelopes](#signed-envelopes)
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SignedBeaconBlock`](#signedbeaconblock)
 - [Helper functions](#helper-functions)
