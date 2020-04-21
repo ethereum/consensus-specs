@@ -846,7 +846,7 @@ def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_
 ```python
 def compute_signing_root(ssz_object: SSZObject, domain: Domain, equivocation_root: Root=Root()) -> Root:
     """
-    Return the signing root corresponding ot the signing data.
+    Return the signing root corresponding to the signing data.
     """
     return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
