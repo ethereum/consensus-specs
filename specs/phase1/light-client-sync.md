@@ -43,12 +43,12 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH` | `3` |
-| `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX` | 1 |
+| `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX` | `1` |
 | `PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH` | `5` |
 | `PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
-| `LOG_2_SHARD_COUNT` | 6 |
+| `LOG_2_SHARD_COUNT` | `6` |
 
-`LOG_2_SHARD_COUNT` is set to `log_2(INITIAL_ACTIVE_SHARDS)` now, but might increase in the future forks.
+`LOG_2_SHARD_COUNT` is set to `log_2(INITIAL_ACTIVE_SHARDS)` but might increase in the future forks.
 
 ## Containers
 
