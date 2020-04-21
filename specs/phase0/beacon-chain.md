@@ -1562,8 +1562,8 @@ def process_equivocation(state: BeaconState, equivocation: Equivocation) -> None
     # Verify that the equivocation root is not all zero bytes
     assert equivocation.equivocation_root != Root()
     # Verify that the signing roots are distinct
-    signing_root_1 = hash_tree_root(SigningData(equivocation.object_root_1), equivocation_root, domain)
-    signing_root_2 = hash_tree_root(SigningData(equivocation.object_root_2), equivocation_root, domain)
+    signing_root_1 = hash_tree_root(SigningData(equivocation.object_root_1, equivocation_root, domain))
+    signing_root_2 = hash_tree_root(SigningData(equivocation.object_root_2, equivocation_root, domain))
     assert signing_root_1 != signing_root_2
     # Verify that the signatures are valid
     validator = state.validators[equivocation.validator_index]
