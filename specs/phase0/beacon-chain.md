@@ -7,7 +7,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Notation](#notation)
 - [Custom types](#custom-types)
@@ -34,23 +33,22 @@
     - [`HistoricalBatch`](#historicalbatch)
     - [`DepositMessage`](#depositmessage)
     - [`DepositData`](#depositdata)
-    - [`BeaconBlockHeader`](#beaconblockheader)
-    - [`SigningRoot`](#signingroot)
+    - [`SigningData`](#signingdata)
   - [Beacon operations](#beacon-operations)
-    - [`ProposerSlashing`](#proposerslashing)
+    - [`Equivocation`](#equivocation)
     - [`AttesterSlashing`](#attesterslashing)
     - [`Attestation`](#attestation)
     - [`Deposit`](#deposit)
     - [`VoluntaryExit`](#voluntaryexit)
   - [Beacon blocks](#beacon-blocks)
+    - [`BeaconBlockHeader`](#beaconblockheader)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconBlock`](#beaconblock)
   - [Beacon state](#beacon-state)
     - [`BeaconState`](#beaconstate)
-  - [Signed envelopes](#signed-envelopes)
+  - [Signatures](#signed-envelopes)
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SignedBeaconBlock`](#signedbeaconblock)
-    - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
 - [Helper functions](#helper-functions)
   - [Math](#math)
     - [`integer_squareroot`](#integer_squareroot)
@@ -118,7 +116,7 @@
     - [RANDAO](#randao)
     - [Eth1 data](#eth1-data)
     - [Operations](#operations)
-      - [Proposer slashings](#proposer-slashings)
+      - [Equivocations](#equivocations)
       - [Attester slashings](#attester-slashings)
       - [Attestations](#attestations)
       - [Deposits](#deposits)
@@ -191,7 +189,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
 
-
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
@@ -251,7 +248,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
+| `MAX_EQUIVOCATIONS` | `2**4` (= 16) |
 | `MAX_ATTESTER_SLASHINGS` | `2**0` (= 1) |
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
@@ -268,7 +265,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
 | `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
 | `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
-
 
 ## Containers
 
@@ -388,33 +384,28 @@ class DepositData(Container):
     signature: BLSSignature  # Signing over DepositMessage
 ```
 
-#### `BeaconBlockHeader`
+#### `SigningData`
 
 ```python
-class BeaconBlockHeader(Container):
-    slot: Slot
-    proposer_index: ValidatorIndex
-    parent_root: Root
-    state_root: Root
-    body_root: Root
-```
-
-#### `SigningRoot`
-
-```python
-class SigningRoot(Container):
+class SigningData(Container):
     object_root: Root
+    equivocation_root: Root
     domain: Domain
 ```
 
 ### Beacon operations
 
-#### `ProposerSlashing`
+#### `Equivocation`
 
 ```python
-class ProposerSlashing(Container):
-    signed_header_1: SignedBeaconBlockHeader
-    signed_header_2: SignedBeaconBlockHeader
+class Equivocation(Container):
+    validator_index: ValidatorIndex
+    domain: Domain
+    equivocation_root: Root
+    object_root_1: Root
+    object_root_2: Root
+    signature_1: BLSSignature
+    signature_2: BLSSignature
 ```
 
 #### `AttesterSlashing`
@@ -452,6 +443,17 @@ class VoluntaryExit(Container):
 
 ### Beacon blocks
 
+#### `BeaconBlockHeader`
+
+```python
+class BeaconBlockHeader(Container):
+    slot: Slot
+    proposer_index: ValidatorIndex
+    parent_root: Root
+    state_root: Root
+    body_root: Root
+```
+
 #### `BeaconBlockBody`
 
 ```python
@@ -460,7 +462,7 @@ class BeaconBlockBody(Container):
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
     # Operations
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    equivocations: List[Equivocation, MAX_EQUIVOCATIONS]
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
@@ -530,14 +532,6 @@ class SignedVoluntaryExit(Container):
 ```python
 class SignedBeaconBlock(Container):
     message: BeaconBlock
-    signature: BLSSignature
-```
-
-#### `SignedBeaconBlockHeader`
-
-```python
-class SignedBeaconBlockHeader(Container):
-    message: BeaconBlockHeader
     signature: BLSSignature
 ```
 
@@ -850,15 +844,15 @@ def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_
 #### `compute_signing_root`
 
 ```python
-def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
+def compute_signing_root(ssz_object: SSZObject, domain: Domain, equivocation_root: Root=Root()) -> Root:
     """
-    Return the signing root of an object by calculating the root of the object-domain tree.
+    Return the signing root corresponding ot the signing data.
     """
-    domain_wrapped_object = SigningRoot(
+    return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
+        equivocation_root=equivocation_root,
         domain=domain,
-    )
-    return hash_tree_root(domain_wrapped_object)
+    ))
 ```
 
 ### Beacon state accessors
@@ -1217,7 +1211,9 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[signed_block.message.proposer_index]
-    signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
+    equivocation_root = hash_tree_root(Slot(signed_block.slot))
+    signing_root = compute_signing_root(signed_block.message, domain, equivocation_root)
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
@@ -1550,36 +1546,33 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         for operation in operations:
             fn(state, operation)
 
-    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.equivocations, process_equivocation)
     for_ops(body.attester_slashings, process_attester_slashing)
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
 ```
 
-##### Proposer slashings
+##### Equivocations
 
 ```python
-def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
-    header_1 = proposer_slashing.signed_header_1.message
-    header_2 = proposer_slashing.signed_header_2.message
-
-    # Verify header slots match
-    assert header_1.slot == header_2.slot
-    # Verify header proposer indices match
-    assert header_1.proposer_index == header_2.proposer_index
-    # Verify the headers are different
-    assert header_1 != header_2
-    # Verify the proposer is slashable
-    proposer = state.validators[header_1.proposer_index]
-    assert is_slashable_validator(proposer, get_current_epoch(state))
-    # Verify signatures
-    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        signing_root = compute_signing_root(signed_header.message, domain)
-        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
-
-    slash_validator(state, header_1.proposer_index)
+def process_equivocation(state: BeaconState, equivocation: Equivocation) -> None:
+    # Verify that the domain is eligible for equivocation slashing
+    assert equivocation.domain in (DOMAIN_BEACON_PROPOSER)
+    # Verify that the equivocation root is not all zero bytes
+    assert equivocation.equivocation_root != Root()
+    # Verify that the signing roots are distinct
+    signing_root_1 = hash_tree_root(SigningData(equivocation.object_root_1), equivocation_root, domain)
+    signing_root_2 = hash_tree_root(SigningData(equivocation.object_root_2), equivocation_root, domain)
+    assert signing_root_1 != signing_root_2
+    # Verify that the signatures are valid
+    validator = state.validators[equivocation.validator_index]
+    assert bls.Verify(validator.pubkey, signing_root_1, equivocation.signature_1)
+    assert bls.Verify(validator.pubkey, signing_root_2, equivocation.signature_2)
+    # Verify that the validator is slashable
+    assert is_slashable_validator(validator, get_current_epoch(state))
+    # Slash validator
+    slash_validator(state, equivocation.validator_index)
 ```
 
 ##### Attester slashings
