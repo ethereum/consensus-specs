@@ -35,7 +35,7 @@
     - [`DepositMessage`](#depositmessage)
     - [`DepositData`](#depositdata)
     - [`BeaconBlockHeader`](#beaconblockheader)
-    - [`SigningRoot`](#signingroot)
+    - [`SigningData`](#signingdata)
   - [Beacon operations](#beacon-operations)
     - [`ProposerSlashing`](#proposerslashing)
     - [`AttesterSlashing`](#attesterslashing)
@@ -191,7 +191,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
 
-
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
@@ -268,7 +267,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
 | `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
 | `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
-
 
 ## Containers
 
@@ -399,10 +397,10 @@ class BeaconBlockHeader(Container):
     body_root: Root
 ```
 
-#### `SigningRoot`
+#### `SigningData`
 
 ```python
-class SigningRoot(Container):
+class SigningData(Container):
     object_root: Root
     domain: Domain
 ```
@@ -852,13 +850,12 @@ def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_
 ```python
 def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
     """
-    Return the signing root of an object by calculating the root of the object-domain tree.
+    Return the signing root for the corresponding signing data.
     """
-    domain_wrapped_object = SigningRoot(
+    return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
         domain=domain,
-    )
-    return hash_tree_root(domain_wrapped_object)
+    ))
 ```
 
 ### Beacon state accessors
