@@ -22,6 +22,7 @@
     - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
+    - [`is_descendant_block`](#is_descendant_block)
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
     - [`on_attestation` helpers](#on_attestation-helpers)
@@ -162,7 +163,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
-        if (i in store.latest_messages 
+        if (i in store.latest_messages
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
 ```
@@ -218,6 +219,28 @@ def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
     blocks: Dict[Root, BeaconBlock] = {}
     filter_block_tree(store, base, blocks)
     return blocks
+```
+
+#### `is_descendant_block`
+
+```python
+def is_descendant_block(store: Store, base_root: Root, descendant_root: Root) -> bool:
+    """
+    Checks if the block with root ``descendant_root`` is a descendant of the block with root ``base_root``
+    """
+    descendants = [base_root]
+
+    # Traverse the descendants block tree and check if ``descendant_root`` is encountered
+    while(descendants):
+        if descendants[0] == descendant_root:
+            return True
+        descendants.extend([
+            root for root in store.blocks.keys()
+            if store.blocks[root].parent_root == descendants[0]
+        ])
+        descendants = descendants[1:]
+
+    return False
 ```
 
 #### `get_head`
@@ -285,6 +308,9 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     assert attestation.data.beacon_block_root in store.blocks
     # Attestations must not be for blocks in the future. If not, the attestation should not be considered
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
+
+    # FFG and LMD vote must be consistent with each other
+    assert is_descendant_block(store, target.root, attestation.data.beacon_block_root)
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
