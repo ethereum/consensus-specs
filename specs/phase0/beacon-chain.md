@@ -1347,32 +1347,57 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     previous_epoch = get_previous_epoch(state)
-    total_balance = get_total_active_balance(state)
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
-    eligible_validator_indices = [
+    return [
         ValidatorIndex(index) for index, v in enumerate(state.validators)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
     ]
+```
 
-    # Micro-incentives for matching FFG source, FFG target, and head
-    matching_source_attestations = get_matching_source_attestations(state, previous_epoch)
-    matching_target_attestations = get_matching_target_attestations(state, previous_epoch)
-    matching_head_attestations = get_matching_head_attestations(state, previous_epoch)
-    for attestations in (matching_source_attestations, matching_target_attestations, matching_head_attestations):
-        unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
-        attesting_balance = get_total_balance(state, unslashed_attesting_indices)
-        for index in eligible_validator_indices:
-            if index in unslashed_attesting_indices:
-                increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
-                rewards[index] += reward_numerator // (total_balance // increment)
-            else:
-                penalties[index] += get_base_reward(state, index)
+```python
+def compute_attestation_component_deltas(state: BeaconState,
+                                         attestations: Sequence[PendingAttestation]
+                                         ) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    total_balance = get_total_active_balance(state)
+    unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
+    attesting_balance = get_total_balance(state, unslashed_attesting_indices)
+    for index in get_eligible_validator_indices(state):
+        if index in unslashed_attesting_indices:
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+            reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
+            rewards[index] += reward_numerator // (total_balance // increment)
+        else:
+            penalties[index] += get_base_reward(state, index)
+    return rewards, penalties
+```
 
+```python
+def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    matching_source_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+    return compute_attestation_component_deltas(state, matching_source_attestations)
+```
+
+```python
+def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    matching_target_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+    return compute_attestation_component_deltas(state, matching_target_attestations)
+```
+
+```python
+def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    matching_head_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+    return compute_attestation_component_deltas(state, matching_head_attestations)
+```
+
+```python
+def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     # Proposer and inclusion delay micro-rewards
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    matching_source_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         attestation = min([
             a for a in matching_source_attestations
@@ -1382,16 +1407,50 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         rewards[attestation.proposer_index] += proposer_reward
         max_attester_reward = get_base_reward(state, index) - proposer_reward
         rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
+    return rewards, penalties
+```
 
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     # Inactivity penalty
-    finality_delay = previous_epoch - state.finalized_checkpoint.epoch
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    finality_delay = get_previous_epoch(state) - state.finalized_checkpoint.epoch
+
     if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
+        matching_target_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
-        for index in eligible_validator_indices:
+        for index in get_eligible_validator_indices(state):
             penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
+    return rewards, penalties
+```
+
+```python
+def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    source_rewards, source_penalties = get_source_deltas(state)
+    target_rewards, target_penalties = get_target_deltas(state)
+    head_rewards, head_penalties = get_head_deltas(state)
+    inclusion_delay_rewards, _ = get_inclusion_delay_deltas(state)
+    _, inactivity_penalties = get_inactivity_penalty_deltas(state)
+
+    rewards = [
+        source_rewards[i]
+        + target_rewards[i]
+        + head_rewards[i]
+        + inclusion_delay_rewards[i]
+        for i in range(len(state.validators))
+    ]
+
+    penalties = [
+        source_penalties[i]
+        + target_penalties[i]
+        + head_penalties[i]
+        + inactivity_penalties[i]
+        for i in range(len(state.validators))
+    ]
 
     return rewards, penalties
 ```
