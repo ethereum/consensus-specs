@@ -281,8 +281,8 @@ def voting_period_start_time(state: BeaconState) -> uint64:
 ```python
 def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
     return (
-        block.timestamp <= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE
-        and block.timestamp >= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2
+        block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= period_start
+        and block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2 >= period_start
     )
 ```
 
@@ -350,9 +350,9 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 `signed_block = SignedBeaconBlock(message=block, signature=block_signature)`, where `block_signature` is obtained from:
 
 ```python
-def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-    signing_root = compute_signing_root(header, domain)
+def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
