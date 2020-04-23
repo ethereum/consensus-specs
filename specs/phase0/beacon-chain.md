@@ -1382,7 +1382,7 @@ def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
 
 ```python
 def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    matching_target_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+    matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
     return compute_attestation_component_deltas(state, matching_target_attestations)
 ```
 
@@ -1394,7 +1394,9 @@ def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]
 
 ```python
 def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    # Proposer and inclusion delay micro-rewards
+    """
+    Return proposer and inclusion delay micro-rewards.
+    """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     matching_source_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
@@ -1412,13 +1414,15 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    # Inactivity penalty
+    """
+    Return inactivity penalty.
+    """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     finality_delay = get_previous_epoch(state) - state.finalized_checkpoint.epoch
 
     if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
-        matching_target_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+        matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in get_eligible_validator_indices(state):
             penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
