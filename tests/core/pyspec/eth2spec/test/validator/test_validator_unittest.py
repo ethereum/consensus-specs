@@ -1,9 +1,11 @@
 from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
+from eth2spec.test.helpers.attestations import build_attestation_data
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.utils import bls
+from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
 def run_is_candidate_block(spec, eth1_block, period_start, success):
@@ -18,6 +20,14 @@ def get_min_new_period_epochs(spec):
     return int(
         spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2  # to seconds
         / spec.SECONDS_PER_SLOT / spec.SLOTS_PER_EPOCH
+    )
+
+
+def get_mock_aggregate(spec):
+    return spec.Attestation(
+        data=spec.AttestationData(
+            slot=10,
+        )
     )
 
 
@@ -47,7 +57,7 @@ def test_check_if_validator_active(spec, state):
 @with_all_phases
 @spec_state_test
 @never_bls
-def test_get_committee_assignment(spec, state):
+def test_get_committee_assignment_current_epoch(spec, state):
     epoch = spec.get_current_epoch(state)
     validator_index = len(state.validators) - 1
     assignment = spec.get_committee_assignment(state, epoch, validator_index)
@@ -150,7 +160,6 @@ def test_get_eth1_data_consensus_vote(spec, state):
 
     state.eth1_data_votes = eth1_data_votes
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
-    print(state.eth1_data_votes)
     assert eth1_data.block_hash == block.hash_tree_root()
 
 
@@ -179,4 +188,109 @@ def test_get_block_signature(spec, state):
     signature = spec.get_block_signature(state, block, privkey)
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
     signing_root = spec.compute_signing_root(block, domain)
+    assert bls.Verify(pubkey, signing_root, signature)
+
+
+# Attesting
+
+
+@with_all_phases
+@spec_state_test
+def test_get_attestation_signature(spec, state):
+    privkey = privkeys[0]
+    pubkey = pubkeys[0]
+    attestation_data = spec.AttestationData(slot=10)
+    signature = spec.get_attestation_signature(state, attestation_data, privkey)
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    signing_root = spec.compute_signing_root(attestation_data, domain)
+    assert bls.Verify(pubkey, signing_root, signature)
+
+
+# Attestation aggregation
+
+
+@with_all_phases
+@spec_state_test
+def test_get_slot_signature(spec, state):
+    privkey = privkeys[0]
+    pubkey = pubkeys[0]
+    slot = 10
+    signature = spec.get_slot_signature(state, spec.Slot(slot), privkey)
+    domain = spec.get_domain(state, spec.DOMAIN_SELECTION_PROOF, spec.compute_epoch_at_slot(slot))
+    signing_root = spec.compute_signing_root(spec.Slot(slot), domain)
+    assert bls.Verify(pubkey, signing_root, signature)
+
+
+@with_all_phases
+@spec_state_test
+def test_is_aggregator(spec, state):
+    # TODO: we can test the probabilistic result against `TARGET_AGGREGATORS_PER_COMMITTEE`
+    #  if we have more validators and larger committeee size
+    slot = state.slot
+    committee_index = 0
+    has_aggregator = False
+    beacon_committee = spec.get_beacon_committee(state, slot, committee_index)
+    for validator_index in beacon_committee:
+        privkey = privkeys[validator_index]
+        slot_signature = spec.get_slot_signature(state, slot, privkey)
+        if spec.is_aggregator(state, slot, committee_index, slot_signature):
+            has_aggregator = True
+            break
+    assert has_aggregator
+
+
+@with_all_phases
+@spec_state_test
+def test_get_aggregate_signature(spec, state):
+    attestations = []
+    pubkeys = []
+    slot = state.slot
+    committee_index = 0
+    attestation_data = build_attestation_data(spec, state, slot=slot, index=committee_index)
+    beacon_committee = spec.get_beacon_committee(
+        state,
+        attestation_data.slot,
+        attestation_data.index,
+    )
+    committee_size = len(beacon_committee)
+    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
+    for i, validator_index in enumerate(beacon_committee):
+        bits = aggregation_bits
+        bits[i] = True
+        attestations.append(
+            spec.Attestation(
+                data=attestation_data,
+                aggregation_bits=bits,
+            )
+        )
+        pubkeys.append(state.validators[validator_index].pubkey)
+    pubkey = bls.AggregatePKs(pubkeys)
+    signature = spec.get_aggregate_signature(attestations)
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    signing_root = spec.compute_signing_root(attestation_data, domain)
+    assert bls.Verify(pubkey, signing_root, signature)
+
+
+@with_all_phases
+@spec_state_test
+def test_get_aggregate_and_proof(spec, state):
+    privkey = privkeys[0]
+    aggregator_index = spec.ValidatorIndex(10)
+    aggregate = get_mock_aggregate(spec)
+    aggregate_and_proof = spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
+    assert aggregate_and_proof.aggregator_index == aggregator_index
+    assert aggregate_and_proof.aggregate == aggregate
+    assert aggregate_and_proof.selection_proof == spec.get_slot_signature(state, aggregate.data.slot, privkey)
+
+
+@with_all_phases
+@spec_state_test
+def test_get_aggregate_and_proof_signature(spec, state):
+    privkey = privkeys[0]
+    pubkey = pubkeys[0]
+    aggregate = get_mock_aggregate(spec)
+    aggregate_and_proof = spec.get_aggregate_and_proof(state, spec.ValidatorIndex(1), aggregate, privkey)
+    signature = spec.get_aggregate_and_proof_signature(state, aggregate_and_proof, privkey)
+    domain = spec.get_domain(state, spec.DOMAIN_AGGREGATE_AND_PROOF, spec.compute_epoch_at_slot(aggregate.data.slot))
+    signing_root = spec.compute_signing_root(aggregate_and_proof, domain)
     assert bls.Verify(pubkey, signing_root, signature)
