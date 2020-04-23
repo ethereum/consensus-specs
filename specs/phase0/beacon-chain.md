@@ -1269,14 +1269,6 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> Sequen
 ```
 
 ```python
-def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence[PendingAttestation]:
-    return [
-        a for a in get_matching_target_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, a.data.slot)
-    ]
-```
-
-```python
 def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
     output = set()  # type: Set[ValidatorIndex]
@@ -1340,71 +1332,192 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 #### Rewards and penalties
 
 ```python
-def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    total_balance = get_total_active_balance(state)
-    effective_balance = state.validators[index].effective_balance
-    return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
-```
+# TODO
+from typing import NamedTuple, Optional
+from itertools import repeat
 
-```python
-def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+
+class Support(NamedTuple):
+    everyone: Gwei
+    source: Gwei
+    target: Gwei
+    head: Gwei
+
+
+class Rewards(NamedTuple):
+    # Attester rewards
+    source_reward: Gwei
+    target_reward: Gwei
+    head_reward: Gwei
+    inclusion_delay_reward: Gwei
+    # Proposal rewards
+    proposer_reward: Gwei
+
+
+class Penalties(NamedTuple):
+    # Attester penalties
+    source_penalty: Gwei
+    target_penalty: Gwei
+    head_penalty: Gwei
+    inactivity_penalty: Gwei
+    # Finality measures
+    finality_delay_penalty: Gwei
+    finality_resist_penalty: Gwei
+
+
+class AttesterStatus(NamedTuple):
+    eligible: bool
+    slashed: bool
+
+    source_participant: bool
+    target_participant: bool
+    head_participant: bool
+
+    proposer_index: Optional[ValidatorIndex]
+    inclusion_delay: int
+    base_reward: Gwei
+    effective_balance: Gwei
+
+
+def prepare_attester_status_list(state: BeaconState) -> Tuple[Support, Sequence[AttesterStatus]]:
     previous_epoch = get_previous_epoch(state)
-    total_balance = get_total_active_balance(state)
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
-    eligible_validator_indices = [
-        ValidatorIndex(index) for index, v in enumerate(state.validators)
-        if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
-    ]
 
-    # Micro-incentives for matching FFG source, FFG target, and head
-    matching_source_attestations = get_matching_source_attestations(state, previous_epoch)
-    matching_target_attestations = get_matching_target_attestations(state, previous_epoch)
-    matching_head_attestations = get_matching_head_attestations(state, previous_epoch)
-    for attestations in (matching_source_attestations, matching_target_attestations, matching_head_attestations):
-        unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
-        attesting_balance = get_total_balance(state, unslashed_attesting_indices)
-        for index in eligible_validator_indices:
-            if index in unslashed_attesting_indices:
-                increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
-                rewards[index] += reward_numerator // (total_balance // increment)
+    total_active_balance = get_total_active_balance(state)
+    sqrt_total_balance = integer_squareroot(total_active_balance)
+
+    def get_status(v: Validator) -> AttesterStatus:
+        eligible = is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
+        base_reward = Gwei(v.effective_balance * BASE_REWARD_FACTOR //
+                           sqrt_total_balance // BASE_REWARDS_PER_EPOCH) if eligible else Gwei(0)
+        return AttesterStatus(eligible, False, False, False, False, None, Slot(0), base_reward, v.effective_balance)
+
+    statuses = [get_status(v) for v in state.validators]
+
+    target_block_root = get_block_root(state, get_current_epoch(state))
+
+    source_stake, target_stake, head_stake = Gwei(0), Gwei(0), Gwei(0)
+
+    for att in state.previous_epoch_attestations:
+        head_block_root = get_block_root_at_slot(state, att.data.slot)
+
+        participants = get_attesting_indices(state, att.data, att.aggregation_bits)
+        for p in participants:
+            status = statuses[p]
+
+            # If the attestation is the earliest, i.e. has the smallest delay
+            if status.proposer_index is None or status.inclusion_delay > att.inclusion_delay:
+                status.proposer_index = att.proposer_index
+                status.inclusion_delay = att.inclusion_delay
+
+        for p in participants:
+            status = statuses[p]
+            # remember the participant as one of the good validators
+            status.source_participant = True
+            source_stake += status.effective_balance
+
+            # If the attestation is for the boundary:
+            if att.data.target.root == target_block_root:
+                status.target_participant = True
+                target_stake += status.effective_balance
+
+                # Head votes must be a subset of target votes
+                if att.data.beacon_block_root == head_block_root:
+                    status.head_participant = True
+                    head_stake += status.effective_balance
+
+    return Support(total_active_balance, source_stake, target_stake, head_stake), statuses
+
+
+def transpose_deltas(per_validator: Sequence[Tuple[Gwei, Gwei]]) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    return [delta[0] for delta in per_validator], [delta[1] for delta in per_validator]
+
+
+def compute_support_component_deltas(component_support: Gwei, total_balance: Gwei, component: Callable, status_list: Sequence[AttesterStatus]) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    return transpose_deltas([component(component_support, total_balance, status) for status in status_list])
+
+
+def compute_source_delta(prev_epoch_source_support: Gwei, total_balance: Gwei, status: AttesterStatus) -> Tuple[Gwei, Gwei]:
+    # Does the validator participate in justification?
+    if not status.slashed and status.source_participant:
+        return status.base_reward * prev_epoch_source_support // total_balance, Gwei(0)
+    else:
+        return Gwei(0), status.base_reward
+
+
+def compute_target_delta(prev_epoch_target_support: Gwei, total_balance: Gwei, status: AttesterStatus) -> Tuple[Gwei, Gwei]:
+    # Does the validator attest to the boundary?
+    if not status.slashed and status.target_participant:
+        return status.base_reward * prev_epoch_target_support // total_balance, Gwei(0)
+    else:
+        return Gwei(0), status.base_reward
+
+
+def compute_head_delta(prev_epoch_head_support: Gwei, total_balance: Gwei, status: AttesterStatus) -> Tuple[Gwei, Gwei]:
+    # Did the validator vote for the canonical head?
+    if not status.slashed and status.head_participant:
+        return status.base_reward * prev_epoch_head_support // total_balance, Gwei(0)
+    else:
+        return Gwei(0), status.base_reward
+
+
+def compute_inclusion_delay_reward(status: AttesterStatus) -> Gwei:
+    proposer_reward = status.base_reward // PROPOSER_REWARD_QUOTIENT
+    max_attester_reward = status.base_reward - proposer_reward
+    return max_attester_reward // status.inclusion_delay
+
+
+def compute_proposer_rewards(status_list: Sequence[AttesterStatus]) -> Sequence[Gwei]:
+    proposer_rewards = [Gwei(0)] * len(status_list)
+    for status in status_list:
+        proposer_reward = status.base_reward // PROPOSER_REWARD_QUOTIENT
+        proposer_rewards[status.proposer_index] += proposer_reward
+    return proposer_rewards
+
+
+def compute_inactivity_penalty(finality_delay: Slot, status: AttesterStatus) -> Gwei:
+    if status.eligible:
+        if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
+            # Basic penalty in case of finality delay
+            penalty = Gwei(status.base_reward * BASE_REWARDS_PER_EPOCH)
+
+            # Did the validator even try to contribute to finality?
+            if status.slashed or not status.head_participant:
+                return penalty + Gwei(status.effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
             else:
-                penalties[index] += get_base_reward(state, index)
+                return penalty
+    return Gwei(0)
 
-    # Proposer and inclusion delay micro-rewards
-    for index in get_unslashed_attesting_indices(state, matching_source_attestations):
-        attestation = min([
-            a for a in matching_source_attestations
-            if index in get_attesting_indices(state, a.data, a.aggregation_bits)
-        ], key=lambda a: a.inclusion_delay)
-        proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
-        rewards[attestation.proposer_index] += proposer_reward
-        max_attester_reward = get_base_reward(state, index) - proposer_reward
-        rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
-    # Inactivity penalty
-    finality_delay = previous_epoch - state.finalized_checkpoint.epoch
-    if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
-        matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
-        for index in eligible_validator_indices:
-            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
-            if index not in matching_target_attesting_indices:
-                effective_balance = state.validators[index].effective_balance
-                penalties[index] += Gwei(effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
+def get_attestation_deltas(finality_delay: Slot, total_support: Support, status_list: Sequence[AttesterStatus]) -> Tuple[Sequence[Rewards], Sequence[Penalties]]:
+    # Base rewards
+    source_rewards, source_penalties = compute_support_component_deltas(total_support.source, total_support.everyone, compute_source_delta, status_list)
+    target_rewards, target_penalties = compute_support_component_deltas(total_support.target, total_support.target, compute_target_delta, status_list)
+    head_rewards, head_penalties = compute_support_component_deltas(total_support.head, total_support.everyone, compute_target_delta, status_list)
+    inclusion_delay_rewards = list(map(compute_inclusion_delay_reward, status_list))
 
-    return rewards, penalties
-```
+    # Proposals
+    proposer_rewards = compute_proposer_rewards(status_list)
 
-```python
+    # Inactivity
+    inactivity_penalties = list(map(compute_inactivity_penalty, repeat(finality_delay), status_list))
+
+    rewards = source_rewards, target_rewards, head_rewards, inclusion_delay_rewards, proposer_rewards
+    penalties = source_penalties, target_penalties, head_penalties, inactivity_penalties
+
+    return list(map(Rewards, zip(rewards))), list(map(Penalties, zip(penalties)))
+
+
 def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    rewards, penalties = get_attestation_deltas(state)
+    total_support, status_list = prepare_attester_status_list(state)
+    finality_delay = get_previous_epoch(state) - state.finalized_checkpoint.epoch
+
+    rewards, penalties = get_attestation_deltas(finality_delay, total_support, status_list)
     for index in range(len(state.validators)):
-        increase_balance(state, ValidatorIndex(index), rewards[index])
-        decrease_balance(state, ValidatorIndex(index), penalties[index])
+        increase_balance(state, ValidatorIndex(index), sum(rewards[index]))
+        decrease_balance(state, ValidatorIndex(index), sum(penalties[index]))
 ```
 
 #### Registry updates
