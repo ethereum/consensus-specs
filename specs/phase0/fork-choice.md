@@ -100,7 +100,7 @@ _The block for `anchor_root` is incorrectly initialized to the block header, rat
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState) -> Store:
-    anchor_block_header = anchor_state.latest_block_header.copy()
+    anchor_block_header: BeaconBlockHeader = anchor_state.latest_block_header.copy()
     if anchor_block_header.state_root == Bytes32():
         anchor_block_header.state_root = hash_tree_root(anchor_state)
     anchor_root = hash_tree_root(anchor_block_header)
@@ -108,7 +108,7 @@ def get_forkchoice_store(anchor_state: BeaconState) -> Store:
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
-        time=anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot,
+        time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -300,7 +300,7 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
 def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:
-        base_state = store.block_states[target.root].copy()
+        base_state: BeaconState = store.block_states[target.root].copy()
         process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
         store.checkpoint_states[target] = base_state
 ```
@@ -344,7 +344,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Make a copy of the state to avoid mutability issues
     assert block.parent_root in store.block_states
-    pre_state = store.block_states[block.parent_root].copy()
+    pre_state: BeaconState = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert get_current_slot(store) >= block.slot
     # Add new block to the store

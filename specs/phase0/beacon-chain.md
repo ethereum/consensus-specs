@@ -170,9 +170,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `BASE_REWARDS_PER_EPOCH` | `4` |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
-| `JUSTIFICATION_BITS_LENGTH` | `4` |
+| `BASE_REWARDS_PER_EPOCH` | `uint64(4)` |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
+| `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
 | `ENDIANNESS` | `'little'` |
 
 ## Configuration
@@ -183,17 +183,17 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) |
-| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
-| `SHUFFLE_ROUND_COUNT` | `90` |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
-| `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
-| `HYSTERESIS_QUOTIENT` | `4` |
-| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
-| `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
+| `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
+| `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
+| `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
+| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
+| `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
+| `MIN_GENESIS_TIME` | `uint64(1578009600)` (Jan 3, 2020) |
+| `HYSTERESIS_QUOTIENT` | `uint64(4)` |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
+| `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -217,37 +217,37 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `MIN_GENESIS_DELAY` | `86400` | seconds | 1 day |
-| `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
-| `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+<<<<<<< HEAD
+| `MIN_GENESIS_DELAY` | `uint64(86400)` | seconds | 1 day |
+| `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
+| `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
+| `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**5)` (= 32) | epochs | ~3.4 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-
 
 ### State list lengths
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
-| `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~52,262 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validators |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 years |
+| `EPOCHS_PER_SLASHINGS_VECTOR` | `uint64(2**13)` (= 8,192) | epochs | ~36 days |
+| `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
+| `VALIDATOR_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | validators |
 
 ### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_FACTOR` | `2**6` (= 64) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
-| `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
+| `BASE_REWARD_FACTOR` | `uint64(2**6)` (= 64) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
+| `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**5)` (= 32) |
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12` epochs (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
@@ -560,9 +560,9 @@ def integer_squareroot(n: uint64) -> uint64:
     x = n
     y = (x + 1) // 2
     while y < x:
-        x = y
+        x = uint64(y)
         y = (x + n // x) // 2
-    return x
+    return uint64(x)
 ```
 
 #### `xor`
@@ -592,7 +592,7 @@ def bytes_to_int(data: bytes) -> uint64:
     """
     Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
-    return int.from_bytes(data, ENDIANNESS)
+    return uint64(int.from_bytes(data, ENDIANNESS))
 ```
 
 ### Crypto
@@ -731,14 +731,18 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
 
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
-    for current_round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=1))[0:8]) % index_count
+    for current_round in map(uint64, range(SHUFFLE_ROUND_COUNT)):
+        pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=uint64(1)))[0:8]) % index_count
         flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
-        source = hash(seed + int_to_bytes(current_round, length=1) + int_to_bytes(position // 256, length=4))
+        source = hash(
+            seed
+            + int_to_bytes(current_round, length=uint64(1))
+            + int_to_bytes(uint64(position // 256), length=uint64(4))
+        )
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
-        index = flip if bit else index
+        index = uint64(flip) if bit else index
 
     return index
 ```
@@ -754,8 +758,8 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
     MAX_RANDOM_BYTE = 2**8 - 1
     i = 0
     while True:
-        candidate_index = indices[compute_shuffled_index(i % len(indices), len(indices), seed)]
-        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
+        candidate_index = indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
+        random_byte = hash(seed + int_to_bytes(uint64(i // 32), length=uint64(8)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -774,7 +778,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     """
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[compute_shuffled_index(i, len(indices), seed)] for i in range(start, end)]
+    return [indices[compute_shuffled_index(uint64(i), uint64(len(indices)), seed)] for i in range(start, end)]
 ```
 
 #### `compute_epoch_at_slot`
@@ -933,7 +937,7 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
     Return the validator churn limit for the current epoch.
     """
     active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
+    return max(MIN_PER_EPOCH_CHURN_LIMIT, uint64(len(active_validator_indices) // CHURN_LIMIT_QUOTIENT))
 ```
 
 #### `get_seed`
@@ -944,7 +948,7 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
+    return hash(domain_type + int_to_bytes(epoch, length=uint64(8)) + mix)
 ```
 
 #### `get_committee_count_at_slot`
@@ -955,9 +959,9 @@ def get_committee_count_at_slot(state: BeaconState, slot: Slot) -> uint64:
     Return the number of committees at ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    return max(1, min(
+    return max(uint64(1), min(
         MAX_COMMITTEES_PER_SLOT,
-        len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
+        uint64(len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE),
     ))
 ```
 
@@ -973,8 +977,8 @@ def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) 
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
-        count=committees_per_slot * SLOTS_PER_EPOCH,
+        index=uint64((slot % SLOTS_PER_EPOCH) * committees_per_slot + index),
+        count=uint64(committees_per_slot * SLOTS_PER_EPOCH),
     )
 ```
 
@@ -986,7 +990,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
+    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=uint64(8)))
     indices = get_active_validator_indices(state, epoch)
     return compute_proposer_index(state, indices, seed)
 ```
@@ -1094,7 +1098,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_validator_churn_limit(state):
-        exit_queue_epoch += Epoch(1)
+        exit_queue_epoch = Epoch(exit_queue_epoch + 1)
 
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
@@ -1728,13 +1732,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
+        depth=uint64(DEPOSIT_CONTRACT_TREE_DEPTH + 1),  # Add 1 for the List length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )
 
     # Deposits must be processed in order
-    state.eth1_deposit_index += 1
+    state.eth1_deposit_index = uint64(state.eth1_deposit_index + 1)
 
     pubkey = deposit.data.pubkey
     amount = deposit.data.amount

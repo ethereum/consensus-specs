@@ -270,7 +270,7 @@ An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` wher
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    return state.genesis_time + slot * SECONDS_PER_SLOT
+    return uint64(state.genesis_time + slot * SECONDS_PER_SLOT)
 ```
 
 ```python
