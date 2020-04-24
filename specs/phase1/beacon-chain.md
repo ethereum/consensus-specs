@@ -109,6 +109,99 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
 | `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
+| `BYTES_PER_CUSTODY_CHUNK` | `2**12` | bytes |
+| `MAX_CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK) | - | - |
+
+
+
+## New containers
+
+### `CustodyChunkChallenge`
+
+```python
+class CustodyChunkChallenge(Container):
+    responder_index: ValidatorIndex
+    shard_transition: ShardTransition
+    attestation: Attestation
+    data_index: uint64
+    chunk_index: uint64
+```
+
+### `CustodyChunkChallengeRecord`
+
+```python
+class CustodyChunkChallengeRecord(Container):
+    challenge_index: uint64
+    challenger_index: ValidatorIndex
+    responder_index: ValidatorIndex
+    inclusion_epoch: Epoch
+    data_root: Root
+    depth: uint64
+    chunk_index: uint64
+```
+
+#### `CustodyChunkResponse`
+
+```python
+class CustodyChunkResponse(Container):
+    challenge_index: uint64
+    chunk_index: uint64
+    chunk: ByteVector[BYTES_PER_CUSTODY_CHUNK]
+    branch: List[Root, MAX_CUSTODY_RESPONSE_DEPTH]
+```
+
+#### `CustodySlashing`
+
+```python
+class CustodySlashing(Container):
+    # Attestation.custody_bits_blocks[data_index][committee.index(malefactor_index)] is the target custody bit to check.
+    # (Attestation.data.shard_transition_root as ShardTransition).shard_data_roots[data_index] is the root of the data.
+    data_index: uint64
+    malefactor_index: ValidatorIndex
+    malefactor_secret: BLSSignature
+    whistleblower_index: ValidatorIndex
+    shard_transition: ShardTransition
+    attestation: Attestation
+    data: ByteList[MAX_SHARD_BLOCK_SIZE]
+```
+
+#### `SignedCustodySlashing`
+
+```python
+class SignedCustodySlashing(Container):
+    message: CustodySlashing
+    signature: BLSSignature
+```
+
+
+#### `CustodyKeyReveal`
+
+```python
+class CustodyKeyReveal(Container):
+    # Index of the validator whose key is being revealed
+    revealer_index: ValidatorIndex
+    # Reveal (masked signature)
+    reveal: BLSSignature
+```
+
+#### `EarlyDerivedSecretReveal`
+
+Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
+
+```python
+class EarlyDerivedSecretReveal(Container):
+    # Index of the validator whose key is being revealed
+    revealed_index: ValidatorIndex
+    # RANDAO epoch of the key that is being revealed
+    epoch: Epoch
+    # Reveal (masked signature)
+    reveal: BLSSignature
+    # Index of the validator who revealed (whistleblower)
+    masker_index: ValidatorIndex
+    # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
+    mask: Bytes32
+```
 
 ## Updated containers
 
@@ -285,6 +378,8 @@ class BeaconState(Container):
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                     EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS]
+    custody_chunk_challenge_index: uint64
 ```
 
 ## New containers

@@ -5,21 +5,23 @@ from eth2spec.test.helpers.keys import privkeys
 import eth2spec.test.helpers.attestations as phase0_attestations
 
 
-def get_valid_on_time_attestation(spec, state, index=None, signed=False):
+def get_valid_on_time_attestation(spec, state, index=None, signed=False, shard_transition_root=None):
     '''
     Construct on-time attestation for next slot
     '''
     if index is None:
         index = 0
 
-    attestation = phase0_attestations.get_valid_attestation(spec, state, state.slot, index, False)
+    attestation = phase0_attestations.get_valid_attestation(spec, state, state.slot, index, False, shard_transition_root=shard_transition_root)
     shard = spec.get_shard(state, attestation)
     offset_slots = spec.compute_offset_slots(spec.get_latest_slot_for_shard(state, shard), state.slot + 1)
+    print(offset_slots)
 
     for _ in offset_slots:
         attestation.custody_bits_blocks.append(
             Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])
         )
+        print(len(attestation.custody_bits_blocks))    
 
     if signed:
         sign_attestation(spec, state, attestation)

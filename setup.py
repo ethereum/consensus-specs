@@ -121,7 +121,7 @@ from lru import LRU
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64, uint8, bit,
-    ByteList, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 

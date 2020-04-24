@@ -43,7 +43,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index):
+def build_attestation_data(spec, state, slot, index, shard_transition_root=None):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -72,6 +72,7 @@ def build_attestation_data(spec, state, slot, index):
         beacon_block_root=block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
+        shard_transition_root=shard_transition_root,
     )
 
 
@@ -89,7 +90,7 @@ def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False)
     return attestation
 
 
-def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=False):
+def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=False, shard_transition_root=None):
     '''
     Construct on-time attestation for next slot
     '''
@@ -98,10 +99,10 @@ def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=Fal
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=True)
+    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=True, shard_transition_root=shard_transition_root)
 
 
-def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False):
+def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False, shard_transition_root=None):
     '''
     Construct on-time attestation for next slot
     '''
@@ -110,16 +111,16 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False)
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False)
+    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False, shard_transition_root=shard_transition_root)
 
 
-def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True):
+def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True, shard_transition_root=None):
     if slot is None:
         slot = state.slot
     if index is None:
         index = 0
 
-    attestation_data = build_attestation_data(spec, state, slot, index)
+    attestation_data = build_attestation_data(spec, state, slot, index, shard_transition_root=shard_transition_root)
 
     beacon_committee = spec.get_beacon_committee(
         state,
