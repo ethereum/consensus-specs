@@ -345,7 +345,7 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Mainnet
 
-- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) block compression. Example: The beacon aggregate attestation topic string is `/eth2/beacon_aggregate_and_proof/ssz_snappy`, and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
+- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) block compression. Example: The beacon aggregate attestation topic string is `/eth2/446a7232/beacon_aggregate_and_proof/ssz_snappy`, the fork digest is `446a7232` and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
 
 Snappy has two formats: "block" and "frames" (streaming). Gossip messages remain relatively small (100s of bytes to 100s of kilobytes) so [basic snappy block compression](https://github.com/google/snappy/blob/master/format_description.txt) is used to avoid the additional overhead associated with snappy frames.
 
