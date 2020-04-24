@@ -1332,11 +1332,6 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 #### Rewards and penalties
 
 ```python
-# TODO
-from typing import NamedTuple, Optional
-from itertools import repeat
-
-
 class Support(NamedTuple):
     everyone: Gwei
     source: Gwei
@@ -1425,8 +1420,7 @@ def prepare_attester_status_list(state: BeaconState) -> Tuple[Support, Sequence[
     return Support(max(total_active_balance, EFFECTIVE_BALANCE_INCREMENT),
                    max(source_stake, EFFECTIVE_BALANCE_INCREMENT),
                    max(target_stake, EFFECTIVE_BALANCE_INCREMENT),
-                   max(head_stake, EFFECTIVE_BALANCE_INCREMENT)),
-           statuses
+                   max(head_stake, EFFECTIVE_BALANCE_INCREMENT)), statuses
 
 
 def transpose_deltas(per_validator: Sequence[Tuple[Gwei, Gwei]]) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:

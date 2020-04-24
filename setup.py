@@ -84,8 +84,10 @@ apply_constants_config(globals())
 
 PHASE0_IMPORTS = '''from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple
 )
+
+from itertools import repeat
 
 from dataclasses import (
     dataclass,
@@ -108,8 +110,10 @@ SSZObject = TypeVar('SSZObject', bound=View)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, NamedTuple
 )
+
+from itertools import repeat
 
 from dataclasses import (
     dataclass,
@@ -178,11 +182,6 @@ get_total_active_balance = cache_this(
     lambda state: (state.validators.hash_tree_root(), compute_epoch_at_slot(state.slot)),
     _get_total_active_balance, lru_size=10)
 
-_get_base_reward = get_base_reward
-get_base_reward = cache_this(
-    lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
-    _get_base_reward, lru_size=2048)
-
 _get_committee_count_at_slot = get_committee_count_at_slot
 get_committee_count_at_slot = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
@@ -202,11 +201,6 @@ _get_matching_target_attestations = get_matching_target_attestations
 get_matching_target_attestations = cache_this(
     lambda state, epoch: (state.hash_tree_root(), epoch),
     _get_matching_target_attestations, lru_size=10)
-
-_get_matching_head_attestations = get_matching_head_attestations
-get_matching_head_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_head_attestations, lru_size=10)
 
 _get_attesting_indices = get_attesting_indices
 get_attesting_indices = cache_this(
