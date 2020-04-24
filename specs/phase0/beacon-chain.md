@@ -1393,9 +1393,7 @@ def prepare_attester_status_list(state: BeaconState) -> Tuple[Support, Sequence[
 
     statuses = [get_status(v) for v in state.validators]
 
-    target_block_root = get_block_root(state, get_current_epoch(state))
-
-    source_stake, target_stake, head_stake = Gwei(0), Gwei(0), Gwei(0)
+    target_block_root = get_block_root(state, get_previous_epoch(state))
 
     for att in state.previous_epoch_attestations:
         head_block_root = get_block_root_at_slot(state, att.data.slot)
@@ -1409,23 +1407,26 @@ def prepare_attester_status_list(state: BeaconState) -> Tuple[Support, Sequence[
                 status.proposer_index = att.proposer_index
                 status.inclusion_delay = att.inclusion_delay
 
-        for p in participants:
-            status = statuses[p]
             # remember the participant as one of the good validators
             status.source_participant = True
-            source_stake += status.effective_balance
 
             # If the attestation is for the boundary:
             if att.data.target.root == target_block_root:
                 status.target_participant = True
-                target_stake += status.effective_balance
 
                 # Head votes must be a subset of target votes
                 if att.data.beacon_block_root == head_block_root:
                     status.head_participant = True
-                    head_stake += status.effective_balance
 
-    return Support(total_active_balance, source_stake, target_stake, head_stake), statuses
+    source_stake = sum((status.effective_balance for status in statuses if status.source_participant), Gwei(0))
+    target_stake = sum((status.effective_balance for status in statuses if status.target_participant), Gwei(0))
+    head_stake = sum((status.effective_balance for status in statuses if status.head_participant), Gwei(0))
+
+    return Support(max(total_active_balance, EFFECTIVE_BALANCE_INCREMENT),
+                   max(source_stake, EFFECTIVE_BALANCE_INCREMENT),
+                   max(target_stake, EFFECTIVE_BALANCE_INCREMENT),
+                   max(head_stake, EFFECTIVE_BALANCE_INCREMENT)),
+           statuses
 
 
 def transpose_deltas(per_validator: Sequence[Tuple[Gwei, Gwei]]) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -1436,10 +1437,13 @@ def compute_support_component_deltas(component_support: Gwei, total_balance: Gwe
     return transpose_deltas([component(component_support, total_balance, status) for status in status_list])
 
 
+# TODO: unify below 3 functions
+
 def compute_source_delta(prev_epoch_source_support: Gwei, total_balance: Gwei, status: AttesterStatus) -> Tuple[Gwei, Gwei]:
     # Does the validator participate in justification?
     if not status.slashed and status.source_participant:
-        return status.base_reward * prev_epoch_source_support // total_balance, Gwei(0)
+        increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+        return status.base_reward * (prev_epoch_source_support // increment) // (total_balance // increment), Gwei(0)
     else:
         return Gwei(0), status.base_reward
 
@@ -1447,7 +1451,8 @@ def compute_source_delta(prev_epoch_source_support: Gwei, total_balance: Gwei, s
 def compute_target_delta(prev_epoch_target_support: Gwei, total_balance: Gwei, status: AttesterStatus) -> Tuple[Gwei, Gwei]:
     # Does the validator attest to the boundary?
     if not status.slashed and status.target_participant:
-        return status.base_reward * prev_epoch_target_support // total_balance, Gwei(0)
+        increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+        return status.base_reward * (prev_epoch_target_support // increment) // (total_balance // increment), Gwei(0)
     else:
         return Gwei(0), status.base_reward
 
@@ -1455,7 +1460,8 @@ def compute_target_delta(prev_epoch_target_support: Gwei, total_balance: Gwei, s
 def compute_head_delta(prev_epoch_head_support: Gwei, total_balance: Gwei, status: AttesterStatus) -> Tuple[Gwei, Gwei]:
     # Did the validator vote for the canonical head?
     if not status.slashed and status.head_participant:
-        return status.base_reward * prev_epoch_head_support // total_balance, Gwei(0)
+        increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+        return status.base_reward * (prev_epoch_head_support // increment) // (total_balance // increment), Gwei(0)
     else:
         return Gwei(0), status.base_reward
 
@@ -1474,25 +1480,25 @@ def compute_proposer_rewards(status_list: Sequence[AttesterStatus]) -> Sequence[
     return proposer_rewards
 
 
-def compute_inactivity_penalty(finality_delay: Slot, status: AttesterStatus) -> Gwei:
+def compute_inactivity_penalty(finality_delay: uint64, status: AttesterStatus) -> Gwei:
     if status.eligible:
         if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
             # Basic penalty in case of finality delay
             penalty = Gwei(status.base_reward * BASE_REWARDS_PER_EPOCH)
 
             # Did the validator even try to contribute to finality?
-            if status.slashed or not status.head_participant:
+            if status.slashed or not status.target_participant:
                 return penalty + Gwei(status.effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
             else:
                 return penalty
     return Gwei(0)
 
 
-def get_attestation_deltas(finality_delay: Slot, total_support: Support, status_list: Sequence[AttesterStatus]) -> Tuple[Sequence[Rewards], Sequence[Penalties]]:
+def get_attestation_deltas(finality_delay: uint64, total_support: Support, status_list: Sequence[AttesterStatus]) -> Tuple[Sequence[Rewards], Sequence[Penalties]]:
     # Base rewards
     source_rewards, source_penalties = compute_support_component_deltas(total_support.source, total_support.everyone, compute_source_delta, status_list)
-    target_rewards, target_penalties = compute_support_component_deltas(total_support.target, total_support.target, compute_target_delta, status_list)
-    head_rewards, head_penalties = compute_support_component_deltas(total_support.head, total_support.everyone, compute_target_delta, status_list)
+    target_rewards, target_penalties = compute_support_component_deltas(total_support.target, total_support.everyone, compute_target_delta, status_list)
+    head_rewards, head_penalties = compute_support_component_deltas(total_support.head, total_support.everyone, compute_head_delta, status_list)
     inclusion_delay_rewards = list(map(compute_inclusion_delay_reward, status_list))
 
     # Proposals
