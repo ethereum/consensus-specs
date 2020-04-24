@@ -1,7 +1,7 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.context import PHASE0, with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
-from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block
+from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch
 
 
 def run_on_attestation(spec, state, store, attestation, valid=True):
@@ -16,7 +16,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
     spec.on_attestation(store, attestation)
 
-    if spec.fork == 'phase0':
+    if spec.fork == PHASE0:
         sample_index = indexed_attestation.attesting_indices[0]
     else:
         attesting_indices = [
@@ -120,11 +120,12 @@ def test_on_attestation_mismatched_target_and_slot(spec, state):
 @spec_state_test
 def test_on_attestation_target_not_in_store(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    time = store.time + spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
+    next_epoch = spec.get_current_epoch(state) + 1
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(next_epoch) - 1)
 
     target_block = build_empty_block_for_next_slot(spec, state)
     state_transition_and_sign_block(spec, state, target_block)
@@ -141,11 +142,12 @@ def test_on_attestation_target_not_in_store(spec, state):
 @spec_state_test
 def test_on_attestation_beacon_block_not_in_store(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    time = store.time + spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
+    next_epoch = spec.get_current_epoch(state) + 1
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(next_epoch) - 1)
 
     target_block = build_empty_block_for_next_slot(spec, state)
     signed_target_block = state_transition_and_sign_block(spec, state, target_block)
@@ -169,7 +171,7 @@ def test_on_attestation_beacon_block_not_in_store(spec, state):
 @spec_state_test
 def test_on_attestation_future_epoch(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = 3 * spec.SECONDS_PER_SLOT
+    time = store.time + 3 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -179,7 +181,7 @@ def test_on_attestation_future_epoch(spec, state):
     spec.on_block(store, signed_block)
 
     # move state forward but not store
-    state.slot = block.slot + spec.SLOTS_PER_EPOCH
+    next_epoch(spec, state)
 
     attestation = get_valid_attestation(spec, state, slot=state.slot, signed=True)
     run_on_attestation(spec, state, store, attestation, False)
@@ -189,7 +191,7 @@ def test_on_attestation_future_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_future_block(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = spec.SECONDS_PER_SLOT * 5
+    time = store.time + spec.SECONDS_PER_SLOT * 5
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -209,7 +211,7 @@ def test_on_attestation_future_block(spec, state):
 @spec_state_test
 def test_on_attestation_same_slot(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = 1 * spec.SECONDS_PER_SLOT
+    time = store.time + spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -225,7 +227,7 @@ def test_on_attestation_same_slot(spec, state):
 @spec_state_test
 def test_on_attestation_invalid_attestation(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = 3 * spec.SECONDS_PER_SLOT
+    time = store.time + 3 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)

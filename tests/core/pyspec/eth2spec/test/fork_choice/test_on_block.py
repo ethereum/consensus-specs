@@ -4,7 +4,8 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block, transition_unsigned_block, \
     build_empty_block
-from eth2spec.test.helpers.state import next_epoch, next_epoch_with_attestations, state_transition_and_sign_block
+from eth2spec.test.helpers.attestations import next_epoch_with_attestations
+from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
 
 
 def run_on_block(spec, store, signed_block, valid=True):
@@ -159,6 +160,7 @@ def test_on_block_finalized_skip_slots(spec, state):
 @spec_state_test
 def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     # Initialization
+    next_epoch(spec, state)
     store = spec.get_forkchoice_store(state)
 
     store.finalized_checkpoint = spec.Checkpoint(

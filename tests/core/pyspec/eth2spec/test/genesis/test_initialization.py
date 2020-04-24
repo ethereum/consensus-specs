@@ -1,10 +1,10 @@
-from eth2spec.test.context import spec_test, with_phases, single_phase
+from eth2spec.test.context import PHASE0, spec_test, with_phases, single_phase
 from eth2spec.test.helpers.deposits import (
     prepare_genesis_deposits,
 )
 
 
-@with_phases(['phase0'])
+@with_phases(([PHASE0]))
 @spec_test
 @single_phase
 def test_initialize_beacon_state_from_eth1(spec):
@@ -32,7 +32,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     yield 'state', state
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_initialize_beacon_state_some_small_balances(spec):

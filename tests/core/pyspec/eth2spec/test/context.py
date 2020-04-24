@@ -7,7 +7,7 @@ from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
 
 from random import Random
-from typing import Any, Callable, Sequence, TypedDict, Protocol
+from typing import Any, Callable, NewType, Sequence, TypedDict, Protocol
 
 from importlib import reload
 
@@ -19,25 +19,33 @@ def reload_specs():
 
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
 
+SpecForkName = NewType("SpecForkName", str)
+
+PHASE0 = SpecForkName('phase0')
+PHASE1 = SpecForkName('phase1')
+ALL_PHASES = (PHASE0, PHASE1)
+
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
+
+
 class Spec(Protocol):
     version: str
 
 
-class Phase0(Spec):
+class SpecPhase0(Spec):
     ...
 
 
-class Phase1(Spec):
+class SpecPhase1(Spec):
     def upgrade_to_phase1(self, state: spec_phase0.BeaconState) -> spec_phase1.BeaconState:
         ...
 
 
 # add transfer, bridge, etc. as the spec evolves
 class SpecForks(TypedDict, total=False):
-    phase0: Phase0
-    phase1: Phase1
+    PHASE0: SpecPhase0
+    PHASE1: SpecPhase1
 
 
 def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
@@ -45,16 +53,19 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
     def deco(fn):
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             try:
-                p0 = phases["phase0"]
+                p0 = phases[PHASE0]
                 balances = balances_fn(p0)
                 activation_threshold = threshold_fn(p0)
 
                 state = create_genesis_state(spec=p0, validator_balances=balances,
                                              activation_threshold=activation_threshold)
-                if spec.fork == 'phase1':
+                if spec.fork == PHASE1:
                     # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
                     # Decide based on performance/consistency results later.
-                    state = phases["phase1"].upgrade_to_phase1(state)
+                    state = phases[PHASE1].upgrade_to_phase1(state)
+                    # Shard state slot must lag behind BeaconState slot by at least 1
+                    # Will handle this more elegantly with fork mechanics
+                    spec.process_slots(state, state.slot + 1)
 
                 kw['state'] = state
             except KeyError:
@@ -217,14 +228,11 @@ def bls_switch(fn):
     return entry
 
 
-all_phases = ['phase0', 'phase1']
-
-
 def with_all_phases(fn):
     """
     A decorator for running a test with every phase
     """
-    return with_phases(all_phases)(fn)
+    return with_phases(ALL_PHASES)(fn)
 
 
 def with_all_phases_except(exclusion_phases):
@@ -232,7 +240,7 @@ def with_all_phases_except(exclusion_phases):
     A decorator factory for running a tests with every phase except the ones listed
     """
     def decorator(fn):
-        return with_phases([phase for phase in all_phases if phase not in exclusion_phases])(fn)
+        return with_phases([phase for phase in ALL_PHASES if phase not in exclusion_phases])(fn)
     return decorator
 
 
@@ -258,18 +266,18 @@ def with_phases(phases, other_phases=None):
 
             # TODO: test state is dependent on phase0 but is immediately transitioned to phase1.
             #  A new state-creation helper for phase 1 may be in place, and then phase1+ tests can run without phase0
-            available_phases.add('phase0')
+            available_phases.add(PHASE0)
 
             phase_dir = {}
-            if 'phase0' in available_phases:
-                phase_dir['phase0'] = spec_phase0
-            if 'phase1' in available_phases:
-                phase_dir['phase1'] = spec_phase1
+            if PHASE0 in available_phases:
+                phase_dir[PHASE0] = spec_phase0
+            if PHASE1 in available_phases:
+                phase_dir[PHASE1] = spec_phase1
 
             # return is ignored whenever multiple phases are ran. If
-            if 'phase0' in run_phases:
+            if PHASE0 in run_phases:
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
-            if 'phase1' in run_phases:
+            if PHASE1 in run_phases:
                 ret = fn(spec=spec_phase1, phases=phase_dir, *args, **kw)
             return ret
         return wrapper
