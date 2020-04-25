@@ -22,7 +22,6 @@
     - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
-    - [`is_descendant_block`](#is_descendant_block)
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
     - [`on_attestation` helpers](#on_attestation-helpers)
@@ -221,28 +220,6 @@ def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
     return blocks
 ```
 
-#### `is_descendant_block`
-
-```python
-def is_descendant_block(store: Store, base_root: Root, descendant_root: Root) -> bool:
-    """
-    Checks if the block with root ``descendant_root`` is a descendant of the block with root ``base_root``
-    """
-    descendants = [base_root]
-
-    # Traverse the descendants block tree and check if ``descendant_root`` is encountered
-    while(descendants):
-        if descendants[0] == descendant_root:
-            return True
-        descendants.extend([
-            root for root in store.blocks.keys()
-            if store.blocks[root].parent_root == descendants[0]
-        ])
-        descendants = descendants[1:]
-
-    return False
-```
-
 #### `get_head`
 
 ```python
@@ -310,7 +287,8 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
 
     # FFG and LMD vote must be consistent with each other
-    assert is_descendant_block(store, target.root, attestation.data.beacon_block_root)
+    target_slot = compute_start_slot_at_epoch(target.epoch)
+    assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
