@@ -402,7 +402,7 @@ class BeaconBlockHeader(Container):
 ```python
 class SigningData(Container):
     object_root: Root
-    equivocation_root: Root
+    uniqueness_root: Root
     domain: Domain
 ```
 
@@ -414,7 +414,7 @@ class SigningData(Container):
 class ProposerSlashing(Container):
     validator_index: ValidatorIndex
     domain: Domain
-    equivocation_root: Root
+    uniqueness_root: Root
     object_root_1: Root
     object_root_2: Root
     signature_1: BLSSignature
@@ -850,13 +850,13 @@ def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_
 #### `compute_signing_root`
 
 ```python
-def compute_signing_root(ssz_object: SSZObject, domain: Domain, equivocation_root: Root=Root()) -> Root:
+def compute_signing_root(ssz_object: SSZObject, domain: Domain, uniqueness_root: Root=Root()) -> Root:
     """
     Return the signing root for the corresponding signing data.
     """
     return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
-        equivocation_root=equivocation_root,
+        uniqueness_root=uniqueness_root,
         domain=domain,
     ))
 ```
@@ -1217,9 +1217,8 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[signed_block.message.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
-    equivocation_root = hash_tree_root(Slot(signed_block.slot))
-    signing_root = compute_signing_root(signed_block.message, domain, equivocation_root)
+    uniqueness_root = hash_tree_root(Slot(signed_block.slot))
+    signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER), uniqueness_root)
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
@@ -1565,11 +1564,11 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     # Verify that the domain is eligible for proposer_slashing slashing
     assert proposer_slashing.domain in (DOMAIN_BEACON_PROPOSER)
-    # Verify that the equivocation root is not all zero bytes
-    assert proposer_slashing.equivocation_root != Root()
+    # Verify that the uniqueness root is not all zero bytes
+    assert proposer_slashing.uniqueness_root != Root()
     # Verify that the signing roots are distinct
-    signing_root_1 = hash_tree_root(SigningData(proposer_slashing.object_root_1, equivocation_root, domain))
-    signing_root_2 = hash_tree_root(SigningData(proposer_slashing.object_root_2, equivocation_root, domain))
+    signing_root_1 = hash_tree_root(SigningData(proposer_slashing.object_root_1, uniqueness_root, domain))
+    signing_root_2 = hash_tree_root(SigningData(proposer_slashing.object_root_2, uniqueness_root, domain))
     assert signing_root_1 != signing_root_2
     # Verify that the signatures are valid
     validator = state.validators[proposer_slashing.validator_index]
