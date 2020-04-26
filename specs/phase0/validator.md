@@ -281,7 +281,7 @@ def voting_period_start_time(state: BeaconState) -> uint64:
 ```python
 def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
     return (
-        block.timestamp <= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE
+        block.timestamp < period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE
         and block.timestamp >= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2
     )
 ```
