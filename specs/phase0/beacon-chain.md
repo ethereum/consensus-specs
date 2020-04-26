@@ -402,6 +402,7 @@ class BeaconBlockHeader(Container):
 ```python
 class SigningData(Container):
     object_root: Root
+    equivocation_root: Root
     domain: Domain
 ```
 
@@ -411,8 +412,13 @@ class SigningData(Container):
 
 ```python
 class ProposerSlashing(Container):
-    signed_header_1: SignedBeaconBlockHeader
-    signed_header_2: SignedBeaconBlockHeader
+    validator_index: ValidatorIndex
+    domain: Domain
+    equivocation_root: Root
+    object_root_1: Root
+    object_root_2: Root
+    signature_1: BLSSignature
+    signature_2: BLSSignature
 ```
 
 #### `AttesterSlashing`
@@ -844,12 +850,13 @@ def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_
 #### `compute_signing_root`
 
 ```python
-def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
+def compute_signing_root(ssz_object: SSZObject, domain: Domain, equivocation_root: Root=Root()) -> Root:
     """
     Return the signing root for the corresponding signing data.
     """
     return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
+        equivocation_root=equivocation_root,
         domain=domain,
     ))
 ```
@@ -1210,7 +1217,9 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[signed_block.message.proposer_index]
-    signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
+    equivocation_root = hash_tree_root(Slot(signed_block.slot))
+    signing_root = compute_signing_root(signed_block.message, domain, equivocation_root)
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
@@ -1554,25 +1563,22 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
-    header_1 = proposer_slashing.signed_header_1.message
-    header_2 = proposer_slashing.signed_header_2.message
-
-    # Verify header slots match
-    assert header_1.slot == header_2.slot
-    # Verify header proposer indices match
-    assert header_1.proposer_index == header_2.proposer_index
-    # Verify the headers are different
-    assert header_1 != header_2
-    # Verify the proposer is slashable
-    proposer = state.validators[header_1.proposer_index]
-    assert is_slashable_validator(proposer, get_current_epoch(state))
-    # Verify signatures
-    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        signing_root = compute_signing_root(signed_header.message, domain)
-        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
-
-    slash_validator(state, header_1.proposer_index)
+    # Verify that the domain is eligible for proposer_slashing slashing
+    assert proposer_slashing.domain in (DOMAIN_BEACON_PROPOSER)
+    # Verify that the equivocation root is not all zero bytes
+    assert proposer_slashing.equivocation_root != Root()
+    # Verify that the signing roots are distinct
+    signing_root_1 = hash_tree_root(SigningData(proposer_slashing.object_root_1, equivocation_root, domain))
+    signing_root_2 = hash_tree_root(SigningData(proposer_slashing.object_root_2, equivocation_root, domain))
+    assert signing_root_1 != signing_root_2
+    # Verify that the signatures are valid
+    validator = state.validators[proposer_slashing.validator_index]
+    assert bls.Verify(validator.pubkey, signing_root_1, proposer_slashing.signature_1)
+    assert bls.Verify(validator.pubkey, signing_root_2, proposer_slashing.signature_2)
+    # Verify that the validator is slashable
+    assert is_slashable_validator(validator, get_current_epoch(state))
+    # Slash validator
+    slash_validator(state, proposer_slashing.validator_index)
 ```
 
 ##### Attester slashings
