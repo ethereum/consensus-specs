@@ -1563,7 +1563,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     # Verify that the domain is eligible for proposer_slashing slashing
-    assert proposer_slashing.domain in (DOMAIN_BEACON_PROPOSER)
+    domain = proposer_slashing.domain
+    assert domain in (DOMAIN_BEACON_PROPOSER)
     # Verify that the uniqueness root is not all zero bytes
     assert proposer_slashing.uniqueness_root != Root()
     # Verify that the signing roots are distinct
