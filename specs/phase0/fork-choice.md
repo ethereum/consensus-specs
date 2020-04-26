@@ -278,8 +278,6 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
     assert target.root in store.blocks
-    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
-    assert get_current_slot(store) >= compute_start_slot_at_epoch(target.epoch)
 
     # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
     assert attestation.data.beacon_block_root in store.blocks
