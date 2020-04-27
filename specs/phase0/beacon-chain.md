@@ -402,8 +402,8 @@ class BeaconBlockHeader(Container):
 ```python
 class SigningData(Container):
     object_root: Root
-    uniqueness_root: Root
     domain: Domain
+    uniqueness_root: Root
 ```
 
 ### Beacon operations
@@ -856,8 +856,8 @@ def compute_signing_root(ssz_object: SSZObject, domain: Domain, uniqueness_root:
     """
     return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
-        uniqueness_root=uniqueness_root,
         domain=domain,
+        uniqueness_root=uniqueness_root,
     ))
 ```
 
@@ -1568,8 +1568,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     # Verify that the uniqueness root is not all zero bytes
     assert proposer_slashing.uniqueness_root != Root()
     # Verify that the signing roots are distinct
-    signing_root_1 = hash_tree_root(SigningData(proposer_slashing.object_root_1, uniqueness_root, domain))
-    signing_root_2 = hash_tree_root(SigningData(proposer_slashing.object_root_2, uniqueness_root, domain))
+    signing_root_1 = hash_tree_root(SigningData(proposer_slashing.object_root_1, domain, uniqueness_root))
+    signing_root_2 = hash_tree_root(SigningData(proposer_slashing.object_root_2, domain, uniqueness_root))
     assert signing_root_1 != signing_root_2
     # Verify that the signatures are valid
     validator = state.validators[proposer_slashing.validator_index]
