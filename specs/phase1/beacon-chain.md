@@ -111,7 +111,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
 | `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
 | `BYTES_PER_CUSTODY_CHUNK` | `2**12` | bytes |
-| `MAX_CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK) | - | - |
+| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK) | - | - |
 
 
 
@@ -137,7 +137,6 @@ class CustodyChunkChallengeRecord(Container):
     responder_index: ValidatorIndex
     inclusion_epoch: Epoch
     data_root: Root
-    depth: uint64
     chunk_index: uint64
 ```
 
@@ -148,7 +147,7 @@ class CustodyChunkResponse(Container):
     challenge_index: uint64
     chunk_index: uint64
     chunk: ByteVector[BYTES_PER_CUSTODY_CHUNK]
-    branch: List[Root, MAX_CUSTODY_RESPONSE_DEPTH]
+    branch: Vector[Root, CUSTODY_RESPONSE_DEPTH]
 ```
 
 #### `CustodySlashing`
@@ -281,7 +280,8 @@ class Validator(Container):
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
     next_custody_secret_to_reveal: uint64
-    max_reveal_lateness: Epoch
+    # TODO: The max_reveal_lateness doesn't really make sense anymore.
+    # So how do we incentivise early custody key reveals now?
 ```
 
 ### Extended `BeaconBlockBody`
@@ -428,6 +428,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
+    # The root is of ByteVector[MAX_]
     shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]

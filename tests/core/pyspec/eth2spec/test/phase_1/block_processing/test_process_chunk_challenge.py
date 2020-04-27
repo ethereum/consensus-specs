@@ -75,7 +75,7 @@ def test_challenge_appended(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_chunks = (shard_transition.shard_block_lengths[data_index] + spec.BYTES_PER_CUSTODY_CHUNK - 1) // spec.BYTES_PER_CUSTODY_CHUNK
     test_vector = get_custody_test_vector(shard_transition.shard_block_lengths[data_index])
@@ -101,7 +101,7 @@ def test_multiple_epochs_custody(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -123,7 +123,7 @@ def test_many_epochs_custody(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -145,7 +145,7 @@ def test_off_chain_attestation(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
 
@@ -163,7 +163,7 @@ def test_custody_response(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -191,7 +191,7 @@ def test_custody_response_multiple_epochs(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -219,7 +219,7 @@ def test_custody_response_many_epochs(spec, state):
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
     data_index = 0
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition_root=hash_tree_root(shard_transition))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True, shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 

@@ -28,29 +28,13 @@ def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=Tru
 
     pre_next_custody_secret_to_reveal = \
         state.validators[revealer_index].next_custody_secret_to_reveal
-    pre_reveal_lateness = state.validators[revealer_index].max_reveal_lateness
 
     spec.process_custody_key_reveal(state, custody_key_reveal)
 
     post_next_custody_secret_to_reveal = \
         state.validators[revealer_index].next_custody_secret_to_reveal
-    post_reveal_lateness = state.validators[revealer_index].max_reveal_lateness
 
     assert post_next_custody_secret_to_reveal == pre_next_custody_secret_to_reveal + 1
-
-    if spec.get_current_epoch(state) > spec.get_randao_epoch_for_custody_period(
-        pre_next_custody_secret_to_reveal,
-        revealer_index
-    ) + spec.EPOCHS_PER_CUSTODY_PERIOD:
-        assert post_reveal_lateness > 0
-        if pre_reveal_lateness == 0:
-            assert post_reveal_lateness == spec.get_current_epoch(state) - spec.get_randao_epoch_for_custody_period(
-                pre_next_custody_secret_to_reveal,
-                revealer_index
-            ) - spec.EPOCHS_PER_CUSTODY_PERIOD
-    else:
-        if pre_reveal_lateness > 0:
-            assert post_reveal_lateness < pre_reveal_lateness
 
     yield 'post', state
 

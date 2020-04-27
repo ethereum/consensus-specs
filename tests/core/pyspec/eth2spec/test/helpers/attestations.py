@@ -6,6 +6,8 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.test.helpers.custody import get_custody_test_vector
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -72,17 +74,43 @@ def build_attestation_data(spec, state, slot, index, shard_transition_root=None)
         beacon_block_root=block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
-        shard_transition_root=shard_transition_root,
+        shard_transition_root=shard_transition_root if shard_transition_root else spec.Root(),
     )
 
 
-def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False):
+def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False, shard_transition=None, valid_custody_bits=None):
     shard = spec.get_shard(state, attestation)
     offset_slots = spec.compute_offset_slots(spec.get_latest_slot_for_shard(state, shard), state.slot + 1)
-    for offset_slot in offset_slots:
+
+    if valid_custody_bits is not None:
+        beacon_committee = spec.get_beacon_committee(
+            state,
+            attestation.data.slot,
+            attestation.data.index,
+        )
+        current_epoch = spec.get_current_epoch(state)
+        custody_secrets = [None for i in beacon_committee]
+        for i in range(len(beacon_committee)):
+            validator = state.validators[beacon_committee[i]]
+
+            period = spec.get_custody_period_for_validator(beacon_committee[i], attestation.data.target.epoch)
+
+            epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, beacon_committee[i])
+
+            domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
+            signing_root = spec.compute_signing_root(spec.Epoch(epoch_to_sign), domain)
+            custody_secrets[i] = bls.Sign(privkeys[beacon_committee[i]], signing_root)
+
+
+    for i, offset_slot in enumerate(offset_slots):
         attestation.custody_bits_blocks.append(
             Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])
         )
+        if valid_custody_bits is not None:
+            test_vector = get_custody_test_vector(shard_transition.shard_block_lengths[i])
+            for j in range(len(attestation.custody_bits_blocks[i])):
+                if attestation.aggregation_bits[j]:
+                    attestation.custody_bits_blocks[i][j] = spec.compute_custody_bit(custody_secrets[j], test_vector) ^ (not valid_custody_bits)
 
     if signed:
         sign_attestation(spec, state, attestation)
@@ -90,7 +118,7 @@ def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False)
     return attestation
 
 
-def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=False, shard_transition_root=None):
+def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=False, shard_transition=None, valid_custody_bits=None):
     '''
     Construct on-time attestation for next slot
     '''
@@ -99,10 +127,10 @@ def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=Fal
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=True, shard_transition_root=shard_transition_root)
+    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=True, shard_transition=shard_transition, valid_custody_bits=valid_custody_bits)
 
 
-def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False, shard_transition_root=None):
+def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False, shard_transition=None):
     '''
     Construct on-time attestation for next slot
     '''
@@ -111,16 +139,16 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False,
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False, shard_transition_root=shard_transition_root)
+    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False, shard_transition=shard_transition)
 
 
-def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True, shard_transition_root=None):
+def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True, shard_transition=None, valid_custody_bits=None):
     if slot is None:
         slot = state.slot
     if index is None:
         index = 0
 
-    attestation_data = build_attestation_data(spec, state, slot, index, shard_transition_root=shard_transition_root)
+    attestation_data = build_attestation_data(spec, state, slot, index, shard_transition_root=hash_tree_root(shard_transition) if shard_transition else spec.Root())
 
     beacon_committee = spec.get_beacon_committee(
         state,
@@ -140,7 +168,7 @@ def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signe
         sign_attestation(spec, state, attestation)
 
     if spec.fork == 'phase1' and on_time:
-        attestation = convert_to_valid_on_time_attestation(spec, state, attestation, signed)
+        attestation = convert_to_valid_on_time_attestation(spec, state, attestation, signed, shard_transition=shard_transition, valid_custody_bits=valid_custody_bits)
 
     return attestation
 

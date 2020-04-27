@@ -17,11 +17,6 @@
   - [Reward and penalty quotients](#reward-and-penalty-quotients)
   - [Signature domain types](#signature-domain-types)
 - [Data structures](#data-structures)
-  - [New Beacon Chain operations](#new-beacon-chain-operations)
-    - [`CustodySlashing`](#custodyslashing)
-    - [`SignedCustodySlashing`](#signedcustodyslashing)
-    - [`CustodyKeyReveal`](#custodykeyreveal)
-    - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
 - [Helpers](#helpers)
   - [`legendre_bit`](#legendre_bit)
   - [`get_custody_atoms`](#get_custody_atoms)
@@ -64,7 +59,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` (= 16,384) | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
-| `MAX_REVEAL_LATENESS_DECREMENT` | `2**7` (= 128) | epochs | ~14 hours |
 | `CHUNK_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 | `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 16,384) | epochs | ~9 days |
 | `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
@@ -168,7 +162,7 @@ def get_custody_secrets(key: BLSSignature) -> Sequence[int]:
 ### `compute_custody_bit`
 
 ```python
-def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
+def compute_custody_bit(key: BLSSignature, data: ByteList[MAX_SHARD_BLOCK_SIZE]) -> bit:
     secrets = get_custody_secrets(key)
     custody_atoms = get_custody_atoms(data)
     n = len(custody_atoms)
@@ -243,7 +237,6 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
         )
     # Verify depth
     transition_chunks = (challenge.shard_transition.shard_block_lengths[challenge.data_index] + BYTES_PER_CUSTODY_CHUNK - 1) // BYTES_PER_CUSTODY_CHUNK
-    depth = ceillog2(transition_chunks)
     assert challenge.chunk_index < transition_chunks
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
@@ -252,7 +245,6 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
         responder_index=challenge.responder_index,
         inclusion_epoch=get_current_epoch(state),
         data_root=challenge.shard_transition.shard_data_roots[challenge.data_index],
-        depth=depth,
         chunk_index=challenge.chunk_index,
     )
     replace_empty_or_append(state.custody_chunk_challenge_records, new_record)
@@ -277,7 +269,7 @@ def process_chunk_challenge_response(state: BeaconState,
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
-        depth=challenge.depth,
+        depth=CUSTODY_RESPONSE_DEPTH,
         index=response.chunk_index,
         root=challenge.data_root,
     )
@@ -310,18 +302,6 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     signing_root = compute_signing_root(epoch_to_sign, domain)
     assert bls.Verify(revealer.pubkey, signing_root, reveal.reveal)
-
-    # Decrement max reveal lateness if response is timely
-    if epoch_to_sign + EPOCHS_PER_CUSTODY_PERIOD >= get_current_epoch(state):
-        if revealer.max_reveal_lateness >= MAX_REVEAL_LATENESS_DECREMENT:
-            revealer.max_reveal_lateness -= MAX_REVEAL_LATENESS_DECREMENT
-        else:
-            revealer.max_reveal_lateness = 0
-    else:
-        revealer.max_reveal_lateness = max(
-            revealer.max_reveal_lateness,
-            get_current_epoch(state) - epoch_to_sign - EPOCHS_PER_CUSTODY_PERIOD
-        )
 
     # Process reveal
     revealer.next_custody_secret_to_reveal += 1
@@ -417,13 +397,15 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     # TODO: custody_slashing.data is not chunked like shard blocks yet, result is lots of padding.
+    # ??? What does this mean?
 
     # TODO: can do a single combined merkle proof of data being attested.
     # Verify the shard transition is indeed attested by the attestation
     shard_transition = custody_slashing.shard_transition
-    assert hash_tree_root(shard_transition) == attestation.shard_transition_root
+    assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
     # Verify that the provided data matches the shard-transition
-    assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
+    assert custody_slashing.data.get_backing().get_left().merkle_root() == shard_transition.shard_data_roots[custody_slashing.data_index]
+    assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]
 
     # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
