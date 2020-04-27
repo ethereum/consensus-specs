@@ -246,6 +246,7 @@ def test_compute_new_state_root(spec, state):
     state_root = spec.compute_new_state_root(state, block)
 
     assert state_root != pre_state.hash_tree_root()
+    assert state == pre_state
 
     # dumb verification
     spec.process_slots(post_state, block.slot)

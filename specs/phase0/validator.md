@@ -340,9 +340,10 @@ It is useful to be able to run a state transition function (working on a copy of
 
 ```python
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
-    process_slots(state, block.slot)
-    process_block(state, block)
-    return hash_tree_root(state)
+    temp_state: BeaconState = state.copy()
+    signed_block = SignedBeaconBlock(message=block)
+    temp_state = state_transition(temp_state, signed_block, validate_result=False)
+    return hash_tree_root(temp_state)
 ```
 
 ##### Signature
