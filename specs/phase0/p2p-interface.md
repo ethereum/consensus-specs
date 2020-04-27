@@ -4,7 +4,7 @@ This document contains the networking specification for Ethereum 2.0 clients.
 
 It consists of four main sections:
 
-1. A specification of the network fundamentals detailing the two network configurations: interoperability test network and mainnet launch.
+1. A specification of the network fundamentals.
 2. A specification of the three network interaction *domains* of Eth2: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
 3. The rationale and further explanation for the design choices made in the previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.
@@ -120,41 +120,19 @@ It consists of four main sections:
 
 This section outlines the specification for the networking stack in Ethereum 2.0 clients.
 
-Sections that have differing parameters for mainnet launch and interoperability testing are split into subsections. Sections that are not split have the same parameters for interoperability testing as mainnet launch.
-
 ## Transport
 
 Even though libp2p is a multi-transport stack (designed to listen on multiple simultaneous transports and endpoints transparently), we hereby define a profile for basic interoperability.
 
-#### Interop
-
 All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections). The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
 
-To facilitate connectivity and avert possible IPv6 routability/support issues, clients participating in the interoperability testnet MUST expose at least ONE IPv4 endpoint.
+Clients must support listening on at least one of IPv4 or IPv6. Clients that do _not_ have support for listening on IPv4 SHOULD be cognizant of the potential disadvantages in terms of Internet-wide routability/support. Clients MAY choose to listen only on IPv6, but MUST be capable of dialing both IPv4 and IPv6 addresses.
 
-All listening endpoints must be publicly dialable, and thus not rely on libp2p circuit relay, AutoNAT, or AutoRelay facilities.
+All listening endpoints must be publicly dialable, and thus not rely on libp2p circuit relay, AutoNAT, or AutoRelay facilities. (Usage of circuit relay, AutoNAT, or AutoRelay will be specifically re-examined soon.)
 
 Nodes operating behind a NAT, or otherwise undialable by default (e.g. container runtime, firewall, etc.), MUST have their infrastructure configured to enable inbound traffic on the announced public listening endpoint.
 
-#### Mainnet
-
-All requirements from the interoperability testnet apply, except for the IPv4 addressing scheme requirement.
-
-At this stage, clients are licensed to drop IPv4 support if they wish to do so, cognizant of the potential disadvantages in terms of Internet-wide routability/support. Clients MAY choose to listen only on IPv6, but MUST retain capability to dial both IPv4 and IPv6 addresses.
-
-Usage of circuit relay, AutoNAT, or AutoRelay will be specifically re-examined closer to the time.
-
 ## Encryption and identification
-
-#### Interop
-
-[SecIO](https://github.com/libp2p/specs/tree/master/secio) with `secp256k1` identities will be used for initial interoperability testing.
-
-The following SecIO parameters MUST be supported by all stacks:
-
--  Key agreement: ECDH-P256.
--  Cipher: AES-128.
--  Digest: SHA-256.
 
 #### Mainnet
 
@@ -167,13 +145,7 @@ As specified in the libp2p specification, clients MUST support the `XX` handshak
 
 Clients MUST use exact equality when negotiating protocol versions to use and MAY use the version to give priority to higher version numbers.
 
-#### Interop
-
-Connection-level and stream-level (see the [Rationale](#design-decision-rationale) section below for explanations) protocol negotiation MUST be conducted using [multistream-select v1.0](https://github.com/multiformats/multistream-select/). Its protocol ID is: `/multistream/1.0.0`.
-
-#### Mainnet
-
-Clients MUST support [multistream-select 1.0](https://github.com/multiformats/multistream-select/) and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95). Depending on the number of clients that have implementations for multiselect 2.0 by mainnet, [multistream-select 1.0](https://github.com/multiformats/multistream-select/) may be phased out.
+Clients MUST support [multistream-select 1.0](https://github.com/multiformats/multistream-select/) and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when the spec solidifies. Once all clients have implementations for multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
 ## Multiplexing
 
@@ -181,7 +153,7 @@ During connection bootstrapping, libp2p dynamically negotiates a mutually suppor
 
 Two multiplexers are commonplace in libp2p implementations: [mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). Their protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
-Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). If both are supported by the client, yamux must take precedence during negotiation. See the [Rationale](#design-decision-rationale) section below for tradeoffs.
+Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). If both are supported by the client, yamux MUST take precedence during negotiation. See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 # Eth2 network interaction domains
 
@@ -265,7 +237,6 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 |------------------------------------------------|-------------------------|
 | beacon_block                                   | SignedBeaconBlock       |
 | beacon_aggregate_and_proof                     | SignedAggregateAndProof |
-| beacon_attestation\*                           | Attestation             |
 | committee_index{subnet_id}\_beacon_attestation | Attestation             |
 | voluntary_exit                                 | SignedVoluntaryExit     |
 | proposer_slashing                              | ProposerSlashing        |
@@ -274,8 +245,6 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
-
-\* The `beacon_attestation` topic is only for interop and will be removed prior to mainnet.
 
 #### Global topics
 
@@ -323,11 +292,7 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
     - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
     - The signature of `attestation` is valid.
 
-#### Interop
-
-Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
-
-#### Mainnet
+#### Attestations and Aggregation
 
 Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. For the `committee_index{subnet_id}_beacon_attestation` topics, `subnet_id` is set to `index % ATTESTATION_SUBNET_COUNT`, where `index` is the `CommitteeIndex` of the given committee.
 
@@ -339,17 +304,11 @@ Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `A
 
 Topics are post-fixed with an encoding. Encodings define how the payload of a gossipsub message is encoded.
 
-#### Interop
-
-- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `SignedBeaconBlock`.
-
-#### Mainnet
-
 - `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) block compression. Example: The beacon aggregate attestation topic string is `/eth2/446a7232/beacon_aggregate_and_proof/ssz_snappy`, the fork digest is `446a7232` and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
 
 Snappy has two formats: "block" and "frames" (streaming). Gossip messages remain relatively small (100s of bytes to 100s of kilobytes) so [basic snappy block compression](https://github.com/google/snappy/blob/master/format_description.txt) is used to avoid the additional overhead associated with snappy frames.
 
-Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
+Implementations MUST use a single encoding for gossip. Changing an encoding will require coordination between participating implementations.
 
 ## The Req/Resp domain
 
