@@ -5,7 +5,7 @@ from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
 
 from eth2spec.test.context import PHASE0
-from eth2spec.test.sanity import test_blocks, test_slots
+from eth2spec.test.phase_0.sanity import test_blocks, test_slots
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
