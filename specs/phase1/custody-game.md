@@ -293,7 +293,12 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
 
     custody_reveal_period = get_custody_period_for_validator(reveal.revealer_index, get_current_epoch(state))
-    assert revealer.next_custody_secret_to_reveal < custody_reveal_period
+    # Only past custody periods can be revealed, except after exiting the exit 
+    # period can be revealed
+    assert (revealer.next_custody_secret_to_reveal < custody_reveal_period 
+            or (revealer.exit_epoch <= get_current_epoch(state) and 
+                revealer.next_custody_secret_to_reveal
+                <= get_custody_period_for_validator(reveal.revealer_index, revealer.exit_epoch - 1)))
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -304,6 +309,10 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     assert bls.Verify(revealer.pubkey, signing_root, reveal.reveal)
 
     # Process reveal
+    if (revealer.exit_epoch <= get_current_epoch(state) and 
+            revealer.next_custody_secret_to_reveal
+            == get_custody_period_for_validator(reveal.revealer_index, revealer.exit_epoch - 1)):
+        revealer.all_custody_secrets_revealed_epoch = get_current_epoch(state)
     revealer.next_custody_secret_to_reveal += 1
 
     # Reward Block Proposer
@@ -480,4 +489,22 @@ After `process_final_updates(state)`, additional updates are made for the custod
 def process_custody_final_updates(state: BeaconState) -> None:
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[get_current_epoch(state) % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
+
+    # Reset withdrawable epochs if challenge records are empty
+    records = state.custody_chunk_challenge_records
+    validator_indices_in_records = set(
+        [record.responder_index for record in records]
+    )
+    for index, validator in enumerate(state.validators):
+        if validator.exit_epoch != FAR_FUTURE_EPOCH:
+            if (index in validator_indices_in_records 
+                    or validator.all_custody_secrets_revealed_epoch == FAR_FUTURE_EPOCH):
+                # Delay withdrawable epochs if challenge records are not empty or not all
+                # custody secrets revealed
+                validator.withdrawable_epoch = FAR_FUTURE_EPOCH
+            else:
+                # Reset withdrawable epochs if challenge records are empty
+                if validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
+                    validator.withdrawable_epoch = Epoch(validator.all_custody_secrets_revealed_epoch
+                                                         + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 ```

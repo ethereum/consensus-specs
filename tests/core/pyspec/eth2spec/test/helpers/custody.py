@@ -37,9 +37,10 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     )
 
 
-def get_valid_custody_key_reveal(spec, state, period=None):
+def get_valid_custody_key_reveal(spec, state, period=None, validator_index=None):
     current_epoch = spec.get_current_epoch(state)
-    revealer_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    revealer_index = (spec.get_active_validator_indices(state, current_epoch)[0]
+                      if validator_index is None else validator_index)
     revealer = state.validators[revealer_index]
 
     if period is None:

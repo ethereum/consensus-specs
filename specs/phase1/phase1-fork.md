@@ -79,7 +79,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
                 exit_epoch=phase0_validator.exit_epoch,
                 withdrawable_epoch=phase0_validator.withdrawable_epoch,
                 next_custody_secret_to_reveal=get_custody_period_for_validator(ValidatorIndex(i), epoch),
-                max_reveal_lateness=0,  # TODO custody refactor. Outdated? 
+                all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
             ) for i, phase0_validator in enumerate(pre.validators)
         ),
         balances=pre.balances,
