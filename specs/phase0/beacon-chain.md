@@ -110,6 +110,10 @@
     - [Helper functions](#helper-functions-1)
     - [Justification and finalization](#justification-and-finalization)
     - [Rewards and penalties](#rewards-and-penalties-1)
+      - [Helpers](#helpers)
+      - [Components of attestation deltas](#components-of-attestation-deltas)
+      - [`get_attestation_deltas`](#get_attestation_deltas)
+      - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Registry updates](#registry-updates)
     - [Slashings](#slashings)
     - [Final updates](#final-updates)
@@ -1403,7 +1407,7 @@ def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]
     """
     Return attester micro-rewards/penalties for head-vote for each validator.
     """
-    matching_head_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+    matching_head_attestations = get_matching_head_attestations(state, get_previous_epoch(state))
     return compute_attestation_component_deltas(state, matching_head_attestations)
 ```
 
