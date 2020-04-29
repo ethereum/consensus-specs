@@ -1,7 +1,7 @@
 from typing import List
 
 from eth2spec.test.context import expect_assertion_error, PHASE0
-from eth2spec.test.helpers.state import state_transition_and_sign_block
+from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
@@ -278,3 +278,34 @@ def next_epoch_with_attestations(spec,
         signed_blocks.append(signed_block)
 
     return state, signed_blocks, post_state
+
+
+def prepare_state_with_full_attestations(spec, state, empty=False):
+    """
+    Fill ``state`` with maximally full attestations.
+    Move to the start of the next epoch to ensure full epoch worth.
+    """
+    # Go to start of next epoch to ensure can have full participation
+    next_epoch(spec, state)
+
+    start_slot = state.slot
+    start_epoch = spec.get_current_epoch(state)
+    next_epoch_start_slot = spec.compute_start_slot_at_epoch(start_epoch + 1)
+    attestations = []
+    for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        # create an attestation for each index in each slot in epoch
+        if state.slot < next_epoch_start_slot:
+            for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
+                attestation = get_valid_attestation(spec, state, index=committee_index, empty=empty, signed=True)
+                attestations.append(attestation)
+        # fill each created slot in state after inclusion delay
+        if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
+            inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
+            include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
+            add_attestations_to_state(spec, state, include_attestations, state.slot)
+        next_slot(spec, state)
+
+    assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    assert len(state.previous_epoch_attestations) == len(attestations)
+
+    return attestations
