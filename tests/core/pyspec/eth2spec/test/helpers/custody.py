@@ -1,10 +1,7 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
-from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector, ByteList, uint64
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.merkle_minimal import get_merkle_root, get_merkle_tree, get_merkle_proof
-from remerkleable.core import pack_bits_to_chunks
-from remerkleable.tree import subtree_fill_to_contents, get_depth, Node, Gindex, gindex_bit_iter, Root
+from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, ByteList
+from remerkleable.tree import gindex_bit_iter
 
 BYTES_PER_CHUNK = 32
 
@@ -79,9 +76,8 @@ def get_valid_custody_slashing(spec, state, attestation, shard_transition, inval
     signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
     malefactor_key = bls.Sign(privkeys[malefactor_index], signing_root)
     data_index = 0
-    data=ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(shard_transition.shard_block_lengths[data_index]))
-    print(hash_tree_root(data))
-    print(data.get_backing().get_left().merkle_root())
+    data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](
+        get_custody_test_vector(shard_transition.shard_block_lengths[data_index]))
 
     slashing = spec.CustodySlashing(
         data_index=data_index,
@@ -93,7 +89,7 @@ def get_valid_custody_slashing(spec, state, attestation, shard_transition, inval
         data=data,
     )
     slashing_domain = spec.get_domain(state, spec.DOMAIN_CUSTODY_BIT_SLASHING)
-    slashing_root = spec.compute_signing_root(slashing, domain)
+    slashing_root = spec.compute_signing_root(slashing, slashing_domain)
 
     signed_slashing = spec.SignedCustodySlashing(
         message=slashing,
@@ -103,22 +99,23 @@ def get_valid_custody_slashing(spec, state, attestation, shard_transition, inval
     return signed_slashing
 
 
-def get_valid_chunk_challenge(spec, state, attestation, shard_transition):
-    shard = spec.compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
+def get_valid_chunk_challenge(spec, state, attestation, shard_transition, data_index=None, chunk_index=None):
     crosslink_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
         attestation.data.index
     )
     responder_index = crosslink_committee[0]
-    data_index = len(shard_transition.shard_block_lengths) - 1
+    data_index = len(shard_transition.shard_block_lengths) - 1 if not data_index else data_index
 
-    chunk_count = (shard_transition.shard_block_lengths[data_index] + spec.BYTES_PER_CUSTODY_CHUNK - 1) // spec.BYTES_PER_CUSTODY_CHUNK
+    chunk_count = (shard_transition.shard_block_lengths[data_index]
+                   + spec.BYTES_PER_CUSTODY_CHUNK - 1) // spec.BYTES_PER_CUSTODY_CHUNK
+    chunk_index = chunk_count - 1 if not chunk_index else chunk_index
 
     return spec.CustodyChunkChallenge(
         responder_index=responder_index,
         attestation=attestation,
-        chunk_index=chunk_count - 1,
+        chunk_index=chunk_index,
         data_index=data_index,
         shard_transition=shard_transition,
     )
@@ -174,7 +171,8 @@ def get_custody_test_vector(bytelength):
 
 
 def get_shard_transition(spec, start_slot, block_lengths):
-    b = [ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)).get_backing().get_left().merkle_root() for x in block_lengths]
+    b = [ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x))
+         .get_backing().get_left().merkle_root() for x in block_lengths]
     shard_transition = spec.ShardTransition(
         start_slot=start_slot,
         shard_block_lengths=block_lengths,
@@ -183,7 +181,3 @@ def get_shard_transition(spec, start_slot, block_lengths):
         proposer_signature_aggregate=spec.BLSSignature(),
     )
     return shard_transition
-
-
-def get_custody_merkle_root(data):
-    return None  # get_merkle_tree(chunkify(data))[-1][0]

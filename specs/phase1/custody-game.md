@@ -102,7 +102,8 @@ The following types are defined, mapping into `DomainType` (little endian):
 ```python
 def replace_empty_or_append(list: List, new_element: Any) -> int:
     for i in range(len(list)):
-        if list[i] == empty(typeof(new_element)):
+        if list[i] == type(new_element)():
+            assert False
             list[i] = new_element
             return i
     list.append(new_element)
@@ -236,11 +237,12 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
         assert (
-            record.data_root != challenge.attestation.data.crosslink.data_root or
+            record.data_root != data_root or
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    transition_chunks = (challenge.shard_transition.shard_block_lengths[challenge.data_index] + BYTES_PER_CUSTODY_CHUNK - 1) // BYTES_PER_CUSTODY_CHUNK
+    transition_chunks = (challenge.shard_transition.shard_block_lengths[challenge.data_index]
+                         + BYTES_PER_CUSTODY_CHUNK - 1) // BYTES_PER_CUSTODY_CHUNK
     assert challenge.chunk_index < transition_chunks
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
@@ -264,7 +266,8 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
 def process_chunk_challenge_response(state: BeaconState,
                                      response: CustodyChunkResponse) -> None:
 
-    challenge = next((record for record in state.custody_chunk_challenge_records if record.challenge_index == response.challenge_index), None)
+    challenge = next((record for record in state.custody_chunk_challenge_records if
+                      record.challenge_index == response.challenge_index), None)
     assert(challenge is not None)
 
     # Verify chunk index
@@ -417,7 +420,8 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     shard_transition = custody_slashing.shard_transition
     assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
     # Verify that the provided data matches the shard-transition
-    assert custody_slashing.data.get_backing().get_left().merkle_root() == shard_transition.shard_data_roots[custody_slashing.data_index]
+    assert custody_slashing.data.get_backing().get_left().merkle_root() \
+        == shard_transition.shard_data_roots[custody_slashing.data_index]
     assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]
 
     # Verify existence and participation of claimed malefactor
@@ -467,7 +471,8 @@ Run `process_reveal_deadlines(state)` after `process_registry_updates(state)`:
 def process_reveal_deadlines(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     for index, validator in enumerate(state.validators):
-        if get_custody_period_for_validator(ValidatorIndex(index), epoch) > validator.next_custody_secret_to_reveal + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD):
+        if get_custody_period_for_validator(ValidatorIndex(index), epoch) > validator.next_custody_secret_to_reveal \
+                + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD):
             slash_validator(state, ValidatorIndex(index))
 ```
 

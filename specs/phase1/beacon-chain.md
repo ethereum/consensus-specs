@@ -291,7 +291,7 @@ class Validator(Container):
     next_custody_secret_to_reveal: uint64
     # TODO: The max_reveal_lateness doesn't really make sense anymore.
     # So how do we incentivise early custody key reveals now?
-    all_custody_secrets_revealed_epoch: Epoch # to be initialized to FAR_FUTURE_EPOCH
+    all_custody_secrets_revealed_epoch: Epoch  # to be initialized to FAR_FUTURE_EPOCH
 ```
 
 ### Extended `BeaconBlockBody`
@@ -978,7 +978,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE),
-            next_custody_secret_to_reveal=get_custody_period_for_validator(ValidatorIndex(len(state.validators)), get_current_epoch(state)),
+            next_custody_secret_to_reveal=get_custody_period_for_validator(ValidatorIndex(len(state.validators)),
+                                                                           get_current_epoch(state)),
             all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
         ))
         state.balances.append(amount)
