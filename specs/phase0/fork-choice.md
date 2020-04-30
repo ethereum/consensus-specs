@@ -273,6 +273,7 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
+    # If attestation target is from a future epoch, delay consideration until the epoch arrives
     assert target.epoch in [current_epoch, previous_epoch]
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
 
