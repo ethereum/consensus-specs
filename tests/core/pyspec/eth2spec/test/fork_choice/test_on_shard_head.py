@@ -21,7 +21,7 @@ def run_on_shard_block(spec, store, shard, signed_block, valid=True):
             assert False
 
     spec.on_shard_block(store, shard, signed_block)
-    assert store.shard_blocks[shard][hash_tree_root(signed_block.message)] == signed_block.message
+    assert store.shards[shard].blocks[hash_tree_root(signed_block.message)] == signed_block.message
 
 
 def run_apply_shard_and_beacon(spec, state, store, shard, committee_index):
@@ -72,21 +72,7 @@ def test_basic(spec, state):
     next_slot(spec, state)
 
     # Initialization
-    shard_count = len(state.shard_states)
-    # Genesis shard blocks
-    anchor_shard_blocks = {
-        shard: {
-            state.shard_states[shard].latest_block_root: spec.ShardBlock(
-                slot=state.slot,
-            )
-        }
-        for shard in map(spec.Shard, range(shard_count))
-    }
-    shard_init_slots = {
-        shard: state.slot
-        for shard in map(spec.Shard, range(shard_count))
-    }
-    store = spec.get_forkchoice_store(state, shard_init_slots, anchor_shard_blocks)
+    store = spec.get_forkchoice_store(state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
