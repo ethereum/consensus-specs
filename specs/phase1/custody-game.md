@@ -285,7 +285,7 @@ def process_chunk_challenge_response(state: BeaconState,
     records[records.index(challenge)] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT)
+    increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
 ```
 
 #### Custody key reveals
