@@ -11,13 +11,11 @@
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
   - [Helpers](#helpers)
-    - [Extended `Store`](#extended-store)
-    - [Updated `get_forkchoice_store`](#updated-get_forkchoice_store)
+    - [`ShardStore`](#shardstore)
+    - [`get_forkchoice_shard_store`](#get_forkchoice_shard_store)
     - [`get_shard_latest_attesting_balance`](#get_shard_latest_attesting_balance)
     - [`get_shard_head`](#get_shard_head)
     - [`get_shard_ancestor`](#get_shard_ancestor)
-    - [`filter_shard_block_tree`](#filter_shard_block_tree)
-    - [`get_filtered_block_tree`](#get_filtered_block_tree)
   - [Handlers](#handlers)
     - [`on_shard_block`](#on_shard_block)
 
@@ -41,7 +39,7 @@ class ShardStore:
     block_states: Dict[Root, ShardState] = field(default_factory=dict)
 ```
 
-#### Updated `get_forkchoice_shard_store`
+#### `get_forkchoice_shard_store`
 
 ```python
 def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> ShardStore:
@@ -72,16 +70,13 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
 
 ```python
 def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
-    # Get filtered block tree that only includes viable branches
-    blocks = get_filtered_shard_block_tree(store, shard_store)
-
     # Execute the LMD-GHOST fork choice
     head_beacon_root = get_head(store)
     head_shard_root = store.block_states[head_beacon_root].shard_states[shard_store.shard].latest_block_root
     while True:
         children = [
-            root for root in blocks.keys()
-            if blocks[root].shard_parent_root == head_shard_root
+            root for root in shard_store.blocks.keys()
+            if shard_store.blocks[root].shard_parent_root == head_shard_root
         ]
         if len(children) == 0:
             return head_shard_root
@@ -103,41 +98,6 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
     else:
         # root is older than queried slot, thus a skip slot. Return earliest root prior to slot
         return root
-```
-
-#### `filter_shard_block_tree`
-
-```python
-def filter_shard_block_tree(store: Store,
-                            shard_store: ShardStore,
-                            block_root: Root,
-                            blocks: Dict[Root, ShardBlock]) -> bool:
-    block = shard_store.blocks[block_root]
-    children = [
-        root for root in shard_store.blocks.keys()
-        if shard_store.blocks[root].shard_parent_root == block_root
-    ]
-
-    if any(children):
-        filter_block_tree_result = [filter_shard_block_tree(store, shard_store, child, blocks) for child in children]
-        if any(filter_block_tree_result):
-            blocks[block_root] = block
-            return True
-        return False
-
-    return False
-```
-
-#### `get_filtered_block_tree`
-
-```python
-def get_filtered_shard_block_tree(store: Store, shard_store: ShardStore) -> Dict[Root, ShardBlock]:
-    shard = shard_store.shard
-    base_beacon_block_root = get_head(store)
-    base_shard_block_root = store.block_states[base_beacon_block_root].shard_states[shard].latest_block_root
-    blocks: Dict[Root, ShardBlock] = {}
-    filter_shard_block_tree(store, shard_store, base_shard_block_root, blocks)
-    return blocks
 ```
 
 ### Handlers
