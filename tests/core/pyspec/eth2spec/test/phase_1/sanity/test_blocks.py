@@ -1,3 +1,5 @@
+from typing import Dict, Sequence
+
 from eth2spec.test.context import (
     PHASE0,
     with_all_phases_except,
@@ -10,69 +12,74 @@ from eth2spec.test.helpers.shard_block import (
     build_shard_block,
     build_shard_transitions_till_slot,
 )
-from eth2spec.test.helpers.state import next_epoch, next_slot, state_transition_and_sign_block
+from eth2spec.test.helpers.state import state_transition_and_sign_block, transition_to_valid_shard_slot
+
+
+def run_beacon_block_with_shard_blocks(spec, state, shard_blocks, target_len_offset_slot, committee_index, valid=True):
+    shard_transitions = build_shard_transitions_till_slot(
+        spec, state, shard_blocks, on_time_slot=state.slot + target_len_offset_slot
+    )
+    attestations = [
+        build_attestation_with_shard_transition(
+            spec,
+            state,
+            on_time_slot=state.slot + target_len_offset_slot,
+            index=committee_index,
+            shard_transition=shard_transitions[shard],
+        )
+        for shard in shard_blocks.keys()
+    ]
+
+    # Propose beacon block at slot `x + 1`
+    beacon_block = build_empty_block(spec, state, slot=state.slot + target_len_offset_slot)
+    beacon_block.body.attestations = attestations
+    beacon_block.body.shard_transitions = shard_transitions
+
+    pre_shard_states = state.shard_states.copy()
+    yield 'pre', state.copy()
+    yield 'block', beacon_block
+    state_transition_and_sign_block(spec, state, beacon_block)
+    if valid:
+        yield 'post', state
+    else:
+        yield 'post', None
+        return
+
+    for shard in range(spec.get_active_shard_count(state)):
+        post_shard_state = state.shard_states[shard]
+        if shard in shard_blocks:
+            # Shard state has been changed to state_transition result
+            assert post_shard_state == shard_transitions[shard].shard_states[
+                len(shard_transitions[shard].shard_states) - 1
+            ]
+            assert beacon_block.slot == shard_transitions[shard].shard_states[0].slot + target_len_offset_slot
+            assert post_shard_state.slot == state.slot - 1
+            if len(shard_blocks[shard]) == 0:
+                # `latest_block_root` is the same
+                assert post_shard_state.latest_block_root == pre_shard_states[shard].latest_block_root
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_process_beacon_block_with_normal_shard_transition(spec, state):
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-    state = spec.upgrade_to_phase1(state)
-    next_slot(spec, state)
+    state = transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
-
-    # At the beginning, let `x = state.slot`, `state.shard_states[shard].slot == x - 1`
-    slot_x = state.slot
     committee_index = spec.CommitteeIndex(0)
     shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
-    assert state.shard_states[shard].slot == slot_x - 1
+    assert state.shard_states[shard].slot == state.slot - 1
 
-    # Create SignedShardBlock at slot `shard_state.slot + 1` -> x
-    body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
-    shard_block = build_shard_block(spec, state, shard, body=body, signed=True)
-    shard_blocks = [shard_block]
-
-    # Attester creates `attestation` at slot x
-    # Use temporary next state to get ShardTransition of shard block
-    shard_transitions = build_shard_transitions_till_slot(
-        spec,
-        state,
-        shards=[shard, ],
-        shard_blocks={shard: shard_blocks},
-        target_len_offset_slot=target_len_offset_slot,
-    )
-    shard_transition = shard_transitions[shard]
-    attestation = build_attestation_with_shard_transition(
-        spec,
-        state,
-        slot=slot_x + target_len_offset_slot - 1,
-        index=committee_index,
-        target_len_offset_slot=target_len_offset_slot,
-        shard_transition=shard_transition,
-    )
     pre_gasprice = state.shard_states[shard].gasprice
 
-    # Propose beacon block at slot `x + 1`
-    pre_shard_state = state.shard_states[shard]
-    beacon_block_1 = build_empty_block(spec, state, slot=slot_x + target_len_offset_slot)
-    beacon_block_1.body.attestations = [attestation]
-    beacon_block_1.body.shard_transitions = shard_transitions
-    assert (
-        beacon_block_1.slot == slot_x + target_len_offset_slot
-        == shard_transition.shard_states[0].slot + target_len_offset_slot
-    )
-    state_transition_and_sign_block(spec, state, beacon_block_1)
+    # Create SignedShardBlock at slot `shard_state.slot + 1`
+    body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
+    shard_block = build_shard_block(spec, state, shard, body=body, signed=True)
+    shard_blocks: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
 
-    # After state transition
-    assert state.slot == slot_x + target_len_offset_slot
+    yield from run_beacon_block_with_shard_blocks(spec, state, shard_blocks, target_len_offset_slot, committee_index)
+
     shard_state = state.shard_states[shard]
-    # latest_block_root has changed
-    assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
-    assert shard_state != pre_shard_state
-    assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
 
     if target_len_offset_slot == 1 and len(shard_blocks) > 0:
         assert shard_state.gasprice > pre_gasprice
@@ -82,60 +89,19 @@ def test_process_beacon_block_with_normal_shard_transition(spec, state):
 @spec_state_test
 @always_bls
 def test_process_beacon_block_with_empty_proposal_transition(spec, state):
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-    state = spec.upgrade_to_phase1(state)
-    next_slot(spec, state)
+    state = transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
-
-    # At the beginning, let `x = state.slot`, `state.shard_states[shard].slot == x - 1`
-    slot_x = state.slot
     committee_index = spec.CommitteeIndex(0)
     shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
-    assert state.shard_states[shard].slot == slot_x - 1
+    assert state.shard_states[shard].slot == state.slot - 1
 
     # No new shard block
-    shard_blocks = []
+    shard_blocks = {}
 
-    # Attester creates `attestation` at slot x
-    # Use temporary next state to get ShardTransition of shard block
-    shard_transitions = build_shard_transitions_till_slot(
-        spec,
-        state,
-        shards=[shard, ],
-        shard_blocks={shard: shard_blocks},
-        target_len_offset_slot=target_len_offset_slot,
-    )
-    shard_transition = shard_transitions[shard]
-    attestation = build_attestation_with_shard_transition(
-        spec,
-        state,
-        slot=slot_x + target_len_offset_slot - 1,
-        index=committee_index,
-        target_len_offset_slot=target_len_offset_slot,
-        shard_transition=shard_transition,
-    )
     pre_gasprice = state.shard_states[shard].gasprice
 
-    # Propose beacon block at slot `x + 1`
-    pre_shard_state = state.shard_states[shard]
-    beacon_block_1 = build_empty_block(spec, state, slot=slot_x + target_len_offset_slot)
-    beacon_block_1.body.attestations = [attestation]
-    beacon_block_1.body.shard_transitions = shard_transitions
-    assert (
-        beacon_block_1.slot == slot_x + target_len_offset_slot
-        == shard_transition.shard_states[0].slot + target_len_offset_slot
-    )
-    state_transition_and_sign_block(spec, state, beacon_block_1)
-
-    # After state transition
-    assert state.slot == slot_x + target_len_offset_slot
-    shard_state = state.shard_states[shard]
-    # latest_block_root hasn't changed
-    assert shard_state.latest_block_root == pre_shard_state.latest_block_root
-    assert shard_state != pre_shard_state
-    assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
+    yield from run_beacon_block_with_shard_blocks(spec, state, shard_blocks, target_len_offset_slot, committee_index)
 
     if target_len_offset_slot == 1 and len(shard_blocks) > 0:
-        assert shard_state.gasprice > pre_gasprice
+        assert state.shard_states[shard].gasprice > pre_gasprice
