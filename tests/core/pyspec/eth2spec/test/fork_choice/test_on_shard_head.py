@@ -11,20 +11,21 @@ from eth2spec.test.helpers.state import next_slot, state_transition_and_sign_blo
 from eth2spec.test.helpers.block import build_empty_block
 
 
-def run_on_shard_block(spec, store, shard, signed_block, valid=True):
+def run_on_shard_block(spec, store, shard_store, signed_block, valid=True):
     if not valid:
         try:
-            spec.on_shard_block(store, shard, signed_block)
+            spec.on_shard_block(store, shard_store, signed_block)
         except AssertionError:
             return
         else:
             assert False
 
-    spec.on_shard_block(store, shard, signed_block)
-    assert store.shards[shard].blocks[hash_tree_root(signed_block.message)] == signed_block.message
+    spec.on_shard_block(store, shard_store, signed_block)
+    assert shard_store.blocks[hash_tree_root(signed_block.message)] == signed_block.message
 
 
-def run_apply_shard_and_beacon(spec, state, store, shard, committee_index):
+def run_apply_shard_and_beacon(spec, state, store, shard_store, committee_index):
+    shard = shard_store.shard
     store.time = store.time + spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     # Create SignedShardBlock
@@ -57,11 +58,11 @@ def run_apply_shard_and_beacon(spec, state, store, shard, committee_index):
     beacon_block.body.shard_transitions = shard_transitions
     signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)
 
-    run_on_shard_block(spec, store, shard, shard_block)
+    run_on_shard_block(spec, store, shard_store, shard_block)
     add_block_to_store(spec, store, signed_beacon_block)
 
     assert spec.get_head(store) == beacon_block.hash_tree_root()
-    assert spec.get_shard_head(store, shard) == shard_block.message.hash_tree_root()
+    assert spec.get_shard_head(store, shard_store) == shard_block.message.hash_tree_root()
 
 
 @with_all_phases_except([PHASE0])
@@ -78,6 +79,7 @@ def test_basic(spec, state):
 
     committee_index = spec.CommitteeIndex(0)
     shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard_store = spec.get_forkchoice_shard_store(state, shard)
 
-    run_apply_shard_and_beacon(spec, state, store, shard, committee_index)
-    run_apply_shard_and_beacon(spec, state, store, shard, committee_index)
+    run_apply_shard_and_beacon(spec, state, store, shard_store, committee_index)
+    run_apply_shard_and_beacon(spec, state, store, shard_store, committee_index)
