@@ -22,6 +22,9 @@ def run_process_rewards_and_penalties(spec, state):
 
 
 def prepare_state_with_full_attestations(spec, state, empty=False):
+    # If empty is true, attestations have 0 participants, and are not signed.
+    # Thus strictly speaking invalid when no participant is added later.
+
     # Go to start of next epoch to ensure can have full participation
     next_epoch(spec, state)
 

@@ -114,6 +114,9 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False)
 
 
 def get_valid_attestation(spec, state, slot=None, index=None, empty=False, signed=False, on_time=True):
+    # If empty is true, the attestation has 0 participants, and will not be signed.
+    # Thus strictly speaking invalid when no participant is added later.
+
     if slot is None:
         slot = state.slot
     if index is None:
