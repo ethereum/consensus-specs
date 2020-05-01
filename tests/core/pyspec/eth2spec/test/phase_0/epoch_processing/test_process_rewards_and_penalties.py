@@ -15,15 +15,15 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from random import Random
 
 
 def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
 
 
-def prepare_state_with_full_attestations(spec, state, empty=False):
-    # If empty is true, attestations have 0 participants, and are not signed.
-    # Thus strictly speaking invalid when no participant is added later.
+def prepare_state_with_full_attestations(spec, state, participation_fn=None):
+    # participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
 
     # Go to start of next epoch to ensure can have full participation
     next_epoch(spec, state)
@@ -36,8 +36,15 @@ def prepare_state_with_full_attestations(spec, state, empty=False):
         # create an attestation for each index in each slot in epoch
         if state.slot < next_epoch_start_slot:
             for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
-                attestation = get_valid_attestation(spec, state, index=committee_index, empty=empty, signed=True)
-                attestations.append(attestation)
+                def temp_participants_filter(comm):
+                    if participation_fn is None:
+                        return comm
+                    else:
+                        return participation_fn(state.slot, committee_index, comm)
+                attestation = get_valid_attestation(spec, state, index=committee_index,
+                                                    filter_participant_set=temp_participants_filter, signed=True)
+                if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
+                    attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
             inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
@@ -192,20 +199,55 @@ def test_no_attestations_all_penalties(spec, state):
         assert state.balances[index] < pre_state.balances[index]
 
 
-@with_all_phases
-@spec_state_test
-def test_empty_attestations(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state, empty=True)
+def run_with_participation(spec, state, participation_fn):
+    participated = set()
+
+    def participation_tracker(slot, comm_index, comm):
+        att_participants = participation_fn(slot, comm_index, comm)
+        participated.update(att_participants)
+        return att_participants
+
+    attestations = prepare_state_with_full_attestations(spec, state, participation_fn=participation_tracker)
 
     pre_state = state.copy()
 
     yield from run_process_rewards_and_penalties(spec, state)
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) == 0
+    assert len(attesting_indices) == len(participated)
 
     for index in range(len(pre_state.validators)):
-        assert state.balances[index] < pre_state.balances[index]
+        if index in participated:
+            assert state.balances[index] > pre_state.balances[index]
+        else:
+            assert state.balances[index] < pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_test
+def test_almost_empty_attestations(spec, state):
+    rng = Random(1234)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, 1))
+
+
+@with_all_phases
+@spec_state_test
+def test_random_fill_attestations(spec, state):
+    rng = Random(4567)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) // 3))
+
+
+@with_all_phases
+@spec_state_test
+def test_almost_full_attestations(spec, state):
+    rng = Random(8901)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) - 1))
+
+
+@with_all_phases
+@spec_state_test
+def test_full_attestation_participation(spec, state):
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: comm)
 
 
 @with_all_phases
