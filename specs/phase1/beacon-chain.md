@@ -16,8 +16,8 @@
   - [Extended `AttestationData`](#extended-attestationdata)
   - [Extended `Attestation`](#extended-attestation)
   - [Extended `PendingAttestation`](#extended-pendingattestation)
-  - [`IndexedAttestation`](#indexedattestation)
-    - [Extended `AttesterSlashing`](#extended-attesterslashing)
+  - [Extended `IndexedAttestation`](#extended-indexedattestation)
+  - [Extended `AttesterSlashing`](#extended-attesterslashing)
   - [Extended `Validator`](#extended-validator)
   - [Extended `BeaconBlockBody`](#extended-beaconblockbody)
   - [Extended `BeaconBlock`](#extended-beaconblock)
@@ -52,9 +52,9 @@
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
+    - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_shard_attestation`](#is_shard_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
-    - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [New Attestation processing](#new-attestation-processing)
@@ -154,7 +154,7 @@ class PendingAttestation(Container):
     crosslink_success: boolean
 ```
 
-### `IndexedAttestation`
+### Extended `IndexedAttestation`
 
 ```python
 class IndexedAttestation(Container):
@@ -162,7 +162,7 @@ class IndexedAttestation(Container):
     attestation: Attestation
 ```
 
-#### Extended `AttesterSlashing`
+### Extended `AttesterSlashing`
 
 Note that the `attestation_1` and `attestation_2` have a new `IndexedAttestation` definition.
 
@@ -557,39 +557,6 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 
 ### Predicates
 
-#### `is_shard_attestation`
-
-```python
-def is_shard_attestation(state: BeaconState,
-                         attestation: Attestation,
-                         committee_index: CommitteeIndex) -> bool:
-    if not (
-        attestation.data.index == committee_index
-        and attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
-    ):
-        return False
-
-    return True
-```
-
-#### `is_winning_attestation`
-
-```python
-def is_winning_attestation(state: BeaconState,
-                           attestation: PendingAttestation,
-                           committee_index: CommitteeIndex,
-                           winning_root: Root) -> bool:
-    """
-    Check if ``attestation`` helped contribute to the successful crosslink of
-    ``winning_root`` formed by ``committee_index`` committee at the current slot.
-    """
-    return (
-        attestation.data.slot == state.slot
-        and attestation.data.index == committee_index
-        and attestation.data.shard_transition_root == winning_root
-    )
-```
-
 #### Updated `is_valid_indexed_attestation`
 
 Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
@@ -630,6 +597,40 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
                 else:
                     assert not cbit
         return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
+```
+
+#### `is_shard_attestation`
+
+```python
+def is_shard_attestation(state: BeaconState,
+                         attestation: Attestation,
+                         committee_index: CommitteeIndex) -> bool:
+    if not (
+        attestation.data.index == committee_index
+        and attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot  # Must be on-time attestation
+        # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
+    ):
+        return False
+
+    return True
+```
+
+#### `is_winning_attestation`
+
+```python
+def is_winning_attestation(state: BeaconState,
+                           attestation: PendingAttestation,
+                           committee_index: CommitteeIndex,
+                           winning_root: Root) -> bool:
+    """
+    Check if ``attestation`` helped contribute to the successful crosslink of
+    ``winning_root`` formed by ``committee_index`` committee at the current slot.
+    """
+    return (
+        attestation.data.slot == state.slot
+        and attestation.data.index == committee_index
+        and attestation.data.shard_transition_root == winning_root
+    )
 ```
 
 ### Block processing
@@ -942,7 +943,8 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     signing_root = compute_signing_root(get_block_root_at_slot(state, slot),
                                         get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
     if len(signer_pubkeys) == 0:
-        # TODO: Or disallow empty light_client_signature?
+        # TODO: handle the empty light_client_signature case?
+        assert block_body.light_client_signature == BLSSignature()
         return
     else:
         assert bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
