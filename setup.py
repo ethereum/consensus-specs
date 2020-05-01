@@ -375,7 +375,7 @@ class PySpecCommand(Command):
                     specs/phase0/fork-choice.md
                     specs/phase1/custody-game.md
                     specs/phase1/beacon-chain.md
-                    specs/phase1/fraud-proofs.md
+                    specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
                 """

@@ -1,38 +1,70 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Ethereum 2.0 Phase 1 -- Shard Transition and Fraud Proofs](#ethereum-20-phase-1----shard-transition-and-fraud-proofs)
-  - [Table of contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [Fraud proofs](#fraud-proofs)
-    - [Shard state transition function](#shard-state-transition-function)
-    - [Verifying the proof](#verifying-the-proof)
-  - [Honest committee member behavior](#honest-committee-member-behavior)
-    - [Helper functions](#helper-functions)
-    - [Make attestations](#make-attestations)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Ethereum 2.0 Phase 1 -- Shard Transition and Fraud Proofs
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
-<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
- TODO
+- [Introduction](#introduction)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc)
+  - [Shard block verification functions](#shard-block-verification-functions)
+- [Shard state transition](#shard-state-transition)
+- [Fraud proofs](#fraud-proofs)
+  - [Verifying the proof](#verifying-the-proof)
+- [Honest committee member behavior](#honest-committee-member-behavior)
+  - [Helper functions](#helper-functions-1)
+  - [Make attestations](#make-attestations)
 
-<!-- /TOC -->
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
 
 This document describes the shard transition function and fraud proofs as part of Phase 1 of Ethereum 2.0.
 
-## Fraud proofs
+## Helper functions
 
-### Shard state transition function
+### Misc
+
+```python
+def compute_shard_transition_digest(beacon_state: BeaconState,
+                                    shard_state: ShardState,
+                                    beacon_parent_root: Root,
+                                    shard_body_root: Root) -> Bytes32:
+    # TODO: use SSZ hash tree root
+    return hash(
+        hash_tree_root(shard_state) + beacon_parent_root + shard_body_root
+    )
+```
+
+### Shard block verification functions
+
+```python
+def verify_shard_block_message(beacon_state: BeaconState,
+                               shard_state: ShardState,
+                               block: ShardBlock,
+                               slot: Slot,
+                               shard: Shard) -> bool:
+    assert block.shard_parent_root == shard_state.latest_block_root
+    assert block.slot == slot
+    assert block.proposer_index == get_shard_proposer_index(beacon_state, slot, shard)
+    assert 0 < len(block.body) <= MAX_SHARD_BLOCK_SIZE
+    return True
+```
+
+```python
+def verify_shard_block_signature(beacon_state: BeaconState,
+                                 signed_block: SignedShardBlock) -> bool:
+    proposer = beacon_state.validators[signed_block.message.proposer_index]
+    domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(signed_block.message.slot))
+    signing_root = compute_signing_root(signed_block.message, domain)
+    return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
+```
+
+## Shard state transition
 
 ```python
 def shard_state_transition(beacon_state: BeaconState,
@@ -56,6 +88,8 @@ def shard_state_transition(beacon_state: BeaconState,
     shard_state.latest_block_root = latest_block_root
 ```
 
+We have a pure function `get_post_shard_state` for describing the fraud proof verification and honest validator behavior.
+
 ```python
 def get_post_shard_state(beacon_state: BeaconState,
                          shard_state: ShardState,
@@ -68,38 +102,7 @@ def get_post_shard_state(beacon_state: BeaconState,
     return post_state
 ```
 
-```python
-def compute_shard_transition_digest(beacon_state: BeaconState,
-                                    shard_state: ShardState,
-                                    beacon_parent_root: Root,
-                                    shard_body_root: Root) -> Bytes32:
-    # TODO: use SSZ hash tree root
-    return hash(
-        hash_tree_root(shard_state) + beacon_parent_root + shard_body_root
-    )
-```
-
-```python
-def verify_shard_block_message(beacon_state: BeaconState,
-                               shard_state: ShardState,
-                               block: ShardBlock,
-                               slot: Slot,
-                               shard: Shard) -> bool:
-    assert block.shard_parent_root == shard_state.latest_block_root
-    assert block.slot == slot
-    assert block.proposer_index == get_shard_proposer_index(beacon_state, slot, shard)
-    assert 0 < len(block.body) <= MAX_SHARD_BLOCK_SIZE
-    return True
-```
-
-```python
-def verify_shard_block_signature(beacon_state: BeaconState,
-                                 signed_block: SignedShardBlock) -> bool:
-    proposer = beacon_state.validators[signed_block.message.proposer_index]
-    domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(signed_block.message.slot))
-    signing_root = compute_signing_root(signed_block.message, domain)
-    return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
-```
+## Fraud proofs
 
 ### Verifying the proof
 
