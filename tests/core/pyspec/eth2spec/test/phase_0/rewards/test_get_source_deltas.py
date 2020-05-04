@@ -39,6 +39,12 @@ def test_half_full(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_full_but_partial_participation(spec, state):
+    yield from rewards_helpers.test_full_but_partial_participation(spec, state, run_get_source_deltas)
+
+
+@with_all_phases
+@spec_state_test
 def test_one_attestation_one_correct(spec, state):
     yield from rewards_helpers.test_one_attestation_one_correct(spec, state, run_get_source_deltas)
 
@@ -51,8 +57,8 @@ def test_with_slashed_validators(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_some_zero_effective_balances_that_attested(spec, state):
-    yield from rewards_helpers.test_some_zero_effective_balances_that_attested(spec, state, run_get_source_deltas)
+def test_some_very_low_effective_balances_that_attested(spec, state):
+    yield from rewards_helpers.test_some_very_low_effective_balances_that_attested(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
@@ -114,3 +120,9 @@ def test_full_half_incorrect_target_correct_head(spec, state):
         fraction_incorrect=0.5,
         runner=run_get_source_deltas
     )
+
+
+@with_all_phases
+@spec_state_test
+def test_full_random(spec, state):
+    yield from rewards_helpers.test_full_random(spec, state, run_get_source_deltas)

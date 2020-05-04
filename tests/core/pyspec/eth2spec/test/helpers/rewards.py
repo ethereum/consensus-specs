@@ -1,3 +1,5 @@
+from random import Random
+
 from eth2spec.test.helpers.attestations import prepare_state_with_full_attestations
 from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
@@ -5,6 +7,13 @@ from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 # HACK to get the generators outputting correctly
 class Deltas(Container):
     delta_list: List[uint64, 2**30]
+
+
+def has_enough_for_reward(spec, state, index):
+    return (
+        state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
+        > spec.integer_squareroot(spec.get_total_active_balance(state)) // spec.BASE_REWARDS_PER_EPOCH
+    )
 
 
 def run_attestation_component_deltas(spec, state, component_delta_fn, matching_att_fn):
@@ -25,11 +34,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
     matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
     for index in spec.get_eligible_validator_indices(state):
         validator = state.validators[index]
-        enough_for_reward = (
-            validator.effective_balance * spec.BASE_REWARD_FACTOR
-            > spec.integer_squareroot(spec.get_total_active_balance(state)) // spec.BASE_REWARDS_PER_EPOCH
-        )
-
+        enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
             if enough_for_reward:
                 assert rewards[index] > 0
@@ -56,13 +61,27 @@ def test_full_all_correct(spec, state, runner):
     yield from runner(spec, state)
 
 
-def test_half_full(spec, state, runner):
+def test_full_but_partial_participation(spec, state, runner, rng=Random(5522)):
     prepare_state_with_full_attestations(spec, state)
 
-    # Remove half of attestations
-    state.previous_epoch_attestations = state.previous_epoch_attestations[:len(state.previous_epoch_attestations) // 2]
+    for a in state.previous_epoch_attestations:
+        a.aggregation_bits = [rng.choice([True, False]) for _ in a.aggregation_bits]
 
     yield from runner(spec, state)
+
+
+def test_partial(spec, state, fraction_filled, runner):
+    prepare_state_with_full_attestations(spec, state)
+
+    # Remove portion of attestations
+    num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
+    state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
+
+    yield from runner(spec, state)
+
+
+def test_half_full(spec, state, runner):
+    yield from test_partial(spec, state, 0.5, runner)
 
 
 def test_one_attestation_one_correct(spec, state, runner):
@@ -84,12 +103,16 @@ def test_with_slashed_validators(spec, state, runner):
     yield from runner(spec, state)
 
 
-def test_some_zero_effective_balances_that_attested(spec, state, runner):
+def test_some_very_low_effective_balances_that_attested(spec, state, runner):
+    state.balances
     prepare_state_with_full_attestations(spec, state)
 
-    # Set some balances to zero
+    # Set some balances to be very low (including 0)
     state.validators[0].effective_balance = 0
-    state.validators[1].effective_balance = 0
+    state.validators[1].effective_balance = 2
+    state.validators[2].effective_balance = 10
+    state.validators[3].effective_balance = 100
+    state.validators[4].effective_balance = 1000
 
     yield from runner(spec, state)
 
@@ -97,9 +120,8 @@ def test_some_zero_effective_balances_that_attested(spec, state, runner):
 def test_some_zero_effective_balances_that_did_not_attest(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
-    # Set some balances to zero
-    attestation = state.previous_epoch_attestations[0]
     # Remove attestation
+    attestation = state.previous_epoch_attestations[0]
     state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
     # Set removed indices effective balance to zero
     indices = spec.get_unslashed_attesting_indices(state, [attestation])
@@ -119,5 +141,23 @@ def test_full_fraction_incorrect(spec, state, correct_target, correct_head, frac
             pending_attestation.data.target.root = b'\x55' * 32
         if not correct_head:
             pending_attestation.data.beacon_block_root = b'\x66' * 32
+
+    yield from runner(spec, state)
+
+
+def test_full_random(spec, state, runner, rng=Random(8020)):
+    prepare_state_with_full_attestations(spec, state)
+
+    for pending_attestation in state.previous_epoch_attestations:
+        # 1/3 have bad target
+        if rng.randint(0, 2) == 0:
+            pending_attestation.data.target.root = b'\x55' * 32
+        # 1/3 have bad head
+        if rng.randint(0, 2) == 0:
+            pending_attestation.data.beacon_block_root = b'\x66' * 32
+        # ~50% participation
+        pending_attestation.aggregation_bits = [rng.choice([True, False]) for _ in pending_attestation.aggregation_bits]
+        # Random inclusion delay
+        pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
 
     yield from runner(spec, state)
