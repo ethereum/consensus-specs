@@ -43,6 +43,7 @@ It consists of four main sections:
       - [BeaconBlocksByRoot](#beaconblocksbyroot)
       - [Ping](#ping)
       - [GetMetaData](#getmetadata)
+      - [`BeaconStateByCheckpoint`](#beaconstatebycheckpoint)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -155,6 +156,8 @@ This section outlines constants that are used in this spec.
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
+| `EPOCHS_PER_SERVED_CHECKPOINT` | `256` | The interval between stored checkpoint states available to be served by `BeaconStateByCheckpoint`. |
+
 
 ## MetaData
 
@@ -624,6 +627,41 @@ it's local most up-to-date MetaData.
 The response MUST be encoded as an SSZ-container.
 
 The response MUST consist of a single `response_chunk`.
+
+#### `BeaconStateByCheckpoint`
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_state_by_checkpoint/1/`
+
+Request Content:
+
+```
+(
+  checkpoint: Checkpoint
+)
+```
+
+Response Content:
+
+```
+(
+  state: BeaconState
+)
+```
+
+Requests the `BeaconState` represented by a particular `checkpoint` (that is, the finalized state at slot `compute_start_slot_at_epoch(checkpoint.epoch)` with `hash_tree_root` of `checkpoint.root`).
+
+The requested `checkpoint` MUST be finalized and MUST satisfy `checkpoint.epoch % EPOCHS_PER_SERVED_CHECKPOINT == 0`.
+
+Clients supporting this request MUST keep a record of _finalized_ beacon states for epochs where `epoch % EPOCHS_PER_SERVED_CHECKPOINT == 0` through the weak subjectivity period.
+
+The request MUST be encoded as an SSZ-field.
+
+If failure due to the `checkpoint` not being available in the server's finalized database, response must be a single `response_chunk` with response code `2` (`ServerError`).
+
+If success,
+- Response MUST be encoded as an SSZ-container.
+- `hash_tree_root(state)` MUST be equal to `checkpoint.root`.
+- `state.slot` MUST be equal to `compute_start_slot_at_epoch(checkpoint.epoch)`.
 
 ## The discovery domain: discv5
 
