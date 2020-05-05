@@ -10,6 +10,12 @@ class Deltas(Container):
 
 
 def has_enough_for_reward(spec, state, index):
+    """
+    Check if base_reward will be non-zero.
+
+    At very low balances, it is possible for a validator have a positive effective_balance
+    but a zero base reward.
+    """
     return (
         state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
         > spec.integer_squareroot(spec.get_total_active_balance(state)) // spec.BASE_REWARDS_PER_EPOCH
