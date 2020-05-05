@@ -2,6 +2,7 @@ from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import (
     run_epoch_processing_with, run_epoch_processing_to
 )
+from eth2spec.test.helpers.state import next_epoch
 
 
 def run_process_slashings(spec, state):
@@ -79,7 +80,7 @@ def test_small_penalty(spec, state):
 @spec_state_test
 def test_scaled_penalties(spec, state):
     # skip to next epoch
-    state.slot = spec.SLOTS_PER_EPOCH
+    next_epoch(spec, state)
 
     # Also mock some previous slashings, so that we test to have the delta in the penalties computation.
     base = spec.EJECTION_BALANCE

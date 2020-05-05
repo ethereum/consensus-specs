@@ -1,5 +1,6 @@
-from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
-from eth2spec.test.helpers.state import next_epoch, next_epoch_with_attestations
+from eth2spec.test.context import spec_state_test, never_bls, with_all_phases, with_phases
+from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 from eth2spec.test.helpers.block import apply_empty_block
 
 
@@ -28,7 +29,7 @@ def check_finality(spec,
         assert state.finalized_checkpoint == prev_state.finalized_checkpoint
 
 
-@with_all_phases
+@with_phases(["phase0"])
 @spec_state_test
 @never_bls
 def test_finality_no_updates_at_genesis(spec, state):

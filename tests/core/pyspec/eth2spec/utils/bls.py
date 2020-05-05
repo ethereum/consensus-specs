@@ -51,3 +51,8 @@ def Sign(SK, message):
 @only_with_bls(alt_return=STUB_COORDINATES)
 def signature_to_G2(signature):
     return _signature_to_G2(signature)
+
+
+@only_with_bls(alt_return=STUB_PUBKEY)
+def AggregatePKs(pubkeys):
+    return bls._AggregatePKs(pubkeys)

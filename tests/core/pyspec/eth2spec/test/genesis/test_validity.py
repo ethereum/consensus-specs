@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_test, with_phases, single_phase
+from eth2spec.test.context import PHASE0, spec_test, with_phases, single_phase
 from eth2spec.test.helpers.deposits import (
     prepare_genesis_deposits,
 )
@@ -25,7 +25,7 @@ def run_is_valid_genesis_state(spec, state, valid=True):
     assert is_valid == valid
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_true(spec):
@@ -34,7 +34,7 @@ def test_is_valid_genesis_state_true(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_false_invalid_timestamp(spec):
@@ -44,7 +44,7 @@ def test_is_valid_genesis_state_false_invalid_timestamp(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=False)
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_true_more_balance(spec):
@@ -55,7 +55,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
 
 
 # TODO: not part of the genesis function yet. Erroneously merged.
-# @with_phases(['phase0'])
+# @with_phases([PHASE0])
 # @spec_test
 # def test_is_valid_genesis_state_false_not_enough_balance(spec):
 #     state = create_valid_beacon_state(spec)
@@ -64,7 +64,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
 #     yield from run_is_valid_genesis_state(spec, state, valid=False)
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_true_one_more_validator(spec):
@@ -78,7 +78,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_false_not_enough_validator(spec):

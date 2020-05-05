@@ -2,6 +2,7 @@ from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import (
     run_epoch_processing_with, run_epoch_processing_to
 )
+from eth2spec.test.helpers.state import transition_to
 
 
 def run_process_final_updates(spec, state):
@@ -13,7 +14,8 @@ def run_process_final_updates(spec, state):
 def test_eth1_vote_no_reset(spec, state):
     assert spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 1
     # skip ahead to the end of the epoch
-    state.slot = spec.SLOTS_PER_EPOCH - 1
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH - 1)
+
     for i in range(state.slot + 1):  # add a vote for each skipped slot.
         state.eth1_data_votes.append(
             spec.Eth1Data(deposit_root=b'\xaa' * 32,

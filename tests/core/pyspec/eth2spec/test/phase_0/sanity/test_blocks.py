@@ -2,16 +2,19 @@ from copy import deepcopy
 
 from eth2spec.utils import bls
 
-from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot
+from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot, next_epoch
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
     transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.attestations import get_valid_attestation, fill_block_shard_transitions_by_attestations
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, with_all_phases, expect_assertion_error, always_bls
+from eth2spec.test.context import (
+    spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
+    PHASE1
+)
 
 
 @with_all_phases
@@ -303,7 +306,8 @@ def test_proposer_after_inactive_index(spec, state):
     state.validators[inactive_index].exit_epoch = spec.get_current_epoch(state)
 
     # skip forward, get brand new proposers
-    state.slot = spec.SLOTS_PER_EPOCH * 2
+    next_epoch(spec, state)
+    next_epoch(spec, state)
     block = build_empty_block_for_next_slot(spec, state)
     state_transition_and_sign_block(spec, state, block)
 
@@ -415,16 +419,18 @@ def test_deposit_top_up(spec, state):
 @with_all_phases
 @spec_state_test
 def test_attestation(spec, state):
-    state.slot = spec.SLOTS_PER_EPOCH
+    next_epoch(spec, state)
 
     yield 'pre', state
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=True, on_time=True)
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
-    attestation_block = build_empty_block(spec, state, state.slot + 1 + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
     attestation_block.body.attestations.append(attestation)
+    if spec.fork == PHASE1:
+        fill_block_shard_transitions_by_attestations(spec, state, attestation_block)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
     assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
@@ -442,7 +448,9 @@ def test_attestation(spec, state):
     assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
 
 
-@with_all_phases
+# In phase1 a committee is computed for PERSISTENT_COMMITTEE_PERIOD slots ago,
+# exceeding the minimal-config randao mixes memory size.
+@with_phases(['phase0'])
 @spec_state_test
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(

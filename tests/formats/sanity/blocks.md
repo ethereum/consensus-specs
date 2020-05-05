@@ -25,7 +25,7 @@ Also available as `pre.ssz`.
 A series of files, with `<index>` in range `[0, blocks_count)`. Blocks need to be processed in order,
  following the main transition function (i.e. process slot and epoch transitions in between blocks as normal)
 
-Each file is a YAML-encoded `BeaconBlock`.
+Each file is a YAML-encoded `SignedBeaconBlock`.
 
 Each block is also available as `blocks_<index>.ssz`
 

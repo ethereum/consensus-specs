@@ -108,7 +108,7 @@ def get_forkchoice_store(anchor_state: BeaconState) -> Store:
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
-        time=anchor_state.genesis_time,
+        time=anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot,
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -273,13 +273,12 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
+    # If attestation target is from a future epoch, delay consideration until the epoch arrives
     assert target.epoch in [current_epoch, previous_epoch]
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
 
     # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
     assert target.root in store.blocks
-    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
-    assert get_current_slot(store) >= compute_start_slot_at_epoch(target.epoch)
 
     # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
     assert attestation.data.beacon_block_root in store.blocks
