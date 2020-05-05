@@ -1364,9 +1364,12 @@ def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorInde
 ```
 
 ```python
-def compute_attestation_component_deltas(state: BeaconState,
-                                         attestations: Sequence[PendingAttestation]
-                                         ) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_attestation_component_deltas(state: BeaconState,
+                                     attestations: Sequence[PendingAttestation]
+                                     ) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Helper with shared logic for use by get source, target, and head deltas functions
+    """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     total_balance = get_total_active_balance(state)
@@ -1390,7 +1393,7 @@ def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
     Return attester micro-rewards/penalties for source-vote for each validator.
     """
     matching_source_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
-    return compute_attestation_component_deltas(state, matching_source_attestations)
+    return get_attestation_component_deltas(state, matching_source_attestations)
 ```
 
 ```python
@@ -1399,7 +1402,7 @@ def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
     Return attester micro-rewards/penalties for target-vote for each validator.
     """
     matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
-    return compute_attestation_component_deltas(state, matching_target_attestations)
+    return get_attestation_component_deltas(state, matching_target_attestations)
 ```
 
 ```python
@@ -1408,7 +1411,7 @@ def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]
     Return attester micro-rewards/penalties for head-vote for each validator.
     """
     matching_head_attestations = get_matching_head_attestations(state, get_previous_epoch(state))
-    return compute_attestation_component_deltas(state, matching_head_attestations)
+    return get_attestation_component_deltas(state, matching_head_attestations)
 ```
 
 ```python
@@ -1465,18 +1468,12 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
     _, inactivity_penalties = get_inactivity_penalty_deltas(state)
 
     rewards = [
-        source_rewards[i]
-        + target_rewards[i]
-        + head_rewards[i]
-        + inclusion_delay_rewards[i]
+        source_rewards[i] + target_rewards[i] + head_rewards[i] + inclusion_delay_rewards[i]
         for i in range(len(state.validators))
     ]
 
     penalties = [
-        source_penalties[i]
-        + target_penalties[i]
-        + head_penalties[i]
-        + inactivity_penalties[i]
+        source_penalties[i] + target_penalties[i] + head_penalties[i] + inactivity_penalties[i]
         for i in range(len(state.validators))
     ]
 
