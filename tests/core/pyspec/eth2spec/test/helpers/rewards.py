@@ -1,12 +1,13 @@
 from random import Random
 
+from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.test.helpers.attestations import prepare_state_with_full_attestations
 from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
 
-# HACK to get the generators outputting correctly
 class Deltas(Container):
-    delta_list: List[uint64, 2**30]
+    rewards: List[uint64, spec_phase0.VALIDATOR_REGISTRY_LIMIT]
+    penalties: List[uint64, spec_phase0.VALIDATOR_REGISTRY_LIMIT]
 
 
 def has_enough_for_reward(spec, state, index):
@@ -33,8 +34,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
 
     rewards, penalties = component_delta_fn(state)
 
-    yield 'rewards', Deltas(delta_list=rewards)
-    yield 'penalties', Deltas(delta_list=penalties)
+    yield 'deltas', Deltas(rewards=rewards, penalties=penalties)
 
     matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
     matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)

@@ -2,14 +2,8 @@ from random import Random
 
 from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.attestations import prepare_state_with_full_attestations
-from eth2spec.test.helpers.rewards import has_enough_for_reward
+from eth2spec.test.helpers.rewards import Deltas, has_enough_for_reward
 import eth2spec.test.helpers.rewards as rewards_helpers
-from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
-
-
-# HACK to get the generators outputting correctly
-class Deltas(Container):
-    delta_list: List[uint64, 2**30]
 
 
 def run_get_inclusion_delay_deltas(spec, state):
@@ -24,8 +18,7 @@ def run_get_inclusion_delay_deltas(spec, state):
 
     rewards, penalties = spec.get_inclusion_delay_deltas(state)
 
-    yield 'rewards', Deltas(delta_list=rewards)
-    yield 'penalties', Deltas(delta_list=penalties)
+    yield 'deltas', Deltas(rewards=rewards, penalties=penalties)
 
     eligible_attestations = spec.get_matching_source_attestations(state, spec.get_previous_epoch(state))
     attesting_indices = spec.get_unslashed_attesting_indices(state, eligible_attestations)

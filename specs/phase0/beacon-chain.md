@@ -1370,8 +1370,8 @@ def get_attestation_component_deltas(state: BeaconState,
     """
     Helper with shared logic for use by get source, target, and head deltas functions
     """
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    rewards = [Gwei(0)] * len(state.validators)
+    penalties = [Gwei(0)] * len(state.validators)
     total_balance = get_total_active_balance(state)
     unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
     attesting_balance = get_total_balance(state, unslashed_attesting_indices)
