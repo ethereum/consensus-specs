@@ -6,6 +6,8 @@ from eth2spec.test.phase_0.rewards import (
     test_get_source_deltas,
     test_get_target_deltas,
     test_get_head_deltas,
+    test_get_inclusion_delay_deltas,
+    test_get_inactivity_penalty_deltas,
 )
 from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
@@ -41,4 +43,8 @@ if __name__ == "__main__":
         create_provider('get_target_deltas', test_get_target_deltas, 'mainnet'),
         create_provider('get_head_deltas', test_get_head_deltas, 'minimal'),
         create_provider('get_head_deltas', test_get_head_deltas, 'mainnet'),
+        create_provider('get_inclusion_delay_deltas', test_get_inclusion_delay_deltas, 'minimal'),
+        create_provider('get_inclusion_delay_deltas', test_get_inclusion_delay_deltas, 'mainnet'),
+        create_provider('get_inactivity_penalty_deltas', test_get_inactivity_penalty_deltas, 'minimal'),
+        create_provider('get_inactivity_penalty_deltas', test_get_inactivity_penalty_deltas, 'mainnet'),
     ])

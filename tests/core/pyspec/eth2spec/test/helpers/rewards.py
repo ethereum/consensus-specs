@@ -32,7 +32,13 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
 
     matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
     matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
-    for index in spec.get_eligible_validator_indices(state):
+    eligible_indices = spec.get_eligible_validator_indices(state)
+    for index in range(len(state.validators)):
+        if index not in eligible_indices:
+            assert rewards[index] == 0
+            assert penalties[index] == 0
+            continue
+
         validator = state.validators[index]
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
@@ -117,7 +123,7 @@ def test_some_very_low_effective_balances_that_attested(spec, state, runner):
     yield from runner(spec, state)
 
 
-def test_some_zero_effective_balances_that_did_not_attest(spec, state, runner):
+def test_some_very_low_effective_balances_that_did_not_attest(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Remove attestation
@@ -125,8 +131,8 @@ def test_some_zero_effective_balances_that_did_not_attest(spec, state, runner):
     state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
     # Set removed indices effective balance to zero
     indices = spec.get_unslashed_attesting_indices(state, [attestation])
-    for index in indices:
-        state.validators[index].effective_balance = 0
+    for i, index in enumerate(indices):
+        state.validators[index].effective_balance = i
 
     yield from runner(spec, state)
 

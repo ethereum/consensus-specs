@@ -63,8 +63,12 @@ def test_some_very_low_effective_balances_that_attested(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_some_zero_effective_balances_that_did_not_attest(spec, state):
-    yield from rewards_helpers.test_some_zero_effective_balances_that_did_not_attest(spec, state, run_get_source_deltas)
+def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
+    yield from rewards_helpers.test_some_very_low_effective_balances_that_did_not_attest(
+        spec,
+        state,
+        run_get_source_deltas,
+    )
 
 
 #

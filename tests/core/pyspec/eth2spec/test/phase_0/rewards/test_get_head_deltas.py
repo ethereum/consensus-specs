@@ -39,6 +39,12 @@ def test_half_full(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_full_but_partial_participation(spec, state):
+    yield from rewards_helpers.test_full_but_partial_participation(spec, state, run_get_head_deltas)
+
+
+@with_all_phases
+@spec_state_test
 def test_one_attestation_one_correct(spec, state):
     yield from rewards_helpers.test_one_attestation_one_correct(spec, state, run_get_head_deltas)
 
@@ -57,8 +63,12 @@ def test_some_very_low_effective_balances_that_attested(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_some_zero_effective_balances_that_did_not_attest(spec, state):
-    yield from rewards_helpers.test_some_zero_effective_balances_that_did_not_attest(spec, state, run_get_head_deltas)
+def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
+    yield from rewards_helpers.test_some_very_low_effective_balances_that_did_not_attest(
+        spec,
+        state,
+        run_get_head_deltas,
+    )
 
 
 @with_all_phases
