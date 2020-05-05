@@ -99,7 +99,7 @@ def test_half_full(spec, state, runner):
 def test_one_attestation_one_correct(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
-    # Remove half of attestations
+    # Remove all attestations except for the first one
     state.previous_epoch_attestations = state.previous_epoch_attestations[:1]
 
     yield from runner(spec, state)
@@ -120,11 +120,9 @@ def test_some_very_low_effective_balances_that_attested(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Set some balances to be very low (including 0)
-    state.validators[0].effective_balance = 0
-    state.validators[1].effective_balance = 2
-    state.validators[2].effective_balance = 10
-    state.validators[3].effective_balance = 100
-    state.validators[4].effective_balance = 1000
+    assert len(state.validators) >= 5:
+    for i, index in enumerate(5):
+        state.validators[index].effective_balance = i
 
     yield from runner(spec, state)
 
@@ -135,7 +133,7 @@ def test_some_very_low_effective_balances_that_did_not_attest(spec, state, runne
     # Remove attestation
     attestation = state.previous_epoch_attestations[0]
     state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
-    # Set removed indices effective balance to zero
+    # Set removed indices effective balance to very low amount
     indices = spec.get_unslashed_attesting_indices(state, [attestation])
     for i, index in enumerate(indices):
         state.validators[index].effective_balance = i
