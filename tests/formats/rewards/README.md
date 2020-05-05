@@ -33,7 +33,7 @@ class Deltas(Container):
     penalties: List[uint64, VALIDATOR_REGISTRY_LIMIT]
 ```
 
-Also available as `rewards.ssz`.
+Also available as `deltas.ssz`.
 
 ## Condition
 

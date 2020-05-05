@@ -28,8 +28,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
     """
     Run ``component_delta_fn``, yielding:
       - pre-state ('pre')
-      - rewards ('rewards')
-      - penalties ('penalties')
+      - deltas ('deltas')
     """
     yield 'pre', state
 

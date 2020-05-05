@@ -9,8 +9,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
     """
     Run ``get_inactivity_penalty_deltas``, yielding:
       - pre-state ('pre')
-      - rewards ('rewards')
-      - penalties ('penalties')
+      - deltas ('deltas')
     """
 
     yield 'pre', state

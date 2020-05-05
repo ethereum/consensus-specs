@@ -7,8 +7,7 @@ def run_get_source_deltas(spec, state):
     """
     Run ``get_source_deltas``, yielding:
       - pre-state ('pre')
-      - rewards ('rewards')
-      - penalties ('penalties')
+      - deltas ('deltas')
     """
 
     yield from run_attestation_component_deltas(

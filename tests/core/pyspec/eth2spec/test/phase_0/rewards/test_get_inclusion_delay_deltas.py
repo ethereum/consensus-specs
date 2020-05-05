@@ -10,8 +10,7 @@ def run_get_inclusion_delay_deltas(spec, state):
     """
     Run ``get_inclusion_delay_deltas``, yielding:
       - pre-state ('pre')
-      - rewards ('rewards')
-      - penalties ('penalties')
+      - deltas ('deltas')
     """
 
     yield 'pre', state
