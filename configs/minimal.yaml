@@ -95,7 +95,7 @@ SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**8 (= 256) epochs
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 # [customized] higher frequency of committee turnover and faster time to acceptable voluntary exit
-PERSISTENT_COMMITTEE_PERIOD: 128
+SHARD_COMMITTEE_PERIOD: 64
 # [customized] fast catchup crosslinks
 MAX_EPOCHS_PER_CROSSLINK: 4
 # 2**2 (= 4) epochs
@@ -178,8 +178,6 @@ ONLINE_PERIOD: 8
 LIGHT_CLIENT_COMMITTEE_SIZE: 128
 # 2**8 (= 256) | epochs
 LIGHT_CLIENT_COMMITTEE_PERIOD: 256
-# 2**8 (= 256) | epochs
-SHARD_COMMITTEE_PERIOD: 256
 # 2**18 (= 262,144)
 SHARD_BLOCK_CHUNK_SIZE: 262144
 # 2**2 (= 4)
