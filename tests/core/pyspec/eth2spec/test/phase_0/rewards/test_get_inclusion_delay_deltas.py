@@ -64,43 +64,43 @@ def run_get_inclusion_delay_deltas(spec, state):
 @with_all_phases
 @spec_state_test
 def test_empty(spec, state):
-    yield from rewards_helpers.test_empty(spec, state, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_empty(spec, state, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full(spec, state):
-    yield from rewards_helpers.test_full_all_correct(spec, state, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_full_all_correct(spec, state, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_half_full(spec, state):
-    yield from rewards_helpers.test_half_full(spec, state, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_half_full(spec, state, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_quarter_full(spec, state):
-    yield from rewards_helpers.test_partial(spec, state, 0.25, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_partial(spec, state, 0.25, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_but_partial_participation(spec, state):
-    yield from rewards_helpers.test_full_but_partial_participation(spec, state, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_full_but_partial_participation(spec, state, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_with_slashed_validators(spec, state):
-    yield from rewards_helpers.test_with_slashed_validators(spec, state, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_with_slashed_validators(spec, state, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_attested(spec, state):
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_attested(
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
         spec,
         state,
         run_get_inclusion_delay_deltas
@@ -110,7 +110,7 @@ def test_some_very_low_effective_balances_that_attested(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_random(spec, state):
-    yield from rewards_helpers.test_full_random(spec, state, run_get_inclusion_delay_deltas)
+    yield from rewards_helpers.run_test_full_random(spec, state, run_get_inclusion_delay_deltas)
 
 
 @with_all_phases
@@ -179,7 +179,8 @@ def test_duplicate_attestations_at_later_slots(spec, state):
     max_slot = max([a.data.slot + a.inclusion_delay for a in state.previous_epoch_attestations])
     later_attestations = []
     for a in state.previous_epoch_attestations:
-        # Do not create later duplicate if goes into next epoch
+        # Only have proposers for previous epoch so do not create later
+        # duplicate if slot exceeds the max slot in previous_epoch_attestations
         if a.data.slot + a.inclusion_delay >= max_slot:
             continue
         later_a = a.copy()

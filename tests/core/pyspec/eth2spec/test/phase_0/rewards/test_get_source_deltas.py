@@ -22,49 +22,53 @@ def run_get_source_deltas(spec, state):
 @with_all_phases
 @spec_state_test
 def test_empty(spec, state):
-    yield from rewards_helpers.test_empty(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_empty(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_all_correct(spec, state):
-    yield from rewards_helpers.test_full_all_correct(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_full_all_correct(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_half_full(spec, state):
-    yield from rewards_helpers.test_half_full(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_half_full(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_but_partial_participation(spec, state):
-    yield from rewards_helpers.test_full_but_partial_participation(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_full_but_partial_participation(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_one_attestation_one_correct(spec, state):
-    yield from rewards_helpers.test_one_attestation_one_correct(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_one_attestation_one_correct(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_with_slashed_validators(spec, state):
-    yield from rewards_helpers.test_with_slashed_validators(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_with_slashed_validators(spec, state, run_get_source_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_attested(spec, state):
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_attested(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
+        spec,
+        state,
+        run_get_source_deltas
+    )
 
 
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_did_not_attest(
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_did_not_attest(
         spec,
         state,
         run_get_source_deltas,
@@ -81,7 +85,7 @@ def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_half_correct_target_incorrect_head(spec, state):
-    yield from rewards_helpers.test_full_fraction_incorrect(
+    yield from rewards_helpers.run_test_full_fraction_incorrect(
         spec, state,
         correct_target=True,
         correct_head=False,
@@ -93,7 +97,7 @@ def test_full_half_correct_target_incorrect_head(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_correct_target_incorrect_head(spec, state):
-    yield from rewards_helpers.test_full_fraction_incorrect(
+    yield from rewards_helpers.run_test_full_fraction_incorrect(
         spec, state,
         correct_target=True,
         correct_head=False,
@@ -105,7 +109,7 @@ def test_full_correct_target_incorrect_head(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_half_incorrect_target_incorrect_head(spec, state):
-    yield from rewards_helpers.test_full_fraction_incorrect(
+    yield from rewards_helpers.run_test_full_fraction_incorrect(
         spec, state,
         correct_target=False,
         correct_head=False,
@@ -117,7 +121,7 @@ def test_full_half_incorrect_target_incorrect_head(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_half_incorrect_target_correct_head(spec, state):
-    yield from rewards_helpers.test_full_fraction_incorrect(
+    yield from rewards_helpers.run_test_full_fraction_incorrect(
         spec, state,
         correct_target=False,
         correct_head=True,
@@ -129,4 +133,4 @@ def test_full_half_incorrect_target_correct_head(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_random(spec, state):
-    yield from rewards_helpers.test_full_random(spec, state, run_get_source_deltas)
+    yield from rewards_helpers.run_test_full_random(spec, state, run_get_source_deltas)

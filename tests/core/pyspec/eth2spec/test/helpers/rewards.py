@@ -61,19 +61,19 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                 assert penalties[index] == 0
 
 
-def test_empty(spec, state, runner):
+def run_test_empty(spec, state, runner):
     # Do not add any attestations to state
 
     yield from runner(spec, state)
 
 
-def test_full_all_correct(spec, state, runner):
+def run_test_full_all_correct(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
     yield from runner(spec, state)
 
 
-def test_full_but_partial_participation(spec, state, runner, rng=Random(5522)):
+def run_test_full_but_partial_participation(spec, state, runner, rng=Random(5522)):
     prepare_state_with_full_attestations(spec, state)
 
     for a in state.previous_epoch_attestations:
@@ -82,7 +82,7 @@ def test_full_but_partial_participation(spec, state, runner, rng=Random(5522)):
     yield from runner(spec, state)
 
 
-def test_partial(spec, state, fraction_filled, runner):
+def run_test_partial(spec, state, fraction_filled, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Remove portion of attestations
@@ -92,11 +92,11 @@ def test_partial(spec, state, fraction_filled, runner):
     yield from runner(spec, state)
 
 
-def test_half_full(spec, state, runner):
-    yield from test_partial(spec, state, 0.5, runner)
+def run_test_half_full(spec, state, runner):
+    yield from run_test_partial(spec, state, 0.5, runner)
 
 
-def test_one_attestation_one_correct(spec, state, runner):
+def run_test_one_attestation_one_correct(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Remove all attestations except for the first one
@@ -105,7 +105,7 @@ def test_one_attestation_one_correct(spec, state, runner):
     yield from runner(spec, state)
 
 
-def test_with_slashed_validators(spec, state, runner):
+def run_test_with_slashed_validators(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Slash half of validators
@@ -115,19 +115,19 @@ def test_with_slashed_validators(spec, state, runner):
     yield from runner(spec, state)
 
 
-def test_some_very_low_effective_balances_that_attested(spec, state, runner):
+def run_test_some_very_low_effective_balances_that_attested(spec, state, runner):
     state.balances
     prepare_state_with_full_attestations(spec, state)
 
     # Set some balances to be very low (including 0)
-    assert len(state.validators) >= 5:
-    for i, index in enumerate(5):
+    assert len(state.validators) >= 5
+    for i, index in enumerate(range(5)):
         state.validators[index].effective_balance = i
 
     yield from runner(spec, state)
 
 
-def test_some_very_low_effective_balances_that_did_not_attest(spec, state, runner):
+def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Remove attestation
@@ -141,7 +141,7 @@ def test_some_very_low_effective_balances_that_did_not_attest(spec, state, runne
     yield from runner(spec, state)
 
 
-def test_full_fraction_incorrect(spec, state, correct_target, correct_head, fraction_incorrect, runner):
+def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, fraction_incorrect, runner):
     prepare_state_with_full_attestations(spec, state)
 
     # Make fraction_incorrect of pending attestations have bad target/head as specified
@@ -155,14 +155,14 @@ def test_full_fraction_incorrect(spec, state, correct_target, correct_head, frac
     yield from runner(spec, state)
 
 
-def test_full_random(spec, state, runner, rng=Random(8020)):
+def run_test_full_random(spec, state, runner, rng=Random(8020)):
     prepare_state_with_full_attestations(spec, state)
 
     for pending_attestation in state.previous_epoch_attestations:
-        # 1/3 have bad target
+        # ~1/3 have bad target
         if rng.randint(0, 2) == 0:
             pending_attestation.data.target.root = b'\x55' * 32
-        # 1/3 have bad head
+        # ~1/3 have bad head
         if rng.randint(0, 2) == 0:
             pending_attestation.data.beacon_block_root = b'\x66' * 32
         # ~50% participation

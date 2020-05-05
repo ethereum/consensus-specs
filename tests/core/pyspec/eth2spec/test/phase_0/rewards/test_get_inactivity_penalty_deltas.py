@@ -60,85 +60,85 @@ def transition_state_to_leak(spec, state, epochs=None):
 @with_all_phases
 @spec_state_test
 def test_empty_no_leak(spec, state):
-    yield from rewards_helpers.test_empty(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_empty(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_empty_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_empty(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_empty(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_no_leak(spec, state):
-    yield from rewards_helpers.test_full_all_correct(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_all_correct(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_full_all_correct(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_all_correct(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_half_full_no_leak(spec, state):
-    yield from rewards_helpers.test_half_full(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_half_full(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_half_full_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_half_full(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_half_full(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_quarter_full_no_leak(spec, state):
-    yield from rewards_helpers.test_partial(spec, state, 0.25, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_partial(spec, state, 0.25, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_quarter_full_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_partial(spec, state, 0.25, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_partial(spec, state, 0.25, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_but_partial_participation_no_leak(spec, state):
-    yield from rewards_helpers.test_full_but_partial_participation(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_but_partial_participation(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_but_partial_participation_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_full_but_partial_participation(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_but_partial_participation(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_with_slashed_validators_no_leak(spec, state):
-    yield from rewards_helpers.test_with_slashed_validators(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_with_slashed_validators(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_with_slashed_validators_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_with_slashed_validators(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_with_slashed_validators(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_attested_no_leak(spec, state):
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_attested(
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
         spec,
         state,
         run_get_inactivity_penalty_deltas,
@@ -149,7 +149,7 @@ def test_some_very_low_effective_balances_that_attested_no_leak(spec, state):
 @spec_state_test
 def test_some_very_low_effective_balances_that_attested_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_attested(
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
         spec,
         state,
         run_get_inactivity_penalty_deltas,
@@ -159,7 +159,7 @@ def test_some_very_low_effective_balances_that_attested_leak(spec, state):
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_did_not_attest_no_leak(spec, state):
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_did_not_attest(
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_did_not_attest(
         spec,
         state,
         run_get_inactivity_penalty_deltas,
@@ -170,7 +170,7 @@ def test_some_very_low_effective_balances_that_did_not_attest_no_leak(spec, stat
 @spec_state_test
 def test_some_very_low_effective_balances_that_did_not_attest_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_some_very_low_effective_balances_that_did_not_attest(
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_did_not_attest(
         spec,
         state,
         run_get_inactivity_penalty_deltas,
@@ -180,25 +180,25 @@ def test_some_very_low_effective_balances_that_did_not_attest_leak(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_random_no_leak(spec, state):
-    yield from rewards_helpers.test_full_random(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_random(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_random_leak(spec, state):
     transition_state_to_leak(spec, state)
-    yield from rewards_helpers.test_full_random(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_random(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_random_five_epoch_leak(spec, state):
     transition_state_to_leak(spec, state, epochs=5)
-    yield from rewards_helpers.test_full_random(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_random(spec, state, run_get_inactivity_penalty_deltas)
 
 
 @with_all_phases
 @spec_state_test
 def test_full_random_ten_epoch_leak(spec, state):
     transition_state_to_leak(spec, state, epochs=10)
-    yield from rewards_helpers.test_full_random(spec, state, run_get_inactivity_penalty_deltas)
+    yield from rewards_helpers.run_test_full_random(spec, state, run_get_inactivity_penalty_deltas)
