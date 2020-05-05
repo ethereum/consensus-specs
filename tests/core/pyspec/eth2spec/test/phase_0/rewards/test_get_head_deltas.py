@@ -51,6 +51,12 @@ def test_one_attestation_one_correct(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_with_exited_validators(spec, state):
+    yield from rewards_helpers.run_test_with_exited_validators(spec, state, run_get_head_deltas)
+
+
+@with_all_phases
+@spec_state_test
 def test_with_slashed_validators(spec, state):
     yield from rewards_helpers.run_test_with_slashed_validators(spec, state, run_get_head_deltas)
 

@@ -2,6 +2,7 @@ from random import Random
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.test.helpers.attestations import prepare_state_with_full_attestations
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
 
@@ -61,6 +62,32 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                 assert penalties[index] == 0
 
 
+def exit_random_validators(spec, state, rng):
+    if spec.get_current_epoch(state) < 5:
+        # Move epochs forward to allow for some validators already exited/withdrawable
+        for _ in range(5):
+            next_epoch(spec, state)
+
+    current_epoch = spec.get_current_epoch(state)
+    # Exit ~1/2 of validators
+    for validator in state.validators:
+        if rng.choice([True, False]):
+            continue
+
+        validator.exit_epoch = rng.choice([current_epoch - 1, current_epoch - 2, current_epoch - 3])
+        # ~1/2 are withdrawable
+        if rng.choice([True, False]):
+            validator.withdrawable_epoch = current_epoch
+        else:
+            validator.withdrawable_epoch = current_epoch + 1
+
+
+def slash_random_validators(spec, state, rng):
+    # Slash ~1/2 of validators
+    for validator in state.validators:
+        validator.slashed = rng.choice([True, False])
+
+
 def run_test_empty(spec, state, runner):
     # Do not add any attestations to state
 
@@ -105,12 +132,18 @@ def run_test_one_attestation_one_correct(spec, state, runner):
     yield from runner(spec, state)
 
 
-def run_test_with_slashed_validators(spec, state, runner):
+def run_test_with_exited_validators(spec, state, runner, rng=Random(1337)):
+    exit_random_validators(spec, state, rng)
     prepare_state_with_full_attestations(spec, state)
 
-    # Slash half of validators
-    for validator in state.validators[:len(state.validators) // 2]:
-        validator.slashed = True
+    yield from runner(spec, state)
+
+
+def run_test_with_slashed_validators(spec, state, runner, rng=Random(3322)):
+    exit_random_validators(spec, state, rng)
+    slash_random_validators(spec, state, rng)
+
+    prepare_state_with_full_attestations(spec, state)
 
     yield from runner(spec, state)
 
@@ -156,6 +189,9 @@ def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, 
 
 
 def run_test_full_random(spec, state, runner, rng=Random(8020)):
+    exit_random_validators(spec, state, rng)
+    slash_random_validators(spec, state, rng)
+
     prepare_state_with_full_attestations(spec, state)
 
     for pending_attestation in state.previous_epoch_attestations:
