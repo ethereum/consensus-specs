@@ -100,7 +100,6 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
 | `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |

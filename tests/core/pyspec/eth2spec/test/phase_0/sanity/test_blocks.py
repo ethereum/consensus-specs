@@ -448,7 +448,7 @@ def test_attestation(spec, state):
     assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
 
 
-# In phase1 a committee is computed for PERSISTENT_COMMITTEE_PERIOD slots ago,
+# In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
 # exceeding the minimal-config randao mixes memory size.
 @with_phases(['phase0'])
 @spec_state_test
@@ -458,8 +458,8 @@ def test_voluntary_exit(spec, state):
         spec.get_current_epoch(state)
     )[-1]
 
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     yield 'pre', state
 
