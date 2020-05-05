@@ -375,7 +375,7 @@ class PySpecCommand(Command):
                     specs/phase0/fork-choice.md
                     specs/phase1/custody-game.md
                     specs/phase1/beacon-chain.md
-                    specs/phase1/fraud-proofs.md
+                    specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
                 """
@@ -499,7 +499,7 @@ setup(
         "pycryptodome==3.9.4",
         "py_ecc==2.0.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.12",
+        "remerkleable==0.1.13",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

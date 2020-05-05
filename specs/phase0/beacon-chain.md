@@ -684,14 +684,10 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Check if ``indexed_attestation`` has valid indices and signature.
+    Check if ``indexed_attestation`` has sorted and unique indices and a valid aggregate signature.
     """
-    indices = indexed_attestation.attesting_indices
-
-    # Verify max number of indices
-    if not len(indices) <= MAX_VALIDATORS_PER_COMMITTEE:
-        return False
     # Verify indices are sorted and unique
+    indices = indexed_attestation.attesting_indices
     if not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
@@ -1174,6 +1170,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     return state
 ```
 
+*Note*: The ETH1 block with `eth1_timestamp` meeting the minimum genesis active validator count criteria can also occur before `MIN_GENESIS_TIME`.
+
 ### Genesis state
 
 Let `genesis_state = candidate_state` whenever `is_valid_genesis_state(candidate_state) is True` for the first time.
@@ -1195,7 +1193,7 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
+The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
 
 ```python
 def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> BeaconState:

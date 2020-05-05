@@ -117,7 +117,7 @@ install_deposit_contract_compiler:
 
 compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
-	python3.7 deposit_contract/compile.py contracts/validator_registration.vy
+	python3.7 deposit_contract/compile.py ../contracts/validator_registration.vy
 
 test_compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \

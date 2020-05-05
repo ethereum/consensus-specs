@@ -9,7 +9,7 @@ This repository hosts the current Eth2 specifications. Discussions about design 
 
 ## Specs
 
-Core specifications for Eth2 clients be found in [specs/](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+Core specifications for Eth2 clients be found in [specs](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
 * [The Beacon Chain](specs/phase0/beacon-chain.md)
