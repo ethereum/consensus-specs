@@ -19,14 +19,14 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index):
             == get_balance(pre_state, slashed_index) - slash_penalty
         )
         # block proposer gained whistleblower reward
-        # >= becase proposer could have reported multiple
+        # >= because proposer could have reported multiple
         assert (
             get_balance(state, proposer_index)
             >= get_balance(pre_state, proposer_index) + whistleblower_reward
         )
     else:
         # proposer reported themself so get penalty and reward
-        # >= becase proposer could have reported multiple
+        # >= because proposer could have reported multiple
         assert (
             get_balance(state, slashed_index)
             >= get_balance(pre_state, slashed_index) - slash_penalty + whistleblower_reward

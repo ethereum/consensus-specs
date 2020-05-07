@@ -582,6 +582,38 @@ def test_double_validator_exit_same_block(spec, state):
     yield 'post', None
 
 
+@with_phases(['phase0'])
+@spec_state_test
+def test_multiple_different_validator_exits_same_block(spec, state):
+    validator_indices = [
+        spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
+        for i in range(3)
+    ]
+    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    signed_exits = prepare_signed_exits(spec, state, validator_indices)
+    yield 'pre', state
+
+    # Add to state via block transition
+    initiate_exit_block = build_empty_block_for_next_slot(spec, state)
+    initiate_exit_block.body.voluntary_exits = signed_exits
+    signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
+
+    for index in validator_indices:
+        assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+    # Process within epoch transition
+    exit_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+    signed_exit_block = state_transition_and_sign_block(spec, state, exit_block)
+
+    yield 'blocks', [signed_initiate_exit_block, signed_exit_block]
+    yield 'post', state
+
+    for index in validator_indices:
+        assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+
 @with_all_phases
 @spec_state_test
 def test_balance_driven_status_transitions(spec, state):
