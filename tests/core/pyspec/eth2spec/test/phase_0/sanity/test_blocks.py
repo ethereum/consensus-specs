@@ -4,7 +4,11 @@ from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_b
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
     transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
+from eth2spec.test.helpers.attester_slashings import (
+    get_valid_attester_slashing_by_indices,
+    get_valid_attester_slashing,
+    get_indexed_attestation_participants,
+)
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation, fill_block_shard_transitions_by_attestations
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
@@ -326,13 +330,14 @@ def test_multiple_different_proposer_slashings_same_block(spec, state):
         check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
 
 
-def check_attester_slashing_effect(spec, pre_state, state, validator_index):
-    slashed_validator = state.validators[validator_index]
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-    # lost whistleblower reward
-    assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
+def check_attester_slashing_effect(spec, pre_state, state, slashed_indices):
+    for slashed_index in slashed_indices:
+        slashed_validator = state.validators[slashed_index]
+        assert slashed_validator.slashed
+        assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
+        assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+        # lost whistleblower reward
+        assert get_balance(state, slashed_index) < get_balance(pre_state, slashed_index)
 
     proposer_index = spec.get_beacon_proposer_index(state)
     # gained whistleblower reward
@@ -346,9 +351,9 @@ def test_attester_slashing(spec, state):
     pre_state = state.copy()
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)[0]
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
 
-    assert not state.validators[validator_index].slashed
+    assert not any(state.validators[i].slashed for i in slashed_indices)
 
     yield 'pre', state
 
@@ -363,12 +368,123 @@ def test_attester_slashing(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    check_attester_slashing_effect(spec, pre_state, state, validator_index)
+    check_attester_slashing_effect(spec, pre_state, state, slashed_indices)
+
+
+@with_all_phases
+@spec_state_test
+def test_duplicate_attester_slashing(spec, state):
+    # Skip test if config cannot handle multiple AttesterSlashings per block
+    if spec.MAX_ATTESTER_SLASHINGS < 2:
+        return
+
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+    attester_slashings = [attester_slashing, attester_slashing.copy()]
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
+
+    assert not any(state.validators[i].slashed for i in slashed_indices)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attester_slashings = attester_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+# All AttesterSlashing tests should be adopted for Phase 1 but helper support is not yet there
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_multiple_attester_slashings_no_overlap(spec, state):
+    # Skip test if config cannot handle multiple AttesterSlashings per block
+    if spec.MAX_ATTESTER_SLASHINGS < 2:
+        return
+
+    # copy for later balance lookups.
+    pre_state = state.copy()
+
+    full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[:8]
+    half_length = len(full_indices) // 2
+
+    attester_slashing_1 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[:half_length], signed_1=True, signed_2=True,
+    )
+    attester_slashing_2 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[half_length:], signed_1=True, signed_2=True,
+    )
+    attester_slashings = [attester_slashing_1, attester_slashing_2]
+
+    assert not any(state.validators[i].slashed for i in full_indices)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attester_slashings = attester_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    check_attester_slashing_effect(spec, pre_state, state, full_indices)
+
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_multiple_attester_slashings_partial_overlap(spec, state):
+    # Skip test if config cannot handle multiple AttesterSlashings per block
+    if spec.MAX_ATTESTER_SLASHINGS < 2:
+        return
+
+    # copy for later balance lookups.
+    pre_state = state.copy()
+
+    full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[:8]
+    one_third_length = len(full_indices) // 3
+
+    attester_slashing_1 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[:one_third_length * 2], signed_1=True, signed_2=True,
+    )
+    attester_slashing_2 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[one_third_length:], signed_1=True, signed_2=True,
+    )
+    attester_slashings = [attester_slashing_1, attester_slashing_2]
+
+    assert not any(state.validators[i].slashed for i in full_indices)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attester_slashings = attester_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    check_attester_slashing_effect(spec, pre_state, state, full_indices)
+
 
 # TODO: currently mainnet limits attester-slashings per block to 1.
 # When this is increased, it should be tested to cover various combinations
 # of duplicate slashings and overlaps of slashed attestations within the same block
-
 
 @with_all_phases
 @spec_state_test
