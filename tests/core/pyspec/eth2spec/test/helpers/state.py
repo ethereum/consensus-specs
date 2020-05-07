@@ -30,6 +30,16 @@ def transition_to(spec, state, slot):
     assert state.slot == slot
 
 
+def transition_to_valid_shard_slot(spec, state):
+    """
+    Transition to slot `spec.PHASE_1_GENESIS_SLOT + 1` and fork at `spec.PHASE_1_GENESIS_SLOT`.
+    """
+    transition_to(spec, state, spec.PHASE_1_GENESIS_SLOT)
+    state = spec.upgrade_to_phase1(state)  # `upgrade_to_phase1` is a pure function
+    next_slot(spec, state)
+    return state
+
+
 def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
