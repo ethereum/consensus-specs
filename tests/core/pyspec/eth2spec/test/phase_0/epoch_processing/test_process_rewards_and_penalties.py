@@ -22,9 +22,13 @@ def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
 
 
-def prepare_state_with_full_attestations(spec, state, participation_fn=None):
-    # participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
+def prepare_state_with_attestations(spec, state, participation_fn=None):
+    """
+    Prepare state with attestations according to the ``participation_fn``.
+    If no ``participation_fn``, default to "full" -- max committee participation at each slot.
 
+    participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
+    """
     # Go to start of next epoch to ensure can have full participation
     next_epoch(spec, state)
 
@@ -100,7 +104,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_attestations(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
 
     pre_state = state.copy()
 
@@ -118,7 +122,7 @@ def test_full_attestations(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
     for i, attestation in enumerate(state.previous_epoch_attestations):
         if i % 3 == 0:
             # Mess up some head votes
@@ -143,7 +147,7 @@ def test_full_attestations_random_incorrect_fields(spec, state):
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.MAX_EFFECTIVE_BALANCE // 2)
 @single_phase
 def test_full_attestations_misc_balances(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
 
     pre_state = state.copy()
 
@@ -175,7 +179,7 @@ def test_full_attestations_misc_balances(spec, state):
 @with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
 @single_phase
 def test_full_attestations_one_validaor_one_gwei(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
 
     yield from run_process_rewards_and_penalties(spec, state)
 
@@ -207,7 +211,7 @@ def run_with_participation(spec, state, participation_fn):
         participated.update(att_participants)
         return att_participants
 
-    attestations = prepare_state_with_full_attestations(spec, state, participation_fn=participation_tracker)
+    attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
 
     pre_state = state.copy()
 
@@ -292,7 +296,7 @@ def test_duplicate_attestation(spec, state):
 @spec_state_test
 # Case when some eligible attestations are slashed. Modifies attesting_balance and consequently rewards/penalties.
 def test_attestations_some_slashed(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
     attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
 
     # Slash maximum amount of validators allowed per epoch.

@@ -152,7 +152,7 @@ def get_valid_attestation(spec,
                           shard_transition=None,
                           signed=False,
                           on_time=True):
-    # If filter_participant_set is filters everything, the attestation has 0 participants, and cannot be signed.
+    # If filter_participant_set filters everything, the attestation has 0 participants, and cannot be signed.
     # Thus strictly speaking invalid when no participant is added later.
     if slot is None:
         slot = state.slot
