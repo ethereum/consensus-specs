@@ -5,7 +5,7 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_e
     transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
-from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
+from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
@@ -228,9 +228,9 @@ def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
     pre_state = state.copy()
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = proposer_slashing.signed_header_1.message.proposer_index
+    slashed_index = proposer_slashing.signed_header_1.message.proposer_index
 
-    assert not state.validators[validator_index].slashed
+    assert not state.validators[slashed_index].slashed
 
     yield 'pre', state
 
@@ -245,21 +245,15 @@ def test_proposer_slashing(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # check if slashed
-    slashed_validator = state.validators[validator_index]
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-    # lost whistleblower reward
-    assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
+    check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
 
 
 @with_all_phases
 @spec_state_test
 def test_double_same_proposer_slashings_same_block(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = proposer_slashing.signed_header_1.message.proposer_index
-    assert not state.validators[validator_index].slashed
+    slashed_index = proposer_slashing.signed_header_1.message.proposer_index
+    assert not state.validators[slashed_index].slashed
 
     yield 'pre', state
 
@@ -274,16 +268,16 @@ def test_double_same_proposer_slashings_same_block(spec, state):
 @with_all_phases
 @spec_state_test
 def test_double_similar_proposer_slashings_same_block(spec, state):
-    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # Same validator, but different slashable offences in the same block
     proposer_slashing_1 = get_valid_proposer_slashing(spec, state, random_root=b'\xaa' * 32,
-                                                      validator_index=validator_index,
+                                                      slashed_index=slashed_index,
                                                       signed_1=True, signed_2=True)
     proposer_slashing_2 = get_valid_proposer_slashing(spec, state, random_root=b'\xbb' * 32,
-                                                      validator_index=validator_index,
+                                                      slashed_index=slashed_index,
                                                       signed_1=True, signed_2=True)
-    assert not state.validators[validator_index].slashed
+    assert not state.validators[slashed_index].slashed
 
     yield 'pre', state
 
@@ -293,6 +287,40 @@ def test_double_similar_proposer_slashings_same_block(spec, state):
 
     yield 'blocks', [signed_block]
     yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+def test_multiple_different_proposer_slashings_same_block(spec, state):
+    pre_state = state.copy()
+
+    num_slashings = 3
+    proposer_slashings = []
+    for i in range(num_slashings):
+        slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
+        assert not state.validators[slashed_index].slashed
+
+        proposer_slashing = get_valid_proposer_slashing(spec, state,
+                                                        slashed_index=slashed_index,
+                                                        signed_1=True, signed_2=True)
+        proposer_slashings.append(proposer_slashing)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.proposer_slashings = proposer_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    for proposer_slashing in proposer_slashings:
+        slashed_index = proposer_slashing.signed_header_1.message.proposer_index
+        check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
 
 
 def check_attester_slashing_effect(spec, pre_state, state, validator_index):
@@ -335,7 +363,7 @@ def test_attester_slashing(spec, state):
     check_attester_slashing_effect(spec, pre_state, state, validator_index)
 
 # TODO: currently mainnet limits attester-slashings per block to 1.
-# When this is increased, it should be tested to cover varrious combinations
+# When this is increased, it should be tested to cover various combinations
 # of duplicate slashings and overlaps of slashed attestations within the same block
 
 
