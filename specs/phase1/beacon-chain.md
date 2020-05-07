@@ -571,7 +571,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     attestation = indexed_attestation.attestation
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     aggregation_bits = attestation.aggregation_bits
-    assert len(aggregation_bits) == len(indexed_attestation.committee)
+    if not any(aggregation_bits) or len(aggregation_bits) != len(indexed_attestation.committee):
+        return False
 
     if len(attestation.custody_bits_blocks) == 0:
         # fall back on phase0 behavior if there is no shard data.

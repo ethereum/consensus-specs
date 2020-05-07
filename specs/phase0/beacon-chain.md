@@ -683,11 +683,11 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Check if ``indexed_attestation`` has sorted and unique indices and a valid aggregate signature.
+    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
     """
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
-    if not indices == sorted(set(indices)):
+    if len(indices) == 0 or not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]

@@ -247,7 +247,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
     - The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
     - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - The aggregator's validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`.
+    - The aggregator's validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`. This also means that it must never have an empty set of participants.
     - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
     - The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
     - The signature of `aggregate` is valid.

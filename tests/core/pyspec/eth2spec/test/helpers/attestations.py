@@ -148,10 +148,12 @@ def get_valid_attestation(spec,
                           state,
                           slot=None,
                           index=None,
+                          filter_participant_set=None,
                           shard_transition=None,
-                          empty=False,
                           signed=False,
                           on_time=True):
+    # If filter_participant_set filters everything, the attestation has 0 participants, and cannot be signed.
+    # Thus strictly speaking invalid when no participant is added later.
     if slot is None:
         slot = state.slot
     if index is None:
@@ -173,10 +175,8 @@ def get_valid_attestation(spec,
         aggregation_bits=aggregation_bits,
         data=attestation_data,
     )
-    if not empty:
-        fill_aggregate_attestation(spec, state, attestation)
-    if signed:
-        sign_attestation(spec, state, attestation)
+    # fill the attestation with (optionally filtered) participants, and optionally sign it
+    fill_aggregate_attestation(spec, state, attestation, signed=signed, filter_participant_set=filter_participant_set)
 
     if spec.fork == PHASE1 and on_time:
         attestation = convert_to_valid_on_time_attestation(spec, state, attestation, signed)
@@ -269,16 +269,25 @@ def get_attestation_signature(spec, state, attestation_data, privkey):
     return bls.Sign(privkey, signing_root)
 
 
-def fill_aggregate_attestation(spec, state, attestation, signed=False):
+def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_participant_set=None):
+    """
+     `signed`: Signing is optional.
+     `filter_participant_set`: Optional, filters the full committee indices set (default) to a subset that participates
+    """
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
         attestation.data.index,
     )
+    # By default, have everyone participate
+    participants = set(beacon_committee)
+    # But optionally filter the participants to a smaller amount
+    if filter_participant_set is not None:
+        participants = filter_participant_set(participants)
     for i in range(len(beacon_committee)):
-        attestation.aggregation_bits[i] = True
+        attestation.aggregation_bits[i] = beacon_committee[i] in participants
 
-    if signed:
+    if signed and len(participants) > 0:
         sign_attestation(spec, state, attestation)
 
 
