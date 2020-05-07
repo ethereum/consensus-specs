@@ -8,10 +8,13 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_e
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.attestations import get_valid_attestation, fill_block_shard_transitions_by_attestations
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases
+from eth2spec.test.context import (
+    spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
+    PHASE1
+)
 
 
 @with_all_phases
@@ -420,12 +423,14 @@ def test_attestation(spec, state):
 
     yield 'pre', state
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=True, on_time=True)
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
     attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
     attestation_block.body.attestations.append(attestation)
+    if spec.fork == PHASE1:
+        fill_block_shard_transitions_by_attestations(spec, state, attestation_block)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
     assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
@@ -443,7 +448,7 @@ def test_attestation(spec, state):
     assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
 
 
-# In phase1 a committee is computed for PERSISTENT_COMMITTEE_PERIOD slots ago,
+# In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
 # exceeding the minimal-config randao mixes memory size.
 @with_phases(['phase0'])
 @spec_state_test
@@ -453,8 +458,8 @@ def test_voluntary_exit(spec, state):
         spec.get_current_epoch(state)
     )[-1]
 
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     yield 'pre', state
 

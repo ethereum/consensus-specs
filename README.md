@@ -9,11 +9,14 @@ This repository hosts the current Eth2 specifications. Discussions about design 
 
 ## Specs
 
-Core specifications for Eth2 clients be found in [specs/](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+[![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
+
+
+Core specifications for Eth2 clients be found in [specs](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
 * [The Beacon Chain](specs/phase0/beacon-chain.md)
-* [Fork Choice](specs/phase0/fork-choice.md)
+* [Beacon Chain Fork Choice](specs/phase0/fork-choice.md)
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
 * [P2P Networking](specs/phase0/p2p-interface.md)
@@ -22,8 +25,9 @@ Core specifications for Eth2 clients be found in [specs/](specs/). These are div
 * [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)
 * [The Beacon Chain for Shards](specs/phase1/beacon-chain.md)
 * [Custody Game](specs/phase1/custody-game.md)
-* [Shard Transition and Fraud Proofs](specs/phase1/fraud-proofs.md)
+* [Shard Transition and Fraud Proofs](specs/phase1/shard-transition.md)
 * [Light client syncing protocol](specs/phase1/light-client-sync.md)
+* [Beacon Chain Fork Choice for Shards](specs/phase1/fork-choice.md)
 
 ### Phase 2
 
