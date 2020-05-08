@@ -12,7 +12,7 @@ configs_path = 'configs/'
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec
 from importlib import reload
-my_presets = config_util.prepare_config(configs_path, 'mainnet')
+config_util.prepare_config(configs_path, 'mainnet')
 # reload spec to make loaded config effective
 reload(spec)
 ```
