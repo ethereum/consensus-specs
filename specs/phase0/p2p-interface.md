@@ -537,7 +537,9 @@ The response MUST contain no more than `count` blocks.
 
 Clients MUST order blocks by increasing slot number.
 
-Clients MUST respond with blocks from their view of the current fork choice. In particular, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
+Clients MUST respond with blocks from their view of the current fork choice -- that is, blocks from the single chain defined by the current head. Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
+
+Clients MUST respond with blocks that are consistent from a single chain within the context of the request.
 
 #### BeaconBlocksByRoot
 
