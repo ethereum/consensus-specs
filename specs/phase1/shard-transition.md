@@ -280,7 +280,10 @@ def get_shard_transition(beacon_state: BeaconState,
         if proposal.signature != BLSSignature():
             proposer_signatures.append(proposal.signature)
 
-    proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    if len(proposer_signatures) > 0:
+        proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    else:
+        proposer_signature_aggregate = BLSSignature()
 
     return ShardTransition(
         start_slot=start_slot,

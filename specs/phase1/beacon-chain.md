@@ -596,7 +596,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
                     all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
                 else:
                     assert not cbit
-        return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
+        return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
 ```
 
 #### `is_shard_attestation`
@@ -764,7 +764,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         for header in headers
     ]
     # Verify combined proposer signature
-    assert bls.AggregateVerify(zip(pubkeys, signing_roots), signature=transition.proposer_signature_aggregate)
+    assert bls.AggregateVerify(pubkeys, signing_roots, signature=transition.proposer_signature_aggregate)
 
     # Save updated state
     state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]

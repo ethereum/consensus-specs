@@ -69,7 +69,7 @@ def case02_verify():
         for message in MESSAGES:
             # Valid signature
             signature = bls.G2ProofOfPossession.Sign(privkey, message)
-            pubkey = bls.G2ProofOfPossession.PrivToPub(privkey)
+            pubkey = bls.G2ProofOfPossession.SkToPk(privkey)
             identifier = f'{encode_hex(pubkey)}_{encode_hex(message)}'
             yield f'verify_valid_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
@@ -81,7 +81,7 @@ def case02_verify():
             }
 
             # Invalid signatures -- wrong pubkey
-            wrong_pubkey = bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
+            wrong_pubkey = bls.G2ProofOfPossession.SkToPk(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
             identifier = f'{encode_hex(wrong_pubkey)}_{encode_hex(message)}'
             yield f'verify_wrong_pubkey_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
@@ -119,7 +119,7 @@ def case04_fast_aggregate_verify():
         privkeys = PRIVKEYS[:i + 1]
         sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in privkeys]
         aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
-        pubkeys = [bls.G2ProofOfPossession.PrivToPub(privkey) for privkey in privkeys]
+        pubkeys = [bls.G2ProofOfPossession.SkToPk(privkey) for privkey in privkeys]
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
         # Valid signature
@@ -134,7 +134,7 @@ def case04_fast_aggregate_verify():
         }
 
         # Invalid signature -- extra pubkey
-        pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.PrivToPub(PRIVKEYS[-1])]
+        pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.SkToPk(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         identifier = f'{pubkeys_extra_serial}_{encode_hex(message)}'
         yield f'fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -164,7 +164,7 @@ def case05_aggregate_verify():
     sigs = []
     for privkey, message in zip(PRIVKEYS, MESSAGES):
         sig = bls.G2ProofOfPossession.Sign(privkey, message)
-        pubkey = bls.G2ProofOfPossession.PrivToPub(privkey)
+        pubkey = bls.G2ProofOfPossession.SkToPk(privkey)
         pairs.append({
             'pubkey': encode_hex(pubkey),
             'message': encode_hex(message),

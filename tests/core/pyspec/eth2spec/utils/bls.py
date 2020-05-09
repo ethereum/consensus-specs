@@ -29,13 +29,13 @@ def Verify(PK, message, signature):
 
 
 @only_with_bls(alt_return=True)
-def AggregateVerify(pairs, signature):
-    return bls.AggregateVerify(pairs, signature)
+def AggregateVerify(pubkeys, messages, signature):
+    return bls.AggregateVerify(pubkeys, messages, signature)
 
 
 @only_with_bls(alt_return=True)
-def FastAggregateVerify(PKs, message, signature):
-    return bls.FastAggregateVerify(PKs, message, signature)
+def FastAggregateVerify(pubkeys, message, signature):
+    return bls.FastAggregateVerify(pubkeys, message, signature)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
