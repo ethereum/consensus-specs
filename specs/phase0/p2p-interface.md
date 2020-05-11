@@ -332,7 +332,7 @@ The encoding-dependent header may carry metadata or assertions such as the encod
 
 A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`.
 
-For both `request`s and `response`s, he `encoding-dependent-header` MUST be valid, and the `encoded-payload` must be valid within the constraints of the `encoding-dependent-header`.
+For both `request`s and `response`s, the `encoding-dependent-header` MUST be valid, and the `encoded-payload` must be valid within the constraints of the `encoding-dependent-header`.
 This includes type-specific bounds on payload size for some encoding strategies. Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_CHUNK_SIZE` MUST be applied to all method response chunks.
 
 Clients MUST ensure that lengths are within these bounds; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
@@ -348,10 +348,10 @@ The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
 A requester SHOULD read from the stream until either:
-a) An error result is received in one of the chunks (the error payload MAY be read before stopping).
-b) The responder closes the stream.
-d) Any part of the `response_chunk` fails validation.
-e) The maximum number of requested chunks are read.
+1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
+2. The responder closes the stream.
+3. Any part of the `response_chunk` fails validation.
+4. The maximum number of requested chunks are read.
 
 For requests consisting of a single valid `response_chunk`, the requester SHOULD read the chunk fully, as defined by the `encoding-dependent-header`, before closing the stream.
 
