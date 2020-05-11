@@ -18,6 +18,10 @@ interface IDepositContract {
         bytes calldata signature,
         bytes32 deposit_data_root
     ) external payable;
+
+    function get_deposit_root() external view returns (bytes32);
+
+    function get_deposit_count() external view returns (bytes memory);
 }
 
 // This is a rewrite of the Vyper Eth2.0 deposit contract in Solidity.
@@ -45,7 +49,7 @@ contract DepositContract is IDepositContract {
             zero_hashes[height + 1] = sha256(abi.encodePacked(zero_hashes[height], zero_hashes[height]));
     }
 
-    function get_deposit_root() external view returns (bytes32) {
+    function get_deposit_root() override external view returns (bytes32) {
         bytes24 zero_bytes24;
         bytes32 node;
         uint size = deposit_count;
@@ -63,7 +67,7 @@ contract DepositContract is IDepositContract {
         ));
     }
 
-    function get_deposit_count() external view returns (bytes memory) {
+    function get_deposit_count() override external view returns (bytes memory) {
         return to_little_endian_64(uint64(deposit_count));
     }
 
