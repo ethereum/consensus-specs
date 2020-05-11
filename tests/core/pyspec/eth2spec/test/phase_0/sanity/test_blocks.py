@@ -482,10 +482,6 @@ def test_multiple_attester_slashings_partial_overlap(spec, state):
     check_attester_slashing_effect(spec, pre_state, state, full_indices)
 
 
-# TODO: currently mainnet limits attester-slashings per block to 1.
-# When this is increased, it should be tested to cover various combinations
-# of duplicate slashings and overlaps of slashed attestations within the same block
-
 @with_all_phases
 @spec_state_test
 def test_proposer_after_inactive_index(spec, state):
