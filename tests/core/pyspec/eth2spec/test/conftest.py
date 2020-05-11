@@ -1,6 +1,6 @@
 from eth2spec.config import config_util
-from eth2spec.test.context import reload_specs
-
+from eth2spec.test import context
+from eth2spec.utils import bls as bls_utils
 
 # We import pytest only when it's present, i.e. when we are running tests.
 # The test-cases themselves can be generated without installing pytest.
@@ -27,7 +27,16 @@ def fixture(*args, **kwargs):
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--config", action="store", default="minimal", help="config: make the pyspec use the specified configuration"
+        "--config", action="store", type=str, default="minimal",
+        help="config: make the pyspec use the specified configuration"
+    )
+    parser.addoption(
+        "--disable-bls", action="store_true",
+        help="bls-default: make tests that are not dependent on BLS run without BLS"
+    )
+    parser.addoption(
+        "--bls-type", action="store", type=str, default="py_ecc", choices=["py_ecc", "milagro"],
+        help="bls-type: use 'pyecc' or 'milagro' implementation for BLS"
     )
 
 
@@ -36,4 +45,22 @@ def config(request):
     config_name = request.config.getoption("--config")
     config_util.prepare_config('../../../configs/', config_name)
     # now that the presets are loaded, reload the specs to apply them
-    reload_specs()
+    context.reload_specs()
+
+
+@fixture(autouse=True)
+def bls_default(request):
+    disable_bls = request.config.getoption("--disable-bls")
+    if disable_bls:
+        context.DEFAULT_BLS_ACTIVE = False
+
+
+@fixture(autouse=True)
+def bls_type(request):
+    bls_type = request.config.getoption("--bls-type")
+    if bls_type == "py_ecc":
+        bls_utils.bls = bls_utils.py_ecc_bls
+    elif bls_type == "milagro":
+        bls_utils.bls = bls_utils.milagro_bls
+    else:
+        raise Exception(f"unrecognized bls type: {bls_type}")

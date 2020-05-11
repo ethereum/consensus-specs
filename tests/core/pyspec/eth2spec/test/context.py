@@ -147,14 +147,15 @@ def single_phase(fn):
     return entry
 
 
-# BLS is turned off by default *for performance purposes during TESTING*.
+# BLS is turned on by default, it can be disabled in tests by overriding this, or using `--disable-bls`.
+# *This is for performance purposes during TESTING, DO NOT DISABLE IN PRODUCTION*.
 # The runner of the test can indicate the preferred setting (test generators prefer BLS to be ON).
 # - Some tests are marked as BLS-requiring, and ignore this setting.
 #    (tests that express differences caused by BLS, e.g. invalid signatures being rejected)
 # - Some other tests are marked as BLS-ignoring, and ignore this setting.
 #    (tests that are heavily performance impacted / require unsigned state transitions)
 # - Most tests respect the BLS setting.
-DEFAULT_BLS_ACTIVE = False
+DEFAULT_BLS_ACTIVE = True
 
 
 def spec_test(fn):

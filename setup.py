@@ -502,6 +502,7 @@ setup(
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
         "py_ecc==2.0.0",
+        "milagro_bls_binding==1.0.2",
         "dataclasses==0.6",
         "remerkleable==0.1.13",
         "ruamel.yaml==0.16.5",
