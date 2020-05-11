@@ -90,6 +90,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | |
+| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 
 ## Becoming a validator
 
@@ -418,7 +419,18 @@ def get_attestation_signature(state: BeaconState, attestation_data: AttestationD
 
 #### Broadcast attestation
 
-Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
+Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `beacon_attestation_{compute_subnet_for_attestation(state, attestation)}` pubsub topic.
+
+```python
+def compute_subnet_for_attestation(state: BeaconState, attestation: Attestation) -> uint64:
+    slots_since_epoch_start = attestation.data.slot % SLOTS_PER_EPOCH
+    committees_since_epoch_start = sum([
+        get_committee_count_at_slot(state, Slot(slot))
+        for slot in range(slots_since_epoch_start)
+    ])
+
+    return (committees_since_epoch_start + attestation.data.index) % ATTESTATION_SUBNET_COUNT
+```
 
 ### Attestation aggregation
 
@@ -519,7 +531,7 @@ class SignedAggregateAndProof(Container):
 
 ## Phase 0 attestation subnet stability
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must:
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each validator must:
 
 * Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
 * Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
