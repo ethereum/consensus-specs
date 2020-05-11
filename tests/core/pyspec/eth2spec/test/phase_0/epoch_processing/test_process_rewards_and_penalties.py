@@ -12,6 +12,7 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     get_valid_attestation,
+    prepare_state_with_full_attestations,
 )
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
@@ -19,33 +20,6 @@ from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_ep
 
 def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
-
-
-def prepare_state_with_full_attestations(spec, state, empty=False):
-    # Go to start of next epoch to ensure can have full participation
-    next_epoch(spec, state)
-
-    start_slot = state.slot
-    start_epoch = spec.get_current_epoch(state)
-    next_epoch_start_slot = spec.compute_start_slot_at_epoch(start_epoch + 1)
-    attestations = []
-    for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        # create an attestation for each index in each slot in epoch
-        if state.slot < next_epoch_start_slot:
-            for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
-                attestation = get_valid_attestation(spec, state, index=committee_index, empty=empty, signed=True)
-                attestations.append(attestation)
-        # fill each created slot in state after inclusion delay
-        if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
-            inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
-            include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
-            add_attestations_to_state(spec, state, include_attestations, state.slot)
-        next_slot(spec, state)
-
-    assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
-    assert len(state.previous_epoch_attestations) == len(attestations)
-
-    return attestations
 
 
 @with_phases(['phase0'])
