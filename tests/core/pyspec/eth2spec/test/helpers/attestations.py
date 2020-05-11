@@ -1,7 +1,7 @@
 from typing import List
 
 from eth2spec.test.context import expect_assertion_error, PHASE0, PHASE1
-from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot, transition_to
+from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot, transition_to
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
@@ -330,6 +330,46 @@ def next_epoch_with_attestations(spec,
         signed_blocks.append(signed_block)
 
     return state, signed_blocks, post_state
+
+
+def prepare_state_with_attestations(spec, state, participation_fn=None):
+    """
+    Prepare state with attestations according to the ``participation_fn``.
+    If no ``participation_fn``, default to "full" -- max committee participation at each slot.
+
+    participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
+    """
+    # Go to start of next epoch to ensure can have full participation
+    next_epoch(spec, state)
+
+    start_slot = state.slot
+    start_epoch = spec.get_current_epoch(state)
+    next_epoch_start_slot = spec.compute_start_slot_at_epoch(start_epoch + 1)
+    attestations = []
+    for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        # create an attestation for each index in each slot in epoch
+        if state.slot < next_epoch_start_slot:
+            for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
+                def temp_participants_filter(comm):
+                    if participation_fn is None:
+                        return comm
+                    else:
+                        return participation_fn(state.slot, committee_index, comm)
+                attestation = get_valid_attestation(spec, state, index=committee_index,
+                                                    filter_participant_set=temp_participants_filter, signed=True)
+                if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
+                    attestations.append(attestation)
+        # fill each created slot in state after inclusion delay
+        if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
+            inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
+            include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
+            add_attestations_to_state(spec, state, include_attestations, state.slot)
+        next_slot(spec, state)
+
+    assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    assert len(state.previous_epoch_attestations) == len(attestations)
+
+    return attestations
 
 
 def fill_block_shard_transitions_by_attestations(spec, state, block):
