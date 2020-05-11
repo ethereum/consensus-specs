@@ -98,6 +98,7 @@ It consists of four main sections:
     - [Why are we compressing, and at which layers?](#why-are-we-compressing-and-at-which-layers)
     - [Why are using Snappy for compression?](#why-are-using-snappy-for-compression)
     - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
+    - [What are SSZ type size bounds?](#what-are-ssz-type-size-bounds)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -332,9 +333,12 @@ result    ::= “0” | “1” | “2” | [“128” ... ”255”]
 
 The encoding-dependent header may carry metadata or assertions such as the encoded payload length, for integrity and attack proofing purposes. Because req/resp streams are single-use and stream closures implicitly delimit the boundaries, it is not strictly necessary to length-prefix payloads; however, certain encodings like SSZ do, for added security.
 
-A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
+A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`.
 
-Clients MUST ensure the each encoded payload of a `response_chunk` is less than or equal to `MAX_CHUNK_SIZE`; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
+For both `request`s and `response`s, the `encoding-dependent-header` MUST be valid, and the `encoded-payload` must be valid within the constraints of the `encoding-dependent-header`.
+This includes type-specific bounds on payload size for some encoding strategies. Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_CHUNK_SIZE` MUST be applied to all method response chunks.
+
+Clients MUST ensure that lengths are within these bounds; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
 #### Requesting side
 
@@ -342,13 +346,22 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 
 The requester MUST close the write side of the stream once it finishes writing the request message. At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received. For responses consisting of potentially many `response_chunk`s (an SSZ-list) the requester SHOULD read from the stream until either; a) An error result is received in one of the chunks, b) The responder closes the stream,  c) More than `MAX_CHUNK_SIZE` bytes have been read for a single `response_chunk` payload or d) More than the maximum number of requested chunks are read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
+The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received.
 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
+A requester SHOULD read from the stream until either:
+1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
+2. The responder closes the stream.
+3. Any part of the `response_chunk` fails validation.
+4. The maximum number of requested chunks are read.
+
+For requests consisting of a single valid `response_chunk`, the requester SHOULD read the chunk fully, as defined by the `encoding-dependent-header`, before closing the stream.
+
 #### Responding side
 
-Once a new stream with the protocol ID for the request type has been negotiated, the responder must process the incoming request message according to the encoding strategy, until EOF (denoting stream half-closure by the requester).
+Once a new stream with the protocol ID for the request type has been negotiated, the responder SHOULD process the incoming request and MUST validate it before processing it.
+Request processing and validation MUST be done according to the encoding strategy, until EOF (denoting stream half-closure by the requester).
 
 The responder MUST:
 
@@ -384,14 +397,6 @@ The `ErrorMessage` schema is:
 
 *Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
 
-A response therefore has the form of one or more `response_chunk`s, each structured as follows:
-```
-  +--------+--------+--------+--------+--------+--------+
-  | result |   header (opt)  |     encoded_response     |
-  +--------+--------+--------+--------+--------+--------+
-```
-Here, `result` represents the 1-byte response code.
-
 ### Encoding strategies
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
@@ -418,18 +423,21 @@ If Snappy is applied, it can be passed through a buffered Snappy writer to compr
 *Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
 If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
-A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length prefix `n` from the header.
+Before reading the payload, the header MUST be validated:
+- The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
+- The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds).
+
+After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
+
+A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
 - For `ssz` this is: `n`
 - For `ssz_snappy` this is: `32 + n + n // 6`. This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
 
 A reader SHOULD consider the following cases as invalid input:
-- A SSZ length prefix that, compared against the SSZ type information (vector lengths, list limits, integer sizes, etc.), is:
-    - Smaller than the expected minimum serialized length.
-    - Bigger than the expected maximum serialized length.
-- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected.
-- An early EOF, before fully reading the declared length prefix worth of SSZ bytes.
+- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected if more bytes are read than required.
+- An early EOF, before fully reading the declared length-prefix worth of SSZ bytes.
 
-In case of an invalid input, a reader MUST:
+In case of an invalid input (header or payload), a reader MUST:
 - From requests: send back an error message, response code `InvalidRequest`. The request itself is ignored.
 - From responses: ignore the response, the response MUST be considered bad server behavior.
 
@@ -1060,7 +1068,7 @@ For all these reasons, generically negotiating compression algorithms may be tre
 
 At this stage, the wisest choice is to consider libp2p a messenger of bytes, and to make application layer participate in compressing those bytes. This looks different depending on the interaction layer:
 
--  Gossip domain: since gossipsub has a framing protocol and exposes an API, we compress the payload (when dictated by the encoding token in the topic name) prior to publishing the message via the API. No length prefixing is necessary because protobuf takes care of bounding the field in the serialized form.
+-  Gossip domain: since gossipsub has a framing protocol and exposes an API, we compress the payload (when dictated by the encoding token in the topic name) prior to publishing the message via the API. No length-prefixing is necessary because protobuf takes care of bounding the field in the serialized form.
 -  Req/Resp domain: since we define custom protocols that operate on byte streams, implementers are encouraged to encapsulate the encoding and compression logic behind MessageReader and MessageWriter components/strategies that can be layered on top of the raw byte streams.
 
 ### Why are using Snappy for compression?
@@ -1074,6 +1082,14 @@ Yes, you can add loggers in your libp2p protocol handlers to log incoming and ou
 If your libp2p library relies on frameworks/runtimes such as Netty (jvm) or Node.js (javascript), you can use logging facilities in those frameworks/runtimes to enable message tracing.
 
 For specific ad-hoc testing scenarios, you can use the [plaintext/2.0.0 secure channel](https://github.com/libp2p/specs/blob/master/plaintext/README.md) (which is essentially no-op encryption or message authentication), in combination with tcpdump or Wireshark to inspect the wire.
+
+### What are SSZ type size bounds?
+
+The SSZ encoding outputs of each type have size bounds: each dynamic type, such as a list, has a "limit", which can be used to compute the maximum valid output size.
+Note that for some more complex dynamic-length objects, element offsets (4 bytes each) may need to be included.
+Other types are static, they have a fixed size: no dynamic-length content is involved, and the minimum and maximum bounds are the same.
+
+For reference, the type bounds can be computed ahead of time, [as per this example](https://gist.github.com/protolambda/db75c7faa1e94f2464787a480e5d613e). It is advisable to derive these lengths from the SSZ type definitions in use, to ensure that version changes do not cause out-of-sync type bounds.
 
 # libp2p implementations matrix
 
