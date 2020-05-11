@@ -539,7 +539,7 @@ Clients MUST order blocks by increasing slot number.
 
 Clients MUST respond with blocks from their view of the current fork choice -- that is, blocks from the single chain defined by the current head. Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
-Clients MUST respond with blocks that are consistent from a single chain within the context of the request.
+Clients MUST respond with blocks that are consistent from a single chain within the context of the request. After the initial block clients MAY stop in the process of responding, if their fork choice changes the view of the chain in the context of the request.
 
 #### BeaconBlocksByRoot
 
