@@ -394,14 +394,6 @@ The `ErrorMessage` schema is:
 
 *Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
 
-A response therefore has the form of one or more `response_chunk`s, each structured as follows:
-```
-  +--------+--------+--------+--------+--------+--------+
-  | result |   header (opt)  |     encoded_response     |
-  +--------+--------+--------+--------+--------+--------+
-```
-Here, `result` represents the 1-byte response code.
-
 ### Encoding strategies
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
