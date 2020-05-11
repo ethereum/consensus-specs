@@ -251,7 +251,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
     - _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
     - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - _[REJECT]_ The aggregator's validator index is within the committee -- i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`. This also means that it must never have an empty set of participants.
+    - _[REJECT]_ The aggregator's validator index is within the committee -- i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
     - _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
     - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
     - _[REJECT]_ The signature of `aggregate` is valid.
