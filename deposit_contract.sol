@@ -31,7 +31,7 @@ contract DepositContract is IDepositContract {
 
     uint constant MIN_DEPOSIT_AMOUNT = 1000000000; // Gwei
     uint constant DEPOSIT_CONTRACT_TREE_DEPTH = 32;
-    uint constant MAX_DEPOSIT_COUNT = 4294967295; // 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
+    uint constant MAX_DEPOSIT_COUNT = 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1;
     uint constant PUBKEY_LENGTH = 48; // bytes
     uint constant WITHDRAWAL_CREDENTIALS_LENGTH = 32; // bytes
     uint constant SIGNATURE_LENGTH = 96; // bytes
