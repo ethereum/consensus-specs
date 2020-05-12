@@ -501,7 +501,7 @@ setup(
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
-        "py_ecc==3.0.0",
+        "py_ecc==4.0.0",
         "dataclasses==0.6",
         "remerkleable==0.1.13",
         "ruamel.yaml==0.16.5",
