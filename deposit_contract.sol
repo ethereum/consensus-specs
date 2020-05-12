@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 pragma solidity ^0.6.0;
 
 // This interface is designed to be compatible with the Vyper version.
@@ -18,11 +20,8 @@ interface IDepositContract {
     ) external payable;
 }
 
-/*
- * This is a rewrite of the Vyper Eth2.0 deposit contract in Solidity.
- * It tries to stay as close as possible to the original source code and
- * hence it may look a bit unintuitive to a reader well versed in Solidity.
- */
+// This is a rewrite of the Vyper Eth2.0 deposit contract in Solidity.
+// It tries to stay as close as possible to the original source code.
 contract DepositContract is IDepositContract {
     uint constant GWEI = 1e9;
 
