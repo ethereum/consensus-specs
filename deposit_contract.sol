@@ -50,7 +50,6 @@ contract DepositContract is IDepositContract {
     }
 
     function get_deposit_root() override external view returns (bytes32) {
-        bytes24 zero_bytes24;
         bytes32 node;
         uint size = deposit_count;
         for (uint height = 0; height < DEPOSIT_CONTRACT_TREE_DEPTH; height++) {
@@ -63,7 +62,7 @@ contract DepositContract is IDepositContract {
         return sha256(abi.encodePacked(
             node,
             to_little_endian_64(uint64(deposit_count)),
-            zero_bytes24
+            bytes24(0)
         ));
     }
 
@@ -104,18 +103,14 @@ contract DepositContract is IDepositContract {
         );
 
         // Compute deposit data root (`DepositData` hash tree root)
-        // These are helpers and are implicitly initialised to zero.
-        bytes16 zero_bytes16;
-        bytes24 zero_bytes24;
-        bytes32 zero_bytes32;
-        bytes32 pubkey_root = sha256(abi.encodePacked(pubkey, zero_bytes16));
+        bytes32 pubkey_root = sha256(abi.encodePacked(pubkey, bytes16(0)));
         bytes32 signature_root = sha256(abi.encodePacked(
             sha256(abi.encodePacked(bytes(signature[:64]))),
-            sha256(abi.encodePacked(bytes(signature[64:]), zero_bytes32))
+            sha256(abi.encodePacked(bytes(signature[64:]), bytes32(0)))
         ));
         bytes32 node = sha256(abi.encodePacked(
             sha256(abi.encodePacked(pubkey_root, withdrawal_credentials)),
-            sha256(abi.encodePacked(amount, zero_bytes24, signature_root))
+            sha256(abi.encodePacked(amount, bytes24(0), signature_root))
         ));
         // Verify computed and expected deposit data roots match
         require(node == deposit_data_root);
