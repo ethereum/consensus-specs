@@ -136,13 +136,13 @@ contract DepositContract is IDepositContract {
     function to_little_endian_64(uint64 value) internal pure returns (bytes memory ret) {
         // Unrolled the loop here.
         ret = new bytes(8);
-        ret[0] = bytes1(uint8(value & 0xff));
-        ret[1] = bytes1(uint8((value >> 8) & 0xff));
-        ret[2] = bytes1(uint8((value >> 16) & 0xff));
-        ret[3] = bytes1(uint8((value >> 24) & 0xff));
-        ret[4] = bytes1(uint8((value >> 32) & 0xff));
-        ret[5] = bytes1(uint8((value >> 40) & 0xff));
-        ret[6] = bytes1(uint8((value >> 48) & 0xff));
-        ret[7] = bytes1(uint8((value >> 56) & 0xff));
+        ret[0] = bytes1(uint8(value));
+        ret[1] = bytes1(uint8(value >> 8));
+        ret[2] = bytes1(uint8(value >> 16));
+        ret[3] = bytes1(uint8(value >> 24));
+        ret[4] = bytes1(uint8(value >> 32));
+        ret[5] = bytes1(uint8(value >> 40));
+        ret[6] = bytes1(uint8(value >> 48));
+        ret[7] = bytes1(uint8(value >> 56));
     }
 }
