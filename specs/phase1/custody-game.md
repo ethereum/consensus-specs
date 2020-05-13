@@ -194,7 +194,7 @@ def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
     s = full_G2_element[0].coeffs
     custody_atoms = get_custody_atoms(data)
     n = len(custody_atoms)
-    a = sum(s[i % 2]**i * int.from_bytes(atom, "little") for i, atom in enumerate(custody_atoms) + s[n % 2]**n)
+    a = sum(s[i % 2]**i * int.from_bytes(atom, "little") for i, atom in enumerate(custody_atoms)) + s[n % 2]**n
     return legendre_bit(a, BLS12_381_Q)
 ```
 
