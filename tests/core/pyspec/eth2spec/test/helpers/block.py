@@ -53,6 +53,7 @@ def sign_block(spec, state, block, proposer_index=None):
 
 
 def transition_unsigned_block(spec, state, block):
+    assert state.slot < block.slot  # Preserve assertion from state transition to avoid strange pre-states from testing
     if state.slot < block.slot:
         spec.process_slots(state, block.slot)
     assert state.latest_block_header.slot < block.slot  # There may not already be a block in this slot or past it.
@@ -60,11 +61,11 @@ def transition_unsigned_block(spec, state, block):
     spec.process_block(state, block)
 
 
-def apply_empty_block(spec, state):
+def apply_empty_block(spec, state, slot=None):
     """
     Transition via an empty block (on current slot, assuming no block has been applied yet).
     """
-    block = build_empty_block(spec, state)
+    block = build_empty_block(spec, state, slot)
     transition_unsigned_block(spec, state, block)
 
 

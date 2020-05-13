@@ -1,5 +1,5 @@
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.block import sign_block, transition_unsigned_block
+from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
 
 
 def get_balance(state, index):
@@ -31,6 +31,15 @@ def transition_to(spec, state, slot):
     assert state.slot == slot
 
 
+def transition_to_slot_via_block(spec, state, slot):
+    """
+    Transition to ``slot`` via an empty block transition
+    """
+    assert state.slot < slot
+    apply_empty_block(spec, state, slot)
+    assert state.slot == slot
+
+
 def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
@@ -38,6 +47,13 @@ def next_epoch(spec, state):
     slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     if slot > state.slot:
         spec.process_slots(state, slot)
+
+
+def next_epoch_via_block(spec, state):
+    """
+    Transition to the start slot of the next epoch via a full block transition
+    """
+    apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
 
 
 def get_state_root(spec, state, slot) -> bytes:

@@ -2,7 +2,10 @@ from copy import deepcopy
 
 from eth2spec.utils import bls
 
-from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot, next_epoch
+from eth2spec.test.helpers.state import (
+    get_balance, state_transition_and_sign_block,
+    next_slot, next_epoch, next_epoch_via_block,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot, build_empty_block,
     sign_block,
@@ -48,10 +51,12 @@ def test_same_slot_block_transition(spec, state):
 
     yield 'pre', state
 
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    assert state.slot == block.slot
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield 'blocks', [signed_block]
-    yield 'post', state
+    yield 'post', None
 
 
 @with_all_phases
@@ -357,22 +362,19 @@ def test_proposer_after_inactive_index(spec, state):
     state.validators[inactive_index].exit_epoch = spec.get_current_epoch(state)
 
     # skip forward, get brand new proposers
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-    block = build_empty_block_for_next_slot(spec, state)
-    state_transition_and_sign_block(spec, state, block)
-
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
     while True:
-        next_slot(spec, state)
         proposer_index = spec.get_beacon_proposer_index(state)
         if proposer_index > inactive_index:
             # found a proposer that has a higher index than a disabled validator
             yield 'pre', state
             # test if the proposer can be recognized correctly after the inactive validator
-            signed_block = state_transition_and_sign_block(spec, state, build_empty_block(spec, state))
+            signed_block = state_transition_and_sign_block(spec, state, build_empty_block_for_next_slot(spec, state))
             yield 'blocks', [signed_block]
             yield 'post', state
             break
+        next_slot(spec, state)
 
 
 @with_all_phases
@@ -390,16 +392,16 @@ def test_high_proposer_index(spec, state):
 
     active_count = len(spec.get_active_validator_indices(state, current_epoch))
     while True:
-        next_slot(spec, state)
         proposer_index = spec.get_beacon_proposer_index(state)
         if proposer_index >= active_count:
             # found a proposer that has a higher index than the active validator count
             yield 'pre', state
             # test if the proposer can be recognized correctly, even while it has a high index.
-            signed_block = state_transition_and_sign_block(spec, state, build_empty_block(spec, state))
+            signed_block = state_transition_and_sign_block(spec, state, build_empty_block_for_next_slot(spec, state))
             yield 'blocks', [signed_block]
             yield 'post', state
             break
+        next_slot(spec, state)
 
 
 @with_all_phases
