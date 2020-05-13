@@ -364,7 +364,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     # TODO: can do a single combined merkle proof of data being attested.
     # Verify the shard transition is indeed attested by the attestation
     shard_transition = custody_slashing.shard_transition
-    assert hash_tree_root(shard_transition) == attestation.shard_transition_root
+    assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
     # Verify that the provided data matches the shard-transition
     assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
 
