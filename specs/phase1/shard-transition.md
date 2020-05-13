@@ -136,7 +136,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     if offset_index == 0:
         shard = get_shard(beacon_state, attestation)
         shard_states = beacon_parent_block.body.shard_transitions[shard].shard_states
-        shard_state = shard_states[len(shard_states)-1]
+        shard_state = shard_states[len(shard_states) - 1]
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
