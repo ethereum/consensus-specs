@@ -82,6 +82,7 @@ contract DepositContract is IDepositContract {
         // Check deposit amount
         uint deposit_amount = msg.value / GWEI;
         require(deposit_amount >= MIN_DEPOSIT_AMOUNT);
+        require(deposit_amount < 2**64);
 
         // Length checks for safety
         require(pubkey.length == PUBKEY_LENGTH);
@@ -89,7 +90,6 @@ contract DepositContract is IDepositContract {
         require(signature.length == SIGNATURE_LENGTH);
 
         // FIXME: these are not the Vyper code, but should verify they are not needed
-        // assert(deposit_amount <= 2**64-1);
         // assert(deposit_count <= 2**64-1);
 
         // Emit `DepositEvent` log
