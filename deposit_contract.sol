@@ -31,6 +31,7 @@ contract DepositContract is IDepositContract {
 
     uint constant MIN_DEPOSIT_AMOUNT = 1000000000; // Gwei
     uint constant DEPOSIT_CONTRACT_TREE_DEPTH = 32;
+    // NOTE: this also ensures `deposit_count` will fit into 64-bits
     uint constant MAX_DEPOSIT_COUNT = 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1;
     uint constant PUBKEY_LENGTH = 48; // bytes
     uint constant WITHDRAWAL_CREDENTIALS_LENGTH = 32; // bytes
@@ -39,11 +40,10 @@ contract DepositContract is IDepositContract {
     bytes32[DEPOSIT_CONTRACT_TREE_DEPTH] branch;
     uint256 deposit_count;
 
-    // TODO: use immutable for this
     bytes32[DEPOSIT_CONTRACT_TREE_DEPTH] zero_hashes;
 
-    // Compute hashes in empty sparse Merkle tree
     constructor() public {
+        // Compute hashes in empty sparse Merkle tree
         for (uint height = 0; height < DEPOSIT_CONTRACT_TREE_DEPTH - 1; height++)
             zero_hashes[height + 1] = sha256(abi.encodePacked(zero_hashes[height], zero_hashes[height]));
     }
@@ -75,7 +75,7 @@ contract DepositContract is IDepositContract {
         bytes calldata signature,
         bytes32 deposit_data_root
     ) override external payable {
-        // Avoid overflowing the Merkle tree (and prevent edge case in computing `self.branch`)
+        // Avoid overflowing the Merkle tree (and prevent edge case in computing `branch`)
         require(deposit_count < MAX_DEPOSIT_COUNT);
 
         // Check deposit amount
@@ -87,9 +87,6 @@ contract DepositContract is IDepositContract {
         require(pubkey.length == PUBKEY_LENGTH);
         require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH);
         require(signature.length == SIGNATURE_LENGTH);
-
-        // FIXME: these are not the Vyper code, but should verify they are not needed
-        // assert(deposit_count <= 2**64-1);
 
         // Emit `DepositEvent` log
         bytes memory amount = to_little_endian_64(uint64(deposit_amount));
