@@ -613,6 +613,8 @@ def bytes_to_int(data: bytes) -> uint64:
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
+*Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
+
 ### Predicates
 
 #### `is_active_validator`
