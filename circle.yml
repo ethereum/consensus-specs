@@ -1,0 +1,16 @@
+version: 2.0
+jobs:
+  build:
+    docker:
+      - image: cimg/base:2020.01
+    steps:
+      - checkout
+      - run:
+          name: Install solidity
+          command: |
+            sudo add-apt-repository ppa:ethereum/ethereum
+            sudo apt-get update
+            sudo apt-get install solc
+      - run:
+          name: Compile the contract
+          command: make
