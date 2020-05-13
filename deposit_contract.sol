@@ -75,6 +75,11 @@ contract DepositContract is IDepositContract {
         bytes calldata signature,
         bytes32 deposit_data_root
     ) override external payable {
+        // Extended ABI length checks since dynamic types are used.
+        require(pubkey.length == PUBKEY_LENGTH);
+        require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH);
+        require(signature.length == SIGNATURE_LENGTH);
+
         // Avoid overflowing the Merkle tree (and prevent edge case in computing `branch`)
         require(deposit_count < MAX_DEPOSIT_COUNT);
 
@@ -83,11 +88,6 @@ contract DepositContract is IDepositContract {
         require(msg.value % GWEI == 0);
         uint deposit_amount = msg.value / GWEI;
         require(deposit_amount < 2**64);
-
-        // Length checks for safety
-        require(pubkey.length == PUBKEY_LENGTH);
-        require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH);
-        require(signature.length == SIGNATURE_LENGTH);
 
         // Emit `DepositEvent` log
         bytes memory amount = to_little_endian_64(uint64(deposit_amount));
