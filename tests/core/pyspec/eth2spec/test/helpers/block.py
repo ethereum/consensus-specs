@@ -15,7 +15,8 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
                       " Signing block is slow due to transition for proposer index calculation.")
             # use stub state to get proposer index of future slot
             stub_state = state.copy()
-            spec.process_slots(stub_state, slot)
+            if stub_state.slot < slot:
+                spec.process_slots(stub_state, slot)
             proposer_index = spec.get_beacon_proposer_index(stub_state)
     return proposer_index
 
@@ -52,7 +53,10 @@ def sign_block(spec, state, block, proposer_index=None):
 
 
 def transition_unsigned_block(spec, state, block):
-    spec.process_slots(state, block.slot)
+    if state.slot < block.slot:
+        spec.process_slots(state, block.slot)
+    assert state.latest_block_header.slot < block.slot  # There may not already be a block in this slot or past it.
+    assert state.slot == block.slot  # The block must be for this slot
     spec.process_block(state, block)
 
 
@@ -74,9 +78,10 @@ def build_empty_block(spec, state, slot=None):
     if slot < state.slot:
         raise Exception("build_empty_block cannot build blocks for past slots")
     if slot > state.slot:
-        # transition forward in copied state to grab relevant data from state
-        state = state.copy()
-        spec.process_slots(state, slot)
+        if state.slot < slot:
+            # transition forward in copied state to grab relevant data from state
+            state = state.copy()
+            spec.process_slots(state, slot)
 
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot

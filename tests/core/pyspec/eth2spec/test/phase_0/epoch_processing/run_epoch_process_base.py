@@ -18,7 +18,8 @@ def run_epoch_processing_to(spec, state, process_name: str):
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
 
     # transition state to slot before epoch state transition
-    spec.process_slots(state, slot - 1)
+    if state.slot < slot - 1:
+        spec.process_slots(state, slot - 1)
 
     # start transitioning, do one slot update before the epoch itself.
     spec.process_slot(state)

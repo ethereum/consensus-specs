@@ -1219,7 +1219,7 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
 
 ```python
 def process_slots(state: BeaconState, slot: Slot) -> None:
-    assert state.slot <= slot
+    assert state.slot < slot
     while state.slot < slot:
         process_slot(state)
         # Process epoch on the start slot of the next epoch

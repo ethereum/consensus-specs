@@ -17,7 +17,8 @@ def next_slots(spec, state, slots):
     """
     Transition given slots forward.
     """
-    spec.process_slots(state, state.slot + slots)
+    if slots > 0:
+        spec.process_slots(state, state.slot + slots)
 
 
 def transition_to(spec, state, slot):
@@ -35,7 +36,8 @@ def next_epoch(spec, state):
     Transition to the start slot of the next epoch
     """
     slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
-    spec.process_slots(state, slot)
+    if slot > state.slot:
+        spec.process_slots(state, slot)
 
 
 def get_state_root(spec, state, slot) -> bytes:
