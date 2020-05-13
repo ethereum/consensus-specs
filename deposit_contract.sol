@@ -29,7 +29,7 @@ interface IDepositContract {
 contract DepositContract is IDepositContract {
     uint constant GWEI = 1e9;
 
-    uint constant MIN_DEPOSIT_AMOUNT = 1000000000; // Gwei
+    uint constant MIN_DEPOSIT_AMOUNT = 1 ether;
     uint constant DEPOSIT_CONTRACT_TREE_DEPTH = 32;
     // NOTE: this also ensures `deposit_count` will fit into 64-bits
     uint constant MAX_DEPOSIT_COUNT = 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1;
@@ -79,8 +79,9 @@ contract DepositContract is IDepositContract {
         require(deposit_count < MAX_DEPOSIT_COUNT);
 
         // Check deposit amount
+        require(msg.value >= MIN_DEPOSIT_AMOUNT);
+        require(msg.value % GWEI == 0);
         uint deposit_amount = msg.value / GWEI;
-        require(deposit_amount >= MIN_DEPOSIT_AMOUNT);
         require(deposit_amount < 2**64);
 
         // Length checks for safety
