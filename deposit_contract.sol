@@ -121,11 +121,14 @@ contract DepositContract is IDepositContract {
         for (uint height = 0; height < DEPOSIT_CONTRACT_TREE_DEPTH; height++) {
             if ((size & 1) == 1) {
                 branch[height] = node;
-                break;
+                return;
             }
             node = sha256(abi.encodePacked(branch[height], node));
             size /= 2;
         }
+        // As the loop should always end prematurely with the `return` statement,
+        // this code should be unreachable. We assert `false` just to be safe.
+        assert(false);
     }
 
     function to_little_endian_64(uint64 value) internal pure returns (bytes memory ret) {
