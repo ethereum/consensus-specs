@@ -35,7 +35,6 @@ contract DepositContract is IDepositContract {
     uint constant PUBKEY_LENGTH = 48; // bytes
     uint constant WITHDRAWAL_CREDENTIALS_LENGTH = 32; // bytes
     uint constant SIGNATURE_LENGTH = 96; // bytes
-    uint constant AMOUNT_LENGTH = 8; // bytes
 
     bytes32[DEPOSIT_CONTRACT_TREE_DEPTH] branch;
     uint256 deposit_count;
