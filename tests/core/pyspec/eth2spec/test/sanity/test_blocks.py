@@ -3,8 +3,11 @@ from copy import deepcopy
 from eth2spec.utils import bls
 
 from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot, next_epoch
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
-    transition_unsigned_block
+from eth2spec.test.helpers.block import (
+    build_empty_block_for_next_slot, build_empty_block,
+    sign_block,
+    transition_unsigned_block,
+)
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
@@ -69,6 +72,57 @@ def test_empty_block_transition(spec, state):
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
+
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_proposal_for_genesis_slot(spec, state):
+    assert state.slot == spec.GENESIS_SLOT
+
+    yield 'pre', state
+
+    block = build_empty_block(spec, state, spec.GENESIS_SLOT)
+    block.parent_root = state.latest_block_header.hash_tree_root()
+
+    # Show that normal path through transition fails
+    failed_state = state.copy()
+    expect_assertion_error(
+        lambda: spec.state_transition(failed_state, spec.SignedBeaconBlock(message=block), validate_result=False)
+    )
+
+    # Artifically bypass the restriction in the state transition to transition and sign block for test vectors
+    spec.process_block(state, block)
+    block.state_root = state.hash_tree_root()
+    signed_block = sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+def test_parent_from_same_slot(spec, state):
+    yield 'pre', state
+
+    parent_block = build_empty_block_for_next_slot(spec, state)
+    signed_parent_block = state_transition_and_sign_block(spec, state, parent_block)
+
+    child_block = parent_block.copy()
+    child_block.parent_root = state.latest_block_header.hash_tree_root()
+
+    # Show that normal path through transition fails
+    failed_state = state.copy()
+    expect_assertion_error(
+        lambda: spec.state_transition(failed_state, spec.SignedBeaconBlock(message=child_block), validate_result=False)
+    )
+
+    # Artifically bypass the restriction in the state transition to transition and sign block for test vectors
+    spec.process_block(state, child_block)
+    child_block.state_root = state.hash_tree_root()
+    signed_child_block = sign_block(spec, state, child_block)
+
+    yield 'blocks', [signed_parent_block, signed_child_block]
+    yield 'post', None
 
 
 @with_all_phases

@@ -77,11 +77,10 @@ def build_empty_block(spec, state, slot=None):
         slot = state.slot
     if slot < state.slot:
         raise Exception("build_empty_block cannot build blocks for past slots")
-    if slot > state.slot:
-        if state.slot < slot:
-            # transition forward in copied state to grab relevant data from state
-            state = state.copy()
-            spec.process_slots(state, slot)
+    if state.slot < slot:
+        # transition forward in copied state to grab relevant data from state
+        state = state.copy()
+        spec.process_slots(state, slot)
 
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
