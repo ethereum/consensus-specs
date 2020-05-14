@@ -151,7 +151,6 @@ This section outlines constants that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
@@ -221,12 +220,14 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 
 | Name                                           | Message Type            |
 |------------------------------------------------|-------------------------|
-| beacon_block                                   | SignedBeaconBlock       |
-| beacon_aggregate_and_proof                     | SignedAggregateAndProof |
-| committee_index{subnet_id}\_beacon_attestation | Attestation             |
-| voluntary_exit                                 | SignedVoluntaryExit     |
-| proposer_slashing                              | ProposerSlashing        |
-| attester_slashing                              | AttesterSlashing        |
+| Name                             | Message Type              |
+|----------------------------------|---------------------------|
+| `beacon_block`                   | `SignedBeaconBlock`       |
+| `beacon_aggregate_and_proof`     | `SignedAggregateAndProof` |
+| `beacon_attestation_{subnet_id}` | `Attestation`             |
+| `voluntary_exit`                 | `SignedVoluntaryExit`     |
+| `proposer_slashing`              | `ProposerSlashing`        |
+| `attester_slashing`              | `AttesterSlashing`        |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
@@ -274,8 +275,8 @@ Additional global topics are used to propagate lower frequency validator message
 
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `Name`s are:
 
-- `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
-    - _[REJECT]_ The attestation's committee index (`attestation.data.index`) is for the correct subnet.
+- `beacon_attestation_{subnet_id}` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
+    - _[REJECT]_ The attestation is for the correct subnet (i.e. `compute_subnet_for_attestation(state, attestation) == subnet_id`).
     - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
     - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len(get_attesting_indices(state, attestation.data, attestation.aggregation_bits)) == 1`).
     - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
@@ -284,9 +285,9 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
 
 #### Attestations and Aggregation
 
-Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. For the `committee_index{subnet_id}_beacon_attestation` topics, `subnet_id` is set to `index % ATTESTATION_SUBNET_COUNT`, where `index` is the `CommitteeIndex` of the given committee.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an attestation can be calculated with `compute_subnet_for_attestation`. `beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees in Phase 1.
 
-Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
+Unaggregated attestations are sent to the subnet topic, `beacon_attestation_{compute_subnet_for_attestation(state, attestation)}` as `Attestation`s.
 
 Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
