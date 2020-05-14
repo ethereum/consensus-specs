@@ -2,7 +2,7 @@ version: 2.0
 jobs:
   build:
     docker:
-      - image: cimg/base:2020.01
+      - image: cimg/python:3.8.1
     steps:
       - checkout
       - run:
@@ -14,3 +14,12 @@ jobs:
       - run:
           name: Compile the contract
           command: make
+      - run:
+          name: Run eth2.0-specs tests
+          command: |
+            sudo apt-get install -y python3-venv
+            git clone https://github.com/ethereum/eth2.0-specs
+            cp -f deposit_contract.json eth2.0-specs/deposit_contract/contracts/validator_registration.json
+            cd eth2.0-specs
+            make install_deposit_contract_tester
+            make test_deposit_contract
