@@ -1,4 +1,5 @@
 version: 2.0
+
 jobs:
   build:
     docker:
@@ -23,3 +24,32 @@ jobs:
             cd eth2.0-specs
             make install_deposit_contract_tester
             make test_deposit_contract
+      - persist_to_workspace:
+          root: .
+          paths:
+            - combined.json
+            - lib
+
+  test:
+    docker:
+      - image: nixorg/nix:circleci
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/
+      - run:
+          name: Test the contract
+          command: |
+            cp /tmp/combined.json .
+            cp -r /tmp/lib/* lib
+            nix-shell --command 'make test'
+
+workflows:
+  version: 2
+
+  build_and_test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
