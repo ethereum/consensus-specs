@@ -55,6 +55,8 @@
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_shard_attestation`](#is_shard_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
+    - [`optional_aggregate_verify`](#optional_aggregate_verify)
+    - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [New Attestation processing](#new-attestation-processing)
@@ -110,6 +112,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
 | `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
+| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | |
 
 ## Updated containers
 
@@ -633,6 +636,36 @@ def is_winning_attestation(state: BeaconState,
     )
 ```
 
+#### `optional_aggregate_verify`
+
+```python
+def optional_aggregate_verify(pubkeys: Sequence[BLSPubkey],
+                              messages: Sequence[Bytes32],
+                              signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``NO_SIGNATURE``.
+    Otherwise, verify it with standard BLS AggregateVerify API.
+    """
+    if len(pubkeys) == 0:
+        return signature == NO_SIGNATURE
+    else:
+        return bls.AggregateVerify(pubkeys, messages, signature)
+```
+
+#### `optional_fast_aggregate_verify`
+
+```python
+def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``NO_SIGNATURE``.
+    Otherwise, verify it with standard BLS FastAggregateVerify API.
+    """
+    if len(pubkeys) == 0:
+        return signature == NO_SIGNATURE
+    else:
+        return bls.FastAggregateVerify(pubkeys, message, signature)
+```
+
 ### Block processing
 
 ```python
@@ -764,7 +797,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         for header in headers
     ]
     # Verify combined proposer signature
-    assert bls.AggregateVerify(pubkeys, signing_roots, signature=transition.proposer_signature_aggregate)
+    assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
 
     # Save updated state
     state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]
@@ -942,12 +975,7 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     slot = compute_previous_slot(state.slot)
     signing_root = compute_signing_root(get_block_root_at_slot(state, slot),
                                         get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
-    if len(signer_pubkeys) == 0:
-        # TODO: handle the empty light_client_signature case?
-        assert block_body.light_client_signature == BLSSignature()
-        return
-    else:
-        assert bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
+    assert optional_fast_aggregate_verify(signer_pubkeys, signing_root, block_body.light_client_signature)
 ```
 
 ### Epoch transition
