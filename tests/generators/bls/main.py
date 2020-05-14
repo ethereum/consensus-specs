@@ -10,18 +10,13 @@ from eth_utils import (
 )
 from gen_base import gen_runner, gen_typing
 
-from py_ecc import bls
+from eth2spec.utils import bls
 from hashlib import sha256
 
 from eth2spec.test.context import PHASE0
 
 def hash(x):
     return sha256(x).digest()
-
-
-F2Q_COEFF_LEN = 48
-G2_COMPRESSED_Z_LEN = 48
-DST = bls.G2ProofOfPossession.DST
 
 
 def int_to_hex(n: int, byte_length: int = None) -> str:
@@ -49,11 +44,15 @@ PRIVKEYS = [
     hex_to_int('0x00000000000000000000000000000000328388aff0d4a5b7dc9205abd374e7e98f3cd9f3418edb4eafda5fb16473d216'),
 ]
 
+NO_PUBKEY = b'\x00' * 48
+Z1_PUBKEY = b'\xc0' + b'\x00' * 47
+NO_SIGNATURE = b'\x00' * 96
+Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
 
 def case01_sign():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
-            sig = bls.G2ProofOfPossession.Sign(privkey, message)
+            sig = bls.Sign(privkey, message)
             identifier = f'{int_to_hex(privkey)}_{encode_hex(message)}'
             yield f'sign_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
@@ -68,9 +67,10 @@ def case02_verify():
     for i, privkey in enumerate(PRIVKEYS):
         for message in MESSAGES:
             # Valid signature
-            signature = bls.G2ProofOfPossession.Sign(privkey, message)
-            pubkey = bls.G2ProofOfPossession.SkToPk(privkey)
+            signature = bls.Sign(privkey, message)
+            pubkey = bls.SkToPk(privkey)
             identifier = f'{encode_hex(pubkey)}_{encode_hex(message)}'
+            assert bls.Verify(pubkey, message, signature)
             yield f'verify_valid_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
                     'pubkey': encode_hex(pubkey),
@@ -81,8 +81,9 @@ def case02_verify():
             }
 
             # Invalid signatures -- wrong pubkey
-            wrong_pubkey = bls.G2ProofOfPossession.SkToPk(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
+            wrong_pubkey = bls.SkToPk(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
             identifier = f'{encode_hex(wrong_pubkey)}_{encode_hex(message)}'
+            assert not bls.Verify(wrong_pubkey, message, signature)
             yield f'verify_wrong_pubkey_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
                     'pubkey': encode_hex(wrong_pubkey),
@@ -95,6 +96,7 @@ def case02_verify():
             # Invalid signature -- tampered with signature
             tampered_signature = signature[:-4] + b'\xFF\xFF\xFF\xFF'
             identifier = f'{encode_hex(pubkey)}_{encode_hex(message)}'
+            assert not bls.Verify(pubkey, message, tampered_signature)
             yield f'verify_tampered_signature_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
                     'pubkey': encode_hex(pubkey),
@@ -104,26 +106,37 @@ def case02_verify():
                 'output': False,
             }
 
+        # Valid pubkey and signature with the point at infinity
+        assert bls.Verify(Z1_PUBKEY, message, Z2_SIGNATURE)
+        yield f'verify_infinity_pubkey_and_infinity_signature', {
+            'input': {
+                'pubkey': encode_hex(Z1_PUBKEY),
+                'message': encode_hex(message),
+                'signature': encode_hex(Z2_SIGNATURE),
+            },
+            'output': True,
+        }
 
 def case03_aggregate():
     for message in MESSAGES:
-        sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in PRIVKEYS]
+        sigs = [bls.Sign(privkey, message) for privkey in PRIVKEYS]
         yield f'aggregate_{encode_hex(message)}', {
             'input': [encode_hex(sig) for sig in sigs],
-            'output': encode_hex(bls.G2ProofOfPossession.Aggregate(sigs)),
+            'output': encode_hex(bls.Aggregate(sigs)),
         }
 
 
 def case04_fast_aggregate_verify():
     for i, message in enumerate(MESSAGES):
         privkeys = PRIVKEYS[:i + 1]
-        sigs = [bls.G2ProofOfPossession.Sign(privkey, message) for privkey in privkeys]
-        aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
-        pubkeys = [bls.G2ProofOfPossession.SkToPk(privkey) for privkey in privkeys]
+        sigs = [bls.Sign(privkey, message) for privkey in privkeys]
+        aggregate_signature = bls.Aggregate(sigs)
+        pubkeys = [bls.SkToPk(privkey) for privkey in privkeys]
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
         # Valid signature
         identifier = f'{pubkeys_serial}_{encode_hex(message)}'
+        assert bls.FastAggregateVerify(pubkeys, message, aggregate_signature)
         yield f'fast_aggregate_verify_valid_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_serial,
@@ -134,9 +147,10 @@ def case04_fast_aggregate_verify():
         }
 
         # Invalid signature -- extra pubkey
-        pubkeys_extra = pubkeys + [bls.G2ProofOfPossession.SkToPk(PRIVKEYS[-1])]
+        pubkeys_extra = pubkeys + [bls.SkToPk(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         identifier = f'{pubkeys_extra_serial}_{encode_hex(message)}'
+        assert not bls.FastAggregateVerify(pubkeys_extra, message, aggregate_signature)
         yield f'fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_extra_serial,
@@ -149,6 +163,7 @@ def case04_fast_aggregate_verify():
         # Invalid signature -- tampered with signature
         tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
         identifier = f'{pubkeys_serial}_{encode_hex(message)}'
+        assert not bls.FastAggregateVerify(pubkeys, message, tampered_signature)
         yield f'fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_serial,
@@ -158,37 +173,86 @@ def case04_fast_aggregate_verify():
             'output': False,
         }
 
+    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == Z1_SIGNATURE
+    assert not bls.FastAggregateVerify([], message, Z2_SIGNATURE)
+    yield f'fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
+        'input': {
+            'pubkeys': [],
+            'message': encode_hex(message),
+            'signature': encode_hex(Z2_SIGNATURE),
+        },
+        'output': False,
+    }
+
+    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == 0x00...
+    assert not bls.FastAggregateVerify([], message, NO_SIGNATURE)
+    yield f'fast_aggregate_verify_na_pubkeys_and_na_signature', {
+        'input': {
+            'pubkeys': [],
+            'message': encode_hex(message),
+            'signature': encode_hex(NO_SIGNATURE),
+        },
+        'output': False,
+    }
 
 def case05_aggregate_verify():
-    pairs = []
+    pubekys = []
+    pubkeys_serial = []
+    messages = []
+    messages_serial = []
     sigs = []
     for privkey, message in zip(PRIVKEYS, MESSAGES):
-        sig = bls.G2ProofOfPossession.Sign(privkey, message)
-        pubkey = bls.G2ProofOfPossession.SkToPk(privkey)
-        pairs.append({
-            'pubkey': encode_hex(pubkey),
-            'message': encode_hex(message),
-        })
+        sig = bls.Sign(privkey, message)
+        pubkey = bls.SkToPk(privkey)
+        pubekys.append(pubkey)
+        pubkeys_serial.append(encode_hex(pubkey))
+        messages.append(message)
+        messages_serial.append(encode_hex(message))
         sigs.append(sig)
 
-    aggregate_signature = bls.G2ProofOfPossession.Aggregate(sigs)
+    aggregate_signature = bls.Aggregate(sigs)
+    assert bls.AggregateVerify(pubekys, messages, aggregate_signature)
     yield f'aggregate_verify_valid', {
         'input': {
-            'pairs': pairs,
+            'pubkeys': pubkeys_serial,
+            'messages': messages_serial,
             'signature': encode_hex(aggregate_signature),
         },
         'output': True,
     }
 
     tampered_signature = aggregate_signature[:4] + b'\xff\xff\xff\xff'
+    assert not bls.AggregateVerify(pubkey, messages, tampered_signature)
     yield f'aggregate_verify_tampered_signature', {
         'input': {
-            'pairs': pairs,
+            'pubkeys': pubkeys_serial,
+            'messages': messages_serial,
             'signature': encode_hex(tampered_signature),
         },
         'output': False,
     }
 
+    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == Z1_SIGNATURE
+    assert not bls.AggregateVerify([], [], Z2_SIGNATURE)
+    yield f'aggregate_verify_na_pubkeys_and_infinity_signature', {
+        'input': {
+            'pubkeys': [],
+            'message': [],
+            'signature': encode_hex(Z2_SIGNATURE),
+        },
+        'output': False,
+    }
+
+    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == 0x00...
+    assert not bls.AggregateVerify([], [], NO_SIGNATURE)
+    yield f'aggregate_verify_na_pubkeys_and_na_signature', {
+        'input': {
+            'pubkeys': [],
+            'messages': [],
+            'signature': encode_hex(NO_SIGNATURE),
+        },
+        'output': False,
+    }
 
 def create_provider(handler_name: str,
                     test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:

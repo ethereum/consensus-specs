@@ -16,4 +16,4 @@ output: BLS Signature -- expected output, single BLS signature
 
 ## Condition
 
-The `aggregate_sigs` handler should aggregate the signatures in the `input`, and the result should match the expected `output`.
+The `aggregate` handler should aggregate the signatures in the `input`, and the result should match the expected `output`.
