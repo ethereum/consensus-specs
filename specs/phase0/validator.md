@@ -446,7 +446,7 @@ def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_si
 
 If the validator is selected to aggregate (`is_aggregator()`), they construct an aggregate attestation via the following.
 
-Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator, and create an `aggregate_attestation: Attestation` with the following fields.
+Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator. If `len(attestations) > 0`, create an `aggregate_attestation: Attestation` with the following fields.
 
 ##### Data
 
