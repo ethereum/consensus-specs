@@ -24,9 +24,20 @@ interface IDepositContract {
     function get_deposit_count() external view returns (bytes memory);
 }
 
+// Based on official specification in https://eips.ethereum.org/EIPS/eip-165
+interface ERC165 {
+    /// @notice Query if a contract implements an interface
+    /// @param interfaceId The interface identifier, as specified in ERC-165
+    /// @dev Interface identification is specified in ERC-165. This function
+    ///  uses less than 30,000 gas.
+    /// @return `true` if the contract implements `interfaceId` and
+    ///  `interfaceId` is not 0xffffffff, `false` otherwise
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool);
+}
+
 // This is a rewrite of the Vyper Eth2.0 deposit contract in Solidity.
 // It tries to stay as close as possible to the original source code.
-contract DepositContract is IDepositContract {
+contract DepositContract is IDepositContract, ERC165 {
     uint constant GWEI = 1e9;
 
     uint constant MIN_DEPOSIT_AMOUNT = 1 ether;
@@ -126,6 +137,10 @@ contract DepositContract is IDepositContract {
         // As the loop should always end prematurely with the `return` statement,
         // this code should be unreachable. We assert `false` just to be safe.
         assert(false);
+    }
+
+    function supportsInterface(bytes4 interfaceId) override external pure returns (bool) {
+        return interfaceId == type(ERC165).interfaceId || interfaceId == type(IDepositContract).interfaceId;
     }
 
     function to_little_endian_64(uint64 value) internal pure returns (bytes memory ret) {
