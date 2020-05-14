@@ -4,7 +4,7 @@ clean:
 	@rm -f DepositContract.abi DepositContract.bin IDepositContract.abi IDepositContract.bin deposit_contract.json
 
 compile: clean
-	@solc --bin --abi --overwrite -o . deposit_contract.sol
+	@solc --metadata-literal --bin --abi --overwrite -o . deposit_contract.sol
 	@echo -n '{"abi": ' > deposit_contract.json
 	@cat DepositContract.abi >> deposit_contract.json
 	@echo -n ', "bytecode": "0x' >> deposit_contract.json
