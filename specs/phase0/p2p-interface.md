@@ -220,12 +220,14 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 
 | Name                                           | Message Type            |
 |------------------------------------------------|-------------------------|
-| beacon\_block                                  | SignedBeaconBlock       |
-| beacon\_aggregate\_and\_proof                  | SignedAggregateAndProof |
-| beacon_attestation\_{subnet\_id}               | Attestation             |
-| voluntary\_exit                                | SignedVoluntaryExit     |
-| proposer\_slashing                             | ProposerSlashing        |
-| attester\_slashing                             | AttesterSlashing        |
+| Name                             | Message Type              |
+|----------------------------------|---------------------------|
+| `beacon_block`                   | `SignedBeaconBlock`       |
+| `beacon_aggregate_and_proof`     | `SignedAggregateAndProof` |
+| `beacon_attestation_{subnet_id}` | `Attestation`             |
+| `voluntary_exit`                 | `SignedVoluntaryExit`     |
+| `proposer_slashing`              | `ProposerSlashing`        |
+| `attester_slashing`              | `AttesterSlashing`        |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
