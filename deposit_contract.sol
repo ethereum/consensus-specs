@@ -76,18 +76,18 @@ contract DepositContract is IDepositContract {
         bytes32 deposit_data_root
     ) override external payable {
         // Extended ABI length checks since dynamic types are used.
-        require(pubkey.length == PUBKEY_LENGTH);
-        require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH);
-        require(signature.length == SIGNATURE_LENGTH);
+        require(pubkey.length == PUBKEY_LENGTH, "DepositContract: invalid pubkey length");
+        require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH, "DepositContract: invalid withdrawal_credentials length");
+        require(signature.length == SIGNATURE_LENGTH, "DepositContract: invalid signature length");
 
         // Avoid overflowing the Merkle tree (and prevent edge case in computing `branch`)
-        require(deposit_count < MAX_DEPOSIT_COUNT);
+        require(deposit_count < MAX_DEPOSIT_COUNT, "DepositContract: merkle tree full");
 
         // Check deposit amount
-        require(msg.value >= MIN_DEPOSIT_AMOUNT);
-        require(msg.value % GWEI == 0);
+        require(msg.value >= MIN_DEPOSIT_AMOUNT, "DepositContract: deposit value too low");
+        require(msg.value % GWEI == 0, "DepositContract: deposit value not multiple of gwei");
         uint deposit_amount = msg.value / GWEI;
-        require(deposit_amount < 2**64);
+        require(deposit_amount < 2**64, "DepositContract: deposit value too high");
 
         // Emit `DepositEvent` log
         bytes memory amount = to_little_endian_64(uint64(deposit_amount));
@@ -110,7 +110,7 @@ contract DepositContract is IDepositContract {
             sha256(abi.encodePacked(amount, bytes24(0), signature_root))
         ));
         // Verify computed and expected deposit data roots match
-        require(node == deposit_data_root);
+        require(node == deposit_data_root, "DepositContract: reconstructed DepositData does not match supplied deposit_data_root");
 
         // Add deposit data root to Merkle tree (update a single `branch` node)
         deposit_count += 1;
