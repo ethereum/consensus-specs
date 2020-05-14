@@ -642,6 +642,10 @@ def is_winning_attestation(state: BeaconState,
 def optional_aggregate_verify(pubkeys: Sequence[BLSPubkey],
                               messages: Sequence[Bytes32],
                               signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``NO_SIGNATURE``.
+    Otherwise, verify it with standard BLS AggregateVerify API.
+    """
     if len(pubkeys) == 0:
         return signature == NO_SIGNATURE
     else:
@@ -652,6 +656,10 @@ def optional_aggregate_verify(pubkeys: Sequence[BLSPubkey],
 
 ```python
 def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``NO_SIGNATURE``.
+    Otherwise, verify it with standard BLS FastAggregateVerify API.
+    """
     if len(pubkeys) == 0:
         return signature == NO_SIGNATURE
     else:
