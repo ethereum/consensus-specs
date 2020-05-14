@@ -175,7 +175,7 @@ def case04_fast_aggregate_verify():
             'output': False,
         }
 
-    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == Z1_SIGNATURE
+    # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == Z1_SIGNATURE
     assert not bls.FastAggregateVerify([], message, Z2_SIGNATURE)
     yield f'fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
@@ -186,7 +186,7 @@ def case04_fast_aggregate_verify():
         'output': False,
     }
 
-    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == 0x00...
+    # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
     assert not bls.FastAggregateVerify([], message, NO_SIGNATURE)
     yield f'fast_aggregate_verify_na_pubkeys_and_na_signature', {
         'input': {
@@ -235,7 +235,7 @@ def case05_aggregate_verify():
         'output': False,
     }
 
-    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == Z1_SIGNATURE
+    # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == Z1_SIGNATURE
     assert not bls.AggregateVerify([], [], Z2_SIGNATURE)
     yield f'aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
@@ -246,7 +246,7 @@ def case05_aggregate_verify():
         'output': False,
     }
 
-    # Invalid pubkeys and signature -- len(pubkey) == 0 and signature == 0x00...
+    # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
     assert not bls.AggregateVerify([], [], NO_SIGNATURE)
     yield f'aggregate_verify_na_pubkeys_and_na_signature', {
         'input': {
