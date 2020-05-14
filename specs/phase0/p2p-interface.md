@@ -250,8 +250,9 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
     - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
     - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+    - _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
     - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - _[REJECT]_ The aggregator's validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`. This also means that it must never have an empty set of participants.
+    - _[REJECT]_ The aggregator's validator index is within the committee -- i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
     - _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
     - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
     - _[REJECT]_ The signature of `aggregate` is valid.
@@ -276,7 +277,7 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
 - `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
     - _[REJECT]_ The attestation's committee index (`attestation.data.index`) is for the correct subnet.
     - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
-    - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
+    - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len(get_attesting_indices(state, attestation.data, attestation.aggregation_bits)) == 1`).
     - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
     - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
     - _[REJECT]_ The signature of `attestation` is valid.
