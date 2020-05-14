@@ -199,7 +199,7 @@ def case04_fast_aggregate_verify():
 
 
 def case05_aggregate_verify():
-    pubekys = []
+    pubkeys = []
     pubkeys_serial = []
     messages = []
     messages_serial = []
@@ -207,14 +207,14 @@ def case05_aggregate_verify():
     for privkey, message in zip(PRIVKEYS, MESSAGES):
         sig = bls.Sign(privkey, message)
         pubkey = bls.SkToPk(privkey)
-        pubekys.append(pubkey)
+        pubkeys.append(pubkey)
         pubkeys_serial.append(encode_hex(pubkey))
         messages.append(message)
         messages_serial.append(encode_hex(message))
         sigs.append(sig)
 
     aggregate_signature = bls.Aggregate(sigs)
-    assert bls.AggregateVerify(pubekys, messages, aggregate_signature)
+    assert bls.AggregateVerify(pubkeys, messages, aggregate_signature)
     yield f'aggregate_verify_valid', {
         'input': {
             'pubkeys': pubkeys_serial,
