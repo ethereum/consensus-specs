@@ -15,6 +15,7 @@ from hashlib import sha256
 
 from eth2spec.test.context import PHASE0
 
+
 def hash(x):
     return sha256(x).digest()
 
@@ -44,10 +45,10 @@ PRIVKEYS = [
     hex_to_int('0x00000000000000000000000000000000328388aff0d4a5b7dc9205abd374e7e98f3cd9f3418edb4eafda5fb16473d216'),
 ]
 
-NO_PUBKEY = b'\x00' * 48
 Z1_PUBKEY = b'\xc0' + b'\x00' * 47
 NO_SIGNATURE = b'\x00' * 96
 Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
+
 
 def case01_sign():
     for privkey in PRIVKEYS:
@@ -116,6 +117,7 @@ def case02_verify():
             },
             'output': True,
         }
+
 
 def case03_aggregate():
     for message in MESSAGES:
@@ -195,6 +197,7 @@ def case04_fast_aggregate_verify():
         'output': False,
     }
 
+
 def case05_aggregate_verify():
     pubekys = []
     pubkeys_serial = []
@@ -237,7 +240,7 @@ def case05_aggregate_verify():
     yield f'aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
             'pubkeys': [],
-            'message': [],
+            'messages': [],
             'signature': encode_hex(Z2_SIGNATURE),
         },
         'output': False,
@@ -253,6 +256,7 @@ def case05_aggregate_verify():
         },
         'output': False,
     }
+
 
 def create_provider(handler_name: str,
                     test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:
