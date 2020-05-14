@@ -423,11 +423,12 @@ Finally, the validator broadcasts `attestation` to the associated attestation su
 
 ```python
 def compute_subnet_for_attestation(state: BeaconState, attestation: Attestation) -> uint64:
+    """
+    Compute the correct subnet for an attestation for Phase 0.
+    Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
+    """
     slots_since_epoch_start = attestation.data.slot % SLOTS_PER_EPOCH
-    committees_since_epoch_start = sum([
-        get_committee_count_at_slot(state, Slot(slot))
-        for slot in range(slots_since_epoch_start)
-    ])
+    committees_since_epoch_start = get_committee_count_at_slot(state, attestation.data.slot) * slots_since_epoch_start
 
     return (committees_since_epoch_start + attestation.data.index) % ATTESTATION_SUBNET_COUNT
 ```
