@@ -15,3 +15,11 @@ The motivation is to run the SMTChecker and the new Yul IR generator option (`--
 5. Finally in the `eth2.0-specs` directory run `make test_deposit_contract` to execute the tests
 
 The Makefile currently compiles the code without optimisations. To enable optimisations add `--optimize` to the `solc` line.
+
+
+## Running randomized `dapp` tests:
+
+Install the latest version of `dapp` by following the instructions at [dapp.tools](https://dapp.tools/). Then run
+```sh
+make test
+```
