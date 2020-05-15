@@ -1,9 +1,9 @@
-version: 2.0
+version: 2.1
 
 jobs:
   build:
     docker:
-      - image: cimg/python:3.8.1
+      - image: cimg/base:2020.01
     steps:
       - checkout
       - run:
@@ -15,20 +15,37 @@ jobs:
       - run:
           name: Compile the contract
           command: make
-      - run:
-          name: Run eth2.0-specs tests
-          command: |
-            sudo apt-get install -y python3-venv
-            git clone https://github.com/ethereum/eth2.0-specs
-            cp -f deposit_contract.json eth2.0-specs/deposit_contract/contracts/validator_registration.json
-            cd eth2.0-specs
-            make install_deposit_contract_tester
-            make test_deposit_contract
       - persist_to_workspace:
           root: .
           paths:
+            - deposit_contract.json
             - combined.json
             - lib
+
+  spectest:
+    docker:
+      - image: cimg/python:3.8.1
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/
+      - run:
+          name: Update python3
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3-venv
+      - run:
+          name: Install eth2.0-specs tests
+          command: |
+            git clone https://github.com/ethereum/eth2.0-specs
+            cp -f /tmp/deposit_contract.json eth2.0-specs/deposit_contract/contracts/validator_registration.json
+            cd eth2.0-specs
+            make install_deposit_contract_tester
+      - run:
+          name: Run eth2.0-specs tests
+          command: |
+            cd eth2.0-specs
+            make test_deposit_contract
 
   test:
     docker:
@@ -50,6 +67,9 @@ workflows:
   build_and_test:
     jobs:
       - build
-      - test:
+      - spectest:
           requires:
             - build
+      - test:
+          requires:
+            - spectest
