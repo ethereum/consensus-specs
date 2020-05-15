@@ -430,7 +430,7 @@ def compute_subnet_for_attestation(state: BeaconState, attestation: Attestation)
     slots_since_epoch_start = attestation.data.slot % SLOTS_PER_EPOCH
     committees_since_epoch_start = get_committee_count_at_slot(state, attestation.data.slot) * slots_since_epoch_start
 
-    return (committees_since_epoch_start + attestation.data.index) % ATTESTATION_SUBNET_COUNT
+    return uint64((committees_since_epoch_start + attestation.data.index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation

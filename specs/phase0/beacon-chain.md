@@ -1476,12 +1476,12 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
     _, inactivity_penalties = get_inactivity_penalty_deltas(state)
 
     rewards = [
-        source_rewards[i] + target_rewards[i] + head_rewards[i] + inclusion_delay_rewards[i]
+        Gwei(source_rewards[i] + target_rewards[i] + head_rewards[i] + inclusion_delay_rewards[i])
         for i in range(len(state.validators))
     ]
 
     penalties = [
-        source_penalties[i] + target_penalties[i] + head_penalties[i] + inactivity_penalties[i]
+        Gwei(source_penalties[i] + target_penalties[i] + head_penalties[i] + inactivity_penalties[i])
         for i in range(len(state.validators))
     ]
 
