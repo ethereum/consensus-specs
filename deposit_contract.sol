@@ -91,9 +91,6 @@ contract DepositContract is IDepositContract, ERC165 {
         require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH, "DepositContract: invalid withdrawal_credentials length");
         require(signature.length == SIGNATURE_LENGTH, "DepositContract: invalid signature length");
 
-        // Avoid overflowing the Merkle tree (and prevent edge case in computing `branch`)
-        require(deposit_count < MAX_DEPOSIT_COUNT, "DepositContract: merkle tree full");
-
         // Check deposit amount
         require(msg.value >= MIN_DEPOSIT_AMOUNT, "DepositContract: deposit value too low");
         require(msg.value % GWEI == 0, "DepositContract: deposit value not multiple of gwei");
@@ -120,8 +117,12 @@ contract DepositContract is IDepositContract, ERC165 {
             sha256(abi.encodePacked(pubkey_root, withdrawal_credentials)),
             sha256(abi.encodePacked(amount, bytes24(0), signature_root))
         ));
+
         // Verify computed and expected deposit data roots match
         require(node == deposit_data_root, "DepositContract: reconstructed DepositData does not match supplied deposit_data_root");
+
+        // Avoid overflowing the Merkle tree (and prevent edge case in computing `branch`)
+        require(deposit_count < MAX_DEPOSIT_COUNT, "DepositContract: merkle tree full");
 
         // Add deposit data root to Merkle tree (update a single `branch` node)
         deposit_count += 1;
