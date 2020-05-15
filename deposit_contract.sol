@@ -98,7 +98,7 @@ contract DepositContract is IDepositContract, ERC165 {
         require(msg.value >= MIN_DEPOSIT_AMOUNT, "DepositContract: deposit value too low");
         require(msg.value % GWEI == 0, "DepositContract: deposit value not multiple of gwei");
         uint deposit_amount = msg.value / GWEI;
-        require(deposit_amount < 2**64, "DepositContract: deposit value too high");
+        require(deposit_amount <= type(uint64).max, "DepositContract: deposit value too high");
 
         // Emit `DepositEvent` log
         bytes memory amount = to_little_endian_64(uint64(deposit_amount));
@@ -113,8 +113,8 @@ contract DepositContract is IDepositContract, ERC165 {
         // Compute deposit data root (`DepositData` hash tree root)
         bytes32 pubkey_root = sha256(abi.encodePacked(pubkey, bytes16(0)));
         bytes32 signature_root = sha256(abi.encodePacked(
-            sha256(abi.encodePacked(bytes(signature[:64]))),
-            sha256(abi.encodePacked(bytes(signature[64:]), bytes32(0)))
+            sha256(abi.encodePacked(signature[:64])),
+            sha256(abi.encodePacked(signature[64:], bytes32(0)))
         ));
         bytes32 node = sha256(abi.encodePacked(
             sha256(abi.encodePacked(pubkey_root, withdrawal_credentials)),
