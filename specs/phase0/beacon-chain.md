@@ -732,7 +732,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
     # See the 'generalized domain' algorithm on page 3
     for current_round in map(uint64, range(SHUFFLE_ROUND_COUNT)):
         pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=uint64(1)))[0:8]) % index_count
-        flip = (pivot + index_count - index) % index_count
+        flip = uint64((pivot + index_count - index) % index_count)
         position = max(index, flip)
         source = hash(
             seed
@@ -741,7 +741,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
         )
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
-        index = uint64(flip) if bit else index
+        index = flip if bit else index
 
     return index
 ```
@@ -1097,7 +1097,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_validator_churn_limit(state):
-        exit_queue_epoch = Epoch(exit_queue_epoch + 1)
+        exit_queue_epoch += Epoch(1)
 
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
