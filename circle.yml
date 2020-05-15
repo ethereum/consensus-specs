@@ -18,7 +18,7 @@ jobs:
           root: .
           paths:
             - deposit_contract.json
-            - combined.json
+            - build/combined.json
             - lib
 
   spectest:
@@ -56,7 +56,8 @@ jobs:
       - run:
           name: Test the contract
           command: |
-            cp /tmp/combined.json .
+            mkdir build
+            cp -r /tmp/build/* build
             cp -r /tmp/lib/* lib
             nix-shell --command 'make test'
 
