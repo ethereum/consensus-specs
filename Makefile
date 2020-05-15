@@ -8,13 +8,14 @@ clean:
 	@rm -rf combined.json
 
 compile: clean
+	@# Note: using /bin/echo for macOS
 	@git submodule update --recursive --init
 	@solc --metadata-literal --bin --abi --combined-json=abi,bin,bin-runtime,srcmap,srcmap-runtime,ast,metadata,storage-layout --overwrite -o . deposit_contract.sol tests/deposit_contract.t.sol
-	@echo -n '{"abi": ' > deposit_contract.json
+	@/bin/echo -n '{"abi": ' > deposit_contract.json
 	@cat DepositContract.abi >> deposit_contract.json
-	@echo -n ', "bytecode": "0x' >> deposit_contract.json
+	@/bin/echo -n ', "bytecode": "0x' >> deposit_contract.json
 	@cat DepositContract.bin >> deposit_contract.json
-	@echo -n '"}' >> deposit_contract.json
+	@/bin/echo -n '"}' >> deposit_contract.json
 
 
 export DAPP_SKIP_BUILD:=1

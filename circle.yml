@@ -3,15 +3,14 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: cimg/base:2020.01
+      - image: ethereum/solc:0.6.8-alpine
     steps:
       - checkout
       - run:
-          name: Install solidity
+          name: Install build essentials
           command: |
-            sudo add-apt-repository ppa:ethereum/ethereum
-            sudo apt-get update
-            sudo apt-get install solc
+            apk update
+            apk add git make
       - run:
           name: Compile the contract
           command: make
