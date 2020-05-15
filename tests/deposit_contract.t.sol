@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 
 import "../lib/ds-test/src/test.sol";
 
@@ -63,7 +63,7 @@ contract DepositContractTest is DSTest {
     bytes memory pubkey = abi.encodePacked(pubkey_one, pubkey_two);
     bytes memory withdrawal_credentials = abi.encodePacked(_withdrawal_credentials); //I wish just recasting to `bytes` would work..
     bytes memory signature = abi.encodePacked(sig_one, sig_two, sig_three);
-    depositContract_vyp.deposit.value(amount)(pubkey, withdrawal_credentials, signature, node);
+    depositContract_vyp.deposit{value: amount}(pubkey, withdrawal_credentials, signature, node);
   }
 
   // If the node is taken randomly instead of as the ssz root, the chances of success are so unlikely that we can assert it to be false
@@ -72,14 +72,14 @@ contract DepositContractTest is DSTest {
     bytes memory pubkey = abi.encodePacked(pubkey_one, pubkey_two);
     bytes memory withdrawal_credentials = abi.encodePacked(_withdrawal_credentials);
     bytes memory signature = abi.encodePacked(sig_one, sig_two, sig_three);
-    depositContract_sol.deposit.value(amount)(pubkey, withdrawal_credentials, signature, node);
+    depositContract_sol.deposit{value: amount}(pubkey, withdrawal_credentials, signature, node);
   }
 
   // if bytes lengths are wrong, the call will fail
   function testFail_malformed_calldata_vyp(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory signature, uint64 amount) public {
     if (amount >= 1000000000000000000) {
       if (!(pubkey.length == 48 && withdrawal_credentials.length == 32 && signature.length == 96)) {
-        depositContract_vyp.deposit.value(amount)(pubkey, withdrawal_credentials, signature,
+        depositContract_vyp.deposit{value: amount}(pubkey, withdrawal_credentials, signature,
                                                   encode_node(pubkey, withdrawal_credentials, signature, to_little_endian_64(amount / GWEI))
                                                  );
       } else { revert(); }
@@ -89,7 +89,7 @@ contract DepositContractTest is DSTest {
   function testFail_malformed_calldata_sol(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory signature, uint64 amount) public {
     if (amount >= 1000000000000000000) {
       if (!(pubkey.length == 48 && withdrawal_credentials.length == 32 && signature.length == 96)) {
-        depositContract_sol.deposit.value(amount)(pubkey, withdrawal_credentials, signature,
+        depositContract_sol.deposit{value: amount}(pubkey, withdrawal_credentials, signature,
                                                   encode_node(pubkey, withdrawal_credentials, signature, to_little_endian_64(amount / GWEI))
                                                  );
       } else { revert(); }
@@ -103,13 +103,13 @@ contract DepositContractTest is DSTest {
     bytes memory withdrawal_credentials = abi.encodePacked(_withdrawal_credentials);
     bytes memory signature = abi.encodePacked(sig_one, sig_two, sig_three);
     bytes32 node = encode_node(pubkey, withdrawal_credentials, signature, to_little_endian_64(amount / GWEI));
-    depositContract.deposit.value(amount)(pubkey, withdrawal_credentials, signature, node);
+    depositContract.deposit{value: amount}(pubkey, withdrawal_credentials, signature, node);
   }
 
   function slice(bytes memory a, uint32 offset, uint32 size) pure internal returns (bytes memory result) {
     result = new bytes(size);
     for (uint i = 0; i < size; i++) {
-      result[i] = a[offset+i];
+      result[i] = a[offset + i];
     }
   }
 
