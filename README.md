@@ -8,7 +8,7 @@ The motivation is to run the SMTChecker and the new Yul IR generator option (`--
 
 ## Using this with the tests
 
-1. Create the `deposit_contract.json` with running `make` (this requires `solc` to be in the path)
+1. Create the `deposit_contract.json` by running `make` (this requires `solc` to be in the path)
 2. Download [eth2.0-specs](https://github.com/ethereum/eth2.0-specs)
 3. Replace `eth2.0-specs/deposit_contract/contracts/validator_registration.json` with `deposit_contract.json`
 4. In the `eth2.0-specs` directory run `make install_deposit_contract_tester` to install the tools needed (make sure to have Python 3.7 and pip installed)

@@ -40,13 +40,9 @@ interface ERC165 {
 contract DepositContract is IDepositContract, ERC165 {
     uint constant GWEI = 1e9;
 
-    uint constant MIN_DEPOSIT_AMOUNT = 1 ether;
     uint constant DEPOSIT_CONTRACT_TREE_DEPTH = 32;
     // NOTE: this also ensures `deposit_count` will fit into 64-bits
     uint constant MAX_DEPOSIT_COUNT = 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1;
-    uint constant PUBKEY_LENGTH = 48; // bytes
-    uint constant WITHDRAWAL_CREDENTIALS_LENGTH = 32; // bytes
-    uint constant SIGNATURE_LENGTH = 96; // bytes
 
     bytes32[DEPOSIT_CONTRACT_TREE_DEPTH] branch;
     uint256 deposit_count;
@@ -87,12 +83,12 @@ contract DepositContract is IDepositContract, ERC165 {
         bytes32 deposit_data_root
     ) override external payable {
         // Extended ABI length checks since dynamic types are used.
-        require(pubkey.length == PUBKEY_LENGTH, "DepositContract: invalid pubkey length");
-        require(withdrawal_credentials.length == WITHDRAWAL_CREDENTIALS_LENGTH, "DepositContract: invalid withdrawal_credentials length");
-        require(signature.length == SIGNATURE_LENGTH, "DepositContract: invalid signature length");
+        require(pubkey.length == 48, "DepositContract: invalid pubkey length");
+        require(withdrawal_credentials.length == 32, "DepositContract: invalid withdrawal_credentials length");
+        require(signature.length == 96, "DepositContract: invalid signature length");
 
         // Check deposit amount
-        require(msg.value >= MIN_DEPOSIT_AMOUNT, "DepositContract: deposit value too low");
+        require(msg.value >= 1 ether, "DepositContract: deposit value too low");
         require(msg.value % GWEI == 0, "DepositContract: deposit value not multiple of gwei");
         uint deposit_amount = msg.value / GWEI;
         require(deposit_amount <= type(uint64).max, "DepositContract: deposit value too high");
