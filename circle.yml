@@ -13,7 +13,9 @@ jobs:
             apk add git make
       - run:
           name: Compile the contract
-          command: make
+          command: |
+            make
+            git diff --color --exit-code
       - persist_to_workspace:
           root: .
           paths:
