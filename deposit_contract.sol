@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.6.0;
+pragma solidity 0.6.8;
 
 // This interface is designed to be compatible with the Vyper version.
 interface IDepositContract {
