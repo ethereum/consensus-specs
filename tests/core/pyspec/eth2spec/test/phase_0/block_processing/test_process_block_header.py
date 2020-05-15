@@ -9,7 +9,7 @@ def prepare_state_for_header_processing(spec, state):
     spec.process_slots(state, state.slot + 1)
 
 
-def run_block_header_processing(spec, state, block, valid=True):
+def run_block_header_processing(spec, state, block, prepare_state=True, valid=True):
     """
     Run ``process_block_header``, yielding:
       - pre-state ('pre')
@@ -17,7 +17,8 @@ def run_block_header_processing(spec, state, block, valid=True):
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    prepare_state_for_header_processing(spec, state)
+    if prepare_state:
+        prepare_state_for_header_processing(spec, state)
 
     yield 'pre', state
     yield 'block', block
@@ -66,6 +67,22 @@ def test_invalid_parent_root(spec, state):
     block.parent_root = b'\12' * 32  # invalid prev root
 
     yield from run_block_header_processing(spec, state, block, valid=False)
+
+
+@with_all_phases
+@spec_state_test
+def test_invalid_multiple_blocks_single_slot(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+
+    prepare_state_for_header_processing(spec, state)
+    spec.process_block_header(state, block)
+
+    assert state.latest_block_header.slot == state.slot
+
+    child_block = block.copy()
+    child_block.parent_root = block.hash_tree_root()
+
+    yield from run_block_header_processing(spec, state, child_block, prepare_state=False, valid=False)
 
 
 @with_all_phases

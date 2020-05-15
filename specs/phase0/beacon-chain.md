@@ -1494,6 +1494,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
     # Verify that proposer index is the correct index
     assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches

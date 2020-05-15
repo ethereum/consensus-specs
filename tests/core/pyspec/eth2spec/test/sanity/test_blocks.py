@@ -79,6 +79,34 @@ def test_empty_block_transition(spec, state):
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
 
 
+def process_and_sign_block_without_header_validations(spec, state, block):
+    """
+    Artificially bypass the restrictions in the state transition to transition and sign block
+
+    WARNING UNSAFE: Only use when generating valid-looking invalid blocks for test vectors
+    """
+
+    # Perform single mutation in `process_block_header`
+    state.latest_block_header = spec.BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=spec.Bytes32(),
+        body_root=block.body.hash_tree_root(),
+    )
+
+    # Perform rest of process_block transitions
+    spec.process_randao(state, block.body)
+    spec.process_eth1_data(state, block.body)
+    spec.process_operations(state, block.body)
+
+    # Insert post-state rot
+    block.state_root = state.hash_tree_root()
+
+    # Sign block
+    return sign_block(spec, state, block)
+
+
 @with_phases(['phase0'])
 @spec_state_test
 def test_proposal_for_genesis_slot(spec, state):
@@ -95,10 +123,8 @@ def test_proposal_for_genesis_slot(spec, state):
         lambda: spec.state_transition(failed_state, spec.SignedBeaconBlock(message=block), validate_result=False)
     )
 
-    # Artifically bypass the restriction in the state transition to transition and sign block for test vectors
-    spec.process_block(state, block)
-    block.state_root = state.hash_tree_root()
-    signed_block = sign_block(spec, state, block)
+    # Artificially bypass the restriction in the state transition to transition and sign block for test vectors
+    signed_block = process_and_sign_block_without_header_validations(spec, state, block)
 
     yield 'blocks', [signed_block]
     yield 'post', None
@@ -121,10 +147,8 @@ def test_parent_from_same_slot(spec, state):
         lambda: spec.state_transition(failed_state, spec.SignedBeaconBlock(message=child_block), validate_result=False)
     )
 
-    # Artifically bypass the restriction in the state transition to transition and sign block for test vectors
-    spec.process_block(state, child_block)
-    child_block.state_root = state.hash_tree_root()
-    signed_child_block = sign_block(spec, state, child_block)
+    # Artificially bypass the restriction in the state transition to transition and sign block for test vectors
+    signed_child_block = process_and_sign_block_without_header_validations(spec, state, child_block)
 
     yield 'blocks', [signed_parent_block, signed_child_block]
     yield 'post', None
