@@ -25,17 +25,32 @@ def only_with_bls(alt_return=None):
 
 @only_with_bls(alt_return=True)
 def Verify(PK, message, signature):
-    return bls.Verify(PK, message, signature)
+    try:
+        result = bls.Verify(PK, message, signature)
+    except Exception:
+        result = False
+    finally:
+        return result
 
 
 @only_with_bls(alt_return=True)
 def AggregateVerify(pubkeys, messages, signature):
-    return bls.AggregateVerify(pubkeys, messages, signature)
+    try:
+        result = bls.AggregateVerify(pubkeys, messages, signature)
+    except Exception:
+        result = False
+    finally:
+        return result
 
 
 @only_with_bls(alt_return=True)
 def FastAggregateVerify(pubkeys, message, signature):
-    return bls.FastAggregateVerify(pubkeys, message, signature)
+    try:
+        result = bls.FastAggregateVerify(pubkeys, message, signature)
+    except Exception:
+        result = False
+    finally:
+        return result
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
@@ -56,3 +71,8 @@ def signature_to_G2(signature):
 @only_with_bls(alt_return=STUB_PUBKEY)
 def AggregatePKs(pubkeys):
     return bls._AggregatePKs(pubkeys)
+
+
+@only_with_bls(alt_return=STUB_SIGNATURE)
+def SkToPk(SK):
+    return bls.SkToPk(SK)
