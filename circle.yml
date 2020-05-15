@@ -36,7 +36,7 @@ jobs:
       - run:
           name: Install eth2.0-specs tests
           command: |
-            git clone https://github.com/ethereum/eth2.0-specs
+            git clone https://github.com/ethereum/eth2.0-specs --single-branch --branch v0.11.2
             cp -f /tmp/deposit_contract.json eth2.0-specs/deposit_contract/contracts/validator_registration.json
             cd eth2.0-specs
             make install_deposit_contract_tester
