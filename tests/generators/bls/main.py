@@ -127,6 +127,19 @@ def case03_aggregate():
             'output': encode_hex(bls.Aggregate(sigs)),
         }
 
+    # Invalid pubkeys -- len(pubkeys) == 0
+    try:
+        bls.Aggregate([])
+    except Exception:
+        pass
+    else:
+        raise Exception("Should have been INVALID")
+
+    yield f'aggregate_na_pubkeys', {
+        'input': [],
+        'output': None,
+    }
+
 
 def case04_fast_aggregate_verify():
     for i, message in enumerate(MESSAGES):
