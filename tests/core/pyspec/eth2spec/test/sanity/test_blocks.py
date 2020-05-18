@@ -2,9 +2,15 @@ from copy import deepcopy
 
 from eth2spec.utils import bls
 
-from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot, next_epoch
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
-    transition_unsigned_block
+from eth2spec.test.helpers.state import (
+    get_balance, state_transition_and_sign_block,
+    next_slot, next_epoch, next_epoch_via_block,
+)
+from eth2spec.test.helpers.block import (
+    build_empty_block_for_next_slot, build_empty_block,
+    sign_block,
+    transition_unsigned_block,
+)
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
@@ -45,10 +51,12 @@ def test_same_slot_block_transition(spec, state):
 
     yield 'pre', state
 
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    assert state.slot == block.slot
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield 'blocks', [signed_block]
-    yield 'post', state
+    yield 'post', None
 
 
 @with_all_phases
@@ -69,6 +77,81 @@ def test_empty_block_transition(spec, state):
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
+
+
+def process_and_sign_block_without_header_validations(spec, state, block):
+    """
+    Artificially bypass the restrictions in the state transition to transition and sign block
+
+    WARNING UNSAFE: Only use when generating valid-looking invalid blocks for test vectors
+    """
+
+    # Perform single mutation in `process_block_header`
+    state.latest_block_header = spec.BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=spec.Bytes32(),
+        body_root=block.body.hash_tree_root(),
+    )
+
+    # Perform rest of process_block transitions
+    spec.process_randao(state, block.body)
+    spec.process_eth1_data(state, block.body)
+    spec.process_operations(state, block.body)
+
+    # Insert post-state rot
+    block.state_root = state.hash_tree_root()
+
+    # Sign block
+    return sign_block(spec, state, block)
+
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_proposal_for_genesis_slot(spec, state):
+    assert state.slot == spec.GENESIS_SLOT
+
+    yield 'pre', state
+
+    block = build_empty_block(spec, state, spec.GENESIS_SLOT)
+    block.parent_root = state.latest_block_header.hash_tree_root()
+
+    # Show that normal path through transition fails
+    failed_state = state.copy()
+    expect_assertion_error(
+        lambda: spec.state_transition(failed_state, spec.SignedBeaconBlock(message=block), validate_result=False)
+    )
+
+    # Artificially bypass the restriction in the state transition to transition and sign block for test vectors
+    signed_block = process_and_sign_block_without_header_validations(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+def test_parent_from_same_slot(spec, state):
+    yield 'pre', state
+
+    parent_block = build_empty_block_for_next_slot(spec, state)
+    signed_parent_block = state_transition_and_sign_block(spec, state, parent_block)
+
+    child_block = parent_block.copy()
+    child_block.parent_root = state.latest_block_header.hash_tree_root()
+
+    # Show that normal path through transition fails
+    failed_state = state.copy()
+    expect_assertion_error(
+        lambda: spec.state_transition(failed_state, spec.SignedBeaconBlock(message=child_block), validate_result=False)
+    )
+
+    # Artificially bypass the restriction in the state transition to transition and sign block for test vectors
+    signed_child_block = process_and_sign_block_without_header_validations(spec, state, child_block)
+
+    yield 'blocks', [signed_parent_block, signed_child_block]
+    yield 'post', None
 
 
 @with_all_phases
@@ -303,22 +386,19 @@ def test_proposer_after_inactive_index(spec, state):
     state.validators[inactive_index].exit_epoch = spec.get_current_epoch(state)
 
     # skip forward, get brand new proposers
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-    block = build_empty_block_for_next_slot(spec, state)
-    state_transition_and_sign_block(spec, state, block)
-
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
     while True:
-        next_slot(spec, state)
         proposer_index = spec.get_beacon_proposer_index(state)
         if proposer_index > inactive_index:
             # found a proposer that has a higher index than a disabled validator
             yield 'pre', state
             # test if the proposer can be recognized correctly after the inactive validator
-            signed_block = state_transition_and_sign_block(spec, state, build_empty_block(spec, state))
+            signed_block = state_transition_and_sign_block(spec, state, build_empty_block_for_next_slot(spec, state))
             yield 'blocks', [signed_block]
             yield 'post', state
             break
+        next_slot(spec, state)
 
 
 @with_all_phases
@@ -336,16 +416,16 @@ def test_high_proposer_index(spec, state):
 
     active_count = len(spec.get_active_validator_indices(state, current_epoch))
     while True:
-        next_slot(spec, state)
         proposer_index = spec.get_beacon_proposer_index(state)
         if proposer_index >= active_count:
             # found a proposer that has a higher index than the active validator count
             yield 'pre', state
             # test if the proposer can be recognized correctly, even while it has a high index.
-            signed_block = state_transition_and_sign_block(spec, state, build_empty_block(spec, state))
+            signed_block = state_transition_and_sign_block(spec, state, build_empty_block_for_next_slot(spec, state))
             yield 'blocks', [signed_block]
             yield 'post', state
             break
+        next_slot(spec, state)
 
 
 @with_all_phases
