@@ -64,13 +64,13 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
 
 def set_some_new_deposits(spec, state, rng):
     num_validators = len(state.validators)
-    # last 10th of validators are new deposits
-    for i in range(len(state.validators))[0:num_validators // 10]:
-        index = num_validators - 1 - i
-        mock_deposit(spec, state, index)
-        # Set half to eligible for activation
-        if i % 2 == 0:
-            state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
+    # Set ~1/10 to just recently deposited
+    for index in range(num_validators):
+        if rng.randrange(num_validators) < num_validators // 10:
+            mock_deposit(spec, state, index)
+            # Set ~half of selected to eligible for activation
+            if rng.choice([True, False]):
+                state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
 
 
 def exit_random_validators(spec, state, rng):
