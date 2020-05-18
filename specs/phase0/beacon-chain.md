@@ -577,7 +577,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 #### `int_to_bytes`
 
 ```python
-def int_to_bytes(n: uint64, length: uint64) -> bytes:
+def int_to_bytes(n: uint64, length: int) -> bytes:
     """
     Return the ``length``-byte serialization of ``n`` in ``ENDIANNESS``-endian.
     """
@@ -731,13 +731,13 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
     for current_round in map(uint64, range(SHUFFLE_ROUND_COUNT)):
-        pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=uint64(1)))[0:8]) % index_count
+        pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=1))[0:8]) % index_count
         flip = uint64((pivot + index_count - index) % index_count)
         position = max(index, flip)
         source = hash(
             seed
-            + int_to_bytes(current_round, length=uint64(1))
-            + int_to_bytes(uint64(position // 256), length=uint64(4))
+            + int_to_bytes(current_round, length=1)
+            + int_to_bytes(uint64(position // 256), length=4)
         )
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
@@ -758,7 +758,7 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
     i = 0
     while True:
         candidate_index = indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
-        random_byte = hash(seed + int_to_bytes(uint64(i // 32), length=uint64(8)))[i % 32]
+        random_byte = hash(seed + int_to_bytes(uint64(i // 32), length=8))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -947,7 +947,7 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    return hash(domain_type + int_to_bytes(epoch, length=uint64(8)) + mix)
+    return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
 #### `get_committee_count_at_slot`
@@ -989,7 +989,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=uint64(8)))
+    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
     indices = get_active_validator_indices(state, epoch)
     return compute_proposer_index(state, indices, seed)
 ```
