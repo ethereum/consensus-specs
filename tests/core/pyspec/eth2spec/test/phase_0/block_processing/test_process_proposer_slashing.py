@@ -1,8 +1,9 @@
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth2spec.test.helpers.state import get_balance, next_epoch
+from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
+from eth2spec.test.helpers.state import next_epoch
 
 
 def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True):
@@ -14,6 +15,8 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
     If ``valid == False``, run expecting ``AssertionError``
     """
 
+    pre_state = state.copy()
+
     yield 'pre', state
     yield 'proposer_slashing', proposer_slashing
 
@@ -22,25 +25,31 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
         yield 'post', None
         return
 
-    proposer_index = proposer_slashing.signed_header_1.message.proposer_index
-    pre_proposer_balance = get_balance(state, proposer_index)
-
     spec.process_proposer_slashing(state, proposer_slashing)
     yield 'post', state
 
-    # check if slashed
-    slashed_validator = state.validators[proposer_index]
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-
-    # lost whistleblower reward
-    assert get_balance(state, proposer_index) < pre_proposer_balance
+    slashed_proposer_index = proposer_slashing.signed_header_1.message.proposer_index
+    check_proposer_slashing_effect(spec, pre_state, state, slashed_proposer_index)
 
 
 @with_all_phases
 @spec_state_test
 def test_success(spec, state):
+    # Get proposer for next slot
+    block = build_empty_block_for_next_slot(spec, state)
+    proposer_index = block.proposer_index
+
+    # Create slashing for same proposer
+    proposer_slashing = get_valid_proposer_slashing(spec, state,
+                                                    slashed_index=proposer_index,
+                                                    signed_1=True, signed_2=True)
+
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
+
+
+@with_all_phases
+@spec_state_test
+def test_success_slashed_and_proposer_index_the_same(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing)

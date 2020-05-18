@@ -524,6 +524,8 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 * Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
 * Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
 
+*Note*: Short lived beacon committee assignments should not be added in into the ENR `attnets` entry.
+
 *Note*: When preparing for a hard fork, a validator must select and subscribe to random subnets of the future fork versioning at least `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 
 ## How to avoid slashing

@@ -162,6 +162,8 @@ DOMAIN_CUSTODY_BIT_SLASHING: 0x83000000
 # ---------------------------------------------------------------
 # [customized] for testnet distinction
 PHASE_1_FORK_VERSION: 0x01000001
+# [customized] for testing
+PHASE_1_GENESIS_SLOT: 8
 # [customized] reduced for testing
 INITIAL_ACTIVE_SHARDS: 4
 
