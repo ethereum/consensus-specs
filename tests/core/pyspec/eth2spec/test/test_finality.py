@@ -1,7 +1,6 @@
 from eth2spec.test.context import spec_state_test, never_bls, with_all_phases, with_phases
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
-from eth2spec.test.helpers.block import apply_empty_block
 
 
 def check_finality(spec,
@@ -58,10 +57,8 @@ def test_finality_no_updates_at_genesis(spec, state):
 @never_bls
 def test_finality_rule_4(spec, state):
     # get past first two epochs that finality does not run on
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     yield 'pre', state
 
@@ -86,10 +83,8 @@ def test_finality_rule_4(spec, state):
 @never_bls
 def test_finality_rule_1(spec, state):
     # get past first two epochs that finality does not run on
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     yield 'pre', state
 
@@ -116,10 +111,8 @@ def test_finality_rule_1(spec, state):
 @never_bls
 def test_finality_rule_2(spec, state):
     # get past first two epochs that finality does not run on
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     yield 'pre', state
 
@@ -152,10 +145,8 @@ def test_finality_rule_3(spec, state):
     https://github.com/ethereum/eth2.0-specs/issues/611#issuecomment-463612892
     """
     # get past first two epochs that finality does not run on
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     yield 'pre', state
 
