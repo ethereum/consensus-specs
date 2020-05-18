@@ -2,6 +2,7 @@ from random import Random
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.test.helpers.attestations import prepare_state_with_attestations
+from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
@@ -61,6 +62,17 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                 assert penalties[index] == 0
 
 
+def set_some_new_deposits(spec, state, rng):
+    num_validators = len(state.validators)
+    # Set ~1/10 to just recently deposited
+    for index in range(num_validators):
+        if rng.randrange(num_validators) < num_validators // 10:
+            mock_deposit(spec, state, index)
+            # Set ~half of selected to eligible for activation
+            if rng.choice([True, False]):
+                state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
+
+
 def exit_random_validators(spec, state, rng):
     if spec.get_current_epoch(state) < 5:
         # Move epochs forward to allow for some validators already exited/withdrawable
@@ -69,10 +81,11 @@ def exit_random_validators(spec, state, rng):
 
     current_epoch = spec.get_current_epoch(state)
     # Exit ~1/2 of validators
-    for validator in state.validators:
+    for index in spec.get_active_validator_indices(state, current_epoch):
         if rng.choice([True, False]):
             continue
 
+        validator = state.validators[index]
         validator.exit_epoch = rng.choice([current_epoch - 1, current_epoch - 2, current_epoch - 3])
         # ~1/2 are withdrawable
         if rng.choice([True, False]):
@@ -129,6 +142,13 @@ def run_test_one_attestation_one_correct(spec, state, runner):
 
     # Remove all attestations except for the first one
     state.previous_epoch_attestations = state.previous_epoch_attestations[:1]
+
+    yield from runner(spec, state)
+
+
+def run_test_with_not_yet_activated_validators(spec, state, runner, rng=Random(5555)):
+    set_some_new_deposits(spec, state, rng)
+    prepare_state_with_attestations(spec, state)
 
     yield from runner(spec, state)
 
@@ -190,6 +210,7 @@ def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, 
 
 
 def run_test_full_random(spec, state, runner, rng=Random(8020)):
+    set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng)
     slash_random_validators(spec, state, rng)
 
