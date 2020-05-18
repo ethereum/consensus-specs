@@ -51,7 +51,8 @@ def test_double_empty_epoch(spec, state):
 @with_all_phases
 @spec_state_test
 def test_over_epoch_boundary(spec, state):
-    spec.process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH // 2))
+    if spec.SLOTS_PER_EPOCH > 1:
+        spec.process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH // 2))
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH
     yield 'slots', slots

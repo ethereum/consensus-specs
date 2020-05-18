@@ -292,7 +292,8 @@ def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_pa
 
 
 def add_attestations_to_state(spec, state, attestations, slot):
-    spec.process_slots(state, slot)
+    if state.slot < slot:
+        spec.process_slots(state, slot)
     for attestation in attestations:
         spec.process_attestation(state, attestation)
 

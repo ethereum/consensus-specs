@@ -1,6 +1,5 @@
 from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
-from eth2spec.test.helpers.block import apply_empty_block
-from eth2spec.test.helpers.state import next_epoch, get_balance
+from eth2spec.test.helpers.state import next_epoch_via_block, get_balance
 from eth2spec.test.context import (
     PHASE0,
     with_all_phases_except,
@@ -64,8 +63,7 @@ def test_reveal_from_current_epoch(spec, state):
 @spec_state_test
 @never_bls
 def test_reveal_from_past_epoch(spec, state):
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state) - 1)
 
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)

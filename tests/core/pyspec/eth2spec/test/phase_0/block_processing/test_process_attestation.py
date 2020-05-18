@@ -14,10 +14,9 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.state import (
     next_slots,
-    next_epoch,
-    transition_to,
+    next_epoch_via_block,
+    transition_to_slot_via_block,
 )
-from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
@@ -46,9 +45,7 @@ def test_success_multi_proposer_index_iterations(spec, state):
 @spec_state_test
 def test_success_previous_epoch(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
-    transition_to(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     yield from run_attestation_processing(spec, state, attestation)
 
@@ -101,8 +98,7 @@ def test_after_epoch_slots(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
 
     # increment past latest inclusion slot
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH + 1)
-    apply_empty_block(spec, state)
+    transition_to_slot_via_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH + 1)
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -173,8 +169,8 @@ def test_invalid_index(spec, state):
 @with_all_phases
 @spec_state_test
 def test_mismatched_target_and_slot(spec, state):
-    next_epoch(spec, state)
-    next_epoch(spec, state)
+    next_epoch_via_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     attestation = get_valid_attestation(spec, state, on_time=False)
     attestation.data.slot = attestation.data.slot - spec.SLOTS_PER_EPOCH

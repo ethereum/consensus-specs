@@ -1225,7 +1225,7 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
 
 ```python
 def process_slots(state: BeaconState, slot: Slot) -> None:
-    assert state.slot <= slot
+    assert state.slot < slot
     while state.slot < slot:
         process_slot(state)
         # Process epoch on the start slot of the next epoch
@@ -1584,6 +1584,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
     # Verify that proposer index is the correct index
     assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches
