@@ -117,6 +117,27 @@ def test_full_but_partial_participation_leak(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_with_not_yet_activated_validators_no_leak(spec, state):
+    yield from rewards_helpers.run_test_with_not_yet_activated_validators(
+        spec,
+        state,
+        run_get_inactivity_penalty_deltas,
+    )
+
+
+@with_all_phases
+@spec_state_test
+def test_with_not_yet_activated_validators_leak(spec, state):
+    transition_state_to_leak(spec, state)
+    yield from rewards_helpers.run_test_with_not_yet_activated_validators(
+        spec,
+        state,
+        run_get_inactivity_penalty_deltas,
+    )
+
+
+@with_all_phases
+@spec_state_test
 def test_with_exited_validators_no_leak(spec, state):
     yield from rewards_helpers.run_test_with_exited_validators(spec, state, run_get_inactivity_penalty_deltas)
 
