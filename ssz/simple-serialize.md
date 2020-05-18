@@ -211,8 +211,8 @@ We first define helper functions:
    * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
    * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
    * containers: `len(fields)`
-* `bitfield_bytes(bits)`: return the bits of the bitlist or bitvector, packed in bytes, aligned to the start. Length-delimiting bit for bitlists is excluded.
-* `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `pack(value)`: given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `pack_bits(bits)`: Given the `bits` of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. And then pack `bitfield_bytes` into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
 * `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
     * The merkleization depends on the effective input, which can be padded/limited:
@@ -228,9 +228,9 @@ We first define helper functions:
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
 * `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects.
-* `merkleize(bitfield_bytes(value), limit=chunk_count(type))` if `value` is a bitvector.
+* `merkleize(pack_bits(value), limit=chunk_count(type))` if `value` is a bitvector.
 * `mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))` if `value` is a list of basic objects.
-* `mix_in_length(merkleize(bitfield_bytes(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
+* `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
