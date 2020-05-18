@@ -83,8 +83,10 @@ def exit_random_validators(spec, state, rng):
 
 def slash_random_validators(spec, state, rng):
     # Slash ~1/2 of validators
-    for validator in state.validators:
-        validator.slashed = rng.choice([True, False])
+    for index in range(len(state.validators)):
+        # slash at least one validator
+        if index == 0 or rng.choice([True, False]):
+            spec.slash_validator(state, index)
 
 
 def run_test_empty(spec, state, runner):
