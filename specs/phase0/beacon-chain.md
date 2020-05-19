@@ -240,7 +240,8 @@ The following values are (non-configurable) constants used throughout the specif
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
+| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+
 
 ### State list lengths
 
@@ -675,6 +676,8 @@ Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specificati
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
+*Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
+
 ### Predicates
 
 #### `is_active_validator`
@@ -745,7 +748,7 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Check if ``indexed_attestation`` has sorted and unique indices and a valid aggregate signature.
+    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
     """
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
@@ -787,7 +790,7 @@ This section defines the more generic methods that take seeds as input; the next
 ```python
 def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) -> uint64:
     """
-    Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
+    Return the shuffled index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
 
@@ -800,7 +803,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
 
-    return ValidatorIndex(index)
+    return index
 ```
 
 #### `compute_proposer_index`
@@ -840,7 +843,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     """
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[compute_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
+    return [indices[compute_shuffled_index(i, len(indices), seed)] for i in range(start, end)]
 ```
 
 #### `compute_epoch_at_slot`
@@ -919,7 +922,7 @@ def compute_domain(domain_type: DomainType, fork_version: Version=None, genesis_
 ```python
 def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
     """
-    Return the signing root of an object by calculating the root of the object-domain tree.
+    Return the signing root for the corresponding signing data.
     """
     return hash_tree_root(SigningData(
         object_root=hash_tree_root(ssz_object),
@@ -1689,6 +1692,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
     # Verify that proposer index is the correct index
     assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches
