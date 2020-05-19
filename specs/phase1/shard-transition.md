@@ -127,7 +127,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
                          beacon_parent_block: BeaconBlock) -> bool:
     # 1. Check if `custody_bits[offset_index][j] != generate_custody_bit(subkey, block_contents)` for any `j`.
     custody_bits = attestation.custody_bits_blocks
-    for j in range(custody_bits[offset_index]):
+    for j in range(len(custody_bits[offset_index])):
         if custody_bits[offset_index][j] != generate_custody_bit(subkey, block):
             return True
 
@@ -135,7 +135,8 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     # `transition.shard_states[offset_index - 1]` to `transition.shard_states[offset_index]`.
     if offset_index == 0:
         shard = get_shard(beacon_state, attestation)
-        shard_state = beacon_parent_block.shard_transitions[shard].shard_states[-1]
+        shard_states = beacon_parent_block.body.shard_transitions[shard].shard_states
+        shard_state = shard_states[len(shard_states) - 1]
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
