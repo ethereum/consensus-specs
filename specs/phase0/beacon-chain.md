@@ -1441,7 +1441,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ##### Helpers
 
-All rewards are multiplied by the base reward, which is proportional to the inverse square root of total deposits.
+All rewards are multiplied by the base reward, which is proportional to the inverse square root of total effective balances.
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
