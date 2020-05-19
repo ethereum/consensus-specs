@@ -81,6 +81,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `MAX_CUSTODY_KEY_REVEALS` | `2**8` (= 256) |
 | `MAX_EARLY_DERIVED_SECRET_REVEALS` | `1` |
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `2**4` (= 16) |
 | `MAX_CUSTODY_SLASHINGS` | `1` |
 
 ### Reward and penalty quotients
@@ -297,16 +298,14 @@ def process_custody_game_operations(state: BeaconState, body: BeaconBlockBody) -
         for operation in operations:
             fn(state, operation)
 
+    for_ops(body.chunk_challenges, process_chunk_challenge)
+    for_ops(body.chunk_challenge_responses, process_chunk_challenge)
     for_ops(body.custody_key_reveals, process_custody_key_reveal)
     for_ops(body.early_derived_secret_reveals, process_early_derived_secret_reveal)
     for_ops(body.custody_slashings, process_custody_slashing)
 ```
 
 #### Chunk challenges
-
-Verify that `len(block.body.custody_chunk_challenges) <= MAX_CUSTODY_CHUNK_CHALLENGES`.
-
-For each `challenge` in `block.body.custody_chunk_challenges`, run the following function:
 
 ```python
 def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge) -> None:
