@@ -376,7 +376,7 @@ class IndexedAttestation(Container):
 
 #### `PendingAttestation`
 
-After the chain processes an Attestation, it saves this information about it until the end of the epoch, and attestation-related balance updates and consensus updates are processed at the end of the epoch for all attestations at once.
+After the chain processes an `Attestation`, it saves this information about it until the end of the epoch, and attestation-related balance updates and consensus updates are processed at the end of the epoch for all attestations at once.
 
 ```python
 class PendingAttestation(Container):
