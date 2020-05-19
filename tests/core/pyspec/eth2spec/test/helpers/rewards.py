@@ -1,7 +1,7 @@
 from random import Random
 
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.test.helpers.attestations import prepare_state_with_attestations
+from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
@@ -217,13 +217,13 @@ def run_test_empty(spec, state):
 
 
 def run_test_full_all_correct(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     yield from run_deltas(spec, state)
 
 
 def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     for a in state.previous_epoch_attestations:
         a.aggregation_bits = [rng.choice([True, False]) for _ in a.aggregation_bits]
@@ -232,7 +232,7 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
 
 
 def run_test_partial(spec, state, fraction_filled):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Remove portion of attestations
     num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
@@ -246,7 +246,7 @@ def run_test_half_full(spec, state):
 
 
 def run_test_one_attestation_one_correct(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Remove all attestations except for the first one
     state.previous_epoch_attestations = state.previous_epoch_attestations[:1]
@@ -256,14 +256,14 @@ def run_test_one_attestation_one_correct(spec, state):
 
 def run_test_with_not_yet_activated_validators(spec, state, rng=Random(5555)):
     set_some_new_deposits(spec, state, rng)
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     yield from run_deltas(spec, state)
 
 
 def run_test_with_exited_validators(spec, state, rng=Random(1337)):
     exit_random_validators(spec, state, rng)
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     yield from run_deltas(spec, state)
 
@@ -272,14 +272,13 @@ def run_test_with_slashed_validators(spec, state, rng=Random(3322)):
     exit_random_validators(spec, state, rng)
     slash_random_validators(spec, state, rng)
 
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     yield from run_deltas(spec, state)
 
 
 def run_test_some_very_low_effective_balances_that_attested(spec, state):
-    state.balances
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Set some balances to be very low (including 0)
     assert len(state.validators) >= 5
@@ -290,7 +289,7 @@ def run_test_some_very_low_effective_balances_that_attested(spec, state):
 
 
 def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Remove attestation
     attestation = state.previous_epoch_attestations[0]
@@ -304,7 +303,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
 
 
 def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, fraction_incorrect):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Make fraction_incorrect of pending attestations have bad target/head as specified
     num_incorrect = int(fraction_incorrect * len(state.previous_epoch_attestations))
@@ -318,7 +317,7 @@ def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, 
 
 
 def run_test_full_delay_one_slot(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
     for a in state.previous_epoch_attestations:
         a.inclusion_delay += 1
 
@@ -326,7 +325,7 @@ def run_test_full_delay_one_slot(spec, state):
 
 
 def run_test_full_delay_max_slots(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
     for a in state.previous_epoch_attestations:
         a.inclusion_delay += spec.SLOTS_PER_EPOCH
 
@@ -334,7 +333,7 @@ def run_test_full_delay_max_slots(spec, state):
 
 
 def run_test_full_mixed_delay(spec, state, rng=Random(1234)):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
     for a in state.previous_epoch_attestations:
         a.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
 
@@ -342,7 +341,7 @@ def run_test_full_mixed_delay(spec, state, rng=Random(1234)):
 
 
 def run_test_proposer_not_in_attestations(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Get an attestation where the proposer is not in the committee
     non_proposer_attestations = []
@@ -357,7 +356,7 @@ def run_test_proposer_not_in_attestations(spec, state):
 
 
 def run_test_duplicate_attestations_at_later_slots(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     # Remove 2/3 of attestations to make it more interesting
     num_attestations = int(len(state.previous_epoch_attestations) * 0.33)
@@ -391,7 +390,7 @@ def run_test_duplicate_attestations_at_later_slots(spec, state):
 
 
 def run_test_all_balances_too_low_for_reward(spec, state):
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     for index in range(len(state.validators)):
         state.validators[index].effective_balance = 10
@@ -404,7 +403,7 @@ def run_test_full_random(spec, state, rng=Random(8020)):
     exit_random_validators(spec, state, rng)
     slash_random_validators(spec, state, rng)
 
-    prepare_state_with_attestations(spec, state)
+    cached_prepare_state_with_attestations(spec, state)
 
     for pending_attestation in state.previous_epoch_attestations:
         # ~1/3 have bad target
