@@ -18,6 +18,13 @@
   - [Signature domain types](#signature-domain-types)
 - [Data structures](#data-structures)
   - [New Beacon Chain operations](#new-beacon-chain-operations)
+    - [`CustodyChunkChallenge`](#custodychunkchallenge)
+    - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
+    - [`CustodyChunkResponse`](#custodychunkresponse)
+    - [`CustodySlashing`](#custodyslashing)
+    - [`SignedCustodySlashing`](#signedcustodyslashing)
+    - [`CustodyKeyReveal`](#custodykeyreveal)
+    - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
 - [Helpers](#helpers)
   - [`replace_empty_or_append`](#replace_empty_or_append)
   - [`legendre_bit`](#legendre_bit)
@@ -94,6 +101,91 @@ The following types are defined, mapping into `DomainType` (little endian):
 ## Data structures
 
 ### New Beacon Chain operations
+
+#### `CustodyChunkChallenge`
+
+```python
+class CustodyChunkChallenge(Container):
+    responder_index: ValidatorIndex
+    shard_transition: ShardTransition
+    attestation: Attestation
+    data_index: uint64
+    chunk_index: uint64
+```
+
+#### `CustodyChunkChallengeRecord`
+
+```python
+class CustodyChunkChallengeRecord(Container):
+    challenge_index: uint64
+    challenger_index: ValidatorIndex
+    responder_index: ValidatorIndex
+    inclusion_epoch: Epoch
+    data_root: Root
+    chunk_index: uint64
+```
+
+#### `CustodyChunkResponse`
+
+```python
+class CustodyChunkResponse(Container):
+    challenge_index: uint64
+    chunk_index: uint64
+    chunk: ByteVector[BYTES_PER_CUSTODY_CHUNK]
+    branch: Vector[Root, CUSTODY_RESPONSE_DEPTH]
+```
+
+#### `CustodySlashing`
+
+```python
+class CustodySlashing(Container):
+    # Attestation.custody_bits_blocks[data_index][committee.index(malefactor_index)] is the target custody bit to check.
+    # (Attestation.data.shard_transition_root as ShardTransition).shard_data_roots[data_index] is the root of the data.
+    data_index: uint64
+    malefactor_index: ValidatorIndex
+    malefactor_secret: BLSSignature
+    whistleblower_index: ValidatorIndex
+    shard_transition: ShardTransition
+    attestation: Attestation
+    data: ByteList[MAX_SHARD_BLOCK_SIZE]
+```
+
+#### `SignedCustodySlashing`
+
+```python
+class SignedCustodySlashing(Container):
+    message: CustodySlashing
+    signature: BLSSignature
+```
+
+#### `CustodyKeyReveal`
+
+```python
+class CustodyKeyReveal(Container):
+    # Index of the validator whose key is being revealed
+    revealer_index: ValidatorIndex
+    # Reveal (masked signature)
+    reveal: BLSSignature
+```
+
+#### `EarlyDerivedSecretReveal`
+
+Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
+
+```python
+class EarlyDerivedSecretReveal(Container):
+    # Index of the validator whose key is being revealed
+    revealed_index: ValidatorIndex
+    # RANDAO epoch of the key that is being revealed
+    epoch: Epoch
+    # Reveal (masked signature)
+    reveal: BLSSignature
+    # Index of the validator who revealed (whistleblower)
+    masker_index: ValidatorIndex
+    # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
+    mask: Bytes32
+```
+
 
 ## Helpers
 
