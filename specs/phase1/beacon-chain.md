@@ -63,7 +63,7 @@
         - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
         - [`process_crosslinks`](#process_crosslinks)
         - [`process_attestation`](#process_attestation)
-      - [New deposits](#new-deposits)
+      - [New default validator for deposits](#new-default-validator-for-deposits)
       - [New Attester slashing processing](#new-attester-slashing-processing)
     - [Shard transition false positives](#shard-transition-false-positives)
     - [Light client processing](#light-client-processing)
