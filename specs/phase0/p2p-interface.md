@@ -178,7 +178,7 @@ Where
 
 Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) libp2p protocol including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md) extension.
 
-**Protocol ID:** `/meshsub/1.0.0`
+**Protocol ID:** `/meshsub/1.1.0`
 
 **Gossipsub Parameters**
 
