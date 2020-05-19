@@ -352,7 +352,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
-    # The root is of ByteVector[MAX_]
+    # The root is of ByteList[MAX_SHARD_BLOCK_SIZE]
     shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
