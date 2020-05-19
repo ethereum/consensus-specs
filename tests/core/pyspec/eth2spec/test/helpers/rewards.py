@@ -174,6 +174,9 @@ def set_some_new_deposits(spec, state, rng):
     num_validators = len(state.validators)
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
+        # If not already active, skip
+        if not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state)):
+            continue
         if rng.randrange(num_validators) < num_validators // 10:
             mock_deposit(spec, state, index)
             # Set ~half of selected to eligible for activation
