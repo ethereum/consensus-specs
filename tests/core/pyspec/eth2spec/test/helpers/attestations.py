@@ -6,6 +6,7 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
+from lru import LRU
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -371,6 +372,27 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
     assert len(state.previous_epoch_attestations) == len(attestations)
 
     return attestations
+
+
+_prep_state_cache_dict = LRU(size=10)
+
+
+def cached_prepare_state_with_attestations(spec, state):
+    """
+    Cached version of prepare_state_with_attestations,
+    but does not return anything, and does not support a participation fn argument
+    """
+    # If the pre-state is not already known in the LRU, then take it,
+    # prepare it with attestations, and put it in the LRU.
+    # The input state is likely already cached, so the hash-tree-root does not affect speed.
+    key = (spec.fork, state.hash_tree_root())
+    global _prep_state_cache_dict
+    if key not in _prep_state_cache_dict:
+        prepare_state_with_attestations(spec, state)
+        _prep_state_cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
+
+    # Put the LRU cache result into the state view, as if we transitioned the original view
+    state.set_backing(_prep_state_cache_dict[key])
 
 
 def fill_block_shard_transitions_by_attestations(spec, state, block):
