@@ -12,10 +12,11 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     get_valid_attestation,
-    prepare_state_with_full_attestations,
+    prepare_state_with_attestations,
 )
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from random import Random
 
 
 def run_process_rewards_and_penalties(spec, state):
@@ -64,7 +65,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_attestations(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
 
     pre_state = state.copy()
 
@@ -82,7 +83,7 @@ def test_full_attestations(spec, state):
 @with_all_phases
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
     for i, attestation in enumerate(state.previous_epoch_attestations):
         if i % 3 == 0:
             # Mess up some head votes
@@ -107,7 +108,7 @@ def test_full_attestations_random_incorrect_fields(spec, state):
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.MAX_EFFECTIVE_BALANCE // 2)
 @single_phase
 def test_full_attestations_misc_balances(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
 
     pre_state = state.copy()
 
@@ -139,7 +140,7 @@ def test_full_attestations_misc_balances(spec, state):
 @with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
 @single_phase
 def test_full_attestations_one_validaor_one_gwei(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
 
     yield from run_process_rewards_and_penalties(spec, state)
 
@@ -163,20 +164,55 @@ def test_no_attestations_all_penalties(spec, state):
         assert state.balances[index] < pre_state.balances[index]
 
 
-@with_all_phases
-@spec_state_test
-def test_empty_attestations(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state, empty=True)
+def run_with_participation(spec, state, participation_fn):
+    participated = set()
+
+    def participation_tracker(slot, comm_index, comm):
+        att_participants = participation_fn(slot, comm_index, comm)
+        participated.update(att_participants)
+        return att_participants
+
+    attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
 
     pre_state = state.copy()
 
     yield from run_process_rewards_and_penalties(spec, state)
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) == 0
+    assert len(attesting_indices) == len(participated)
 
     for index in range(len(pre_state.validators)):
-        assert state.balances[index] < pre_state.balances[index]
+        if index in participated:
+            assert state.balances[index] > pre_state.balances[index]
+        else:
+            assert state.balances[index] < pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_test
+def test_almost_empty_attestations(spec, state):
+    rng = Random(1234)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, 1))
+
+
+@with_all_phases
+@spec_state_test
+def test_random_fill_attestations(spec, state):
+    rng = Random(4567)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) // 3))
+
+
+@with_all_phases
+@spec_state_test
+def test_almost_full_attestations(spec, state):
+    rng = Random(8901)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) - 1))
+
+
+@with_all_phases
+@spec_state_test
+def test_full_attestation_participation(spec, state):
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: comm)
 
 
 @with_all_phases
@@ -221,7 +257,7 @@ def test_duplicate_attestation(spec, state):
 @spec_state_test
 # Case when some eligible attestations are slashed. Modifies attesting_balance and consequently rewards/penalties.
 def test_attestations_some_slashed(spec, state):
-    attestations = prepare_state_with_full_attestations(spec, state)
+    attestations = prepare_state_with_attestations(spec, state)
     attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
 
     # Slash maximum amount of validators allowed per epoch.

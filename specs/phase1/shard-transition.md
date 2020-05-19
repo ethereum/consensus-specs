@@ -278,10 +278,13 @@ def get_shard_transition(beacon_state: BeaconState,
     proposer_signatures = []
     for proposal in proposals:
         shard_block_lengths.append(len(proposal.message.body))
-        if proposal.signature != BLSSignature():
+        if proposal.signature != NO_SIGNATURE:
             proposer_signatures.append(proposal.signature)
 
-    proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    if len(proposer_signatures) > 0:
+        proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    else:
+        proposer_signature_aggregate = NO_SIGNATURE
 
     return ShardTransition(
         start_slot=start_slot,
