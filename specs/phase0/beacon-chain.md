@@ -409,7 +409,7 @@ class HistoricalBatch(Container):
 
 #### `DepositMessage`
 
-`DepositData` minus its signature; this is the data that the signature is signing over.
+The contents of a deposit request, not including the signature; this is the data that the signature in a deposit request is signing over.
 
 ```python
 class DepositMessage(Container):
@@ -420,7 +420,9 @@ class DepositMessage(Container):
 
 #### `DepositData`
 
-The contents of a deposit request.
+The full deposit request contents, including the signature.
+
+Note that the signed container construction here is done differently from the other signed containers purely for a historical reason; the deposit struct construction and hashing was already finalized in the Eth1 deposit contract before the signed container construction used elsewhere was implemented.
 
 ```python
 class DepositData(Container):
