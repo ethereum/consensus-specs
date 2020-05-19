@@ -995,6 +995,7 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_reveal_deadlines(state)
+    process_challenge_deadlines(state)
     process_slashings(state)
     process_final_updates(state)
     process_custody_final_updates(state)
