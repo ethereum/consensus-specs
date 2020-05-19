@@ -781,7 +781,7 @@ def is_valid_merkle_branch(leaf: Bytes32, branch: Sequence[Bytes32], depth: uint
 
 #### `compute_shuffled_index`
 
-Implements the swap-or-not (see description [here](https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf )) shuffling algorithm, which is used to shuffle the active validator set, so that slices of the shuffling can be used as committees. This is done instead of the more simple hash-based random sampling, to ensure that each active validator is part of exactly one committee in each epoch.
+Implements the swap-or-not (see description [here](https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)) shuffling algorithm, which is used to shuffle the active validator set, so that slices of the shuffling can be used as committees. This is done instead of the more simple hash-based random sampling, to ensure that each active validator is part of exactly one committee in each epoch.
 
 The swap-or-not shuffle (instead of eg. [Fisher-Yates](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle)) is used because it also allows a single validator index's corresponding position, or the index at some position, to be computed in O(1) time, making it easy to compute the role of some specific validator or to determine the proposer or the members of some specific committee.
 
