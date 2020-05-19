@@ -542,11 +542,13 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period and MUST support serving requests of blocks up to their own `head_block_root`.
 
-Clients MUST respond with at least one block, if they have it and it exists in the range. Clients MAY limit the number of blocks in the response.
+Clients MUST respond with at least the first block that exists in the range, if they have it.
+
+The following blocks MUST be ordered consecutively, with each `parent_root` matching the `hash_tree_root` of the previous block.
+
+Clients MAY limit the number of blocks in the response.
 
 The response MUST contain no more than `count` blocks.
-
-Clients MUST order blocks by increasing slot number.
 
 Clients MUST respond with blocks from their view of the current fork choice -- that is, blocks from the single chain defined by the current head. Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
