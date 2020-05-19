@@ -1340,7 +1340,7 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Helper functions
 
-Given a list of PendingAttestations (which are records saved when processing attestations during the epoch), we need to get some key information. Particularly:
+Given a list of `PendingAttestation`s (which are records saved when processing attestations during the epoch), we need to get some key information. Particularly:
 
 * Which validators attested correctly to the correct Casper FFG source hash?
 
