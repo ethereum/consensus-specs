@@ -86,7 +86,7 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
                 _custom_state_cache_dict[key] = state.get_backing()
 
-            # Take a copy out of the LRU cache result.
+            # Take an entry out of the LRU.
             # No copy is necessary, as we wrap the immutable backing with a new view.
             state = spec.BeaconState(backing=_custom_state_cache_dict[key])
             kw['state'] = state

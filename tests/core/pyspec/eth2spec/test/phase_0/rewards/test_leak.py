@@ -20,15 +20,16 @@ def leaking(epochs=None):
 
     def deco(fn):
         def entry(*args, spec, state, **kw):
-            # If the pre-state is not already known in the LRU, then take it, make it leaking, and put it in the LRU.
-            # The input state is likely already cached, so the hash-tree-root is fine.
+            # If the pre-state is not already known in the LRU, then take it,
+            # transition it to leak, and put it in the LRU.
+            # The input state is likely already cached, so the hash-tree-root does not affect speed.
             key = (state.hash_tree_root(), spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY, spec.SLOTS_PER_EPOCH, epochs)
             global _cache_dict
             if key not in _cache_dict:
                 transition_state_to_leak(spec, state, epochs=epochs)
-                _cache_dict[key] = state.get_backing()
+                _cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
 
-            # Take a copy out of the LRU cache result.
+            # Take an entry out of the LRU.
             # No copy is necessary, as we wrap the immutable backing with a new view.
             state = spec.BeaconState(backing=_cache_dict[key])
             return fn(*args, spec=spec, state=state, **kw)
