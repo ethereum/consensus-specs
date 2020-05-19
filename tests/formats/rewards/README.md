@@ -7,8 +7,8 @@ There is no "change" factor, the rewards/penalties outputs are pure functions wi
 `Deltas` is defined as:
 ```python
 class Deltas(Container):
-    rewards: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    penalties: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    rewards: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    penalties: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
 ```
 
 ## Test case format
