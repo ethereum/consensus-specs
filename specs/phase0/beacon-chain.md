@@ -488,7 +488,7 @@ class Attestation(Container):
 
 #### `Deposit`
 
-A deposit from the eth1 chain; the Merkle proof proves that some deposit actually was added to the deposit tree.
+A deposit from the Eth1 chain; the Merkle proof proves that some deposit actually was added to the deposit tree.
 
 ```python
 class Deposit(Container):
