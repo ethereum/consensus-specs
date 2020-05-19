@@ -14,6 +14,7 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     prepare_state_with_attestations,
 )
+from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 from random import Random
@@ -76,6 +77,56 @@ def test_full_attestations(spec, state):
     for index in range(len(pre_state.validators)):
         if index in attesting_indices:
             assert state.balances[index] > pre_state.balances[index]
+        else:
+            assert state.balances[index] < pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_test
+@leaking()
+def test_full_attestations_with_leak(spec, state):
+    attestations = prepare_state_with_attestations(spec, state)
+
+    proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
+    pre_state = state.copy()
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) == len(pre_state.validators)
+    for index in range(len(pre_state.validators)):
+        # Proposers can still make money during a leak
+        if index in proposer_indices:
+            assert state.balances[index] > pre_state.balances[index]
+        # If not proposer but participated optimally, should have exactly neutral balance
+        elif index in attesting_indices:
+            assert state.balances[index] == pre_state.balances[index]
+        else:
+            assert state.balances[index] < pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_test
+@leaking()
+def test_partial_attestations_with_leak(spec, state):
+    attestations = prepare_state_with_attestations(spec, state)
+
+    attestations = attestations[:len(attestations) // 2]
+    state.previous_epoch_attestations = state.previous_epoch_attestations[:len(attestations)]
+    proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
+    pre_state = state.copy()
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) < len(pre_state.validators)
+    for index in range(len(pre_state.validators)):
+        # Proposers can still make money during a leak
+        if index in proposer_indices and index in attesting_indices:
+            assert state.balances[index] > pre_state.balances[index]
+        # If not proposer but participated optimally, should have exactly neutral balance
+        elif index in attesting_indices:
+            assert state.balances[index] == pre_state.balances[index]
         else:
             assert state.balances[index] < pre_state.balances[index]
 
