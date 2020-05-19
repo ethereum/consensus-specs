@@ -1356,6 +1356,12 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 
 
 ```python
+def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> Gwei:
+    return Gwei(get_base_reward(state, attesting_index) // PROPOSER_REWARD_QUOTIENT)
+```
+
+
+```python
 def get_finality_delay(state: BeaconState) -> uint64:
     return get_previous_epoch(state) - state.finalized_checkpoint.epoch
 ```
@@ -1392,6 +1398,7 @@ def get_attestation_component_deltas(state: BeaconState,
         if index in unslashed_attesting_indices:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
             if in_inactivity_leak(state):
+                # Full base reward will be cancelled out by inactivity penalty deltas
                 rewards[index] += get_base_reward(state, index)
             else:
                 reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
@@ -1442,12 +1449,8 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
             a for a in matching_source_attestations
             if index in get_attesting_indices(state, a.data, a.aggregation_bits)
         ], key=lambda a: a.inclusion_delay)
-        proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
-        rewards[attestation.proposer_index] += proposer_reward
-        if in_inactivity_leak(state):
-            max_attester_reward = get_base_reward(state, index)
-        else:
-            max_attester_reward = get_base_reward(state, index) - proposer_reward
+        rewards[attestation.proposer_index] += get_proposer_reward(state, index)
+        max_attester_reward = get_base_reward(state, index) - get_proposer_reward(state, index)
         rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
     # No penalties associated with inclusion delay
@@ -1465,7 +1468,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
         matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in get_eligible_validator_indices(state):
-            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
+            # If validator is performing optimally this cancels all rewards for a neutral balance
+            base_reward = get_base_reward(state, index)
+            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * base_reward - get_proposer_reward(state, index))
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)

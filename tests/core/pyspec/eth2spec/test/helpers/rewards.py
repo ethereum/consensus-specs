@@ -160,7 +160,8 @@ def run_get_inactivity_penalty_deltas(spec, state):
             continue
 
         if finality_delay > spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY:
-            base_penalty = spec.BASE_REWARDS_PER_EPOCH * spec.get_base_reward(state, index)
+            base_reward = spec.get_base_reward(state, index)
+            base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices:
