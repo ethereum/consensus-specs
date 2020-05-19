@@ -78,8 +78,9 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
     def deco(fn):
 
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
-            # Use fork and file path to make a key for th
-            key = (spec.fork, spec.__file__, balances_fn, threshold_fn)
+            # make a key for the state
+            # genesis fork version separates configs during test-generation runtime.
+            key = (spec.fork, spec.GENESIS_FORK_VERSION, spec.__file__, balances_fn, threshold_fn)
             global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
