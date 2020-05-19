@@ -388,7 +388,7 @@ class PendingAttestation(Container):
 
 #### `Eth1Data`
 
-Data about the eth1 chain. The eth2 chain needs to be aware of the eth1 chain to process deposits; it does this by voting on the eth1 chain.
+Data about the Eth1 chain. The Eth2 chain needs to be aware of the Eth1 chain to process deposits; it does this by voting on the Eth1 chain.
 
 ```python
 class Eth1Data(Container):
