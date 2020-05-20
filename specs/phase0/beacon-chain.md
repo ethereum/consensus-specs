@@ -220,7 +220,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | :-: | :-: |
 | `MIN_GENESIS_DELAY` | `86400` | seconds | 1 day |
 | `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | |
+| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | 14 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
 | `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
