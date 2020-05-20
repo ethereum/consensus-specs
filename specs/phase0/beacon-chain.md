@@ -1354,6 +1354,25 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
 ```
 
+
+```python
+def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> Gwei:
+    return Gwei(get_base_reward(state, attesting_index) // PROPOSER_REWARD_QUOTIENT)
+```
+
+
+```python
+def get_finality_delay(state: BeaconState) -> uint64:
+    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
+```
+
+
+```python
+def is_in_inactivity_leak(state: BeaconState) -> bool:
+    return get_finality_delay(state) > MIN_EPOCHS_TO_INACTIVITY_PENALTY
+```
+
+
 ```python
 def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     previous_epoch = get_previous_epoch(state)
@@ -1378,8 +1397,13 @@ def get_attestation_component_deltas(state: BeaconState,
     for index in get_eligible_validator_indices(state):
         if index in unslashed_attesting_indices:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-            reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
-            rewards[index] += reward_numerator // (total_balance // increment)
+            if is_in_inactivity_leak(state):
+                # Since full base reward will be canceled out by inactivity penalty deltas,
+                # optimal participation receives full base reward compensation here.
+                rewards[index] += get_base_reward(state, index)
+            else:
+                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
+                rewards[index] += reward_numerator // (total_balance // increment)
         else:
             penalties[index] += get_base_reward(state, index)
     return rewards, penalties
@@ -1426,9 +1450,8 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
             a for a in matching_source_attestations
             if index in get_attesting_indices(state, a.data, a.aggregation_bits)
         ], key=lambda a: a.inclusion_delay)
-        proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
-        rewards[attestation.proposer_index] += proposer_reward
-        max_attester_reward = get_base_reward(state, index) - proposer_reward
+        rewards[attestation.proposer_index] += get_proposer_reward(state, index)
+        max_attester_reward = get_base_reward(state, index) - get_proposer_reward(state, index)
         rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
     # No penalties associated with inclusion delay
@@ -1442,16 +1465,16 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     Return inactivity reward/penalty deltas for each validator.
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-    finality_delay = get_previous_epoch(state) - state.finalized_checkpoint.epoch
-
-    if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
+    if is_in_inactivity_leak(state):
         matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in get_eligible_validator_indices(state):
-            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
+            # If validator is performing optimally this cancels all rewards for a neutral balance
+            base_reward = get_base_reward(state, index)
+            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * base_reward - get_proposer_reward(state, index))
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
-                penalties[index] += Gwei(effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
+                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
 
     # No rewards associated with inactivity penalties
     rewards = [Gwei(0) for _ in range(len(state.validators))]

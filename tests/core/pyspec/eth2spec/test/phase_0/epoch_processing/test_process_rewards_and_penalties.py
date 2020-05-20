@@ -14,6 +14,7 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     prepare_state_with_attestations,
 )
+from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 from random import Random
@@ -60,24 +61,6 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 
     for index in range(len(pre_state.validators)):
         assert state.balances[index] == pre_state.balances[index]
-
-
-@with_all_phases
-@spec_state_test
-def test_full_attestations(spec, state):
-    attestations = prepare_state_with_attestations(spec, state)
-
-    pre_state = state.copy()
-
-    yield from run_process_rewards_and_penalties(spec, state)
-
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) == len(pre_state.validators)
-    for index in range(len(pre_state.validators)):
-        if index in attesting_indices:
-            assert state.balances[index] > pre_state.balances[index]
-        else:
-            assert state.balances[index] < pre_state.balances[index]
 
 
 @with_all_phases
@@ -173,6 +156,7 @@ def run_with_participation(spec, state, participation_fn):
         return att_participants
 
     attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
+    proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
 
     pre_state = state.copy()
 
@@ -182,15 +166,33 @@ def run_with_participation(spec, state, participation_fn):
     assert len(attesting_indices) == len(participated)
 
     for index in range(len(pre_state.validators)):
-        if index in participated:
-            assert state.balances[index] > pre_state.balances[index]
+        if spec.is_in_inactivity_leak(state):
+            # Proposers can still make money during a leak
+            if index in proposer_indices and index in participated:
+                assert state.balances[index] > pre_state.balances[index]
+            # If not proposer but participated optimally, should have exactly neutral balance
+            elif index in attesting_indices:
+                assert state.balances[index] == pre_state.balances[index]
+            else:
+                assert state.balances[index] < pre_state.balances[index]
         else:
-            assert state.balances[index] < pre_state.balances[index]
+            if index in participated:
+                assert state.balances[index] > pre_state.balances[index]
+            else:
+                assert state.balances[index] < pre_state.balances[index]
 
 
 @with_all_phases
 @spec_state_test
 def test_almost_empty_attestations(spec, state):
+    rng = Random(1234)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, 1))
+
+
+@with_all_phases
+@spec_state_test
+@leaking()
+def test_almost_empty_attestations_with_leak(spec, state):
     rng = Random(1234)
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, 1))
 
@@ -204,6 +206,14 @@ def test_random_fill_attestations(spec, state):
 
 @with_all_phases
 @spec_state_test
+@leaking()
+def test_random_fill_attestations_with_leak(spec, state):
+    rng = Random(4567)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) // 3))
+
+
+@with_all_phases
+@spec_state_test
 def test_almost_full_attestations(spec, state):
     rng = Random(8901)
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) - 1))
@@ -211,7 +221,22 @@ def test_almost_full_attestations(spec, state):
 
 @with_all_phases
 @spec_state_test
+@leaking()
+def test_almost_full_attestations_with_leak(spec, state):
+    rng = Random(8901)
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) - 1))
+
+
+@with_all_phases
+@spec_state_test
 def test_full_attestation_participation(spec, state):
+    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: comm)
+
+
+@with_all_phases
+@spec_state_test
+@leaking()
+def test_full_attestation_participation_with_leak(spec, state):
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: comm)
 
 

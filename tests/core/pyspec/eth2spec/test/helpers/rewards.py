@@ -1,4 +1,5 @@
 from random import Random
+from lru import LRU
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
@@ -150,7 +151,6 @@ def run_get_inactivity_penalty_deltas(spec, state):
     matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
     matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
 
-    finality_delay = spec.get_previous_epoch(state) - state.finalized_checkpoint.epoch
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
         assert rewards[index] == 0
@@ -158,8 +158,9 @@ def run_get_inactivity_penalty_deltas(spec, state):
             assert penalties[index] == 0
             continue
 
-        if finality_delay > spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY:
-            base_penalty = spec.BASE_REWARDS_PER_EPOCH * spec.get_base_reward(state, index)
+        if spec.is_in_inactivity_leak(state):
+            base_reward = spec.get_base_reward(state, index)
+            base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices:
@@ -168,6 +169,39 @@ def run_get_inactivity_penalty_deltas(spec, state):
                 assert penalties[index] > base_penalty
         else:
             assert penalties[index] == 0
+
+
+def transition_state_to_leak(spec, state, epochs=None):
+    if epochs is None:
+        epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
+    assert epochs >= spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
+
+    for _ in range(epochs):
+        next_epoch(spec, state)
+
+
+_cache_dict = LRU(size=10)
+
+
+def leaking(epochs=None):
+
+    def deco(fn):
+        def entry(*args, spec, state, **kw):
+            # If the pre-state is not already known in the LRU, then take it,
+            # transition it to leak, and put it in the LRU.
+            # The input state is likely already cached, so the hash-tree-root does not affect speed.
+            key = (state.hash_tree_root(), spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY, spec.SLOTS_PER_EPOCH, epochs)
+            global _cache_dict
+            if key not in _cache_dict:
+                transition_state_to_leak(spec, state, epochs=epochs)
+                _cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
+
+            # Take an entry out of the LRU.
+            # No copy is necessary, as we wrap the immutable backing with a new view.
+            state = spec.BeaconState(backing=_cache_dict[key])
+            return fn(*args, spec=spec, state=state, **kw)
+        return entry
+    return deco
 
 
 def set_some_new_deposits(spec, state, rng):
