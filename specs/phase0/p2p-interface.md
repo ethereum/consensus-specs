@@ -544,7 +544,7 @@ Clients MUST keep a record of signed blocks seen since the since the start of th
 
 Clients MUST respond with at least the first block that exists in the range, if they have it.
 
-The following blocks, where they exist, MUST be send in consecutive order without gaps, as selected by `step`. In particular, when `step == 1`, each `parent_root` MUST match the `hash_tree_root` of the preceding block.
+The following blocks, where they exist, MUST be send in consecutive order.
 
 Clients MAY limit the number of blocks in the response.
 
@@ -552,7 +552,10 @@ The response MUST contain no more than `count` blocks.
 
 Clients MUST respond with blocks from their view of the current fork choice -- that is, blocks from the single chain defined by the current head. Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
-Clients MUST respond with blocks that are consistent from a single chain within the context of the request. After the initial block, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
+Clients MUST respond with blocks that are consistent from a single chain within the context of the request.
+This applies to any `step` value. In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_root` of the preceding block.
+
+After the initial block, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
 #### BeaconBlocksByRoot
 
