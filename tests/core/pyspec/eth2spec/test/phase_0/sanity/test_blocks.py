@@ -195,11 +195,9 @@ def test_invalid_block_sig(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
-    signing_root = spec.compute_signing_root(block, domain)
     invalid_signed_block = spec.SignedBeaconBlock(
         message=block,
-        signature=bls.Sign(123456, signing_root)
+        signature=spec.get_block_signature(state, block, privkey=123456)
     )
     expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
 

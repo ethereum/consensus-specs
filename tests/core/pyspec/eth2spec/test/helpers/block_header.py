@@ -1,11 +1,4 @@
-from eth2spec.utils import bls
-
-
 def sign_block_header(spec, state, header, privkey):
-    domain = spec.get_domain(
-        state=state,
-        domain_type=spec.DOMAIN_BEACON_PROPOSER,
-    )
-    signing_root = spec.compute_signing_root(header, domain)
-    signature = bls.Sign(privkey, signing_root)
+    # Either passing block or header would get the same signature
+    signature = spec.get_block_signature(state, block=header, privkey=privkey)
     return spec.SignedBeaconBlockHeader(message=header, signature=signature)

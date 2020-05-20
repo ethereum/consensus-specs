@@ -40,10 +40,7 @@ def apply_sig(spec, state, signed_block, proposer_index=None):
 
     proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
-    signing_root = spec.compute_signing_root(block, domain)
-
-    signed_block.signature = bls.Sign(privkey, signing_root)
+    signed_block.signature = spec.get_block_signature(state, block, privkey)
 
 
 def sign_block(spec, state, block, proposer_index=None):
