@@ -190,8 +190,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
     for validator_index in participants:
         privkey = privkeys[validator_index]
         signatures.append(
-            get_attestation_signature(
-                spec,
+            spec.get_attestation_signature(
                 state,
                 attestation_data,
                 privkey
@@ -262,12 +261,6 @@ def sign_attestation(spec, state, attestation):
     )
 
     attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
-
-
-def get_attestation_signature(spec, state, attestation_data, privkey):
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
-    signing_root = spec.compute_signing_root(attestation_data, domain)
-    return bls.Sign(privkey, signing_root)
 
 
 def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_participant_set=None):
