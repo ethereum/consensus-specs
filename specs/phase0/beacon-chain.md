@@ -110,6 +110,10 @@
     - [Helper functions](#helper-functions-1)
     - [Justification and finalization](#justification-and-finalization)
     - [Rewards and penalties](#rewards-and-penalties-1)
+      - [Helpers](#helpers)
+      - [Components of attestation deltas](#components-of-attestation-deltas)
+      - [`get_attestation_deltas`](#get_attestation_deltas)
+      - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Registry updates](#registry-updates)
     - [Slashings](#slashings)
     - [Final updates](#final-updates)
@@ -603,15 +607,17 @@ def bytes_to_int(data: bytes) -> uint64:
 
 #### BLS Signatures
 
-Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00). Specifically, eth2 uses the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite which implements the following interfaces:
+Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-02](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02) but uses [Hashing to Elliptic Curves - draft-irtf-cfrg-hash-to-curve-07](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07) instead of draft-irtf-cfrg-hash-to-curve-06. Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
 
 - `def Sign(SK: int, message: Bytes) -> BLSSignature`
 - `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
 - `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
-- `def AggregateVerify(pairs: Sequence[PK: BLSPubkey, message: Bytes], signature: BLSSignature) -> bool`
+- `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
+
+*Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
 
 ### Predicates
 
@@ -1219,7 +1225,7 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
 
 ```python
 def process_slots(state: BeaconState, slot: Slot) -> None:
-    assert state.slot <= slot
+    assert state.slot < slot
     while state.slot < slot:
         process_slot(state)
         # Process epoch on the start slot of the next epoch
@@ -1339,6 +1345,8 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 #### Rewards and penalties
 
+##### Helpers
+
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     total_balance = get_total_active_balance(state)
@@ -1347,32 +1355,72 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     previous_epoch = get_previous_epoch(state)
-    total_balance = get_total_active_balance(state)
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
-    eligible_validator_indices = [
+    return [
         ValidatorIndex(index) for index, v in enumerate(state.validators)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
     ]
+```
 
-    # Micro-incentives for matching FFG source, FFG target, and head
-    matching_source_attestations = get_matching_source_attestations(state, previous_epoch)
-    matching_target_attestations = get_matching_target_attestations(state, previous_epoch)
-    matching_head_attestations = get_matching_head_attestations(state, previous_epoch)
-    for attestations in (matching_source_attestations, matching_target_attestations, matching_head_attestations):
-        unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
-        attesting_balance = get_total_balance(state, unslashed_attesting_indices)
-        for index in eligible_validator_indices:
-            if index in unslashed_attesting_indices:
-                increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
-                rewards[index] += reward_numerator // (total_balance // increment)
-            else:
-                penalties[index] += get_base_reward(state, index)
+```python
+def get_attestation_component_deltas(state: BeaconState,
+                                     attestations: Sequence[PendingAttestation]
+                                     ) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Helper with shared logic for use by get source, target, and head deltas functions
+    """
+    rewards = [Gwei(0)] * len(state.validators)
+    penalties = [Gwei(0)] * len(state.validators)
+    total_balance = get_total_active_balance(state)
+    unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
+    attesting_balance = get_total_balance(state, unslashed_attesting_indices)
+    for index in get_eligible_validator_indices(state):
+        if index in unslashed_attesting_indices:
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+            reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
+            rewards[index] += reward_numerator // (total_balance // increment)
+        else:
+            penalties[index] += get_base_reward(state, index)
+    return rewards, penalties
+```
 
-    # Proposer and inclusion delay micro-rewards
+##### Components of attestation deltas
+
+```python
+def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return attester micro-rewards/penalties for source-vote for each validator.
+    """
+    matching_source_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
+    return get_attestation_component_deltas(state, matching_source_attestations)
+```
+
+```python
+def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return attester micro-rewards/penalties for target-vote for each validator.
+    """
+    matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
+    return get_attestation_component_deltas(state, matching_target_attestations)
+```
+
+```python
+def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return attester micro-rewards/penalties for head-vote for each validator.
+    """
+    matching_head_attestations = get_matching_head_attestations(state, get_previous_epoch(state))
+    return get_attestation_component_deltas(state, matching_head_attestations)
+```
+
+```python
+def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return proposer and inclusion delay micro-rewards/penalties for each validator.
+    """
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    matching_source_attestations = get_matching_source_attestations(state, get_previous_epoch(state))
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         attestation = min([
             a for a in matching_source_attestations
@@ -1383,18 +1431,60 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         max_attester_reward = get_base_reward(state, index) - proposer_reward
         rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
-    # Inactivity penalty
-    finality_delay = previous_epoch - state.finalized_checkpoint.epoch
+    # No penalties associated with inclusion delay
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    return rewards, penalties
+```
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return inactivity reward/penalty deltas for each validator.
+    """
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    finality_delay = get_previous_epoch(state) - state.finalized_checkpoint.epoch
+
     if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
+        matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
-        for index in eligible_validator_indices:
+        for index in get_eligible_validator_indices(state):
             penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
 
+    # No rewards associated with inactivity penalties
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
     return rewards, penalties
 ```
+
+##### `get_attestation_deltas`
+
+```python
+def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return attestation reward/penalty deltas for each validator.
+    """
+    source_rewards, source_penalties = get_source_deltas(state)
+    target_rewards, target_penalties = get_target_deltas(state)
+    head_rewards, head_penalties = get_head_deltas(state)
+    inclusion_delay_rewards, _ = get_inclusion_delay_deltas(state)
+    _, inactivity_penalties = get_inactivity_penalty_deltas(state)
+
+    rewards = [
+        source_rewards[i] + target_rewards[i] + head_rewards[i] + inclusion_delay_rewards[i]
+        for i in range(len(state.validators))
+    ]
+
+    penalties = [
+        source_penalties[i] + target_penalties[i] + head_penalties[i] + inactivity_penalties[i]
+        for i in range(len(state.validators))
+    ]
+
+    return rewards, penalties
+```
+
+##### `process_rewards_and_penalties`
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
@@ -1494,6 +1584,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
     # Verify that proposer index is the correct index
     assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches

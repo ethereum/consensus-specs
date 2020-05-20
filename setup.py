@@ -482,6 +482,7 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
+                 
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
@@ -501,8 +502,9 @@ setup(
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
-        "py_ecc==2.0.0",
+        "py_ecc==4.0.0",
         "milagro_bls_binding==1.0.2",
+        "py_ecc==4.0.0",
         "dataclasses==0.6",
         "remerkleable==0.1.13",
         "ruamel.yaml==0.16.5",

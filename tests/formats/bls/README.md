@@ -5,11 +5,10 @@ We do not recommend rolling your own crypto or using an untested BLS library.
 
 The BLS test suite runner has the following handlers:
 
-- [`aggregate_pubkeys`](./aggregate_pubkeys.md)
-- [`aggregate_sigs`](./aggregate_sigs.md)
-- [`msg_hash_g2_compressed`](./msg_hash_g2_compressed.md)
-- [`msg_hash_g2_uncompressed`](./msg_hash_g2_uncompressed.md)
-- [`priv_to_pub`](./priv_to_pub.md)
-- [`sign_msg`](./sign_msg.md)
+- [`aggregate_verify`](./aggregate_verify.md)
+- [`aggregate`](./aggregate.md)
+- [`fast_aggregate_verify`](./fast_aggregate_verify.md)
+- [`sign`](./sign.md)
+- [`verify`](./verify.md)
 
 *Note*: Signature-verification and aggregate-verify test cases are not yet supported.

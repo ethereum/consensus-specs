@@ -1,3 +1,4 @@
+from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch, next_slots
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
@@ -5,14 +6,6 @@ from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_ep
 
 def run_process_registry_updates(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
-
-
-def mock_deposit(spec, state, index):
-    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
-    state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
-    state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
-    state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
-    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
 
 @with_all_phases
