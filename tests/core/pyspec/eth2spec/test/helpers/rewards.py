@@ -151,7 +151,6 @@ def run_get_inactivity_penalty_deltas(spec, state):
     matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
     matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
 
-    finality_delay = spec.get_previous_epoch(state) - state.finalized_checkpoint.epoch
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
         assert rewards[index] == 0
@@ -159,7 +158,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
             assert penalties[index] == 0
             continue
 
-        if finality_delay > spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY:
+        if spec.is_in_inactivity_leak(state):
             base_reward = spec.get_base_reward(state, index)
             base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
             if not has_enough_for_reward(spec, state, index):

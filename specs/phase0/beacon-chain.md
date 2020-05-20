@@ -1368,7 +1368,7 @@ def get_finality_delay(state: BeaconState) -> uint64:
 
 
 ```python
-def in_inactivity_leak(state: BeaconState) -> bool:
+def is_in_inactivity_leak(state: BeaconState) -> bool:
     return get_finality_delay(state) > MIN_EPOCHS_TO_INACTIVITY_PENALTY
 ```
 
@@ -1397,8 +1397,9 @@ def get_attestation_component_deltas(state: BeaconState,
     for index in get_eligible_validator_indices(state):
         if index in unslashed_attesting_indices:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-            if in_inactivity_leak(state):
-                # Full base reward will be cancelled out by inactivity penalty deltas
+            if is_in_inactivity_leak(state):
+                # Since full base reward will be canceled out by inactivity penalty deltas,
+                # optimal participation receives full base reward compensation here.
                 rewards[index] += get_base_reward(state, index)
             else:
                 reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
@@ -1464,7 +1465,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     Return inactivity reward/penalty deltas for each validator.
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-    if in_inactivity_leak(state):
+    if is_in_inactivity_leak(state):
         matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in get_eligible_validator_indices(state):
