@@ -544,7 +544,7 @@ Clients MUST keep a record of signed blocks seen since the since the start of th
 
 Clients MUST respond with at least the first block that exists in the range, if they have it.
 
-The following blocks MUST be ordered consecutively, with each `parent_root` matching the `hash_tree_root` of the previous block.
+The following blocks, where they exist, MUST be send in consecutive order without gaps, as selected by `step`. In particular, when `step == 1`, each `parent_root` MUST match the `hash_tree_root` of the preceding block.
 
 Clients MAY limit the number of blocks in the response.
 
