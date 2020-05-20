@@ -10,7 +10,8 @@ bls = py_ecc_bls
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
-STUB_COORDINATES = _signature_to_G2(bls.Sign(0, b""))
+Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
+STUB_COORDINATES = _signature_to_G2(Z2_SIGNATURE)
 
 
 def only_with_bls(alt_return=None):
@@ -67,7 +68,7 @@ def Sign(SK, message):
     if bls == py_ecc_bls:
         return bls.Sign(SK, message)
     else:
-        return bls.Sign(SK.to_bytes(48, 'big'), message)
+        return bls.Sign(SK.to_bytes(32, 'big'), message)
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)
