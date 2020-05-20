@@ -183,6 +183,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
+| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) |
 | `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) |
@@ -219,6 +220,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | :-: | :-: |
 | `MIN_GENESIS_DELAY` | `86400` | seconds | 1 day |
 | `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | 14 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
 | `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
@@ -228,7 +230,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-
 
 ### State list lengths
 
@@ -1135,6 +1136,8 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 - `eth1_block_hash` is the hash of the Ethereum 1.0 block
 - `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
 - `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
+
+Eth1 blocks must only be considered once they are at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e. `eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`). Due to this constraint, if `MIN_GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the `genesis_time` can happen before the time/state is first known. Values should be configured to avoid this case.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,

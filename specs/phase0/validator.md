@@ -85,11 +85,9 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
-| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 
 ## Becoming a validator
