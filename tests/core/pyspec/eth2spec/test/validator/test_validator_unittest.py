@@ -190,8 +190,16 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     assert votes_length >= 3  # We need to have the majority vote
     state.eth1_data_votes = ()
 
-    block_1 = spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE - 1)
-    block_2 = spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE)
+    block_1 = spec.Eth1Block(
+        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE - 1,
+        deposit_count=state.eth1_data.deposit_count,
+        deposit_root=b'\x04' * 32,
+    )
+    block_2 = spec.Eth1Block(
+        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE,
+        deposit_count=state.eth1_data.deposit_count + 1,
+        deposit_root=b'\x05' * 32,
+    )
     eth1_chain = [block_1, block_2]
     eth1_data_votes = []
 
@@ -218,8 +226,16 @@ def test_get_eth1_vote_tie(spec, state):
     assert votes_length > 0 and votes_length % 2 == 0
 
     state.eth1_data_votes = ()
-    block_1 = spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE - 1)
-    block_2 = spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE)
+    block_1 = spec.Eth1Block(
+        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE - 1,
+        deposit_count=state.eth1_data.deposit_count,
+        deposit_root=b'\x04' * 32,
+    )
+    block_2 = spec.Eth1Block(
+        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE,
+        deposit_count=state.eth1_data.deposit_count + 1,
+        deposit_root=b'\x05' * 32,
+    )
     eth1_chain = [block_1, block_2]
     eth1_data_votes = []
     # Half votes are for block_1, another half votes are for block_2
@@ -235,6 +251,33 @@ def test_get_eth1_vote_tie(spec, state):
 
     # Tiebreak by smallest distance -> eth1_chain[0]
     assert eth1_data.block_hash == eth1_chain[0].hash_tree_root()
+
+
+@with_all_phases
+@spec_state_test
+def test_get_eth1_vote_chain_in_past(spec, state):
+    min_new_period_epochs = get_min_new_period_epochs(spec)
+    for _ in range(min_new_period_epochs + 1):
+        next_epoch(spec, state)
+
+    period_start = spec.voting_period_start_time(state)
+    votes_length = spec.get_current_epoch(state) % spec.EPOCHS_PER_ETH1_VOTING_PERIOD
+    assert votes_length > 0 and votes_length % 2 == 0
+
+    state.eth1_data_votes = ()
+    block_1 = spec.Eth1Block(
+        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE,
+        deposit_count=state.eth1_data.deposit_count - 1,  # Chain prior to current eth1data
+        deposit_root=b'\x42' * 32,
+    )
+    eth1_chain = [block_1]
+    eth1_data_votes = []
+
+    state.eth1_data_votes = eth1_data_votes
+    eth1_data = spec.get_eth1_vote(state, eth1_chain)
+
+    # Should be default vote
+    assert eth1_data == state.eth1_data
 
 
 @with_all_phases
