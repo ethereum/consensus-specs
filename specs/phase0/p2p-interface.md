@@ -532,7 +532,10 @@ Response Content:
 )
 ```
 
-Requests beacon blocks in the slot range `[start_slot, start_slot + count * step)`, leading up to the current head block as selected by fork choice. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …].
+Requests beacon blocks in the slot range `[start_slot, start_slot + count * step)`, leading up to the current head block as selected by fork choice.
+`step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …].
+In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …].
+A request MUST NOT have a 0 slot increment, i.e. `step >= 1`.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -542,15 +545,20 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period and MUST support serving requests of blocks up to their own `head_block_root`.
 
-Clients MUST respond with at least one block, if they have it and it exists in the range. Clients MAY limit the number of blocks in the response.
+Clients MUST respond with at least the first block that exists in the range, if they have it.
+
+The following blocks, where they exist, MUST be send in consecutive order.
+
+Clients MAY limit the number of blocks in the response.
 
 The response MUST contain no more than `count` blocks.
 
-Clients MUST order blocks by increasing slot number.
-
 Clients MUST respond with blocks from their view of the current fork choice -- that is, blocks from the single chain defined by the current head. Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
-Clients MUST respond with blocks that are consistent from a single chain within the context of the request. After the initial block, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
+Clients MUST respond with blocks that are consistent from a single chain within the context of the request.
+This applies to any `step` value. In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_root` of the preceding block.
+
+After the initial block, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
 #### BeaconBlocksByRoot
 
