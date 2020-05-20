@@ -1,12 +1,17 @@
-from py_ecc.bls import G2ProofOfPossession as bls
+from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
 from py_ecc.bls.g2_primatives import signature_to_G2 as _signature_to_G2
+import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
 
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
+# To change bls implementation, default to PyECC for correctness. Milagro is a good faster alternative.
+bls = py_ecc_bls
+
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
-STUB_COORDINATES = _signature_to_G2(bls.Sign(0, b""))
+Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
+STUB_COORDINATES = _signature_to_G2(Z2_SIGNATURE)
 
 
 def only_with_bls(alt_return=None):
@@ -36,7 +41,7 @@ def Verify(PK, message, signature):
 @only_with_bls(alt_return=True)
 def AggregateVerify(pubkeys, messages, signature):
     try:
-        result = bls.AggregateVerify(pubkeys, messages, signature)
+        result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
     except Exception:
         result = False
     finally:
@@ -46,7 +51,7 @@ def AggregateVerify(pubkeys, messages, signature):
 @only_with_bls(alt_return=True)
 def FastAggregateVerify(pubkeys, message, signature):
     try:
-        result = bls.FastAggregateVerify(pubkeys, message, signature)
+        result = bls.FastAggregateVerify(list(pubkeys), message, signature)
     except Exception:
         result = False
     finally:
@@ -60,7 +65,10 @@ def Aggregate(signatures):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Sign(SK, message):
-    return bls.Sign(SK, message)
+    if bls == py_ecc_bls:
+        return bls.Sign(SK, message)
+    else:
+        return bls.Sign(SK.to_bytes(32, 'big'), message)
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)
@@ -70,7 +78,7 @@ def signature_to_G2(signature):
 
 @only_with_bls(alt_return=STUB_PUBKEY)
 def AggregatePKs(pubkeys):
-    return bls._AggregatePKs(pubkeys)
+    return bls._AggregatePKs(list(pubkeys))
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)

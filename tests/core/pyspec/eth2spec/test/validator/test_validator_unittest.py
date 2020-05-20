@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
 from eth2spec.test.helpers.attestations import build_attestation_data
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
@@ -8,9 +8,11 @@ from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
-def run_get_signature_test(spec, state, obj, domain, get_signature_fn, privkey, pubkey):
+def run_get_signature_test(spec, state, obj, domain, get_signature_fn, privkey, pubkey, signing_ssz_object=None):
+    if signing_ssz_object is None:
+        signing_ssz_object = obj
     signature = get_signature_fn(state, obj, privkey)
-    signing_root = spec.compute_signing_root(obj, domain)
+    signing_root = spec.compute_signing_root(signing_ssz_object, domain)
     assert bls.Verify(pubkey, signing_root, signature)
 
 
@@ -55,7 +57,6 @@ def get_mock_aggregate(spec):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_check_if_validator_active(spec, state):
     active_validator_index = len(state.validators) - 1
     assert spec.check_if_validator_active(state, active_validator_index)
@@ -73,7 +74,6 @@ def test_check_if_validator_active(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_get_committee_assignment_current_epoch(spec, state):
     epoch = spec.get_current_epoch(state)
     validator_index = len(state.validators) - 1
@@ -82,7 +82,6 @@ def test_get_committee_assignment_current_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_get_committee_assignment_next_epoch(spec, state):
     epoch = spec.get_current_epoch(state) + 1
     validator_index = len(state.validators) - 1
@@ -91,7 +90,6 @@ def test_get_committee_assignment_next_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_get_committee_assignment_out_bound_epoch(spec, state):
     epoch = spec.get_current_epoch(state) + 2
     validator_index = len(state.validators) - 1
@@ -100,7 +98,6 @@ def test_get_committee_assignment_out_bound_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_is_proposer(spec, state):
     proposer_index = spec.get_beacon_proposer_index(state)
     assert spec.is_proposer(state, proposer_index)
@@ -132,6 +129,7 @@ def test_get_epoch_signature(spec, state):
         get_signature_fn=spec.get_epoch_signature,
         privkey=privkey,
         pubkey=pubkey,
+        signing_ssz_object=spec.compute_epoch_at_slot(block.slot),
     )
 
 
@@ -299,6 +297,7 @@ def test_compute_new_state_root(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_block_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
@@ -320,6 +319,7 @@ def test_get_block_signature(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_attestation_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
@@ -341,6 +341,7 @@ def test_get_attestation_signature(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_slot_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
@@ -359,6 +360,7 @@ def test_get_slot_signature(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_is_aggregator(spec, state):
     # TODO: we can test the probabilistic result against `TARGET_AGGREGATORS_PER_COMMITTEE`
     #  if we have more validators and larger committeee size
@@ -377,9 +379,10 @@ def test_is_aggregator(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_aggregate_signature(spec, state):
     attestations = []
-    pubkeys = []
+    attesting_pubkeys = []
     slot = state.slot
     committee_index = 0
     attestation_data = build_attestation_data(spec, state, slot=slot, index=committee_index)
@@ -391,24 +394,26 @@ def test_get_aggregate_signature(spec, state):
     committee_size = len(beacon_committee)
     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     for i, validator_index in enumerate(beacon_committee):
-        bits = aggregation_bits
+        bits = aggregation_bits.copy()
         bits[i] = True
         attestations.append(
             spec.Attestation(
                 data=attestation_data,
                 aggregation_bits=bits,
+                signature=spec.get_attestation_signature(state, attestation_data, privkeys[validator_index]),
             )
         )
-        pubkeys.append(state.validators[validator_index].pubkey)
-    pubkey = bls.AggregatePKs(pubkeys)
+        attesting_pubkeys.append(state.validators[validator_index].pubkey)
+    assert len(attestations) > 0
     signature = spec.get_aggregate_signature(attestations)
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
-    assert bls.Verify(pubkey, signing_root, signature)
+    assert bls.FastAggregateVerify(attesting_pubkeys, signing_root, signature)
 
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_aggregate_and_proof(spec, state):
     privkey = privkeys[0]
     aggregator_index = spec.ValidatorIndex(10)
@@ -421,6 +426,7 @@ def test_get_aggregate_and_proof(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_aggregate_and_proof_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
