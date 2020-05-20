@@ -38,7 +38,7 @@ The provided pre-state is already transitioned to just before the specific sub-t
 Sub-transitions:
 
 - `justification_and_finalization`
-- *`rewards_and_penalties` - planned testing extension*
+- `rewards_and_penalties` (limited to `minimal` config)
 - `registry_updates`
 - `slashings`
 - `final_updates`

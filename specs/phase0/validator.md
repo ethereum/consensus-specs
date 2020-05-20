@@ -85,11 +85,10 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
-| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | |
+| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 
 ## Becoming a validator
 
@@ -253,11 +252,13 @@ The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 d
 
 ###### `Eth1Block`
 
-Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` field available.
+Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and depost contract data available.
 
 ```python
 class Eth1Block(Container):
     timestamp: uint64
+    deposit_root: Root
+    deposit_count: uint64
     # All other eth1 block fields
 ```
 
@@ -281,8 +282,8 @@ def voting_period_start_time(state: BeaconState) -> uint64:
 ```python
 def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
     return (
-        block.timestamp <= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE
-        and block.timestamp >= period_start - SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2
+        block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= period_start
+        and block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2 >= period_start
     )
 ```
 
@@ -290,8 +291,14 @@ def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
 def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
     period_start = voting_period_start_time(state)
     # `eth1_chain` abstractly represents all blocks in the eth1 chain sorted by ascending block height
-    votes_to_consider = [get_eth1_data(block) for block in eth1_chain if
-                         is_candidate_block(block, period_start)]
+    votes_to_consider = [
+        get_eth1_data(block) for block in eth1_chain
+        if (
+            is_candidate_block(block, period_start)
+            # Ensure cannot move back to earlier deposit contract states
+            and get_eth1_data(block).deposit_count >= state.eth1_data.deposit_count
+        )
+    ]
 
     # Valid votes already cast during this period
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
@@ -340,9 +347,10 @@ It is useful to be able to run a state transition function (working on a copy of
 
 ```python
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
-    process_slots(state, block.slot)
-    process_block(state, block)
-    return hash_tree_root(state)
+    temp_state: BeaconState = state.copy()
+    signed_block = SignedBeaconBlock(message=block)
+    temp_state = state_transition(temp_state, signed_block, validate_result=False)
+    return hash_tree_root(temp_state)
 ```
 
 ##### Signature
@@ -350,9 +358,9 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 `signed_block = SignedBeaconBlock(message=block, signature=block_signature)`, where `block_signature` is obtained from:
 
 ```python
-def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-    signing_root = compute_signing_root(header, domain)
+def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
@@ -417,7 +425,19 @@ def get_attestation_signature(state: BeaconState, attestation_data: AttestationD
 
 #### Broadcast attestation
 
-Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
+Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `beacon_attestation_{compute_subnet_for_attestation(state, attestation)}` pubsub topic.
+
+```python
+def compute_subnet_for_attestation(state: BeaconState, attestation: Attestation) -> uint64:
+    """
+    Compute the correct subnet for an attestation for Phase 0.
+    Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
+    """
+    slots_since_epoch_start = attestation.data.slot % SLOTS_PER_EPOCH
+    committees_since_epoch_start = get_committee_count_at_slot(state, attestation.data.slot) * slots_since_epoch_start
+
+    return (committees_since_epoch_start + attestation.data.index) % ATTESTATION_SUBNET_COUNT
+```
 
 ### Attestation aggregation
 
@@ -445,7 +465,7 @@ def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_si
 
 If the validator is selected to aggregate (`is_aggregator()`), they construct an aggregate attestation via the following.
 
-Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator, and create an `aggregate_attestation: Attestation` with the following fields.
+Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator. If `len(attestations) > 0`, create an `aggregate_attestation: Attestation` with the following fields.
 
 ##### Data
 
@@ -518,11 +538,13 @@ class SignedAggregateAndProof(Container):
 
 ## Phase 0 attestation subnet stability
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must:
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each validator must:
 
 * Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
 * Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
 * Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
+
+*Note*: Short lived beacon committee assignments should not be added in into the ENR `attnets` entry.
 
 *Note*: When preparing for a hard fork, a validator must select and subscribe to random subnets of the future fork versioning at least `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 

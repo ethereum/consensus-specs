@@ -9,6 +9,8 @@ from .utils import vector_test, with_meta_tags
 from random import Random
 from typing import Any, Callable, NewType, Sequence, TypedDict, Protocol
 
+from lru import LRU
+
 from importlib import reload
 
 
@@ -48,28 +50,46 @@ class SpecForks(TypedDict, total=False):
     PHASE1: SpecPhase1
 
 
+def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
+                   spec: Spec, phases: SpecForks):
+
+    p0 = phases[PHASE0]
+    balances = balances_fn(p0)
+    activation_threshold = threshold_fn(p0)
+
+    state = create_genesis_state(spec=p0, validator_balances=balances,
+                                 activation_threshold=activation_threshold)
+    if spec.fork == PHASE1:
+        # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
+        # Decide based on performance/consistency results later.
+        state = phases[PHASE1].upgrade_to_phase1(state)
+        # Shard state slot must lag behind BeaconState slot by at least 1
+        # Will handle this more elegantly with fork mechanics
+        spec.process_slots(state, state.slot + 1)
+
+    return state
+
+
+_custom_state_cache_dict = LRU(size=10)
+
+
 def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
                       threshold_fn: Callable[[Any], int]):
     def deco(fn):
+
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
-            try:
-                p0 = phases[PHASE0]
-                balances = balances_fn(p0)
-                activation_threshold = threshold_fn(p0)
+            # make a key for the state
+            # genesis fork version separates configs during test-generation runtime.
+            key = (spec.fork, spec.GENESIS_FORK_VERSION, spec.__file__, balances_fn, threshold_fn)
+            global _custom_state_cache_dict
+            if key not in _custom_state_cache_dict:
+                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
+                _custom_state_cache_dict[key] = state.get_backing()
 
-                state = create_genesis_state(spec=p0, validator_balances=balances,
-                                             activation_threshold=activation_threshold)
-                if spec.fork == PHASE1:
-                    # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
-                    # Decide based on performance/consistency results later.
-                    state = phases[PHASE1].upgrade_to_phase1(state)
-                    # Shard state slot must lag behind BeaconState slot by at least 1
-                    # Will handle this more elegantly with fork mechanics
-                    spec.process_slots(state, state.slot + 1)
-
-                kw['state'] = state
-            except KeyError:
-                raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
+            # Take an entry out of the LRU.
+            # No copy is necessary, as we wrap the immutable backing with a new view.
+            state = spec.BeaconState(backing=_custom_state_cache_dict[key])
+            kw['state'] = state
             return fn(*args, spec=spec, phases=phases, **kw)
         return entry
     return deco
@@ -147,14 +167,15 @@ def single_phase(fn):
     return entry
 
 
-# BLS is turned off by default *for performance purposes during TESTING*.
+# BLS is turned on by default, it can be disabled in tests by overriding this, or using `--disable-bls`.
+# *This is for performance purposes during TESTING, DO NOT DISABLE IN PRODUCTION*.
 # The runner of the test can indicate the preferred setting (test generators prefer BLS to be ON).
 # - Some tests are marked as BLS-requiring, and ignore this setting.
 #    (tests that express differences caused by BLS, e.g. invalid signatures being rejected)
 # - Some other tests are marked as BLS-ignoring, and ignore this setting.
 #    (tests that are heavily performance impacted / require unsigned state transitions)
 # - Most tests respect the BLS setting.
-DEFAULT_BLS_ACTIVE = False
+DEFAULT_BLS_ACTIVE = True
 
 
 def spec_test(fn):

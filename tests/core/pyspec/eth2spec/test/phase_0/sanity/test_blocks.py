@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.utils import bls
 
 from eth2spec.test.helpers.state import (
@@ -12,12 +10,19 @@ from eth2spec.test.helpers.block import (
     transition_unsigned_block,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, get_indexed_attestation_participants
-from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.attester_slashings import (
+    get_valid_attester_slashing_by_indices,
+    get_valid_attester_slashing,
+    get_indexed_attestation_participants,
+)
+from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
+from eth2spec.test.helpers.attestations import get_valid_attestation, fill_block_shard_transitions_by_attestations
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases
+from eth2spec.test.context import (
+    spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
+    PHASE1
+)
 
 
 @with_all_phases
@@ -311,11 +316,11 @@ def test_empty_epoch_transition_not_finalizing(spec, state):
 @spec_state_test
 def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
-    pre_state = deepcopy(state)
+    pre_state = state.copy()
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = proposer_slashing.signed_header_1.message.proposer_index
+    slashed_index = proposer_slashing.signed_header_1.message.proposer_index
 
-    assert not state.validators[validator_index].slashed
+    assert not state.validators[slashed_index].slashed
 
     yield 'pre', state
 
@@ -330,25 +335,108 @@ def test_proposer_slashing(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # check if slashed
-    slashed_validator = state.validators[validator_index]
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-    # lost whistleblower reward
-    assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
+    check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
+
+
+@with_all_phases
+@spec_state_test
+def test_double_same_proposer_slashings_same_block(spec, state):
+    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
+    slashed_index = proposer_slashing.signed_header_1.message.proposer_index
+    assert not state.validators[slashed_index].slashed
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.proposer_slashings = [proposer_slashing, proposer_slashing]
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+def test_double_similar_proposer_slashings_same_block(spec, state):
+    slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+
+    # Same validator, but different slashable offences in the same block
+    proposer_slashing_1 = get_valid_proposer_slashing(spec, state, random_root=b'\xaa' * 32,
+                                                      slashed_index=slashed_index,
+                                                      signed_1=True, signed_2=True)
+    proposer_slashing_2 = get_valid_proposer_slashing(spec, state, random_root=b'\xbb' * 32,
+                                                      slashed_index=slashed_index,
+                                                      signed_1=True, signed_2=True)
+    assert not state.validators[slashed_index].slashed
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.proposer_slashings = [proposer_slashing_1, proposer_slashing_2]
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+def test_multiple_different_proposer_slashings_same_block(spec, state):
+    pre_state = state.copy()
+
+    num_slashings = 3
+    proposer_slashings = []
+    for i in range(num_slashings):
+        slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
+        assert not state.validators[slashed_index].slashed
+
+        proposer_slashing = get_valid_proposer_slashing(spec, state,
+                                                        slashed_index=slashed_index,
+                                                        signed_1=True, signed_2=True)
+        proposer_slashings.append(proposer_slashing)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.proposer_slashings = proposer_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    for proposer_slashing in proposer_slashings:
+        slashed_index = proposer_slashing.signed_header_1.message.proposer_index
+        check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
+
+
+def check_attester_slashing_effect(spec, pre_state, state, slashed_indices):
+    for slashed_index in slashed_indices:
+        slashed_validator = state.validators[slashed_index]
+        assert slashed_validator.slashed
+        assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
+        assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+        # lost whistleblower reward
+        assert get_balance(state, slashed_index) < get_balance(pre_state, slashed_index)
+
+    proposer_index = spec.get_beacon_proposer_index(state)
+    # gained whistleblower reward
+    assert get_balance(state, proposer_index) > get_balance(pre_state, proposer_index)
 
 
 @with_all_phases
 @spec_state_test
 def test_attester_slashing(spec, state):
     # copy for later balance lookups.
-    pre_state = deepcopy(state)
+    pre_state = state.copy()
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)[0]
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
 
-    assert not state.validators[validator_index].slashed
+    assert not any(state.validators[i].slashed for i in slashed_indices)
 
     yield 'pre', state
 
@@ -363,19 +451,118 @@ def test_attester_slashing(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    slashed_validator = state.validators[validator_index]
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-    # lost whistleblower reward
-    assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
+    check_attester_slashing_effect(spec, pre_state, state, slashed_indices)
 
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # gained whistleblower reward
-    assert (
-        get_balance(state, proposer_index) >
-        get_balance(pre_state, proposer_index)
+
+@with_all_phases
+@spec_state_test
+def test_duplicate_attester_slashing(spec, state):
+    # Skip test if config cannot handle multiple AttesterSlashings per block
+    if spec.MAX_ATTESTER_SLASHINGS < 2:
+        return
+
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+    attester_slashings = [attester_slashing, attester_slashing.copy()]
+    slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
+
+    assert not any(state.validators[i].slashed for i in slashed_indices)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attester_slashings = attester_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+# All AttesterSlashing tests should be adopted for Phase 1 but helper support is not yet there
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_multiple_attester_slashings_no_overlap(spec, state):
+    # Skip test if config cannot handle multiple AttesterSlashings per block
+    if spec.MAX_ATTESTER_SLASHINGS < 2:
+        return
+
+    # copy for later balance lookups.
+    pre_state = state.copy()
+
+    full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[:8]
+    half_length = len(full_indices) // 2
+
+    attester_slashing_1 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[:half_length], signed_1=True, signed_2=True,
     )
+    attester_slashing_2 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[half_length:], signed_1=True, signed_2=True,
+    )
+    attester_slashings = [attester_slashing_1, attester_slashing_2]
+
+    assert not any(state.validators[i].slashed for i in full_indices)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attester_slashings = attester_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    check_attester_slashing_effect(spec, pre_state, state, full_indices)
+
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_multiple_attester_slashings_partial_overlap(spec, state):
+    # Skip test if config cannot handle multiple AttesterSlashings per block
+    if spec.MAX_ATTESTER_SLASHINGS < 2:
+        return
+
+    # copy for later balance lookups.
+    pre_state = state.copy()
+
+    full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[:8]
+    one_third_length = len(full_indices) // 3
+
+    attester_slashing_1 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[:one_third_length * 2], signed_1=True, signed_2=True,
+    )
+    attester_slashing_2 = get_valid_attester_slashing_by_indices(
+        spec, state,
+        full_indices[one_third_length:], signed_1=True, signed_2=True,
+    )
+    attester_slashings = [attester_slashing_1, attester_slashing_2]
+
+    assert not any(state.validators[i].slashed for i in full_indices)
+
+    yield 'pre', state
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attester_slashings = attester_slashings
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    check_attester_slashing_effect(spec, pre_state, state, full_indices)
 
 
 @with_all_phases
@@ -500,12 +687,14 @@ def test_attestation(spec, state):
 
     yield 'pre', state
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=True, on_time=True)
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
     attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
     attestation_block.body.attestations.append(attestation)
+    if spec.fork == PHASE1:
+        fill_block_shard_transitions_by_attestations(spec, state, attestation_block)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
     assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
@@ -523,35 +712,38 @@ def test_attestation(spec, state):
     assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
 
 
-# In phase1 a committee is computed for PERSISTENT_COMMITTEE_PERIOD slots ago,
+def prepare_signed_exits(spec, state, indices):
+    domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
+
+    def create_signed_exit(index):
+        exit = spec.VoluntaryExit(
+            epoch=spec.get_current_epoch(state),
+            validator_index=index,
+        )
+        signing_root = spec.compute_signing_root(exit, domain)
+        return spec.SignedVoluntaryExit(message=exit, signature=bls.Sign(privkeys[index], signing_root))
+
+    return [create_signed_exit(index) for index in indices]
+
+
+# In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
 # exceeding the minimal-config randao mixes memory size.
+# Applies to all voluntary-exit sanity block tests.
+
 @with_phases(['phase0'])
 @spec_state_test
 def test_voluntary_exit(spec, state):
-    validator_index = spec.get_active_validator_indices(
-        state,
-        spec.get_current_epoch(state)
-    )[-1]
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
+    signed_exits = prepare_signed_exits(spec, state, [validator_index])
     yield 'pre', state
-
-    voluntary_exit = spec.VoluntaryExit(
-        epoch=spec.get_current_epoch(state),
-        validator_index=validator_index,
-    )
-    domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
-    signing_root = spec.compute_signing_root(voluntary_exit, domain)
-    signed_voluntary_exit = spec.SignedVoluntaryExit(
-        message=voluntary_exit,
-        signature=bls.Sign(privkeys[validator_index], signing_root)
-    )
 
     # Add to state via block transition
     initiate_exit_block = build_empty_block_for_next_slot(spec, state)
-    initiate_exit_block.body.voluntary_exits.append(signed_voluntary_exit)
+    initiate_exit_block.body.voluntary_exits = signed_exits
     signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -564,6 +756,59 @@ def test_voluntary_exit(spec, state):
     yield 'post', state
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_double_validator_exit_same_block(spec, state):
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Same index tries to exit twice, but should only be able to do so once.
+    signed_exits = prepare_signed_exits(spec, state, [validator_index, validator_index])
+    yield 'pre', state
+
+    # Add to state via block transition
+    initiate_exit_block = build_empty_block_for_next_slot(spec, state)
+    initiate_exit_block.body.voluntary_exits = signed_exits
+    signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block, expect_fail=True)
+
+    yield 'blocks', [signed_initiate_exit_block]
+    yield 'post', None
+
+
+@with_phases(['phase0'])
+@spec_state_test
+def test_multiple_different_validator_exits_same_block(spec, state):
+    validator_indices = [
+        spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
+        for i in range(3)
+    ]
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    signed_exits = prepare_signed_exits(spec, state, validator_indices)
+    yield 'pre', state
+
+    # Add to state via block transition
+    initiate_exit_block = build_empty_block_for_next_slot(spec, state)
+    initiate_exit_block.body.voluntary_exits = signed_exits
+    signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
+
+    for index in validator_indices:
+        assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+    # Process within epoch transition
+    exit_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+    signed_exit_block = state_transition_and_sign_block(spec, state, exit_block)
+
+    yield 'blocks', [signed_initiate_exit_block, signed_exit_block]
+    yield 'post', state
+
+    for index in validator_indices:
+        assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases

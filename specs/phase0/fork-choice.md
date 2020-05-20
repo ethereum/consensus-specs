@@ -162,7 +162,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
-        if (i in store.latest_messages 
+        if (i in store.latest_messages
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
 ```
@@ -273,18 +273,21 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
+    # If attestation target is from a future epoch, delay consideration until the epoch arrives
     assert target.epoch in [current_epoch, previous_epoch]
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
 
     # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
     assert target.root in store.blocks
-    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
-    assert get_current_slot(store) >= compute_start_slot_at_epoch(target.epoch)
 
     # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
     assert attestation.data.beacon_block_root in store.blocks
     # Attestations must not be for blocks in the future. If not, the attestation should not be considered
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
+
+    # FFG and LMD vote must be consistent with each other
+    target_slot = compute_start_slot_at_epoch(target.epoch)
+    assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.

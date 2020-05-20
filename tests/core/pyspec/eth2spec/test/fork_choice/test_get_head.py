@@ -183,7 +183,7 @@ def test_filtered_block_tree(spec, state):
     for i in range(spec.SLOTS_PER_EPOCH):
         slot = rogue_block.slot + i
         for index in range(spec.get_committee_count_at_slot(non_viable_state, slot)):
-            attestation = get_valid_attestation(spec, non_viable_state, rogue_block.slot + i, index)
+            attestation = get_valid_attestation(spec, non_viable_state, slot, index, signed=True)
             attestations.append(attestation)
 
     # tick time forward to be able to include up to the latest attestation
