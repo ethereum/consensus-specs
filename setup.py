@@ -503,7 +503,7 @@ setup(
         "pycryptodome==3.9.4",
         "py_ecc==4.0.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.15",
+        "remerkleable==0.1.16",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]
