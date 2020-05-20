@@ -252,11 +252,13 @@ The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 d
 
 ###### `Eth1Block`
 
-Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` field available.
+Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and depost contract data available.
 
 ```python
 class Eth1Block(Container):
     timestamp: uint64
+    deposit_root: Root
+    deposit_count: uint64
     # All other eth1 block fields
 ```
 
@@ -289,8 +291,14 @@ def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
 def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
     period_start = voting_period_start_time(state)
     # `eth1_chain` abstractly represents all blocks in the eth1 chain sorted by ascending block height
-    votes_to_consider = [get_eth1_data(block) for block in eth1_chain if
-                         is_candidate_block(block, period_start)]
+    votes_to_consider = [
+        get_eth1_data(block) for block in eth1_chain
+        if (
+            is_candidate_block(block, period_start)
+            # Ensure cannot move back to earlier deposit contract states
+            and get_eth1_data(block).deposit_count >= state.eth1_data.deposit_count
+        )
+    ]
 
     # Valid votes already cast during this period
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]

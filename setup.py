@@ -150,7 +150,10 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
     """
     A stub function return mocking Eth1Data.
     """
-    return Eth1Data(block_hash=hash_tree_root(block))
+    return Eth1Data(
+        deposit_root=block.deposit_root,
+        deposit_count=block.deposit_count,
+        block_hash=hash_tree_root(block))
 
 
 def hash(x: bytes) -> Bytes32:  # type: ignore
