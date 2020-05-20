@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     PHASE0, PHASE1,
-    spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
+    spec_state_test, expect_assertion_error, always_bls, never_bls, with_all_phases, with_phases
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
@@ -89,6 +89,7 @@ def test_success_double(spec, state):
 
 @with_all_phases
 @spec_state_test
+@never_bls
 def test_success_surround(spec, state):
     next_epoch_via_block(spec, state)
 
