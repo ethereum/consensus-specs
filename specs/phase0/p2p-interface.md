@@ -391,11 +391,11 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: String
+  error_message: Bytes32
 )
 ```
 
-*Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
+*Note*: By convention, the `error_message` is a sequence of bytes that can be interpreted as a UTF-8 string up to 32 bytes - a 0 byte shortens the string in this interpretation. Clients MUST treat as valid any bytes.
 
 ### Encoding strategies
 
