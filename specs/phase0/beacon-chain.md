@@ -287,7 +287,7 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md) c
 #### `Fork`
 
 ```python
-# Chain versioning to faciliate hard forks (e.g. to avoid replay attacks of consensus messages across chains)
+# Chain versioning to facilitate hard forks (e.g. to avoid replay attacks of consensus messages across chains)
 class Fork(Container):
     previous_version: Version
     current_version: Version
