@@ -315,7 +315,7 @@ class Checkpoint(Container):
 #### `Validator`
 
 ```python
-# Consensus-relevant validator state except for the non-rounded balance
+# Validator state relevant for consensus (with the exception of the full non-rounded balance)
 class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
@@ -328,7 +328,7 @@ class Validator(Container):
     withdrawable_epoch: Epoch  # When validator can withdraw funds
 ```
 
-*Note*: Validator balances receive special treatment to reduce the hashing cost of Merkleizing `state.validators`. Validator balances are packed as 8-byte `Gwei` values in `state.balances` outside of `state.validators`. Instead, `Validator` objects only store a rounded `effective_balance` which is a multiple of `EFFECTIVE_BALANCE_INCREMENT`.
+*Note*: Validator balances receive special treatment to reduce the hashing cost of Merkleizing the validator registry. `Validator` objects only store a rounded `effective_balance` which is a multiple of `EFFECTIVE_BALANCE_INCREMENT`. Full validator balances are packed as 8-byte `Gwei` values in `state.balances` outside of `state.validators`. 
 
 *Note*: The effective balance is updated with hysteresis to avoid back-and-forth-on-the-edge attacks. The threshold for decreasing the effective balance from `N` to `N - 1` is `N - HYSTERESIS_DOWNWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`. The threshold for increasing the effective balance from `N` to `N + 1` is `N + HYSTERESIS_UPWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`.
 
@@ -372,7 +372,7 @@ class PendingAttestation(Container):
 #### `Eth1Data`
 
 ```python
-# Eth1 data (decided via honest-majority voting) to facilite the processing of Eth1 deposits 
+# Eth1 data (set via honest-majority voting) for the processing of Eth1 deposits 
 class Eth1Data(Container):
     deposit_root: Root
     deposit_count: uint64
@@ -393,7 +393,7 @@ class HistoricalBatch(Container):
 #### `DepositMessage`
 
 ```python
-# A deposit request without its signature
+# An Eth1 deposit without its proof-of-possession signature
 class DepositMessage(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
@@ -403,15 +403,15 @@ class DepositMessage(Container):
 #### `DepositData`
 
 ```python
-# A full deposit request including the signature signing over the corresponding `DepositMessage`
+# A full Eth1 deposit including the proof-of-possession signature
 class DepositData(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
-    signature: BLSSignature
+    signature: BLSSignature  # Signing over the corresponding `DepositMessage`
 ```
 
-*Note*: Eth1 deposits are signed differently to other beacon objects for historical reasons. This piece of technical debt is due to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.vy) getting finalized before an improved signing scheme was implemented elsewhere.
+*Note*: Eth1 deposits are signed differently to other beacon objects for historical reasons. This piece of technical debt is due to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.vy) getting finalized before an improved signing scheme was implemented.
 
 #### `BeaconBlockHeader`
 
@@ -428,7 +428,7 @@ class BeaconBlockHeader(Container):
 #### `SigningData`
 
 ```python
-# An object digest to be signed upon
+# An object digest over which a corresponding signed message signs over
 class SigningData(Container):
     object_root: Root
     domain: Domain
@@ -439,7 +439,7 @@ class SigningData(Container):
 #### `ProposerSlashing`
 
 ```python
-# Proof that a proposer equivocated, i.e. proposed two blocks in the same slot
+# Slashing proof that a proposer equivocated, i.e. proposed two blocks in the same slot
 class ProposerSlashing(Container):
     signed_header_1: SignedBeaconBlockHeader
     signed_header_2: SignedBeaconBlockHeader
@@ -448,7 +448,7 @@ class ProposerSlashing(Container):
 #### `AttesterSlashing`
 
 ```python
-# Proof that an attester equivocated, i.e. made two confliecting attestations
+# Slashing proof that an attester equivocated, i.e. made two conflicting attestations
 class AttesterSlashing(Container):
     attestation_1: IndexedAttestation
     attestation_2: IndexedAttestation
@@ -517,7 +517,7 @@ class BeaconBlock(Container):
 #### `BeaconState`
 
 ```python
-# A full snapshot of the state of the beacon chain
+# A full snapshot of the beacon chain state
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
@@ -550,7 +550,7 @@ class BeaconState(Container):
     finalized_checkpoint: Checkpoint
 ```
 
-*Note*: In the worst case the size of the state is dominated by the validator registry, i.e. `state.validators` and `state.balances`. All other fields combined are at most a few megabytes. The state is deliberately kept small to fit multiple copies in RAM and facilitate fast syncs.
+*Note*: In the worst case the size of the state is dominated by the validator registry, i.e. `state.validators` and `state.balances`. All other state fields combined are at most a few megabytes. The state is deliberately kept small to fit multiple copies in RAM and facilitate fast syncs.
 
 ### Signed envelopes
 
