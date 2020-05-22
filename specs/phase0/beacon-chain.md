@@ -287,6 +287,7 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md) c
 #### `Fork`
 
 ```python
+# Chain versioning to faciliate hard forks (e.g. to avoid replay attacks of consensus messages across chains)
 class Fork(Container):
     previous_version: Version
     current_version: Version
@@ -296,6 +297,7 @@ class Fork(Container):
 #### `ForkData`
 
 ```python
+# Chain identifier used by the networking layer
 class ForkData(Container):
     current_version: Version
     genesis_validators_root: Root
@@ -304,6 +306,7 @@ class ForkData(Container):
 #### `Checkpoint`
 
 ```python
+# Consensus object underlying Casper FFG votes (see https://arxiv.org/abs/2003.03052)
 class Checkpoint(Container):
     epoch: Epoch
     root: Root
@@ -312,6 +315,7 @@ class Checkpoint(Container):
 #### `Validator`
 
 ```python
+# Consensus-relevant validator state except for the non-rounded balance
 class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
@@ -324,9 +328,16 @@ class Validator(Container):
     withdrawable_epoch: Epoch  # When validator can withdraw funds
 ```
 
+*Note*: Validator balances receive special treatment to reduce the hashing cost of Merkleizing `state.validators`. Validator balances are packed as 8-byte `Gwei` values in `state.balances` outside of `state.validators`. Instead, `Validator` objects only store a rounded `effective_balance` which is a multiple of `EFFECTIVE_BALANCE_INCREMENT`.
+
+*Note*: The effective balance is updated with hysteresis to avoid back-and-forth-on-the-edge attacks. The threshold for decreasing the effective balance from `N` to `N - 1` is `N - HYSTERESIS_DOWNWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`. The threshold for increasing the effective balance from `N` to `N + 1` is `N + HYSTERESIS_UPWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`.
+
+*Note*: The difference between a validator's balance and its effective balance does not count toward voting, rewards, and penalties. The effective balance is capped at `MAX_EFFECTIVE_BALANCE` to bound the weight of individual validator votes within a committee.
+
 #### `AttestationData`
 
 ```python
+# Everything an attestation attests to (including shard votes in phases 1 and 2)
 class AttestationData(Container):
     slot: Slot
     index: CommitteeIndex
@@ -340,6 +351,7 @@ class AttestationData(Container):
 #### `IndexedAttestation`
 
 ```python
+# An attestation with explicit validator indices (replacing `aggregation_bits`) for cross-fork attester slashing
 class IndexedAttestation(Container):
     attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
@@ -349,6 +361,7 @@ class IndexedAttestation(Container):
 #### `PendingAttestation`
 
 ```python
+# A validated attestation cached for batched processing at the end of the epoch
 class PendingAttestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
@@ -359,6 +372,7 @@ class PendingAttestation(Container):
 #### `Eth1Data`
 
 ```python
+# Eth1 data (decided via honest-majority voting) to facilite the processing of Eth1 deposits 
 class Eth1Data(Container):
     deposit_root: Root
     deposit_count: uint64
@@ -368,14 +382,18 @@ class Eth1Data(Container):
 #### `HistoricalBatch`
 
 ```python
+# Historical block and state roots Merkleised into `state.historical_roots`
 class HistoricalBatch(Container):
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
+*Note*: The `state.historical_roots` accumulator allows for the authentication of historical blocks and states using immutable Merkle paths (see [here](https://ethresear.ch/t/double-batched-merkle-log-accumulator/571)).
+
 #### `DepositMessage`
 
 ```python
+# A deposit request without its signature
 class DepositMessage(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
@@ -385,16 +403,20 @@ class DepositMessage(Container):
 #### `DepositData`
 
 ```python
+# A full deposit request including the signature signing over the corresponding `DepositMessage`
 class DepositData(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
-    signature: BLSSignature  # Signing over DepositMessage
+    signature: BLSSignature
 ```
+
+*Note*: Eth1 deposits are signed differently to other beacon objects for historical reasons. This piece of technical debt is due to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.vy) getting finalized before an improved signing scheme was implemented elsewhere.
 
 #### `BeaconBlockHeader`
 
 ```python
+# A beacon block header (e.g. for light clients and proposer slashings)
 class BeaconBlockHeader(Container):
     slot: Slot
     proposer_index: ValidatorIndex
@@ -406,6 +428,7 @@ class BeaconBlockHeader(Container):
 #### `SigningData`
 
 ```python
+# An object digest to be signed upon
 class SigningData(Container):
     object_root: Root
     domain: Domain
@@ -416,6 +439,7 @@ class SigningData(Container):
 #### `ProposerSlashing`
 
 ```python
+# Proof that a proposer equivocated, i.e. proposed two blocks in the same slot
 class ProposerSlashing(Container):
     signed_header_1: SignedBeaconBlockHeader
     signed_header_2: SignedBeaconBlockHeader
@@ -424,6 +448,7 @@ class ProposerSlashing(Container):
 #### `AttesterSlashing`
 
 ```python
+# Proof that an attester equivocated, i.e. made two confliecting attestations
 class AttesterSlashing(Container):
     attestation_1: IndexedAttestation
     attestation_2: IndexedAttestation
@@ -432,6 +457,7 @@ class AttesterSlashing(Container):
 #### `Attestation`
 
 ```python
+# An aggregated attestation (with an aggregate signature) from a subset of a committee
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
@@ -441,6 +467,7 @@ class Attestation(Container):
 #### `Deposit`
 
 ```python
+# An Eth1 deposit with a corresponding Merkle proof to the deposit root
 class Deposit(Container):
     proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit root
     data: DepositData
@@ -449,6 +476,7 @@ class Deposit(Container):
 #### `VoluntaryExit`
 
 ```python
+# An unsigned validator request to voluntarily exit
 class VoluntaryExit(Container):
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
@@ -459,6 +487,7 @@ class VoluntaryExit(Container):
 #### `BeaconBlockBody`
 
 ```python
+# A beacon block body containing beacon operations and miscellaneous fields
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
@@ -474,6 +503,7 @@ class BeaconBlockBody(Container):
 #### `BeaconBlock`
 
 ```python
+# An unsigned beacon block
 class BeaconBlock(Container):
     slot: Slot
     proposer_index: ValidatorIndex
@@ -487,6 +517,7 @@ class BeaconBlock(Container):
 #### `BeaconState`
 
 ```python
+# A full snapshot of the state of the beacon chain
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
@@ -518,6 +549,8 @@ class BeaconState(Container):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
 ```
+
+*Note*: In the worst case the size of the state is dominated by the validator registry, i.e. `state.validators` and `state.balances`. All other fields combined are at most a few megabytes. The state is deliberately kept small to fit multiple copies in RAM and facilitate fast syncs.
 
 ### Signed envelopes
 
