@@ -211,7 +211,10 @@ def sign_indexed_attestation(spec, state, indexed_attestation):
             indexed_attestation.attestation.aggregation_bits,
         )
         data = indexed_attestation.attestation.data
-        indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
+        if any(indexed_attestation.attestation.custody_bits_blocks):
+            sign_on_time_attestation(spec, state, indexed_attestation.attestation)
+        else:
+            indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
 
 
 def sign_on_time_attestation(spec, state, attestation):
