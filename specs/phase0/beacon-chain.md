@@ -313,7 +313,7 @@ class Fork(Container):
 
 #### `ForkData`
 
-Used on the P2P layer to distinguish chains.
+Used on the P2P layer to distinguish between different chains (eg. mainnet, testnets, also potentially different forks of mainnet).
 
 ```python
 class ForkData(Container):
@@ -479,7 +479,7 @@ class AttesterSlashing(Container):
 
 #### `Attestation`
 
-An attestation (actually, a collection of many attestations of the same data, coming from a subset of some committee, with their signatures BLS-aggregated)
+An attestation (actually, a collection of many attestations of the same data, coming from a subset of some committee, with their signatures BLS-aggregated). The `aggregation_bits` parameter is a bitfield representing which members of the committee are included in this attestation (the committee has a canonical "first member", "second member", etc).
 
 ```python
 class Attestation(Container):
@@ -512,7 +512,7 @@ class VoluntaryExit(Container):
 
 #### `BeaconBlockBody`
 
-The various objects in a beacon block; in the header, this data is all replaced with its hash.
+The various objects in a beacon chain block. In a beacon block header, this data is all replaced with the `hash_tree_root` of this object.
 
 ```python
 class BeaconBlockBody(Container):
@@ -528,6 +528,8 @@ class BeaconBlockBody(Container):
 ```
 
 #### `BeaconBlock`
+
+The top-level structure of a beacon-chain block.
 
 ```python
 class BeaconBlock(Container):
