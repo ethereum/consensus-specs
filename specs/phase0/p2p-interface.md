@@ -203,7 +203,7 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
     - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `Name` - see table below
-- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
+- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encodings) section for further details.
 
 *Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available. Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
 
