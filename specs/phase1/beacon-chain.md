@@ -801,7 +801,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
 
     # Save updated state
     state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]
-    state.shard_states[shard].slot = state.slot - 1
+    state.shard_states[shard].slot = compute_previous_slot(state.slot)
 ```
 
 ###### `process_crosslink_for_shard`
@@ -953,7 +953,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 def verify_shard_transition_false_positives(state: BeaconState, block_body: BeaconBlockBody) -> None:
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
     for shard in range(get_active_shard_count(state)):
-        if state.shard_states[shard].slot != state.slot - 1:
+        if state.shard_states[shard].slot != compute_previous_slot(state.slot):
             assert block_body.shard_transitions[shard] == ShardTransition()
 ```
 
