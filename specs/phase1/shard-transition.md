@@ -81,7 +81,7 @@ def shard_state_transition(beacon_state: BeaconState,
         beacon_state,
         shard_state,
         block.beacon_parent_root,
-        block.body,
+        hash_tree_root(block.body),
     )
     shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
     shard_state.slot = block.slot
