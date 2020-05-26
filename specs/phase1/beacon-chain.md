@@ -997,7 +997,7 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Custody game updates
 
-`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./1_custody-game.md), 
+`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md), 
 
 #### Online-tracking
 
