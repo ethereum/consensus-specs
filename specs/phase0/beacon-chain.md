@@ -282,6 +282,8 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md) c
 
 *Note*: Fields missing in container instantiations default to their zero value.
 
+*Note*: Fields with the `_root` suffix are object Merkle roots, i.e. `hash_tree_root` outputs.
+
 ### Misc dependencies
 
 #### `Fork`
@@ -377,9 +379,9 @@ class PendingAttestation(Container):
     """
     A validated attestation cached for batched processing at the end of the epoch
     """
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]  # One bit per committee index
     data: AttestationData
-    inclusion_delay: Slot
+    inclusion_delay: Slot  # Number of slots before on-chain inclusion 
     proposer_index: ValidatorIndex
 ```
 
@@ -491,7 +493,7 @@ class Attestation(Container):
     """
     An aggregated attestation (with an aggregate BLS signature) from a subset of a committee
     """
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]  # One bit per committee index
     data: AttestationData
     signature: BLSSignature
 ```
@@ -543,7 +545,7 @@ class BeaconBlockBody(Container):
 ```python
 class BeaconBlock(Container):
     """
-    An unsigned beacon block (Merkleizing `body` yields a `BeaconBlockHeader`)
+    An unsigned beacon block (Merkleizing the `body` field yields a `BeaconBlockHeader`)
     """
     slot: Slot
     proposer_index: ValidatorIndex
@@ -559,7 +561,7 @@ class BeaconBlock(Container):
 ```python
 class BeaconState(Container):
     """
-    A full snapshot of the beacon chain state
+    A snapshot of the complete beacon chain state
     """
     # Versioning
     genesis_time: uint64
