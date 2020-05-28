@@ -64,6 +64,7 @@
         - [`apply_shard_transition`](#apply_shard_transition)
         - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
         - [`process_crosslinks`](#process_crosslinks)
+        - [`process_shard_transitions`](#process_shard_transitions)
         - [`process_attestation`](#process_attestation)
       - [New Attester slashing processing](#new-attester-slashing-processing)
     - [Verify empty shard transition](#verify-empty-shard-transition)
@@ -671,7 +672,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_light_client_signatures(state, block.body)
     process_operations(state, block.body)
-    verify_empty_shard_transition(state, block.body)
 ```
 
 #### Operations
@@ -695,7 +695,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # See custody game spec.
     process_custody_game_operations(state, body)
 
-    process_crosslinks(state, body.shard_transitions, body.attestations)
+    process_shard_transitions(state, body.shard_transitions, body.attestations)
 
     # TODO process_operations(body.shard_receipt_proofs, process_shard_receipt_proofs)
 ```
@@ -882,6 +882,18 @@ def process_crosslinks(state: BeaconState,
                     pending_attestation.crosslink_success = True
 ```
 
+###### `process_shard_transitions`
+
+```python
+def process_shard_transitions(state: BeaconState,
+                              shard_transitions: Sequence[ShardTransition],
+                              attestations: Sequence[Attestation]) -> None:
+    # Process crosslinks
+    process_crosslinks(state, shard_transitions, attestations)
+    # Verify the empty proposal shard states
+    assert verify_empty_shard_transition(state, shard_transitions)
+```
+
 ###### `process_attestation`
 
 ```python
@@ -893,7 +905,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         data=attestation.data,
         inclusion_delay=state.slot - attestation.data.slot,
         proposer_index=get_beacon_proposer_index(state),
-        crosslink_success=False,  # To be filled in during process_crosslinks
+        crosslink_success=False,  # To be filled in during process_shard_transitions
     )
     if attestation.data.target.epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
@@ -946,13 +958,15 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 #### Verify empty shard transition
 
 ```python
-def verify_empty_shard_transition(state: BeaconState, block_body: BeaconBlockBody) -> None:
+def verify_empty_shard_transition(state: BeaconState, shard_transitions: Sequence[ShardTransition]) -> bool:
     """
     Verify that ``shard_transitions`` are empty if a crosslink was not formed for the associated shard in this slot.
     """
     for shard in range(get_active_shard_count(state)):
         if state.shard_states[shard].slot != compute_previous_slot(state.slot):
-            assert block_body.shard_transitions[shard] == ShardTransition()
+            if shard_transitions[shard] != ShardTransition():
+                return False
+    return True
 ```
 
 #### Light client processing
