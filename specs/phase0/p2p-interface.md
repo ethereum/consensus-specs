@@ -83,7 +83,7 @@ It consists of four main sections:
     - [How should fork version be used in practice?](#how-should-fork-version-be-used-in-practice)
   - [Req/Resp](#reqresp)
     - [Why segregate requests into dedicated protocol IDs?](#why-segregate-requests-into-dedicated-protocol-ids)
-    - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
+    - [Why are messages length-prefixed with a protobuf variant in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-variant-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
