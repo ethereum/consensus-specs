@@ -268,11 +268,7 @@ def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
     offset_slots = get_offset_slots(beacon_state, shard)
-    start_slot = offset_slots[0]
     proposals, shard_states, shard_data_roots = get_shard_state_transition_result(beacon_state, shard, shard_blocks)
-
-    assert len(proposals) > 0
-    assert len(shard_data_roots) > 0
 
     shard_block_lengths = []
     proposer_signatures = []
@@ -287,7 +283,7 @@ def get_shard_transition(beacon_state: BeaconState,
         proposer_signature_aggregate = NO_SIGNATURE
 
     return ShardTransition(
-        start_slot=start_slot,
+        start_slot=offset_slots[0],
         shard_block_lengths=shard_block_lengths,
         shard_data_roots=shard_data_roots,
         shard_states=shard_states,
