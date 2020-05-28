@@ -53,7 +53,7 @@
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
-    - [`is_shard_attestation`](#is_shard_attestation)
+    - [`is_on_time_attestation`](#is_on_time_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
     - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
@@ -602,20 +602,16 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
         return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
 ```
 
-#### `is_shard_attestation`
+#### `is_on_time_attestation`
 
 ```python
-def is_shard_attestation(state: BeaconState,
-                         attestation: Attestation,
-                         committee_index: CommitteeIndex) -> bool:
-    if not (
-        attestation.data.index == committee_index
-        and attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot  # Must be on-time attestation
-        # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
-    ):
-        return False
-
-    return True
+def is_on_time_attestation(state: BeaconState,
+                           attestation: Attestation) -> bool:
+    """
+    Check if the given attestation is on-time.
+    """
+    # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
+    return attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
 ```
 
 #### `is_winning_attestation`
@@ -730,7 +726,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Type 1: on-time attestations, the custody bits should be non-empty.
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
-        assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
+        assert is_on_time_attestation(state, attestation)
         # Correct data root count
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
         # Correct parent block root
@@ -875,7 +871,7 @@ def process_crosslinks(state: BeaconState,
         shard_transition = shard_transitions[shard]
         shard_attestations = [
             attestation for attestation in attestations
-            if is_shard_attestation(state, attestation, committee_index)
+            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
 
         winning_root = process_crosslink_for_shard(state, committee_index, shard_transition, shard_attestations)
