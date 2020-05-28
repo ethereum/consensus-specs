@@ -130,7 +130,7 @@ class AttestationData(Container):
     source: Checkpoint
     target: Checkpoint
     # Current-slot shard block root
-    head_shard_root: Root
+    shard_head_root: Root
     # Shard transition root
     shard_transition_root: Root
 ```
@@ -823,7 +823,7 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            assert attestation.data.head_shard_root == shard_transition.shard_data_roots[
+            assert attestation.data.shard_head_root == shard_transition.shard_data_roots[
                 len(shard_transition.shard_data_roots) - 1
             ]
 
