@@ -938,7 +938,7 @@ def get_indices_from_committee(
         committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE],
         bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Sequence[ValidatorIndex]:
     assert len(bits) == len(committee)
-    return ([validator_index for i, validator_index in enumerate(committee) if bits[i]])
+    return [validator_index for i, validator_index in enumerate(committee) if bits[i]]
 ```
 
 ```python
