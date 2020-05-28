@@ -52,6 +52,7 @@
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
+    - [`verify_attestation_custody`](#verify_attestation_custody)
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_shard_attestation`](#is_shard_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
@@ -414,7 +415,7 @@ def unpack_compact_validator(compact_validator: uint64) -> Tuple[ValidatorIndex,
 ```python
 def committee_to_compact_committee(state: BeaconState, committee: Sequence[ValidatorIndex]) -> CompactCommittee:
     """
-    Given a state and a list of validator indices, outputs the CompactCommittee representing them.
+    Given a state and a list of validator indices, outputs the ``CompactCommittee`` representing them.
     """
     validators = [state.validators[i] for i in committee]
     compact_validators = [
@@ -569,6 +570,37 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 
 ### Predicates
 
+#### `verify_attestation_custody`
+
+```python
+def verify_attestation_custody(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+    """
+    Check if ``indexed_attestation`` has valid signature against non-empty custody bits.
+    """
+    attestation = indexed_attestation.attestation
+    aggregation_bits = attestation.aggregation_bits
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+    all_pubkeys = []
+    all_signing_roots = []
+    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
+        assert len(custody_bits) == len(indexed_attestation.committee)
+        for participant, aggregation_bit, custody_bit in zip(
+            indexed_attestation.committee, aggregation_bits, custody_bits
+        ):
+            if aggregation_bit:
+                all_pubkeys.append(state.validators[participant].pubkey)
+                # Note: only 2N distinct message hashes
+                attestation_wrapper = AttestationCustodyBitWrapper(
+                    attestation_data_root=hash_tree_root(attestation.data),
+                    block_index=block_index,
+                    bit=custody_bit,
+                )
+                all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
+            else:
+                assert not custody_bit
+    return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
+```
+
 #### Updated `is_valid_indexed_attestation`
 
 Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
@@ -584,34 +616,17 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not any(aggregation_bits) or len(aggregation_bits) != len(indexed_attestation.committee):
         return False
 
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    all_pubkeys = []
-    all_signing_roots = []
     if len(attestation.custody_bits_blocks) == 0:
         # fall back on phase0 behavior if there is no shard data.
+        domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+        all_pubkeys = []
         for participant, aggregation_bit in zip(indexed_attestation.committee, aggregation_bits):
             if aggregation_bit:
                 all_pubkeys.append(state.validators[participant].pubkey)
         signing_root = compute_signing_root(indexed_attestation.attestation.data, domain)
         return bls.FastAggregateVerify(all_pubkeys, signing_root, signature=attestation.signature)
     else:
-        for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
-            assert len(custody_bits) == len(indexed_attestation.committee)
-            for participant, aggregation_bit, custody_bit in zip(
-                indexed_attestation.committee, aggregation_bits, custody_bits
-            ):
-                if aggregation_bit:
-                    all_pubkeys.append(state.validators[participant].pubkey)
-                    # Note: only 2N distinct message hashes
-                    attestation_wrapper = AttestationCustodyBitWrapper(
-                        attestation_data_root=hash_tree_root(attestation.data),
-                        block_index=block_index,
-                        bit=custody_bit
-                    )
-                    all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
-                else:
-                    assert not custody_bit
-        return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
+        return verify_attestation_custody(state, indexed_attestation)
 ```
 
 #### `is_shard_attestation`
