@@ -287,8 +287,10 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md) c
 #### `Fork`
 
 ```python
-# Chain versioning to facilitate hard forks (e.g. to avoid replay attacks of consensus messages across chains)
 class Fork(Container):
+    """
+    Chain versioning to facilitate hard forks (e.g. to avoid replay attacks of consensus messages across chains)
+    """
     previous_version: Version
     current_version: Version
     epoch: Epoch  # Epoch of latest fork
@@ -297,8 +299,10 @@ class Fork(Container):
 #### `ForkData`
 
 ```python
-# Chain identifier used by the networking layer
 class ForkData(Container):
+    """
+    Chain identifier used by the networking layer
+    """
     current_version: Version
     genesis_validators_root: Root
 ```
@@ -306,8 +310,10 @@ class ForkData(Container):
 #### `Checkpoint`
 
 ```python
-# Consensus object underlying Casper FFG votes (see https://arxiv.org/abs/2003.03052)
 class Checkpoint(Container):
+    """
+    Consensus object underlying Casper FFG votes (see https://arxiv.org/abs/2003.03052)
+    """
     epoch: Epoch
     root: Root
 ```
@@ -315,8 +321,10 @@ class Checkpoint(Container):
 #### `Validator`
 
 ```python
-# Validator state relevant for consensus (with the exception of the full non-rounded balance)
 class Validator(Container):
+    """
+    Per-validator state relevant for consensus (with the exception of the full non-rounded balance)
+    """
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
@@ -337,8 +345,10 @@ class Validator(Container):
 #### `AttestationData`
 
 ```python
-# Everything an attestation attests to (including shard votes in phases 1 and 2)
 class AttestationData(Container):
+    """
+    All the data an attestation attests to (including shard votes in phases 1 and 2)
+    """
     slot: Slot
     index: CommitteeIndex
     # LMD GHOST vote
@@ -351,8 +361,10 @@ class AttestationData(Container):
 #### `IndexedAttestation`
 
 ```python
-# An attestation with explicit validator indices (replacing `aggregation_bits`) for cross-fork attester slashing
 class IndexedAttestation(Container):
+    """
+    An attestation with explicit validator indices (replacing `aggregation_bits`) for cross-fork attester slashing
+    """
     attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     signature: BLSSignature
@@ -361,8 +373,10 @@ class IndexedAttestation(Container):
 #### `PendingAttestation`
 
 ```python
-# A validated attestation cached for batched processing at the end of the epoch
 class PendingAttestation(Container):
+    """
+    A validated attestation cached for batched processing at the end of the epoch
+    """
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     inclusion_delay: Slot
@@ -372,8 +386,10 @@ class PendingAttestation(Container):
 #### `Eth1Data`
 
 ```python
-# Eth1 data (set via honest-majority voting) for the processing of Eth1 deposits 
 class Eth1Data(Container):
+    """
+    Eth1 data (voted upon with an honest-majority scheme) for the processing of Eth1 deposits
+    """
     deposit_root: Root
     deposit_count: uint64
     block_hash: Bytes32
@@ -382,8 +398,10 @@ class Eth1Data(Container):
 #### `HistoricalBatch`
 
 ```python
-# Historical block and state roots Merkleised into `state.historical_roots`
 class HistoricalBatch(Container):
+    """
+    Historical block and state roots Merkleised into `state.historical_roots`
+    """
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
 ```
@@ -393,8 +411,10 @@ class HistoricalBatch(Container):
 #### `DepositMessage`
 
 ```python
-# An Eth1 deposit without its proof-of-possession signature
 class DepositMessage(Container):
+    """
+    An Eth1 deposit without its proof-of-possession signature
+    """
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
@@ -403,8 +423,10 @@ class DepositMessage(Container):
 #### `DepositData`
 
 ```python
-# A full Eth1 deposit including the proof-of-possession signature
 class DepositData(Container):
+    """
+    A full Eth1 deposit including the proof-of-possession signature
+    """
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
@@ -416,8 +438,10 @@ class DepositData(Container):
 #### `BeaconBlockHeader`
 
 ```python
-# A beacon block header (e.g. for light clients and proposer slashings)
 class BeaconBlockHeader(Container):
+    """
+    An unsigned beacon block header (e.g. for light clients and proposer slashings)
+    """
     slot: Slot
     proposer_index: ValidatorIndex
     parent_root: Root
@@ -428,8 +452,10 @@ class BeaconBlockHeader(Container):
 #### `SigningData`
 
 ```python
-# An object digest over which a corresponding signed message signs over
 class SigningData(Container):
+    """
+    An object digest over which a corresponding signed message signs over
+    """
     object_root: Root
     domain: Domain
 ```
@@ -439,8 +465,10 @@ class SigningData(Container):
 #### `ProposerSlashing`
 
 ```python
-# Slashing proof that a proposer equivocated, i.e. proposed two blocks in the same slot
 class ProposerSlashing(Container):
+    """
+    A slashing proof that a proposer equivocated, i.e. proposed two blocks in the same slot
+    """
     signed_header_1: SignedBeaconBlockHeader
     signed_header_2: SignedBeaconBlockHeader
 ```
@@ -448,8 +476,10 @@ class ProposerSlashing(Container):
 #### `AttesterSlashing`
 
 ```python
-# Slashing proof that an attester equivocated, i.e. made two conflicting attestations
 class AttesterSlashing(Container):
+    """
+    A slashing proof that an attester equivocated, i.e. made two conflicting attestations
+    """
     attestation_1: IndexedAttestation
     attestation_2: IndexedAttestation
 ```
@@ -457,8 +487,10 @@ class AttesterSlashing(Container):
 #### `Attestation`
 
 ```python
-# An aggregated attestation (with an aggregate signature) from a subset of a committee
 class Attestation(Container):
+    """
+    An aggregated attestation (with an aggregate BLS signature) from a subset of a committee
+    """
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     signature: BLSSignature
@@ -467,8 +499,10 @@ class Attestation(Container):
 #### `Deposit`
 
 ```python
-# An Eth1 deposit with a corresponding Merkle proof to the deposit root
 class Deposit(Container):
+    """
+    An Eth1 deposit with a corresponding Merkle proof to the deposit root
+    """
     proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit root
     data: DepositData
 ```
@@ -476,8 +510,10 @@ class Deposit(Container):
 #### `VoluntaryExit`
 
 ```python
-# An unsigned validator request to voluntarily exit
 class VoluntaryExit(Container):
+    """
+    An unsigned request by a validator to voluntarily exit its validator duties
+    """
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
 ```
@@ -487,8 +523,10 @@ class VoluntaryExit(Container):
 #### `BeaconBlockBody`
 
 ```python
-# A beacon block body containing beacon operations and miscellaneous fields
 class BeaconBlockBody(Container):
+    """
+    A beacon block body containing beacon operations and miscellaneous fields
+    """
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
@@ -503,8 +541,10 @@ class BeaconBlockBody(Container):
 #### `BeaconBlock`
 
 ```python
-# An unsigned beacon block
 class BeaconBlock(Container):
+    """
+    An unsigned beacon block (Merkleizing `body` yields a `BeaconBlockHeader`)
+    """
     slot: Slot
     proposer_index: ValidatorIndex
     parent_root: Root
@@ -517,8 +557,10 @@ class BeaconBlock(Container):
 #### `BeaconState`
 
 ```python
-# A full snapshot of the beacon chain state
 class BeaconState(Container):
+    """
+    A full snapshot of the beacon chain state
+    """
     # Versioning
     genesis_time: uint64
     genesis_validators_root: Root
