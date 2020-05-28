@@ -312,7 +312,7 @@ class ForkData(Container):
 ```python
 class Checkpoint(Container):
     """
-    Consensus object underlying Casper FFG votes (see https://arxiv.org/abs/2003.03052)
+    Consensus object underlying Casper FFG source-target votes (see https://arxiv.org/abs/2003.03052)
     """
     epoch: Epoch
     root: Root
