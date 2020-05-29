@@ -948,7 +948,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 ```python
 def verify_empty_shard_transition(state: BeaconState, block_body: BeaconBlockBody) -> None:
     """
-    Verify that a `shard_transition` in a block is empty if an attestation was not processed for it.
+    Verify that ``shard_transitions`` are empty if a crosslink was not formed for the associated shard in this slot.
     """
     for shard in range(get_active_shard_count(state)):
         if state.shard_states[shard].slot != compute_previous_slot(state.slot):
