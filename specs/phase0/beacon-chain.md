@@ -9,6 +9,7 @@
 
 
 - [Introduction](#introduction)
+- [General structure of this document](#general-structure-of-this-document)
 - [Notation](#notation)
 - [Custom types](#custom-types)
 - [Constants](#constants)
@@ -127,6 +128,7 @@
       - [Attestations](#attestations)
       - [Deposits](#deposits)
       - [Voluntary exits](#voluntary-exits)
+- [Footnote](#footnote)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -198,7 +200,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) | In phase 1+, there will be this many shards; currently, we do not yet have shards, but we've still done the preliminary legwork to split up the validator set into sub-committees where each sub-committee will later be assigned to a shard. Note that this is only a maximum, in the case where there are not enough validators to make a full-sized committee for every shard, not every shard will be processed in every slot  |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | Ensure that committee sizes are at least this big |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) | Theoretical max size of a committee assuming every ETH holder is validating |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) | There is a limit to how many validators can enter and exit the validator set in each epoch (see https://ethresear.ch/t/rate-limiting-entry-exits-not-withdrawals/4942 for rationale). This limit is at least this value... |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) | There is a limit to how many validators can enter and exit the validator set in each epoch [^1]. This limit is at least this value... |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) | If the validator set is large, the churn limit is set to `VALIDATOR_SET_SIZE // CHURN_LIMIT_QUOTIENT` |
 | `SHUFFLE_ROUND_COUNT` | `90` | Round count for the shuffling algorithm that computes which validator goes into which committee |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) | At least this many validators need to be in the validator set to start the chain |
@@ -1905,3 +1907,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
+
+## Footnote
+
+[^1]: https://ethresear.ch/t/rate-limiting-entry-exits-not-withdrawals/4942
