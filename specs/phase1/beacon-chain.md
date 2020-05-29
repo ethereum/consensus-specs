@@ -40,6 +40,7 @@
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
     - [`compute_offset_slots`](#compute_offset_slots)
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
+    - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_active_shard_count`](#get_active_shard_count)
     - [`get_online_validator_indices`](#get_online_validator_indices)
@@ -458,6 +459,19 @@ def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint8) -> 
         return max(prev_gasprice, MIN_GASPRICE + delta) - delta
 ```
 
+#### `compute_committee_source_epoch`
+
+```python
+def compute_committee_source_epoch(epoch: Epoch, period: uint64) -> Epoch:
+    """
+    Return the source epoch for computing the committee.
+    """
+    source_epoch = epoch - epoch % period
+    if source_epoch >= period:
+        source_epoch -= period  # `period` epochs lookahead
+    return source_epoch
+```
+
 ### Beacon state accessors
 
 #### `get_active_shard_count`
@@ -482,9 +496,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
     """
     Return the shard committee of the given ``epoch`` of the given ``shard``.
     """
-    source_epoch = epoch - epoch % SHARD_COMMITTEE_PERIOD
-    if source_epoch >= SHARD_COMMITTEE_PERIOD:
-        source_epoch -= SHARD_COMMITTEE_PERIOD  # `SHARD_COMMITTEE_PERIOD` epochs lookahead
+    source_epoch = compute_committee_source_epoch(epoch, SHARD_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
     active_shard_count = get_active_shard_count(beacon_state)
@@ -503,9 +515,7 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
     """
     Return the light client committee that no more than ``TARGET_COMMITTEE_SIZE`` validators.
     """
-    source_epoch = epoch - epoch % LIGHT_CLIENT_COMMITTEE_PERIOD
-    if source_epoch >= LIGHT_CLIENT_COMMITTEE_PERIOD:
-        source_epoch -= LIGHT_CLIENT_COMMITTEE_PERIOD  # `LIGHT_CLIENT_COMMITTEE_PERIOD` epochs lookahead
+    source_epoch = compute_committee_source_epoch(epoch, LIGHT_CLIENT_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
     return compute_committee(
