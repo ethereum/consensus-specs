@@ -5,10 +5,9 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
     get_indexed_attestation_participants, get_attestation_2_data, get_attestation_1_data
-from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.state import (
     get_balance,
-    next_epoch,
+    next_epoch_via_block,
 )
 
 
@@ -91,8 +90,7 @@ def test_success_double(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_surround(spec, state):
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     state.current_justified_checkpoint.epoch += 1
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)

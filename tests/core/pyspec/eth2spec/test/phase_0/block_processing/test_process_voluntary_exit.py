@@ -34,8 +34,8 @@ def run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=True
 @with_all_phases
 @spec_state_test
 def test_success(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -53,8 +53,8 @@ def test_success(spec, state):
 @spec_state_test
 @always_bls
 def test_invalid_signature(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -71,8 +71,8 @@ def test_invalid_signature(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_exit_queue(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
 
@@ -115,8 +115,8 @@ def test_success_exit_queue(spec, state):
 @with_all_phases
 @spec_state_test
 def test_default_exit_epoch_subsequent_exit(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -137,8 +137,8 @@ def test_default_exit_epoch_subsequent_exit(spec, state):
 @with_all_phases
 @spec_state_test
 def test_validator_exit_in_future(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -156,8 +156,8 @@ def test_validator_exit_in_future(spec, state):
 @with_all_phases
 @spec_state_test
 def test_validator_invalid_validator_index(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -190,8 +190,8 @@ def test_validator_not_active(spec, state):
 @with_all_phases
 @spec_state_test
 def test_validator_already_exited(spec, state):
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow validator able to exit
-    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow validator able to exit
+    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -218,7 +218,7 @@ def test_validator_not_active_long_enough(spec, state):
 
     assert (
         current_epoch - state.validators[validator_index].activation_epoch <
-        spec.PERSISTENT_COMMITTEE_PERIOD
+        spec.SHARD_COMMITTEE_PERIOD
     )
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, False)

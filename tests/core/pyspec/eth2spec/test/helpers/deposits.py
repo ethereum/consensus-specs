@@ -5,6 +5,17 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
 
 
+def mock_deposit(spec, state, index):
+    """
+    Mock validator at ``index`` as having just made a deposit
+    """
+    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+
+
 def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=False):
     deposit_data = spec.DepositData(
         pubkey=pubkey,

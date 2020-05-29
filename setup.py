@@ -108,7 +108,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
 )
 
 from dataclasses import (
@@ -146,8 +146,14 @@ _hash = hash
 hash_cache: Dict[bytes, Bytes32] = {}
 
 
-def get_eth1_data(distance: uint64) -> Bytes32:
-    return hash(distance)
+def get_eth1_data(block: Eth1Block) -> Eth1Data:
+    """
+    A stub function return mocking Eth1Data.
+    """
+    return Eth1Data(
+        deposit_root=block.deposit_root,
+        deposit_count=block.deposit_count,
+        block_hash=hash_tree_root(block))
 
 
 def hash(x: bytes) -> Bytes32:  # type: ignore
@@ -373,6 +379,7 @@ class PySpecCommand(Command):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
+                    specs/phase0/validator.md
                     specs/phase1/custody-game.md
                     specs/phase1/beacon-chain.md
                     specs/phase1/shard-transition.md
@@ -479,6 +486,7 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
+                 
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
@@ -498,9 +506,10 @@ setup(
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
-        "py_ecc==2.0.0",
+        "py_ecc==4.0.0",
+        "milagro_bls_binding==1.3.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.13",
+        "remerkleable==0.1.16",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

@@ -50,6 +50,7 @@ def verify_shard_block_message(beacon_state: BeaconState,
                                shard: Shard) -> bool:
     assert block.shard_parent_root == shard_state.latest_block_root
     assert block.slot == slot
+    assert block.shard == shard
     assert block.proposer_index == get_shard_proposer_index(beacon_state, slot, shard)
     assert 0 < len(block.body) <= MAX_SHARD_BLOCK_SIZE
     return True
@@ -81,7 +82,7 @@ def shard_state_transition(beacon_state: BeaconState,
         beacon_state,
         shard_state,
         block.beacon_parent_root,
-        block.body,
+        hash_tree_root(block.body),
     )
     shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
     shard_state.slot = block.slot
@@ -127,7 +128,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
                          beacon_parent_block: BeaconBlock) -> bool:
     # 1. Check if `custody_bits[offset_index][j] != generate_custody_bit(subkey, block_contents)` for any `j`.
     custody_bits = attestation.custody_bits_blocks
-    for j in range(custody_bits[offset_index]):
+    for j in range(len(custody_bits[offset_index])):
         if custody_bits[offset_index][j] != generate_custody_bit(subkey, block):
             return True
 
@@ -135,7 +136,8 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     # `transition.shard_states[offset_index - 1]` to `transition.shard_states[offset_index]`.
     if offset_index == 0:
         shard = get_shard(beacon_state, attestation)
-        shard_state = beacon_parent_block.shard_transitions[shard].shard_states[-1]
+        shard_states = beacon_parent_block.body.shard_transitions[shard].shard_states
+        shard_state = shard_states[len(shard_states) - 1]
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
@@ -260,7 +262,7 @@ def get_shard_state_transition_result(
 
 ### Make attestations
 
-Suppose you are a committee member on shard `shard` at slot `current_slot` and you have received shard blocks `shard_blocks` since the latest successful crosslink for `shard` into the beacon chain. Let `state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `current_slot`, run `get_shard_transition(beacon_state, shard, shard_blocks)` to get `shard_transition`.
+Suppose you are a committee member on shard `shard` at slot `current_slot` and you have received shard blocks `shard_blocks` since the latest successful crosslink for `shard` into the beacon chain. Let `beacon_state` be the head beacon state you are building on, and let `QUARTER_PERIOD = SECONDS_PER_SLOT // 4`. `2 * QUARTER_PERIOD` seconds into slot `current_slot`, run `get_shard_transition(beacon_state, shard, shard_blocks)` to get `shard_transition`.
 
 ```python
 def get_shard_transition(beacon_state: BeaconState,
@@ -277,10 +279,13 @@ def get_shard_transition(beacon_state: BeaconState,
     proposer_signatures = []
     for proposal in proposals:
         shard_block_lengths.append(len(proposal.message.body))
-        if proposal.signature != BLSSignature():
+        if proposal.signature != NO_SIGNATURE:
             proposer_signatures.append(proposal.signature)
 
-    proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    if len(proposer_signatures) > 0:
+        proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    else:
+        proposer_signature_aggregate = NO_SIGNATURE
 
     return ShardTransition(
         start_slot=start_slot,

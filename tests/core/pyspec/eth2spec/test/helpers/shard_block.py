@@ -38,6 +38,7 @@ def build_shard_block(spec,
         shard_parent_root=shard_state.latest_block_root,
         beacon_parent_root=beacon_parent_root,
         slot=slot,
+        shard=shard,
         proposer_index=proposer_index,
         body=body,
     )
