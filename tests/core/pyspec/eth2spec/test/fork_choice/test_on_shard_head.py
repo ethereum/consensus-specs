@@ -30,6 +30,7 @@ def run_apply_shard_and_beacon(spec, state, store, shard_store, committee_index)
 
     # Create SignedShardBlock
     body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
+    target_len_offset_slot = 1
     shard_block = build_shard_block(spec, state, shard, body=body, signed=True)
     shard_blocks = [shard_block]
 
@@ -38,17 +39,15 @@ def run_apply_shard_and_beacon(spec, state, store, shard_store, committee_index)
     shard_transitions = build_shard_transitions_till_slot(
         spec,
         state,
-        shards=[shard, ],
         shard_blocks={shard: shard_blocks},
-        target_len_offset_slot=1,
+        on_time_slot=state.slot + target_len_offset_slot,
     )
     shard_transition = shard_transitions[shard]
     attestation = build_attestation_with_shard_transition(
         spec,
         state,
-        slot=state.slot,
         index=committee_index,
-        target_len_offset_slot=1,
+        on_time_slot=state.slot + target_len_offset_slot,
         shard_transition=shard_transition,
     )
 
