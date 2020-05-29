@@ -305,6 +305,7 @@ class ShardBlock(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
+    shard: Shard
     proposer_index: ValidatorIndex
     body: ByteList[MAX_SHARD_BLOCK_SIZE]
 ```
@@ -324,6 +325,7 @@ class ShardBlockHeader(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
+    shard: Shard
     proposer_index: ValidatorIndex
     body_root: Root
 ```
@@ -818,8 +820,9 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
             header = ShardBlockHeader(
                 shard_parent_root=shard_parent_root,
                 beacon_parent_root=get_block_root_at_slot(state, offset_slot),
-                proposer_index=proposal_index,
                 slot=offset_slot,
+                shard=shard,
+                proposer_index=proposal_index,
                 body_root=transition.shard_data_roots[i]
             )
             shard_parent_root = hash_tree_root(header)

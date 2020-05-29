@@ -50,6 +50,7 @@ def verify_shard_block_message(beacon_state: BeaconState,
                                shard: Shard) -> bool:
     assert block.shard_parent_root == shard_state.latest_block_root
     assert block.slot == slot
+    assert block.shard == shard
     assert block.proposer_index == get_shard_proposer_index(beacon_state, slot, shard)
     assert 0 < len(block.body) <= MAX_SHARD_BLOCK_SIZE
     return True
