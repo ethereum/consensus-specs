@@ -47,6 +47,7 @@
     - [`get_light_client_committee`](#get_light_client_committee)
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_indexed_attestation`](#get_indexed_attestation)
+    - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
     - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
@@ -69,6 +70,7 @@
     - [Shard transition false positives](#shard-transition-false-positives)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
+    - [Phase 1 final updates](#phase-1-final-updates)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
     - [Light client committee updates](#light-client-committee-updates)
@@ -280,6 +282,7 @@ class BeaconState(Container):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # Phase 1
+    current_epoch_start_shard: Shard
     shard_states: List[ShardState, MAX_SHARDS]
     online_countdown: List[OnlineEpochs, VALIDATOR_REGISTRY_LIMIT]  # not a raw byte array, considered its large size.
     current_light_committee: CompactCommittee
@@ -530,18 +533,53 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
     )
 ```
 
+#### `get_committee_count_delta`
+
+```python
+def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: Slot) -> uint64:
+    """
+    Return the sum of committee counts between ``[start_slot, stop_slot)``.
+    """
+    committee_sum = 0
+    for slot in range(start_slot, stop_slot):
+        count = get_committee_count_at_slot(state, Slot(slot))
+        committee_sum += count
+    return committee_sum
+```
+
 #### `get_start_shard`
 
 ```python
 def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
-    # TODO: implement start shard logic
-    return Shard(0)
+    """
+    Return the start shard at ``slot``.
+    """
+    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
+    active_shard_count = get_active_shard_count(state)
+    if current_epoch_start_slot == slot:
+        return state.current_epoch_start_shard
+    elif current_epoch_start_slot > slot:
+        # Current epoch or the next epoch lookahead
+        shard_delta = get_committee_count_delta(state, start_slot=current_epoch_start_slot, stop_slot=slot)
+        return Shard((state.current_epoch_start_shard + shard_delta) % active_shard_count)
+    else:
+        # Previous epoch
+        shard_delta = get_committee_count_delta(state, start_slot=slot, stop_slot=current_epoch_start_slot)
+        max_committees_per_epoch = MAX_COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH
+        return Shard(
+            # Ensure positive
+            (state.current_epoch_start_shard + max_committees_per_epoch * active_shard_count - shard_delta)
+            % active_shard_count
+        )
 ```
 
 #### `get_shard`
 
 ```python
 def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
+    """
+    Return the shard that the given attestation is attesting.
+    """
     return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
 ```
 
@@ -549,6 +587,9 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
 
 ```python
 def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
+    """
+    Return the latest slot number of the given shard.
+    """
     return state.shard_states[shard].slot
 ```
 
@@ -556,7 +597,11 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
 
 ```python
 def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
-    return compute_offset_slots(state.shard_states[shard].slot, state.slot)
+    """
+    Return the offset slots of the given shard.
+    The offset slot are after the latest slot and before current slot. 
+    """
+    return compute_offset_slots(get_latest_slot_for_shard(state, shard), state.slot)
 ```
 
 ### Predicates
@@ -993,9 +1038,19 @@ def process_epoch(state: BeaconState) -> None:
     process_reveal_deadlines(state)
     process_slashings(state)
     process_final_updates(state)
+    process_phase_1_final_updates(state)
+```
+
+#### Phase 1 final updates
+
+```python
+def process_phase_1_final_updates(state: BeaconState) -> None:
     process_custody_final_updates(state)
     process_online_tracking(state)
     process_light_client_committee_updates(state)
+
+    # Update current_epoch_start_shard
+    state.current_epoch_start_shard = get_start_shard(state, state.slot)
 ```
 
 #### Custody game updates

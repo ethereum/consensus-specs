@@ -67,7 +67,7 @@ def test_process_beacon_block_with_normal_shard_transition(spec, state):
 
     target_len_offset_slot = 1
     committee_index = spec.CommitteeIndex(0)
-    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot + target_len_offset_slot)
     assert state.shard_states[shard].slot == state.slot - 1
 
     pre_gasprice = state.shard_states[shard].gasprice
@@ -93,7 +93,7 @@ def test_process_beacon_block_with_empty_proposal_transition(spec, state):
 
     target_len_offset_slot = 1
     committee_index = spec.CommitteeIndex(0)
-    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot + target_len_offset_slot)
     assert state.shard_states[shard].slot == state.slot - 1
 
     # No new shard block

@@ -18,7 +18,7 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     # At the beginning, let `x = state.slot`, `state.shard_states[shard].slot == x - 1`
     slot_x = state.slot
     committee_index = spec.CommitteeIndex(0)
-    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot + target_len_offset_slot)
     assert state.shard_states[shard].slot == slot_x - 1
 
     # Create SignedShardBlock
