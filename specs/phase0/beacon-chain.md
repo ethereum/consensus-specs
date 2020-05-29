@@ -197,20 +197,17 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) | In phase 1+, there will be this many shards; currently, we do not yet have shards, but we've still done the preliminary legwork to split up the validator set into sub-committees where each sub-committee will later be assigned to a shard. Note that this is only a maximum, in the case where there are not enough validators to make a full-sized committee for every shard, not every shard will be processed in every slot  |
-| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | Ensure that committee sizes are at least this big |
+| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) | The max committees per slot <sup>[[1]](#footnote-1)</sup> |
+| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | Ensure that committee sizes are at least this big <sup>[[2]](#footnote-2)</sup> |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) | Theoretical max size of a committee assuming every ETH holder is validating |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) | There is a limit to how many validators can enter and exit the validator set in each epoch. <sup>[[1]](#footnote-1)</sup> This limit is at least this value... |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) | There is a limit to how many validators can enter and exit the validator set in each epoch. <sup>[[3]](#footnote-3)</sup> |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) | If the validator set is large, the churn limit is set to `VALIDATOR_SET_SIZE // CHURN_LIMIT_QUOTIENT` |
 | `SHUFFLE_ROUND_COUNT` | `90` | Round count for the shuffling algorithm that computes which validator goes into which committee |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) | At least this many validators need to be in the validator set to start the chain |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) | The timestamp must be at least this value for the chain to start |
-| `HYSTERESIS_QUOTIENT` | `4` | To make math easier and updating more efficient, we store a "rounded" version of each validator's balance. Only the rounded version is used in calculations. To ensure the rounded balance is only updated infrequently and prevent back-and-forth-on-the-edge attacks, we use hysteresis: the threshold for increasing rounded balance from N to N+1 is higher than the threshold for decreasing rounded balance from N+1 to N. |
+| `HYSTERESIS_QUOTIENT` | `4` | To make math easier and updating more efficient, we store a "rounded" version of each validator's balance. Only the rounded version is used in calculations. <sup>[[4]](#footnote-4)</sup> |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` | The threshold for decreasing rounded balance from N to N-1 is `N - HYSTERESIS_DOWNWARD_MULTIPLIER / HYSTERESIS_QUOTIENT` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `5` | The threshold for increasing rounded balance from N to N+1 is `N + HYSTERESIS_UPWARD_MULTIPLIER / HYSTERESIS_QUOTIENT` |
-
-
-- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -1908,6 +1905,9 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
-## Footnote
+## Footnotes
 
-<a name="footnote-1">[1]</a>: https://ethresear.ch/t/rate-limiting-entry-exits-not-withdrawals/4942
+- <a name="footnote-1">[1]</a>: In phase 1+, there will be this many shards; currently, we do not yet have shards, but we've still done the preliminary legwork to split up the validator set into sub-committees where each sub-committee will later be assigned to a shard. Note that this is only a maximum, in the case where there are not enough validators to make a full-sized committee for every shard, not every shard will be processed in every slot.
+- <a name="footnote-2">[2]</a>: For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- <a name="footnote-3">[3]</a>: Rate-limiting entry/exits, not withdrawals, https://ethresear.ch/t/rate-limiting-entry-exits-not-withdrawals/4942
+- <a name="footnote-4">[4]</a>: To ensure the rounded balance is only updated infrequently and prevent back-and-forth-on-the-edge attacks, we use hysteresis: the threshold for increasing rounded balance from `N` to `N+1` is higher than the threshold for decreasing rounded balance from `N+1` to `N`.
