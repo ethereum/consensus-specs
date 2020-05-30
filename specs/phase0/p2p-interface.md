@@ -150,6 +150,7 @@ This section outlines constants that are used in this spec.
 | Name | Value | Description |
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
@@ -391,11 +392,11 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: Bytes32
+  error_message: List[byte, 256]
 )
 ```
 
-*Note*: By convention, the `error_message` is a sequence of bytes that can be interpreted as a UTF-8 string up to 32 bytes - a 0 byte shortens the string in this interpretation. Clients MUST treat as valid any bytes.
+*Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes). Clients MUST treat as valid any byte sequences.
 
 ### Encoding strategies
 
@@ -443,9 +444,9 @@ In case of an invalid input (header or payload), a reader MUST:
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
+Responses that are SSZ-lists (for example `List[SignedBeaconBlock, ...]`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]SignedBeaconBlock` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
+`List[SignedBeaconBlock, ...]` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -528,7 +529,7 @@ Request Content:
 Response Content:
 ```
 (
-  []SignedBeaconBlock
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
 )
 ```
 
@@ -545,7 +546,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period and MUST support serving requests of blocks up to their own `head_block_root`.
 
-Clients MUST respond with at least the first block that exists in the range, if they have it.
+Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
 
 The following blocks, where they exist, MUST be send in consecutive order.
 
@@ -568,7 +569,7 @@ Request Content:
 
 ```
 (
-  []Root
+  List[Root, MAX_REQUEST_BLOCKS]
 )
 ```
 
@@ -576,11 +577,13 @@ Response Content:
 
 ```
 (
-  []SignedBeaconBlock
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
 )
 ```
 
 Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). The response is a list of `SignedBeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
+
+No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 
