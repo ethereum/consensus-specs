@@ -7,7 +7,7 @@ from eth2spec.test.helpers.custody import (
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
-from eth2spec.test.helpers.state import next_epoch, transition_to
+from eth2spec.test.helpers.state import next_epoch_via_block, transition_to
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.context import (
     with_all_phases_except,
@@ -44,14 +44,12 @@ def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
     spec.initiate_validator_exit(state, 0)
     assert state.validators[0].withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     assert state.validators[0].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
     while spec.get_current_epoch(state) < state.validators[0].exit_epoch:
-        next_epoch(spec, state)
-        apply_empty_block(spec, state)
+        next_epoch_via_block(spec, state)
 
     while (state.validators[0].next_custody_secret_to_reveal
            <= spec.get_custody_period_for_validator(0, state.validators[0].exit_epoch - 1)):
@@ -91,8 +89,7 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
     assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
     while spec.get_current_epoch(state) < state.validators[validator_index].exit_epoch:
-        next_epoch(spec, state)
-        apply_empty_block(spec, state)
+        next_epoch_via_block(spec, state)
 
     while (state.validators[validator_index].next_custody_secret_to_reveal
            <= spec.get_custody_period_for_validator(
@@ -101,8 +98,7 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
         custody_key_reveal = get_valid_custody_key_reveal(spec, state, validator_index=validator_index)
         _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition)
 
@@ -136,14 +132,12 @@ def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state)
     spec.initiate_validator_exit(state, validator_index)
     assert state.validators[validator_index].withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
     while spec.get_current_epoch(state) < state.validators[validator_index].exit_epoch:
-        next_epoch(spec, state)
-        apply_empty_block(spec, state)
+        next_epoch_via_block(spec, state)
 
     while (state.validators[validator_index].next_custody_secret_to_reveal
            <= spec.get_custody_period_for_validator(
@@ -152,15 +146,13 @@ def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state)
         custody_key_reveal = get_valid_custody_key_reveal(spec, state, validator_index=validator_index)
         _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition)
 
     _, _, _ = run_chunk_challenge_processing(spec, state, challenge)
 
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
+    next_epoch_via_block(spec, state)
 
     assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 

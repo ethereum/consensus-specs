@@ -150,7 +150,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     elif block.slot == slot:
         return root
     else:
-        # root is older than queried slot, thus a skip slot. Return earliest root prior to slot
+        # root is older than queried slot, thus a skip slot. Return most recent root prior to slot
         return root
 ```
 
@@ -162,7 +162,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
-        if (i in store.latest_messages 
+        if (i in store.latest_messages
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
 ```
@@ -284,6 +284,10 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     assert attestation.data.beacon_block_root in store.blocks
     # Attestations must not be for blocks in the future. If not, the attestation should not be considered
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
+
+    # FFG and LMD vote must be consistent with each other
+    target_slot = compute_start_slot_at_epoch(target.epoch)
+    assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.

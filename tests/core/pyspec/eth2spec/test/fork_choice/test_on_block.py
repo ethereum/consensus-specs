@@ -184,7 +184,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
 def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
     # Initialization
     store = spec.get_forkchoice_store(state)
-    time = 100
+    time = 0
     spec.on_tick(store, time)
 
     next_epoch(spec, state)
@@ -215,7 +215,7 @@ def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
 def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     # Initialization
     store = spec.get_forkchoice_store(state)
-    time = 100
+    time = 0
     spec.on_tick(store, time)
 
     next_epoch(spec, state)

@@ -89,13 +89,13 @@ MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs
 MAX_SEED_LOOKAHEAD: 4
 # [customized] higher frequency new deposits from eth1 for testing
-EPOCHS_PER_ETH1_VOTING_PERIOD: 2
+EPOCHS_PER_ETH1_VOTING_PERIOD: 4
 # [customized] smaller state
 SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**8 (= 256) epochs
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 # [customized] higher frequency of committee turnover and faster time to acceptable voluntary exit
-PERSISTENT_COMMITTEE_PERIOD: 128
+SHARD_COMMITTEE_PERIOD: 64
 # [customized] fast catchup crosslinks
 MAX_EPOCHS_PER_CROSSLINK: 4
 # 2**2 (= 4) epochs
@@ -122,8 +122,8 @@ BASE_REWARD_FACTOR: 64
 WHISTLEBLOWER_REWARD_QUOTIENT: 512
 # 2**3 (= 8)
 PROPOSER_REWARD_QUOTIENT: 8
-# 2**25 (= 33,554,432)
-INACTIVITY_PENALTY_QUOTIENT: 33554432
+# 2**24 (= 16,777,216)
+INACTIVITY_PENALTY_QUOTIENT: 16777216
 # 2**5 (= 32)
 MIN_SLASHING_PENALTY_QUOTIENT: 32
 
@@ -132,8 +132,8 @@ MIN_SLASHING_PENALTY_QUOTIENT: 32
 # ---------------------------------------------------------------
 # 2**4 (= 16)
 MAX_PROPOSER_SLASHINGS: 16
-# 2**0 (= 1)
-MAX_ATTESTER_SLASHINGS: 1
+# 2**1 (= 2)
+MAX_ATTESTER_SLASHINGS: 2
 # 2**7 (= 128)
 MAX_ATTESTATIONS: 128
 # 2**4 (= 16)
@@ -178,8 +178,6 @@ ONLINE_PERIOD: 8
 LIGHT_CLIENT_COMMITTEE_SIZE: 128
 # 2**8 (= 256) | epochs
 LIGHT_CLIENT_COMMITTEE_PERIOD: 256
-# 2**8 (= 256) | epochs
-SHARD_COMMITTEE_PERIOD: 256
 # 2**18 (= 262,144)
 SHARD_BLOCK_CHUNK_SIZE: 262144
 # 2**2 (= 4)

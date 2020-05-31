@@ -55,6 +55,8 @@
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_shard_attestation`](#is_shard_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
+    - [`optional_aggregate_verify`](#optional_aggregate_verify)
+    - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [New Attestation processing](#new-attestation-processing)
@@ -97,24 +99,24 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 | Name | Value | Unit | Duration |
 | - | - | - | - | 
-| `MAX_SHARDS` | `2**10` (= 1024) |
+| `MAX_SHARDS` | `2**10` (= 1024) | - | - |
 | `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
-| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
+| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | bytes | - |
+| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | bytes | - |
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | list of slot offsets | - |
+| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | - | - |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
-| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
-| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
-| `BYTES_PER_CUSTODY_CHUNK` | `2**12` | bytes |
-| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK) | - | - |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | | |
+| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | | |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | | |
+| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | | |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) | | |
+| `BYTES_PER_CUSTODY_CHUNK` | `2**12` | bytes | |
+| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - | - |
+| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | | |
 
 ## Updated containers
 
@@ -310,6 +312,7 @@ class ShardBlock(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
+    shard: Shard
     proposer_index: ValidatorIndex
     body: ByteList[MAX_SHARD_BLOCK_SIZE]
 ```
@@ -329,6 +332,7 @@ class ShardBlockHeader(Container):
     shard_parent_root: Root
     beacon_parent_root: Root
     slot: Slot
+    shard: Shard
     proposer_index: ValidatorIndex
     body_root: Root
 ```
@@ -487,7 +491,7 @@ def get_online_validator_indices(state: BeaconState) -> Set[ValidatorIndex]:
 ```python
 def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -> Sequence[ValidatorIndex]:
     source_epoch = epoch - epoch % SHARD_COMMITTEE_PERIOD
-    if source_epoch > 0:
+    if source_epoch >= SHARD_COMMITTEE_PERIOD:
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
@@ -505,7 +509,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
 ```python
 def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     source_epoch = epoch - epoch % LIGHT_CLIENT_COMMITTEE_PERIOD
-    if source_epoch > 0:
+    if source_epoch >= LIGHT_CLIENT_COMMITTEE_PERIOD:
         source_epoch -= LIGHT_CLIENT_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
@@ -583,7 +587,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     attestation = indexed_attestation.attestation
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     aggregation_bits = attestation.aggregation_bits
-    assert len(aggregation_bits) == len(indexed_attestation.committee)
+    if not any(aggregation_bits) or len(aggregation_bits) != len(indexed_attestation.committee):
+        return False
 
     if len(attestation.custody_bits_blocks) == 0:
         # fall back on phase0 behavior if there is no shard data.
@@ -607,7 +612,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
                     all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
                 else:
                     assert not cbit
-        return bls.AggregateVerify(zip(all_pubkeys, all_signing_roots), signature=attestation.signature)
+        return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
 ```
 
 #### `is_shard_attestation`
@@ -642,6 +647,36 @@ def is_winning_attestation(state: BeaconState,
         and attestation.data.index == committee_index
         and attestation.data.shard_transition_root == winning_root
     )
+```
+
+#### `optional_aggregate_verify`
+
+```python
+def optional_aggregate_verify(pubkeys: Sequence[BLSPubkey],
+                              messages: Sequence[Bytes32],
+                              signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``NO_SIGNATURE``.
+    Otherwise, verify it with standard BLS AggregateVerify API.
+    """
+    if len(pubkeys) == 0:
+        return signature == NO_SIGNATURE
+    else:
+        return bls.AggregateVerify(pubkeys, messages, signature)
+```
+
+#### `optional_fast_aggregate_verify`
+
+```python
+def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``NO_SIGNATURE``.
+    Otherwise, verify it with standard BLS FastAggregateVerify API.
+    """
+    if len(pubkeys) == 0:
+        return signature == NO_SIGNATURE
+    else:
+        return bls.FastAggregateVerify(pubkeys, message, signature)
 ```
 
 ### Block processing
@@ -759,8 +794,9 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
             header = ShardBlockHeader(
                 shard_parent_root=shard_parent_root,
                 beacon_parent_root=get_block_root_at_slot(state, offset_slots[i]),
-                proposer_index=proposal_index,
                 slot=offset_slots[i],
+                shard=shard,
+                proposer_index=proposal_index,
                 body_root=transition.shard_data_roots[i]
             )
             shard_parent_root = hash_tree_root(header)
@@ -775,11 +811,11 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         for header in headers
     ]
     # Verify combined proposer signature
-    assert bls.AggregateVerify(zip(pubkeys, signing_roots), signature=transition.proposer_signature_aggregate)
+    assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
 
     # Save updated state
     state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]
-    state.shard_states[shard].slot = state.slot - 1
+    state.shard_states[shard].slot = compute_previous_slot(state.slot)
 ```
 
 ###### `process_crosslink_for_shard`
@@ -955,7 +991,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 def verify_shard_transition_false_positives(state: BeaconState, block_body: BeaconBlockBody) -> None:
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
     for shard in range(get_active_shard_count(state)):
-        if state.shard_states[shard].slot != state.slot - 1:
+        if state.shard_states[shard].slot != compute_previous_slot(state.slot):
             assert block_body.shard_transitions[shard] == ShardTransition()
 ```
 
@@ -977,12 +1013,7 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     slot = compute_previous_slot(state.slot)
     signing_root = compute_signing_root(get_block_root_at_slot(state, slot),
                                         get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
-    if len(signer_pubkeys) == 0:
-        # TODO: handle the empty light_client_signature case?
-        assert block_body.light_client_signature == BLSSignature()
-        return
-    else:
-        assert bls.FastAggregateVerify(signer_pubkeys, signing_root, signature=block_body.light_client_signature)
+    assert optional_fast_aggregate_verify(signer_pubkeys, signing_root, block_body.light_client_signature)
 ```
 
 ### Epoch transition
@@ -1005,7 +1036,7 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Custody game updates
 
-`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./1_custody-game.md), 
+`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md), 
 
 #### Online-tracking
 
