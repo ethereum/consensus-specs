@@ -66,6 +66,8 @@
         - [Updated `process_attestation`](#updated-process_attestation)
       - [Shard transition processing](#shard-transition-processing)
         - [`apply_shard_transition`](#apply_shard_transition)
+        - [`get_shard_block_revenue_delta`](#get_shard_block_revenue_delta)
+        - [`process_shard_proposer_revenue`](#process_shard_proposer_revenue)
         - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
         - [`process_crosslinks`](#process_crosslinks)
         - [`verify_empty_shard_transition`](#verify_empty_shard_transition)
@@ -73,6 +75,8 @@
       - [New Attester slashing processing](#new-attester-slashing-processing)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
+    - [Rewards and penalties](#rewards-and-penalties)
+      - [Updated `process_rewards_and_penalties`](#updated-process_rewards_and_penalties)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
     - [Light client committee updates](#light-client-committee-updates)
@@ -289,6 +293,8 @@ class BeaconState(Container):
     online_countdown: List[OnlineEpochs, VALIDATOR_REGISTRY_LIMIT]  # not a raw byte array, considered its large size.
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
+    validator_revenues: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    validator_costs: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Custody game
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
@@ -862,6 +868,47 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     state.shard_states[shard].slot = compute_previous_slot(state.slot)
 ```
 
+###### `get_shard_block_revenue_delta`
+
+```python
+def get_shard_block_revenue_delta(
+        state: BeaconState,
+        shard: Shard,
+        shard_transition: ShardTransition,
+        transition_participants: Sequence[ValidatorIndex]) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    revenues = [Gwei(0)] * len(state.validators)
+    costs = [Gwei(0)] * len(state.validators)
+
+    beacon_proposer_index = get_beacon_proposer_index(state)
+    estimated_attester_reward = sum([get_base_reward(state, attester) for attester in transition_participants])
+    proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
+    revenues[beacon_proposer_index] += proposer_reward
+
+    states_slots_lengths = zip(
+        shard_transition.shard_states,
+        get_offset_slots(state, shard),
+        shard_transition.shard_block_lengths
+    )
+    for shard_state, slot, block_length in states_slots_lengths:
+        proposer_index = get_shard_proposer_index(state, slot, shard)
+        costs[proposer_index] += shard_state.gasprice * block_length
+
+    return revenues, costs
+```
+
+###### `process_shard_proposer_revenue`
+
+```python
+def process_shard_proposer_revenue(state: BeaconState,
+                                   shard: Shard,
+                                   shard_transition: ShardTransition,
+                                   transition_participants: Sequence[ValidatorIndex]) -> None:
+    revenues, costs = get_shard_block_revenue_delta(state, shard, shard_transition, transition_participants)
+    for index in range(len(state.validators)):
+        state.validator_revenues[index] += revenues[index]
+        state.validator_costs[index] += costs[index]
+```
+
 ###### `process_crosslink_for_shard`
 
 ```python
@@ -898,19 +945,9 @@ def process_crosslink_for_shard(state: BeaconState,
 
         # Apply transition
         apply_shard_transition(state, shard, shard_transition)
+
         # Apply proposer reward and cost
-        beacon_proposer_index = get_beacon_proposer_index(state)
-        estimated_attester_reward = sum([get_base_reward(state, attester) for attester in transition_participants])
-        proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
-        increase_balance(state, beacon_proposer_index, proposer_reward)
-        states_slots_lengths = zip(
-            shard_transition.shard_states,
-            get_offset_slots(state, shard),
-            shard_transition.shard_block_lengths
-        )
-        for shard_state, slot, length in states_slots_lengths:
-            proposer_index = get_shard_proposer_index(state, slot, shard)
-            decrease_balance(state, proposer_index, shard_state.gasprice * length)
+        process_shard_proposer_revenue(state, shard, shard_transition, list(transition_participants))
 
         # Return winning transition root
         return shard_transition_root
@@ -1045,6 +1082,29 @@ def process_epoch(state: BeaconState) -> None:
     process_custody_final_updates(state)
     process_online_tracking(state)
     process_light_client_committee_updates(state)
+```
+
+#### Rewards and penalties
+
+##### Updated `process_rewards_and_penalties`
+
+```python
+def process_rewards_and_penalties(state: BeaconState) -> None:
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
+    rewards, penalties = get_attestation_deltas(state)
+
+    # Add shard block proposer revenues and costs
+    rewards += state.validator_revenues
+    penalties += state.validator_costs
+    # Clear records
+    state.validator_revenues = Gwei(0)
+    state.validator_costs = Gwei(0)
+
+    for index in range(len(state.validators)):
+        increase_balance(state, ValidatorIndex(index), rewards[index])
+        decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
 
 #### Custody game updates
