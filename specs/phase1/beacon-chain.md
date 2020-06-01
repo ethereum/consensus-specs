@@ -578,7 +578,7 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     active_shard_count = get_active_shard_count(state)
     if current_epoch_start_slot == slot:
         return state.current_epoch_start_shard
-    elif current_epoch_start_slot > slot:
+    elif slot > current_epoch_start_slot:
         # Current epoch or the next epoch lookahead
         shard_delta = get_committee_count_delta(state, start_slot=current_epoch_start_slot, stop_slot=slot)
         return Shard((state.current_epoch_start_shard + shard_delta) % active_shard_count)
@@ -693,8 +693,7 @@ def is_on_time_attestation(state: BeaconState,
     """
     Check if the given attestation is on-time.
     """
-    # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
-    return attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
+    return attestation.data.slot == compute_previous_slot(state.slot)
 ```
 
 #### `is_winning_attestation`
@@ -803,20 +802,19 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
-    shard = get_shard(state, attestation)
-
     # Type 1: on-time attestations, the custody bits should be non-empty.
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
         assert is_on_time_attestation(state, attestation)
         # Correct data root count
+        shard = get_shard(state, attestation)
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
     # Type 2: no shard transition, no custody bits
     else:
         # Ensure delayed attestation
-        assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY < state.slot  
+        assert data.slot < compute_previous_slot(state.slot)
         # Late attestations cannot have a shard transition root
         assert data.shard_transition_root == Root()
 
@@ -911,9 +909,10 @@ def process_crosslink_for_shard(state: BeaconState,
                                 committee_index: CommitteeIndex,
                                 shard_transition: ShardTransition,
                                 attestations: Sequence[Attestation]) -> Root:
-    committee = get_beacon_committee(state, state.slot, committee_index)
+    on_time_attestation_slot = compute_previous_slot(state.slot)
+    committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
     online_indices = get_online_validator_indices(state)
-    shard = compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
 
     # Loop over all shard transition roots
     shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
@@ -968,15 +967,15 @@ def process_crosslink_for_shard(state: BeaconState,
 def process_crosslinks(state: BeaconState,
                        shard_transitions: Sequence[ShardTransition],
                        attestations: Sequence[Attestation]) -> None:
-    committee_count = get_committee_count_at_slot(state, state.slot)
+    on_time_attestation_slot = compute_previous_slot(state.slot)
+    committee_count = get_committee_count_at_slot(state, on_time_attestation_slot)
     for committee_index in map(CommitteeIndex, range(committee_count)):
-        shard = compute_shard_from_committee_index(state, committee_index, state.slot)
         # All attestations in the block for this committee/shard and current slot
         shard_attestations = [
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
         winning_root = process_crosslink_for_shard(state, committee_index, shard_transitions[shard], shard_attestations)
         if winning_root != Root():
             # Mark relevant pending attestations as creating a successful crosslink
@@ -1083,7 +1082,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)
     process_reveal_deadlines(state)
     process_slashings(state)
-    process_final_updates(state)
+    process_final_updates(state)  # phase 0 final updates
     process_phase_1_final_updates(state)
 ```
 
@@ -1096,7 +1095,7 @@ def process_phase_1_final_updates(state: BeaconState) -> None:
     process_light_client_committee_updates(state)
 
     # Update current_epoch_start_shard
-    state.current_epoch_start_shard = get_start_shard(state, state.slot)
+    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
 ```
 
 #### Custody game updates

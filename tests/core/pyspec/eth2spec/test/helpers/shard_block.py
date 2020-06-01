@@ -70,7 +70,7 @@ def build_shard_transitions_till_slot(spec, state, shard_blocks, on_time_slot):
     return shard_transitions
 
 
-def build_attestation_with_shard_transition(spec, state, index, on_time_slot, shard_transition=None):
+def build_attestation_with_shard_transition(spec, state, index, on_time_slot, shard_transition):
     temp_state = state.copy()
     transition_to(spec, temp_state, on_time_slot - 1)
     attestation = get_valid_on_time_attestation(
