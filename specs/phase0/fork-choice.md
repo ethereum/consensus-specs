@@ -150,7 +150,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     elif block.slot == slot:
         return root
     else:
-        # root is older than queried slot, thus a skip slot. Return earliest root prior to slot
+        # root is older than queried slot, thus a skip slot. Return most recent root prior to slot
         return root
 ```
 

@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls,
 )
-from eth2spec.test.helpers.crosslinks import run_crosslinks_processing
+from eth2spec.test.helpers.shard_transitions import run_shard_transitions_processing
 from eth2spec.test.helpers.shard_block import (
     build_attestation_with_shard_transition,
     build_shard_block,
@@ -46,7 +46,7 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     transition_to(spec, state, state.slot + target_len_offset_slot)
     pre_shard_state = state.shard_states[shard]
 
-    yield from run_crosslinks_processing(spec, state, shard_transitions, [attestation], valid=valid)
+    yield from run_shard_transitions_processing(spec, state, shard_transitions, [attestation], valid=valid)
 
     if valid:
         # After state transition,
