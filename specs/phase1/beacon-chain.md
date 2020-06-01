@@ -578,7 +578,7 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
 ```python
 def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
     """
-    Return the shard that the given attestation is attesting.
+    Return the shard that the given ``attestation`` is attesting.
     """
     return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
 ```
@@ -588,7 +588,7 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
 ```python
 def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
     """
-    Return the latest slot number of the given shard.
+    Return the latest slot number of the given ``shard``.
     """
     return state.shard_states[shard].slot
 ```
@@ -598,7 +598,7 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
 ```python
 def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
     """
-    Return the offset slots of the given shard.
+    Return the offset slots of the given ``shard``.
     The offset slot are after the latest slot and before current slot. 
     """
     return compute_offset_slots(get_latest_slot_for_shard(state, shard), state.slot)
