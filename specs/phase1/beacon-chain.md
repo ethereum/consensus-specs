@@ -61,12 +61,14 @@
     - [Operations](#operations)
       - [New Attestation processing](#new-attestation-processing)
         - [`validate_attestation`](#validate_attestation)
+        - [Updated `process_attestation`](#updated-process_attestation)
+      - [Shard transition processing](#shard-transition-processing)
         - [`apply_shard_transition`](#apply_shard_transition)
         - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
         - [`process_crosslinks`](#process_crosslinks)
-        - [`process_attestation`](#process_attestation)
+        - [`verify_empty_shard_transition`](#verify_empty_shard_transition)
+        - [`process_shard_transitions`](#process_shard_transitions)
       - [New Attester slashing processing](#new-attester-slashing-processing)
-    - [Verify empty shard transition](#verify-empty-shard-transition)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
     - [Custody game updates](#custody-game-updates)
@@ -673,7 +675,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_light_client_signatures(state, block.body)
     process_operations(state, block.body)
-    verify_empty_shard_transition(state, block.body)
 ```
 
 #### Operations
@@ -697,7 +698,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # See custody game spec.
     process_custody_game_operations(state, body)
 
-    process_crosslinks(state, body.shard_transitions, body.attestations)
+    process_shard_transitions(state, body.shard_transitions, body.attestations)
 
     # TODO process_operations(body.shard_receipt_proofs, process_shard_receipt_proofs)
 ```
@@ -743,6 +744,27 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Signature check
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
+
+###### Updated `process_attestation`
+
+```python
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    validate_attestation(state, attestation)
+    # Store pending attestation for epoch processing
+    pending_attestation = PendingAttestation(
+        aggregation_bits=attestation.aggregation_bits,
+        data=attestation.data,
+        inclusion_delay=state.slot - attestation.data.slot,
+        proposer_index=get_beacon_proposer_index(state),
+        crosslink_success=False,  # To be filled in during process_shard_transitions
+    )
+    if attestation.data.target.epoch == get_current_epoch(state):
+        state.current_epoch_attestations.append(pending_attestation)
+    else:
+        state.previous_epoch_attestations.append(pending_attestation)
+```
+
+##### Shard transition processing
 
 ###### `apply_shard_transition`
 
@@ -885,23 +907,30 @@ def process_crosslinks(state: BeaconState,
                     pending_attestation.crosslink_success = True
 ```
 
-###### `process_attestation`
+###### `verify_empty_shard_transition`
 
 ```python
-def process_attestation(state: BeaconState, attestation: Attestation) -> None:
-    validate_attestation(state, attestation)
-    # Store pending attestation for epoch processing
-    pending_attestation = PendingAttestation(
-        aggregation_bits=attestation.aggregation_bits,
-        data=attestation.data,
-        inclusion_delay=state.slot - attestation.data.slot,
-        proposer_index=get_beacon_proposer_index(state),
-        crosslink_success=False,  # To be filled in during process_crosslinks
-    )
-    if attestation.data.target.epoch == get_current_epoch(state):
-        state.current_epoch_attestations.append(pending_attestation)
-    else:
-        state.previous_epoch_attestations.append(pending_attestation)
+def verify_empty_shard_transition(state: BeaconState, shard_transitions: Sequence[ShardTransition]) -> bool:
+    """
+    Verify that a `shard_transition` in a block is empty if an attestation was not processed for it.
+    """
+    for shard in range(get_active_shard_count(state)):
+        if state.shard_states[shard].slot != compute_previous_slot(state.slot):
+            if shard_transitions[shard] != ShardTransition():
+                return False
+    return True
+```
+
+###### `process_shard_transitions`
+
+```python
+def process_shard_transitions(state: BeaconState,
+                              shard_transitions: Sequence[ShardTransition],
+                              attestations: Sequence[Attestation]) -> None:
+    # Process crosslinks
+    process_crosslinks(state, shard_transitions, attestations)
+    # Verify the empty proposal shard states
+    assert verify_empty_shard_transition(state, shard_transitions)
 ```
 
 ##### New Attester slashing processing
@@ -944,18 +973,6 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
             slash_validator(state, index)
             slashed_any = True
     assert slashed_any
-```
-
-#### Verify empty shard transition
-
-```python
-def verify_empty_shard_transition(state: BeaconState, block_body: BeaconBlockBody) -> None:
-    """
-    Verify that ``shard_transitions`` are empty if a crosslink was not formed for the associated shard in this slot.
-    """
-    for shard in range(get_active_shard_count(state)):
-        if state.shard_states[shard].slot != compute_previous_slot(state.slot):
-            assert block_body.shard_transitions[shard] == ShardTransition()
 ```
 
 #### Light client processing
