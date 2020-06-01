@@ -515,7 +515,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
 ```python
 def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the light client committee that no more than ``TARGET_COMMITTEE_SIZE`` validators.
+    Return the light client committee of no more than ``TARGET_COMMITTEE_SIZE`` validators.
     """
     source_epoch = compute_committee_source_epoch(epoch, LIGHT_CLIENT_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
