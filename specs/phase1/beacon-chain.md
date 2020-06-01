@@ -53,7 +53,7 @@
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
     - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
-    - [`is_shard_attestation`](#is_shard_attestation)
+    - [`is_on_time_attestation`](#is_on_time_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
     - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
@@ -66,7 +66,7 @@
         - [`process_crosslinks`](#process_crosslinks)
         - [`process_attestation`](#process_attestation)
       - [New Attester slashing processing](#new-attester-slashing-processing)
-    - [Shard transition false positives](#shard-transition-false-positives)
+    - [Verify empty shard transition](#verify-empty-shard-transition)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
     - [Custody game updates](#custody-game-updates)
@@ -130,7 +130,7 @@ class AttestationData(Container):
     source: Checkpoint
     target: Checkpoint
     # Current-slot shard block root
-    head_shard_root: Root
+    shard_head_root: Root
     # Shard transition root
     shard_transition_root: Root
 ```
@@ -604,20 +604,16 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
         return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
 ```
 
-#### `is_shard_attestation`
+#### `is_on_time_attestation`
 
 ```python
-def is_shard_attestation(state: BeaconState,
-                         attestation: Attestation,
-                         committee_index: CommitteeIndex) -> bool:
-    if not (
-        attestation.data.index == committee_index
-        and attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot  # Must be on-time attestation
-        # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
-    ):
-        return False
-
-    return True
+def is_on_time_attestation(state: BeaconState,
+                           attestation: Attestation) -> bool:
+    """
+    Check if the given attestation is on-time.
+    """
+    # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
+    return attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
 ```
 
 #### `is_winning_attestation`
@@ -677,7 +673,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_light_client_signatures(state, block.body)
     process_operations(state, block.body)
-    verify_shard_transition_false_positives(state, block.body)
+    verify_empty_shard_transition(state, block.body)
 ```
 
 #### Operations
@@ -732,7 +728,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Type 1: on-time attestations, the custody bits should be non-empty.
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
-        assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
+        assert is_on_time_attestation(state, attestation)
         # Correct data root count
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
         # Correct parent block root
@@ -826,7 +822,7 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            assert attestation.data.head_shard_root == shard_transition.shard_data_roots[
+            assert attestation.data.shard_head_root == shard_transition.shard_data_roots[
                 len(shard_transition.shard_data_roots) - 1
             ]
 
@@ -878,7 +874,7 @@ def process_crosslinks(state: BeaconState,
         shard_transition = shard_transitions[shard]
         shard_attestations = [
             attestation for attestation in attestations
-            if is_shard_attestation(state, attestation, committee_index)
+            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
 
         winning_root = process_crosslink_for_shard(state, committee_index, shard_transition, shard_attestations)
@@ -950,11 +946,13 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     assert slashed_any
 ```
 
-#### Shard transition false positives
+#### Verify empty shard transition
 
 ```python
-def verify_shard_transition_false_positives(state: BeaconState, block_body: BeaconBlockBody) -> None:
-    # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
+def verify_empty_shard_transition(state: BeaconState, block_body: BeaconBlockBody) -> None:
+    """
+    Verify that ``shard_transitions`` are empty if a crosslink was not formed for the associated shard in this slot.
+    """
     for shard in range(get_active_shard_count(state)):
         if state.shard_states[shard].slot != compute_previous_slot(state.slot):
             assert block_body.shard_transitions[shard] == ShardTransition()
