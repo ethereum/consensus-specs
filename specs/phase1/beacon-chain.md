@@ -558,13 +558,9 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
 ```python
 def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: Slot) -> uint64:
     """
-    Return the sum of committee counts between ``[start_slot, stop_slot)``.
+    Return the sum of committee counts in range ``[start_slot, stop_slot)``.
     """
-    committee_sum = 0
-    for slot in range(start_slot, stop_slot):
-        count = get_committee_count_at_slot(state, Slot(slot))
-        committee_sum += count
-    return committee_sum
+    return sum(get_committee_count_at_slot(state, Slot(slot)) for slot in range(start_slot, stop_slot))
 ```
 
 #### `get_start_shard`
