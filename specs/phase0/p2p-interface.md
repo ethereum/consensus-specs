@@ -1052,7 +1052,7 @@ discv5 uses ENRs and we will presumably need to:
 
 Although client software might very well be running locally prior to the solidification of the eth2 genesis state and block, clients cannot form valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the `genesis_validators_root` for a cleaner separation between chains so prior to knowing genesis, we cannot use `fork_digest` to cleanly find peers on our intended chain. Once genesis data is known, we can then form ENRs and safely find peers.
 
-When using an eth1 deposit contract for deposits, `fork_digest` will be known at least `MIN_GENESIS_DELAY` (24 hours in mainnet configuration) before `genesis_time`, providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
+When using an eth1 deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (48hours in mainnet configuration) before `genesis_time`, providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
 
 ## Compression/Encoding
 
