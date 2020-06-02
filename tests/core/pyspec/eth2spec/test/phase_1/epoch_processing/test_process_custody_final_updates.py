@@ -8,7 +8,6 @@ from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
 from eth2spec.test.helpers.state import next_epoch_via_block, transition_to
-from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
