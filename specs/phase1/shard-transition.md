@@ -77,17 +77,17 @@ def shard_state_transition(beacon_state: BeaconState,
     shard_state.slot = block.slot
     prev_gasprice = shard_state.gasprice
     shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
+    if len(block.body) == 0:
+        latest_block_root = shard_state.latest_block_root
+    else:
+        latest_block_root = hash_tree_root(block)
+    shard_state.latest_block_root = latest_block_root
     shard_state.transition_digest = compute_shard_transition_digest(
         beacon_state,
         shard_state,
         block.beacon_parent_root,
         hash_tree_root(block.body),
     )
-    if len(block.body) == 0:
-        latest_block_root = shard_state.latest_block_root
-    else:
-        latest_block_root = hash_tree_root(block)
-    shard_state.latest_block_root = latest_block_root
 ```
 
 We have a pure function `get_post_shard_state` for describing the fraud proof verification and honest validator behavior.
