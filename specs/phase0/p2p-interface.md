@@ -470,7 +470,7 @@ The fields are, as seen by the client at the time of sending the message:
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
-- `head_root`: The `hash_tree_root` root of the current head block.
+- `head_root`: The `hash_tree_root` root of the current head block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
 The dialing client MUST send a `Status` request upon connection.
