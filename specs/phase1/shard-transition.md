@@ -50,6 +50,7 @@ def verify_shard_block_message(beacon_state: BeaconState,
                                shard: Shard) -> bool:
     assert block.shard_parent_root == shard_state.latest_block_root
     assert block.slot == slot
+    assert block.shard == shard
     assert block.proposer_index == get_shard_proposer_index(beacon_state, slot, shard)
     assert 0 < len(block.body) <= MAX_SHARD_BLOCK_SIZE
     return True
@@ -70,22 +71,23 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 def shard_state_transition(beacon_state: BeaconState,
                            shard_state: ShardState,
                            block: ShardBlock) -> None:
-    # Update shard state
+    """
+    Update ``shard_state`` with shard ``block`` and ``beacon_state`.
+    """
+    shard_state.slot = block.slot
     prev_gasprice = shard_state.gasprice
+    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
     if len(block.body) == 0:
         latest_block_root = shard_state.latest_block_root
     else:
         latest_block_root = hash_tree_root(block)
-
+    shard_state.latest_block_root = latest_block_root
     shard_state.transition_digest = compute_shard_transition_digest(
         beacon_state,
         shard_state,
         block.beacon_parent_root,
-        block.body,
+        hash_tree_root(block.body),
     )
-    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
-    shard_state.slot = block.slot
-    shard_state.latest_block_root = latest_block_root
 ```
 
 We have a pure function `get_post_shard_state` for describing the fraud proof verification and honest validator behavior.
@@ -268,11 +270,7 @@ def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
     offset_slots = get_offset_slots(beacon_state, shard)
-    start_slot = offset_slots[0]
     proposals, shard_states, shard_data_roots = get_shard_state_transition_result(beacon_state, shard, shard_blocks)
-
-    assert len(proposals) > 0
-    assert len(shard_data_roots) > 0
 
     shard_block_lengths = []
     proposer_signatures = []
@@ -287,7 +285,7 @@ def get_shard_transition(beacon_state: BeaconState,
         proposer_signature_aggregate = NO_SIGNATURE
 
     return ShardTransition(
-        start_slot=start_slot,
+        start_slot=offset_slots[0],
         shard_block_lengths=shard_block_lengths,
         shard_data_roots=shard_data_roots,
         shard_states=shard_states,

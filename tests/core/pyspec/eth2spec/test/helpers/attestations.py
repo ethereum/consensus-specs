@@ -78,7 +78,7 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
     if spec.fork == PHASE1:
         if shard_transition is not None:
             lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
-            attestation_data.head_shard_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
+            attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
             attestation_data.shard_transition_root = shard_transition.hash_tree_root()
         else:
             # No shard transition
@@ -88,10 +88,10 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
                 next_slot(spec, temp_state)
                 shard_transition = spec.get_shard_transition(temp_state, shard, [])
                 lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
-                attestation_data.head_shard_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
+                attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
                 attestation_data.shard_transition_root = shard_transition.hash_tree_root()
             else:
-                attestation_data.head_shard_root = state.shard_states[shard].transition_digest
+                attestation_data.shard_head_root = state.shard_states[shard].transition_digest
                 attestation_data.shard_transition_root = spec.Root()
     return attestation_data
 
@@ -211,7 +211,10 @@ def sign_indexed_attestation(spec, state, indexed_attestation):
             indexed_attestation.attestation.aggregation_bits,
         )
         data = indexed_attestation.attestation.data
-        indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
+        if any(indexed_attestation.attestation.custody_bits_blocks):
+            sign_on_time_attestation(spec, state, indexed_attestation.attestation)
+        else:
+            indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
 
 
 def sign_on_time_attestation(spec, state, attestation):

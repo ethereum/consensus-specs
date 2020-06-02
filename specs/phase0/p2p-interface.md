@@ -150,6 +150,7 @@ This section outlines constants that are used in this spec.
 | Name | Value | Description |
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
@@ -203,7 +204,7 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
     - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `Name` - see table below
-- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
+- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encodings) section for further details.
 
 *Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available. Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
 
@@ -391,11 +392,11 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: String
+  error_message: List[byte, 256]
 )
 ```
 
-*Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
+*Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes). Clients MUST treat as valid any byte sequences.
 
 ### Encoding strategies
 
@@ -443,9 +444,9 @@ In case of an invalid input (header or payload), a reader MUST:
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
+Responses that are SSZ-lists (for example `List[SignedBeaconBlock, ...]`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]SignedBeaconBlock` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
+`List[SignedBeaconBlock, ...]` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -468,9 +469,9 @@ The fields are, as seen by the client at the time of sending the message:
 - `fork_digest`: The node's `ForkDigest` (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
     - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
+- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
-- `head_root`: The hash_tree_root root of the current head block.
+- `head_root`: The `hash_tree_root` root of the current head block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
 The dialing client MUST send a `Status` request upon connection.
@@ -528,7 +529,7 @@ Request Content:
 Response Content:
 ```
 (
-  []SignedBeaconBlock
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
 )
 ```
 
@@ -545,7 +546,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period and MUST support serving requests of blocks up to their own `head_block_root`.
 
-Clients MUST respond with at least the first block that exists in the range, if they have it.
+Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
 
 The following blocks, where they exist, MUST be send in consecutive order.
 
@@ -568,7 +569,7 @@ Request Content:
 
 ```
 (
-  []Root
+  List[Root, MAX_REQUEST_BLOCKS]
 )
 ```
 
@@ -576,11 +577,13 @@ Response Content:
 
 ```
 (
-  []SignedBeaconBlock
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
 )
 ```
 
 Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). The response is a list of `SignedBeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
+
+No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 
@@ -1052,7 +1055,7 @@ discv5 uses ENRs and we will presumably need to:
 
 Although client software might very well be running locally prior to the solidification of the eth2 genesis state and block, clients cannot form valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the `genesis_validators_root` for a cleaner separation between chains so prior to knowing genesis, we cannot use `fork_digest` to cleanly find peers on our intended chain. Once genesis data is known, we can then form ENRs and safely find peers.
 
-When using an eth1 deposit contract for deposits, `fork_digest` will be known at least `MIN_GENESIS_DELAY` (24 hours in mainnet configuration) before `genesis_time`, providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
+When using an eth1 deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (48hours in mainnet configuration) before `genesis_time`, providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
 
 ## Compression/Encoding
 
