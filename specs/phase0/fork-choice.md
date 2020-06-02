@@ -285,7 +285,7 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     # Attestations must not be for blocks in the future. If not, the attestation should not be considered
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
 
-    # FFG and LMD vote must be consistent with each other
+    # LMD vote must be consistent with FFG target
     target_slot = compute_start_slot_at_epoch(target.epoch)
     assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
 
