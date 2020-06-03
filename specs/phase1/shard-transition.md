@@ -15,9 +15,6 @@
 - [Shard state transition](#shard-state-transition)
 - [Fraud proofs](#fraud-proofs)
   - [Verifying the proof](#verifying-the-proof)
-- [Honest committee member behavior](#honest-committee-member-behavior)
-  - [Helper functions](#helper-functions-1)
-  - [Make attestations](#make-attestations)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

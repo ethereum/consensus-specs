@@ -165,7 +165,7 @@ PHASE_1_FORK_VERSION: 0x01000001
 # [customized] for testing
 PHASE_1_GENESIS_SLOT: 8
 # [customized] reduced for testing
-INITIAL_ACTIVE_SHARDS: 4
+INITIAL_ACTIVE_SHARDS: 2
 
 
 # Phase 1: General
