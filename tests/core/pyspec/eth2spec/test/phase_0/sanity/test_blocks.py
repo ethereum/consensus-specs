@@ -16,8 +16,9 @@ from eth2spec.test.helpers.attester_slashings import (
     get_indexed_attestation_participants,
 )
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
-from eth2spec.test.helpers.attestations import get_valid_attestation, fill_block_shard_transitions_by_attestations
+from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
 
 from eth2spec.test.context import (
     spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
@@ -687,14 +688,23 @@ def test_attestation(spec, state):
 
     yield 'pre', state
 
-    attestation = get_valid_attestation(spec, state, signed=True, on_time=True)
+    attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    index = 0
+    if spec.fork == PHASE1:
+        shard = spec.compute_shard_from_committee_index(state, index, state.slot)
+        shard_transition = get_shard_transition_of_committee(spec, state, index)
+        attestation_block.body.shard_transitions[shard] = shard_transition
+    else:
+        shard_transition = None
+
+    attestation = get_valid_attestation(
+        spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
+    )
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
-    attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
     attestation_block.body.attestations.append(attestation)
-    if spec.fork == PHASE1:
-        fill_block_shard_transitions_by_attestations(spec, state, attestation_block)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
     assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1

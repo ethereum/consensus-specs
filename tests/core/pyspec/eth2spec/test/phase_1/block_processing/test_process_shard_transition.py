@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls,
 )
-from eth2spec.test.helpers.crosslinks import run_crosslinks_processing
+from eth2spec.test.helpers.shard_transitions import run_shard_transitions_processing
 from eth2spec.test.helpers.shard_block import (
     build_attestation_with_shard_transition,
     build_shard_block,
@@ -15,11 +15,10 @@ from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard
 
 def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     state = transition_to_valid_shard_slot(spec, state)
-    # At the beginning, let `x = state.slot`, `state.shard_states[shard].slot == x - 1`
-    slot_x = state.slot
+    init_slot = state.slot
     committee_index = spec.CommitteeIndex(0)
-    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
-    assert state.shard_states[shard].slot == slot_x - 1
+    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot + target_len_offset_slot - 1)
+    assert state.shard_states[shard].slot == state.slot - 1
 
     # Create SignedShardBlock
     body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
@@ -46,11 +45,11 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     transition_to(spec, state, state.slot + target_len_offset_slot)
     pre_shard_state = state.shard_states[shard]
 
-    yield from run_crosslinks_processing(spec, state, shard_transitions, [attestation], valid=valid)
+    yield from run_shard_transitions_processing(spec, state, shard_transitions, [attestation], valid=valid)
 
     if valid:
         # After state transition,
-        assert state.slot == slot_x + target_len_offset_slot
+        assert state.slot == init_slot + target_len_offset_slot
         shard_state = state.shard_states[shard]
         assert shard_state != pre_shard_state
         assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
