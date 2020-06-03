@@ -24,7 +24,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
         raise Exception(f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}")
 
     total_balance = spec.get_total_active_balance(state)
-    remaining_balance = total_balance * 2 // 3
+    remaining_balance = int(total_balance * 2 // 3)  # can become negative
 
     start_slot = spec.compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
@@ -42,7 +42,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
             aggregation_bits = [0] * len(committee)
             for v in range(len(committee) * 2 // 3 + 1):
                 if remaining_balance > 0:
-                    remaining_balance -= state.validators[v].effective_balance
+                    remaining_balance -= int(state.validators[v].effective_balance)
                     aggregation_bits[v] = 1
                 else:
                     break

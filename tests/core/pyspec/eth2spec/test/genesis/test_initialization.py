@@ -1,10 +1,10 @@
-from eth2spec.test.context import spec_test, with_phases, single_phase
+from eth2spec.test.context import PHASE0, spec_test, with_phases, single_phase
 from eth2spec.test.helpers.deposits import (
     prepare_genesis_deposits,
 )
 
 
-@with_phases(['phase0'])
+@with_phases(([PHASE0]))
 @spec_test
 @single_phase
 def test_initialize_beacon_state_from_eth1(spec):
@@ -21,7 +21,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert state.genesis_time == eth1_timestamp - eth1_timestamp % spec.MIN_GENESIS_DELAY + 2 * spec.MIN_GENESIS_DELAY
+    assert state.genesis_time == eth1_timestamp + spec.GENESIS_DELAY
     assert len(state.validators) == deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == deposit_count
@@ -32,7 +32,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     yield 'state', state
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 def test_initialize_beacon_state_some_small_balances(spec):
@@ -57,7 +57,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert state.genesis_time == eth1_timestamp - eth1_timestamp % spec.MIN_GENESIS_DELAY + 2 * spec.MIN_GENESIS_DELAY
+    assert state.genesis_time == eth1_timestamp + spec.GENESIS_DELAY
     assert len(state.validators) == small_deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == len(deposits)

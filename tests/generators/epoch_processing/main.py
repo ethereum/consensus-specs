@@ -13,6 +13,7 @@ from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
 from importlib import reload
 from eth2spec.config import config_util
+from eth2spec.test.context import PHASE0
 
 
 def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
@@ -28,7 +29,7 @@ def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typin
             runner_name='epoch_processing',
             handler_name=handler_name,
             src=tests_src,
-            fork_name='phase0'
+            fork_name=PHASE0,
         )
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)

@@ -55,6 +55,11 @@ Run the test command from the `tests/core/pyspec` directory:
 pytest --config=minimal eth2spec
 ```
 
+Options:
+- `--config`, to change the config. Defaults to `minimal`, can be set to `mainnet`, or other configs from the configs directory.
+- `--disable-bls`, to disable BLS (only for tests that can run without)
+- `--bls-type`, `milagro` or `py_ecc` (default)
+
 ### How to view code coverage report
 
 Run `make open_cov` from the root of the specs repository after running `make test` to open the html code coverage report.

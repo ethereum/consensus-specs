@@ -6,6 +6,7 @@ from gen_base import gen_runner, gen_typing
 
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec
+from eth2spec.test.context import PHASE0
 
 
 def shuffling_case_fn(seed, count):
@@ -37,7 +38,7 @@ def create_provider(config_name: str) -> gen_typing.TestProvider:
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for (case_name, case_fn) in shuffling_test_cases():
             yield gen_typing.TestCase(
-                fork_name='phase0',
+                fork_name=PHASE0,
                 runner_name='shuffling',
                 handler_name='core',
                 suite_name='shuffle',

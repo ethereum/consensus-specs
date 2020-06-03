@@ -4,7 +4,7 @@ This document contains the networking specification for Ethereum 2.0 clients.
 
 It consists of four main sections:
 
-1. A specification of the network fundamentals detailing the two network configurations: interoperability test network and mainnet launch.
+1. A specification of the network fundamentals.
 2. A specification of the three network interaction *domains* of Eth2: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
 3. The rationale and further explanation for the design choices made in the previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.
@@ -17,14 +17,8 @@ It consists of four main sections:
 
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
-      - [Interop](#interop)
-      - [Mainnet](#mainnet)
   - [Encryption and identification](#encryption-and-identification)
-      - [Interop](#interop-1)
-      - [Mainnet](#mainnet-1)
   - [Protocol Negotiation](#protocol-negotiation)
-      - [Interop](#interop-2)
-      - [Mainnet](#mainnet-2)
   - [Multiplexing](#multiplexing)
 - [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
@@ -33,11 +27,8 @@ It consists of four main sections:
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
       - [Attestation subnets](#attestation-subnets)
-      - [Interop](#interop-3)
-      - [Mainnet](#mainnet-3)
+      - [Attestations and Aggregation](#attestations-and-aggregation)
     - [Encodings](#encodings)
-      - [Interop](#interop-4)
-      - [Mainnet](#mainnet-4)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Protocol identification](#protocol-identification)
     - [Req/Resp interaction](#reqresp-interaction)
@@ -56,29 +47,25 @@ It consists of four main sections:
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
-      - [Interop](#interop-5)
-      - [Mainnet](#mainnet-5)
-        - [`eth2` field](#eth2-field)
-        - [General capabilities](#general-capabilities)
+      - [`eth2` field](#eth2-field)
+      - [General capabilities](#general-capabilities)
     - [Topic advertisement](#topic-advertisement)
-      - [Mainnet](#mainnet-6)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
     - [Can clients support other transports/handshakes than the ones mandated by the spec?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-spec)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
-    - [Why are we not using QUIC for mainnet from the start?](#why-are-we-not-using-quic-for-mainnet-from-the-start)
+    - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
   - [Multiplexing](#multiplexing-1)
     - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
   - [Protocol Negotiation](#protocol-negotiation-1)
-    - [When is multiselect 2.0 due and why are we using it for mainnet?](#when-is-multiselect-20-due-and-why-are-we-using-it-for-mainnet)
+    - [When is multiselect 2.0 due and why do we plan to migrate to it?](#when-is-multiselect-20-due-and-why-do-we-plan-to-migrate-to-it)
     - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
   - [Encryption](#encryption)
-    - [Why are we using SecIO for interop? Why not for mainnet?](#why-are-we-using-secio-for-interop-why-not-for-mainnet)
-    - [Why are we using Noise/TLS 1.3 for mainnet?](#why-are-we-using-noisetls-13-for-mainnet)
+    - [Why are we not supporting SecIO?](#why-are-we-not-supporting-secio)
+    - [Why are we using Noise/TLS 1.3?](#why-are-we-using-noisetls-13)
     - [Why are we using encryption at all?](#why-are-we-using-encryption-at-all)
-    - [Will mainnnet networking be untested when it launches?](#will-mainnnet-networking-be-untested-when-it-launches)
   - [Gossipsub](#gossipsub)
     - [Why are we using a pub/sub algorithm for block and attestation propagation?](#why-are-we-using-a-pubsub-algorithm-for-block-and-attestation-propagation)
     - [Why are we using topics to segregate encodings, yet only support one encoding?](#why-are-we-using-topics-to-segregate-encodings-yet-only-support-one-encoding)
@@ -105,11 +92,13 @@ It consists of four main sections:
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
     - [What is the difference between an ENR and a multiaddr, and why are we using ENRs?](#what-is-the-difference-between-an-enr-and-a-multiaddr-and-why-are-we-using-enrs)
+    - [Why do we not form ENRs and find peers until genesis block/state is known?](#why-do-we-not-form-enrs-and-find-peers-until-genesis-blockstate-is-known)
   - [Compression/Encoding](#compressionencoding)
     - [Why are we using SSZ for encoding?](#why-are-we-using-ssz-for-encoding)
     - [Why are we compressing, and at which layers?](#why-are-we-compressing-and-at-which-layers)
     - [Why are using Snappy for compression?](#why-are-using-snappy-for-compression)
     - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
+    - [What are SSZ type size bounds?](#what-are-ssz-type-size-bounds)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -119,46 +108,22 @@ It consists of four main sections:
 
 This section outlines the specification for the networking stack in Ethereum 2.0 clients.
 
-Sections that have differing parameters for mainnet launch and interoperability testing are split into subsections. Sections that are not split have the same parameters for interoperability testing as mainnet launch.
-
 ## Transport
 
 Even though libp2p is a multi-transport stack (designed to listen on multiple simultaneous transports and endpoints transparently), we hereby define a profile for basic interoperability.
 
-#### Interop
-
 All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections). The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
 
-To facilitate connectivity and avert possible IPv6 routability/support issues, clients participating in the interoperability testnet MUST expose at least ONE IPv4 endpoint.
+Clients must support listening on at least one of IPv4 or IPv6. Clients that do _not_ have support for listening on IPv4 SHOULD be cognizant of the potential disadvantages in terms of Internet-wide routability/support. Clients MAY choose to listen only on IPv6, but MUST be capable of dialing both IPv4 and IPv6 addresses.
 
-All listening endpoints must be publicly dialable, and thus not rely on libp2p circuit relay, AutoNAT, or AutoRelay facilities.
+All listening endpoints must be publicly dialable, and thus not rely on libp2p circuit relay, AutoNAT, or AutoRelay facilities. (Usage of circuit relay, AutoNAT, or AutoRelay will be specifically re-examined soon.)
 
 Nodes operating behind a NAT, or otherwise undialable by default (e.g. container runtime, firewall, etc.), MUST have their infrastructure configured to enable inbound traffic on the announced public listening endpoint.
 
-#### Mainnet
-
-All requirements from the interoperability testnet apply, except for the IPv4 addressing scheme requirement.
-
-At this stage, clients are licensed to drop IPv4 support if they wish to do so, cognizant of the potential disadvantages in terms of Internet-wide routability/support. Clients MAY choose to listen only on IPv6, but MUST retain capability to dial both IPv4 and IPv6 addresses.
-
-Usage of circuit relay, AutoNAT, or AutoRelay will be specifically re-examined closer to the time.
-
 ## Encryption and identification
 
-#### Interop
-
-[SecIO](https://github.com/libp2p/specs/tree/master/secio) with `secp256k1` identities will be used for initial interoperability testing.
-
-The following SecIO parameters MUST be supported by all stacks:
-
--  Key agreement: ECDH-P256.
--  Cipher: AES-128.
--  Digest: SHA-256.
-
-#### Mainnet
-
 The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
-channel handshake with `secp256k1` identities will be used for mainnet.
+channel handshake with `secp256k1` identities will be used for encryption.
 
 As specified in the libp2p specification, clients MUST support the `XX` handshake pattern.
 
@@ -166,13 +131,7 @@ As specified in the libp2p specification, clients MUST support the `XX` handshak
 
 Clients MUST use exact equality when negotiating protocol versions to use and MAY use the version to give priority to higher version numbers.
 
-#### Interop
-
-Connection-level and stream-level (see the [Rationale](#design-decision-rationale) section below for explanations) protocol negotiation MUST be conducted using [multistream-select v1.0](https://github.com/multiformats/multistream-select/). Its protocol ID is: `/multistream/1.0.0`.
-
-#### Mainnet
-
-Clients MUST support [multistream-select 1.0](https://github.com/multiformats/multistream-select/) and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95). Depending on the number of clients that have implementations for multiselect 2.0 by mainnet, [multistream-select 1.0](https://github.com/multiformats/multistream-select/) may be phased out.
+Clients MUST support [multistream-select 1.0](https://github.com/multiformats/multistream-select/) and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when the spec solidifies. Once all clients have implementations for multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
 ## Multiplexing
 
@@ -180,7 +139,7 @@ During connection bootstrapping, libp2p dynamically negotiates a mutually suppor
 
 Two multiplexers are commonplace in libp2p implementations: [mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). Their protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
-Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). If both are supported by the client, yamux must take precedence during negotiation. See the [Rationale](#design-decision-rationale) section below for tradeoffs.
+Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). If both are supported by the client, yamux MUST take precedence during negotiation. See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 # Eth2 network interaction domains
 
@@ -191,8 +150,8 @@ This section outlines constants that are used in this spec.
 | Name | Value | Description |
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
@@ -218,9 +177,9 @@ Where
 
 ## The gossip domain: gossipsub
 
-Clients MUST support the [gossipsub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) libp2p protocol.
+Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) libp2p protocol including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md) extension.
 
-**Protocol ID:** `/meshsub/1.0.0`
+**Protocol ID:** `/meshsub/1.1.0`
 
 **Gossipsub Parameters**
 
@@ -245,7 +204,9 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
     - `current_fork_version` is the fork version of the epoch of the message to be sent on the topic
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
 - `Name` - see table below
-- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
+- `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encodings) section for further details.
+
+*Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available. Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
@@ -258,77 +219,74 @@ where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
-| Name                                           | Message Type            |
-|------------------------------------------------|-------------------------|
-| beacon_block                                   | SignedBeaconBlock       |
-| beacon_aggregate_and_proof                     | SignedAggregateAndProof |
-| beacon_attestation\*                           | Attestation             |
-| committee_index{subnet_id}\_beacon_attestation | Attestation             |
-| voluntary_exit                                 | SignedVoluntaryExit     |
-| proposer_slashing                              | ProposerSlashing        |
-| attester_slashing                              | AttesterSlashing        |
+| Name                             | Message Type              |
+|----------------------------------|---------------------------|
+| `beacon_block`                   | `SignedBeaconBlock`       |
+| `beacon_aggregate_and_proof`     | `SignedAggregateAndProof` |
+| `beacon_attestation_{subnet_id}` | `Attestation`             |
+| `voluntary_exit`                 | `SignedVoluntaryExit`     |
+| `proposer_slashing`              | `ProposerSlashing`        |
+| `attester_slashing`              | `AttesterSlashing`        |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
 
-\* The `beacon_attestation` topic is only for interop and will be removed prior to mainnet.
+Gossipsub v1.1 introduces [Extended Validators](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#extended-validators) for the application to aid in the gossipsub peer-scoring scheme.
+We utilize `ACCEPT`, `REJECT`, and `IGNORE`. For each gossipsub topic, there are application specific validations. If all validations pass, return `ACCEPT`. If one or more validations fail while processing the items in order, return either `REJECT` or `IGNORE` as specified in the prefix of the particular condition.
 
 #### Global topics
 
 There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `Name`s are:
 
 - `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
-    - The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
-    - The block is from a slot greater than the latest finalized slot -- i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)` (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
-    - The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
-    - The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
-    - The block is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`). If the `proposer_index` cannot immediately be verified against the expected shuffling, the block MAY be queued for later processing while proposers for the block's branch are calculated.
+    - _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+    - _[IGNORE]_ The block is from a slot greater than the latest finalized slot -- i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)` (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
+    - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
+    - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
+    - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`). If the `proposer_index` cannot immediately be verified against the expected shuffling, the block MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
-    - `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot` (a client MAY queue future aggregates for processing at the appropriate slot).
-    - The aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
-    - The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the slot `aggregate.data.slot`.
-    - The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
-    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - The aggregator's validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)`.
-    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
-    - The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
-    - The signature of `aggregate` is valid.
+    - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot` (a client MAY queue future aggregates for processing at the appropriate slot).
+    - _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
+    - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
+    - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+    - _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
+    - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - _[REJECT]_ The aggregator's validator index is within the committee -- i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
+    - _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
+    - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
+    - _[REJECT]_ The signature of `aggregate` is valid.
 
 Additional global topics are used to propagate lower frequency validator messages. Their `Name`s are:
 
 - `voluntary_exit` - This topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety. The following validations MUST pass before forwarding the `signed_voluntary_exit` on to the network
-    - The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
-    - All of the conditions within `process_voluntary_exit` pass validation.
+    - _[IGNORE]_ The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
+    - _[REJECT]_ All of the conditions within `process_voluntary_exit` pass validation.
 - `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. The following validations MUST pass before forwarding the `proposer_slashing` on to the network
-    - The proposer slashing is the first valid proposer slashing received for the proposer with index `proposer_slashing.index`.
-    - All of the conditions within `process_proposer_slashing` pass validation.
+    - _[IGNORE]_ The proposer slashing is the first valid proposer slashing received for the proposer with index `proposer_slashing.index`.
+    - _[REJECT]_ All of the conditions within `process_proposer_slashing` pass validation.
 - `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
-    - At least one index in the intersection of the attesting indices of each attestation has not yet been seen in any prior `attester_slashing` (i.e. `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`, verify if `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
-    - All of the conditions within `process_attester_slashing` pass validation.
+    - _[IGNORE]_ At least one index in the intersection of the attesting indices of each attestation has not yet been seen in any prior `attester_slashing` (i.e. `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`, verify if `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
+    - _[REJECT]_ All of the conditions within `process_attester_slashing` pass validation.
 
 
 #### Attestation subnets
 
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `Name`s are:
 
-- `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
-    - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
-    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
-    - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
-    - The attestation is the first valid attestation received for the participating validator for the slot, `attestation.data.slot`.
-    - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
-    - The signature of `attestation` is valid.
+- `beacon_attestation_{subnet_id}` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
+    - _[REJECT]_ The attestation is for the correct subnet (i.e. `compute_subnet_for_attestation(state, attestation) == subnet_id`).
+    - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
+    - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len(get_attesting_indices(state, attestation.data, attestation.aggregation_bits)) == 1`).
+    - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
+    - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+    - _[REJECT]_ The signature of `attestation` is valid.
 
-#### Interop
+#### Attestations and Aggregation
 
-Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an attestation can be calculated with `compute_subnet_for_attestation`. `beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees in Phase 1.
 
-#### Mainnet
-
-Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. For the `committee_index{subnet_id}_beacon_attestation` topics, `subnet_id` is set to `index % ATTESTATION_SUBNET_COUNT`, where `index` is the `CommitteeIndex` of the given committee.
-
-Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
+Unaggregated attestations are sent to the subnet topic, `beacon_attestation_{compute_subnet_for_attestation(state, attestation)}` as `Attestation`s.
 
 Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
@@ -336,15 +294,11 @@ Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `A
 
 Topics are post-fixed with an encoding. Encodings define how the payload of a gossipsub message is encoded.
 
-#### Interop
+- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) block compression. Example: The beacon aggregate attestation topic string is `/eth2/446a7232/beacon_aggregate_and_proof/ssz_snappy`, the fork digest is `446a7232` and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
 
-- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `SignedBeaconBlock`.
+Snappy has two formats: "block" and "frames" (streaming). Gossip messages remain relatively small (100s of bytes to 100s of kilobytes) so [basic snappy block compression](https://github.com/google/snappy/blob/master/format_description.txt) is used to avoid the additional overhead associated with snappy frames.
 
-#### Mainnet
-
-- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon aggregate attestation topic string is `/eth2/beacon_aggregate_and_proof/ssz_snappy`, and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
-
-Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
+Implementations MUST use a single encoding for gossip. Changing an encoding will require coordination between participating implementations.
 
 ## The Req/Resp domain
 
@@ -380,9 +334,12 @@ result    ::= “0” | “1” | “2” | [“128” ... ”255”]
 
 The encoding-dependent header may carry metadata or assertions such as the encoded payload length, for integrity and attack proofing purposes. Because req/resp streams are single-use and stream closures implicitly delimit the boundaries, it is not strictly necessary to length-prefix payloads; however, certain encodings like SSZ do, for added security.
 
-A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
+A `response` is formed by zero or more `response_chunk`s. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`.
 
-Clients MUST ensure the each encoded payload of a `response_chunk` is less than or equal to `MAX_CHUNK_SIZE`; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
+For both `request`s and `response`s, the `encoding-dependent-header` MUST be valid, and the `encoded-payload` must be valid within the constraints of the `encoding-dependent-header`.
+This includes type-specific bounds on payload size for some encoding strategies. Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_CHUNK_SIZE` MUST be applied to all method response chunks.
+
+Clients MUST ensure that lengths are within these bounds; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
 #### Requesting side
 
@@ -390,13 +347,22 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 
 The requester MUST close the write side of the stream once it finishes writing the request message. At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received. For responses consisting of potentially many `response_chunk`s (an SSZ-list) the requester SHOULD read from the stream until either; a) An error result is received in one of the chunks, b) The responder closes the stream,  c) More than `MAX_CHUNK_SIZE` bytes have been read for a single `response_chunk` payload or d) More than the maximum number of requested chunks are read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
+The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received.
 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
+A requester SHOULD read from the stream until either:
+1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
+2. The responder closes the stream.
+3. Any part of the `response_chunk` fails validation.
+4. The maximum number of requested chunks are read.
+
+For requests consisting of a single valid `response_chunk`, the requester SHOULD read the chunk fully, as defined by the `encoding-dependent-header`, before closing the stream.
+
 #### Responding side
 
-Once a new stream with the protocol ID for the request type has been negotiated, the responder must process the incoming request message according to the encoding strategy, until EOF (denoting stream half-closure by the requester).
+Once a new stream with the protocol ID for the request type has been negotiated, the responder SHOULD process the incoming request and MUST validate it before processing it.
+Request processing and validation MUST be done according to the encoding strategy, until EOF (denoting stream half-closure by the requester).
 
 The responder MUST:
 
@@ -426,26 +392,18 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: String
+  error_message: List[byte, 256]
 )
 ```
 
-*Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
-
-A response therefore has the form of one or more `response_chunk`s, each structured as follows:
-```
-  +--------+--------+--------+--------+--------+--------+
-  | result |   header (opt)  |     encoded_response     |
-  +--------+--------+--------+--------+--------+--------+
-```
-Here, `result` represents the 1-byte response code.
+*Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes). Clients MUST treat as valid any byte sequences.
 
 ### Encoding strategies
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
 -  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
--  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
+-  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) frames compression. This encoding type MUST be supported by all clients.
 
 #### SSZ-encoding strategy (with or without Snappy)
 
@@ -458,7 +416,7 @@ Snappy has two formats: "block" and "frames" (streaming). To support large reque
 Since snappy frame contents [have a maximum size of `65536` bytes](https://github.com/google/snappy/blob/master/framing_format.txt#L104)
  and frame headers are just `identifier (1) + checksum (4)` bytes, the expected buffering of a single frame is acceptable.
 
-**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes, encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints). 
+**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes, encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
 *Writing*: By first computing and writing the SSZ byte length, the SSZ encoder can then directly write the chunk contents to the stream.
 If Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
@@ -466,26 +424,29 @@ If Snappy is applied, it can be passed through a buffered Snappy writer to compr
 *Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
 If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
-A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length prefix `n` from the header.
+Before reading the payload, the header MUST be validated:
+- The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
+- The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds).
+
+After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
+
+A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
 - For `ssz` this is: `n`
 - For `ssz_snappy` this is: `32 + n + n // 6`. This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
 
 A reader SHOULD consider the following cases as invalid input:
-- A SSZ length prefix that, compared against the SSZ type information (vector lengths, list limits, integer sizes, etc.), is:
-    - Smaller than the expected minimum serialized length.
-    - Bigger than the expected maximum serialized length.
-- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected.
-- An early EOF, before fully reading the declared length prefix worth of SSZ bytes.
+- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected if more bytes are read than required.
+- An early EOF, before fully reading the declared length-prefix worth of SSZ bytes.
 
-In case of an invalid input, a reader MUST:
+In case of an invalid input (header or payload), a reader MUST:
 - From requests: send back an error message, response code `InvalidRequest`. The request itself is ignored.
 - From responses: ignore the response, the response MUST be considered bad server behavior.
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
+Responses that are SSZ-lists (for example `List[SignedBeaconBlock, ...]`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]SignedBeaconBlock` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
+`List[SignedBeaconBlock, ...]` response type sends zero or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -508,9 +469,9 @@ The fields are, as seen by the client at the time of sending the message:
 - `fork_digest`: The node's `ForkDigest` (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
     - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time (not necessarily the epoch to which the node is sync)
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
+- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
-- `head_root`: The hash_tree_root root of the current head block.
+- `head_root`: The `hash_tree_root` root of the current head block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
 The dialing client MUST send a `Status` request upon connection.
@@ -568,11 +529,14 @@ Request Content:
 Response Content:
 ```
 (
-  []SignedBeaconBlock
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot`, leading up to the current head block as selected by fork choice. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests beacon blocks in the slot range `[start_slot, start_slot + count * step)`, leading up to the current head block as selected by fork choice.
+`step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …].
+In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …].
+A request MUST NOT have a 0 slot increment, i.e. `step >= 1`.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -582,13 +546,20 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period and MUST support serving requests of blocks up to their own `head_block_root`.
 
-Clients MUST respond with at least one block, if they have it and it exists in the range. Clients MAY limit the number of blocks in the response.
+Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
+
+The following blocks, where they exist, MUST be send in consecutive order.
+
+Clients MAY limit the number of blocks in the response.
 
 The response MUST contain no more than `count` blocks.
 
-Clients MUST order blocks by increasing slot number.
+Clients MUST respond with blocks from their view of the current fork choice -- that is, blocks from the single chain defined by the current head. Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
-Clients MUST respond with blocks from their view of the current fork choice. In particular, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
+Clients MUST respond with blocks that are consistent from a single chain within the context of the request.
+This applies to any `step` value. In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_root` of the preceding block.
+
+After the initial block, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
 #### BeaconBlocksByRoot
 
@@ -598,7 +569,7 @@ Request Content:
 
 ```
 (
-  []Root
+  List[Root, MAX_REQUEST_BLOCKS]
 )
 ```
 
@@ -606,11 +577,13 @@ Response Content:
 
 ```
 (
-  []SignedBeaconBlock
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
 )
 ```
 
 Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). The response is a list of `SignedBeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
+
+No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 
@@ -678,7 +651,7 @@ The response MUST consist of a single `response_chunk`.
 
 ## The discovery domain: discv5
 
-Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery, both in the interoperability testnet and mainnet.
+Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery.
 
 `discv5` is a standalone protocol, running on UDP on a dedicated port, meant for peer discovery only. `discv5` supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are (or will be) requirements in this context.
 
@@ -718,15 +691,7 @@ If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `a
 
 If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally include the `attnets` entry or leave it out entirely.
 
-#### Interop
-
-In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth2 capability information, as it would be superfluous.
-
-Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an Eth2 peer, in order to eschew connecting to Eth 1.0 peers.
-
-#### Mainnet
-
-##### `eth2` field
+#### `eth2` field
 
 ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork digest, next fork version, and next fork epoch to ensure connections are made with peers on the intended eth2 network.
 
@@ -752,17 +717,17 @@ where the fields of `ENRForkID` are defined as
 * `next_fork_version` is the fork version corresponding to the next planned hard fork at a future epoch. If no future fork is planned, set `next_fork_version = current_fork_version` to signal this fact
 * `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated. If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
+*Note*: `fork_digest` is composed of values that are not not known until the genesis block/state are available. Due to this, clients SHOULD NOT form ENRs and begin peer discovery until genesis values are known. One notable exception to this rule is the distribution of bootnode ENRs prior to genesis. In this case, bootnode ENRs SHOULD be initially distributed with `eth2` field set as `ENRForkID(fork_digest=compute_fork_digest(GENESIS_FORK_VERSION, b'\x00'*32), next_fork_version=GENESIS_FORK_VERSION, next_fork_epoch=FAR_FUTURE_EPOCH)`. After genesis values are known, the bootnodes SHOULD update ENRs to participate in normal discovery operations.
+
 Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `next_fork_epoch` that match local values.
 
 Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`. Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients, these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
-##### General capabilities
+#### General capabilities
 
-On mainnet, ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner. The concrete solution is currently undefined. Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
+ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner. The concrete solution is currently undefined. Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
 
 ### Topic advertisement
-
-#### Mainnet
 
 discv5's topic advertisement feature is not expected to be ready for mainnet launch of Phase 0.
 
@@ -809,7 +774,7 @@ Modeling for upgradeability and dynamic transport selection from the get-go lays
 
 Clients can adopt new transports without breaking old ones, and the multi-transport ability enables constrained and sandboxed environments (e.g. browsers, embedded devices) to interact with the network as first-class citizens via suitable/native transports (e.g. WSS), without the need for proxying or trust delegation to servers.
 
-### Why are we not using QUIC for mainnet from the start?
+### Why are we not using QUIC from the start?
 
 The QUIC standard is still not finalized (at working draft 22 at the time of writing), and not all mainstream runtimes/languages have mature, standard, and/or fully-interoperable [QUIC support](https://github.com/quicwg/base-drafts/wiki/Implementations). One remarkable example is node.js, where the QUIC implementation is [in early development](https://github.com/nodejs/quic).
 
@@ -825,13 +790,13 @@ Overlay multiplexers are not necessary with QUIC since the protocol provides nat
 
 ## Protocol Negotiation
 
-### When is multiselect 2.0 due and why are we using it for mainnet?
+### When is multiselect 2.0 due and why do we plan to migrate to it?
 
 multiselect 2.0 is currently being conceptualized. The debate started [on this issue](https://github.com/libp2p/specs/pull/95), but it got overloaded—as it tends to happen with large conceptual OSS discussions that touch the heart and core of a system.
 
-In the following weeks (August 2019), there will be a renewed initiative to first define the requirements, constraints, assumptions, and features, in order to lock in basic consensus upfront and subsequently build on that consensus by submitting a specification for implementation.
+At some point in 2020, we expect a renewed initiative to first define the requirements, constraints, assumptions, and features, in order to lock in basic consensus upfront and subsequently build on that consensus by submitting a specification for implementation.
 
-We plan to use multiselect 2.0 for mainnet because it will:
+We plan to eventually migrate to multiselect 2.0 because it will:
 
 1. Reduce round trips during connection bootstrapping and stream protocol negotiation.
 2. Enable efficient one-stream-per-request interaction patterns.
@@ -853,17 +818,15 @@ At present, multistream-select 1.0 is used for both types of negotiation, but mu
 
 ## Encryption
 
-### Why are we using SecIO for interop? Why not for mainnet?
+### Why are we not supporting SecIO?
 
 SecIO has been the default encryption layer for libp2p for years. It is used in IPFS and Filecoin. And although it will be superseded shortly, it is proven to work at scale.
 
-SecIO is the common denominator across the various language libraries at this stage. It is widely implemented. That’s why we have chosen to use it for initial interop to minimize overhead in getting to a basic interoperability testnet.
-
-We won’t be using it for mainnet because, amongst other things, it requires several round trips to be sound, and doesn’t support early data (0-RTT data), a mechanism that multiselect 2.0 will leverage to reduce round trips during connection bootstrapping.
+Although SecIO has wide language support, we won’t be using it for mainnet because, amongst other things, it requires several round trips to be sound, and doesn’t support early data (0-RTT data), a mechanism that multiselect 2.0 will leverage to reduce round trips during connection bootstrapping.
 
 SecIO is not considered secure for the purposes of this spec.
 
-### Why are we using Noise/TLS 1.3 for mainnet?
+### Why are we using Noise/TLS 1.3?
 
 Copied from the Noise Protocol Framework [website](http://www.noiseprotocol.org):
 
@@ -888,10 +851,6 @@ Transport level encryption secures message exchange and provides properties that
 -  Depending on the chosen algorithms and mechanisms (e.g. continuous HMAC), we may obtain additional guarantees, such as non-replayability (this byte could’ve only been sent *now;* e.g. by using continuous HMACs), or perfect forward secrecy (in the case that a peer key is compromised, the content of a past conversation will not be compromised).
 
 Note that transport-level encryption is not exclusive of application-level encryption or cryptography. Transport-level encryption secures the communication itself, while application-level cryptography is necessary for the application’s use cases (e.g. signatures, randomness, etc.).
-
-### Will mainnnet networking be untested when it launches?
-
-Before launching mainnet, the testnet will be switched over to mainnet networking parameters, including Noise handshakes, and other new protocols. This gives us an opportunity to drill coordinated network upgrades and verifying that there are no significant upgradeability gaps.
 
 ## Gossipsub
 
@@ -1001,7 +960,7 @@ Requests are segregated by protocol ID to:
   2. Affording this level of granularity with a top-level protocol would imply creating as many variants (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
 7. Allow us to simplify the payload of requests. Request-id’s and method-ids no longer need to be sent. The encoding/request type and version can all be handled by the framework.
 
-**Caveat**: The protocol negotiation component in the current version of libp2p is called multistream-select 1.0. It is somewhat naïve and introduces overhead on every request when negotiating streams, although implementation-specific optimizations are possible to save this cost. Multiselect 2.0 will remove this overhead by memoizing previously selected protocols, and modeling shared protocol tables. Fortunately, this req/resp protocol is not the expected network bottleneck in the protocol so the additional overhead is not expected to hinder interop testing. More info is to be released from the libp2p community in the coming weeks.
+**Caveat**: The protocol negotiation component in the current version of libp2p is called multistream-select 1.0. It is somewhat naïve and introduces overhead on every request when negotiating streams, although implementation-specific optimizations are possible to save this cost. Multiselect 2.0 will eventually remove this overhead by memoizing previously selected protocols, and modeling shared protocol tables. Fortunately, this req/resp protocol is not the expected network bottleneck in the protocol so the additional overhead is not expected to significantly hinder this domain.
 
 ### Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?
 
@@ -1092,6 +1051,12 @@ discv5 uses ENRs and we will presumably need to:
 1. Add `multiaddr` to the dictionary, so that nodes can advertise their multiaddr under a reserved namespace in ENRs. – and/or –
 2. Define a bi-directional conversion function between multiaddrs and the corresponding denormalized fields in an ENR (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Eth 1.0 nodes).
 
+### Why do we not form ENRs and find peers until genesis block/state is known?
+
+Although client software might very well be running locally prior to the solidification of the eth2 genesis state and block, clients cannot form valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the `genesis_validators_root` for a cleaner separation between chains so prior to knowing genesis, we cannot use `fork_digest` to cleanly find peers on our intended chain. Once genesis data is known, we can then form ENRs and safely find peers.
+
+When using an eth1 deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (48hours in mainnet configuration) before `genesis_time`, providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
+
 ## Compression/Encoding
 
 ### Why are we using SSZ for encoding?
@@ -1114,7 +1079,7 @@ For all these reasons, generically negotiating compression algorithms may be tre
 
 At this stage, the wisest choice is to consider libp2p a messenger of bytes, and to make application layer participate in compressing those bytes. This looks different depending on the interaction layer:
 
--  Gossip domain: since gossipsub has a framing protocol and exposes an API, we compress the payload (when dictated by the encoding token in the topic name) prior to publishing the message via the API. No length prefixing is necessary because protobuf takes care of bounding the field in the serialized form.
+-  Gossip domain: since gossipsub has a framing protocol and exposes an API, we compress the payload (when dictated by the encoding token in the topic name) prior to publishing the message via the API. No length-prefixing is necessary because protobuf takes care of bounding the field in the serialized form.
 -  Req/Resp domain: since we define custom protocols that operate on byte streams, implementers are encouraged to encapsulate the encoding and compression logic behind MessageReader and MessageWriter components/strategies that can be layered on top of the raw byte streams.
 
 ### Why are using Snappy for compression?
@@ -1128,6 +1093,14 @@ Yes, you can add loggers in your libp2p protocol handlers to log incoming and ou
 If your libp2p library relies on frameworks/runtimes such as Netty (jvm) or Node.js (javascript), you can use logging facilities in those frameworks/runtimes to enable message tracing.
 
 For specific ad-hoc testing scenarios, you can use the [plaintext/2.0.0 secure channel](https://github.com/libp2p/specs/blob/master/plaintext/README.md) (which is essentially no-op encryption or message authentication), in combination with tcpdump or Wireshark to inspect the wire.
+
+### What are SSZ type size bounds?
+
+The SSZ encoding outputs of each type have size bounds: each dynamic type, such as a list, has a "limit", which can be used to compute the maximum valid output size.
+Note that for some more complex dynamic-length objects, element offsets (4 bytes each) may need to be included.
+Other types are static, they have a fixed size: no dynamic-length content is involved, and the minimum and maximum bounds are the same.
+
+For reference, the type bounds can be computed ahead of time, [as per this example](https://gist.github.com/protolambda/db75c7faa1e94f2464787a480e5d613e). It is advisable to derive these lengths from the SSZ type definitions in use, to ensure that version changes do not cause out-of-sync type bounds.
 
 # libp2p implementations matrix
 

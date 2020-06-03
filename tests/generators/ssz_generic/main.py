@@ -6,6 +6,7 @@ import ssz_bitvector
 import ssz_boolean
 import ssz_uints
 import ssz_container
+from eth2spec.test.context import PHASE0
 
 
 def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typing.TestProvider:
@@ -16,7 +17,7 @@ def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typin
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for (case_name, case_fn) in case_maker():
             yield gen_typing.TestCase(
-                fork_name='phase0',
+                fork_name=PHASE0,
                 runner_name='ssz_generic',
                 handler_name=handler_name,
                 suite_name=suite_name,

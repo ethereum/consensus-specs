@@ -1,4 +1,5 @@
-from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
+from eth2spec.test.context import PHASE1
+from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation, sign_indexed_attestation
 
 
 def get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False):
@@ -16,11 +17,31 @@ def get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False):
     )
 
 
+def get_valid_attester_slashing_by_indices(spec, state, indices_1, indices_2=None, signed_1=False, signed_2=False):
+    if indices_2 is None:
+        indices_2 = indices_1
+
+    assert indices_1 == sorted(indices_1)
+    assert indices_2 == sorted(indices_2)
+
+    attester_slashing = get_valid_attester_slashing(spec, state)
+
+    attester_slashing.attestation_1.attesting_indices = indices_1
+    attester_slashing.attestation_2.attesting_indices = indices_2
+
+    if signed_1:
+        sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
+    if signed_2:
+        sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
+
+    return attester_slashing
+
+
 def get_indexed_attestation_participants(spec, indexed_att):
     """
     Wrapper around index-attestation to return the list of participant indices, regardless of spec phase.
     """
-    if spec.fork == "phase1":
+    if spec.fork == PHASE1:
         return list(spec.get_indices_from_committee(
             indexed_att.committee,
             indexed_att.attestation.aggregation_bits,
@@ -33,21 +54,21 @@ def set_indexed_attestation_participants(spec, indexed_att, participants):
     """
     Wrapper around index-attestation to return the list of participant indices, regardless of spec phase.
     """
-    if spec.fork == "phase1":
+    if spec.fork == PHASE1:
         indexed_att.attestation.aggregation_bits = [bool(i in participants) for i in indexed_att.committee]
     else:
         indexed_att.attesting_indices = participants
 
 
 def get_attestation_1_data(spec, att_slashing):
-    if spec.fork == "phase1":
+    if spec.fork == PHASE1:
         return att_slashing.attestation_1.attestation.data
     else:
         return att_slashing.attestation_1.data
 
 
 def get_attestation_2_data(spec, att_slashing):
-    if spec.fork == "phase1":
+    if spec.fork == PHASE1:
         return att_slashing.attestation_2.attestation.data
     else:
         return att_slashing.attestation_2.data

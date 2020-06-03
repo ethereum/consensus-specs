@@ -79,16 +79,16 @@ jobs:
       # Restore git repo at point close to target branch/revision, to speed up checkout
       - restore_cache:
           keys:
-            - v2-specs-repo-{{ .Branch }}-{{ .Revision }}
-            - v2-specs-repo-{{ .Branch }}-
-            - v2-specs-repo-
+            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+            - v3-specs-repo-{{ .Branch }}-
+            - v3-specs-repo-
       - checkout
       - run:
           name: Clean up git repo to reduce cache size
           command: git gc
       # Save the git checkout as a cache, to make cloning next time faster.
       - save_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/specs-repo
   install_pyspec_test:
@@ -97,7 +97,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
@@ -109,7 +109,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
@@ -140,7 +140,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
           name: Run linter
@@ -152,7 +152,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_compiler_cached_venv
       - run:
           name: Install deposit contract compiler requirements
@@ -164,7 +164,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_tester_cached_venv
       - run:
           name: Install deposit contract tester requirements
@@ -176,7 +176,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_compiler_cached_venv
       - run:
           name: Run deposit contract compile test
@@ -187,7 +187,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v2-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_tester_cached_venv
       - run:
           name: Run deposit contract test

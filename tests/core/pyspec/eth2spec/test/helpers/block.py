@@ -15,7 +15,8 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
                       " Signing block is slow due to transition for proposer index calculation.")
             # use stub state to get proposer index of future slot
             stub_state = state.copy()
-            spec.process_slots(stub_state, slot)
+            if stub_state.slot < slot:
+                spec.process_slots(stub_state, slot)
             proposer_index = spec.get_beacon_proposer_index(stub_state)
     return proposer_index
 
@@ -52,15 +53,19 @@ def sign_block(spec, state, block, proposer_index=None):
 
 
 def transition_unsigned_block(spec, state, block):
-    spec.process_slots(state, block.slot)
+    assert state.slot < block.slot  # Preserve assertion from state transition to avoid strange pre-states from testing
+    if state.slot < block.slot:
+        spec.process_slots(state, block.slot)
+    assert state.latest_block_header.slot < block.slot  # There may not already be a block in this slot or past it.
+    assert state.slot == block.slot  # The block must be for this slot
     spec.process_block(state, block)
 
 
-def apply_empty_block(spec, state):
+def apply_empty_block(spec, state, slot=None):
     """
     Transition via an empty block (on current slot, assuming no block has been applied yet).
     """
-    block = build_empty_block(spec, state)
+    block = build_empty_block(spec, state, slot)
     transition_unsigned_block(spec, state, block)
 
 
@@ -73,22 +78,35 @@ def build_empty_block(spec, state, slot=None):
         slot = state.slot
     if slot < state.slot:
         raise Exception("build_empty_block cannot build blocks for past slots")
-    if slot > state.slot:
+    if state.slot < slot:
         # transition forward in copied state to grab relevant data from state
         state = state.copy()
         spec.process_slots(state, slot)
 
+    state, parent_block_root = get_state_and_beacon_parent_root_at_slot(spec, state, slot)
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
     empty_block.proposer_index = spec.get_beacon_proposer_index(state)
     empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
-    previous_block_header = state.latest_block_header.copy()
-    if previous_block_header.state_root == spec.Root():
-        previous_block_header.state_root = hash_tree_root(state)
-    empty_block.parent_root = hash_tree_root(previous_block_header)
+    empty_block.parent_root = parent_block_root
     apply_randao_reveal(spec, state, empty_block)
     return empty_block
 
 
 def build_empty_block_for_next_slot(spec, state):
     return build_empty_block(spec, state, state.slot + 1)
+
+
+def get_state_and_beacon_parent_root_at_slot(spec, state, slot):
+    if slot < state.slot:
+        raise Exception("Cannot build blocks for past slots")
+    if slot > state.slot:
+        # transition forward in copied state to grab relevant data from state
+        state = state.copy()
+        spec.process_slots(state, slot)
+
+    previous_block_header = state.latest_block_header.copy()
+    if previous_block_header.state_root == spec.Root():
+        previous_block_header.state_root = hash_tree_root(state)
+    beacon_parent_root = hash_tree_root(previous_block_header)
+    return state, beacon_parent_root

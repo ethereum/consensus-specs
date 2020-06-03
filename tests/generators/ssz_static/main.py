@@ -8,6 +8,7 @@ from gen_base import gen_runner, gen_typing
 from eth2spec.debug import random_value, encode
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec
+from eth2spec.test.context import PHASE0
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
@@ -44,7 +45,7 @@ def ssz_static_cases(seed: int, name, ssz_type, mode: random_value.Randomization
 
     for i in range(count):
         yield gen_typing.TestCase(
-            fork_name='phase0',
+            fork_name=PHASE0,
             runner_name='ssz_static',
             handler_name=name,
             suite_name=f"ssz_{random_mode_name}{'_chaos' if chaos else ''}",
