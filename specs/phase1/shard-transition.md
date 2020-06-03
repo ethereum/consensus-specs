@@ -221,7 +221,7 @@ def get_proposal_at_slot(beacon_state: BeaconState,
         validate_signature=validate_signature,
     )
     if len(choices) == 0:
-        block = ShardBlock(slot=slot)
+        block = ShardBlock(slot=slot, shard=shard)
         proposal = SignedShardBlock(message=block)
     elif len(choices) == 1:
         proposal = choices[0]
