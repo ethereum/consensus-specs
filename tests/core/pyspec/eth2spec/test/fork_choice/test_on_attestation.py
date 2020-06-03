@@ -32,7 +32,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
             shard=spec.get_shard(state, attestation),
-            shard_root=attestation.data.head_shard_root,
+            shard_root=attestation.data.shard_head_root,
         )
 
     assert (

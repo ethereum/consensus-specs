@@ -51,7 +51,7 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
     for i in attesting_indices:
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
             store.latest_messages[i] = LatestMessage(
-                epoch=target.epoch, root=beacon_block_root, shard=shard, shard_root=attestation.data.head_shard_root
+                epoch=target.epoch, root=beacon_block_root, shard=shard, shard_root=attestation.data.shard_head_root
             )
 ```
 

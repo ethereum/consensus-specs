@@ -76,20 +76,20 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
     shard_blocks = shard_store.blocks
     head_beacon_root = get_head(store)
     head_shard_state = store.block_states[head_beacon_root].shard_states[shard_store.shard]
-    head_shard_root = head_shard_state.latest_block_root
+    shard_head_root = head_shard_state.latest_block_root
     while True:
         # Find the valid child block roots
         children = [
             root for root in shard_store.blocks.keys()
             if (
-                shard_blocks[root].shard_parent_root == head_shard_root
+                shard_blocks[root].shard_parent_root == shard_head_root
                 and shard_blocks[root].slot > head_shard_state.slot
             )
         ]
         if len(children) == 0:
-            return head_shard_root
+            return shard_head_root
         # Sort by latest attesting balance with ties broken lexicographically
-        head_shard_root = max(
+        shard_head_root = max(
             children, key=lambda root: (get_shard_latest_attesting_balance(store, shard_store, root), root)
         )
 ```
