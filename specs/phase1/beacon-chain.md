@@ -538,7 +538,8 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
 ```python
 def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard) -> ValidatorIndex:
     committee = get_shard_committee(beacon_state, compute_epoch_at_slot(slot), shard)
-    r = bytes_to_int(get_seed(beacon_state, get_current_epoch(beacon_state), DOMAIN_SHARD_COMMITTEE)[:8])
+    epoch = compute_epoch_at_slot(slot)
+    r = bytes_to_int(get_seed(beacon_state, epoch, DOMAIN_SHARD_COMMITTEE)[:8])
     return committee[r % len(committee)]
 ```
 
