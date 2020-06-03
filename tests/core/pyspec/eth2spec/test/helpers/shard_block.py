@@ -23,19 +23,24 @@ def build_shard_block(spec,
                       shard,
                       slot=None,
                       body=None,
+                      shard_parent_state=None,
                       signed=False):
-    shard_state = beacon_state.shard_states[shard]
+    if shard_parent_state is None:
+        shard_parent_state = beacon_state.shard_states[shard]
+
     if slot is None:
-        slot = shard_state.slot + 1
+        slot = shard_parent_state.slot + 1
 
     if body is None:
         body = b'\x56' * 128
 
-    proposer_index = spec.get_shard_proposer_index(beacon_state, slot, shard)
+    temp_state = beacon_state.copy()
+    transition_to(spec, temp_state, slot)
     beacon_state, beacon_parent_root = get_state_and_beacon_parent_root_at_slot(spec, beacon_state, slot)
-
+    assert beacon_state == temp_state
+    proposer_index = spec.get_shard_proposer_index(temp_state, slot, shard)
     block = spec.ShardBlock(
-        shard_parent_root=shard_state.latest_block_root,
+        shard_parent_root=shard_parent_state.latest_block_root,
         beacon_parent_root=beacon_parent_root,
         slot=slot,
         shard=shard,
@@ -59,7 +64,6 @@ def build_shard_transitions_till_slot(spec, state, shard_blocks, on_time_slot):
     for shard, blocks in shard_blocks.items():
         offset_slots = spec.get_offset_slots(temp_state, shard)
         len_offset_slots = len(offset_slots)
-        assert len_offset_slots == on_time_slot - state.shard_states[shard].slot - 1
         shard_transition = spec.get_shard_transition(temp_state, shard, blocks)
         if len(blocks) > 0:
             shard_block_root = blocks[-1].message.hash_tree_root()
@@ -84,3 +88,13 @@ def build_attestation_with_shard_transition(spec, state, index, on_time_slot, sh
     if shard_transition is not None:
         assert attestation.data.shard_transition_root == shard_transition.hash_tree_root()
     return attestation
+
+
+def get_committee_index_of_shard(spec, state, slot, shard):  # Optional[CommitteeIndex]
+    active_shard_count = spec.get_active_shard_count(state)
+    committee_count = spec.get_committee_count_at_slot(state, slot)
+    start_shard = spec.get_start_shard(state, slot)
+    for committee_index in range(committee_count):
+        if (start_shard + committee_index) % active_shard_count == shard:
+            return committee_index
+    return None
