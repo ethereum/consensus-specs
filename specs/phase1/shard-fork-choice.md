@@ -6,7 +6,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
@@ -23,7 +23,7 @@
 
 ## Introduction
 
-This document is the shard chain fork choice spec for part of Ethereum 2.0 Phase 1.
+This document is the shard chain fork choice spec for part of Ethereum 2.0 Phase 1. It assumes the [beacon chain fork choice spec](./fork-choice.md).
 
 ## Fork choice
 
@@ -59,9 +59,9 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (
-            i in store.latest_messages and
-            store.latest_messages[i].shard == shard_store.shard and
-            get_shard_ancestor(
+            i in store.latest_messages
+            and store.latest_messages[i].shard == shard_store.shard
+            and get_shard_ancestor(
                 store, shard_store, store.latest_messages[i].root, shard_store.blocks[root].slot
             ) == root
         )
@@ -116,20 +116,25 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
 def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: SignedShardBlock) -> None:
     shard_block = signed_shard_block.message
     shard = shard_store.shard
-    # 1. Check shard parent exists
+
+    # Check shard
+    # TODO: check it in networking spec
+    assert shard_block.shard == shard
+
+    # Check shard parent exists
     assert shard_block.shard_parent_root in shard_store.block_states
     pre_shard_state = shard_store.block_states[shard_block.shard_parent_root]
 
-    # 2. Check beacon parent exists
+    # Check beacon parent exists
     assert shard_block.beacon_parent_root in store.block_states
     beacon_state = store.block_states[shard_block.beacon_parent_root]
 
-    # 3. Check that block is later than the finalized shard state slot (optimization to reduce calls to get_ancestor)
+    # Check that block is later than the finalized shard state slot (optimization to reduce calls to get_ancestor)
     finalized_beacon_state = store.block_states[store.finalized_checkpoint.root]
     finalized_shard_state = finalized_beacon_state.shard_states[shard]
     assert shard_block.slot > finalized_shard_state.slot
 
-    # 4. Check block is a descendant of the finalized block at the checkpoint finalized slot
+    # Check block is a descendant of the finalized block at the checkpoint finalized slot
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert (
         get_ancestor(store, shard_block.beacon_parent_root, finalized_slot) == store.finalized_checkpoint.root
