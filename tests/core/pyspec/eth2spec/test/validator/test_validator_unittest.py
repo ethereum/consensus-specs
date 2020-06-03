@@ -1,5 +1,11 @@
-from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
-from eth2spec.test.helpers.attestations import build_attestation_data
+from random import Random
+
+from eth2spec.test.context import (
+    spec_state_test,
+    always_bls, with_phases, with_all_phases, with_all_phases_except,
+    PHASE0,
+)
+from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -317,23 +323,46 @@ def test_get_block_signature(spec, state):
 # Attesting
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 @always_bls
-def test_get_attestation_signature(spec, state):
+def test_get_attestation_signature_phase0(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
-    attestation_data = spec.AttestationData(slot=10)
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    attestation = get_valid_attestation(spec, state, signed=False)
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+
     run_get_signature_test(
         spec=spec,
         state=state,
-        obj=attestation_data,
+        obj=attestation.data,
         domain=domain,
         get_signature_fn=spec.get_attestation_signature,
         privkey=privkey,
         pubkey=pubkey,
     )
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+@always_bls
+def test_get_attestation_signature_phase1plus(spec, state):
+    privkey = privkeys[0]
+
+    def single_participant(comm):
+        rng = Random(1100)
+        return rng.sample(comm, 1)
+
+    attestation = get_valid_attestation(spec, state, filter_participant_set=single_participant, signed=False)
+    indexed_attestation = spec.get_indexed_attestation(state, attestation)
+
+    assert indexed_attestation.attestation.aggregation_bits.count(True) == 1
+
+    # Cannot use normal `run_get_signature_test` due to complex signature type
+    index_in_committee = indexed_attestation.attestation.aggregation_bits.index(True)
+    privkey = privkeys[indexed_attestation.committee[index_in_committee]]
+    attestation.signature = spec.get_attestation_signature(state, attestation, privkey)
+    assert spec.verify_attestation_custody(state, spec.get_indexed_attestation(state, attestation))
 
 
 # Attestation aggregation
@@ -363,7 +392,7 @@ def test_get_slot_signature(spec, state):
 @always_bls
 def test_is_aggregator(spec, state):
     # TODO: we can test the probabilistic result against `TARGET_AGGREGATORS_PER_COMMITTEE`
-    #  if we have more validators and larger committeee size
+    #  if we have more validators and larger committee size
     slot = state.slot
     committee_index = 0
     has_aggregator = False
@@ -377,7 +406,7 @@ def test_is_aggregator(spec, state):
     assert has_aggregator
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 @always_bls
 def test_get_aggregate_signature(spec, state):

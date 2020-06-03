@@ -189,7 +189,7 @@ def get_best_light_client_aggregate(block: BeaconBlock,
                                     aggregates: Sequence[LightClientVote]) -> LightClientVote:
     viable_aggregates = [
         aggregate for aggregate in aggregates
-        if aggregate.slot == get_previous_slot(block.slot) and aggregate.beacon_block_root == block.parent_root
+        if aggregate.slot == compute_previous_slot(block.slot) and aggregate.beacon_block_root == block.parent_root
     ]
 
     return max(
@@ -242,7 +242,7 @@ class FullAttestation(Container):
 
 Note the timing of when to create/broadcast is altered from Phase 1.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid `BeaconBlock` from the expected beacon block proposer and a valid `ShardBlock` for the expected shard block porposer for the assigned `slot` or (b) one-half of the `slot` has transpired (`SECONDS_PER_SLOT / 2` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid `BeaconBlock` from the expected beacon block proposer and a valid `ShardBlock` for the expected shard block proposer for the assigned `slot` or (b) one-half of the `slot` has transpired (`SECONDS_PER_SLOT / 2` seconds after the start of `slot`) -- whichever comes _first_.
 
 #### Attestation data
 
@@ -251,6 +251,9 @@ A validator should create and broadcast the `attestation` to the associated atte
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
 - Let `head_shard_block` be the result of running the fork choice on the assigned shard chain during the assigned slot.
+- Let `shard_blocks` be the shard blocks in the chain starting immediately _after_ the most recent crosslink (`head_state.shard_transitions[shard].latest_block_root`) up to the `head_shard_block`.
+
+*Note*: We assume that the fork choice only follows branches with valid `offset_slots` with respect to the most recent beacon state shard transition for the queried shard.
 
 ##### Head shard root
 
@@ -258,17 +261,57 @@ Set `attestation_data.head_shard_root = hash_tree_root(head_shard_block)`.
 
 ##### Shard transition
 
-Set `shard_transition` to the value returned by `get_shard_transition()`.
+Set `shard_transition` to the value returned by `get_shard_transition(head_state, shard, shard_blocks)`.
 
 ```python
-def get_shard_transition(state: BeaconState,
+def get_shard_state_transition_result(
+    beacon_state: BeaconState,
+    shard: Shard,
+    shard_blocks: Sequence[SignedShardBlock],
+    validate_signature: bool=True,
+) -> Tuple[Sequence[ShardState], Sequence[Root], Sequence[uint64]]:
+    shard_states = []
+    shard_data_roots = []
+    shard_block_lengths = []
+
+    shard_state = beacon_state.shard_states[shard]
+    shard_block_slots = [shard_block.message.slot for shard_block in shard_blocks]
+    for slot in get_offset_slots(beacon_state, shard):
+        if slot in shard_block_slots:
+            shard_block = shard_blocks[shard_block_slots.index(slot)]
+            shard_data_roots.append(hash_tree_root(shard_block.message.body))
+        else:
+            shard_block = SignedShardBlock(message=ShardBlock(slot=slot))
+            shard_data_roots.append(Root())
+        shard_state = get_post_shard_state(beacon_state, shard_state, shard_block.message)
+        shard_states.append(shard_state)
+        shard_block_lengths.append(len(shard_block.message.body))
+
+    return shard_states, shard_data_roots, shard_block_lengths
+```
+
+```python
+def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
-                         shard_blocks: Sequence[ShardBlockWrapper]) -> ShardTransition:
-    """
-    latest_shard_slot = get_latest_slot_for_shard(state, shard)
-    offset_slots = [Slot(latest_shard_slot + x) for x in SHARD_BLOCK_OFFSETS if latest_shard_slot + x <= state.slot]
-    """
-    return ShardTransition()
+                         shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
+    offset_slots = get_offset_slots(beacon_state, shard)
+    shard_states, shard_data_roots, shard_block_lengths = (
+        get_shard_state_transition_result(beacon_state, shard, shard_blocks)
+    )
+
+    if len(shard_blocks) > 0:
+        proposer_signatures = [shard_block.signature for shard_block in shard_blocks]
+        proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+    else:
+        proposer_signature_aggregate = NO_SIGNATURE
+
+    return ShardTransition(
+        start_slot=offset_slots[0],
+        shard_block_lengths=shard_block_lengths,
+        shard_data_roots=shard_data_roots,
+        shard_states=shard_states,
+        proposer_signature_aggregate=proposer_signature_aggregate,
+    )
 ```
 
 #### Construct attestation
@@ -292,10 +335,25 @@ Set `attestation.signature = attestation_signature` where `attestation_signature
 
 ```python
 def get_attestation_signature(state: BeaconState,
-                              attestation_data: AttestationData,
-                              cb_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION],
+                              attestation: Attestation,
                               privkey: int) -> BLSSignature:
-    pass
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+    attestation_data_root = hash_tree_root(attestation.data)
+    index_in_committee = attestation.aggregation_bits.index(True)
+    signatures = []
+    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
+        custody_bit = custody_bits[index_in_committee]
+        signing_root = compute_signing_root(
+            AttestationCustodyBitWrapper(
+                attestation_data_root=attestation_data_root,
+                block_index=block_index,
+                bit=custody_bit,
+            ),
+            domain,
+        )
+        signatures.append(bls.Sign(privkey, signing_root))
+
+    return bls.Aggregate(signatures)
 ```
 
 ### Light client committee

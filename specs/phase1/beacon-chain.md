@@ -854,6 +854,9 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
             shard_parent_root = hash_tree_root(header)
             headers.append(header)
             proposers.append(proposal_index)
+        else:
+            # Must have a stub for `shard_data_root` if empty slot
+            assert transition.shard_data_roots[i] == Root()
 
         prev_gasprice = shard_state.gasprice
 
