@@ -46,8 +46,8 @@ def test_get_start_shard_next_slot(spec, state):
 
     current_epoch_start_slot = spec.compute_start_slot_at_epoch(spec.get_current_epoch(state))
     expected_start_shard = (
-        state.current_epoch_start_shard +
-        spec.get_committee_count_delta(state, start_slot=current_epoch_start_slot, stop_slot=slot)
+        state.current_epoch_start_shard
+        + spec.get_committee_count_delta(state, start_slot=current_epoch_start_slot, stop_slot=slot)
     ) % active_shard_count
     assert start_shard == expected_start_shard
 
