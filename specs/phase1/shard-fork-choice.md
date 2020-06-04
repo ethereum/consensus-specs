@@ -16,7 +16,7 @@
     - [`get_shard_latest_attesting_balance`](#get_shard_latest_attesting_balance)
     - [`get_shard_head`](#get_shard_head)
     - [`get_shard_ancestor`](#get_shard_ancestor)
-    - [`get_pendings_shard_blocks`](#get_pendings_shard_blocks)
+    - [`get_pending_shard_blocks`](#get_pending_shard_blocks)
   - [Handlers](#handlers)
     - [`on_shard_block`](#on_shard_block)
 
@@ -111,10 +111,10 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
         return root
 ```
 
-#### `get_pendings_shard_blocks`
+#### `get_pending_shard_blocks`
 
 ```python
-def get_pendings_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[ShardBlock]:
+def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[ShardBlock]:
     """
     Return the shard blocks branch that from shard head to beacon head.
     """

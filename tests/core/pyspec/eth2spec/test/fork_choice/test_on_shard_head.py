@@ -43,7 +43,7 @@ def apply_shard_block(spec, store, shard_store, beacon_head_state, shard_blocks_
 def check_pending_shard_blocks(spec, store, shard_store, shard_blocks_buffer):
     pending_shard_blocks = [
         spec.SignedShardBlock(message=b)
-        for b in spec.get_pendings_shard_blocks(store, shard_store)
+        for b in spec.get_pending_shard_blocks(store, shard_store)
     ]
     assert pending_shard_blocks == shard_blocks_buffer
 
@@ -67,7 +67,7 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
 
     # If next slot has committee of `shard`, add `shard_transtion` to the proposing beacon block
     if has_shard_committee and len(shard_blocks_buffer) > 0:
-        # Sanity check `get_pendings_shard_blocks` function
+        # Sanity check `get_pending_shard_blocks` function
         check_pending_shard_blocks(spec, store, shard_store, shard_blocks_buffer)
 
         # Use temporary next state to get ShardTransition of shard block
@@ -129,6 +129,7 @@ def test_basic(spec, state):
     shard_committee_counter = 2
     shard_blocks_buffer = []
     while shard_committee_counter > 0:
+        print(f'state.slot', state.slot)
         has_shard_committee = apply_shard_and_beacon(
             spec, state, store, shard_store, shard_blocks_buffer
         )
