@@ -61,6 +61,8 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
         state.validators[i].effective_balance for i in active_indices
         if (
             i in store.latest_messages
+            # TODO: check the latest message logic: currently, validator's previous vote of another shard
+            # would be ignored once their newer vote is accepted. Check if it makes sense.
             and store.latest_messages[i].shard == shard_store.shard
             and get_shard_ancestor(
                 store, shard_store, store.latest_messages[i].root, shard_store.blocks[root].slot
