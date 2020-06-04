@@ -263,7 +263,7 @@ Additional global topics are used to propagate lower frequency validator message
     - _[IGNORE]_ The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
     - _[REJECT]_ All of the conditions within `process_voluntary_exit` pass validation.
 - `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. The following validations MUST pass before forwarding the `proposer_slashing` on to the network
-    - _[IGNORE]_ The proposer slashing is the first valid proposer slashing received for the proposer with index `proposer_slashing.index`.
+    - _[IGNORE]_ The proposer slashing is the first valid proposer slashing received for the proposer with index `proposer_slashing.header_1.proposer_index`.
     - _[REJECT]_ All of the conditions within `process_proposer_slashing` pass validation.
 - `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
     - _[IGNORE]_ At least one index in the intersection of the attesting indices of each attestation has not yet been seen in any prior `attester_slashing` (i.e. `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`, verify if `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
