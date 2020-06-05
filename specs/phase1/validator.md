@@ -131,14 +131,16 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
 
 Specifically:
-* Call `shards, winning_roots = get_successful_shard_transitions(state, block.slot, attestations)`
+* Call `shards, winning_roots = get_shard_winning_roots(state, block.slot, attestations)`
 * Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s found in `attestations` to the corresponding full `ShardTransition`
 * Then for each `shard` and `winning_root` in `zip(shards, winning_roots)` set `shard_transitions[shard] = full_transitions[winning_root]`
 
+*Note*: The `state` passed into `get_shard_winning_roots` must be transitioned into the epoch of `block.slot` to run accurately due to the internal use of `get_online_validator_indices`.
+
 ```python
-def get_successful_shard_transitions(state: BeaconState,
-                                     slot: Slot,
-                                     attestations: Attestation) -> Tuple[Sequence[Shard], Sequence[Root]]:
+def get_shard_winning_roots(state: BeaconState,
+                            slot: Slot,
+                            attestations: sequence[Attestation]) -> Tuple[Sequence[Shard], Sequence[Root]]:
     shards = []
     winning_roots = []
     online_indices = get_online_validator_indices(state)
@@ -223,7 +225,7 @@ class FullAttestationData(Container):
     source: Checkpoint
     target: Checkpoint
     # Current-slot shard block root
-    head_shard_root: Root
+    shard_head_root: Root
     # Full shard transition
     shard_transition: ShardTransition
 ```
@@ -246,57 +248,64 @@ A validator should create and broadcast the `attestation` to the associated atte
 
 #### Attestation data
 
-`attestation_data` is constructed in the same manner as Phase 0 but uses `FullAttestationData` with the addition of two fields -- `head_shard_root` and `shard_transition`.
+`attestation_data` is constructed in the same manner as Phase 0 but uses `FullAttestationData` with the addition of two fields -- `shard_head_root` and `shard_transition`.
 
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
-- Let `head_shard_block` be the result of running the fork choice on the assigned shard chain during the assigned slot.
-- Let `shard_blocks` be the shard blocks in the chain starting immediately _after_ the most recent crosslink (`head_state.shard_transitions[shard].latest_block_root`) up to the `head_shard_block`.
+- Let `shard_head_block` be the result of running the fork choice on the assigned shard chain during the assigned slot.
+- Let `shard_blocks` be the shard blocks in the chain starting immediately _after_ the most recent crosslink (`head_state.shard_transitions[shard].latest_block_root`) up to the `shard_head_block`.
 
 *Note*: We assume that the fork choice only follows branches with valid `offset_slots` with respect to the most recent beacon state shard transition for the queried shard.
 
 ##### Head shard root
 
-Set `attestation_data.head_shard_root = hash_tree_root(head_shard_block)`.
+Set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
 
 ##### Shard transition
 
 Set `shard_transition` to the value returned by `get_shard_transition(head_state, shard, shard_blocks)`.
 
 ```python
-def get_shard_state_transition_result(
+def get_shard_transition_fields(
     beacon_state: BeaconState,
     shard: Shard,
     shard_blocks: Sequence[SignedShardBlock],
     validate_signature: bool=True,
-) -> Tuple[Sequence[ShardState], Sequence[Root], Sequence[uint64]]:
+) -> Tuple[Sequence[uint64], Sequence[Root], Sequence[ShardState]]:
     shard_states = []
     shard_data_roots = []
     shard_block_lengths = []
 
     shard_state = beacon_state.shard_states[shard]
     shard_block_slots = [shard_block.message.slot for shard_block in shard_blocks]
-    for slot in get_offset_slots(beacon_state, shard):
+    offset_slots = compute_offset_slots(
+        get_latest_slot_for_shard(beacon_state, shard),
+        beacon_state.slot + 1,
+    )
+    for slot in offset_slots:
         if slot in shard_block_slots:
             shard_block = shard_blocks[shard_block_slots.index(slot)]
             shard_data_roots.append(hash_tree_root(shard_block.message.body))
         else:
-            shard_block = SignedShardBlock(message=ShardBlock(slot=slot))
+            shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
         shard_state = get_post_shard_state(beacon_state, shard_state, shard_block.message)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 
-    return shard_states, shard_data_roots, shard_block_lengths
+    return shard_block_lengths, shard_data_roots, shard_states
 ```
 
 ```python
 def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
-    offset_slots = get_offset_slots(beacon_state, shard)
-    shard_states, shard_data_roots, shard_block_lengths = (
-        get_shard_state_transition_result(beacon_state, shard, shard_blocks)
+    offset_slots = compute_offset_slots(
+        get_latest_slot_for_shard(beacon_state, shard),
+        beacon_state.slot + 1,
+    )
+    shard_block_lengths, shard_data_roots, shard_states = (
+        get_shard_transition_fields(beacon_state, shard, shard_blocks)
     )
 
     if len(shard_blocks) > 0:
