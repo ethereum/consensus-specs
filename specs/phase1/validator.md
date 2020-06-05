@@ -74,7 +74,7 @@ See constants from [Phase 0 validator guide](../phase0/validator.md#constants).
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `TARGET_LIGHT_CLIENT_AGGREGATORS_PER_SLOT` | `2**2` (= 8) | validators | |
+| `TARGET_LIGHT_CLIENT_AGGREGATORS_PER_SLOT` | `2**3` (= 8) | validators | |
 
 ## Becoming a validator
 
@@ -131,7 +131,7 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
 
 Specifically:
-* Call `shards, winning_roots = get_shard_winning_roots(state, block.slot, attestations)`
+* Call `shards, winning_roots = get_shard_winning_roots(state, block.slot, block.body.attestations)`
 * Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s found in `attestations` to the corresponding full `ShardTransition`
 * Then for each `shard` and `winning_root` in `zip(shards, winning_roots)` set `shard_transitions[shard] = full_transitions[winning_root]`
 
@@ -140,7 +140,7 @@ Specifically:
 ```python
 def get_shard_winning_roots(state: BeaconState,
                             slot: Slot,
-                            attestations: sequence[Attestation]) -> Tuple[Sequence[Shard], Sequence[Root]]:
+                            attestations: Sequence[Attestation]) -> Tuple[Sequence[Shard], Sequence[Root]]:
     shards = []
     winning_roots = []
     online_indices = get_online_validator_indices(state)
@@ -280,7 +280,7 @@ def get_shard_transition_fields(
     shard_block_slots = [shard_block.message.slot for shard_block in shard_blocks]
     offset_slots = compute_offset_slots(
         get_latest_slot_for_shard(beacon_state, shard),
-        beacon_state.slot + 1,
+        Slot(beacon_state.slot + 1),
     )
     for slot in offset_slots:
         if slot in shard_block_slots:
@@ -302,7 +302,7 @@ def get_shard_transition(beacon_state: BeaconState,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
     offset_slots = compute_offset_slots(
         get_latest_slot_for_shard(beacon_state, shard),
-        beacon_state.slot + 1,
+        Slot(beacon_state.slot + 1),
     )
     shard_block_lengths, shard_data_roots, shard_states = (
         get_shard_transition_fields(beacon_state, shard, shard_blocks)
