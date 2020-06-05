@@ -480,7 +480,7 @@ First, `light_aggregate_and_proof = get_light_aggregate_and_proof(state, validat
 ```python
 def get_light_aggregate_and_proof(state: BeaconState,
                                   aggregator_index: ValidatorIndex,
-                                  aggregate: Attestation,
+                                  aggregate: LightClientVote,
                                   privkey: int) -> LightAggregateAndProof:
     return LightAggregateAndProof(
         aggregator_index=aggregator_index,
@@ -506,7 +506,7 @@ def get_light_aggregate_and_proof_signature(state: BeaconState,
 ```python
 class LightAggregateAndProof(Container):
     aggregator_index: ValidatorIndex
-    aggregate: Attestation
+    aggregate: LightClientVote
     selection_proof: BLSSignature
 ```
 
