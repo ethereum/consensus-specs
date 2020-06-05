@@ -1,6 +1,5 @@
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import get_state_and_beacon_parent_root_at_slot
-from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -53,14 +52,13 @@ def build_shard_block(spec,
 
 
 def build_shard_transitions_till_slot(spec, state, shard_blocks, on_time_slot):
-    temp_state = state.copy()
-    transition_to(spec, temp_state, on_time_slot)
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
     for shard, blocks in shard_blocks.items():
-        offset_slots = spec.get_offset_slots(temp_state, shard)
+        offset_slots = spec.compute_offset_slots(spec.get_latest_slot_for_shard(state, shard), on_time_slot)
         len_offset_slots = len(offset_slots)
+        # TODO this is actually unsafe for long offset_slots
         assert len_offset_slots == on_time_slot - state.shard_states[shard].slot - 1
-        shard_transition = spec.get_shard_transition(temp_state, shard, blocks)
+        shard_transition = spec.get_shard_transition(state, shard, blocks)
         if len(blocks) > 0:
             shard_block_root = blocks[-1].message.hash_tree_root()
             assert shard_transition.shard_states[len_offset_slots - 1].latest_block_root == shard_block_root
@@ -71,16 +69,13 @@ def build_shard_transitions_till_slot(spec, state, shard_blocks, on_time_slot):
 
 
 def build_attestation_with_shard_transition(spec, state, index, on_time_slot, shard_transition):
-    temp_state = state.copy()
-    transition_to(spec, temp_state, on_time_slot - 1)
     attestation = get_valid_on_time_attestation(
         spec,
-        temp_state,
+        state,
         index=index,
         shard_transition=shard_transition,
         signed=True,
     )
-    assert attestation.data.slot == temp_state.slot
     if shard_transition is not None:
         assert attestation.data.shard_transition_root == shard_transition.hash_tree_root()
     return attestation
