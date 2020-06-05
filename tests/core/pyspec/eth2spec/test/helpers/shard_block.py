@@ -61,7 +61,7 @@ def build_shard_transitions_till_slot(spec, parent_beacon_state, shard_blocks):
             on_time_slot,
         )
         len_offset_slots = len(offset_slots)
-        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks, on_time_slot)
+        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
 
         if len(blocks) > 0:
             shard_block_root = blocks[-1].message.hash_tree_root()

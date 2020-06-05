@@ -85,7 +85,7 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
             # No shard transition -> no shard block
             shard = spec.get_shard(state, spec.Attestation(data=attestation_data))
             if on_time:
-                shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[], on_time_slot=slot + 1)
+                shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
                 lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
                 attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
                 attestation_data.shard_transition_root = shard_transition.hash_tree_root()
@@ -318,9 +318,7 @@ def next_epoch_with_attestations(spec,
                 for index in range(committees_per_slot):
                     if spec.fork == PHASE1:
                         shard = spec.compute_shard_from_committee_index(post_state, index, slot_to_attest)
-                        shard_transition = get_shard_transition_of_committee(
-                            spec, post_state, index, slot=slot_to_attest
-                        )
+                        shard_transition = get_shard_transition_of_committee(spec, post_state, index)
                         block.body.shard_transitions[shard] = shard_transition
                     else:
                         shard_transition = None

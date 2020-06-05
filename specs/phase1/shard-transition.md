@@ -280,8 +280,8 @@ Suppose you are a committee member on shard `shard` at slot `current_slot` and y
 ```python
 def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
-                         shard_blocks: Sequence[SignedShardBlock],
-                         on_time_slot: Slot) -> ShardTransition:
+                         shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
+    on_time_slot = Slot(beacon_state.slot + 1)
     offset_slots = compute_offset_slots(get_latest_slot_for_shard(beacon_state, shard), on_time_slot)
     proposals, shard_states, shard_data_roots = get_shard_state_transition_result(
         beacon_state, shard, shard_blocks, on_time_slot
