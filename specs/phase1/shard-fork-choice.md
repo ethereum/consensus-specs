@@ -46,7 +46,7 @@ class ShardStore:
 def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> ShardStore:
     return ShardStore(
         shard=shard,
-        blocks={anchor_state.shard_states[shard].latest_block_root: ShardBlock(slot=anchor_state.slot)},
+        blocks={anchor_state.shard_states[shard].latest_block_root: ShardBlock(slot=anchor_state.slot, shard=shard)},
         block_states={anchor_state.shard_states[shard].latest_block_root: anchor_state.copy().shard_states[shard]},
     )
 ```
@@ -168,13 +168,15 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
         get_ancestor(store, shard_block.beacon_parent_root, finalized_slot) == store.finalized_checkpoint.root
     )
 
-    # Add new block to the store
-    shard_store.blocks[hash_tree_root(shard_block)] = shard_block
-
     # Check the block is valid and compute the post-state
     assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block, shard_block.slot, shard)
     assert verify_shard_block_signature(beacon_parent_state, signed_shard_block)
+
     post_state = get_post_shard_state(beacon_parent_state, shard_parent_state, shard_block)
+
+    # Add new block to the store
+    shard_store.blocks[hash_tree_root(shard_block)] = shard_block
+
     # Add new state for this block to the store
     shard_store.block_states[hash_tree_root(shard_block)] = post_state
 ```

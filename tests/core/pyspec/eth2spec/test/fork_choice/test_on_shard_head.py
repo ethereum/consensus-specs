@@ -89,11 +89,11 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
         # Clear buffer
         shard_blocks_buffer.clear()
 
-    signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)
+    signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)  # transition!
     add_block_to_store(spec, store, signed_beacon_block)
     assert spec.get_head(store) == beacon_block.hash_tree_root()
 
-    # On shard block at updated `state.slot`
+    # On shard block at transitioned `state.slot`
     if is_in_offset_sets(spec, state, shard):
         # The created shard block would be appended to `shard_blocks_buffer`
         apply_shard_block(spec, store, shard_store, state, shard_blocks_buffer)
