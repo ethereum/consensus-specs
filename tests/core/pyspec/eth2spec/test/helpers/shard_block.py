@@ -1,6 +1,4 @@
-from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import get_state_and_beacon_parent_root_at_slot
-from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -34,11 +32,8 @@ def build_shard_block(spec,
     if body is None:
         body = b'\x56' * 128
 
-    temp_state = beacon_state.copy()
-    transition_to(spec, temp_state, slot)
     beacon_state, beacon_parent_root = get_state_and_beacon_parent_root_at_slot(spec, beacon_state, slot)
-    assert beacon_state == temp_state
-    proposer_index = spec.get_shard_proposer_index(temp_state, slot, shard)
+    proposer_index = spec.get_shard_proposer_index(beacon_state, slot, shard)
     block = spec.ShardBlock(
         shard_parent_root=shard_parent_state.latest_block_root,
         beacon_parent_root=beacon_parent_root,
@@ -57,14 +52,17 @@ def build_shard_block(spec,
     return signed_block
 
 
-def build_shard_transitions_till_slot(spec, state, shard_blocks, on_time_slot):
-    temp_state = state.copy()
-    transition_to(spec, temp_state, on_time_slot)
+def build_shard_transitions_till_slot(spec, parent_beacon_state, shard_blocks):
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
+    on_time_slot = parent_beacon_state.slot + 1
     for shard, blocks in shard_blocks.items():
-        offset_slots = spec.get_offset_slots(temp_state, shard)
+        offset_slots = spec.compute_offset_slots(
+            spec.get_latest_slot_for_shard(parent_beacon_state, shard),
+            on_time_slot,
+        )
         len_offset_slots = len(offset_slots)
-        shard_transition = spec.get_shard_transition(temp_state, shard, blocks)
+        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks, on_time_slot)
+
         if len(blocks) > 0:
             shard_block_root = blocks[-1].message.hash_tree_root()
             assert shard_transition.shard_states[len_offset_slots - 1].latest_block_root == shard_block_root
@@ -72,22 +70,6 @@ def build_shard_transitions_till_slot(spec, state, shard_blocks, on_time_slot):
         shard_transitions[shard] = shard_transition
 
     return shard_transitions
-
-
-def build_attestation_with_shard_transition(spec, state, index, on_time_slot, shard_transition):
-    temp_state = state.copy()
-    transition_to(spec, temp_state, on_time_slot - 1)
-    attestation = get_valid_on_time_attestation(
-        spec,
-        temp_state,
-        index=index,
-        shard_transition=shard_transition,
-        signed=True,
-    )
-    assert attestation.data.slot == temp_state.slot
-    if shard_transition is not None:
-        assert attestation.data.shard_transition_root == shard_transition.hash_tree_root()
-    return attestation
 
 
 def get_committee_index_of_shard(spec, state, slot, shard):  # Optional[CommitteeIndex]

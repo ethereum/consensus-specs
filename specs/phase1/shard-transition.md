@@ -30,7 +30,7 @@ This document describes the shard transition function and fraud proofs as part o
 ### Misc
 
 ```python
-def compute_shard_transition_digest(beacon_state: BeaconState,
+def compute_shard_transition_digest(beacon_parent_state: BeaconState,
                                     shard_state: ShardState,
                                     beacon_parent_root: Root,
                                     shard_body_root: Root) -> Bytes32:
@@ -44,17 +44,33 @@ def compute_shard_transition_digest(beacon_state: BeaconState,
 
 ```python
 def verify_shard_block_message(beacon_state: BeaconState,
-                               shard_state: ShardState,
+                               shard_parent_state: ShardState,
                                block: ShardBlock,
                                slot: Slot,
-                               shard: Shard) -> bool:
-    assert block.shard_parent_root == shard_state.latest_block_root
-    assert block.slot == slot
-    next_slot = Slot(beacon_state.slot + 1)
+                               shard: Shard,
+                               beacon_parent_slot: Slot=None) -> bool:
+    # Check `shard_parent_root` field
+    assert block.shard_parent_root == shard_parent_state.latest_block_root
+    # Check `beacon_parent_root` field
+    if beacon_parent_slot is None:
+        beacon_parent_slot = beacon_state.slot
+    if beacon_parent_slot == beacon_state.slot:
+        beacon_parent_block_header = beacon_state.latest_block_header.copy()
+        if beacon_parent_block_header.state_root == Root():
+            beacon_parent_block_header.state_root = hash_tree_root(beacon_state)
+            beacon_parent_root = hash_tree_root(beacon_parent_block_header)
+        else:
+            beacon_parent_root = get_block_root_at_slot(beacon_state, beacon_parent_slot)
+    assert block.beacon_parent_root == beacon_parent_root
+    # Check `slot` field
+    next_slot = Slot(slot + 1)
     offset_slots = compute_offset_slots(get_latest_slot_for_shard(beacon_state, shard), next_slot)
     assert slot in offset_slots
+    # Check `shard` field
     assert block.shard == shard
+    # Check `proposer_index` field
     assert block.proposer_index == get_shard_proposer_index(beacon_state, slot, shard)
+    # Check `body` field
     assert 0 < len(block.body) <= MAX_SHARD_BLOCK_SIZE
     return True
 ```
@@ -177,7 +193,7 @@ def compute_shard_body_roots(proposals: Sequence[SignedShardBlock]) -> Sequence[
 
 ```python
 def get_proposal_choices_at_slot(beacon_state: BeaconState,
-                                 shard_state: ShardState,
+                                 shard_parent_state: ShardState,
                                  slot: Slot,
                                  shard: Shard,
                                  shard_blocks: Sequence[SignedShardBlock],
@@ -188,25 +204,16 @@ def get_proposal_choices_at_slot(beacon_state: BeaconState,
     """
     choices = []
     shard_blocks_at_slot = [block for block in shard_blocks if block.message.slot == slot]
+    shard_state = shard_parent_state.copy()
     for block in shard_blocks_at_slot:
-        try:
-            # Verify block message and signature
-            # TODO these validations should have been checked upon receiving shard blocks.
-            assert verify_shard_block_message(beacon_state, shard_state, block.message, slot, shard)
-            if validate_signature:
-                assert verify_shard_block_signature(beacon_state, block)
-
-            shard_state = get_post_shard_state(beacon_state, shard_state, block.message)
-        except Exception:
-            pass  # TODO: throw error in the test helper
-        else:
-            choices.append(block)
+        shard_state = get_post_shard_state(beacon_state, shard_state, block.message)
+        choices.append(block)
     return choices
 ```
 
 ```python
 def get_proposal_at_slot(beacon_state: BeaconState,
-                         shard_state: ShardState,
+                         shard_parent_state: ShardState,
                          slot: Shard,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock],
@@ -217,7 +224,7 @@ def get_proposal_at_slot(beacon_state: BeaconState,
     """
     choices = get_proposal_choices_at_slot(
         beacon_state=beacon_state,
-        shard_state=shard_state,
+        shard_parent_state=shard_parent_state,
         slot=slot,
         shard=shard,
         shard_blocks=shard_blocks,
@@ -232,7 +239,7 @@ def get_proposal_at_slot(beacon_state: BeaconState,
         proposal = get_winning_proposal(beacon_state, choices)
 
     # Apply state transition
-    shard_state = get_post_shard_state(beacon_state, shard_state, proposal.message)
+    shard_state = get_post_shard_state(beacon_state, shard_parent_state, proposal.message)
 
     return proposal, shard_state
 ```
@@ -242,15 +249,17 @@ def get_shard_state_transition_result(
     beacon_state: BeaconState,
     shard: Shard,
     shard_blocks: Sequence[SignedShardBlock],
+    on_time_slot: Slot,
     validate_signature: bool=True,
 ) -> Tuple[Sequence[SignedShardBlock], Sequence[ShardState], Sequence[Root]]:
     proposals = []
     shard_states = []
     shard_state = beacon_state.shard_states[shard]
-    for slot in get_offset_slots(beacon_state, shard):
+    offset_slots = compute_offset_slots(get_latest_slot_for_shard(beacon_state, shard), on_time_slot)
+    for slot in offset_slots:
         proposal, shard_state = get_proposal_at_slot(
             beacon_state=beacon_state,
-            shard_state=shard_state,
+            shard_parent_state=shard_state,
             slot=slot,
             shard=shard,
             shard_blocks=shard_blocks,
@@ -271,9 +280,12 @@ Suppose you are a committee member on shard `shard` at slot `current_slot` and y
 ```python
 def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
-                         shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
-    offset_slots = get_offset_slots(beacon_state, shard)
-    proposals, shard_states, shard_data_roots = get_shard_state_transition_result(beacon_state, shard, shard_blocks)
+                         shard_blocks: Sequence[SignedShardBlock],
+                         on_time_slot: Slot) -> ShardTransition:
+    offset_slots = compute_offset_slots(get_latest_slot_for_shard(beacon_state, shard), on_time_slot)
+    proposals, shard_states, shard_data_roots = get_shard_state_transition_result(
+        beacon_state, shard, shard_blocks, on_time_slot
+    )
 
     shard_block_lengths = []
     proposer_signatures = []
