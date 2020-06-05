@@ -199,8 +199,8 @@ The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahe
 
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
-* Find peers of the pubsub topic `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
-    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
+* Find peers of the pubsub topic `beacon_attestation_{compute_subnet_for_attestation(state, slot, committee_index)}`.
+    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][compute_subnet_for_attestation(state, slot, committee_index)] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
     * If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
 
 *Note*: If the validator is _not_ assigned to be an aggregator, the validator only needs sufficient number of peers on the topic to be able to publish messages. The validator does not need to _subscribe_ and listen to all messages on the topic.
@@ -425,18 +425,18 @@ def get_attestation_signature(state: BeaconState, attestation_data: AttestationD
 
 #### Broadcast attestation
 
-Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `beacon_attestation_{compute_subnet_for_attestation(state, attestation)}` pubsub topic.
+Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `beacon_attestation_{compute_subnet_for_attestation(state, attestation.data.slot, attestation.data.committee_index)}` pubsub topic.
 
 ```python
-def compute_subnet_for_attestation(state: BeaconState, attestation: Attestation) -> uint64:
+def compute_subnet_for_attestation(state: BeaconState, slot: Slot, committee_index: CommitteeIndex) -> uint64:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
     """
-    slots_since_epoch_start = attestation.data.slot % SLOTS_PER_EPOCH
-    committees_since_epoch_start = get_committee_count_at_slot(state, attestation.data.slot) * slots_since_epoch_start
+    slots_since_epoch_start = slot % SLOTS_PER_EPOCH
+    committees_since_epoch_start = get_committee_count_at_slot(state, slot) * slots_since_epoch_start
 
-    return (committees_since_epoch_start + attestation.data.index) % ATTESTATION_SUBNET_COUNT
+    return (committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT
 ```
 
 ### Attestation aggregation
