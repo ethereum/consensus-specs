@@ -99,6 +99,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
         # Phase 1
+        current_epoch_start_shard=Shard(0),
         shard_states=List[ShardState, MAX_SHARDS](
             ShardState(
                 slot=pre.slot,
