@@ -65,7 +65,7 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
             # would be ignored once their newer vote is accepted. Check if it makes sense.
             and store.latest_messages[i].shard == shard_store.shard
             and get_shard_ancestor(
-                store, shard_store, store.latest_messages[i].root, shard_store.blocks[root].slot
+                store, shard_store, store.latest_messages[i].shard_root, shard_store.blocks[root].slot
             ) == root
         )
     ))
