@@ -46,7 +46,7 @@ class ShardStore:
 def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> ShardStore:
     return ShardStore(
         shard=shard,
-        blocks={anchor_state.shard_states[shard].latest_block_root: ShardBlock(slot=anchor_state.slot)},
+        blocks={anchor_state.shard_states[shard].latest_block_root: ShardBlock(slot=anchor_state.slot, shard=shard)},
         block_states={anchor_state.shard_states[shard].latest_block_root: anchor_state.copy().shard_states[shard]},
     )
 ```
@@ -151,10 +151,11 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
 
     # Check shard parent exists
     assert shard_block.shard_parent_root in shard_store.block_states
-    pre_shard_state = shard_store.block_states[shard_block.shard_parent_root]
+    shard_parent_state = shard_store.block_states[shard_block.shard_parent_root]
 
     # Check beacon parent exists
     assert shard_block.beacon_parent_root in store.block_states
+    beacon_parent_state = store.block_states[shard_block.beacon_parent_root]
 
     # Check that block is later than the finalized shard state slot (optimization to reduce calls to get_ancestor)
     finalized_beacon_state = store.block_states[store.finalized_checkpoint.root]
@@ -167,15 +168,15 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
         get_ancestor(store, shard_block.beacon_parent_root, finalized_slot) == store.finalized_checkpoint.root
     )
 
+    # Check the block is valid and compute the post-state
+    assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block)
+    assert verify_shard_block_signature(beacon_parent_state, signed_shard_block)
+
+    post_state = get_post_shard_state(beacon_parent_state, shard_parent_state, shard_block)
+
     # Add new block to the store
     shard_store.blocks[hash_tree_root(shard_block)] = shard_block
 
-    # Check the block is valid and compute the post-state
-    beacon_head_root = get_head(store)
-    beacon_head_state = store.block_states[beacon_head_root]
-    assert verify_shard_block_message(beacon_head_state, pre_shard_state, shard_block, shard_block.slot, shard)
-    assert verify_shard_block_signature(beacon_head_state, signed_shard_block)
-    post_state = get_post_shard_state(beacon_head_state, pre_shard_state, shard_block)
     # Add new state for this block to the store
     shard_store.block_states[hash_tree_root(shard_block)] = post_state
 ```

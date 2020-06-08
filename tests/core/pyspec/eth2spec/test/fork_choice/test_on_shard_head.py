@@ -1,10 +1,10 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_except, never_bls
+from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.shard_block import (
-    build_attestation_with_shard_transition,
     build_shard_block,
-    build_shard_transitions_till_slot,
+    get_shard_transitions,
     get_committee_index_of_shard,
 )
 from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root
@@ -25,15 +25,15 @@ def run_on_shard_block(spec, store, shard_store, signed_block, valid=True):
     assert shard_store.blocks[hash_tree_root(signed_block.message)] == signed_block.message
 
 
-def apply_shard_block(spec, store, shard_store, beacon_head_state, shard_blocks_buffer):
+def apply_shard_block(spec, store, shard_store, beacon_parent_state, shard_blocks_buffer):
     shard = shard_store.shard
     body = b'\x56' * 4
     shard_head_root = spec.get_shard_head(store, shard_store)
     shard_parent_state = shard_store.block_states[shard_head_root]
-    assert shard_parent_state.slot != beacon_head_state.slot
+    assert shard_parent_state.slot != beacon_parent_state.slot
     shard_block = build_shard_block(
-        spec, beacon_head_state, shard,
-        shard_parent_state=shard_parent_state, slot=beacon_head_state.slot, body=body, signed=True
+        spec, beacon_parent_state, shard,
+        shard_parent_state=shard_parent_state, slot=beacon_parent_state.slot, body=body, signed=True
     )
     shard_blocks_buffer.append(shard_block)
     run_on_shard_block(spec, store, shard_store, shard_block)
@@ -62,30 +62,26 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
     committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
     has_shard_committee = committee_index is not None  # has committee of `shard` at this slot
 
-    # On beacon blocks at `state.slot + 1`
     beacon_block = build_empty_block(spec, state, slot=state.slot + 1)
 
     # If next slot has committee of `shard`, add `shard_transtion` to the proposing beacon block
     if has_shard_committee and len(shard_blocks_buffer) > 0:
         # Sanity check `get_pending_shard_blocks` function
         check_pending_shard_blocks(spec, store, shard_store, shard_blocks_buffer)
-
         # Use temporary next state to get ShardTransition of shard block
-        shard_transitions = build_shard_transitions_till_slot(
+        shard_transitions = get_shard_transitions(
             spec,
             state,
             shard_blocks={shard: shard_blocks_buffer},
-            on_time_slot=state.slot + 1,
         )
         shard_transition = shard_transitions[shard]
-        attestation = build_attestation_with_shard_transition(
+        attestation = get_valid_on_time_attestation(
             spec,
             state,
             index=committee_index,
-            on_time_slot=state.slot + 1,
             shard_transition=shard_transition,
+            signed=False,
         )
-        assert attestation.data.slot == state.slot
         assert spec.get_shard(state, attestation) == shard
         beacon_block.body.attestations = [attestation]
         beacon_block.body.shard_transitions = shard_transitions
@@ -93,11 +89,11 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
         # Clear buffer
         shard_blocks_buffer.clear()
 
-    signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)
+    signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)  # transition!
     add_block_to_store(spec, store, signed_beacon_block)
     assert spec.get_head(store) == beacon_block.hash_tree_root()
 
-    # On shard block at updated `state.slot`
+    # On shard block at transitioned `state.slot`
     if is_in_offset_sets(spec, state, shard):
         # The created shard block would be appended to `shard_blocks_buffer`
         apply_shard_block(spec, store, shard_store, state, shard_blocks_buffer)
@@ -129,7 +125,6 @@ def test_basic(spec, state):
     shard_committee_counter = 2
     shard_blocks_buffer = []
     while shard_committee_counter > 0:
-        print(f'state.slot', state.slot)
         has_shard_committee = apply_shard_and_beacon(
             spec, state, store, shard_store, shard_blocks_buffer
         )
