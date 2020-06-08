@@ -10,6 +10,9 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
+  - [Helpers](#helpers)
+    - [Extended `LatestMessage`](#extended-latestmessage)
+    - [Updated `update_latest_messages`](#updated-update_latest_messages)
   - [Handlers](#handlers)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -24,6 +27,33 @@ This document is the beacon chain fork choice spec for part of Ethereum 2.0 Phas
 Due to the changes in the structure of `IndexedAttestation` in Phase 1, `on_attestation` must be re-specified to handle this. The bulk of `on_attestation` has been moved out into a few helpers to reduce code duplication where possible.
 
 The rest of the fork choice remains stable.
+
+### Helpers
+
+#### Extended `LatestMessage`
+
+```python
+@dataclass(eq=True, frozen=True)
+class LatestMessage(object):
+    epoch: Epoch
+    root: Root
+    shard: Shard
+    shard_root: Root
+```
+
+#### Updated `update_latest_messages`
+
+```python
+def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
+    target = attestation.data.target
+    beacon_block_root = attestation.data.beacon_block_root
+    shard = get_shard(store.block_states[beacon_block_root], attestation)
+    for i in attesting_indices:
+        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
+            store.latest_messages[i] = LatestMessage(
+                epoch=target.epoch, root=beacon_block_root, shard=shard, shard_root=attestation.data.shard_head_root
+            )
+```
 
 ### Handlers
 
