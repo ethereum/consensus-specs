@@ -169,7 +169,7 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
     )
 
     # Check the block is valid and compute the post-state
-    assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block, shard_block.slot, shard)
+    assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block)
     assert verify_shard_block_signature(beacon_parent_state, signed_shard_block)
 
     post_state = get_post_shard_state(beacon_parent_state, shard_parent_state, shard_block)
