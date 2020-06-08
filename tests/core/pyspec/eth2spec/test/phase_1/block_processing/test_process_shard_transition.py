@@ -7,7 +7,7 @@ from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.shard_transitions import run_shard_transitions_processing
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
-    build_shard_transitions_till_slot,
+    get_shard_transitions,
 )
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot, next_slot
 
@@ -24,7 +24,7 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
     shard_blocks = [shard_block]
-    shard_transitions = build_shard_transitions_till_slot(
+    shard_transitions = get_shard_transitions(
         spec,
         state,
         shard_blocks={shard: shard_blocks},

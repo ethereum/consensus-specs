@@ -9,7 +9,7 @@ from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
-    build_shard_transitions_till_slot,
+    get_shard_transitions,
 )
 from eth2spec.test.helpers.state import state_transition_and_sign_block, transition_to_valid_shard_slot, transition_to
 
@@ -21,7 +21,7 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
     shard_blocks: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
 
-    shard_transitions = build_shard_transitions_till_slot(spec, state, shard_blocks)
+    shard_transitions = get_shard_transitions(spec, state, shard_blocks)
     attestations = [
         get_valid_on_time_attestation(
             spec,

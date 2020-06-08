@@ -52,7 +52,7 @@ def build_shard_block(spec,
     return signed_block
 
 
-def build_shard_transitions_till_slot(spec, parent_beacon_state, shard_blocks):
+def get_shard_transitions(spec, parent_beacon_state, shard_blocks):
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
     on_time_slot = parent_beacon_state.slot + 1
     for shard, blocks in shard_blocks.items():

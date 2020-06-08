@@ -4,7 +4,7 @@ from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_excep
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
-    build_shard_transitions_till_slot,
+    get_shard_transitions,
     get_committee_index_of_shard,
 )
 from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root
@@ -69,7 +69,7 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
         # Sanity check `get_pending_shard_blocks` function
         check_pending_shard_blocks(spec, store, shard_store, shard_blocks_buffer)
         # Use temporary next state to get ShardTransition of shard block
-        shard_transitions = build_shard_transitions_till_slot(
+        shard_transitions = get_shard_transitions(
             spec,
             state,
             shard_blocks={shard: shard_blocks_buffer},
