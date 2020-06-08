@@ -1,5 +1,4 @@
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.state import transition_to
 
 
 def run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=True):
@@ -29,15 +28,10 @@ def run_shard_transitions_processing(spec, state, shard_transitions, attestation
     yield 'post', state
 
 
-def get_shard_transition_of_committee(spec, state, committee_index, slot=None, shard_blocks=None):
+def get_shard_transition_of_committee(spec, state, committee_index, shard_blocks=None):
     if shard_blocks is None:
         shard_blocks = []
 
-    if slot is None:
-        slot = state.slot
-
     shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
-    temp_state = state.copy()
-    transition_to(spec, temp_state, slot + 1)
-    shard_transition = spec.get_shard_transition(temp_state, shard, shard_blocks=shard_blocks)
+    shard_transition = spec.get_shard_transition(state, shard, shard_blocks=shard_blocks)
     return shard_transition
