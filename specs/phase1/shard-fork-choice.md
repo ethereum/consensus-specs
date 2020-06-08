@@ -76,18 +76,18 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
 ```python
 def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
     # Execute the LMD-GHOST fork choice
-    shard_blocks = shard_store.blocks
-    head_beacon_root = get_head(store)
-    head_shard_state = store.block_states[head_beacon_root].shard_states[shard_store.shard]
-    shard_head_root = head_shard_state.latest_block_root
+    beacon_head_root = get_head(store)
+    shard_head_state = store.block_states[beacon_head_root].shard_states[shard_store.shard]
+    shard_head_root = shard_head_state.latest_block_root
+    shard_blocks = {
+        root: shard_block for root, shard_block in shard_store.blocks.items()
+        if shard_block.slot > shard_head_state.slot
+    }
     while True:
         # Find the valid child block roots
         children = [
-            root for root in shard_store.blocks.keys()
-            if (
-                shard_blocks[root].shard_parent_root == shard_head_root
-                and shard_blocks[root].slot > head_shard_state.slot
-            )
+            root for root, shard_block in shard_blocks.items()
+            if shard_block.shard_parent_root == shard_head_root
         ]
         if len(children) == 0:
             return shard_head_root
@@ -107,7 +107,7 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
     elif block.slot == slot:
         return root
     else:
-        # root is older than queried slot, thus a skip slot. Return earliest root prior to slot
+        # root is older than queried slot, thus a skip slot. Return most recent root prior to slot
         return root
 ```
 
@@ -116,7 +116,7 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
 ```python
 def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[ShardBlock]:
     """
-    Return the shard blocks branch that from shard head to beacon head.
+    Return the canonical shard block branch that has not yet been crosslinked.
     """
     shard = shard_store.shard
 
