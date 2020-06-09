@@ -12,6 +12,11 @@
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Misc](#misc)
+  - [Shard block configs](#shard-block-configs)
+  - [Gwei values](#gwei-values)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
+  - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
   - [Extended `Attestation`](#extended-attestation)
@@ -109,6 +114,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
 
 ### Shard block configs
+
 | Name | Value |
 | - | - |
 | `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | 
