@@ -289,7 +289,7 @@ def get_shard_transition_fields(
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
-        shard_state = get_post_shard_state(beacon_state, shard_state, shard_block.message)
+        shard_state = get_post_shard_state(shard_state, shard_block.message)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 

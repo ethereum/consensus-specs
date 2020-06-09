@@ -349,7 +349,6 @@ class ShardBlockHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    transition_digest: Bytes32
     latest_block_root: Root
 ```
 
