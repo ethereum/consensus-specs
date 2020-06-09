@@ -181,22 +181,33 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) |
-| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) |
-| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
-| `SHUFFLE_ROUND_COUNT` | `90` |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
-| `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
-| `HYSTERESIS_QUOTIENT` | `4` |
-| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
-| `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
+| Name | Value | Notes |
+| - | - | - |
+| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | [notes](#notes-ETH1_FOLLOW_DISTANCE) |
+| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) | [notes](#notes-MAX_COMMITTEES_PER_SLOT) |
+| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [notes](#notes-TARGET_COMMITTEE_SIZE) |
+| `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) | [notes](#notes-MAX_VALIDATORS_PER_COMMITTEE) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) | [notes](#notes-MIN_PER_EPOCH_CHURN_LIMIT) |
+| `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) | [notes](#notes-CHURN_LIMIT_QUOTIENT) |
+| `SHUFFLE_ROUND_COUNT` | `90` | [notes](#notes-SHUFFLE_ROUND_COUNT) |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) | [notes](#notes-MIN_GENESIS_ACTIVE_VALIDATOR_COUNT) |
+| `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) | [notes](#notes-MIN_GENESIS_TIME) |
+| `HYSTERESIS_QUOTIENT` | `4` | [notes](#notes-HYSTERESIS_QUOTIENT) |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` | [notes](#notes-HYSTERESIS_DOWNWARD_MULTIPLIER) |
+| `HYSTERESIS_UPWARD_MULTIPLIER` | `5` | [notes](#notes-HYSTERESIS_UPWARD_MULTIPLIER) |
 
-- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- <a name="notes-ETH1_FOLLOW_DISTANCE">`ETH1_FOLLOW_DISTANCE`</a>—Honest validators must ignore Eth1 blocks that are not old enough. Specifically, the current Unix time must be at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` than the timestamp of the corresponding Eth1 block for it to be considered.
+- <a name="notes-MAX_COMMITTEES_PER_SLOT">`MAX_COMMITTEES_PER_SLOT`</a>—Starting from phase 1 there will be `MAX_COMMITTEES_PER_SLOT` shards. In phase 0 there are no shards and `MAX_COMMITTEES_PER_SLOT` represents the maximum number of committees assigned to every slot. It is a maximum because if there are less than `MAX_COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE` active validators there will be insufficient validators to crosslink every shard at every slot.
+- <a name="notes-TARGET_COMMITTEE_SIZE">`TARGET_COMMITTEE_SIZE`</a>—This is the target minimum validator count per committee to ensure reasonable committee safety (assuming a 1/3 attacker and a 2/3 committee threshold). It is not a hard minimum because some committees will have fewer validators when there are less than `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE` active validators.
+- <a name="notes-MAX_VALIDATORS_PER_COMMITTEE">`MAX_VALIDATORS_PER_COMMITTEE`</a>—This is a reasonable upper bound on the committeee size. It assumes an average balance of at least 32 ETH per active validator and no more than `2**27` ETH (roughly 134m ETH) in circulation.
+- <a name="notes-MIN_PER_EPOCH_CHURN_LIMIT">`MIN_PER_EPOCH_CHURN_LIMIT`</a>—For security reasons the validator churn, i.e. the number of validator activations and exits, is limitted. The minimum churn per epoch is at least `MIN_PER_EPOCH_CHURN_LIMIT`, with activations and exits accounted for separately.
+- <a name="notes-CHURN_LIMIT_QUOTIENT">`CHURN_LIMIT_QUOTIENT`</a>—When the number of active validators is large enough (at least `MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`) validator churn is limited to the number of active validators divided by `CHURN_LIMIT_QUOTIENT`.
+- <a name="notes-SHUFFLE_ROUND_COUNT">`SHUFFLE_ROUND_COUNT`</a>—The active validator set is shuffled (e.g. for assignments into committees) using a cryptographic shuffling algorithm known [swap-or-not](https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf). The `SHUFFLE_ROUND_COUNT` is the conservatively-chosen internal round count for the swap-or-not shuffling.
+- <a name="notes-MIN_GENESIS_ACTIVE_VALIDATOR_COUNT">`MIN_GENESIS_ACTIVE_VALIDATOR_COUNT`</a>—This is the minimum number of active validators to trigger genesis.
+- <a name="notes-MIN_GENESIS_TIME">`MIN_GENESIS_TIME`</a>—This is the minimum Unix timestamp to trigger genesis.
+- <a name="notes-HYSTERESIS_QUOTIENT">`HYSTERESIS_QUOTIENT`</a>—The validator effective balance is a rounded balance infrequently updated for effeciency. Hysteresis is used to avoid attacks that can force frequent balance updates around a threshold value. The `HYSTERESIS_QUOTIENT` is used to parametrize the hysterisis (see below).
+- <a name="notes-HYSTERESIS_DOWNWARD_MULTIPLIER">`HYSTERESIS_DOWNWARD_MULTIPLIER`</a>—The threshold for decreasing the effective balance from `N` to `N - 1` is `N - HYSTERESIS_DOWNWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`.
+- <a name="notes-HYSTERESIS_UPWARD_MULTIPLIER">`HYSTERESIS_UPWARD_MULTIPLIER`</a>—The threshold for increasing the effective balance from `N` to `N + 1` is `N + HYSTERESIS_UPWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`.
 
 ### Gwei values
 
@@ -339,8 +350,6 @@ class Validator(Container):
 ```
 
 *Note*: Validator balances receive special treatment to reduce the hashing cost of Merkleizing the validator registry. `Validator` objects only store a rounded `effective_balance` which is a multiple of `EFFECTIVE_BALANCE_INCREMENT`. Full validator balances are packed as 8-byte `Gwei` values in `state.balances` outside of `state.validators`. 
-
-*Note*: The effective balance is updated with hysteresis to avoid back-and-forth-on-the-edge attacks. The threshold for decreasing the effective balance from `N` to `N - 1` is `N - HYSTERESIS_DOWNWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`. The threshold for increasing the effective balance from `N` to `N + 1` is `N + HYSTERESIS_UPWARD_MULTIPLIER / HYSTERESIS_QUOTIENT`.
 
 *Note*: The difference between a validator's balance and its effective balance does not count toward voting, rewards, and penalties. The effective balance is capped at `MAX_EFFECTIVE_BALANCE` to bound the weight of individual validator votes within a committee.
 
@@ -807,7 +816,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
     """
     assert index < index_count
 
-    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+    # Swap-or-not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
     for current_round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=1))[0:8]) % index_count
