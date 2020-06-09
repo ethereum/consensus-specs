@@ -172,7 +172,7 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
     assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block)
     assert verify_shard_block_signature(beacon_parent_state, signed_shard_block)
 
-    post_state = get_post_shard_state(beacon_parent_state, shard_parent_state, shard_block)
+    post_state = get_post_shard_state(shard_parent_state, shard_block)
 
     # Add new block to the store
     shard_store.blocks[hash_tree_root(shard_block)] = shard_block

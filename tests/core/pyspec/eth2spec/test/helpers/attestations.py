@@ -90,7 +90,7 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
                 attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
                 attestation_data.shard_transition_root = shard_transition.hash_tree_root()
             else:
-                attestation_data.shard_head_root = state.shard_states[shard].transition_digest
+                attestation_data.shard_head_root = state.shard_states[shard].latest_block_root
                 attestation_data.shard_transition_root = spec.Root()
     return attestation_data
 

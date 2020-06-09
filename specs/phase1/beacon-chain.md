@@ -339,9 +339,9 @@ class ShardBlockHeader(Container):
 
 ```python
 class ShardState(Container):
+    parent_state_root: Root
     slot: Slot
     gasprice: Gwei
-    transition_digest: Bytes32
     latest_block_root: Root
 ```
 
@@ -865,12 +865,14 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     proposers = []
     prev_gasprice = state.shard_states[shard].gasprice
     shard_parent_root = state.shard_states[shard].latest_block_root
+    shard_parent_state_root = hash_tree_root(state.shard_states[shard])
     for i, offset_slot in enumerate(offset_slots):
         shard_block_length = transition.shard_block_lengths[i]
         shard_state = transition.shard_states[i]
         # Verify correct calculation of gas prices and slots
         assert shard_state.gasprice == compute_updated_gasprice(prev_gasprice, shard_block_length)
         assert shard_state.slot == offset_slot
+        assert shard_state.parent_state_root == shard_parent_state_root
         # Collect the non-empty proposals result
         is_empty_proposal = shard_block_length == 0
         if not is_empty_proposal:
@@ -889,6 +891,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
             proposers.append(proposal_index)
 
         prev_gasprice = shard_state.gasprice
+        shard_parent_state_root = hash_tree_root(shard_state)
 
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
     signing_roots = [

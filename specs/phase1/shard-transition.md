@@ -10,7 +10,6 @@
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc)
   - [Shard block verification functions](#shard-block-verification-functions)
 - [Shard state transition](#shard-state-transition)
 - [Fraud proofs](#fraud-proofs)
@@ -27,19 +26,6 @@ This document describes the shard transition function and fraud proofs as part o
 
 ## Helper functions
 
-### Misc
-
-```python
-def compute_shard_transition_digest(beacon_parent_state: BeaconState,
-                                    shard_state: ShardState,
-                                    beacon_parent_root: Root,
-                                    shard_body_root: Root) -> Bytes32:
-    # TODO: use SSZ hash tree root
-    return hash(
-        hash_tree_root(shard_state) + beacon_parent_root + shard_body_root
-    )
-```
-
 ### Shard block verification functions
 
 ```python
@@ -52,8 +38,7 @@ def verify_shard_block_message(beacon_parent_state: BeaconState,
     beacon_parent_block_header = beacon_parent_state.latest_block_header.copy()
     if beacon_parent_block_header.state_root == Root():
         beacon_parent_block_header.state_root = hash_tree_root(beacon_parent_state)
-    beacon_parent_root = hash_tree_root(beacon_parent_block_header)
-    assert block.beacon_parent_root == beacon_parent_root
+    assert block.beacon_parent_root == hash_tree_root(beacon_parent_block_header)
     # Check `slot` field
     shard = block.shard
     next_slot = Slot(block.slot + 1)
@@ -80,39 +65,30 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 ## Shard state transition
 
 ```python
-def shard_state_transition(beacon_state: BeaconState,
-                           shard_state: ShardState,
+def shard_state_transition(shard_state: ShardState,
                            block: ShardBlock) -> None:
     """
-    Update ``shard_state`` with shard ``block`` and ``beacon_state`.
+    Update the given ``shard_state`` with ``block`.
     """
+    shard_state.parent_state_root = hash_tree_root(shard_state)
     shard_state.slot = block.slot
-    prev_gasprice = shard_state.gasprice
-    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
+    shard_state.gasprice = compute_updated_gasprice(shard_state.gasprice, len(block.body))
     if len(block.body) == 0:
-        latest_block_root = shard_state.latest_block_root
+        shard_state.latest_block_root = shard_state.latest_block_root
     else:
-        latest_block_root = hash_tree_root(block)
-    shard_state.latest_block_root = latest_block_root
-    shard_state.transition_digest = compute_shard_transition_digest(
-        beacon_state,
-        shard_state,
-        block.beacon_parent_root,
-        hash_tree_root(block.body),
-    )
+        shard_state.latest_block_root = hash_tree_root(block)
 ```
 
 We have a pure function `get_post_shard_state` for describing the fraud proof verification and honest validator behavior.
 
 ```python
-def get_post_shard_state(beacon_state: BeaconState,
-                         shard_state: ShardState,
+def get_post_shard_state(shard_state: ShardState,
                          block: ShardBlock) -> ShardState:
     """
     A pure function that returns a new post ShardState instead of modifying the given `shard_state`.
     """
     post_state = shard_state.copy()
-    shard_state_transition(beacon_state, post_state, block)
+    shard_state_transition(post_state, block)
     return post_state
 ```
 
@@ -154,8 +130,8 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
-    shard_state = get_post_shard_state(beacon_state, shard_state, block)
-    if shard_state.transition_digest != transition.shard_states[offset_index].transition_digest:
+    shard_state = get_post_shard_state(shard_state, block)
+    if shard_state.parent_state_root != transition.shard_states[offset_index].parent_state_root:
         return True
 
     return False
@@ -205,7 +181,7 @@ def get_proposal_at_slot(beacon_state: BeaconState,
         proposal = get_winning_proposal(beacon_state, shard_blocks)
 
     # Apply state transition
-    shard_state = get_post_shard_state(beacon_state, shard_parent_state, proposal.message)
+    shard_state = get_post_shard_state(shard_parent_state, proposal.message)
 
     return proposal, shard_state
 ```
