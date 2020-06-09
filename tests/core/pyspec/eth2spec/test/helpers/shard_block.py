@@ -62,8 +62,6 @@ def get_shard_transitions(spec, parent_beacon_state, shard_blocks):
             on_time_slot,
         )
         len_offset_slots = len(offset_slots)
-        # TODO this is actually unsafe for long offset_slots
-        assert len_offset_slots == on_time_slot - parent_beacon_state.shard_states[shard].slot - 1
         shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
 
         if len(blocks) > 0:
