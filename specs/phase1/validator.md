@@ -75,6 +75,7 @@ See constants from [Phase 0 validator guide](../phase0/validator.md#constants).
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `TARGET_LIGHT_CLIENT_AGGREGATORS_PER_SLOT` | `2**3` (= 8) | validators | |
+| `LIGHT_CLIENT_PREPARATION_EPOCHS` | `2**2` (= 4) | epochs | |
 
 ## Becoming a validator
 
@@ -86,7 +87,7 @@ Beacon chain validator assignments to beacon committees and beacon block proposa
 
 ### Lookahead
 
-Lookahead for beacon committee assignments operates in the same manner as Phase 0, but committee members must join a shard block pubsub topic in addition to the committee attestation topic.o
+Lookahead for beacon committee assignments operates in the same manner as Phase 0, but committee members must join a shard block pubsub topic in addition to the committee attestation topic.
 
 Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a validator should:
 * Let `shard = compute_shard_from_committee_index(committe_index)`
@@ -196,7 +197,8 @@ def get_best_light_client_aggregate(block: BeaconBlock,
 
     return max(
         viable_aggregates,
-        key=lambda a: len([i for i in a.aggregation_bits if i == 1]),
+        # Ties broken by lexicographically by hash_tree_root
+        key=lambda a: (len([i for i in a.aggregation_bits if i == 1]), hash_tree_root(a)),
         default=LightClientVote(),
     )
 ```
@@ -378,9 +380,10 @@ When `get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == LIGHT_CLIENT_C
 If the validator is in the next light client committee, they must join the `light_client_votes` pubsub topic to begin duties at the start of the next period.
 
 ```python
-def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex) -> boolean:
-    period_start_epoch = get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD % get_current_epoch(state)
-    next_committee = get_light_client_committee(state, period_start_epoch)
+def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex) -> bool:
+    current_source_epoch = compute_committee_source_epoch(get_current_epoch(state), LIGHT_CLIENT_COMMITTEE_PERIOD)
+    next_source_epoch = current_source_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD
+    next_committee = get_light_client_committee(state, next_source_epoch)
     return index in next_committee
 ```
 
