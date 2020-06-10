@@ -347,17 +347,17 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert get_current_slot(store) >= block.slot
-    # Add new block to the store
-    store.blocks[hash_tree_root(block)] = block
 
     # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, hash_tree_root(block), finalized_slot) == store.finalized_checkpoint.root
+    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
 
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, signed_block, True)
+    # Add new block to the store
+    store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
 
