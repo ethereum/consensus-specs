@@ -1,7 +1,7 @@
 # Minimal preset - phase 1
 
 
-# Phase 1: Upgrade from Phase 0
+# phase1-fork
 # ---------------------------------------------------------------
 # [customized] for testnet distinction
 PHASE_1_FORK_VERSION: 0x01000001
@@ -10,43 +10,48 @@ PHASE_1_GENESIS_SLOT: 8
 # [customized] reduced for testing
 INITIAL_ACTIVE_SHARDS: 2
 
-# Phase 1: General
+
+# beacon-chain
 # ---------------------------------------------------------------
-# Phase 1 domain
+# Misc
+# [customized] reduced for testing
+MAX_SHARDS: 8
+# 2**7 (= 128)
+LIGHT_CLIENT_COMMITTEE_SIZE: 128
+#  2**3 (= 8)
+GASPRICE_ADJUSTMENT_COEFFICIENT: 8
+
+# Shard block configs
+# 2**20 (= 1048,576) bytes
+MAX_SHARD_BLOCK_SIZE: 1048576
+# 2**18 (= 262,144) bytes
+TARGET_SHARD_BLOCK_SIZE: 262144
+# Note: MAX_SHARD_BLOCKS_PER_ATTESTATION is derived from the list length.
+SHARD_BLOCK_OFFSETS: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]
+# len(SHARD_BLOCK_OFFSETS)
+MAX_SHARD_BLOCKS_PER_ATTESTATION: 12
+
+# Gwei values
+# 2**14 (= 16,384) Gwei
+MAX_GASPRICE: 16384
+# 2**3 (= 8) Gwei
+MIN_GASPRICE: 8
+
+# Time parameters
+# 2**3 (= 8) | online epochs
+ONLINE_PERIOD: 8
+# 2**8 (= 256) | epochs
+LIGHT_CLIENT_COMMITTEE_PERIOD: 256
+
+# Domain types
 DOMAIN_SHARD_PROPOSAL: 0x80000000
 DOMAIN_SHARD_COMMITTEE: 0x81000000
 DOMAIN_LIGHT_CLIENT: 0x82000000
 DOMAIN_CUSTODY_BIT_SLASHING: 0x83000000
 
-# [customized] reduced for testing
-MAX_SHARDS: 8
-# 2**3 (= 8) | online epochs
-ONLINE_PERIOD: 8
-# 2**7 (= 128)
-LIGHT_CLIENT_COMMITTEE_SIZE: 128
-# 2**8 (= 256) | epochs
-LIGHT_CLIENT_COMMITTEE_PERIOD: 256
-# 2**18 (= 262,144)
-SHARD_BLOCK_CHUNK_SIZE: 262144
-# 2**2 (= 4)
-MAX_SHARD_BLOCK_CHUNKS: 4
-# 3 * 2**16` (= 196,608)
-TARGET_SHARD_BLOCK_SIZE: 196608
-# Note: MAX_SHARD_BLOCKS_PER_ATTESTATION is derived from the list length.
-SHARD_BLOCK_OFFSETS: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]
-# len(SHARD_BLOCK_OFFSETS)
-MAX_SHARD_BLOCKS_PER_ATTESTATION: 12
-# 2**14 (= 16,384) Gwei
-MAX_GASPRICE: 16384
-# 2**3 (= 8) Gwei
-MIN_GASPRICE: 8
-#  2**3 (= 8)
-GASPRICE_ADJUSTMENT_COEFFICIENT: 8
 
-
-# Phase 1: Custody Game
+# custody-game
 # ---------------------------------------------------------------
-
 # Time parameters
 # 2**1 (= 2) epochs
 RANDAO_PENALTY_EPOCHS: 2
