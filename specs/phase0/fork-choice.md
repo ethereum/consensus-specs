@@ -371,15 +371,16 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
         store.finalized_checkpoint = state.finalized_checkpoint
-        finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-
-        # Update justified if new justified is later than store justified
-        # or if store justified is not in chain with finalized checkpoint
-        if (
-            state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch
-            or get_ancestor(store, store.justified_checkpoint.root, finalized_slot) != store.finalized_checkpoint.root
-        ):
-            store.justified_checkpoint = state.current_justified_checkpoint
+        
+        if store.justified_checkpoint != state.current_justified_checkpoint:
+            finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+            # Update justified if new justified is later than store justified
+            # or if store justified is not in chain with finalized checkpoint
+            if (
+                state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch
+                or get_ancestor(store, store.justified_checkpoint.root, finalized_slot) != store.finalized_checkpoint.root
+            ):
+                store.justified_checkpoint = state.current_justified_checkpoint
 ```
 
 #### `on_attestation`
