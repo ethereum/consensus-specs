@@ -183,7 +183,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Notes |
 | - | - | - |
-| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | [notes](#notes-ETH1_FOLLOW_DISTANCE) |
+| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | <a name="ETH1_FOLLOW_DISTANCE"></a>[notes](#notes-ETH1_FOLLOW_DISTANCE) |
 | `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) | [notes](#notes-MAX_COMMITTEES_PER_SLOT) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [notes](#notes-TARGET_COMMITTEE_SIZE) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) | [notes](#notes-MAX_VALIDATORS_PER_COMMITTEE) |
@@ -196,7 +196,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` | [notes](#notes-HYSTERESIS_DOWNWARD_MULTIPLIER) |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `5` | [notes](#notes-HYSTERESIS_UPWARD_MULTIPLIER) |
 
-- <a name="notes-ETH1_FOLLOW_DISTANCE">`ETH1_FOLLOW_DISTANCE`</a>—Honest validators must ignore Eth1 blocks that are not old enough. Specifically, the current Unix time must be at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` than the timestamp of the corresponding Eth1 block for it to be considered.
+- <a name="notes-ETH1_FOLLOW_DISTANCE">`ETH1_FOLLOW_DISTANCE`</a>—Honest validators must ignore Eth1 blocks that are not old enough. Specifically, the current Unix time must be at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` than the timestamp of the corresponding Eth1 block for it to be considered. [↩](#ETH1_FOLLOW_DISTANCE)
 - <a name="notes-MAX_COMMITTEES_PER_SLOT">`MAX_COMMITTEES_PER_SLOT`</a>—Starting from phase 1 there will be `MAX_COMMITTEES_PER_SLOT` shards. In phase 0 there are no shards and `MAX_COMMITTEES_PER_SLOT` represents the maximum number of committees assigned to every slot. It is a maximum because if there are less than `MAX_COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE` active validators there will be insufficient validators to crosslink every shard at every slot.
 - <a name="notes-TARGET_COMMITTEE_SIZE">`TARGET_COMMITTEE_SIZE`</a>—This is the target minimum validator count per committee to ensure reasonable committee safety (assuming a 1/3 attacker and a 2/3 committee threshold). It is not a hard minimum because some committees will have fewer validators when there are less than `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE` active validators.
 - <a name="notes-MAX_VALIDATORS_PER_COMMITTEE">`MAX_VALIDATORS_PER_COMMITTEE`</a>—This is a reasonable upper bound on the committeee size. It assumes an average balance of at least 32 ETH per active validator and no more than `2**27` ETH (roughly 134m ETH) in circulation.
