@@ -12,6 +12,10 @@
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Misc](#misc)
+  - [Shard block configs](#shard-block-configs)
+  - [Gwei values](#gwei-values)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
@@ -103,11 +107,39 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 ### Misc
 
-| Name | Value | Unit | Duration |
-| - | - | - | - | 
+| Name | Value |
+| - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
-| `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
+
+### Shard block configs
+
+| Name | Value |
+| - | - |
+| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | 
+| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | 
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | 
+| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | 
+
+### Gwei values
+
+| Name | Value |
+| - | - |
+| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | 
+| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | 
+
+### Initial values
+
+| Name | Value |
+| - | - |
+| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | 
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 mins |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
 | `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
