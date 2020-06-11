@@ -1,7 +1,7 @@
 # Mainnet preset - phase 1
 
 
-# # phase1-fork
+# phase1-fork
 # ---------------------------------------------------------------
 PHASE_1_FORK_VERSION: 0x01000000
 # [STUB]
@@ -13,7 +13,7 @@ INITIAL_ACTIVE_SHARDS: 64
 # ---------------------------------------------------------------
 # Misc
 # 2**10 (= 1,024)
-MAX_SHARDS: 8
+MAX_SHARDS: 1024
 # 2**7 (= 128)
 LIGHT_CLIENT_COMMITTEE_SIZE: 128
 # 2**3 (= 8)
@@ -48,9 +48,8 @@ DOMAIN_LIGHT_CLIENT: 0x82000000
 DOMAIN_CUSTODY_BIT_SLASHING: 0x83000000
 
 
-# Phase 1: Custody Game
+# custody-game
 # ---------------------------------------------------------------
-
 # Time parameters
 # 2**1 (= 2) epochs, 12.8 minutes
 RANDAO_PENALTY_EPOCHS: 2

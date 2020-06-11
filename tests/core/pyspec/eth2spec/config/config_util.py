@@ -1,5 +1,4 @@
 import os
-from os.path import join
 from pathlib import Path
 from typing import Dict, Any
 
@@ -37,15 +36,15 @@ def load_config_file(configs_dir: str, presets_name: str) -> Dict[str, Any]:
     :param presets_name: The name of the presets. (lowercase snake_case)
     :return: Dictionary, mapping of constant-name -> constant-value
     """
-    _, _, config_files = next(os.walk(configs_dir))
+    present_dir = Path(configs_dir) / presets_name
+    _, _, config_files = next(os.walk(present_dir))
     config_files.sort()
     loaded_config = {}
     for config_file_name in config_files:
-        if config_file_name.startswith(presets_name):
-            yaml = YAML(typ='base')
-            path = Path(join(configs_dir, config_file_name))
-            loaded = yaml.load(path)
-            loaded_config.update(loaded)
+        yaml = YAML(typ='base')
+        path = present_dir / config_file_name
+        loaded = yaml.load(path)
+        loaded_config.update(loaded)
     assert loaded_config != {}
 
     out: Dict[str, Any] = dict()
