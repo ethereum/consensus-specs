@@ -301,7 +301,8 @@ def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:
         base_state = store.block_states[target.root].copy()
-        process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
+        if base_state.slot < compute_start_slot_at_epoch(target.epoch):
+            process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
         store.checkpoint_states[target] = base_state
 ```
 
