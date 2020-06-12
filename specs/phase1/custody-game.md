@@ -256,19 +256,26 @@ def get_custody_secrets(key: BLSSignature) -> Sequence[int]:
     return secrets
 ```
 
+### `universal_hash_function`
+
+```python
+def universal_hash_function(data_chunks: Sequence[bytes], secrets: Sequence[int]) -> int:
+    n = len(data_chunks)
+    return (
+        sum(
+            secrets[i % CUSTODY_SECRETS]**i * int.from_bytes(atom, "little") % CUSTODY_PRIME
+            for i, atom in enumerate(data_chunks)
+        ) + secrets[n % CUSTODY_SECRETS]**n
+    ) % CUSTODY_PRIME
+```
+
 ### `compute_custody_bit`
 
 ```python
 def compute_custody_bit(key: BLSSignature, data: ByteList[MAX_SHARD_BLOCK_SIZE]) -> bit:
-    secrets = get_custody_secrets(key)
     custody_atoms = get_custody_atoms(data)
-    n = len(custody_atoms)
-    uhf = (
-        sum(
-            secrets[i % CUSTODY_SECRETS]**i * int.from_bytes(atom, "little") % CUSTODY_PRIME
-            for i, atom in enumerate(custody_atoms)
-        ) + secrets[n % CUSTODY_SECRETS]**n
-    ) % CUSTODY_PRIME
+    secrets = get_custody_secrets(key)
+    uhf = universal_hash_function(custody_atoms, secrets)
     return legendre_bit(uhf + secrets[0], CUSTODY_PRIME)
 ```
 
@@ -579,7 +586,7 @@ def process_challenge_deadlines(state: BeaconState) -> None:
     for custody_chunk_challenge in state.custody_chunk_challenge_records:
         if get_current_epoch(state) > custody_chunk_challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
             slash_validator(state, custody_chunk_challenge.responder_index, custody_chunk_challenge.challenger_index)
-            index_in_records  = records.index(custody_chunk_challenge)
+            index_in_records = state.custody_chunk_challenge_records.index(custody_chunk_challenge)
             state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
 ```
 
