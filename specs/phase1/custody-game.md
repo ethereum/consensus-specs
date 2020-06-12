@@ -60,6 +60,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `CUSTODY_PRIME` | `2 ** 256 - 189` | - |
 | `CUSTODY_SECRETS` | `3` | - |
 | `BYTES_PER_CUSTODY_ATOM` | `32` | bytes |
+| `CUSTODY_PROBABILITY_EXPONENT` | `10` | - |
 
 ## Configuration
 
@@ -141,7 +142,6 @@ class CustodyChunkResponse(Container):
 
 ```python
 class CustodySlashing(Container):
-    # Attestation.custody_bits_blocks[data_index][committee.index(malefactor_index)] is the target custody bit to check.
     # (Attestation.data.shard_transition_root as ShardTransition).shard_data_roots[data_index] is the root of the data.
     data_index: uint64
     malefactor_index: ValidatorIndex
@@ -277,7 +277,8 @@ def compute_custody_bit(key: BLSSignature, data: ByteList[MAX_SHARD_BLOCK_SIZE])
     custody_atoms = get_custody_atoms(data)
     secrets = get_custody_secrets(key)
     uhf = universal_hash_function(custody_atoms, secrets)
-    return legendre_bit(uhf + secrets[0], CUSTODY_PRIME)
+    legendre_bits = [legendre_bit(uhf + secrets[0], CUSTODY_PRIME) for i in range(CUSTODY_PROBABILITY_EXPONENT)]
+    return all(legendre_bits)
 ```
 
 ### `get_randao_epoch_for_custody_period`
@@ -518,9 +519,6 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     # Verify the attestation
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
-    # TODO: custody_slashing.data is not chunked like shard blocks yet, result is lots of padding.
-    # ??? What does this mean?
-
     # TODO: can do a single combined merkle proof of data being attested.
     # Verify the shard transition is indeed attested by the attestation
     shard_transition = custody_slashing.shard_transition
@@ -545,18 +543,14 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     signing_root = compute_signing_root(epoch_to_sign, domain)
     assert bls.Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
 
-    # Get the custody bit
-    custody_bits = attestation.custody_bits_blocks[custody_slashing.data_index]
-    committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    claimed_custody_bit = custody_bits[committee.index(custody_slashing.malefactor_index)]
-    
     # Compute the custody bit
     computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_secret, custody_slashing.data)
-    
+
     # Verify the claim
-    if claimed_custody_bit != computed_custody_bit:
+    if computed_custody_bit == 1:
         # Slash the malefactor, reward the other committee members
         slash_validator(state, custody_slashing.malefactor_index)
+        committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         others_count = len(committee) - 1
         whistleblower_reward = Gwei(malefactor.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT // others_count)
         for attester_index in attesters:

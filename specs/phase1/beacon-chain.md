@@ -52,15 +52,12 @@
     - [`get_shard_committee`](#get_shard_committee)
     - [`get_light_client_committee`](#get_light_client_committee)
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [`get_indexed_attestation`](#get_indexed_attestation)
     - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
     - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
-    - [`verify_attestation_custody`](#verify_attestation_custody)
-    - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_on_time_attestation`](#is_on_time_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
@@ -77,7 +74,6 @@
         - [`verify_empty_shard_transition`](#verify_empty_shard_transition)
         - [`process_shard_transitions`](#process_shard_transitions)
       - [New default validator for deposits](#new-default-validator-for-deposits)
-      - [New Attester slashing processing](#new-attester-slashing-processing)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
     - [Phase 1 final updates](#phase-1-final-updates)
@@ -192,7 +188,6 @@ class AttestationData(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -212,8 +207,9 @@ class PendingAttestation(Container):
 
 ```python
 class IndexedAttestation(Container):
-    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
-    attestation: Attestation
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Extended `AttesterSlashing`
@@ -599,17 +595,6 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     return committee[r % len(committee)]
 ```
 
-#### `get_indexed_attestation`
-
-```python
-def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> IndexedAttestation:
-    committee = get_beacon_committee(beacon_state, attestation.data.slot, attestation.data.index)
-    return IndexedAttestation(
-        committee=committee,
-        attestation=attestation,
-    )
-```
-
 #### `get_committee_count_delta`
 
 ```python
@@ -678,65 +663,6 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 ```
 
 ### Predicates
-
-#### `verify_attestation_custody`
-
-```python
-def verify_attestation_custody(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
-    """
-    Check if ``indexed_attestation`` has valid signature against non-empty custody bits.
-    """
-    attestation = indexed_attestation.attestation
-    aggregation_bits = attestation.aggregation_bits
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    all_pubkeys = []
-    all_signing_roots = []
-    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
-        assert len(custody_bits) == len(indexed_attestation.committee)
-        for participant, aggregation_bit, custody_bit in zip(
-            indexed_attestation.committee, aggregation_bits, custody_bits
-        ):
-            if aggregation_bit:
-                all_pubkeys.append(state.validators[participant].pubkey)
-                # Note: only 2N distinct message hashes
-                attestation_wrapper = AttestationCustodyBitWrapper(
-                    attestation_data_root=hash_tree_root(attestation.data),
-                    block_index=block_index,
-                    bit=custody_bit,
-                )
-                all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
-            else:
-                assert not custody_bit
-    return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
-```
-
-#### Updated `is_valid_indexed_attestation`
-
-Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
-
-```python
-def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
-    """
-    Check if ``indexed_attestation`` has valid indices and signature.
-    """
-    # Verify aggregate signature
-    attestation = indexed_attestation.attestation
-    aggregation_bits = attestation.aggregation_bits
-    if not any(aggregation_bits) or len(aggregation_bits) != len(indexed_attestation.committee):
-        return False
-
-    if len(attestation.custody_bits_blocks) == 0:
-        # fall back on phase0 behavior if there is no shard data.
-        domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-        all_pubkeys = []
-        for participant, aggregation_bit in zip(indexed_attestation.committee, aggregation_bits):
-            if aggregation_bit:
-                all_pubkeys.append(state.validators[participant].pubkey)
-        signing_root = compute_signing_root(indexed_attestation.attestation.data, domain)
-        return bls.FastAggregateVerify(all_pubkeys, signing_root, signature=attestation.signature)
-    else:
-        return verify_attestation_custody(state, indexed_attestation)
-```
 
 #### `is_on_time_attestation`
 
@@ -855,16 +781,11 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
-    # Type 1: on-time attestations, the custody bits should be non-empty.
-    if attestation.custody_bits_blocks != []:
-        # Ensure on-time attestation
-        assert is_on_time_attestation(state, attestation)
-        # Correct data root count
-        shard = get_shard(state, attestation)
-        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
+    # Type 1: on-time attestations
+    if is_on_time_attestation(state, attestation):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
-    # Type 2: no shard transition, no custody bits
+    # Type 2: no shard transition
     else:
         # Ensure delayed attestation
         assert data.slot < compute_previous_slot(state.slot)
@@ -1085,46 +1006,6 @@ def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validato
         next_custody_secret_to_reveal=next_custody_secret_to_reveal,
         all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
     )
-```
-
-##### New Attester slashing processing
-
-```python
-def get_indices_from_committee(
-        committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE],
-        bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Sequence[ValidatorIndex]:
-    assert len(bits) == len(committee)
-    return [validator_index for i, validator_index in enumerate(committee) if bits[i]]
-```
-
-```python
-def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
-    indexed_attestation_1 = attester_slashing.attestation_1
-    indexed_attestation_2 = attester_slashing.attestation_2
-
-    assert is_slashable_attestation_data(
-        indexed_attestation_1.attestation.data,
-        indexed_attestation_2.attestation.data,
-    )
-    assert is_valid_indexed_attestation(state, indexed_attestation_1)
-    assert is_valid_indexed_attestation(state, indexed_attestation_2)
-
-    indices_1 = get_indices_from_committee(
-        indexed_attestation_1.committee,
-        indexed_attestation_1.attestation.aggregation_bits,
-    )
-    indices_2 = get_indices_from_committee(
-        indexed_attestation_2.committee,
-        indexed_attestation_2.attestation.aggregation_bits,
-    )
-
-    slashed_any = False
-    indices = set(indices_1).intersection(indices_2)
-    for index in sorted(indices):
-        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
-            slash_validator(state, index)
-            slashed_any = True
-    assert slashed_any
 ```
 
 #### Light client processing
