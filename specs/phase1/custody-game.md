@@ -30,6 +30,7 @@
   - [`legendre_bit`](#legendre_bit)
   - [`get_custody_atoms`](#get_custody_atoms)
   - [`get_custody_secrets`](#get_custody_secrets)
+  - [`universal_hash_function`](#universal_hash_function)
   - [`compute_custody_bit`](#compute_custody_bit)
   - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
   - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
