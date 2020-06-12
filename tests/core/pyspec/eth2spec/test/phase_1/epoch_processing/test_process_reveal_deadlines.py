@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.custody import (
     get_valid_custody_key_reveal,
 )
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
@@ -19,9 +19,12 @@ def run_process_challenge_deadlines(spec, state):
 def test_validator_slashed_after_reveal_deadline(spec, state):
     assert state.validators[0].slashed == 0
 
-    state.slot += ((spec.CHUNK_RESPONSE_DEADLINE + spec.EPOCHS_PER_CUSTODY_PERIOD)
-                   * spec.SLOTS_PER_EPOCH)
-    next_epoch(spec, state)
+    transition_to(spec, state, spec.get_randao_epoch_for_custody_period(0, 0) * spec.SLOTS_PER_EPOCH)
+
+    transition_to(spec, state, state.slot + ((spec.CUSTODY_RESPONSE_DEADLINE)
+                   * spec.SLOTS_PER_EPOCH))
+
+    state.validators[0].slashed = 0
 
     yield from run_process_challenge_deadlines(spec, state)
 
@@ -38,8 +41,8 @@ def test_validator_not_slashed_after_reveal(spec, state):
 
     assert state.validators[0].slashed == 0
 
-    state.slot += spec.CHUNK_RESPONSE_DEADLINE * spec.SLOTS_PER_EPOCH
-    next_epoch(spec, state)
+    transition_to(spec, state, state.slot + ((spec.CUSTODY_RESPONSE_DEADLINE)
+                   * spec.SLOTS_PER_EPOCH))
 
     yield from run_process_challenge_deadlines(spec, state)
 

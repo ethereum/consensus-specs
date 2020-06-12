@@ -101,7 +101,7 @@ codespell:
 
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	flake8  --ignore=E252,W504,W503,E128 --max-line-length=120 ./eth2spec \
+	flake8  --ignore=E252,W504,W503,E128,C901 --max-line-length=120 ./eth2spec \
 	&& cd ./eth2spec && mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase0 \
 	&& mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase1;
 

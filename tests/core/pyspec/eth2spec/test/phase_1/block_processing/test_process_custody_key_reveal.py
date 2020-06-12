@@ -87,17 +87,3 @@ def test_double_reveal(spec, state):
     _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal, False)
-
-
-@with_all_phases_except([PHASE0])
-@spec_state_test
-@always_bls
-def test_max_decrement(spec, state):
-    state.slot += spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH * 3 + 150
-    custody_key_reveal = get_valid_custody_key_reveal(spec, state)
-
-    _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
-
-    custody_key_reveal2 = get_valid_custody_key_reveal(spec, state)
-
-    yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal2)
