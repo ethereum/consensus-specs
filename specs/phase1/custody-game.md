@@ -277,7 +277,7 @@ def compute_custody_bit(key: BLSSignature, data: ByteList[MAX_SHARD_BLOCK_SIZE])
     custody_atoms = get_custody_atoms(data)
     secrets = get_custody_secrets(key)
     uhf = universal_hash_function(custody_atoms, secrets)
-    legendre_bits = [legendre_bit(uhf + secrets[0], CUSTODY_PRIME) for i in range(CUSTODY_PROBABILITY_EXPONENT)]
+    legendre_bits = [legendre_bit(uhf + secrets[0] + i, CUSTODY_PRIME) for i in range(CUSTODY_PROBABILITY_EXPONENT)]
     return all(legendre_bits)
 ```
 
