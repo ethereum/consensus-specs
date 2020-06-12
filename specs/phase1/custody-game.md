@@ -380,8 +380,8 @@ def process_chunk_challenge_response(state: BeaconState,
         root=challenge.data_root,
     )
     # Clear the challenge
-    records = state.custody_chunk_challenge_records
-    records[records.index(challenge)] = CustodyChunkChallengeRecord()
+    index_in_records = state.custody_chunk_challenge_records.index(challenge)
+    state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
