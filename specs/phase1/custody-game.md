@@ -252,7 +252,7 @@ def get_custody_secrets(key: BLSSignature) -> Sequence[int]:
     full_G2_element = bls.signature_to_G2(key)
     signature = full_G2_element[0].coeffs
     signature_bytes = b"".join(x.to_bytes(48, "little") for x in signature)
-    secrets = [int.from_bytes(signature_bytes[i:i + BYTES_PER_CUSTODY_ATOM], "little") 
+    secrets = [int.from_bytes(signature_bytes[i:i + BYTES_PER_CUSTODY_ATOM], "little")
                for i in range(0, len(signature_bytes), 32)]
     return secrets
 ```
