@@ -87,6 +87,29 @@ def test_challenge_appended(spec, state):
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
+def test_challenge_empty_element_replaced(spec, state):
+    transition_to(spec, state, state.slot + 1)
+    shard = 0
+    offset_slots = spec.get_offset_slots(state, shard)
+    shard_transition = get_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
+    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
+                                                shard_transition=shard_transition)
+
+    transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    _, _, _ = run_attestation_processing(spec, state, attestation)
+
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD)
+
+    challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition)
+
+    state.custody_chunk_challenge_records.append(spec.CustodyChunkChallengeRecord())
+
+    yield from run_chunk_challenge_processing(spec, state, challenge)
+
+
+@with_all_phases_except(['phase0'])
+@spec_state_test
 def test_duplicate_challenge(spec, state):
     transition_to(spec, state, state.slot + 1)
     shard = 0

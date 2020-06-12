@@ -193,14 +193,13 @@ class EarlyDerivedSecretReveal(Container):
 ### `replace_empty_or_append`
 
 ```python
-def replace_empty_or_append(list: List, new_element: Any) -> int:
-    for i in range(len(list)):
-        if list[i] == type(new_element)():
-            assert False
-            list[i] = new_element
+def replace_empty_or_append(l: List, new_element: Any) -> int:
+    for i in range(len(l)):
+        if l[i] == type(new_element)():
+            l[i] = new_element
             return i
-    list.append(new_element)
-    return len(list) - 1
+    l.append(new_element)
+    return len(l) - 1
 ```
 
 ### `legendre_bit`
