@@ -264,8 +264,12 @@ def compute_custody_bit(key: BLSSignature, data: ByteList[MAX_SHARD_BLOCK_SIZE])
     secrets = get_custody_secrets(key)
     custody_atoms = get_custody_atoms(data)
     n = len(custody_atoms)
-    uhf = (sum(secrets[i % CUSTODY_SECRETS]**i * int.from_bytes(atom, "little") % CUSTODY_PRIME
-           for i, atom in enumerate(custody_atoms)) + secrets[n % CUSTODY_SECRETS]**n) % CUSTODY_PRIME
+    uhf = (
+        sum(
+            secrets[i % CUSTODY_SECRETS]**i * int.from_bytes(atom, "little") % CUSTODY_PRIME
+            for i, atom in enumerate(custody_atoms)
+        ) + secrets[n % CUSTODY_SECRETS]**n
+    ) % CUSTODY_PRIME
     return legendre_bit(uhf + secrets[0], CUSTODY_PRIME)
 ```
 
