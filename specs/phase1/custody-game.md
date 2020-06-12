@@ -580,8 +580,8 @@ def process_challenge_deadlines(state: BeaconState) -> None:
     for custody_chunk_challenge in state.custody_chunk_challenge_records:
         if get_current_epoch(state) > custody_chunk_challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
             slash_validator(state, custody_chunk_challenge.responder_index, custody_chunk_challenge.challenger_index)
-            records = state.custody_chunk_challenge_records
-            records[records.index(custody_chunk_challenge)] = CustodyChunkChallengeRecord()
+            index_in_records  = records.index(custody_chunk_challenge)
+            state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
 ```
 
 ### Final updates
