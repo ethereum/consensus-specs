@@ -147,7 +147,7 @@ def test_multiple_epochs_custody(spec, state):
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_many_epochs_custody(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 20)
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 10)
     shard = 0
     offset_slots = spec.get_offset_slots(state, shard)
 

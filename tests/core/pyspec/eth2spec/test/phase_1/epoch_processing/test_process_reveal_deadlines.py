@@ -18,11 +18,13 @@ def run_process_challenge_deadlines(spec, state):
 @spec_state_test
 def test_validator_slashed_after_reveal_deadline(spec, state):
     assert state.validators[0].slashed == 0
-
     transition_to(spec, state, spec.get_randao_epoch_for_custody_period(0, 0) * spec.SLOTS_PER_EPOCH)
 
-    transition_to(spec, state, state.slot + ((spec.CUSTODY_RESPONSE_DEADLINE)
-                   * spec.SLOTS_PER_EPOCH))
+    # Need to run at least one reveal so that not all validators are slashed (otherwise spec fails to find proposers)
+    custody_key_reveal = get_valid_custody_key_reveal(spec, state, validator_index=1)
+    _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
+
+    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
     state.validators[0].slashed = 0
 
@@ -34,15 +36,14 @@ def test_validator_slashed_after_reveal_deadline(spec, state):
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_validator_not_slashed_after_reveal(spec, state):
-    state.slot += spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)
 
     _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
     assert state.validators[0].slashed == 0
 
-    transition_to(spec, state, state.slot + ((spec.CUSTODY_RESPONSE_DEADLINE)
-                   * spec.SLOTS_PER_EPOCH))
+    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
     yield from run_process_challenge_deadlines(spec, state)
 

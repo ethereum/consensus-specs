@@ -199,17 +199,20 @@ GASPRICE_ADJUSTMENT_COEFFICIENT: 8
 # Phase 1: Custody Game
 # ---------------------------------------------------------------
 
+# 1/1024 chance of custody bit 1 [customized for faster testing]
+CUSTODY_PROBABILITY_EXPONENT: 2
+
 # Time parameters
 # 2**1 (= 2) epochs
 RANDAO_PENALTY_EPOCHS: 2
-# [customized] quicker for testing
-EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
-# 2**11 (= 2,048) epochs
-EPOCHS_PER_CUSTODY_PERIOD: 8
-# 2**11 (= 2,048) epochs
-CUSTODY_PERIOD_TO_RANDAO_PADDING: 8
-# 2**14 (= 16,384) epochs
-CUSTODY_RESPONSE_DEADLINE: 32
+# 2**15 (= 32,768) epochs, ~146 days [customized for faster testing]
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 128
+# 2**14 (= 16,384) epochs ~73 days [customized for faster testing]
+EPOCHS_PER_CUSTODY_PERIOD: 64
+# 2**11 (= 2,048) epochs, ~9 days [customized for faster testing]
+CUSTODY_PERIOD_TO_RANDAO_PADDING: 16
+# 2**15 (= 32,768) epochs, ~146 days
+MAX_CHUNK_CHALLENGE_DELAY: 128
 
 # Max operations
 # 2**8 (= 256)

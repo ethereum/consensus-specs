@@ -69,12 +69,11 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `RANDAO_PENALTY_EPOCHS` | `2**1` (= 2) | epochs | 12.8 minutes |
-| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` (= 16,384) | epochs | ~73 days |
-| `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**15` (= 32,768) | epochs | ~146 days |
+| `EPOCHS_PER_CUSTODY_PERIOD` | `2**14` (= 16,384) | epochs | ~73 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CHUNK_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
-| `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
-| `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
+| `MAX_CHUNK_CHALLENGE_DELAY` | `2**15` (= 32,768) | epochs | ~146 days |
 
 ### Max operations per block
 
@@ -571,7 +570,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
 def process_reveal_deadlines(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     for index, validator in enumerate(state.validators):
-        deadline = validator.next_custody_secret_to_reveal + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
+        deadline = validator.next_custody_secret_to_reveal + 1
         if get_custody_period_for_validator(ValidatorIndex(index), epoch) > deadline:
             slash_validator(state, ValidatorIndex(index))
 ```
@@ -579,7 +578,7 @@ def process_reveal_deadlines(state: BeaconState) -> None:
 ```python
 def process_challenge_deadlines(state: BeaconState) -> None:
     for custody_chunk_challenge in state.custody_chunk_challenge_records:
-        if get_current_epoch(state) > custody_chunk_challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
+        if get_current_epoch(state) > custody_chunk_challenge.inclusion_epoch + EPOCHS_PER_CUSTODY_PERIOD:
             slash_validator(state, custody_chunk_challenge.responder_index, custody_chunk_challenge.challenger_index)
             index_in_records = state.custody_chunk_challenge_records.index(custody_chunk_challenge)
             state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
