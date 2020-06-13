@@ -342,8 +342,9 @@ def on_tick(store: Store, time: uint64) -> None:
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
-    # Make a copy of the state to avoid mutability issues
+    # Parent block must be known
     assert block.parent_root in store.block_states
+    # Make a copy of the state to avoid mutability issues
     pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert get_current_slot(store) >= block.slot
