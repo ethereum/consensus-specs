@@ -44,9 +44,11 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 
 The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
 
-- `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
-- `on_block(block)` whenever a block `block: SignedBeaconBlock` is received
-- `on_attestation(attestation)` whenever an attestation `attestation` is received
+- `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
+- `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
+- `on_attestation(store, attestation)` whenever an attestation `attestation` is received
+
+Any of the above handlers that trigger an unhandled exception (e.g. a failed assert or an out-of-range list access) are considered invalid. Invalid calls to handlers must not modify `store`.
 
 *Notes*:
 
