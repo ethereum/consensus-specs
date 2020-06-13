@@ -18,18 +18,25 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 
     if spec.fork == PHASE0:
         sample_index = indexed_attestation.attesting_indices[0]
+        latest_message = spec.LatestMessage(
+            epoch=attestation.data.target.epoch,
+            root=attestation.data.beacon_block_root,
+        )
     else:
         attesting_indices = [
             index for i, index in enumerate(indexed_attestation.committee)
             if attestation.aggregation_bits[i]
         ]
         sample_index = attesting_indices[0]
-    assert (
-        store.latest_messages[sample_index] ==
-        spec.LatestMessage(
+        latest_message = spec.LatestMessage(
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
+            shard=spec.get_shard(state, attestation),
+            shard_root=attestation.data.shard_head_root,
         )
+
+    assert (
+        store.latest_messages[sample_index] == latest_message
     )
 
 

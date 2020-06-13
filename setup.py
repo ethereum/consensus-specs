@@ -140,7 +140,7 @@ SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
     return (x - 1).bit_length()
 '''
-SUNDRY_FUNCTIONS = '''
+PHASE0_SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
 _hash = hash
 hash_cache: Dict[bytes, Bytes32] = {}
@@ -220,6 +220,13 @@ get_attesting_indices = cache_this(
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
+PHASE1_SUNDRY_FUNCTIONS = '''
+_get_start_shard = get_start_shard
+get_start_shard = cache_this(
+    lambda state, slot: (state.validators.hash_tree_root(), slot),
+    _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
+
+
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -250,9 +257,11 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ssz_objects_instantiation_spec
             + '\n\n' + functions_spec
-            + '\n' + SUNDRY_FUNCTIONS
-            + '\n'
+            + '\n' + PHASE0_SUNDRY_FUNCTIONS
     )
+    if fork == 'phase1':
+        spec += '\n' + PHASE1_SUNDRY_FUNCTIONS
+    spec += '\n'
     return spec
 
 
@@ -385,6 +394,7 @@ class PySpecCommand(Command):
                     specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
+                    specs/phase1/shard-fork-choice.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
