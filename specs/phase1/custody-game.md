@@ -71,7 +71,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` (= 16,384) | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
-| `CHUNK_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 | `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 
@@ -80,10 +79,10 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `MAX_CUSTODY_KEY_REVEALS` | `2**8` (= 256) |
-| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `1` |
+| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `2**0` (= 1) |
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `2**4` (= 16) |
-| `MAX_CUSTODY_SLASHINGS` | `1` |
+| `MAX_CUSTODY_SLASHINGS` | `2**0` (= 1) |
 
 ### Reward and penalty quotients
 
