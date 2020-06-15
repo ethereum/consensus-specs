@@ -367,6 +367,39 @@ def get_attestation_signature(state: BeaconState,
     return bls.Aggregate(signatures)
 ```
 
+### Attestation Aggregation
+
+Some validators are selected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
+
+Aggregation selection and the core of this duty are largely unchanged from Phase 0. Any additional components or changes are noted.
+
+#### Broadcast aggregate
+
+Note the timing of when to broadcast aggregates is altered in Phase 1+.
+
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) three-fourths of the way through the `slot`-that is, `SECONDS_PER_SLOT * 3 / 4` seconds after the start of `slot`.
+
+##### `AggregateAndProof`
+
+`AggregateAndProof` is unchanged other than the contained `Attestation`.
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation
+    selection_proof: BLSSignature
+```
+
+##### `SignedAggregateAndProof`
+
+`AggregateAndProof` is unchanged other than the contained `AggregateAndProof`.
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof
+    signature: BLSSignature
+```
+
 ### Light client committee
 
 In addition to the core beacon chain responsibilities, Phase 1 adds an additional role -- the Light Client Committee -- to aid in light client functionality.
