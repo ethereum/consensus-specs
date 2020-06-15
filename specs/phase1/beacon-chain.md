@@ -141,14 +141,6 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | - | - | :-: | :-: |
 | `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 mins |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
-| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
-| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
-| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
-| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | |
 
 ### Domain types
 
@@ -157,8 +149,9 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
 | `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` |
-| `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x83000000')` |
-| `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x84000000')` |
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType(0x83000000)` |
+| `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x84000000')` |
+| `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x85000000')` |
 
 ## Updated containers
 

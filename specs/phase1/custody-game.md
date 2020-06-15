@@ -15,7 +15,6 @@
   - [Time parameters](#time-parameters)
   - [Max operations per block](#max-operations-per-block)
   - [Reward and penalty quotients](#reward-and-penalty-quotients)
-  - [Signature domain types](#signature-domain-types)
 - [Data structures](#data-structures)
   - [New Beacon Chain operations](#new-beacon-chain-operations)
     - [`CustodySlashing`](#custodyslashing)
@@ -78,14 +77,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
-
-### Signature domain types
-
-The following types are defined, mapping into `DomainType` (little endian):
-
-| Name | Value |
-| - | - |
-| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
 
 ## Data structures
 
