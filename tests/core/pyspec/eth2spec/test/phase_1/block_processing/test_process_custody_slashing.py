@@ -53,21 +53,36 @@ def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, c
     yield 'post', state
 
 
-@with_all_phases_except(['phase0'])
-@spec_state_test
-def test_custody_slashing(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
-    shard = 0
-    offset_slots = spec.get_offset_slots(state, shard)
+def run_standard_custody_slashing_test(spec,
+                                       state,
+                                       shard_lateness=None,
+                                       shard=None,
+                                       validator_index=None,
+                                       block_lengths=None,
+                                       slashing_message_data=None,
+                                       correct=True,
+                                       valid=True):
+    if shard_lateness is None:
+        shard_lateness = spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, state.slot + shard_lateness)
 
-    validator_index = spec.get_beacon_committee(
-        state,
-        state.slot,
-        shard,
-    )[0]
+    if shard is None:
+        shard = 0
+    if validator_index is None:
+        validator_index = spec.get_beacon_committee(state, state.slot, shard)[0]
+
+    offset_slots = spec.get_offset_slots(state, shard)
+    if block_lengths is None:
+        block_lengths = [2**15 // 3] * len(offset_slots)
+
     custody_secret = get_custody_secret(spec, state, validator_index)
-    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(spec, state.slot,
-            [2**15 // 3] * len(offset_slots), custody_secret)
+    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(
+        spec,
+        state.slot,
+        block_lengths,
+        custody_secret,
+        slashable=correct,
+    )
 
     attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
                                                 shard_transition=shard_transition)
@@ -80,154 +95,43 @@ def test_custody_slashing(spec, state):
 
     slashing = get_valid_custody_slashing(spec, state, attestation, shard_transition,
                                           custody_secret, slashable_test_vector)
-    yield from run_custody_slashing_processing(spec, state, slashing, correct=True)
+
+    if slashing_message_data is not None:
+        slashing.message.data = slashing_message_data
+
+    yield from run_custody_slashing_processing(spec, state, slashing, valid=valid, correct=correct)
+
+
+@with_all_phases_except(['phase0'])
+@spec_state_test
+def test_custody_slashing(spec, state):
+    yield from run_standard_custody_slashing_test(spec, state)
 
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_incorrect_custody_slashing(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
-    shard = 0
-    offset_slots = spec.get_offset_slots(state, shard)
-
-    validator_index = spec.get_beacon_committee(
-        state,
-        state.slot,
-        shard,
-    )[0]
-    custody_secret = get_custody_secret(spec, state, validator_index)
-    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(spec, state.slot,
-            [2**15 // 3] * len(offset_slots), custody_secret, slashable=False)
-
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
-
-    transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
-
-    _, _, _ = run_attestation_processing(spec, state, attestation)
-
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
-
-    slashing = get_valid_custody_slashing(spec, state, attestation,
-                                          shard_transition, custody_secret, slashable_test_vector)
-
-    yield from run_custody_slashing_processing(spec, state, slashing, correct=False)
+    yield from run_standard_custody_slashing_test(spec, state, correct=False)
 
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_multiple_epochs_custody(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 3)
-    shard = 0
-    offset_slots = spec.get_offset_slots(state, shard)
-
-    validator_index = spec.get_beacon_committee(
-        state,
-        state.slot,
-        shard,
-    )[0]
-    custody_secret = get_custody_secret(spec, state, validator_index)
-    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(spec, state.slot,
-            [2**15 // 3] * len(offset_slots), custody_secret)
-
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
-
-    transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
-
-    _, _, _ = run_attestation_processing(spec, state, attestation)
-
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
-
-    slashing = get_valid_custody_slashing(spec, state, attestation, shard_transition,
-                                          custody_secret, slashable_test_vector)
-    yield from run_custody_slashing_processing(spec, state, slashing, correct=True)
+    yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3)
 
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_many_epochs_custody(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 10)
-    shard = 0
-    offset_slots = spec.get_offset_slots(state, shard)
-
-    validator_index = spec.get_beacon_committee(
-        state,
-        state.slot,
-        shard,
-    )[0]
-    custody_secret = get_custody_secret(spec, state, validator_index)
-    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(spec, state.slot,
-            [2**15 // 3] * len(offset_slots), custody_secret)
-
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
-
-    transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
-
-    _, _, _ = run_attestation_processing(spec, state, attestation)
-
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
-
-    slashing = get_valid_custody_slashing(spec, state, attestation, shard_transition,
-                                          custody_secret, slashable_test_vector)
-    yield from run_custody_slashing_processing(spec, state, slashing, correct=True)
-
-
-@with_all_phases_except(['phase0'])
-@spec_state_test
-def test_off_chain_attestation(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
-    shard = 0
-    offset_slots = spec.get_offset_slots(state, shard)
-
-    validator_index = spec.get_beacon_committee(
-        state,
-        state.slot,
-        shard,
-    )[0]
-    custody_secret = get_custody_secret(spec, state, validator_index)
-    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(spec, state.slot,
-            [2**15 // 3] * len(offset_slots), custody_secret)
-
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
-
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
-
-    slashing = get_valid_custody_slashing(spec, state, attestation, shard_transition,
-                                          custody_secret, slashable_test_vector)
-    yield from run_custody_slashing_processing(spec, state, slashing, correct=True)
+    yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 10)
 
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_invalid_custody_slashing(spec, state):
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
-    shard = 0
-    offset_slots = spec.get_offset_slots(state, shard)
-
-    validator_index = spec.get_beacon_committee(
+    yield from run_standard_custody_slashing_test(
+        spec,
         state,
-        state.slot,
-        shard,
-    )[0]
-    custody_secret = get_custody_secret(spec, state, validator_index)
-    shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(spec, state.slot,
-            [2**15 // 3] * len(offset_slots), custody_secret)
-
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
-
-    transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
-
-    _, _, _ = run_attestation_processing(spec, state, attestation)
-
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
-
-    slashing = get_valid_custody_slashing(spec, state, attestation, shard_transition,
-                                          custody_secret, slashable_test_vector)
-
-    slashing.message.data = ByteList[spec.MAX_SHARD_BLOCK_SIZE]()
-
-    yield from run_custody_slashing_processing(spec, state, slashing, valid=False)
+        slashing_message_data=ByteList[spec.MAX_SHARD_BLOCK_SIZE](),
+        valid=False,
+    )

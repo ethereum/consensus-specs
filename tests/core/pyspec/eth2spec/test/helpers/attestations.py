@@ -96,16 +96,7 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
     return attestation_data
 
 
-def convert_to_valid_on_time_attestation(spec, state, attestation, shard_transition,
-                                         signed=False):
-    if signed:
-        sign_attestation(spec, state, attestation)
-
-    return attestation
-
-
-def get_valid_on_time_attestation(spec, state, slot=None, index=None,
-                                  shard_transition=None, signed=False):
+def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_transition=None, signed=False):
     '''
     Construct on-time attestation for next slot
     '''
@@ -171,13 +162,6 @@ def get_valid_attestation(spec,
     )
     # fill the attestation with (optionally filtered) participants, and optionally sign it
     fill_aggregate_attestation(spec, state, attestation, signed=signed, filter_participant_set=filter_participant_set)
-
-    if spec.fork == PHASE1 and on_time:
-        attestation = convert_to_valid_on_time_attestation(
-            spec, state, attestation,
-            shard_transition,
-            signed=signed,
-        )
 
     return attestation
 
