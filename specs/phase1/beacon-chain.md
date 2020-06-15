@@ -149,7 +149,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
 | `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` |
-| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType(0x83000000)` |
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
 | `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x84000000')` |
 | `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x85000000')` |
 
