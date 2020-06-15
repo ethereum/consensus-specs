@@ -55,7 +55,6 @@
     - [`get_indexed_attestation`](#get_indexed_attestation)
     - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
-    - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
@@ -165,6 +164,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
+    # Shard vote
+    shard: Shard
     # Current-slot shard block root
     shard_head_root: Root
     # Shard transition root
@@ -624,16 +625,6 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
         )
 ```
 
-#### `get_shard`
-
-```python
-def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    """
-    Return the shard that the given ``attestation`` is attesting.
-    """
-    return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
-```
-
 #### `get_latest_slot_for_shard`
 
 ```python
@@ -833,12 +824,15 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
+    assert attestation.data.shard == compute_shard_from_committee_index(
+        state, attestation.data.index, attestation.data.slot)
+
     # Type 1: on-time attestations, the custody bits should be non-empty.
     if attestation.custody_bits_blocks != []:
         # Ensure on-time attestation
         assert is_on_time_attestation(state, attestation)
         # Correct data root count
-        shard = get_shard(state, attestation)
+        shard = attestation.data.shard
         assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))

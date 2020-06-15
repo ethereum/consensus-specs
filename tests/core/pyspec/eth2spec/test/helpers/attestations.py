@@ -45,7 +45,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index, shard_transition=None, on_time=True):
+def build_attestation_data(spec, state, slot, index, shard=None, shard_transition=None, on_time=True):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -77,13 +77,15 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
     )
 
     if spec.fork == PHASE1:
+        if shard is None:
+            shard = spec.compute_shard_from_committee_index(state, attestation_data.index, attestation_data.slot)
+        attestation_data.shard = shard
+
         if shard_transition is not None:
             lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
             attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
             attestation_data.shard_transition_root = shard_transition.hash_tree_root()
         else:
-            # No shard transition -> no shard block
-            shard = spec.get_shard(state, spec.Attestation(data=attestation_data))
             if on_time:
                 shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
                 lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
@@ -96,7 +98,7 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
 
 
 def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False):
-    shard = spec.get_shard(state, attestation)
+    shard = spec.compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
     offset_slots = spec.compute_offset_slots(
         spec.get_latest_slot_for_shard(state, shard),
         attestation.data.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY,

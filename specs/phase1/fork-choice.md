@@ -47,7 +47,8 @@ class LatestMessage(object):
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
-    shard = get_shard(store.block_states[beacon_block_root], attestation)
+    # TODO: separate shard chain vote
+    shard = attestation.data.shard
     for i in attesting_indices:
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
             store.latest_messages[i] = LatestMessage(
