@@ -32,4 +32,4 @@ Each preset is a key-value mapping.
 
 Presets may contain comments to describe the values.
 
-See [`mainnet.yaml`](./mainnet.yaml) for a complete example.
+See [`mainnet_phase0.yaml`](./mainnet_phase0.yaml) for a complete example.

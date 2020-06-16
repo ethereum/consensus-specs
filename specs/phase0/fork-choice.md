@@ -44,9 +44,11 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 
 The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
 
-- `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
-- `on_block(block)` whenever a block `block: SignedBeaconBlock` is received
-- `on_attestation(attestation)` whenever an attestation `attestation` is received
+- `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
+- `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
+- `on_attestation(store, attestation)` whenever an attestation `attestation` is received
+
+Any of the above handlers that trigger an unhandled exception (e.g. a failed assert or an out-of-range list access) are considered invalid. Invalid calls to handlers must not modify `store`.
 
 *Notes*:
 
@@ -342,22 +344,23 @@ def on_tick(store: Store, time: uint64) -> None:
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
-    # Make a copy of the state to avoid mutability issues
+    # Parent block must be known
     assert block.parent_root in store.block_states
+    # Make a copy of the state to avoid mutability issues
     pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert get_current_slot(store) >= block.slot
-    # Add new block to the store
-    store.blocks[hash_tree_root(block)] = block
 
     # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, hash_tree_root(block), finalized_slot) == store.finalized_checkpoint.root
+    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
 
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, signed_block, True)
+    # Add new block to the store
+    store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
 

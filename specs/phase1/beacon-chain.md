@@ -16,6 +16,7 @@
   - [Gwei values](#gwei-values)
   - [Initial values](#initial-values)
   - [Time parameters](#time-parameters)
+  - [Max operations per block](#max-operations-per-block)
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
@@ -112,12 +113,14 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 ### Shard block configs
 
-| Name | Value |
-| - | - |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | 
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | 
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | 
-| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | 
+| Name | Value | Unit |
+| - | - | - |
+| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | bytes |
+| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) |  bytes |
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | - |
+| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | - |
+| `BYTES_PER_CUSTODY_CHUNK` | `2**12` (= 4,096) | bytes |
+| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - | 
 
 ### Gwei values
 
@@ -138,20 +141,11 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | - | - | :-: | :-: |
 | `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 mins |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | bytes | - |
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | bytes | - |
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | list of slot offsets | - |
-| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | - | - |
-| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
-| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | | |
-| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | | |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | | |
-| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | | |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) | | |
-| `BYTES_PER_CUSTODY_CHUNK` | `2**12` | bytes | |
-| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - | - |
-| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | | |
+
+### Max operations per block
+| Name | Value |
+| - | - |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
 
 ### Domain types
 
