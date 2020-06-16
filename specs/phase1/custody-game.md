@@ -79,6 +79,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
 | `MAX_CUSTODY_KEY_REVEALS` | `2**8` (= 256) |
 | `MAX_EARLY_DERIVED_SECRET_REVEALS` | `2**0` (= 1) |
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |

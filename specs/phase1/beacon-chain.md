@@ -142,11 +142,6 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 mins |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
-### Max operations per block
-| Name | Value |
-| - | - |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
-
 ### Domain types
 
 | Name | Value |
