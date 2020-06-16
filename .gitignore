@@ -28,3 +28,13 @@ tests/core/pyspec/test-reports
 tests/core/pyspec/eth2spec/test_results.xml
 
 *.egg-info
+
+# flake8 config
+tox.ini
+
+# VS code files
+.vscode
+*.code-workspace
+
+# npm (for doctoc)
+package-lock.json
