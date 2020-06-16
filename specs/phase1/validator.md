@@ -95,7 +95,7 @@ Lookahead for beacon committee assignments operates in the same manner as Phase 
 
 Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a validator should:
 * Let `shard = compute_shard_from_committee_index(committe_index)`
-* Subscribe to the pubsub topic `shard_{shard}_shard_block` (attestation subnet peers should have this topic available).
+* Subscribe to the pubsub topic `shard_{shard}_block` (attestation subnet peers should have this topic available).
 
 ## Beacon chain responsibilities
 
@@ -140,22 +140,21 @@ Specifically:
 * Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s found in `attestations` to the corresponding full `ShardTransition`
 * Then for each `shard` and `winning_root` in `zip(shards, winning_roots)` set `shard_transitions[shard] = full_transitions[winning_root]`
 
-*Note*: The `state` passed into `get_shard_winning_roots` must be transitioned into the epoch of `block.slot` to run accurately due to the internal use of `get_online_validator_indices`.
+*Note*: The `state` passed into `get_shard_winning_roots` must be transitioned the slot of `block.slot` to run accurately due to the internal use of `get_online_validator_indices` and `is_on_time_attestation`.
 
 ```python
 def get_shard_winning_roots(state: BeaconState,
-                            slot: Slot,
                             attestations: Sequence[Attestation]) -> Tuple[Sequence[Shard], Sequence[Root]]:
     shards = []
     winning_roots = []
     online_indices = get_online_validator_indices(state)
-    committee_count = get_committee_count_at_slot(state, slot)
+    committee_count = get_committee_count_at_slot(state, state.slot)
     for committee_index in map(CommitteeIndex, range(committee_count)):
-        shard = compute_shard_from_committee_index(state, committee_index, slot)
-        # All attestations in the block for this committee/shard and current slot
+        shard = compute_shard_from_committee_index(state, committee_index, state.slot)
+        # All attestations in the block for this committee/shard and are "on time"
         shard_attestations = [
             attestation for attestation in attestations
-            if attestation.data.index == committee_index and attestation.data.slot == slot
+            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
         committee = get_beacon_committee(state, state.slot, committee_index)
 
@@ -259,7 +258,7 @@ A validator should create and broadcast the `attestation` to the associated atte
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
 - Let `shard_head_block` be the result of running the fork choice on the assigned shard chain during the assigned slot.
-- Let `shard_blocks` be the shard blocks in the chain starting immediately _after_ the most recent crosslink (`head_state.shard_transitions[shard].latest_block_root`) up to the `shard_head_block`.
+- Let `shard_blocks` be the shard blocks in the chain starting immediately _after_ the most recent crosslink (`head_state.shard_transitions[shard].latest_block_root`) up to the `shard_head_block` (i.e. the value of the shard fork choice store of `get_pending_shard_blocks(store, shard_store)`).
 
 *Note*: We assume that the fork choice only follows branches with valid `offset_slots` with respect to the most recent beacon state shard transition for the queried shard.
 
@@ -420,7 +419,7 @@ If the validator is in the next light client committee, they must join the `ligh
 def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex) -> bool:
     current_source_epoch = compute_committee_source_epoch(get_current_epoch(state), LIGHT_CLIENT_COMMITTEE_PERIOD)
     next_source_epoch = current_source_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD
-    next_committee = get_light_client_committee(state, next_source_epoch)
+    next_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
     return index in next_committee
 ```
 

@@ -124,7 +124,7 @@ def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[
     beacon_head_state = store.block_states[beacon_head_root]
     latest_shard_block_root = beacon_head_state.shard_states[shard].latest_block_root
 
-    shard_head_root = get_shard_head(store, shard_store)
+    shard_head_root = tget_shard_head(store, shard_store)
     root = shard_head_root
     shard_blocks = []
     while root != latest_shard_block_root:
