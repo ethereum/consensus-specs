@@ -10,7 +10,6 @@
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc)
   - [Shard block verification functions](#shard-block-verification-functions)
 - [Shard state transition](#shard-state-transition)
 - [Fraud proofs](#fraud-proofs)
@@ -23,19 +22,6 @@
 This document describes the shard transition function and fraud proofs as part of Phase 1 of Ethereum 2.0.
 
 ## Helper functions
-
-### Misc
-
-```python
-def compute_shard_transition_digest(beacon_parent_state: BeaconState,
-                                    shard_state: ShardState,
-                                    beacon_parent_root: Root,
-                                    shard_body_root: Root) -> Bytes32:
-    # TODO: use SSZ hash tree root
-    return hash(
-        hash_tree_root(shard_state) + beacon_parent_root + shard_body_root
-    )
-```
 
 ### Shard block verification functions
 
@@ -77,11 +63,10 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 ## Shard state transition
 
 ```python
-def shard_state_transition(beacon_state: BeaconState,
-                           shard_state: ShardState,
+def shard_state_transition(shard_state: ShardState,
                            block: ShardBlock) -> None:
     """
-    Update ``shard_state`` with shard ``block`` and ``beacon_state`.
+    Update ``shard_state`` with shard ``block``.
     """
     shard_state.slot = block.slot
     prev_gasprice = shard_state.gasprice
@@ -91,25 +76,18 @@ def shard_state_transition(beacon_state: BeaconState,
     else:
         latest_block_root = hash_tree_root(block)
     shard_state.latest_block_root = latest_block_root
-    shard_state.transition_digest = compute_shard_transition_digest(
-        beacon_state,
-        shard_state,
-        block.beacon_parent_root,
-        hash_tree_root(block.body),
-    )
 ```
 
 We have a pure function `get_post_shard_state` for describing the fraud proof verification and honest validator behavior.
 
 ```python
-def get_post_shard_state(beacon_state: BeaconState,
-                         shard_state: ShardState,
+def get_post_shard_state(shard_state: ShardState,
                          block: ShardBlock) -> ShardState:
     """
     A pure function that returns a new post ShardState instead of modifying the given `shard_state`.
     """
     post_state = shard_state.copy()
-    shard_state_transition(beacon_state, post_state, block)
+    shard_state_transition(post_state, block)
     return post_state
 ```
 
@@ -151,8 +129,8 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
-    shard_state = get_post_shard_state(beacon_state, shard_state, block)
-    if shard_state.transition_digest != transition.shard_states[offset_index].transition_digest:
+    shard_state = get_post_shard_state(shard_state, block)
+    if shard_state != transition.shard_states[offset_index]:
         return True
 
     return False

@@ -296,7 +296,7 @@ def get_shard_transition_fields(
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
-        shard_state = get_post_shard_state(beacon_state, shard_state, shard_block.message)
+        shard_state = get_post_shard_state(shard_state, shard_block.message)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 
@@ -419,8 +419,6 @@ If the validator is in the next light client committee, they must join the `ligh
 
 ```python
 def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex) -> bool:
-    current_source_epoch = compute_committee_source_epoch(get_current_epoch(state), LIGHT_CLIENT_COMMITTEE_PERIOD)
-    next_source_epoch = current_source_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD
     next_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
     return index in next_committee
 ```
@@ -578,13 +576,17 @@ Proposer and Attester slashings described in Phase 0 remain in place with the
 To avoid custody slashings, the attester must never sign any shard transition for which the custody bit is one. The custody bit is computed using the custody secret:
 
 ```python
-def get_custody_secret(spec, state, validator_index, epoch=None):
-    period = spec.get_custody_period_for_validator(validator_index, epoch if epoch is not None
-                                                   else spec.get_current_epoch(state))
-    epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, validator_index)
-    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
-    signing_root = spec.compute_signing_root(spec.Epoch(epoch_to_sign), domain)
-    return bls.Sign(privkeys[validator_index], signing_root)
+def get_custody_secret(state: BeaconState,
+                       validator_index: ValidatorIndex,
+                       privkey: int,
+                       epoch: Epoch=None) -> BLSSignature:
+    if epoch is None:
+        epoch = get_current_epoch(state)
+    period = get_custody_period_for_validator(validator_index, epoch)
+    epoch_to_sign = get_randao_epoch_for_custody_period(period, validator_index)
+    domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
+    signing_root = compute_signing_root(Epoch(epoch_to_sign), domain)
+    return bls.Sign(privkey, signing_root)
 ```
 
 Note that the valid custody secret is always the one for the **attestation target epoch**, not to be confused with the epoch in which the shard block was generated. While they are the same most of the time, getting this wrong at custody epoch boundaries would result in a custody slashing.
