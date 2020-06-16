@@ -165,7 +165,7 @@ def get_custody_test_vector(bytelength, offset=0):
     return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[:bytelength]
 
 
-def get_shard_transition(spec, start_slot, block_lengths):
+def get_sample_shard_transition(spec, start_slot, block_lengths):
     b = [get_block_data_merkle_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
          for x in block_lengths]
     shard_transition = spec.ShardTransition(
@@ -197,7 +197,7 @@ def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=Tr
 
 
 def get_custody_slashable_shard_transition(spec, start_slot, block_lengths, custody_secret, slashable=True):
-    shard_transition = get_shard_transition(spec, start_slot, block_lengths)
+    shard_transition = get_sample_shard_transition(spec, start_slot, block_lengths)
     slashable_test_vector = get_custody_slashable_test_vector(spec, custody_secret,
                                                               block_lengths[0], slashable=slashable)
     block_data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](slashable_test_vector)
