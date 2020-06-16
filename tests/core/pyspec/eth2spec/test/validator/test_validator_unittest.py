@@ -349,6 +349,22 @@ def test_get_attestation_signature(spec, state):
     )
 
 
+@with_all_phases
+@spec_state_test
+def test_compute_subnet_for_attestation(spec, state):
+    for committee_idx in range(spec.MAX_COMMITTEES_PER_SLOT):
+        for slot in range(state.slot, state.slot + spec.SLOTS_PER_EPOCH):
+            actual_subnet_id = spec.compute_subnet_for_attestation(state, slot, committee_idx)
+
+            slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
+            committees_since_epoch_start = spec.get_committee_count_at_slot(
+                state, slot) * slots_since_epoch_start
+            expected_subnet_id = (committees_since_epoch_start +
+                                  committee_idx) % spec.ATTESTATION_SUBNET_COUNT
+
+            assert actual_subnet_id == expected_subnet_id
+
+
 # Attestation aggregation
 
 
