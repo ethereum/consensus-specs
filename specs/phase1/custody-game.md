@@ -368,7 +368,6 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
 ```python
 def process_chunk_challenge_response(state: BeaconState,
                                      response: CustodyChunkResponse) -> None:
-
     # Get matching challenge (if any) from records
     matching_challenges = [
         record for record in state.custody_chunk_challenge_records
