@@ -16,7 +16,6 @@
   - [Gwei values](#gwei-values)
   - [Initial values](#initial-values)
   - [Time parameters](#time-parameters)
-  - [Max operations per block](#max-operations-per-block)
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
