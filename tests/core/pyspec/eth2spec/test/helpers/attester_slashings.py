@@ -1,4 +1,3 @@
-from eth2spec.test.context import PHASE1
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation, sign_indexed_attestation
 
 
@@ -41,34 +40,19 @@ def get_indexed_attestation_participants(spec, indexed_att):
     """
     Wrapper around index-attestation to return the list of participant indices, regardless of spec phase.
     """
-    if spec.fork == PHASE1:
-        return list(spec.get_indices_from_committee(
-            indexed_att.committee,
-            indexed_att.attestation.aggregation_bits,
-        ))
-    else:
-        return list(indexed_att.attesting_indices)
+    return list(indexed_att.attesting_indices)
 
 
 def set_indexed_attestation_participants(spec, indexed_att, participants):
     """
     Wrapper around index-attestation to return the list of participant indices, regardless of spec phase.
     """
-    if spec.fork == PHASE1:
-        indexed_att.attestation.aggregation_bits = [bool(i in participants) for i in indexed_att.committee]
-    else:
-        indexed_att.attesting_indices = participants
+    indexed_att.attesting_indices = participants
 
 
 def get_attestation_1_data(spec, att_slashing):
-    if spec.fork == PHASE1:
-        return att_slashing.attestation_1.attestation.data
-    else:
-        return att_slashing.attestation_1.data
+    return att_slashing.attestation_1.data
 
 
 def get_attestation_2_data(spec, att_slashing):
-    if spec.fork == PHASE1:
-        return att_slashing.attestation_2.attestation.data
-    else:
-        return att_slashing.attestation_2.data
+    return att_slashing.attestation_2.data

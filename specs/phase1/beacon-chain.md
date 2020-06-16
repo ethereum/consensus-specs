@@ -52,15 +52,12 @@
     - [`get_shard_committee`](#get_shard_committee)
     - [`get_light_client_committee`](#get_light_client_committee)
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [`get_indexed_attestation`](#get_indexed_attestation)
     - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
     - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
-    - [`verify_attestation_custody`](#verify_attestation_custody)
-    - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_on_time_attestation`](#is_on_time_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
@@ -76,7 +73,7 @@
         - [`process_crosslinks`](#process_crosslinks)
         - [`verify_empty_shard_transition`](#verify_empty_shard_transition)
         - [`process_shard_transitions`](#process_shard_transitions)
-      - [New Attester slashing processing](#new-attester-slashing-processing)
+      - [New default validator for deposits](#new-default-validator-for-deposits)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
     - [Phase 1 final updates](#phase-1-final-updates)
@@ -115,12 +112,14 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 ### Shard block configs
 
-| Name | Value |
-| - | - |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | 
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | 
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | 
-| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | 
+| Name | Value | Unit |
+| - | - | - |
+| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | bytes |
+| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) |  bytes |
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | - |
+| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | - |
+| `BYTES_PER_CUSTODY_CHUNK` | `2**12` (= 4,096) | bytes |
+| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - | 
 
 ### Gwei values
 
@@ -177,7 +176,6 @@ class AttestationData(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -197,8 +195,9 @@ class PendingAttestation(Container):
 
 ```python
 class IndexedAttestation(Container):
-    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
-    attestation: Attestation
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Extended `AttesterSlashing`
@@ -229,7 +228,9 @@ class Validator(Container):
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
     next_custody_secret_to_reveal: uint64
-    max_reveal_lateness: Epoch
+    # TODO: The max_reveal_lateness doesn't really make sense anymore.
+    # So how do we incentivise early custody key reveals now?
+    all_custody_secrets_revealed_epoch: Epoch  # to be initialized to FAR_FUTURE_EPOCH
 ```
 
 ### Extended `BeaconBlockBody`
@@ -248,9 +249,11 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
+    chunk_challenges: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGES]
+    chunk_challenge_responses: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES]
     custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
+    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
     # Shards
     shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     # Light clients
@@ -327,6 +330,8 @@ class BeaconState(Container):
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                     EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS]
+    custody_chunk_challenge_index: uint64
 ```
 
 ## New containers
@@ -384,6 +389,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
+    # The root is of ByteList[MAX_SHARD_BLOCK_SIZE]
     shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
@@ -577,17 +583,6 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     return committee[r % len(committee)]
 ```
 
-#### `get_indexed_attestation`
-
-```python
-def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> IndexedAttestation:
-    committee = get_beacon_committee(beacon_state, attestation.data.slot, attestation.data.index)
-    return IndexedAttestation(
-        committee=committee,
-        attestation=attestation,
-    )
-```
-
 #### `get_committee_count_delta`
 
 ```python
@@ -656,65 +651,6 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 ```
 
 ### Predicates
-
-#### `verify_attestation_custody`
-
-```python
-def verify_attestation_custody(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
-    """
-    Check if ``indexed_attestation`` has valid signature against non-empty custody bits.
-    """
-    attestation = indexed_attestation.attestation
-    aggregation_bits = attestation.aggregation_bits
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    all_pubkeys = []
-    all_signing_roots = []
-    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
-        assert len(custody_bits) == len(indexed_attestation.committee)
-        for participant, aggregation_bit, custody_bit in zip(
-            indexed_attestation.committee, aggregation_bits, custody_bits
-        ):
-            if aggregation_bit:
-                all_pubkeys.append(state.validators[participant].pubkey)
-                # Note: only 2N distinct message hashes
-                attestation_wrapper = AttestationCustodyBitWrapper(
-                    attestation_data_root=hash_tree_root(attestation.data),
-                    block_index=block_index,
-                    bit=custody_bit,
-                )
-                all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
-            else:
-                assert not custody_bit
-    return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
-```
-
-#### Updated `is_valid_indexed_attestation`
-
-Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
-
-```python
-def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
-    """
-    Check if ``indexed_attestation`` has valid indices and signature.
-    """
-    # Verify aggregate signature
-    attestation = indexed_attestation.attestation
-    aggregation_bits = attestation.aggregation_bits
-    if not any(aggregation_bits) or len(aggregation_bits) != len(indexed_attestation.committee):
-        return False
-
-    if len(attestation.custody_bits_blocks) == 0:
-        # fall back on phase0 behavior if there is no shard data.
-        domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-        all_pubkeys = []
-        for participant, aggregation_bit in zip(indexed_attestation.committee, aggregation_bits):
-            if aggregation_bit:
-                all_pubkeys.append(state.validators[participant].pubkey)
-        signing_root = compute_signing_root(indexed_attestation.attestation.data, domain)
-        return bls.FastAggregateVerify(all_pubkeys, signing_root, signature=attestation.signature)
-    else:
-        return verify_attestation_custody(state, indexed_attestation)
-```
 
 #### `is_on_time_attestation`
 
@@ -833,16 +769,11 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
-    # Type 1: on-time attestations, the custody bits should be non-empty.
-    if attestation.custody_bits_blocks != []:
-        # Ensure on-time attestation
-        assert is_on_time_attestation(state, attestation)
-        # Correct data root count
-        shard = get_shard(state, attestation)
-        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
+    # Type 1: on-time attestations
+    if is_on_time_attestation(state, attestation):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
-    # Type 2: no shard transition, no custody bits
+    # Type 2: no shard transition
     else:
         # Ensure delayed attestation
         assert data.slot < compute_previous_slot(state.slot)
@@ -1041,44 +972,28 @@ def process_shard_transitions(state: BeaconState,
     assert verify_empty_shard_transition(state, shard_transitions)
 ```
 
-##### New Attester slashing processing
+##### New default validator for deposits
 
 ```python
-def get_indices_from_committee(
-        committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE],
-        bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Sequence[ValidatorIndex]:
-    assert len(bits) == len(committee)
-    return [validator_index for i, validator_index in enumerate(committee) if bits[i]]
-```
-
-```python
-def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
-    indexed_attestation_1 = attester_slashing.attestation_1
-    indexed_attestation_2 = attester_slashing.attestation_2
-
-    assert is_slashable_attestation_data(
-        indexed_attestation_1.attestation.data,
-        indexed_attestation_2.attestation.data,
-    )
-    assert is_valid_indexed_attestation(state, indexed_attestation_1)
-    assert is_valid_indexed_attestation(state, indexed_attestation_2)
-
-    indices_1 = get_indices_from_committee(
-        indexed_attestation_1.committee,
-        indexed_attestation_1.attestation.aggregation_bits,
-    )
-    indices_2 = get_indices_from_committee(
-        indexed_attestation_2.committee,
-        indexed_attestation_2.attestation.aggregation_bits,
+def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
+    amount = deposit.data.amount
+    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+    next_custody_secret_to_reveal = get_custody_period_for_validator(
+        ValidatorIndex(len(state.validators)),
+        get_current_epoch(state),
     )
 
-    slashed_any = False
-    indices = set(indices_1).intersection(indices_2)
-    for index in sorted(indices):
-        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
-            slash_validator(state, index)
-            slashed_any = True
-    assert slashed_any
+    return Validator(
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
+        activation_epoch=FAR_FUTURE_EPOCH,
+        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+        effective_balance=effective_balance,
+        next_custody_secret_to_reveal=next_custody_secret_to_reveal,
+        all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
+    )
 ```
 
 #### Light client processing
@@ -1112,6 +1027,7 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_reveal_deadlines(state)
+    process_challenge_deadlines(state)
     process_slashings(state)
     process_final_updates(state)  # phase 0 final updates
     process_phase_1_final_updates(state)
@@ -1131,7 +1047,7 @@ def process_phase_1_final_updates(state: BeaconState) -> None:
 
 #### Custody game updates
 
-`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md), 
+`process_reveal_deadlines`, `process_challenge_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md), 
 
 #### Online-tracking
 
