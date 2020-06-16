@@ -373,7 +373,7 @@ def process_chunk_challenge_response(state: BeaconState,
         record for record in state.custody_chunk_challenge_records
         if record.challenge_index == response.challenge_index
     ]
-    assert len(matching_challenges) > 0
+    assert len(matching_challenges) == 1
     challenge = matching_challenges[0]
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
