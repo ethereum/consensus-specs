@@ -59,7 +59,7 @@ def bitlist_from_int(max_len, num_bits, n):
     return Bitlist[max_len](*[(n >> i) & 0b1 for i in range(num_bits)])
 
 
-def get_valid_custody_slashing(spec, state, attestation, shard_transition, invalid_custody_bit=False):
+def get_valid_custody_slashing(spec, state, attestation, shard_transition, custody_secret, data, data_index=0):
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
@@ -68,21 +68,10 @@ def get_valid_custody_slashing(spec, state, attestation, shard_transition, inval
     malefactor_index = beacon_committee[0]
     whistleblower_index = beacon_committee[-1]
 
-    epoch = spec.get_randao_epoch_for_custody_period(attestation.data.target.epoch,
-                                                     malefactor_index)
-
-    # Generate the responder key
-    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch)
-    signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
-    malefactor_key = bls.Sign(privkeys[malefactor_index], signing_root)
-    data_index = 0
-    data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](
-        get_custody_test_vector(shard_transition.shard_block_lengths[data_index]))
-
     slashing = spec.CustodySlashing(
         data_index=data_index,
         malefactor_index=malefactor_index,
-        malefactor_secret=malefactor_key,
+        malefactor_secret=custody_secret,
         whistleblower_index=whistleblower_index,
         shard_transition=shard_transition,
         attestation=attestation,
@@ -165,9 +154,9 @@ def get_valid_custody_chunk_response(spec, state, chunk_challenge, block_length,
     )
 
 
-def get_custody_test_vector(bytelength):
+def get_custody_test_vector(bytelength, offset=0):
     ints = bytelength // 4 + 1
-    return (b"".join(i.to_bytes(4, "little") for i in range(ints)))[:bytelength]
+    return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[:bytelength]
 
 
 def get_shard_transition(spec, start_slot, block_lengths):
@@ -181,3 +170,30 @@ def get_shard_transition(spec, start_slot, block_lengths):
         proposer_signature_aggregate=spec.BLSSignature(),
     )
     return shard_transition
+
+
+def get_custody_secret(spec, state, validator_index, epoch=None):
+    period = spec.get_custody_period_for_validator(validator_index, epoch if epoch is not None
+                                                   else spec.get_current_epoch(state))
+    epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, validator_index)
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
+    signing_root = spec.compute_signing_root(spec.Epoch(epoch_to_sign), domain)
+    return bls.Sign(privkeys[validator_index], signing_root)
+
+
+def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=True):
+    test_vector = get_custody_test_vector(length)
+    offset = 0
+    while spec.compute_custody_bit(custody_secret, test_vector) != slashable:
+        offset += 1
+        test_vector = test_vector = get_custody_test_vector(length, offset)
+    return test_vector
+
+
+def get_custody_slashable_shard_transition(spec, start_slot, block_lengths, custody_secret, slashable=True):
+    shard_transition = get_shard_transition(spec, start_slot, block_lengths)
+    slashable_test_vector = get_custody_slashable_test_vector(spec, custody_secret,
+                                                              block_lengths[0], slashable=slashable)
+    block_data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](slashable_test_vector)
+    shard_transition.shard_data_roots[0] = block_data.get_backing().get_left().merkle_root()
+    return shard_transition, slashable_test_vector
