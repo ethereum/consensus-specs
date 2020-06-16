@@ -1,10 +1,7 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
-from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.merkle_minimal import get_merkle_tree, get_merkle_proof
-from remerkleable.core import pack_bits_to_chunks
-from remerkleable.tree import subtree_fill_to_contents, get_depth
+from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, ByteList
+from remerkleable.tree import gindex_bit_iter
 
 BYTES_PER_CHUNK = 32
 
@@ -37,9 +34,10 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     )
 
 
-def get_valid_custody_key_reveal(spec, state, period=None):
+def get_valid_custody_key_reveal(spec, state, period=None, validator_index=None):
     current_epoch = spec.get_current_epoch(state)
-    revealer_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    revealer_index = (spec.get_active_validator_indices(state, current_epoch)[0]
+                      if validator_index is None else validator_index)
     revealer = state.validators[revealer_index]
 
     if period is None:
@@ -61,38 +59,54 @@ def bitlist_from_int(max_len, num_bits, n):
     return Bitlist[max_len](*[(n >> i) & 0b1 for i in range(num_bits)])
 
 
-def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False):
+def get_valid_custody_slashing(spec, state, attestation, shard_transition, custody_secret, data, data_index=0):
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
-        attestation.data.crosslink.shard,
+        attestation.data.index,
     )
-    responder_index = beacon_committee[0]
-    challenger_index = beacon_committee[-1]
+    malefactor_index = beacon_committee[0]
+    whistleblower_index = beacon_committee[-1]
 
-    epoch = spec.get_randao_epoch_for_custody_period(attestation.data.target.epoch,
-                                                     responder_index)
+    slashing = spec.CustodySlashing(
+        data_index=data_index,
+        malefactor_index=malefactor_index,
+        malefactor_secret=custody_secret,
+        whistleblower_index=whistleblower_index,
+        shard_transition=shard_transition,
+        attestation=attestation,
+        data=data,
+    )
+    slashing_domain = spec.get_domain(state, spec.DOMAIN_CUSTODY_BIT_SLASHING)
+    slashing_root = spec.compute_signing_root(slashing, slashing_domain)
 
-    # Generate the responder key
-    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch)
-    signing_root = spec.compute_signing_root(spec.Epoch(epoch), domain)
-    responder_key = bls.Sign(privkeys[responder_index], signing_root)
+    signed_slashing = spec.SignedCustodySlashing(
+        message=slashing,
+        signature=bls.Sign(privkeys[whistleblower_index], slashing_root)
+    )
 
-    chunk_count = spec.get_custody_chunk_count(attestation.data.crosslink)
+    return signed_slashing
 
-    chunk_bits = bitlist_from_int(spec.MAX_CUSTODY_CHUNKS, chunk_count, 0)
 
-    n = 0
-    while spec.get_chunk_bits_root(chunk_bits) == attestation.custody_bits[0] ^ invalid_custody_bit:
-        chunk_bits = bitlist_from_int(spec.MAX_CUSTODY_CHUNKS, chunk_count, n)
-        n += 1
+def get_valid_chunk_challenge(spec, state, attestation, shard_transition, data_index=None, chunk_index=None):
+    crosslink_committee = spec.get_beacon_committee(
+        state,
+        attestation.data.slot,
+        attestation.data.index
+    )
+    responder_index = crosslink_committee[0]
+    data_index = len(shard_transition.shard_block_lengths) - 1 if not data_index else data_index
 
-    return spec.CustodyBitChallenge(
+    chunk_count = (shard_transition.shard_block_lengths[data_index]
+                   + spec.BYTES_PER_CUSTODY_CHUNK - 1) // spec.BYTES_PER_CUSTODY_CHUNK
+    chunk_index = chunk_count - 1 if not chunk_index else chunk_index
+
+    return spec.CustodyChunkChallenge(
         responder_index=responder_index,
         attestation=attestation,
-        challenger_index=challenger_index,
-        responder_key=responder_key,
-        chunk_bits=chunk_bits,
+        chunk_index=chunk_index,
+        data_index=data_index,
+        shard_transition=shard_transition,
     )
 
 
@@ -102,50 +116,90 @@ def custody_chunkify(spec, x):
     return chunks
 
 
-def get_valid_custody_response(spec, state, bit_challenge, custody_data, challenge_index, invalid_chunk_bit=False):
+def build_proof(anchor, leaf_index):
+    if leaf_index <= 1:
+        return []  # Nothing to prove / invalid index
+    node = anchor
+    proof = []
+    # Walk down, top to bottom to the leaf
+    bit_iter, _ = gindex_bit_iter(leaf_index)
+    for bit in bit_iter:
+        # Always take the opposite hand for the proof.
+        # 1 = right as leaf, thus get left
+        if bit:
+            proof.append(node.get_left().merkle_root())
+            node = node.get_right()
+        else:
+            proof.append(node.get_right().merkle_root())
+            node = node.get_left()
+
+    return list(reversed(proof))
+
+
+def get_block_data_merkle_root(data_as_bytelist):
+    # To get the Merkle root of the block data, we need the Merkle root without the length Mixing
+    # The below implements this in the Remerkleable framework
+    return data_as_bytelist.get_backing().get_left().merkle_root()
+
+
+def get_valid_custody_chunk_response(spec, state, chunk_challenge, block_length, challenge_index,
+                                     invalid_chunk_data=False):
+    custody_data = get_custody_test_vector(block_length)
+    custody_data_block = ByteList[spec.MAX_SHARD_BLOCK_SIZE](custody_data)
     chunks = custody_chunkify(spec, custody_data)
 
-    chunk_index = len(chunks) - 1
-    chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
+    chunk_index = chunk_challenge.chunk_index
 
-    while chunk_bit == bit_challenge.chunk_bits[chunk_index] ^ invalid_chunk_bit:
-        chunk_index -= 1
-        chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
+    data_branch = build_proof(custody_data_block.get_backing().get_left(), chunk_index + 2**spec.CUSTODY_RESPONSE_DEPTH)
 
-    chunks_hash_tree_roots = [hash_tree_root(ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](chunk)) for chunk in chunks]
-    chunks_hash_tree_roots += [
-        hash_tree_root(ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](b"\0" * spec.BYTES_PER_CUSTODY_CHUNK))
-        for i in range(2 ** spec.ceillog2(len(chunks)) - len(chunks))]
-    data_tree = get_merkle_tree(chunks_hash_tree_roots)
-
-    data_branch = get_merkle_proof(data_tree, chunk_index)
-
-    bitlist_chunk_index = chunk_index // BYTES_PER_CHUNK
-    print(bitlist_chunk_index)
-    bitlist_chunk_nodes = pack_bits_to_chunks(bit_challenge.chunk_bits)
-    bitlist_tree = subtree_fill_to_contents(bitlist_chunk_nodes, get_depth(spec.MAX_CUSTODY_CHUNKS))
-    print(bitlist_tree)
-    bitlist_chunk_branch = None  # TODO; extract proof from merkle tree
-
-    bitlist_chunk_index = chunk_index // 256
-
-    chunk_bits_leaf = Bitvector[256](bit_challenge.chunk_bits[bitlist_chunk_index * 256:
-                                     (bitlist_chunk_index + 1) * 256])
-
-    return spec.CustodyResponse(
+    return spec.CustodyChunkResponse(
         challenge_index=challenge_index,
         chunk_index=chunk_index,
         chunk=ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](chunks[chunk_index]),
-        data_branch=data_branch,
-        chunk_bits_branch=bitlist_chunk_branch,
-        chunk_bits_leaf=chunk_bits_leaf,
+        branch=data_branch,
     )
 
 
-def get_custody_test_vector(bytelength):
-    ints = bytelength // 4
-    return b"".join(i.to_bytes(4, "little") for i in range(ints))
+def get_custody_test_vector(bytelength, offset=0):
+    ints = bytelength // 4 + 1
+    return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[:bytelength]
 
 
-def get_custody_merkle_root(data):
-    return None  # get_merkle_tree(chunkify(data))[-1][0]
+def get_sample_shard_transition(spec, start_slot, block_lengths):
+    b = [get_block_data_merkle_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
+         for x in block_lengths]
+    shard_transition = spec.ShardTransition(
+        start_slot=start_slot,
+        shard_block_lengths=block_lengths,
+        shard_data_roots=b,
+        shard_states=[spec.Root() for x in block_lengths],
+        proposer_signature_aggregate=spec.BLSSignature(),
+    )
+    return shard_transition
+
+
+def get_custody_secret(spec, state, validator_index, epoch=None):
+    period = spec.get_custody_period_for_validator(validator_index, epoch if epoch is not None
+                                                   else spec.get_current_epoch(state))
+    epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, validator_index)
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
+    signing_root = spec.compute_signing_root(spec.Epoch(epoch_to_sign), domain)
+    return bls.Sign(privkeys[validator_index], signing_root)
+
+
+def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=True):
+    test_vector = get_custody_test_vector(length)
+    offset = 0
+    while spec.compute_custody_bit(custody_secret, test_vector) != slashable:
+        offset += 1
+        test_vector = test_vector = get_custody_test_vector(length, offset)
+    return test_vector
+
+
+def get_custody_slashable_shard_transition(spec, start_slot, block_lengths, custody_secret, slashable=True):
+    shard_transition = get_sample_shard_transition(spec, start_slot, block_lengths)
+    slashable_test_vector = get_custody_slashable_test_vector(spec, custody_secret,
+                                                              block_lengths[0], slashable=slashable)
+    block_data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](slashable_test_vector)
+    shard_transition.shard_data_roots[0] = get_block_data_merkle_root(block_data)
+    return shard_transition, slashable_test_vector

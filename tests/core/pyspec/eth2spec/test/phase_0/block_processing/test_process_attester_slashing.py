@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    PHASE0, PHASE1,
+    PHASE0,
     spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
@@ -162,10 +162,7 @@ def test_same_data(spec, state):
 
     indexed_att_1 = attester_slashing.attestation_1
     att_2_data = get_attestation_2_data(spec, attester_slashing)
-    if spec.fork == PHASE1:
-        indexed_att_1.attestation.data = att_2_data
-    else:
-        indexed_att_1.data = att_2_data
+    indexed_att_1.data = att_2_data
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
