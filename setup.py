@@ -395,6 +395,7 @@ class PySpecCommand(Command):
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
                     specs/phase1/shard-fork-choice.md
+                    specs/phase1/validator.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)

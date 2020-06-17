@@ -56,6 +56,7 @@ def get_shard_transitions(spec, parent_beacon_state, shard_blocks):
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
     on_time_slot = parent_beacon_state.slot + 1
     for shard, blocks in shard_blocks.items():
+        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
         offset_slots = spec.compute_offset_slots(
             spec.get_latest_slot_for_shard(parent_beacon_state, shard),
             on_time_slot,

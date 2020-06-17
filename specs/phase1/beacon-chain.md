@@ -145,9 +145,12 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | 
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | 
-| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | 
+| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` |
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
+| `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x84000000')` |
+| `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x85000000')` |
 
 ## Updated containers
 
@@ -257,7 +260,7 @@ class BeaconBlockBody(Container):
     # Shards
     shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     # Light clients
-    light_client_signature_bitfield: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
+    light_client_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
 ```
 
@@ -376,7 +379,6 @@ class ShardBlockHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    transition_digest: Bytes32
     latest_block_root: Root
 ```
 
@@ -718,7 +720,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_light_client_signatures(state, block.body)
+    process_light_client_aggregate(state, block.body)
     process_operations(state, block.body)
 ```
 
@@ -848,6 +850,9 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
             shard_parent_root = hash_tree_root(header)
             headers.append(header)
             proposers.append(proposal_index)
+        else:
+            # Must have a stub for `shard_data_root` if empty slot
+            assert transition.shard_data_roots[i] == Root()
 
         prev_gasprice = shard_state.gasprice
 
@@ -999,21 +1004,24 @@ def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validato
 #### Light client processing
 
 ```python
-def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockBody) -> None:
+def process_light_client_aggregate(state: BeaconState, block_body: BeaconBlockBody) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
+    previous_slot = compute_previous_slot(state.slot)
+    previous_block_root = get_block_root_at_slot(state, previous_slot)
+
     total_reward = Gwei(0)
     signer_pubkeys = []
     for bit_index, participant_index in enumerate(committee):
-        if block_body.light_client_signature_bitfield[bit_index]:
+        if block_body.light_client_bits[bit_index]:
             signer_pubkeys.append(state.validators[participant_index].pubkey)
-            increase_balance(state, participant_index, get_base_reward(state, participant_index))
-            total_reward += get_base_reward(state, participant_index)
+            if not state.validators[participant_index].slashed:
+                increase_balance(state, participant_index, get_base_reward(state, participant_index))
+                total_reward += get_base_reward(state, participant_index)
 
     increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
 
-    slot = compute_previous_slot(state.slot)
-    signing_root = compute_signing_root(get_block_root_at_slot(state, slot),
-                                        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
+    signing_root = compute_signing_root(previous_block_root,
+                                        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(previous_slot)))
     assert optional_fast_aggregate_verify(signer_pubkeys, signing_root, block_body.light_client_signature)
 ```
 

@@ -15,15 +15,19 @@ from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard
 def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     state = transition_to_valid_shard_slot(spec, state)
     committee_index = spec.CommitteeIndex(0)
-    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot + target_len_offset_slot - 1)
-    assert state.shard_states[shard].slot == state.slot - 1
-    transition_to(spec, state, state.slot + target_len_offset_slot)
-    assert state.shard_states[shard].slot == state.slot - target_len_offset_slot - 1
+    init_slot = state.slot
+    shard_slot = state.slot + target_len_offset_slot - 1
+    shard = spec.compute_shard_from_committee_index(state, committee_index, shard_slot)
+    assert state.shard_states[shard].slot == init_slot - 1
 
     # Create SignedShardBlock
     body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
     shard_blocks = [shard_block]
+
+    # Transition state latest shard slot
+    transition_to(spec, state, shard_slot)
+    # Create a shard_transitions that would be included at beacon block `state.slot + target_len_offset_slot`
     shard_transitions = get_shard_transitions(
         spec,
         state,
@@ -39,6 +43,8 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     )
     next_slot(spec, state)
     pre_gasprice = state.shard_states[shard].gasprice
+
+    transition_to(spec, state, init_slot + target_len_offset_slot)
     pre_shard_state = state.shard_states[shard]
     yield from run_shard_transitions_processing(spec, state, shard_transitions, [attestation], valid=valid)
 
