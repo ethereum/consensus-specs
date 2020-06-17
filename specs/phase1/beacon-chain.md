@@ -760,6 +760,9 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
+    assert attestation.data.shard == compute_shard_from_committee_index(
+        state, attestation.data.index, attestation.data.slot)
+
     # Type 1: on-time attestations
     if is_on_time_attestation(state, attestation):
         # Correct parent block root
