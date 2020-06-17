@@ -760,13 +760,14 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
-    assert attestation.data.shard == compute_shard_from_committee_index(
-        state, attestation.data.index, attestation.data.slot)
-
     # Type 1: on-time attestations
     if is_on_time_attestation(state, attestation):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
+        # Correct shard number
+        assert attestation.data.shard == compute_shard_from_committee_index(
+            state, attestation.data.index, attestation.data.slot
+        )
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
@@ -868,7 +869,6 @@ def process_crosslink_for_shard(state: BeaconState,
     on_time_attestation_slot = compute_previous_slot(state.slot)
     committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
     online_indices = get_online_validator_indices(state)
-    shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
 
     # Loop over all shard transition roots
     shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
@@ -894,7 +894,7 @@ def process_crosslink_for_shard(state: BeaconState,
         assert shard_transition_root == hash_tree_root(shard_transition)
 
         # Apply transition
-        apply_shard_transition(state, shard, shard_transition)
+        apply_shard_transition(state, attestation.data.shard, shard_transition)
         # Apply proposer reward and cost
         beacon_proposer_index = get_beacon_proposer_index(state)
         estimated_attester_reward = sum([get_base_reward(state, attester) for attester in transition_participants])
@@ -902,11 +902,11 @@ def process_crosslink_for_shard(state: BeaconState,
         increase_balance(state, beacon_proposer_index, proposer_reward)
         states_slots_lengths = zip(
             shard_transition.shard_states,
-            get_offset_slots(state, shard),
+            get_offset_slots(state, attestation.data.shard),
             shard_transition.shard_block_lengths
         )
         for shard_state, slot, length in states_slots_lengths:
-            proposer_index = get_shard_proposer_index(state, slot, shard)
+            proposer_index = get_shard_proposer_index(state, slot, attestation.data.shard)
             decrease_balance(state, proposer_index, shard_state.gasprice * length)
 
         # Return winning transition root
@@ -931,13 +931,16 @@ def process_crosslinks(state: BeaconState,
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
-        winning_root = process_crosslink_for_shard(state, committee_index, shard_transitions[shard], shard_attestations)
-        if winning_root != Root():
-            # Mark relevant pending attestations as creating a successful crosslink
-            for pending_attestation in state.current_epoch_attestations:
-                if is_winning_attestation(state, pending_attestation, committee_index, winning_root):
-                    pending_attestation.crosslink_success = True
+        if len(shard_attestations) > 0:
+            shard = shard_attestations[0].data.shard
+            winning_root = process_crosslink_for_shard(
+                state, committee_index, shard_transitions[shard], shard_attestations
+            )
+            if winning_root != Root():
+                # Mark relevant pending attestations as creating a successful crosslink
+                for pending_attestation in state.current_epoch_attestations:
+                    if is_winning_attestation(state, pending_attestation, committee_index, winning_root):
+                        pending_attestation.crosslink_success = True
 ```
 
 ###### `verify_empty_shard_transition`
