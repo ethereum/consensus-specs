@@ -195,7 +195,7 @@ def get_best_light_client_aggregate(block: BeaconBlock,
                                     aggregates: Sequence[LightClientVote]) -> LightClientVote:
     viable_aggregates = [
         aggregate for aggregate in aggregates
-        if aggregate.slot == compute_previous_slot(block.slot) and aggregate.beacon_block_root == block.parent_root
+        if aggregate.data.slot == compute_previous_slot(block.slot) and aggregate.data.beacon_block_root == block.parent_root
     ]
 
     return max(
