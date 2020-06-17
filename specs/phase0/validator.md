@@ -172,8 +172,9 @@ def get_committee_assignment(state: BeaconState,
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
+    committee_count_per_slot = get_committee_count_per_slot(state, epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        for index in range(get_committee_count_at_slot(state, Slot(slot))):
+        for index in range(committee_count_per_slot):
             committee = get_beacon_committee(state, Slot(slot), CommitteeIndex(index))
             if validator_index in committee:
                 return committee, CommitteeIndex(index), Slot(slot)
@@ -199,8 +200,10 @@ The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahe
 
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
-* Find peers of the pubsub topic `beacon_attestation_{compute_subnet_for_attestation(state, slot, committee_index)}`.
-    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][compute_subnet_for_attestation(state, slot, committee_index)] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
+* Calculate the committees per slot for the next epoch: `committees_per_slot = get_committee_count_per_slot(state, next_epoch)`
+* Calculate the subnet index: `subnet_id = compute_subnet_for_attestation(committees_per_slot, slot, committee_index)`
+* Find peers of the pubsub topic `beacon_attestation_{subnet_id}`.
+    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][subnet_id] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
     * If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
 
 *Note*: If the validator is _not_ assigned to be an aggregator, the validator only needs sufficient number of peers on the topic to be able to publish messages. The validator does not need to _subscribe_ and listen to all messages on the topic.
@@ -425,16 +428,20 @@ def get_attestation_signature(state: BeaconState, attestation_data: AttestationD
 
 #### Broadcast attestation
 
-Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `beacon_attestation_{compute_subnet_for_attestation(state, attestation.data.slot, attestation.data.committee_index)}` pubsub topic.
+Finally, the validator broadcasts `attestation` to the associated attestation subnet, the `beacon_attestation_{subnet_id}` pubsub topic.
+
+The `subnet_id` for the `attestation` is calculated with:
+- Let `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`.
+- Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.committee_index)`.
 
 ```python
-def compute_subnet_for_attestation(state: BeaconState, slot: Slot, committee_index: CommitteeIndex) -> uint64:
+def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
     """
     slots_since_epoch_start = slot % SLOTS_PER_EPOCH
-    committees_since_epoch_start = get_committee_count_at_slot(state, slot) * slots_since_epoch_start
+    committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
     return (committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT
 ```

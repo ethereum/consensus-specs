@@ -275,18 +275,22 @@ Additional global topics are used to propagate lower frequency validator message
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `Name`s are:
 
 - `beacon_attestation_{subnet_id}` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
-    - _[REJECT]_ The attestation is for the correct subnet (i.e. `compute_subnet_for_attestation(state, attestation.data.slot, attestation.data.index) == subnet_id`).
+    - _[REJECT]_ The attestation is for the correct subnet -- i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`, where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`, which may be computed along with the committee information for the signature check.
     - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
-    - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len(get_attesting_indices(state, attestation.data, attestation.aggregation_bits)) == 1`).
+    - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
     - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
     - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
     - _[REJECT]_ The signature of `attestation` is valid.
 
 #### Attestations and Aggregation
 
-Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an attestation can be calculated with `compute_subnet_for_attestation`. `beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees in Phase 1.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`.
+The correct subnet for an attestation can be calculated with `compute_subnet_for_attestation`.
+`beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees in Phase 1.
+The subnets are rotated through with `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)` subnets per slot.
 
-Unaggregated attestations are sent to the subnet topic, `beacon_attestation_{compute_subnet_for_attestation(state, attestation.data.slot, attestation.data.index)}` as `Attestation`s.
+Unaggregated attestations are sent to the subnet topic, `beacon_attestation_{compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)}` as `Attestation`s.
+
 
 Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
