@@ -953,7 +953,7 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes
 ```python
 def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
     """
-    Return the number of committees in each ``slot`` for the given epoch.
+    Return the number of committees in each slot for the given ``epoch``.
     """
     return max(1, min(
         MAX_COMMITTEES_PER_SLOT,
