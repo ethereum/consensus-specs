@@ -1,8 +1,6 @@
-from random import Random
-
 from eth2spec.test.context import (
     spec_state_test,
-    always_bls, with_phases, with_all_phases, with_all_phases_except,
+    always_bls, with_phases, with_all_phases,
     PHASE0,
 )
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
@@ -323,7 +321,7 @@ def test_get_block_signature(spec, state):
 # Attesting
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_get_attestation_signature_phase0(spec, state):
@@ -341,28 +339,6 @@ def test_get_attestation_signature_phase0(spec, state):
         privkey=privkey,
         pubkey=pubkey,
     )
-
-
-@with_all_phases_except([PHASE0])
-@spec_state_test
-@always_bls
-def test_get_attestation_signature_phase1plus(spec, state):
-    privkey = privkeys[0]
-
-    def single_participant(comm):
-        rng = Random(1100)
-        return rng.sample(comm, 1)
-
-    attestation = get_valid_attestation(spec, state, filter_participant_set=single_participant, signed=False)
-    indexed_attestation = spec.get_indexed_attestation(state, attestation)
-
-    assert indexed_attestation.attestation.aggregation_bits.count(True) == 1
-
-    # Cannot use normal `run_get_signature_test` due to complex signature type
-    index_in_committee = indexed_attestation.attestation.aggregation_bits.index(True)
-    privkey = privkeys[indexed_attestation.committee[index_in_committee]]
-    attestation.signature = spec.get_attestation_signature(state, attestation, privkey)
-    assert spec.verify_attestation_custody(state, spec.get_indexed_attestation(state, attestation))
 
 
 # Attestation aggregation

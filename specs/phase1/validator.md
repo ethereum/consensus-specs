@@ -34,8 +34,6 @@
       - [Head shard root](#head-shard-root)
       - [Shard transition](#shard-transition)
     - [Construct attestation](#construct-attestation)
-      - [Custody bits blocks](#custody-bits-blocks)
-      - [Signature](#signature)
   - [Attestation Aggregation](#attestation-aggregation)
     - [Broadcast aggregate](#broadcast-aggregate)
       - [`AggregateAndProof`](#aggregateandproof)
@@ -216,7 +214,7 @@ Packaging into a `SignedBeaconBlock` is unchanged from Phase 0.
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch.
 
-Assignments and the core of this duty are unchanged from Phase 0. There are a few additional fields related to the assigned shard chain and custody bit.
+Assignments and the core of this duty are unchanged from Phase 0. There are a few additional fields related to the assigned shard chain.
 
 The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec]() utilizes `shard_transition_root: Root` rather than a full `ShardTransition`. For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation` are used to send the accompanying `ShardTransition` in its entirety. Note that due to the properties of SSZ `hash_tree_root`, the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
 
@@ -243,7 +241,6 @@ class FullAttestationData(Container):
 class FullAttestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: FullAttestationData
-    custody_bits_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -334,43 +331,7 @@ def get_shard_transition(beacon_state: BeaconState,
 
 Next, the validator creates `attestation`, a `FullAttestation` as defined above.
 
-`attestation.data` and `attestation.aggregation_bits` are unchanged from Phase 0.
-
-##### Custody bits blocks
-
-- Let `attestation.custody_bits_blocks` be a the value returned by `get_custody_bits_blocks()`
-
-```python
-def get_custody_bits_blocks() -> List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]:
-    pass
-```
-
-##### Signature
-
-Set `attestation.signature = attestation_signature` where `attestation_signature` is obtained from:
-
-```python
-def get_attestation_signature(state: BeaconState,
-                              attestation: Attestation,
-                              privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    attestation_data_root = hash_tree_root(attestation.data)
-    index_in_committee = attestation.aggregation_bits.index(True)
-    signatures = []
-    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
-        custody_bit = custody_bits[index_in_committee]
-        signing_root = compute_signing_root(
-            AttestationCustodyBitWrapper(
-                attestation_data_root=attestation_data_root,
-                block_index=block_index,
-                bit=custody_bit,
-            ),
-            domain,
-        )
-        signatures.append(bls.Sign(privkey, signing_root))
-
-    return bls.Aggregate(signatures)
-```
+`attestation.data`, `attestation.aggregation_bits`, and `attestation.signature` are unchanged from Phase 0. But safety/validity in signing the message is premised upon calculation of the "custody bit" [TODO].
 
 ### Attestation Aggregation
 
