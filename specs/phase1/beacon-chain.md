@@ -493,7 +493,7 @@ def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
 #### `compute_updated_gasprice`
 
 ```python
-def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint8) -> Gwei:
+def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64) -> Gwei:
     if shard_block_length > TARGET_SHARD_BLOCK_SIZE:
         delta = (prev_gasprice * (shard_block_length - TARGET_SHARD_BLOCK_SIZE)
                  // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
