@@ -901,7 +901,7 @@ def process_crosslink_for_shard(state: BeaconState,
         assert shard_transition_root == hash_tree_root(shard_transition)
 
         # Apply transition
-        apply_shard_transition(state, attestation.data.shard, shard_transition)
+        apply_shard_transition(state, attestations[0].data.shard, shard_transition)
         # Apply proposer reward and cost
         beacon_proposer_index = get_beacon_proposer_index(state)
         estimated_attester_reward = sum([get_base_reward(state, attester) for attester in transition_participants])
@@ -909,11 +909,11 @@ def process_crosslink_for_shard(state: BeaconState,
         increase_balance(state, beacon_proposer_index, proposer_reward)
         states_slots_lengths = zip(
             shard_transition.shard_states,
-            get_offset_slots(state, attestation.data.shard),
+            get_offset_slots(state, attestations[0].data.shard),
             shard_transition.shard_block_lengths
         )
         for shard_state, slot, length in states_slots_lengths:
-            proposer_index = get_shard_proposer_index(state, slot, attestation.data.shard)
+            proposer_index = get_shard_proposer_index(state, slot, attestations[0].data.shard)
             decrease_balance(state, proposer_index, shard_state.gasprice * length)
 
         # Return winning transition root
