@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from eth2spec.test.phase_0.block_processing import (
+from eth2spec.test.phase0.block_processing import (
     test_process_attestation,
     test_process_attester_slashing,
     test_process_block_header,
