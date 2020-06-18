@@ -218,9 +218,9 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-<<<<<<< HEAD
-| `MIN_GENESIS_DELAY` | `uint64(86400)` | seconds | 1 day |
+| `GENESIS_DELAY` | `uint64(172800)` | seconds | 2 days |
 | `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
 | `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
@@ -230,20 +230,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-=======
-| `GENESIS_DELAY` | `172800` | seconds | 2 days |
-| `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | 14 seconds |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
-| `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
->>>>>>> dev
 
 ### State list lengths
 
