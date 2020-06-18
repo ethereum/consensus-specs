@@ -593,8 +593,10 @@ def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: S
     """
     Return the sum of committee counts in range ``[start_slot, stop_slot)``.
     """
-    return sum(get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
-               for slot in range(start_slot, stop_slot))
+    return sum(
+        get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
+        for slot in range(start_slot, stop_slot)
+    )
 ```
 
 #### `get_start_shard`
