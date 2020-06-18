@@ -154,7 +154,7 @@ def test_filtered_block_tree(spec, state):
     attestations = []
     for i in range(spec.SLOTS_PER_EPOCH):
         slot = rogue_block.slot + i
-        for index in range(spec.get_committee_count_at_slot(non_viable_state, slot)):
+        for index in range(spec.get_committee_count_per_slot(non_viable_state, spec.compute_epoch_at_slot(slot))):
             attestation = get_valid_attestation(spec, non_viable_state, slot, index, signed=True)
             attestations.append(attestation)
 

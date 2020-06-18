@@ -593,7 +593,10 @@ def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: S
     """
     Return the sum of committee counts in range ``[start_slot, stop_slot)``.
     """
-    return sum(get_committee_count_at_slot(state, Slot(slot)) for slot in range(start_slot, stop_slot))
+    return sum(
+        get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
+        for slot in range(start_slot, stop_slot)
+    )
 ```
 
 #### `get_start_shard`
@@ -748,7 +751,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.index < get_committee_count_at_slot(state, data.slot)
+    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
     assert data.index < get_active_shard_count(state)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
@@ -928,7 +931,7 @@ def process_crosslinks(state: BeaconState,
                        shard_transitions: Sequence[ShardTransition],
                        attestations: Sequence[Attestation]) -> None:
     on_time_attestation_slot = compute_previous_slot(state.slot)
-    committee_count = get_committee_count_at_slot(state, on_time_attestation_slot)
+    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
     for committee_index in map(CommitteeIndex, range(committee_count)):
         # All attestations in the block for this committee/shard and current slot
         shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)

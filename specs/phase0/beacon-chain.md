@@ -89,7 +89,7 @@
     - [`get_active_validator_indices`](#get_active_validator_indices)
     - [`get_validator_churn_limit`](#get_validator_churn_limit)
     - [`get_seed`](#get_seed)
-    - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
+    - [`get_committee_count_per_slot`](#get_committee_count_per_slot)
     - [`get_beacon_committee`](#get_beacon_committee)
     - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
     - [`get_total_balance`](#get_total_balance)
@@ -948,14 +948,13 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes
     return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
-#### `get_committee_count_at_slot`
+#### `get_committee_count_per_slot`
 
 ```python
-def get_committee_count_at_slot(state: BeaconState, slot: Slot) -> uint64:
+def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
     """
-    Return the number of committees at ``slot``.
+    Return the number of committees in each slot for the given ``epoch``.
     """
-    epoch = compute_epoch_at_slot(slot)
     return max(1, min(
         MAX_COMMITTEES_PER_SLOT,
         len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
@@ -970,7 +969,7 @@ def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) 
     Return the beacon committee at ``slot`` for ``index``.
     """
     epoch = compute_epoch_at_slot(slot)
-    committees_per_slot = get_committee_count_at_slot(state, slot)
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
@@ -1720,7 +1719,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.index < get_committee_count_at_slot(state, data.slot)
+    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
