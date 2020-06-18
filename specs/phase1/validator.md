@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 0 -- Honest Validator
+# Ethereum 2.0 Phase 1 -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers. This is an accompanying document to [Ethereum 2.0 Phase 1](./), which describes the expected actions of a "validator" participating in the Ethereum 2.0 Phase 1 protocol.
 
@@ -99,7 +99,7 @@ Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a
 
 ## Beacon chain responsibilities
 
-A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
+A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attesting). Proposals happen infrequently, whereas attestations should be created once per epoch.
 
 These responsibilities are largely unchanged from Phase 0, but utilize the updated `SignedBeaconBlock`, `BeaconBlock`,  `BeaconBlockBody`, `Attestation`, and `AttestationData` definitions found in Phase 1. Below notes only the additional and modified behavior with respect to Phase 0.
 
@@ -109,7 +109,7 @@ Phase 1 adds light client committees and associated responsibilities, discussed 
 
 #### Preparing for a `BeaconBlock`
 
-`slot`, `proposer_index`, `parent_root` fields are unchanged.
+`slot`, `proposer_index`, `parent_root`, `state_root` fields are unchanged.
 
 #### Constructing the `BeaconBlockBody`
 
@@ -133,7 +133,7 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 
 ##### Shard transitions
 
-Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
+Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain.md#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
 
 Specifically:
 * Call `shards, winning_roots = get_shard_winning_roots(state, block.slot, block.body.attestations)`
@@ -220,7 +220,7 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 Assignments and the core of this duty are unchanged from Phase 0. There are a few additional fields related to the assigned shard chain.
 
-The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec]() utilizes `shard_transition_root: Root` rather than a full `ShardTransition`. For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation` are used to send the accompanying `ShardTransition` in its entirety. Note that due to the properties of SSZ `hash_tree_root`, the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
+The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec](./beacon-chain.md) utilizes `shard_transition_root: Root` rather than a full `ShardTransition`. For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation` are used to send the accompanying `ShardTransition` in its entirety. Note that due to the properties of SSZ `hash_tree_root`, the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
 
 #### `FullAttestationData`
 
