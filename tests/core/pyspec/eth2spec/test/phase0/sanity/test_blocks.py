@@ -21,8 +21,8 @@ from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
 
 from eth2spec.test.context import (
+    PHASE0, PHASE1,
     spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
-    PHASE1
 )
 
 
@@ -113,7 +113,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     return sign_block(spec, state, block)
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_proposal_for_genesis_slot(spec, state):
     assert state.slot == spec.GENESIS_SLOT
@@ -484,7 +484,7 @@ def test_duplicate_attester_slashing(spec, state):
 
 # All AttesterSlashing tests should be adopted for Phase 1 but helper support is not yet there
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_multiple_attester_slashings_no_overlap(spec, state):
     # Skip test if config cannot handle multiple AttesterSlashings per block
@@ -525,7 +525,7 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
     check_attester_slashing_effect(spec, pre_state, state, full_indices)
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_multiple_attester_slashings_partial_overlap(spec, state):
     # Skip test if config cannot handle multiple AttesterSlashings per block
@@ -740,7 +740,7 @@ def prepare_signed_exits(spec, state, indices):
 # exceeding the minimal-config randao mixes memory size.
 # Applies to all voluntary-exit sanity block tests.
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -768,7 +768,7 @@ def test_voluntary_exit(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_double_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -789,7 +789,7 @@ def test_double_validator_exit_same_block(spec, state):
     yield 'post', None
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_multiple_different_validator_exits_same_block(spec, state):
     validator_indices = [

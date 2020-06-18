@@ -7,13 +7,14 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.context import (
+    PHASE0,
     with_all_phases_except,
     spec_state_test,
 )
-from eth2spec.test.phase_0.block_processing.test_process_attestation import run_attestation_processing
-from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
+from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
-from eth2spec.test.phase_1.block_processing.test_process_chunk_challenge import (
+from eth2spec.test.phase1.block_processing.test_process_chunk_challenge import (
     run_chunk_challenge_processing,
 )
 
@@ -22,7 +23,7 @@ def run_process_challenge_deadlines(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_challenge_deadlines')
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_validator_slashed_after_chunk_challenge(spec, state):
     transition_to(spec, state, state.slot + 1)

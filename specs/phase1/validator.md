@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 0 -- Honest Validator
+# Ethereum 2.0 Phase 1 -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers. This is an accompanying document to [Ethereum 2.0 Phase 1](./), which describes the expected actions of a "validator" participating in the Ethereum 2.0 Phase 1 protocol.
 
@@ -94,12 +94,14 @@ Beacon chain validator assignments to beacon committees and beacon block proposa
 Lookahead for beacon committee assignments operates in the same manner as Phase 0, but committee members must join a shard block pubsub topic in addition to the committee attestation topic.
 
 Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a validator should:
-* Let `shard = compute_shard_from_committee_index(committe_index)`
+* Let `shard = compute_shard_from_committee_index(state, committee_index, slot)`
 * Subscribe to the pubsub topic `shard_{shard}_block` (attestation subnet peers should have this topic available).
+
+TODO: For now, the `state` we pass to `compute_shard_from_committee_index` is the current state without considering `len(state.shard_states)`, i.e., the result from `get_active_shard_count(state)` changes. We should fix it when we have shard count update logic.
 
 ## Beacon chain responsibilities
 
-A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
+A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attesting). Proposals happen infrequently, whereas attestations should be created once per epoch.
 
 These responsibilities are largely unchanged from Phase 0, but utilize the updated `SignedBeaconBlock`, `BeaconBlock`,  `BeaconBlockBody`, `Attestation`, and `AttestationData` definitions found in Phase 1. Below notes only the additional and modified behavior with respect to Phase 0.
 
@@ -109,7 +111,7 @@ Phase 1 adds light client committees and associated responsibilities, discussed 
 
 #### Preparing for a `BeaconBlock`
 
-`slot`, `proposer_index`, `parent_root` fields are unchanged.
+`slot`, `proposer_index`, `parent_root`, `state_root` fields are unchanged.
 
 #### Constructing the `BeaconBlockBody`
 
@@ -133,10 +135,10 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 
 ##### Shard transitions
 
-Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
+Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain.md#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
 
 Specifically:
-* Call `shards, winning_roots = get_shard_winning_roots(state, block.slot, block.body.attestations)`
+* Call `shards, winning_roots = get_shard_winning_roots(state, block.body.attestations)`
 * Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s found in `attestations` to the corresponding full `ShardTransition`
 * Then for each `shard` and `winning_root` in `zip(shards, winning_roots)` set `shard_transitions[shard] = full_transitions[winning_root]`
 
@@ -148,15 +150,16 @@ def get_shard_winning_roots(state: BeaconState,
     shards = []
     winning_roots = []
     online_indices = get_online_validator_indices(state)
-    committee_count = get_committee_count_per_slot(state, get_current_epoch(state))
+    on_time_attestation_slot = compute_previous_slot(state.slot)
+    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
     for committee_index in map(CommitteeIndex, range(committee_count)):
-        shard = compute_shard_from_committee_index(state, committee_index, state.slot)
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
         # All attestations in the block for this committee/shard and are "on time"
         shard_attestations = [
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-        committee = get_beacon_committee(state, state.slot, committee_index)
+        committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
 
         # Loop over all shard transition roots, looking for a winning root
         shard_transition_roots = set([a.data.shard_transition_root for a in shard_attestations])
@@ -184,7 +187,7 @@ def get_shard_winning_roots(state: BeaconState,
 
 ##### Light client fields
 
-First retrieve `best_aggregate` from `get_best_light_client_aggregate` where `aggregates` is a list of valid aggregated `LightClientVote`s for the previous slot.
+First retrieve `best_aggregate` from `get_best_light_client_aggregate(block, aggregates)` where `aggregates` is a list of valid aggregated `LightClientVote`s for the previous slot.
 
 Then:
 * Set `light_client_bits = best_aggregate.aggregation_bits`
@@ -195,7 +198,10 @@ def get_best_light_client_aggregate(block: BeaconBlock,
                                     aggregates: Sequence[LightClientVote]) -> LightClientVote:
     viable_aggregates = [
         aggregate for aggregate in aggregates
-        if aggregate.slot == compute_previous_slot(block.slot) and aggregate.beacon_block_root == block.parent_root
+        if (
+            aggregate.data.slot == compute_previous_slot(block.slot)
+            and aggregate.data.beacon_block_root == block.parent_root
+        )
     ]
 
     return max(
@@ -216,7 +222,7 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 Assignments and the core of this duty are unchanged from Phase 0. There are a few additional fields related to the assigned shard chain.
 
-The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec]() utilizes `shard_transition_root: Root` rather than a full `ShardTransition`. For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation` are used to send the accompanying `ShardTransition` in its entirety. Note that due to the properties of SSZ `hash_tree_root`, the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
+The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec](./beacon-chain.md) utilizes `shard_transition_root: Root` rather than a full `ShardTransition`. For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation` are used to send the accompanying `ShardTransition` in its entirety. Note that due to the properties of SSZ `hash_tree_root`, the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
 
 #### `FullAttestationData`
 

@@ -1,4 +1,5 @@
 from eth2spec.test.context import (
+    PHASE0,
     spec_state_test, spec_test,
     with_all_phases, with_phases, single_phase,
     with_custom_state,
@@ -16,7 +17,7 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
-from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 from random import Random
 
 
@@ -24,7 +25,7 @@ def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_genesis_epoch_no_attestations_no_penalties(spec, state):
     pre_state = state.copy()
@@ -37,7 +38,7 @@ def test_genesis_epoch_no_attestations_no_penalties(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_phases(['phase0'])
+@with_phases([PHASE0])
 @spec_state_test
 def test_genesis_epoch_full_attestations_no_rewards(spec, state):
     attestations = []

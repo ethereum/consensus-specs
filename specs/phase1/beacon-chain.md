@@ -54,7 +54,6 @@
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
-    - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
@@ -167,6 +166,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
+    # Shard vote
+    shard: Shard
     # Current-slot shard block root
     shard_head_root: Root
     # Shard transition root
@@ -252,7 +253,7 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    chunk_challenges: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGES]
+    chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
     chunk_challenge_responses: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES]
     custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
@@ -493,7 +494,7 @@ def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
 #### `compute_updated_gasprice`
 
 ```python
-def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint8) -> Gwei:
+def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64) -> Gwei:
     if shard_block_length > TARGET_SHARD_BLOCK_SIZE:
         delta = (prev_gasprice * (shard_block_length - TARGET_SHARD_BLOCK_SIZE)
                  // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
@@ -620,16 +621,6 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
             (state.current_epoch_start_shard + max_committees_per_epoch * active_shard_count - shard_delta)
             % active_shard_count
         )
-```
-
-#### `get_shard`
-
-```python
-def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    """
-    Return the shard that the given ``attestation`` is attesting.
-    """
-    return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
 ```
 
 #### `get_latest_slot_for_shard`
@@ -776,6 +767,9 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     if is_on_time_attestation(state, attestation):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
+        # Correct shard number
+        shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
+        assert attestation.data.shard == shard
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
@@ -880,7 +874,6 @@ def process_crosslink_for_shard(state: BeaconState,
     on_time_attestation_slot = compute_previous_slot(state.slot)
     committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
     online_indices = get_online_validator_indices(state)
-    shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
 
     # Loop over all shard transition roots
     shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
@@ -906,7 +899,7 @@ def process_crosslink_for_shard(state: BeaconState,
         assert shard_transition_root == hash_tree_root(shard_transition)
 
         # Apply transition
-        apply_shard_transition(state, shard, shard_transition)
+        apply_shard_transition(state, attestation.data.shard, shard_transition)
         # Apply proposer reward and cost
         beacon_proposer_index = get_beacon_proposer_index(state)
         estimated_attester_reward = sum([get_base_reward(state, attester) for attester in transition_participants])
@@ -914,11 +907,11 @@ def process_crosslink_for_shard(state: BeaconState,
         increase_balance(state, beacon_proposer_index, proposer_reward)
         states_slots_lengths = zip(
             shard_transition.shard_states,
-            get_offset_slots(state, shard),
+            get_offset_slots(state, attestation.data.shard),
             shard_transition.shard_block_lengths
         )
         for shard_state, slot, length in states_slots_lengths:
-            proposer_index = get_shard_proposer_index(state, slot, shard)
+            proposer_index = get_shard_proposer_index(state, slot, attestation.data.shard)
             decrease_balance(state, proposer_index, shard_state.gasprice * length)
 
         # Return winning transition root
@@ -939,12 +932,15 @@ def process_crosslinks(state: BeaconState,
     committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
     for committee_index in map(CommitteeIndex, range(committee_count)):
         # All attestations in the block for this committee/shard and current slot
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
+        # Since the attestations are validated, all `shard_attestations` satisfy `attestation.data.shard == shard`
         shard_attestations = [
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
-        winning_root = process_crosslink_for_shard(state, committee_index, shard_transitions[shard], shard_attestations)
+        winning_root = process_crosslink_for_shard(
+            state, committee_index, shard_transitions[shard], shard_attestations
+        )
         if winning_root != Root():
             # Mark relevant pending attestations as creating a successful crosslink
             for pending_attestation in state.current_epoch_attestations:

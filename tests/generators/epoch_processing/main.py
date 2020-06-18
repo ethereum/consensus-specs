@@ -2,7 +2,7 @@ from typing import Iterable
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.test.phase_0.epoch_processing import (
+from eth2spec.test.phase0.epoch_processing import (
     test_process_final_updates,
     test_process_justification_and_finalization,
     test_process_registry_updates,
