@@ -97,6 +97,8 @@ Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a
 * Let `shard = compute_shard_from_committee_index(state, committee_index, slot)`
 * Subscribe to the pubsub topic `shard_{shard}_block` (attestation subnet peers should have this topic available).
 
+TODO: For now, the `state` we pass to `compute_shard_from_committee_index` is the current state without considering `len(state.shard_states)`, i.e., the result from `get_active_shard_count(state)` changes. We should fix it when we have shard count update logic.
+
 ## Beacon chain responsibilities
 
 A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
