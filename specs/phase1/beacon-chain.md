@@ -926,20 +926,20 @@ def process_crosslinks(state: BeaconState,
     committee_count = get_committee_count_at_slot(state, on_time_attestation_slot)
     for committee_index in map(CommitteeIndex, range(committee_count)):
         # All attestations in the block for this committee/shard and current slot
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
+        # Since the attestations are validated, all `shard_attestations` satisfy `attestation.data.shard == shard`
         shard_attestations = [
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-        if len(shard_attestations) > 0:
-            shard = shard_attestations[0].data.shard
-            winning_root = process_crosslink_for_shard(
-                state, committee_index, shard_transitions[shard], shard_attestations
-            )
-            if winning_root != Root():
-                # Mark relevant pending attestations as creating a successful crosslink
-                for pending_attestation in state.current_epoch_attestations:
-                    if is_winning_attestation(state, pending_attestation, committee_index, winning_root):
-                        pending_attestation.crosslink_success = True
+        winning_root = process_crosslink_for_shard(
+            state, committee_index, shard_transitions[shard], shard_attestations
+        )
+        if winning_root != Root():
+            # Mark relevant pending attestations as creating a successful crosslink
+            for pending_attestation in state.current_epoch_attestations:
+                if is_winning_attestation(state, pending_attestation, committee_index, winning_root):
+                    pending_attestation.crosslink_success = True
 ```
 
 ###### `verify_empty_shard_transition`
