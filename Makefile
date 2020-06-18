@@ -22,7 +22,8 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phas
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
-LINTER_CONFIG_FILE = $(CURDIR)/linter.ini
+CURRENT_DIR = ${CURDIR}
+LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
         install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
