@@ -22,6 +22,8 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phas
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
+LINTER_CONFIG_FILE = $(CURDIR)/linter.ini
+
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
         install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
         compile_deposit_contract test_compile_deposit_contract check_toc
@@ -101,9 +103,8 @@ codespell:
 
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec \
-	&& cd ./eth2spec && mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase0 \
-	&& mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase1;
+	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1
 
 install_deposit_contract_tester:
 	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt
@@ -122,8 +123,6 @@ compile_deposit_contract:
 test_compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
 	python3.7 -m pytest .
-
-CURRENT_DIR = ${CURDIR}
 
 # Runs a generator, identified by param 1
 define run_generator
