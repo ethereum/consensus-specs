@@ -94,7 +94,7 @@ Beacon chain validator assignments to beacon committees and beacon block proposa
 Lookahead for beacon committee assignments operates in the same manner as Phase 0, but committee members must join a shard block pubsub topic in addition to the committee attestation topic.
 
 Specifically _after_ finding stable peers of attestation subnets (see Phase 0) a validator should:
-* Let `shard = compute_shard_from_committee_index(committe_index)`
+* Let `shard = compute_shard_from_committee_index(state, committee_index, slot)`
 * Subscribe to the pubsub topic `shard_{shard}_block` (attestation subnet peers should have this topic available).
 
 ## Beacon chain responsibilities
@@ -136,7 +136,7 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
 
 Specifically:
-* Call `shards, winning_roots = get_shard_winning_roots(state, block.slot, block.body.attestations)`
+* Call `shards, winning_roots = get_shard_winning_roots(state, block.body.attestations)`
 * Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s found in `attestations` to the corresponding full `ShardTransition`
 * Then for each `shard` and `winning_root` in `zip(shards, winning_roots)` set `shard_transitions[shard] = full_transitions[winning_root]`
 
@@ -185,7 +185,7 @@ def get_shard_winning_roots(state: BeaconState,
 
 ##### Light client fields
 
-First retrieve `best_aggregate` from `get_best_light_client_aggregate` where `aggregates` is a list of valid aggregated `LightClientVote`s for the previous slot.
+First retrieve `best_aggregate` from `get_best_light_client_aggregate(block, aggregates)` where `aggregates` is a list of valid aggregated `LightClientVote`s for the previous slot.
 
 Then:
 * Set `light_client_bits = best_aggregate.aggregation_bits`
