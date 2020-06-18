@@ -80,7 +80,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
                 exit_epoch=phase0_validator.exit_epoch,
                 withdrawable_epoch=phase0_validator.withdrawable_epoch,
                 next_custody_secret_to_reveal=get_custody_period_for_validator(ValidatorIndex(i), epoch),
-                max_reveal_lateness=0,  # TODO custody refactor. Outdated? 
+                all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
             ) for i, phase0_validator in enumerate(pre.validators)
         ),
         balances=pre.balances,
@@ -99,11 +99,11 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
         # Phase 1
+        current_epoch_start_shard=Shard(0),
         shard_states=List[ShardState, MAX_SHARDS](
             ShardState(
                 slot=pre.slot,
                 gasprice=MIN_GASPRICE,
-                transition_digest=Root(),
                 latest_block_root=Root(),
             ) for i in range(INITIAL_ACTIVE_SHARDS)
         ),

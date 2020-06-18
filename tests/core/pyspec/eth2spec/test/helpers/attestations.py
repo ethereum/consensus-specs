@@ -1,12 +1,14 @@
+from lru import LRU
+
 from typing import List
 
-from eth2spec.test.context import expect_assertion_error, PHASE0, PHASE1
-from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot, transition_to
+from eth2spec.test.context import expect_assertion_error, PHASE1
+from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
-from lru import LRU
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -78,39 +80,20 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
     if spec.fork == PHASE1:
         if shard_transition is not None:
             lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
-            attestation_data.head_shard_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
+            attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
             attestation_data.shard_transition_root = shard_transition.hash_tree_root()
         else:
-            # No shard transition
+            # No shard transition -> no shard block
             shard = spec.get_shard(state, spec.Attestation(data=attestation_data))
             if on_time:
-                temp_state = state.copy()
-                next_slot(spec, temp_state)
-                shard_transition = spec.get_shard_transition(temp_state, shard, [])
+                shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
                 lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
-                attestation_data.head_shard_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
+                attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
                 attestation_data.shard_transition_root = shard_transition.hash_tree_root()
             else:
-                attestation_data.head_shard_root = state.shard_states[shard].transition_digest
+                attestation_data.shard_head_root = state.shard_states[shard].latest_block_root
                 attestation_data.shard_transition_root = spec.Root()
     return attestation_data
-
-
-def convert_to_valid_on_time_attestation(spec, state, attestation, signed=False):
-    shard = spec.get_shard(state, attestation)
-    offset_slots = spec.compute_offset_slots(
-        spec.get_latest_slot_for_shard(state, shard),
-        attestation.data.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY,
-    )
-    for _ in offset_slots:
-        attestation.custody_bits_blocks.append(
-            Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE]([0 for _ in attestation.aggregation_bits])
-        )
-
-    if signed:
-        sign_attestation(spec, state, attestation)
-
-    return attestation
 
 
 def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_transition=None, signed=False):
@@ -133,7 +116,7 @@ def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_tran
     )
 
 
-def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False):
+def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False, shard_transition=None):
     '''
     Construct on-time attestation for next slot
     '''
@@ -142,7 +125,8 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False)
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index, signed=signed, on_time=False)
+    return get_valid_attestation(spec, state, slot=slot, index=index,
+                                 signed=signed, on_time=False, shard_transition=shard_transition)
 
 
 def get_valid_attestation(spec,
@@ -179,9 +163,6 @@ def get_valid_attestation(spec,
     # fill the attestation with (optionally filtered) participants, and optionally sign it
     fill_aggregate_attestation(spec, state, attestation, signed=signed, filter_participant_set=filter_participant_set)
 
-    if spec.fork == PHASE1 and on_time:
-        attestation = convert_to_valid_on_time_attestation(spec, state, attestation, signed)
-
     return attestation
 
 
@@ -201,40 +182,9 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
-    if spec.fork == PHASE0:
-        participants = indexed_attestation.attesting_indices
-        data = indexed_attestation.data
-        indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
-    else:
-        participants = spec.get_indices_from_committee(
-            indexed_attestation.committee,
-            indexed_attestation.attestation.aggregation_bits,
-        )
-        data = indexed_attestation.attestation.data
-        indexed_attestation.attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
-
-
-def sign_on_time_attestation(spec, state, attestation):
-    if not any(attestation.custody_bits_blocks):
-        sign_attestation(spec, state, attestation)
-        return
-
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    signatures = []
-    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
-        for participant, abit, cbit in zip(committee, attestation.aggregation_bits, custody_bits):
-            if not abit:
-                continue
-            signatures.append(get_attestation_custody_signature(
-                spec,
-                state,
-                attestation.data,
-                block_index,
-                cbit,
-                privkeys[participant]
-            ))
-
-    attestation.signature = bls.Aggregate(signatures)
+    participants = indexed_attestation.attesting_indices
+    data = indexed_attestation.data
+    indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
 
 
 def get_attestation_custody_signature(spec, state, attestation_data, block_index, bit, privkey):
@@ -251,10 +201,6 @@ def get_attestation_custody_signature(spec, state, attestation_data, block_index
 
 
 def sign_attestation(spec, state, attestation):
-    if spec.fork == PHASE1 and any(attestation.custody_bits_blocks):
-        sign_on_time_attestation(spec, state, attestation)
-        return
-
     participants = spec.get_attesting_indices(
         state,
         attestation.data,
@@ -314,7 +260,17 @@ def next_epoch_with_attestations(spec,
             committees_per_slot = spec.get_committee_count_at_slot(state, slot_to_attest)
             if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(post_state)):
                 for index in range(committees_per_slot):
-                    cur_attestation = get_valid_attestation(spec, post_state, slot_to_attest, index=index, signed=True)
+                    if spec.fork == PHASE1:
+                        shard = spec.compute_shard_from_committee_index(post_state, index, slot_to_attest)
+                        shard_transition = get_shard_transition_of_committee(spec, post_state, index)
+                        block.body.shard_transitions[shard] = shard_transition
+                    else:
+                        shard_transition = None
+
+                    cur_attestation = get_valid_attestation(
+                        spec, post_state, slot_to_attest,
+                        shard_transition=shard_transition, index=index, signed=True, on_time=True
+                    )
                     block.body.attestations.append(cur_attestation)
 
         if fill_prev_epoch:
@@ -324,9 +280,6 @@ def next_epoch_with_attestations(spec,
                 prev_attestation = get_valid_attestation(
                     spec, post_state, slot_to_attest, index=index, signed=True, on_time=False)
                 block.body.attestations.append(prev_attestation)
-
-        if spec.fork == PHASE1:
-            fill_block_shard_transitions_by_attestations(spec, post_state, block)
 
         signed_block = state_transition_and_sign_block(spec, post_state, block)
         signed_blocks.append(signed_block)
@@ -393,14 +346,3 @@ def cached_prepare_state_with_attestations(spec, state):
 
     # Put the LRU cache result into the state view, as if we transitioned the original view
     state.set_backing(_prep_state_cache_dict[key])
-
-
-def fill_block_shard_transitions_by_attestations(spec, state, block):
-    block.body.shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
-    for attestation in block.body.attestations:
-        shard = spec.get_shard(state, attestation)
-        if attestation.data.slot == state.slot:
-            temp_state = state.copy()
-            transition_to(spec, temp_state, slot=block.slot)
-            shard_transition = spec.get_shard_transition(temp_state, shard, [])
-            block.body.shard_transitions[shard] = shard_transition

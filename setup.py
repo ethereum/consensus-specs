@@ -94,7 +94,7 @@ from dataclasses import (
 
 from lru import LRU
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
@@ -118,10 +118,10 @@ from dataclasses import (
 
 from lru import LRU
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint64, uint8, bit,
-    ByteList, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
@@ -140,7 +140,7 @@ SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
     return (x - 1).bit_length()
 '''
-SUNDRY_FUNCTIONS = '''
+PHASE0_SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
 _hash = hash
 hash_cache: Dict[bytes, Bytes32] = {}
@@ -150,7 +150,10 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
     """
     A stub function return mocking Eth1Data.
     """
-    return Eth1Data(block_hash=hash_tree_root(block))
+    return Eth1Data(
+        deposit_root=block.deposit_root,
+        deposit_count=block.deposit_count,
+        block_hash=hash_tree_root(block))
 
 
 def hash(x: bytes) -> Bytes32:  # type: ignore
@@ -217,6 +220,13 @@ get_attesting_indices = cache_this(
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
+PHASE1_SUNDRY_FUNCTIONS = '''
+_get_start_shard = get_start_shard
+get_start_shard = cache_this(
+    lambda state, slot: (state.validators.hash_tree_root(), slot),
+    _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
+
+
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -247,9 +257,11 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str) -> str:
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ssz_objects_instantiation_spec
             + '\n\n' + functions_spec
-            + '\n' + SUNDRY_FUNCTIONS
-            + '\n'
+            + '\n' + PHASE0_SUNDRY_FUNCTIONS
     )
+    if fork == 'phase1':
+        spec += '\n' + PHASE1_SUNDRY_FUNCTIONS
+    spec += '\n'
     return spec
 
 
@@ -382,6 +394,8 @@ class PySpecCommand(Command):
                     specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
+                    specs/phase1/shard-fork-choice.md
+                    specs/phase1/validator.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -482,6 +496,7 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
+                 
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
@@ -502,8 +517,9 @@ setup(
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
         "py_ecc==4.0.0",
+        "milagro_bls_binding==1.3.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.13",
+        "remerkleable==0.1.16",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

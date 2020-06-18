@@ -183,6 +183,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
+| `ETH1_FOLLOW_DISTANCE` | `uint64(2**10)` (= 1,024) |
 | `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
@@ -217,6 +218,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
+<<<<<<< HEAD
 | `MIN_GENESIS_DELAY` | `uint64(86400)` | seconds | 1 day |
 | `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
@@ -228,6 +230,20 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+=======
+| `GENESIS_DELAY` | `172800` | seconds | 2 days |
+| `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | 14 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
+| `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
+| `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+>>>>>>> dev
 
 ### State list lengths
 
@@ -1139,6 +1155,8 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 - `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
 - `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
 
+Eth1 blocks must only be considered once they are at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e. `eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`). Due to this constraint, if `GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the `genesis_time` can happen before the time/state is first known. Values should be configured to avoid this case.
+
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
@@ -1149,7 +1167,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
-        genesis_time=eth1_timestamp - eth1_timestamp % MIN_GENESIS_DELAY + 2 * MIN_GENESIS_DELAY,
+        genesis_time=eth1_timestamp + GENESIS_DELAY,
         fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
@@ -1357,6 +1375,25 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
 ```
 
+
+```python
+def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> Gwei:
+    return Gwei(get_base_reward(state, attesting_index) // PROPOSER_REWARD_QUOTIENT)
+```
+
+
+```python
+def get_finality_delay(state: BeaconState) -> uint64:
+    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
+```
+
+
+```python
+def is_in_inactivity_leak(state: BeaconState) -> bool:
+    return get_finality_delay(state) > MIN_EPOCHS_TO_INACTIVITY_PENALTY
+```
+
+
 ```python
 def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     previous_epoch = get_previous_epoch(state)
@@ -1381,8 +1418,13 @@ def get_attestation_component_deltas(state: BeaconState,
     for index in get_eligible_validator_indices(state):
         if index in unslashed_attesting_indices:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-            reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
-            rewards[index] += reward_numerator // (total_balance // increment)
+            if is_in_inactivity_leak(state):
+                # Since full base reward will be canceled out by inactivity penalty deltas,
+                # optimal participation receives full base reward compensation here.
+                rewards[index] += get_base_reward(state, index)
+            else:
+                reward_numerator = get_base_reward(state, index) * (attesting_balance // increment)
+                rewards[index] += reward_numerator // (total_balance // increment)
         else:
             penalties[index] += get_base_reward(state, index)
     return rewards, penalties
@@ -1429,9 +1471,8 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
             a for a in matching_source_attestations
             if index in get_attesting_indices(state, a.data, a.aggregation_bits)
         ], key=lambda a: a.inclusion_delay)
-        proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
-        rewards[attestation.proposer_index] += proposer_reward
-        max_attester_reward = get_base_reward(state, index) - proposer_reward
+        rewards[attestation.proposer_index] += get_proposer_reward(state, index)
+        max_attester_reward = get_base_reward(state, index) - get_proposer_reward(state, index)
         rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
     # No penalties associated with inclusion delay
@@ -1445,16 +1486,16 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     Return inactivity reward/penalty deltas for each validator.
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-    finality_delay = get_previous_epoch(state) - state.finalized_checkpoint.epoch
-
-    if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
+    if is_in_inactivity_leak(state):
         matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in get_eligible_validator_indices(state):
-            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
+            # If validator is performing optimally this cancels all rewards for a neutral balance
+            base_reward = get_base_reward(state, index)
+            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * base_reward - get_proposer_reward(state, index))
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
-                penalties[index] += Gwei(effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT)
+                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
 
     # No rewards associated with inactivity penalties
     rewards = [Gwei(0) for _ in range(len(state.validators))]
@@ -1726,6 +1767,22 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
+def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
+    amount = deposit.data.amount
+    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+
+    return Validator(
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
+        activation_epoch=FAR_FUTURE_EPOCH,
+        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+        effective_balance=effective_balance,
+    )
+```
+
+```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Verify the Merkle branch
     assert is_valid_merkle_branch(
@@ -1755,15 +1812,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             return
 
         # Add validator and balance entries
-        state.validators.append(Validator(
-            pubkey=pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-            activation_epoch=FAR_FUTURE_EPOCH,
-            exit_epoch=FAR_FUTURE_EPOCH,
-            withdrawable_epoch=FAR_FUTURE_EPOCH,
-            effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE),
-        ))
+        state.validators.append(get_validator_from_deposit(state, deposit))
         state.balances.append(amount)
     else:
         # Increase balance by deposit amount

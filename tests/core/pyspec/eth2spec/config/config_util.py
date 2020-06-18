@@ -1,7 +1,8 @@
-from ruamel.yaml import YAML
+import os
 from pathlib import Path
-from os.path import join
 from typing import Dict, Any
+
+from ruamel.yaml import YAML
 
 config: Dict[str, Any] = {}
 
@@ -35,11 +36,19 @@ def load_config_file(configs_dir: str, presets_name: str) -> Dict[str, Any]:
     :param presets_name: The name of the presets. (lowercase snake_case)
     :return: Dictionary, mapping of constant-name -> constant-value
     """
-    path = Path(join(configs_dir, presets_name + '.yaml'))
-    yaml = YAML(typ='base')
-    loaded = yaml.load(path)
+    present_dir = Path(configs_dir) / presets_name
+    _, _, config_files = next(os.walk(present_dir))
+    config_files.sort()
+    loaded_config = {}
+    for config_file_name in config_files:
+        yaml = YAML(typ='base')
+        path = present_dir / config_file_name
+        loaded = yaml.load(path)
+        loaded_config.update(loaded)
+    assert loaded_config != {}
+
     out: Dict[str, Any] = dict()
-    for k, v in loaded.items():
+    for k, v in loaded_config.items():
         if isinstance(v, list):
             # Clean up integer values. YAML parser renders lists of ints as list of str
             out[k] = [int(item) if item.isdigit() else item for item in v]
