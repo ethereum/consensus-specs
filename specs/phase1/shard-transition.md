@@ -70,8 +70,9 @@ def shard_state_transition(shard_state: ShardState,
     """
     shard_state.slot = block.slot
     prev_gasprice = shard_state.gasprice
-    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
-    if len(block.body) == 0:
+    shard_block_length = len(block.body)
+    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, uint64(shard_block_length))
+    if shard_block_length == 0:
         latest_block_root = shard_state.latest_block_root
     else:
         latest_block_root = hash_tree_root(block)
