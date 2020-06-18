@@ -765,9 +765,8 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
         # Correct shard number
-        assert attestation.data.shard == compute_shard_from_committee_index(
-            state, attestation.data.index, attestation.data.slot
-        )
+        shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
+        assert attestation.data.shard == shard
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
