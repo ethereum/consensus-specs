@@ -148,15 +148,16 @@ def get_shard_winning_roots(state: BeaconState,
     shards = []
     winning_roots = []
     online_indices = get_online_validator_indices(state)
-    committee_count = get_committee_count_at_slot(state, state.slot)
+    on_time_attestation_slot = compute_previous_slot(state.slot)
+    committee_count = get_committee_count_at_slot(state, on_time_attestation_slot)
     for committee_index in map(CommitteeIndex, range(committee_count)):
-        shard = compute_shard_from_committee_index(state, committee_index, state.slot)
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
         # All attestations in the block for this committee/shard and are "on time"
         shard_attestations = [
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-        committee = get_beacon_committee(state, state.slot, committee_index)
+        committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
 
         # Loop over all shard transition roots, looking for a winning root
         shard_transition_roots = set([a.data.shard_transition_root for a in shard_attestations])
