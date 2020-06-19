@@ -65,6 +65,10 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot, valid=Tr
     for attestation in attestations:
         _, _, _ = run_attestation_processing(spec, state, attestation)
 
+    _, winning_roots = spec.get_shard_winning_roots(state, attestations)
+    assert len(winning_roots) == 1
+    assert winning_roots[0] == shard_transitions[shard].hash_tree_root()
+
     pre_gasprice = state.shard_states[shard].gasprice
     pre_shard_state = state.shard_states[shard]
     yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=valid)
@@ -134,6 +138,9 @@ def test_no_winning_root(spec, state):
     next_slot(spec, state)
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
+
+    _, winning_roots = spec.get_shard_winning_roots(state, [attestation])
+    assert len(winning_roots) == 0
 
     # No winning root, shard_transitions[shard] is empty
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
