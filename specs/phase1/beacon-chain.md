@@ -671,7 +671,7 @@ def is_winning_attestation(state: BeaconState,
     ``winning_root`` formed by ``committee_index`` committee at the current slot.
     """
     return (
-        attestation.data.slot == state.slot
+        is_on_time_attestation(state, attestation)
         and attestation.data.index == committee_index
         and attestation.data.shard_transition_root == winning_root
     )
@@ -886,9 +886,10 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            assert attestation.data.shard_head_root == shard_transition.shard_data_roots[
-                len(shard_transition.shard_data_roots) - 1
-            ]
+            if len(shard_transition.shard_data_roots) > 0:
+                # Is the `shard_transition` candidate
+                last_offset_index = len(shard_transition.shard_data_roots) - 1
+                assert attestation.data.shard_head_root == shard_transition.shard_data_roots[last_offset_index]
 
         enough_online_stake = (
             get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
