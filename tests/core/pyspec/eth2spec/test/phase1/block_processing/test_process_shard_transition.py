@@ -154,3 +154,46 @@ def test_no_winning_root(spec, state):
         assert bool(pending_attestation.crosslink_success) is False
 
     assert state.shard_states == pre_shard_states
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+def test_wrong_shard_transition_root(spec, state):
+    state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot=1)
+    init_slot = state.slot
+
+    # Create SignedShardBlock at init_slot
+    shard_block = build_shard_block(
+        spec, state, shard,
+        slot=init_slot, body=get_sample_shard_block_body(spec, is_max=True), signed=True
+    )
+
+    # Transition state to target shard slot
+    transition_to(spec, state, target_shard_slot)
+
+    # Create a shard_transitions that would be included at beacon block `target_shard_slot + 1`
+    shard_transitions = get_shard_transitions(spec, state, {shard: [shard_block]})
+    shard_transition = shard_transitions[shard]
+    wrong_shard_transition = shard_transition.copy()
+    wrong_shard_transition.shard_states[shard].gasprice = shard_transition.shard_states[shard].gasprice + 1
+    committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
+    attestation = get_valid_attestation(
+        spec, state,
+        index=committee_index,
+        shard_transition=wrong_shard_transition,
+        signed=True,
+        on_time=True,
+    )
+    attestations = [attestation]
+
+    next_slot(spec, state)
+
+    run_attestation_processing(spec, state, attestation)
+
+    # Check if winning root != shard_transition.hash_tree_root()
+    _, winning_roots = spec.get_shard_winning_roots(state, attestations)
+    assert len(winning_roots) == 1
+    shard_transition = shard_transitions[shard]
+    assert winning_roots[0] != shard_transition.hash_tree_root()
+
+    yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=False)
