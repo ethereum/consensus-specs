@@ -3,7 +3,12 @@ from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
 )
-from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
+from eth2spec.test.helpers.attestations import (
+    get_valid_attestation,
+    get_valid_on_time_attestation,
+    run_attestation_processing,
+    sign_aggregate_attestation,
+)
 from eth2spec.test.helpers.shard_transitions import run_shard_transitions_processing
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
@@ -19,6 +24,7 @@ def get_initial_env(spec, state, target_len_offset_slot):
     committee_index = spec.CommitteeIndex(0)
     target_shard_slot = state.slot + target_len_offset_slot - 1
     shard = spec.compute_shard_from_committee_index(state, committee_index, target_shard_slot)
+    assert state.shard_states[shard].slot == state.slot - 1
     return state, shard, target_shard_slot
 
 
@@ -29,7 +35,7 @@ def get_attestations_and_shard_transitions(spec, state, shard_block_dict):
             spec, state,
             index=get_committee_index_of_shard(spec, state, state.slot, shard),
             shard_transition=shard_transition,
-            signed=False,
+            signed=True,
         )
         for shard, shard_transition in enumerate(shard_transitions)
         if shard_transition != spec.ShardTransition()
@@ -37,10 +43,9 @@ def get_attestations_and_shard_transitions(spec, state, shard_block_dict):
     return attestations, shard_transitions
 
 
-def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
+def run_successful_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot)
     init_slot = state.slot
-    assert state.shard_states[shard].slot == init_slot - 1
 
     # Create SignedShardBlock at init_slot
     shard_block = build_shard_block(
@@ -56,36 +61,86 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     attestations, shard_transitions = get_attestations_and_shard_transitions(spec, state, shard_block_dict)
 
     next_slot(spec, state)
-    pre_gasprice = state.shard_states[shard].gasprice
 
+    for attestation in attestations:
+        _, _, _ = run_attestation_processing(spec, state, attestation)
+
+    pre_gasprice = state.shard_states[shard].gasprice
     pre_shard_state = state.shard_states[shard]
     yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=valid)
 
     if valid:
         shard_state = state.shard_states[shard]
+        shard_transition = shard_transitions[shard]
         assert shard_state != pre_shard_state
-        assert shard_state == shard_transitions[shard].shard_states[len(shard_transitions[shard].shard_states) - 1]
+        assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
         assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
         if target_len_offset_slot == 1:
             assert shard_state.gasprice > pre_gasprice
+
+        for pending_attestation in state.current_epoch_attestations:
+            assert bool(pending_attestation.crosslink_success) is True
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_basic_crosslinks(spec, state):
     # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    yield from run_basic_crosslink_tests(spec, state, target_len_offset_slot=1, valid=True)
+    yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=1)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_multiple_offset_slots(spec, state):
     # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    yield from run_basic_crosslink_tests(spec, state, target_len_offset_slot=2, valid=True)
+    yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=2)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_no_winning_root(spec, state):
     # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    yield from run_basic_crosslink_tests(spec, state, target_len_offset_slot=1, valid=True)
+    state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot=1)
+    init_slot = state.slot
+
+    # Create SignedShardBlock at init_slot
+    shard_block = build_shard_block(
+        spec, state, shard,
+        slot=init_slot, body=get_sample_shard_block_body(spec, is_max=True), signed=True
+    )
+
+    # Transition state to target shard slot
+    transition_to(spec, state, target_shard_slot)
+
+    # Create a shard_transitions that would be included at beacon block `target_shard_slot + 1`
+    shard_transitions = get_shard_transitions(spec, state, {shard: [shard_block]})
+    shard_transition = shard_transitions[shard]
+    committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
+    attestation = get_valid_attestation(
+        spec, state,
+        index=committee_index,
+        shard_transition=shard_transition,
+        signed=True,
+        on_time=True,
+    )
+
+    # Decrease attested participants to 1/3 committee
+    beacon_committee = spec.get_beacon_committee(state, state.slot, committee_index)
+    attested_participants = beacon_committee[:len(beacon_committee) // 3]
+    for i in range(len(beacon_committee)):
+        attestation.aggregation_bits[i] = beacon_committee[i] in attested_participants
+    attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, attested_participants)
+
+    next_slot(spec, state)
+
+    _, _, _ = run_attestation_processing(spec, state, attestation)
+
+    # No winning root, shard_transitions[shard] is empty
+    shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
+    pre_shard_state = state.shard_states[shard]
+    yield from run_shard_transitions_processing(spec, state, shard_transitions, [attestation])
+
+    for pending_attestation in state.current_epoch_attestations:
+        assert bool(pending_attestation.crosslink_success) is False
+
+    assert state.shard_states[shard] == pre_shard_state
