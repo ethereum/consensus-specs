@@ -43,7 +43,7 @@ def get_attestations_and_shard_transitions(spec, state, shard_block_dict):
     return attestations, shard_transitions
 
 
-def run_successful_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
+def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot)
     init_slot = state.slot
 
@@ -72,21 +72,20 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot, valid=Tr
 
     pre_gasprice = state.shard_states[shard].gasprice
     pre_shard_states = state.shard_states.copy()
-    yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=valid)
+    yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations)
 
-    if valid:
-        for index, shard_state in enumerate(state.shard_states):
-            if index == shard:
-                assert shard_state != pre_shard_states[index]
-                assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
-                assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
-                if target_len_offset_slot == 1:
-                    assert shard_state.gasprice > pre_gasprice
-            else:
-                assert shard_state == pre_shard_states[index]
+    for index, shard_state in enumerate(state.shard_states):
+        if index == shard:
+            assert shard_state != pre_shard_states[index]
+            assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
+            assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
+            if target_len_offset_slot == 1:
+                assert shard_state.gasprice > pre_gasprice
+        else:
+            assert shard_state == pre_shard_states[index]
 
-        for pending_attestation in state.current_epoch_attestations:
-            assert bool(pending_attestation.crosslink_success) is True
+    for pending_attestation in state.current_epoch_attestations:
+        assert bool(pending_attestation.crosslink_success) is True
 
 
 @with_all_phases_except([PHASE0])
