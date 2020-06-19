@@ -30,7 +30,7 @@ def build_shard_block(spec,
         slot = shard_parent_state.slot + 1
 
     if body is None:
-        body = get_sample_shard_block_body()
+        body = get_sample_shard_block_body(spec)
 
     beacon_state, beacon_parent_root = get_state_and_beacon_parent_root_at_slot(spec, beacon_state, slot)
     proposer_index = spec.get_shard_proposer_index(beacon_state, slot, shard)
@@ -83,5 +83,6 @@ def get_committee_index_of_shard(spec, state, slot, shard):  # Optional[Committe
     return None
 
 
-def get_sample_shard_block_body():
-    return b'\x56' * 128
+def get_sample_shard_block_body(spec, is_max=False):
+    size = spec.MAX_SHARD_BLOCK_SIZE if is_max else 128
+    return b'\x56' * size
