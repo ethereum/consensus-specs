@@ -886,10 +886,11 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            if len(shard_transition.shard_data_roots) > 0:
+            if len(shard_transition.shard_states) > 0:
                 # Is the `shard_transition` candidate
-                last_offset_index = len(shard_transition.shard_data_roots) - 1
-                assert attestation.data.shard_head_root == shard_transition.shard_data_roots[last_offset_index]
+                last_offset_index = len(shard_transition.shard_states) - 1
+                shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+                assert attestation.data.shard_head_root == shard_head_root
 
         enough_online_stake = (
             get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
