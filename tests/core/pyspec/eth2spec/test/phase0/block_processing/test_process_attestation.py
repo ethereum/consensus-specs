@@ -139,7 +139,7 @@ def test_wrong_index_for_committee_signature(spec, state):
 @spec_state_test
 @never_bls
 def test_wrong_index_for_slot(spec, state):
-    while spec.get_committee_count_at_slot(state, state.slot) >= spec.MAX_COMMITTEES_PER_SLOT:
+    while spec.get_committee_count_per_slot(state, spec.get_current_epoch(state)) >= spec.MAX_COMMITTEES_PER_SLOT:
         state.validators = state.validators[:len(state.validators) // 2]
         state.balances = state.balances[:len(state.balances) // 2]
 

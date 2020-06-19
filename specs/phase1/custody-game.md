@@ -302,7 +302,7 @@ def process_custody_game_operations(state: BeaconState, body: BeaconBlockBody) -
             fn(state, operation)
 
     for_ops(body.chunk_challenges, process_chunk_challenge)
-    for_ops(body.chunk_challenge_responses, process_chunk_challenge)
+    for_ops(body.chunk_challenge_responses, process_chunk_challenge_response)
     for_ops(body.custody_key_reveals, process_custody_key_reveal)
     for_ops(body.early_derived_secret_reveals, process_early_derived_secret_reveal)
     for_ops(body.custody_slashings, process_custody_slashing)

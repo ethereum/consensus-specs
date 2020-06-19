@@ -70,8 +70,9 @@ def shard_state_transition(shard_state: ShardState,
     """
     shard_state.slot = block.slot
     prev_gasprice = shard_state.gasprice
-    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, len(block.body))
-    if len(block.body) == 0:
+    shard_block_length = len(block.body)
+    shard_state.gasprice = compute_updated_gasprice(prev_gasprice, uint64(shard_block_length))
+    if shard_block_length == 0:
         latest_block_root = shard_state.latest_block_root
     else:
         latest_block_root = hash_tree_root(block)
@@ -123,8 +124,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     # 2. Check if the shard state transition result is wrong between
     # `transition.shard_states[offset_index - 1]` to `transition.shard_states[offset_index]`.
     if offset_index == 0:
-        shard = get_shard(beacon_state, attestation)
-        shard_states = beacon_parent_block.body.shard_transitions[shard].shard_states
+        shard_states = beacon_parent_block.body.shard_transitions[attestation.data.shard].shard_states
         shard_state = shard_states[len(shard_states) - 1]
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.

@@ -189,10 +189,10 @@ get_base_reward = cache_this(
     lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
     _get_base_reward, lru_size=2048)
 
-_get_committee_count_at_slot = get_committee_count_at_slot
-get_committee_count_at_slot = cache_this(
+_get_committee_count_per_slot = get_committee_count_per_slot
+get_committee_count_per_slot = cache_this(
     lambda state, epoch: (state.validators.hash_tree_root(), epoch),
-    _get_committee_count_at_slot, lru_size=SLOTS_PER_EPOCH * 3)
+    _get_committee_count_per_slot, lru_size=SLOTS_PER_EPOCH * 3)
 
 _get_active_validator_indices = get_active_validator_indices
 get_active_validator_indices = cache_this(

@@ -1,5 +1,5 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import (
+from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import (
     run_epoch_processing_with
 )
 from eth2spec.test.helpers.state import transition_to
@@ -27,8 +27,8 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     remaining_balance = int(total_balance * 2 // 3)  # can become negative
 
     start_slot = spec.compute_start_slot_at_epoch(epoch)
+    committees_per_slot = spec.get_committee_count_per_slot(state, epoch)
     for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
-        committees_per_slot = spec.get_committee_count_at_slot(state, slot)
         for index in range(committees_per_slot):
             # Check if we already have had sufficient balance. (and undone if we don't want it).
             # If so, do not create more attestations. (we do not have empty pending attestations normally anyway)

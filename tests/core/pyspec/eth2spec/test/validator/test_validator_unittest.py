@@ -26,7 +26,7 @@ def run_get_committee_assignment(spec, state, epoch, validator_index, valid=True
         committee, committee_index, slot = assignment
         assert spec.compute_epoch_at_slot(slot) == epoch
         assert committee == spec.get_beacon_committee(state, slot, committee_index)
-        assert committee_index < spec.get_committee_count_at_slot(state, slot)
+        assert committee_index < spec.get_committee_count_per_slot(state, epoch)
         assert validator_index in committee
         assert valid
     except AssertionError:
@@ -359,13 +359,12 @@ def test_get_attestation_signature_phase0(spec, state):
 def test_compute_subnet_for_attestation(spec, state):
     for committee_idx in range(spec.MAX_COMMITTEES_PER_SLOT):
         for slot in range(state.slot, state.slot + spec.SLOTS_PER_EPOCH):
-            actual_subnet_id = spec.compute_subnet_for_attestation(state, slot, committee_idx)
+            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot))
+            actual_subnet_id = spec.compute_subnet_for_attestation(committees_per_slot, slot, committee_idx)
 
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
-            committees_since_epoch_start = spec.get_committee_count_at_slot(
-                state, slot) * slots_since_epoch_start
-            expected_subnet_id = (committees_since_epoch_start +
-                                  committee_idx) % spec.ATTESTATION_SUBNET_COUNT
+            committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
+            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.ATTESTATION_SUBNET_COUNT
 
             assert actual_subnet_id == expected_subnet_id
 

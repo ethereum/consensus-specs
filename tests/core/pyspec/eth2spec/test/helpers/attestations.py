@@ -46,7 +46,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index, shard_transition=None, on_time=True):
+def build_attestation_data(spec, state, slot, index, shard=None, shard_transition=None, on_time=True):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -78,13 +78,15 @@ def build_attestation_data(spec, state, slot, index, shard_transition=None, on_t
     )
 
     if spec.fork == PHASE1:
+        if shard is None:
+            shard = spec.compute_shard_from_committee_index(state, attestation_data.index, attestation_data.slot)
+        attestation_data.shard = shard
+
         if shard_transition is not None:
             lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
             attestation_data.shard_head_root = shard_transition.shard_data_roots[lastest_shard_data_root_index]
             attestation_data.shard_transition_root = shard_transition.hash_tree_root()
         else:
-            # No shard transition -> no shard block
-            shard = spec.get_shard(state, spec.Attestation(data=attestation_data))
             if on_time:
                 shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
                 lastest_shard_data_root_index = len(shard_transition.shard_data_roots) - 1
@@ -257,7 +259,7 @@ def next_epoch_with_attestations(spec,
         block = build_empty_block_for_next_slot(spec, post_state)
         if fill_cur_epoch and post_state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
-            committees_per_slot = spec.get_committee_count_at_slot(state, slot_to_attest)
+            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
             if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(post_state)):
                 for index in range(committees_per_slot):
                     if spec.fork == PHASE1:
@@ -275,7 +277,7 @@ def next_epoch_with_attestations(spec,
 
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
-            committees_per_slot = spec.get_committee_count_at_slot(state, slot_to_attest)
+            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
             for index in range(committees_per_slot):
                 prev_attestation = get_valid_attestation(
                     spec, post_state, slot_to_attest, index=index, signed=True, on_time=False)
@@ -304,7 +306,7 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
     for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
         # create an attestation for each index in each slot in epoch
         if state.slot < next_epoch_start_slot:
-            for committee_index in range(spec.get_committee_count_at_slot(state, state.slot)):
+            for committee_index in range(spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))):
                 def temp_participants_filter(comm):
                     if participation_fn is None:
                         return comm

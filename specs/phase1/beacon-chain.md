@@ -54,7 +54,6 @@
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
-    - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
@@ -167,6 +166,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
+    # Shard vote
+    shard: Shard
     # Current-slot shard block root
     shard_head_root: Root
     # Shard transition root
@@ -252,7 +253,7 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    chunk_challenges: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGES]
+    chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
     chunk_challenge_responses: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES]
     custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
@@ -493,7 +494,7 @@ def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
 #### `compute_updated_gasprice`
 
 ```python
-def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint8) -> Gwei:
+def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64) -> Gwei:
     if shard_block_length > TARGET_SHARD_BLOCK_SIZE:
         delta = (prev_gasprice * (shard_block_length - TARGET_SHARD_BLOCK_SIZE)
                  // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
@@ -592,7 +593,10 @@ def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: S
     """
     Return the sum of committee counts in range ``[start_slot, stop_slot)``.
     """
-    return sum(get_committee_count_at_slot(state, Slot(slot)) for slot in range(start_slot, stop_slot))
+    return sum(
+        get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
+        for slot in range(start_slot, stop_slot)
+    )
 ```
 
 #### `get_start_shard`
@@ -619,16 +623,6 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
             (state.current_epoch_start_shard + max_committees_per_epoch * active_shard_count - shard_delta)
             % active_shard_count
         )
-```
-
-#### `get_shard`
-
-```python
-def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    """
-    Return the shard that the given ``attestation`` is attesting.
-    """
-    return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
 ```
 
 #### `get_latest_slot_for_shard`
@@ -757,7 +751,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.index < get_committee_count_at_slot(state, data.slot)
+    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
     assert data.index < get_active_shard_count(state)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
@@ -775,6 +769,9 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     if is_on_time_attestation(state, attestation):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
+        # Correct shard number
+        shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
+        assert attestation.data.shard == shard
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
@@ -935,15 +932,18 @@ def process_crosslinks(state: BeaconState,
                        shard_transitions: Sequence[ShardTransition],
                        attestations: Sequence[Attestation]) -> None:
     on_time_attestation_slot = compute_previous_slot(state.slot)
-    committee_count = get_committee_count_at_slot(state, on_time_attestation_slot)
+    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
     for committee_index in map(CommitteeIndex, range(committee_count)):
         # All attestations in the block for this committee/shard and current slot
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
+        # Since the attestations are validated, all `shard_attestations` satisfy `attestation.data.shard == shard`
         shard_attestations = [
             attestation for attestation in attestations
             if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
         ]
-        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
-        winning_root = process_crosslink_for_shard(state, committee_index, shard_transitions[shard], shard_attestations)
+        winning_root = process_crosslink_for_shard(
+            state, committee_index, shard_transitions[shard], shard_attestations
+        )
         if winning_root != Root():
             # Mark relevant pending attestations as creating a successful crosslink
             for pending_attestation in state.current_epoch_attestations:

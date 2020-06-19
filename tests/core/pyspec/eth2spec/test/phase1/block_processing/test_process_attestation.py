@@ -1,4 +1,5 @@
 from eth2spec.test.context import (
+    PHASE0,
     with_all_phases_except,
     spec_state_test,
     always_bls,
@@ -11,7 +12,7 @@ from eth2spec.test.helpers.attestations import (
 )
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_on_time_success(spec, state):
@@ -22,7 +23,7 @@ def test_on_time_success(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases_except(['phase0'])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
 def test_late_success(spec, state):

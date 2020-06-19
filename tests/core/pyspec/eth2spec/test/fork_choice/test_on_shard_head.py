@@ -82,7 +82,7 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
             shard_transition=shard_transition,
             signed=False,
         )
-        assert spec.get_shard(state, attestation) == shard
+        assert attestation.data.shard == shard
         beacon_block.body.attestations = [attestation]
         beacon_block.body.shard_transitions = shard_transitions
 
