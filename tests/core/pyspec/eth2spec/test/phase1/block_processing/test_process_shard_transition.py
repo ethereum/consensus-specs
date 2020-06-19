@@ -16,7 +16,7 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     state = transition_to_valid_shard_slot(spec, state)
     committee_index = spec.CommitteeIndex(0)
     init_slot = state.slot
-    shard_slot = state.slot + target_len_offset_slot - 1
+    shard_slot = init_slot + target_len_offset_slot - 1
     shard = spec.compute_shard_from_committee_index(state, committee_index, shard_slot)
     assert state.shard_states[shard].slot == init_slot - 1
 
@@ -31,7 +31,7 @@ def run_basic_crosslink_tests(spec, state, target_len_offset_slot, valid=True):
     shard_transitions = get_shard_transitions(
         spec,
         state,
-        shard_blocks={shard: shard_blocks},
+        shard_block_dict={shard: shard_blocks},
     )
     shard_transition = shard_transitions[shard]
     attestation = get_valid_on_time_attestation(

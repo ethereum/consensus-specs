@@ -30,7 +30,7 @@ def build_shard_block(spec,
         slot = shard_parent_state.slot + 1
 
     if body is None:
-        body = b'\x56' * 128
+        body = get_sample_shard_block_body()
 
     beacon_state, beacon_parent_root = get_state_and_beacon_parent_root_at_slot(spec, beacon_state, slot)
     proposer_index = spec.get_shard_proposer_index(beacon_state, slot, shard)
@@ -52,10 +52,10 @@ def build_shard_block(spec,
     return signed_block
 
 
-def get_shard_transitions(spec, parent_beacon_state, shard_blocks):
+def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
     on_time_slot = parent_beacon_state.slot + 1
-    for shard, blocks in shard_blocks.items():
+    for shard, blocks in shard_block_dict.items():
         shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
         offset_slots = spec.compute_offset_slots(
             spec.get_latest_slot_for_shard(parent_beacon_state, shard),
@@ -81,3 +81,7 @@ def get_committee_index_of_shard(spec, state, slot, shard):  # Optional[Committe
         if (start_shard + committee_index) % active_shard_count == shard:
             return committee_index
     return None
+
+
+def get_sample_shard_block_body():
+    return b'\x56' * 128
