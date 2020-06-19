@@ -67,20 +67,23 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot, valid=Tr
 
     _, winning_roots = spec.get_shard_winning_roots(state, attestations)
     assert len(winning_roots) == 1
-    assert winning_roots[0] == shard_transitions[shard].hash_tree_root()
+    shard_transition = shard_transitions[shard]
+    assert winning_roots[0] == shard_transition.hash_tree_root()
 
     pre_gasprice = state.shard_states[shard].gasprice
-    pre_shard_state = state.shard_states[shard]
+    pre_shard_states = state.shard_states.copy()
     yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=valid)
 
     if valid:
-        shard_state = state.shard_states[shard]
-        shard_transition = shard_transitions[shard]
-        assert shard_state != pre_shard_state
-        assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
-        assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
-        if target_len_offset_slot == 1:
-            assert shard_state.gasprice > pre_gasprice
+        for index, shard_state in enumerate(state.shard_states):
+            if index == shard:
+                assert shard_state != pre_shard_states[index]
+                assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
+                assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
+                if target_len_offset_slot == 1:
+                    assert shard_state.gasprice > pre_gasprice
+            else:
+                assert shard_state == pre_shard_states[index]
 
         for pending_attestation in state.current_epoch_attestations:
             assert bool(pending_attestation.crosslink_success) is True
@@ -144,10 +147,10 @@ def test_no_winning_root(spec, state):
 
     # No winning root, shard_transitions[shard] is empty
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
-    pre_shard_state = state.shard_states[shard]
+    pre_shard_states = state.shard_states.copy()
     yield from run_shard_transitions_processing(spec, state, shard_transitions, [attestation])
 
     for pending_attestation in state.current_epoch_attestations:
         assert bool(pending_attestation.crosslink_success) is False
 
-    assert state.shard_states[shard] == pre_shard_state
+    assert state.shard_states == pre_shard_states
