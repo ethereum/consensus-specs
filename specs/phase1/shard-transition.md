@@ -42,8 +42,6 @@ def verify_shard_block_message(beacon_parent_state: BeaconState,
     next_slot = Slot(block.slot + 1)
     offset_slots = compute_offset_slots(get_latest_slot_for_shard(beacon_parent_state, shard), next_slot)
     assert block.slot in offset_slots
-    # Check `shard` field
-    assert block.shard == shard
     # Check `proposer_index` field
     assert block.proposer_index == get_shard_proposer_index(beacon_parent_state, block.slot, shard)
     # Check `body` field
