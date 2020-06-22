@@ -7,7 +7,6 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     get_valid_on_time_attestation,
     run_attestation_processing,
-    sign_aggregate_attestation,
 )
 from eth2spec.test.helpers.shard_transitions import run_shard_transitions_processing
 from eth2spec.test.helpers.shard_block import (
@@ -140,16 +139,11 @@ def test_no_winning_root(spec, state):
         spec, state,
         index=committee_index,
         shard_transition=shard_transition,
+        # Decrease attested participants to 1/3 committee
+        filter_participant_set=lambda committee: set(list(committee)[:len(committee) // 3]),
         signed=True,
         on_time=True,
     )
-
-    # Decrease attested participants to 1/3 committee
-    beacon_committee = spec.get_beacon_committee(state, state.slot, committee_index)
-    attested_participants = beacon_committee[:len(beacon_committee) // 3]
-    for i in range(len(beacon_committee)):
-        attestation.aggregation_bits[i] = beacon_committee[i] in attested_participants
-    attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, attested_participants)
 
     next_slot(spec, state)
 
