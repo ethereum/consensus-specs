@@ -42,8 +42,6 @@ def verify_shard_block_message(beacon_parent_state: BeaconState,
     next_slot = Slot(block.slot + 1)
     offset_slots = compute_offset_slots(get_latest_slot_for_shard(beacon_parent_state, shard), next_slot)
     assert block.slot in offset_slots
-    # Check `shard` field
-    assert block.shard == shard
     # Check `proposer_index` field
     assert block.proposer_index == get_shard_proposer_index(beacon_parent_state, block.slot, shard)
     # Check `body` field
@@ -63,8 +61,20 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 ## Shard state transition
 
 ```python
-def shard_state_transition(shard_state: ShardState,
-                           block: ShardBlock) -> None:
+def shard_state_transition(beacon_parent_state: BeaconState,
+                           shard_state: ShardState,
+                           block: ShardBlock,
+                           validate_message: bool = True) -> bool:
+    if validate_message:
+        assert verify_shard_block_message(beacon_parent_state, shard_state, block)
+
+    process_shard_block(shard_state, block)
+    return shard_state
+```
+
+```python
+def process_shard_block(shard_state: ShardState,
+                        block: ShardBlock) -> None:
     """
     Update ``shard_state`` with shard ``block``.
     """
@@ -77,19 +87,6 @@ def shard_state_transition(shard_state: ShardState,
     else:
         latest_block_root = hash_tree_root(block)
     shard_state.latest_block_root = latest_block_root
-```
-
-We have a pure function `get_post_shard_state` for describing the fraud proof verification and honest validator behavior.
-
-```python
-def get_post_shard_state(shard_state: ShardState,
-                         block: ShardBlock) -> ShardState:
-    """
-    A pure function that returns a new post ShardState instead of modifying the given `shard_state`.
-    """
-    post_state = shard_state.copy()
-    shard_state_transition(post_state, block)
-    return post_state
 ```
 
 ## Fraud proofs
@@ -129,7 +126,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
-    shard_state = get_post_shard_state(shard_state, block)
+    shard_state_transition(beacon_state, shard_state, block, validate_message=False)
     if shard_state != transition.shard_states[offset_index]:
         return True
 
