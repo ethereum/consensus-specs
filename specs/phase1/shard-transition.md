@@ -61,11 +61,12 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 ## Shard state transition
 
 ```python
-def shard_state_transition(beacon_parent_state: BeaconState,
-                           shard_state: ShardState,
+def shard_state_transition(shard_state: ShardState,
                            block: ShardBlock,
-                           validate_message: bool = True) -> bool:
+                           validate_message: bool = True,
+                           beacon_parent_state: Optional[BeaconState] = None) -> bool:
     if validate_message:
+        assert beacon_parent_state is not None
         assert verify_shard_block_message(beacon_parent_state, shard_state, block)
 
     process_shard_block(shard_state, block)
@@ -126,7 +127,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
-    shard_state_transition(beacon_state, shard_state, block, validate_message=False)
+    shard_state_transition(shard_state, block, validate_message=False)
     if shard_state != transition.shard_states[offset_index]:
         return True
 

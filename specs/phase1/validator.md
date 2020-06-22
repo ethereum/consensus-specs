@@ -280,13 +280,12 @@ def get_shard_transition_fields(
     beacon_state: BeaconState,
     shard: Shard,
     shard_blocks: Sequence[SignedShardBlock],
-    validate_signature: bool=True,
 ) -> Tuple[Sequence[uint64], Sequence[Root], Sequence[ShardState]]:
     shard_states = []
     shard_data_roots = []
     shard_block_lengths = []
 
-    shard_state = beacon_state.shard_states[shard].copy()
+    shard_state = beacon_state.shard_states[shard]
     shard_block_slots = [shard_block.message.slot for shard_block in shard_blocks]
     offset_slots = compute_offset_slots(
         get_latest_slot_for_shard(beacon_state, shard),
@@ -299,7 +298,8 @@ def get_shard_transition_fields(
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
-        shard_state_transition(beacon_state, shard_state, shard_block.message, validate_message=False)
+        shard_state = shard_state.copy()
+        shard_state_transition(shard_state, shard_block.message, validate_message=False)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 
