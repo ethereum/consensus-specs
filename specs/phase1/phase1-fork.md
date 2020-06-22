@@ -111,7 +111,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         current_light_committee=CompactCommittee(),  # computed after state creation
         next_light_committee=CompactCommittee(),
         # Custody game
-        exposed_derived_secrets=[] * EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS,
+        exposed_derived_secrets=[()] * EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS,
         # exposed_derived_secrets will fully default to zeroes
     )
     next_epoch = Epoch(epoch + 1)
