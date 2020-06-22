@@ -43,6 +43,11 @@ def get_attestations_and_shard_transitions(spec, state, shard_block_dict):
     return attestations, shard_transitions
 
 
+def is_full_crosslink(spec, state):
+    epoch = spec.compute_epoch_at_slot(state.slot)
+    return spec.get_committee_count_per_slot(state, epoch) >= spec.get_active_shard_count(state)
+
+
 def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot)
     init_slot = state.slot
@@ -91,21 +96,30 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_basic_crosslinks(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # Skip this test
+        return
+
     yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=1)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_multiple_offset_slots(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # Skip this test
+        return
+
     yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=2)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_no_winning_root(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # Skip this test
+        return
+
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot=1)
     init_slot = state.slot
 
@@ -158,6 +172,10 @@ def test_no_winning_root(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_wrong_shard_transition_root(spec, state):
+    if not is_full_crosslink(spec, state):
+        # Skip this test
+        return
+
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot=1)
     init_slot = state.slot
 
