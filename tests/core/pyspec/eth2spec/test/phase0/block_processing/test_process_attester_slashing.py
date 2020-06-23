@@ -200,6 +200,71 @@ def test_participants_already_slashed(spec, state):
 @with_phases([PHASE0])
 @spec_state_test
 @always_bls
+def test_att1_high_index(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
+    indices.append(spec.ValidatorIndex(len(state.validators)))  # off by 1
+    attester_slashing.attestation_1.attesting_indices = indices
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_phases([PHASE0])
+@spec_state_test
+@always_bls
+def test_att2_high_index(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_2)
+    indices.append(spec.ValidatorIndex(len(state.validators)))  # off by 1
+    attester_slashing.attestation_2.attesting_indices = indices
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_phases([PHASE0])
+@spec_state_test
+@always_bls
+def test_att1_empty_indices(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
+
+    attester_slashing.attestation_1.attesting_indices = []
+    attester_slashing.attestation_1.signature = spec.bls.Z2_SIGNATURE
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_phases([PHASE0])
+@spec_state_test
+@always_bls
+def test_att2_empty_indices(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
+
+    attester_slashing.attestation_2.attesting_indices = []
+    attester_slashing.attestation_2.signature = spec.bls.Z2_SIGNATURE
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_phases([PHASE0])
+@spec_state_test
+@always_bls
+def test_all_empty_indices(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
+
+    attester_slashing.attestation_1.attesting_indices = []
+    attester_slashing.attestation_1.signature = spec.bls.Z2_SIGNATURE
+
+    attester_slashing.attestation_2.attesting_indices = []
+    attester_slashing.attestation_2.signature = spec.bls.Z2_SIGNATURE
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_phases([PHASE0])
+@spec_state_test
+@always_bls
 def test_att1_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
