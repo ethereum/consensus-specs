@@ -772,6 +772,8 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct shard number
         shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
         assert attestation.data.shard == shard
+        # On-time attestations should have a non-empty shard transition root
+        assert attestation.data.shard_transition_root != hash_tree_root(ShardTransition())
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
@@ -886,11 +888,6 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            if len(shard_transition.shard_states) > 0:
-                # Is the `shard_transition` candidate
-                last_offset_index = len(shard_transition.shard_states) - 1
-                shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
-                assert attestation.data.shard_head_root == shard_head_root
 
         enough_online_stake = (
             get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
@@ -902,6 +899,12 @@ def process_crosslink_for_shard(state: BeaconState,
 
         # Attestation <-> shard transition consistency
         assert shard_transition_root == hash_tree_root(shard_transition)
+
+        # Check `shard_head_root` of the winning root
+        last_offset_index = len(shard_transition.shard_states) - 1
+        shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+        for attestation in transition_attestations:
+            assert attestation.data.shard_head_root == shard_head_root
 
         # Apply transition
         apply_shard_transition(state, shard, shard_transition)
