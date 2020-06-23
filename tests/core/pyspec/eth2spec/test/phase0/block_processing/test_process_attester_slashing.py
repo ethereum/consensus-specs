@@ -223,9 +223,6 @@ def test_att2_high_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-EMPTY_SIGNATURE = b'\xc0' + (b'\x00' * 95)
-
-
 @with_phases([PHASE0])
 @spec_state_test
 @always_bls
@@ -233,7 +230,7 @@ def test_att1_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
     attester_slashing.attestation_1.attesting_indices = []
-    attester_slashing.attestation_1.signature = EMPTY_SIGNATURE
+    attester_slashing.attestation_1.signature = spec.bls.Z2_SIGNATURE
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
@@ -245,7 +242,7 @@ def test_att2_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
     attester_slashing.attestation_2.attesting_indices = []
-    attester_slashing.attestation_2.signature = EMPTY_SIGNATURE
+    attester_slashing.attestation_2.signature = spec.bls.Z2_SIGNATURE
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
@@ -257,10 +254,10 @@ def test_all_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
 
     attester_slashing.attestation_1.attesting_indices = []
-    attester_slashing.attestation_1.signature = EMPTY_SIGNATURE
+    attester_slashing.attestation_1.signature = spec.bls.Z2_SIGNATURE
 
     attester_slashing.attestation_2.attesting_indices = []
-    attester_slashing.attestation_2.signature = EMPTY_SIGNATURE
+    attester_slashing.attestation_2.signature = spec.bls.Z2_SIGNATURE
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
