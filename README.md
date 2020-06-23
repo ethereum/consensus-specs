@@ -1,10 +1,11 @@
 # eth2-deposit-contract
 
-This is a just for fun port of the [Vyper Eth 2.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.vy) to Solidity.
+This is a port of the [Vyper Eth 2.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.vy) to Solidity.
 
-The motivation is to run the SMTChecker and the new Yul IR generator option (`--ir`) in the compiler.
+The original motivation was to run the SMTChecker and the new Yul IR generator option (`--ir`) in the compiler.
 
-**THIS IS NOT THE OFFICIAL DEPOSIT CONTRACT. NOT SUITABLE FOR ANY USE**
+As of June 2020, this contract (the version tagged as `r1`) has been verified and is considered for adoption.
+See this [blog post](https://blog.ethereum.org/2020/06/23/eth2-quick-update-no-12/) for more information.
 
 ## Using this with the tests
 
