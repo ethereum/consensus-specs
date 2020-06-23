@@ -64,7 +64,7 @@ def verify_shard_block_signature(beacon_state: BeaconState,
 def shard_state_transition(shard_state: ShardState,
                            block: ShardBlock,
                            validate_message: bool = True,
-                           beacon_parent_state: Optional[BeaconState] = None) -> bool:
+                           beacon_parent_state: Optional[BeaconState] = None) -> ShardState:
     if validate_message:
         assert beacon_parent_state is not None
         assert verify_shard_block_message(beacon_parent_state, shard_state, block)
