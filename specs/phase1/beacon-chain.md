@@ -569,7 +569,7 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
         seed=seed,
         index=0,
         count=get_active_shard_count(beacon_state),
-    )[:TARGET_COMMITTEE_SIZE]
+    )[:LIGHT_CLIENT_COMMITTEE_SIZE]
 ```
 
 #### `get_shard_proposer_index`
