@@ -16,7 +16,8 @@ from eth2spec.test.helpers.state import transition_to_valid_shard_slot
 def run_shard_blocks(spec, shard_state, signed_shard_block,
                      beacon_parent_state,
                      validate=True, valid=True):
-    yield 'pre', shard_state.copy()
+    pre_shard_state = shard_state.copy()
+    yield 'pre', pre_shard_state
     yield 'signed_shard_block', signed_shard_block
     yield 'validate', validate
     yield 'beacon_parent_state', beacon_parent_state
@@ -29,10 +30,23 @@ def run_shard_blocks(spec, shard_state, signed_shard_block,
             shard_state, signed_shard_block, validate=validate, beacon_parent_state=beacon_parent_state)
         )
         yield 'post', None
+        return
+
+    spec.shard_state_transition(shard_state, signed_shard_block,
+                                validate=validate, beacon_parent_state=beacon_parent_state)
+    yield 'post', shard_state
+
+    # Verify `process_shard_block`
+    block = signed_shard_block.message
+
+    assert shard_state.slot == block.slot
+
+    shard_block_length = len(block.body)
+    assert shard_state.gasprice == spec.compute_updated_gasprice(pre_shard_state.gasprice, shard_block_length)
+    if shard_block_length != 0:
+        shard_state.latest_block_root == block.hash_tree_root()
     else:
-        spec.shard_state_transition(shard_state, signed_shard_block,
-                                    validate=validate, beacon_parent_state=beacon_parent_state)
-        yield 'post', shard_state
+        shard_state.latest_block_root == pre_shard_state.latest_block_root
 
 
 @with_all_phases_except([PHASE0])
