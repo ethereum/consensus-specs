@@ -169,14 +169,14 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
     )
 
     # Check the block is valid and compute the post-state
-    assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block)
-    assert verify_shard_block_signature(beacon_parent_state, signed_shard_block)
-
-    post_state = get_post_shard_state(shard_parent_state, shard_block)
+    shard_state = shard_parent_state.copy()
+    shard_state_transition(
+        shard_state, signed_shard_block,
+        validate=True, beacon_parent_state=beacon_parent_state)
 
     # Add new block to the store
     shard_store.blocks[hash_tree_root(shard_block)] = shard_block
 
     # Add new state for this block to the store
-    shard_store.block_states[hash_tree_root(shard_block)] = post_state
+    shard_store.block_states[hash_tree_root(shard_block)] = shard_state
 ```
