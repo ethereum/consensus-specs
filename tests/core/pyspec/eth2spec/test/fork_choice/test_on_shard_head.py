@@ -72,7 +72,7 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
         shard_transitions = get_shard_transitions(
             spec,
             state,
-            shard_blocks={shard: shard_blocks_buffer},
+            shard_block_dict={shard: shard_blocks_buffer},
         )
         shard_transition = shard_transitions[shard]
         attestation = get_valid_on_time_attestation(

@@ -172,7 +172,7 @@ def get_sample_shard_transition(spec, start_slot, block_lengths):
         start_slot=start_slot,
         shard_block_lengths=block_lengths,
         shard_data_roots=b,
-        shard_states=[spec.Root() for x in block_lengths],
+        shard_states=[spec.ShardState() for x in block_lengths],
         proposer_signature_aggregate=spec.BLSSignature(),
     )
     return shard_transition

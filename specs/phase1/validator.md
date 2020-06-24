@@ -157,7 +157,7 @@ def get_shard_winning_roots(state: BeaconState,
         # All attestations in the block for this committee/shard and are "on time"
         shard_attestations = [
             attestation for attestation in attestations
-            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
+            if is_on_time_attestation(state, attestation.data) and attestation.data.index == committee_index
         ]
         committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
 

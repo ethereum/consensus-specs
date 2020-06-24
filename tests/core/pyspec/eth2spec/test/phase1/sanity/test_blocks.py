@@ -19,9 +19,9 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
 
     body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
-    shard_blocks: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
+    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
 
-    shard_transitions = get_shard_transitions(spec, state, shard_blocks)
+    shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
     attestations = [
         get_valid_on_time_attestation(
             spec,
@@ -30,7 +30,7 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
             shard_transition=shard_transitions[shard],
             signed=True,
         )
-        for shard in shard_blocks.keys()
+        for shard in shard_block_dict.keys()
     ]
 
     beacon_block = build_empty_block(spec, state, slot=state.slot + 1)
@@ -50,16 +50,16 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
 
     for shard in range(spec.get_active_shard_count(state)):
         post_shard_state = state.shard_states[shard]
-        if shard in shard_blocks:
+        if shard in shard_block_dict:
             # Shard state has been changed to state_transition result
             assert post_shard_state == shard_transitions[shard].shard_states[
                 len(shard_transitions[shard].shard_states) - 1
             ]
             assert post_shard_state.slot == state.slot - 1
-            if len(shard_blocks[shard]) == 0:
+            if len((shard_block_dict[shard])) == 0:
                 # `latest_block_root` is the same
                 assert post_shard_state.latest_block_root == pre_shard_states[shard].latest_block_root
-            if target_len_offset_slot == 1 and len(shard_blocks) > 0:
+            if target_len_offset_slot == 1 and len(shard_block_dict[shard]) > 0:
                 assert post_shard_state.gasprice > pre_gasprice
 
 
