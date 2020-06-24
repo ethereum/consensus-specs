@@ -11,7 +11,9 @@
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
   - [Shard block verification functions](#shard-block-verification-functions)
-- [Shard state transition](#shard-state-transition)
+    - [`verify_shard_block_message`](#verify_shard_block_message)
+    - [`verify_shard_block_signature`](#verify_shard_block_signature)
+- [Shard state transition function](#shard-state-transition-function)
 - [Fraud proofs](#fraud-proofs)
   - [Verifying the proof](#verifying-the-proof)
 
@@ -24,6 +26,8 @@ This document describes the shard transition function and fraud proofs as part o
 ## Helper functions
 
 ### Shard block verification functions
+
+#### `verify_shard_block_message`
 
 ```python
 def verify_shard_block_message(beacon_parent_state: BeaconState,
@@ -49,6 +53,8 @@ def verify_shard_block_message(beacon_parent_state: BeaconState,
     return True
 ```
 
+#### `verify_shard_block_signature`
+
 ```python
 def verify_shard_block_signature(beacon_parent_state: BeaconState,
                                  signed_block: SignedShardBlock) -> bool:
@@ -58,7 +64,9 @@ def verify_shard_block_signature(beacon_parent_state: BeaconState,
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
-## Shard state transition
+## Shard state transition function
+
+The post-state corresponding to a pre-state `shard_state` and a signed block `signed_block` is defined as `shard_state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
 
 ```python
 def shard_state_transition(shard_state: ShardState,

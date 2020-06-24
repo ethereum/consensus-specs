@@ -9,15 +9,17 @@ from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
+    get_sample_shard_block_body,
     get_shard_transitions,
 )
+from eth2spec.test.helpers.shard_transitions import is_full_crosslink
 from eth2spec.test.helpers.state import state_transition_and_sign_block, transition_to_valid_shard_slot, transition_to
 
 
 def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, committee_index, shard, valid=True):
     transition_to(spec, state, state.slot + target_len_offset_slot)
 
-    body = b'\x56' * spec.MAX_SHARD_BLOCK_SIZE
+    body = get_sample_shard_block_body(spec, is_max=True)
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
     shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
 
@@ -40,13 +42,16 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
     pre_gasprice = state.shard_states[shard].gasprice
     pre_shard_states = state.shard_states.copy()
     yield 'pre', state.copy()
-    yield 'block', beacon_block
-    state_transition_and_sign_block(spec, state, beacon_block)
-    if valid:
-        yield 'post', state
-    else:
+
+    if not valid:
+        state_transition_and_sign_block(spec, state, beacon_block, expect_fail=True)
+        yield 'block', beacon_block
         yield 'post', None
         return
+    else:
+        state_transition_and_sign_block(spec, state, beacon_block)
+        yield 'block', beacon_block
+        yield 'post', None
 
     for shard in range(spec.get_active_shard_count(state)):
         post_shard_state = state.shard_states[shard]
@@ -67,6 +72,10 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
 @spec_state_test
 def test_process_beacon_block_with_normal_shard_transition(spec, state):
     # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # skip
+        return
+
     state = transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
@@ -81,6 +90,10 @@ def test_process_beacon_block_with_normal_shard_transition(spec, state):
 @spec_state_test
 def test_process_beacon_block_with_empty_proposal_transition(spec, state):
     # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # skip
+        return
+
     state = transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
