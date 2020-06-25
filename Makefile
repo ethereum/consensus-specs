@@ -8,6 +8,9 @@ DEPOSIT_CONTRACT_COMPILER_DIR = ./deposit_contract/compiler
 DEPOSIT_CONTRACT_TESTER_DIR = ./deposit_contract/tester
 CONFIGS_DIR = ./configs
 
+CURRENT_DIR = ${CURDIR}
+MYPY_STUBS_DIR = $(CURRENT_DIR)/mypy_stubs
+
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
