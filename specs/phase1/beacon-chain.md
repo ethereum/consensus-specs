@@ -569,7 +569,7 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
         seed=seed,
         index=0,
         count=get_active_shard_count(beacon_state),
-    )[:TARGET_COMMITTEE_SIZE]
+    )[:LIGHT_CLIENT_COMMITTEE_SIZE]
 ```
 
 #### `get_shard_proposer_index`
@@ -652,11 +652,11 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 
 ```python
 def is_on_time_attestation(state: BeaconState,
-                           attestation: Attestation) -> bool:
+                           attestation_data: AttestationData) -> bool:
     """
-    Check if the given attestation is on-time.
+    Check if the given ``attestation_data`` is on-time.
     """
-    return attestation.data.slot == compute_previous_slot(state.slot)
+    return attestation_data.slot == compute_previous_slot(state.slot)
 ```
 
 #### `is_winning_attestation`
@@ -667,11 +667,11 @@ def is_winning_attestation(state: BeaconState,
                            committee_index: CommitteeIndex,
                            winning_root: Root) -> bool:
     """
-    Check if ``attestation`` helped contribute to the successful crosslink of
-    ``winning_root`` formed by ``committee_index`` committee at the current slot.
+    Check if on-time ``attestation`` helped contribute to the successful crosslink of
+    ``winning_root`` formed by ``committee_index`` committee.
     """
     return (
-        attestation.data.slot == state.slot
+        is_on_time_attestation(state, attestation.data)
         and attestation.data.index == committee_index
         and attestation.data.shard_transition_root == winning_root
     )
@@ -766,12 +766,14 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert attestation.data.source == state.previous_justified_checkpoint
 
     # Type 1: on-time attestations
-    if is_on_time_attestation(state, attestation):
+    if is_on_time_attestation(state, attestation.data):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
         # Correct shard number
         shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
         assert attestation.data.shard == shard
+        # On-time attestations should have a non-empty shard transition root
+        assert attestation.data.shard_transition_root != hash_tree_root(ShardTransition())
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
@@ -886,9 +888,6 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            assert attestation.data.shard_head_root == shard_transition.shard_data_roots[
-                len(shard_transition.shard_data_roots) - 1
-            ]
 
         enough_online_stake = (
             get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
@@ -900,6 +899,12 @@ def process_crosslink_for_shard(state: BeaconState,
 
         # Attestation <-> shard transition consistency
         assert shard_transition_root == hash_tree_root(shard_transition)
+
+        # Check `shard_head_root` of the winning root
+        last_offset_index = len(shard_transition.shard_states) - 1
+        shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+        for attestation in transition_attestations:
+            assert attestation.data.shard_head_root == shard_head_root
 
         # Apply transition
         apply_shard_transition(state, shard, shard_transition)
@@ -939,7 +944,7 @@ def process_crosslinks(state: BeaconState,
         # Since the attestations are validated, all `shard_attestations` satisfy `attestation.data.shard == shard`
         shard_attestations = [
             attestation for attestation in attestations
-            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
+            if is_on_time_attestation(state, attestation.data) and attestation.data.index == committee_index
         ]
         winning_root = process_crosslink_for_shard(
             state, committee_index, shard_transitions[shard], shard_attestations

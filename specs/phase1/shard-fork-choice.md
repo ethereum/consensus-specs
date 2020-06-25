@@ -36,7 +36,7 @@ This document is the shard chain fork choice spec for part of Ethereum 2.0 Phase
 @dataclass
 class ShardStore:
     shard: Shard
-    blocks: Dict[Root, ShardBlock] = field(default_factory=dict)
+    signed_blocks: Dict[Root, SignedShardBlock] = field(default_factory=dict)
     block_states: Dict[Root, ShardState] = field(default_factory=dict)
 ```
 
@@ -46,7 +46,11 @@ class ShardStore:
 def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> ShardStore:
     return ShardStore(
         shard=shard,
-        blocks={anchor_state.shard_states[shard].latest_block_root: ShardBlock(slot=anchor_state.slot, shard=shard)},
+        signed_blocks={
+            anchor_state.shard_states[shard].latest_block_root: SignedShardBlock(
+                message=ShardBlock(slot=anchor_state.slot, shard=shard)
+            )
+        },
         block_states={anchor_state.shard_states[shard].latest_block_root: anchor_state.copy().shard_states[shard]},
     )
 ```
@@ -65,7 +69,7 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
             # would be ignored once their newer vote is accepted. Check if it makes sense.
             and store.latest_messages[i].shard == shard_store.shard
             and get_shard_ancestor(
-                store, shard_store, store.latest_messages[i].shard_root, shard_store.blocks[root].slot
+                store, shard_store, store.latest_messages[i].shard_root, shard_store.signed_blocks[root].message.slot
             ) == root
         )
     ))
@@ -80,8 +84,8 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
     shard_head_state = store.block_states[beacon_head_root].shard_states[shard_store.shard]
     shard_head_root = shard_head_state.latest_block_root
     shard_blocks = {
-        root: shard_block for root, shard_block in shard_store.blocks.items()
-        if shard_block.slot > shard_head_state.slot
+        root: signed_shard_block.message for root, signed_shard_block in shard_store.signed_blocks.items()
+        if signed_shard_block.message.slot > shard_head_state.slot
     }
     while True:
         # Find the valid child block roots
@@ -101,7 +105,7 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
 
 ```python
 def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: Slot) -> Root:
-    block = shard_store.blocks[root]
+    block = shard_store.signed_blocks[root].message
     if block.slot > slot:
         return get_shard_ancestor(store, shard_store, block.shard_parent_root, slot)
     elif block.slot == slot:
@@ -114,7 +118,7 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
 #### `get_pending_shard_blocks`
 
 ```python
-def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[ShardBlock]:
+def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[SignedShardBlock]:
     """
     Return the canonical shard block branch that has not yet been crosslinked.
     """
@@ -126,14 +130,14 @@ def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[
 
     shard_head_root = get_shard_head(store, shard_store)
     root = shard_head_root
-    shard_blocks = []
+    signed_shard_blocks = []
     while root != latest_shard_block_root:
-        shard_block = shard_store.blocks[root]
-        shard_blocks.append(shard_block)
-        root = shard_block.shard_parent_root
+        signed_shard_block = shard_store.signed_blocks[root]
+        signed_shard_blocks.append(signed_shard_block)
+        root = signed_shard_block.message.shard_parent_root
 
-    shard_blocks.reverse()
-    return shard_blocks
+    signed_shard_blocks.reverse()
+    return signed_shard_blocks
 ```
 
 ### Handlers
@@ -169,14 +173,15 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
     )
 
     # Check the block is valid and compute the post-state
-    assert verify_shard_block_message(beacon_parent_state, shard_parent_state, shard_block)
-    assert verify_shard_block_signature(beacon_parent_state, signed_shard_block)
-
-    post_state = get_post_shard_state(shard_parent_state, shard_block)
+    shard_state = shard_parent_state.copy()
+    shard_state_transition(
+        shard_state, signed_shard_block,
+        validate=True, beacon_parent_state=beacon_parent_state)
 
     # Add new block to the store
-    shard_store.blocks[hash_tree_root(shard_block)] = shard_block
+    # Note: storing `SignedShardBlock` format for computing `ShardTransition.proposer_signature_aggregate` 
+    shard_store.signed_blocks[hash_tree_root(shard_block)] = signed_shard_block
 
     # Add new state for this block to the store
-    shard_store.block_states[hash_tree_root(shard_block)] = post_state
+    shard_store.block_states[hash_tree_root(shard_block)] = shard_state
 ```

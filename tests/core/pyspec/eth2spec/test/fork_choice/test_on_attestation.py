@@ -158,9 +158,9 @@ def test_on_attestation_inconsistent_target_and_head(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_on_attestation_target_not_in_store(spec, state):
+def test_on_attestation_target_block_not_in_store(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = store.time + spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    time = store.time + spec.SECONDS_PER_SLOT * (spec.SLOTS_PER_EPOCH + 1)
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
@@ -180,9 +180,61 @@ def test_on_attestation_target_not_in_store(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_on_attestation_target_checkpoint_not_in_store(spec, state):
+    store = spec.get_forkchoice_store(state)
+    time = store.time + spec.SECONDS_PER_SLOT * (spec.SLOTS_PER_EPOCH + 1)
+    spec.on_tick(store, time)
+
+    # move to immediately before next epoch to make block new target
+    next_epoch = spec.get_current_epoch(state) + 1
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(next_epoch) - 1)
+
+    target_block = build_empty_block_for_next_slot(spec, state)
+    signed_target_block = state_transition_and_sign_block(spec, state, target_block)
+
+    # add target block to store
+    spec.on_block(store, signed_target_block)
+
+    # target checkpoint state is not yet in store
+
+    attestation = get_valid_attestation(spec, state, slot=target_block.slot, signed=True)
+    assert attestation.data.target.root == target_block.hash_tree_root()
+
+    run_on_attestation(spec, state, store, attestation)
+
+
+@with_all_phases
+@spec_state_test
+def test_on_attestation_target_checkpoint_not_in_store_diff_slot(spec, state):
+    store = spec.get_forkchoice_store(state)
+    time = store.time + spec.SECONDS_PER_SLOT * (spec.SLOTS_PER_EPOCH + 1)
+    spec.on_tick(store, time)
+
+    # move to two slots before next epoch to make target block one before an empty slot
+    next_epoch = spec.get_current_epoch(state) + 1
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(next_epoch) - 2)
+
+    target_block = build_empty_block_for_next_slot(spec, state)
+    signed_target_block = state_transition_and_sign_block(spec, state, target_block)
+
+    # add target block to store
+    spec.on_block(store, signed_target_block)
+
+    # target checkpoint state is not yet in store
+
+    attestation_slot = target_block.slot + 1
+    transition_to(spec, state, attestation_slot)
+    attestation = get_valid_attestation(spec, state, slot=attestation_slot, signed=True)
+    assert attestation.data.target.root == target_block.hash_tree_root()
+
+    run_on_attestation(spec, state, store, attestation)
+
+
+@with_all_phases
+@spec_state_test
 def test_on_attestation_beacon_block_not_in_store(spec, state):
     store = spec.get_forkchoice_store(state)
-    time = store.time + spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    time = store.time + spec.SECONDS_PER_SLOT * (spec.SLOTS_PER_EPOCH + 1)
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
