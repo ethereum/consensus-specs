@@ -108,6 +108,7 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
+	&& export MYPYPATH=$(MYPY_STUBS_DIR) \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1
 
 install_deposit_contract_tester:
