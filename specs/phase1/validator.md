@@ -157,7 +157,7 @@ def get_shard_winning_roots(state: BeaconState,
         # All attestations in the block for this committee/shard and are "on time"
         shard_attestations = [
             attestation for attestation in attestations
-            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
+            if is_on_time_attestation(state, attestation.data) and attestation.data.index == committee_index
         ]
         committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
 
@@ -280,7 +280,6 @@ def get_shard_transition_fields(
     beacon_state: BeaconState,
     shard: Shard,
     shard_blocks: Sequence[SignedShardBlock],
-    validate_signature: bool=True,
 ) -> Tuple[Sequence[uint64], Sequence[Root], Sequence[ShardState]]:
     shard_states = []
     shard_data_roots = []
@@ -299,7 +298,8 @@ def get_shard_transition_fields(
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
-        shard_state = get_post_shard_state(shard_state, shard_block.message)
+        shard_state = shard_state.copy()
+        shard_state_transition(shard_state, shard_block, validate=False)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 

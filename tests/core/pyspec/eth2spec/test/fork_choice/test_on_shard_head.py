@@ -22,7 +22,7 @@ def run_on_shard_block(spec, store, shard_store, signed_block, valid=True):
             assert False
 
     spec.on_shard_block(store, shard_store, signed_block)
-    assert shard_store.blocks[hash_tree_root(signed_block.message)] == signed_block.message
+    assert shard_store.signed_blocks[hash_tree_root(signed_block.message)] == signed_block
 
 
 def apply_shard_block(spec, store, shard_store, beacon_parent_state, shard_blocks_buffer):
@@ -41,10 +41,7 @@ def apply_shard_block(spec, store, shard_store, beacon_parent_state, shard_block
 
 
 def check_pending_shard_blocks(spec, store, shard_store, shard_blocks_buffer):
-    pending_shard_blocks = [
-        spec.SignedShardBlock(message=b)
-        for b in spec.get_pending_shard_blocks(store, shard_store)
-    ]
+    pending_shard_blocks = spec.get_pending_shard_blocks(store, shard_store)
     assert pending_shard_blocks == shard_blocks_buffer
 
 
@@ -72,7 +69,7 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
         shard_transitions = get_shard_transitions(
             spec,
             state,
-            shard_blocks={shard: shard_blocks_buffer},
+            shard_block_dict={shard: shard_blocks_buffer},
         )
         shard_transition = shard_transitions[shard]
         attestation = get_valid_on_time_attestation(
