@@ -170,9 +170,7 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
 
     # Check the block is valid and compute the post-state
     shard_state = shard_parent_state.copy()
-    shard_state_transition(
-        shard_state, signed_shard_block,
-        validate=True, beacon_parent_state=beacon_parent_state)
+    shard_state_transition(shard_state, signed_shard_block, beacon_parent_state, validate_result=True)
 
     # Add new block to the store
     shard_store.blocks[hash_tree_root(shard_block)] = shard_block

@@ -13,25 +13,21 @@ from eth2spec.test.helpers.shard_transitions import is_full_crosslink
 from eth2spec.test.helpers.state import transition_to_valid_shard_slot
 
 
-def run_shard_blocks(spec, shard_state, signed_shard_block,
-                     beacon_parent_state,
-                     validate=True, valid=True):
+def run_shard_blocks(spec, shard_state, signed_shard_block, beacon_parent_state, valid=True):
     pre_shard_state = shard_state.copy()
 
     yield 'pre', pre_shard_state
     yield 'signed_shard_block', signed_shard_block
-    yield 'validate', validate
     yield 'beacon_parent_state', beacon_parent_state
 
     if not valid:
-        expect_assertion_error(lambda: spec.shard_state_transition(
-            shard_state, signed_shard_block, validate=validate, beacon_parent_state=beacon_parent_state)
+        expect_assertion_error(
+            lambda: spec.shard_state_transition(shard_state, signed_shard_block, beacon_parent_state)
         )
         yield 'post', None
         return
 
-    spec.shard_state_transition(shard_state, signed_shard_block,
-                                validate=validate, beacon_parent_state=beacon_parent_state)
+    spec.shard_state_transition(shard_state, signed_shard_block, beacon_parent_state)
     yield 'post', shard_state
 
     # Verify `process_shard_block`

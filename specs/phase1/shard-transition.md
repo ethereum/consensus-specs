@@ -66,16 +66,16 @@ def verify_shard_block_signature(beacon_parent_state: BeaconState,
 
 ## Shard state transition function
 
-The post-state corresponding to a pre-state `shard_state` and a signed block `signed_block` is defined as `shard_state_transition(shard_state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
+The post-state corresponding to a pre-state `shard_state` and a signed block `signed_block` is defined as `shard_state_transition(shard_state, signed_block, beacon_parent_state)`, where `beacon_parent_state` is the parent beacon state of the `signed_block`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
 
 ```python
 def shard_state_transition(shard_state: ShardState,
                            signed_block: SignedShardBlock,
-                           validate: bool = True,
-                           beacon_parent_state: Optional[BeaconState] = None) -> ShardState:
-    if validate:
-        assert beacon_parent_state is not None
-        assert verify_shard_block_message(beacon_parent_state, shard_state, signed_block.message)
+                           beacon_parent_state: BeaconState,
+                           validate_result: bool = True) -> ShardState:
+    assert verify_shard_block_message(beacon_parent_state, shard_state, signed_block.message)
+
+    if validate_result:
         assert verify_shard_block_signature(beacon_parent_state, signed_block)
 
     process_shard_block(shard_state, signed_block.message)
@@ -133,7 +133,7 @@ def is_valid_fraud_proof(beacon_state: BeaconState,
     else:
         shard_state = transition.shard_states[offset_index - 1]  # Not doing the actual state updates here.
 
-    shard_state_transition(shard_state, block, validate=False)
+    process_shard_block(shard_state, block.message)
     if shard_state != transition.shard_states[offset_index]:
         return True
 
