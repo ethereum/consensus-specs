@@ -275,6 +275,8 @@ Set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
 
 Set `shard_transition` to the value returned by `get_shard_transition(head_state, shard, shard_blocks)`.
 
+`get_block_data_merkle_root(data: ByteList) -> Root` is the function that returns the Merkle root of the block data without the length mixing.
+
 ```python
 def get_shard_transition_fields(
     beacon_state: BeaconState,
@@ -294,7 +296,7 @@ def get_shard_transition_fields(
     for slot in offset_slots:
         if slot in shard_block_slots:
             shard_block = shard_blocks[shard_block_slots.index(slot)]
-            shard_data_roots.append(hash_tree_root(shard_block.message.body))
+            shard_data_roots.append(get_block_data_merkle_root(shard_block.message.body))
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())

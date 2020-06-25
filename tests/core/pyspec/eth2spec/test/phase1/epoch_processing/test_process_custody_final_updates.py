@@ -159,7 +159,8 @@ def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state)
     assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
     chunk_challenge_index = state.custody_chunk_challenge_index - 1
-    custody_response = get_valid_custody_chunk_response(spec, state, challenge, 2**15 // 3, chunk_challenge_index)
+    custody_response = get_valid_custody_chunk_response(
+        spec, state, challenge, chunk_challenge_index, block_length_or_custody_data=2**15 // 3)
 
     _, _, _ = run_custody_chunk_response_processing(spec, state, custody_response)
 

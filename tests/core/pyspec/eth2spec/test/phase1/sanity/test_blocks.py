@@ -7,13 +7,37 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
+from eth2spec.test.helpers.custody import (
+    get_valid_chunk_challenge,
+    get_valid_custody_chunk_response,
+)
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
+    get_committee_index_of_shard,
     get_sample_shard_block_body,
     get_shard_transitions,
 )
 from eth2spec.test.helpers.shard_transitions import is_full_crosslink
 from eth2spec.test.helpers.state import state_transition_and_sign_block, transition_to_valid_shard_slot, transition_to
+
+
+def run_beacon_block(spec, state, block, valid=True):
+    yield 'pre', state.copy()
+
+    if not valid:
+        state_transition_and_sign_block(spec, state, block, expect_fail=True)
+        yield 'block', block
+        yield 'post', None
+        return
+
+    state_transition_and_sign_block(spec, state, block)
+    yield 'block', block
+    yield 'post', state
+
+
+#
+# Beacon block with non-empty shard transitions
+#
 
 
 def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, committee_index, shard, valid=True):
@@ -102,3 +126,45 @@ def test_process_beacon_block_with_empty_proposal_transition(spec, state):
     assert state.shard_states[shard].slot == state.slot - 1
 
     yield from run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, committee_index, shard)
+
+
+#
+# Beacon block with custody operations
+#
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+def test_with_custody_challenge_and_response(spec, state):
+    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # skip
+        return
+
+    state = transition_to_valid_shard_slot(spec, state)
+
+    # build shard block
+    shard = 0
+    committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
+    body = get_sample_shard_block_body(spec)
+    shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
+    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
+    shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
+    attestation = get_valid_on_time_attestation(
+        spec, state, index=committee_index,
+        shard_transition=shard_transitions[shard], signed=True,
+    )
+
+    block = build_empty_block(spec, state, slot=state.slot + 1)
+    block.body.attestations = [attestation]
+    block.body.shard_transitions = shard_transitions
+
+    # Custody operations
+    challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transitions[shard])
+    block.body.chunk_challenges = [challenge]
+    chunk_challenge_index = state.custody_chunk_challenge_index
+    custody_response = get_valid_custody_chunk_response(
+        spec, state, challenge, chunk_challenge_index, block_length_or_custody_data=body)
+    block.body.chunk_challenge_responses = [custody_response]
+
+    yield from run_beacon_block(spec, state, block)
