@@ -17,13 +17,11 @@ def run_shard_blocks(spec, shard_state, signed_shard_block,
                      beacon_parent_state,
                      validate=True, valid=True):
     pre_shard_state = shard_state.copy()
+
     yield 'pre', pre_shard_state
     yield 'signed_shard_block', signed_shard_block
     yield 'validate', validate
     yield 'beacon_parent_state', beacon_parent_state
-
-    if validate is False:
-        beacon_parent_state = None
 
     if not valid:
         expect_assertion_error(lambda: spec.shard_state_transition(

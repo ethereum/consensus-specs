@@ -66,7 +66,7 @@ def verify_shard_block_signature(beacon_parent_state: BeaconState,
 
 ## Shard state transition function
 
-The post-state corresponding to a pre-state `shard_state` and a signed block `signed_block` is defined as `shard_state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
+The post-state corresponding to a pre-state `shard_state` and a signed block `signed_block` is defined as `shard_state_transition(shard_state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
 
 ```python
 def shard_state_transition(shard_state: ShardState,

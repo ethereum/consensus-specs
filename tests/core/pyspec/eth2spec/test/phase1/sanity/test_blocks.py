@@ -48,10 +48,10 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
         yield 'block', beacon_block
         yield 'post', None
         return
-    else:
-        state_transition_and_sign_block(spec, state, beacon_block)
-        yield 'block', beacon_block
-        yield 'post', None
+
+    state_transition_and_sign_block(spec, state, beacon_block)
+    yield 'block', beacon_block
+    yield 'post', state
 
     for shard in range(spec.get_active_shard_count(state)):
         post_shard_state = state.shard_states[shard]
