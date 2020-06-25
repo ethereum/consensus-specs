@@ -213,13 +213,17 @@ We first define helper functions:
    * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
    * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
    * containers: `len(fields)`
-* `pack(value)`: given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `pack_bits(bits)`: Given the `bits` of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. And then pack `bitfield_bytes` into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `pack(values)`: Given ordered objects of the same basic type:
+   1. Serialize the values into bytes.
+   1. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
+   1. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
+   1. Return the chunks.
+* `pack_bits(bits)`: Given the bits of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. Then return `pack(bitfield_bytes)`.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
 * `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
-    * The merkleization depends on the effective input, which can be padded/limited:
+    * The merkleization depends on the effective input, which must be padded/limited:
         - if no limit: pad the `chunks` with zeroed chunks to `next_pow_of_two(len(chunks))` (virtually for memory efficiency).
-        - if `limit > len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
+        - if `limit >= len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
         - if `limit < len(chunks)`: do not merkleize, input exceeds limit. Raise an error instead.
     * Then, merkleize the chunks (empty input is padded to 1 zero chunk):
         - If `1` chunk: the root is the chunk itself.
