@@ -299,7 +299,7 @@ def get_shard_transition_fields(
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
         shard_state = shard_state.copy()
-        shard_state_transition(shard_state, shard_block, validate=False)
+        process_shard_block(shard_state, shard_block.message)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 
