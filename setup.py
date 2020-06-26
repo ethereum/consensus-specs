@@ -96,7 +96,7 @@ from lru import LRU
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint64,
+    View, boolean, Container, List, Vector, uint64, uint8,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
@@ -519,7 +519,7 @@ setup(
         "py_ecc==4.0.0",
         "milagro_bls_binding==1.3.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.16",
+        "remerkleable==0.1.17",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

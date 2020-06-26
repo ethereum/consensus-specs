@@ -48,7 +48,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
             attestation = get_valid_attestation(spec, state, signed=True)
             attestations.append(attestation)
         # fill each created slot in state after inclusion delay
-        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
+        if slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
             include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
             add_attestations_to_state(spec, state, [include_att], state.slot)
         next_slot(spec, state)
