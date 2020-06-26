@@ -737,7 +737,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
         flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
         source = hash(seed + int_to_bytes(current_round, length=1) + int_to_bytes(position // 256, length=4))
-        byte = source[(position % 256) // 8]
+        byte = uint8(source[(position % 256) // 8])
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
 
@@ -1317,7 +1317,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
     # Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bits[1:] = state.justification_bits[:-1]
+    state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
     state.justification_bits[0] = 0b0
     matching_target_attestations = get_matching_target_attestations(state, previous_epoch)  # Previous epoch
     if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:
