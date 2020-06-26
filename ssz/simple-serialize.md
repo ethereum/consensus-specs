@@ -214,7 +214,7 @@ We first define helper functions:
    * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
    * containers: `len(fields)`
 * `pack(values)`: Given ordered objects of the same basic type:
-   1. Serialize the values into bytes.
+   1. Serialize `values` into bytes.
    2. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
    3. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
    4. Return the chunks.
