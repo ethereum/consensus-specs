@@ -215,9 +215,9 @@ We first define helper functions:
    * containers: `len(fields)`
 * `pack(values)`: Given ordered objects of the same basic type:
    1. Serialize the values into bytes.
-   1. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
-   1. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
-   1. Return the chunks.
+   2. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
+   3. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
+   4. Return the chunks.
 * `pack_bits(bits)`: Given the bits of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. Then return `pack(bitfield_bytes)`.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
 * `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
