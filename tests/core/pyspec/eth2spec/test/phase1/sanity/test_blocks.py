@@ -8,9 +8,12 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.custody import (
+    get_custody_secret,
+    get_custody_slashable_test_vector,
     get_valid_chunk_challenge,
     get_valid_custody_chunk_response,
     get_valid_custody_key_reveal,
+    get_valid_custody_slashing,
     get_valid_early_derived_secret_reveal,
 )
 from eth2spec.test.helpers.shard_block import (
@@ -175,7 +178,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
-def test_with_custody_key_reveal(spec, state):
+def test_custody_key_reveal(spec, state):
     state = transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
@@ -188,10 +191,52 @@ def test_with_custody_key_reveal(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
-def test_with_early_derived_secret_reveal(spec, state):
+def test_early_derived_secret_reveal(spec, state):
     state = transition_to_valid_shard_slot(spec, state)
     block = build_empty_block(spec, state, slot=state.slot + 1)
     early_derived_secret_reveal = get_valid_early_derived_secret_reveal(spec, state)
     block.body.early_derived_secret_reveals = [early_derived_secret_reveal]
+
+    yield from run_beacon_block(spec, state, block)
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+def test_custody_slashing(spec, state):
+    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
+    if not is_full_crosslink(spec, state):
+        # skip
+        return
+
+    state = transition_to_valid_shard_slot(spec, state)
+
+    # Build shard block
+    shard = 0
+    committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
+    # Create slashable shard block body
+    validator_index = spec.get_beacon_committee(state, state.slot, committee_index)[0]
+    custody_secret = get_custody_secret(spec, state, validator_index)
+    slashable_body = get_custody_slashable_test_vector(spec, custody_secret, length=100, slashable=True)
+    shard_block = build_shard_block(spec, state, shard, body=slashable_body, slot=state.slot, signed=True)
+    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
+    shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
+
+    attestation = get_valid_on_time_attestation(
+        spec, state, index=committee_index,
+        shard_transition=shard_transitions[shard], signed=True,
+    )
+    block = build_empty_block(spec, state, slot=state.slot + 1)
+    block.body.attestations = [attestation]
+    block.body.shard_transitions = shard_transitions
+
+    _, _, _ = run_beacon_block(spec, state, block)
+
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
+
+    block = build_empty_block(spec, state, slot=state.slot + 1)
+    custody_slashing = get_valid_custody_slashing(
+        spec, state, attestation, shard_transitions[shard], custody_secret, slashable_body
+    )
+    block.body.custody_slashings = [custody_slashing]
 
     yield from run_beacon_block(spec, state, block)

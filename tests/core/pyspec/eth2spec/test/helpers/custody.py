@@ -191,7 +191,7 @@ def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=Tr
     offset = 0
     while spec.compute_custody_bit(custody_secret, test_vector) != slashable:
         offset += 1
-        test_vector = test_vector = get_custody_test_vector(length, offset)
+        test_vector = get_custody_test_vector(length, offset)
     return test_vector
 
 

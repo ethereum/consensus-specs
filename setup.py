@@ -216,7 +216,10 @@ get_matching_head_attestations = cache_this(
 
 _get_attesting_indices = get_attesting_indices
 get_attesting_indices = cache_this(
-    lambda state, data, bits: (state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()),
+    lambda state, data, bits: (
+        state.randao_mixes.hash_tree_root(),
+        state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()
+    ),
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
