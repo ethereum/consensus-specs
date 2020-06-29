@@ -174,6 +174,7 @@ def test_invalid_offset(spec, state):
     # 4 is not in `SHARD_BLOCK_OFFSETS`
     shard = 0
     slot = beacon_state.shard_states[shard].slot + 4
+    assert slot not in spec.SHARD_BLOCK_OFFSETS
     transition_to(spec, beacon_state, slot)
 
     shard_state = beacon_state.shard_states[shard]
