@@ -25,13 +25,13 @@ def run_beacon_block(spec, state, block, valid=True):
     yield 'pre', state.copy()
 
     if not valid:
-        state_transition_and_sign_block(spec, state, block, expect_fail=True)
-        yield 'block', block
+        signed_beacon_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+        yield 'block', signed_beacon_block
         yield 'post', None
         return
 
-    state_transition_and_sign_block(spec, state, block)
-    yield 'block', block
+    signed_beacon_block = state_transition_and_sign_block(spec, state, block)
+    yield 'block', signed_beacon_block
     yield 'post', state
 
 
@@ -73,8 +73,8 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
         yield 'post', None
         return
 
-    state_transition_and_sign_block(spec, state, beacon_block)
-    yield 'block', beacon_block
+    signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)
+    yield 'block', signed_beacon_block
     yield 'post', state
 
     for shard in range(spec.get_active_shard_count(state)):
@@ -159,7 +159,7 @@ def test_with_custody_challenge_and_response(spec, state):
     block.body.attestations = [attestation]
     block.body.shard_transitions = shard_transitions
 
-    # Custody operations
+    # CustodyChunkChallenge and CustodyChunkResponse operations
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transitions[shard])
     block.body.chunk_challenges = [challenge]
     chunk_challenge_index = state.custody_chunk_challenge_index
