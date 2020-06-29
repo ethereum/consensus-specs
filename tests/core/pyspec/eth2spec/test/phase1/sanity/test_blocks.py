@@ -10,6 +10,8 @@ from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.custody import (
     get_valid_chunk_challenge,
     get_valid_custody_chunk_response,
+    get_valid_custody_key_reveal,
+    get_valid_early_derived_secret_reveal,
 )
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
@@ -135,7 +137,7 @@ def test_process_beacon_block_with_empty_proposal_transition(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
-def test_with_custody_challenge_and_response(spec, state):
+def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     # NOTE: this test is only for full crosslink (minimal config), not for mainnet
     if not is_full_crosslink(spec, state):
         # skip
@@ -159,12 +161,37 @@ def test_with_custody_challenge_and_response(spec, state):
     block.body.attestations = [attestation]
     block.body.shard_transitions = shard_transitions
 
-    # CustodyChunkChallenge and CustodyChunkResponse operations
+    # CustodyChunkChallenge operation
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transitions[shard])
     block.body.chunk_challenges = [challenge]
+    # CustodyChunkResponse operation
     chunk_challenge_index = state.custody_chunk_challenge_index
     custody_response = get_valid_custody_chunk_response(
         spec, state, challenge, chunk_challenge_index, block_length_or_custody_data=body)
     block.body.chunk_challenge_responses = [custody_response]
+
+    yield from run_beacon_block(spec, state, block)
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+def test_with_custody_key_reveal(spec, state):
+    state = transition_to_valid_shard_slot(spec, state)
+    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
+
+    block = build_empty_block(spec, state, slot=state.slot + 1)
+    custody_key_reveal = get_valid_custody_key_reveal(spec, state)
+    block.body.custody_key_reveals = [custody_key_reveal]
+
+    yield from run_beacon_block(spec, state, block)
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+def test_with_early_derived_secret_reveal(spec, state):
+    state = transition_to_valid_shard_slot(spec, state)
+    block = build_empty_block(spec, state, slot=state.slot + 1)
+    early_derived_secret_reveal = get_valid_early_derived_secret_reveal(spec, state)
+    block.body.early_derived_secret_reveals = [early_derived_secret_reveal]
 
     yield from run_beacon_block(spec, state, block)
