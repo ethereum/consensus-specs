@@ -726,13 +726,13 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
 
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
-    for current_round in map(uint8, range(SHUFFLE_ROUND_COUNT)):
-        pivot = bytes_to_uint64(hash(seed + uint_to_bytes(current_round))[0:8]) % index_count
-        flip = uint64((pivot + index_count - index) % index_count)
+    for current_round in range(SHUFFLE_ROUND_COUNT):
+        pivot = bytes_to_uint64(hash(seed + uint_to_bytes(uint8(current_round)))[0:8]) % index_count
+        flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
         source = hash(
             seed
-            + uint_to_bytes(current_round)
+            + uint_to_bytes(uint8(current_round))
             + uint_to_bytes(uint32(position // 256))
         )
         byte = source[(position % 256) // 8]
