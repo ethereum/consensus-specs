@@ -229,9 +229,11 @@ Given one set of data, return the custody atoms: each atom will be combined with
 
 ```python
 def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
-    bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_ATOM)  # right-padding
-    return [bytez[i:i + BYTES_PER_CUSTODY_ATOM]
-            for i in range(0, len(bytez), BYTES_PER_CUSTODY_ATOM)]
+    bytez += b'\x00' * ((BYTES_PER_CUSTODY_ATOM - len(bytez)) % BYTES_PER_CUSTODY_ATOM)  # right-padding
+    return [
+        bytez[i:i + BYTES_PER_CUSTODY_ATOM]
+        for i in range(0, len(bytez), BYTES_PER_CUSTODY_ATOM)
+    ]
 ```
 
 ### `get_custody_secrets`
