@@ -1084,8 +1084,9 @@ def process_light_client_committee_updates(state: BeaconState) -> None:
     """
     Update light client committees.
     """
-    if compute_epoch_at_slot(state.slot + 1) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
+    next_epoch = compute_epoch_at_slot(state.slot + 1)
+    if next_epoch % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
         state.current_light_committee = state.next_light_committee
-        new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
+        new_committee = get_light_client_committee(state, next_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
