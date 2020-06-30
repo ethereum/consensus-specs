@@ -532,7 +532,7 @@ def get_active_shard_count(state: BeaconState) -> uint64:
 ```python
 def get_online_validator_indices(state: BeaconState) -> Set[ValidatorIndex]:
     active_validators = get_active_validator_indices(state, get_current_epoch(state))
-    return set([i for i in active_validators if state.online_countdown[i] != 0])
+    return set(i for i in active_validators if state.online_countdown[i] != 0)  # non-duplicate
 ```
 
 #### `get_shard_committee`

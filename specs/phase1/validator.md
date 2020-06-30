@@ -162,7 +162,7 @@ def get_shard_winning_roots(state: BeaconState,
         committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
 
         # Loop over all shard transition roots, looking for a winning root
-        shard_transition_roots = set([a.data.shard_transition_root for a in shard_attestations])
+        shard_transition_roots = set(a.data.shard_transition_root for a in shard_attestations)  # non-duplicate
         for shard_transition_root in sorted(shard_transition_roots):
             transition_attestations = [
                 a for a in shard_attestations

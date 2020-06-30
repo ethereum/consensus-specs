@@ -554,7 +554,6 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         slash_validator(state, custody_slashing.whistleblower_index)
 ```
 
-
 ## Per-epoch processing
 
 ### Handling of reveal deadlines
@@ -586,7 +585,7 @@ def process_custody_final_updates(state: BeaconState) -> None:
 
     # Reset withdrawable epochs if challenge records are empty
     records = state.custody_chunk_challenge_records
-    validator_indices_in_records = set([record.responder_index for record in records])
+    validator_indices_in_records = set(record.responder_index for record in records)  # non-duplicate
     for index, validator in enumerate(state.validators):
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             not_all_secrets_are_revealed = validator.all_custody_secrets_revealed_epoch == FAR_FUTURE_EPOCH
