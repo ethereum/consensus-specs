@@ -513,6 +513,7 @@ setup(
         "lint": ["flake8==3.7.7", "mypy==0.750"],
     },
     install_requires=[
+        "pandoc",
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
