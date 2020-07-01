@@ -157,3 +157,4 @@ $(TEST_VECTOR_DIR)/:
 # (creation of output dir is a dependency)
 gen_%: $(TEST_VECTOR_DIR)
 	$(call run_generator,$*)
+
