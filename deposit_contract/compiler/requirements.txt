@@ -2,7 +2,6 @@
 # On top of this beta version, a later change was backported, and included in the formal verification:
 #   https://github.com/vyperlang/vyper/issues/1761
 # The resulting vyper version is pinned and maintained as protected branch.
-pandoc
 git+https://github.com/hwwhww/vyper@1761-HOTFIX-v0.1.0-beta.13-markdown
 
 pytest==3.6.1
