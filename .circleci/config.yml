@@ -155,6 +155,9 @@ jobs:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_compiler_cached_venv
       - run:
+          name: pip upgrade
+          command: python3.7 -m venv venv && . venv/bin/activate && pip3.7 install setuptools==41.6.0
+      - run:
           name: Install deposit contract compiler requirements
           command: make install_deposit_contract_compiler
       - save_deposit_contract_compiler_cached_venv
