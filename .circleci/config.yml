@@ -48,13 +48,13 @@ commands:
     description: "Restore the venv from cache for the deposit contract compiler"
     steps:
       - restore_cached_venv:
-          venv_name: v20-deposit-contract-compiler
+          venv_name: v21-deposit-contract-compiler
           reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
   save_deposit_contract_compiler_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract compiler"
     steps:
       - save_cached_venv:
-          venv_name: v20-deposit-contract-compiler
+          venv_name: v21-deposit-contract-compiler
           reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
           venv_path: ./deposit_contract/compiler/venv
   restore_deposit_contract_tester_cached_venv:
@@ -154,9 +154,6 @@ jobs:
       - restore_cache:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_compiler_cached_venv
-      - run:
-          name: pip upgrade
-          command: python3.7 -m venv venv && . venv/bin/activate && pip3.7 install --upgrade pip setuptools wheel virtualenv
       - run:
           name: Install deposit contract compiler requirements
           command: make install_deposit_contract_compiler
