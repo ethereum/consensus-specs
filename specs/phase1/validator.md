@@ -40,7 +40,7 @@
       - [`SignedAggregateAndProof`](#signedaggregateandproof)
   - [Light client committee](#light-client-committee)
     - [Preparation](#preparation)
-    - [Light clent vote](#light-clent-vote)
+    - [Light client vote](#light-client-vote)
       - [Light client vote data](#light-client-vote-data)
         - [`LightClientVoteData`](#lightclientvotedata)
       - [Construct vote](#construct-vote)
@@ -390,11 +390,11 @@ def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex)
     return index in next_committee
 ```
 
-#### Light clent vote
+#### Light client vote
 
 During a period of epochs that the validator is a part of the light client committee (`validator_index in get_light_client_committee(state, epoch)`), the validator creates and broadcasts a `LightClientVote` at each slot.
 
-A validator should create and broadcast the `light_client_vote` to the `light_client_votes` pubsub topic when either (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) two-thirds of the `slot` have transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `light_client_vote` to the `light_client_votes` pubsub topic when either (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the `slot` have transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
 
 - Let `light_client_committee = get_light_client_committee(state, compute_epoch_at_slot(slot))`
 
