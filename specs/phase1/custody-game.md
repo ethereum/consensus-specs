@@ -25,6 +25,7 @@
     - [`CustodyKeyReveal`](#custodykeyreveal)
     - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
 - [Helpers](#helpers)
+  - [`get_block_data_merkle_root`](#get_block_data_merkle_root)
   - [`replace_empty_or_append`](#replace_empty_or_append)
   - [`legendre_bit`](#legendre_bit)
   - [`get_custody_atoms`](#get_custody_atoms)
@@ -181,6 +182,10 @@ class EarlyDerivedSecretReveal(Container):
 
 
 ## Helpers
+
+### `get_block_data_merkle_root`
+
+`get_block_data_merkle_root(data: ByteList) -> Root` is the function that returns the Merkle root of the block data without the length mix-in.
 
 ### `replace_empty_or_append`
 
@@ -515,7 +520,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
     # Verify that the provided data matches the shard-transition
     assert (
-        custody_slashing.data.get_backing().get_left().merkle_root()
+        get_block_data_merkle_root(custody_slashing.data)
         == shard_transition.shard_data_roots[custody_slashing.data_index]
     )
     assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]

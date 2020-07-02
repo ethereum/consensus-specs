@@ -136,17 +136,16 @@ def build_proof(anchor, leaf_index):
     return list(reversed(proof))
 
 
-def get_block_data_merkle_root(data_as_bytelist):
-    # To get the Merkle root of the block data, we need the Merkle root without the length Mixing
-    # The below implements this in the Remerkleable framework
-    return data_as_bytelist.get_backing().get_left().merkle_root()
-
-
-def get_valid_custody_chunk_response(spec, state, chunk_challenge, block_length, challenge_index,
+def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_index,
+                                     block_length_or_custody_data,
                                      invalid_chunk_data=False):
-    custody_data = get_custody_test_vector(block_length)
+    if isinstance(block_length_or_custody_data, int):
+        custody_data = get_custody_test_vector(block_length_or_custody_data)
+    else:
+        custody_data = block_length_or_custody_data
+
     custody_data_block = ByteList[spec.MAX_SHARD_BLOCK_SIZE](custody_data)
-    chunks = custody_chunkify(spec, custody_data)
+    chunks = custody_chunkify(spec, custody_data_block)
 
     chunk_index = chunk_challenge.chunk_index
 
@@ -166,7 +165,7 @@ def get_custody_test_vector(bytelength, offset=0):
 
 
 def get_sample_shard_transition(spec, start_slot, block_lengths):
-    b = [get_block_data_merkle_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
+    b = [spec.get_block_data_merkle_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
          for x in block_lengths]
     shard_transition = spec.ShardTransition(
         start_slot=start_slot,
@@ -192,7 +191,7 @@ def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=Tr
     offset = 0
     while spec.compute_custody_bit(custody_secret, test_vector) != slashable:
         offset += 1
-        test_vector = test_vector = get_custody_test_vector(length, offset)
+        test_vector = get_custody_test_vector(length, offset)
     return test_vector
 
 
@@ -201,5 +200,5 @@ def get_custody_slashable_shard_transition(spec, start_slot, block_lengths, cust
     slashable_test_vector = get_custody_slashable_test_vector(spec, custody_secret,
                                                               block_lengths[0], slashable=slashable)
     block_data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](slashable_test_vector)
-    shard_transition.shard_data_roots[0] = get_block_data_merkle_root(block_data)
+    shard_transition.shard_data_roots[0] = spec.get_block_data_merkle_root(block_data)
     return shard_transition, slashable_test_vector

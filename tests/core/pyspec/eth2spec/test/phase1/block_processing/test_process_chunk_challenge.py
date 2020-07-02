@@ -242,7 +242,8 @@ def test_custody_response(spec, state):
 
     chunk_challenge_index = state.custody_chunk_challenge_index - 1
 
-    custody_response = get_valid_custody_chunk_response(spec, state, challenge, 2**15 // 3, chunk_challenge_index)
+    custody_response = get_valid_custody_chunk_response(
+        spec, state, challenge, chunk_challenge_index, block_length_or_custody_data=2**15 // 3)
 
     yield from run_custody_chunk_response_processing(spec, state, custody_response)
 
@@ -270,7 +271,8 @@ def test_custody_response_multiple_epochs(spec, state):
 
     chunk_challenge_index = state.custody_chunk_challenge_index - 1
 
-    custody_response = get_valid_custody_chunk_response(spec, state, challenge, 2**15 // 3, chunk_challenge_index)
+    custody_response = get_valid_custody_chunk_response(
+        spec, state, challenge, chunk_challenge_index, block_length_or_custody_data=2**15 // 3)
 
     yield from run_custody_chunk_response_processing(spec, state, custody_response)
 
@@ -298,6 +300,7 @@ def test_custody_response_many_epochs(spec, state):
 
     chunk_challenge_index = state.custody_chunk_challenge_index - 1
 
-    custody_response = get_valid_custody_chunk_response(spec, state, challenge, 2**15 // 3, chunk_challenge_index)
+    custody_response = get_valid_custody_chunk_response(
+        spec, state, challenge, chunk_challenge_index, block_length_or_custody_data=2**15 // 3)
 
     yield from run_custody_chunk_response_processing(spec, state, custody_response)
