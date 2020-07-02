@@ -234,9 +234,12 @@ Given one set of data, return the custody atoms: each atom will be combined with
 
 ```python
 def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
-    bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_ATOM)  # right-padding
-    return [bytez[i:i + BYTES_PER_CUSTODY_ATOM]
-            for i in range(0, len(bytez), BYTES_PER_CUSTODY_ATOM)]
+    length_remainder = len(bytez) % BYTES_PER_CUSTODY_ATOM
+    bytez += b'\x00' * ((BYTES_PER_CUSTODY_ATOM - length_remainder) % BYTES_PER_CUSTODY_ATOM)  # right-padding
+    return [
+        bytez[i:i + BYTES_PER_CUSTODY_ATOM]
+        for i in range(0, len(bytez), BYTES_PER_CUSTODY_ATOM)
+    ]
 ```
 
 ### `get_custody_secrets`
@@ -557,7 +560,6 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         slash_validator(state, custody_slashing.whistleblower_index)
 ```
 
-
 ## Per-epoch processing
 
 ### Handling of reveal deadlines
@@ -589,7 +591,7 @@ def process_custody_final_updates(state: BeaconState) -> None:
 
     # Reset withdrawable epochs if challenge records are empty
     records = state.custody_chunk_challenge_records
-    validator_indices_in_records = set([record.responder_index for record in records])
+    validator_indices_in_records = set(record.responder_index for record in records)  # non-duplicate
     for index, validator in enumerate(state.validators):
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             not_all_secrets_are_revealed = validator.all_custody_secrets_revealed_epoch == FAR_FUTURE_EPOCH
