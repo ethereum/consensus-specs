@@ -26,7 +26,13 @@ It consists of four main sections:
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
+        - [`beacon_block`](#beacon_block)
+        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
+        - [`voluntary_exit`](#voluntary_exit)
+        - [`proposer_slashing`](#proposer_slashing)
+        - [`attester_slashing`](#attester_slashing)
       - [Attestation subnets](#attestation-subnets)
+        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
       - [Attestations and Aggregation](#attestations-and-aggregation)
     - [Encodings](#encodings)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -237,50 +243,68 @@ We utilize `ACCEPT`, `REJECT`, and `IGNORE`. For each gossipsub topic, there are
 
 #### Global topics
 
-There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `Name`s are:
+There are two primary global topics used to propagate beacon blocks (`beacon_block`) and aggregate attestations (`beacon_aggregate_and_proof`) to all nodes on the network.
+In addition to these two frequently used topics are three global topics used to propagate lower frequency validator messages (`voluntary_exit`, `proposer_slashing`, and `attester_slashing`).
 
-- `beacon_block` - This topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety. The following validations MUST pass before forwarding the `signed_beacon_block` on the network
-    - _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
-    - _[IGNORE]_ The block is from a slot greater than the latest finalized slot -- i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)` (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
-    - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
-    - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
-    - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`). If the `proposer_index` cannot immediately be verified against the expected shuffling, the block MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
-- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
-    - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot` (a client MAY queue future aggregates for processing at the appropriate slot).
-    - _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
-    - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
-    - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
-    - _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
-    - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - _[REJECT]_ The aggregator's validator index is within the committee -- i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
-    - _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
-    - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
-    - _[REJECT]_ The signature of `aggregate` is valid.
+##### `beacon_block`
 
-Additional global topics are used to propagate lower frequency validator messages. Their `Name`s are:
+The `beacon_block` topic is used solely for propagating new signed beacon blocks to all nodes on the networks. Signed blocks are sent in their entirety.
+The following validations MUST pass before forwarding the `signed_beacon_block` on the network
+- _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+- _[IGNORE]_ The block is from a slot greater than the latest finalized slot -- i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)` (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
+- _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
+- _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`). If the `proposer_index` cannot immediately be verified against the expected shuffling, the block MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
-- `voluntary_exit` - This topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety. The following validations MUST pass before forwarding the `signed_voluntary_exit` on to the network
-    - _[IGNORE]_ The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
-    - _[REJECT]_ All of the conditions within `process_voluntary_exit` pass validation.
-- `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. The following validations MUST pass before forwarding the `proposer_slashing` on to the network
-    - _[IGNORE]_ The proposer slashing is the first valid proposer slashing received for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
-    - _[REJECT]_ All of the conditions within `process_proposer_slashing` pass validation.
-- `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
-    - _[IGNORE]_ At least one index in the intersection of the attesting indices of each attestation has not yet been seen in any prior `attester_slashing` (i.e. `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`, verify if `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
-    - _[REJECT]_ All of the conditions within `process_attester_slashing` pass validation.
+##### `beacon_aggregate_and_proof`
 
+The `beacon_aggregate_and_proof` topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks.
+The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network. (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
+- _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot` (a client MAY queue future aggregates for processing at the appropriate slot).
+- _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
+- _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
+- _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
+- _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+- _[REJECT]_ The aggregator's validator index is within the committee -- i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
+- _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
+- _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
+- _[REJECT]_ The signature of `aggregate` is valid.
+
+##### `voluntary_exit`
+
+The `voluntary_exit` topic is used solely for propagating signed voluntary validator exits to proposers on the network. Signed voluntary exits are sent in their entirety.
+The following validations MUST pass before forwarding the `signed_voluntary_exit` on to the network
+- _[IGNORE]_ The voluntary exit is the first valid voluntary exit received for the validator with index `signed_voluntary_exit.message.validator_index`.
+- _[REJECT]_ All of the conditions within `process_voluntary_exit` pass validation.
+
+##### `proposer_slashing`
+
+The `proposer_slashing` topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety.
+The following validations MUST pass before forwarding the `proposer_slashing` on to the network
+- _[IGNORE]_ The proposer slashing is the first valid proposer slashing received for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
+- _[REJECT]_ All of the conditions within `process_proposer_slashing` pass validation.
+
+##### `attester_slashing`
+
+The `attester_slashing` topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
+- _[IGNORE]_ At least one index in the intersection of the attesting indices of each attestation has not yet been seen in any prior `attester_slashing` (i.e. `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`, verify if `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
+- _[REJECT]_ All of the conditions within `process_attester_slashing` pass validation.
 
 #### Attestation subnets
 
-Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `Name`s are:
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network.
 
-- `beacon_attestation_{subnet_id}` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
-    - _[REJECT]_ The attestation is for the correct subnet -- i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`, where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`, which may be pre-computed along with the committee information for the signature check.
-    - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
-    - _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
-    - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
-    - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
-    - _[REJECT]_ The signature of `attestation` is valid.
+##### `beacon_attestation_{subnet_id}`
+
+The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
+The following validations MUST pass before forwarding the `attestation` on the subnet.
+- _[REJECT]_ The attestation is for the correct subnet -- i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`, where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`, which may be pre-computed along with the committee information for the signature check.
+- _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot` (a client MAY queue future attestations for processing at the appropriate slot).
+- _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+- _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet that has an identical `attestation.data.target.epoch` and participating validator index.
+- _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The signature of `attestation` is valid.
 
 #### Attestations and Aggregation
 
