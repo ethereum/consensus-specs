@@ -64,7 +64,7 @@ It consists of four main sections:
     - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
   - [Encryption](#encryption)
     - [Why are we not supporting SecIO?](#why-are-we-not-supporting-secio)
-    - [Why are we using Noise/TLS 1.3?](#why-are-we-using-noisetls-13)
+    - [Why are we using Noise?](#why-are-we-using-noise)
     - [Why are we using encryption at all?](#why-are-we-using-encryption-at-all)
   - [Gossipsub](#gossipsub)
     - [Why are we using a pub/sub algorithm for block and attestation propagation?](#why-are-we-using-a-pubsub-algorithm-for-block-and-attestation-propagation)
@@ -778,6 +778,10 @@ Clients can adopt new transports without breaking old ones, and the multi-transp
 
 The QUIC standard is still not finalized (at working draft 22 at the time of writing), and not all mainstream runtimes/languages have mature, standard, and/or fully-interoperable [QUIC support](https://github.com/quicwg/base-drafts/wiki/Implementations). One remarkable example is node.js, where the QUIC implementation is [in early development](https://github.com/nodejs/quic).
 
+*Note*: [TLS 1.3 is a prerequisite of the QUIC transport](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7), although an experiment exists to integrate Noise as the QUIC crypto layer: [nQUIC](https://eprint.iacr.org/2019/028).
+
+On the other hand, TLS 1.3 is the newest, simplified iteration of TLS. Old, insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as the sole ECDH key agreement function. Handshakes are faster, 1-RTT data is supported, and session resumption is a reality, amongst other features.
+
 ## Multiplexing
 
 ### Why are we using mplex/yamux?
@@ -826,7 +830,7 @@ Although SecIO has wide language support, we won’t be using it for mainnet bec
 
 SecIO is not considered secure for the purposes of this spec.
 
-### Why are we using Noise/TLS 1.3?
+### Why are we using Noise?
 
 Copied from the Noise Protocol Framework [website](http://www.noiseprotocol.org):
 
@@ -835,10 +839,6 @@ Copied from the Noise Protocol Framework [website](http://www.noiseprotocol.org)
 Noise in itself does not specify a single handshake procedure, but provides a framework to build secure handshakes based on Diffie-Hellman key agreement with a variety of tradeoffs and guarantees.
 
 Noise handshakes are lightweight and simple to understand, and are used in major cryptographic-centric projects like WireGuard, I2P, and Lightning. [Various](https://www.wireguard.com/papers/kobeissi-bhargavan-noise-explorer-2018.pdf) [studies](https://eprint.iacr.org/2019/436.pdf) have assessed the stated security goals of several Noise handshakes with positive results.
-
-On the other hand, TLS 1.3 is the newest, simplified iteration of TLS. Old, insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as the sole ECDH key agreement function. Handshakes are faster, 1-RTT data is supported, and session resumption is a reality, amongst other features.
-
-*Note*: [TLS 1.3 is a prerequisite of the QUIC transport](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7), although an experiment exists to integrate Noise as the QUIC crypto layer: [nQUIC](https://eprint.iacr.org/2019/028).
 
 ### Why are we using encryption at all?
 
