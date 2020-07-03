@@ -26,9 +26,12 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
         latest_message = spec.LatestMessage(
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
-            shard=attestation.data.shard,
-            shard_root=attestation.data.shard_head_root,
         )
+        shard_latest_message = spec.ShardLatestMessage(
+            epoch=attestation.data.target.epoch,
+            root=attestation.data.shard_head_root,
+        )
+        assert store.shard_stores[attestation.data.shard].latest_messages[sample_index] == shard_latest_message
 
     assert (
         store.latest_messages[sample_index] == latest_message

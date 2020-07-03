@@ -111,7 +111,7 @@ def test_basic(spec, state):
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
-    shard_store = spec.get_forkchoice_shard_store(state, shard)
+    shard_store = store.shard_stores[shard]
     shard_head_root = spec.get_shard_head(store, shard_store)
     assert shard_head_root == state.shard_states[shard].latest_block_root
     assert shard_store.block_states[shard_head_root].slot == 1
