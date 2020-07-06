@@ -52,17 +52,7 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
-        if (
-            i in shard_store.latest_messages
-            # TODO: check the latest message logic: currently, validator's previous vote of another shard
-            # would be ignored once their newer vote is accepted. Check if it makes sense.
-            and get_shard_ancestor(
-                store,
-                shard_store,
-                shard_store.latest_messages[i].root,
-                shard_store.signed_blocks[root].message.slot,
-            ) == root
-        )
+        if root in shard_store.attesting_validators and i in shard_store.attesting_validators[root]
     ))
 ```
 

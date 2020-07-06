@@ -17,25 +17,24 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     spec.on_attestation(store, attestation)
 
     sample_index = indexed_attestation.attesting_indices[0]
-    if spec.fork == PHASE0:
-        latest_message = spec.LatestMessage(
-            epoch=attestation.data.target.epoch,
-            root=attestation.data.beacon_block_root,
-        )
-    else:
-        latest_message = spec.LatestMessage(
-            epoch=attestation.data.target.epoch,
-            root=attestation.data.beacon_block_root,
-        )
-        shard_latest_message = spec.ShardLatestMessage(
-            epoch=attestation.data.target.epoch,
-            root=attestation.data.shard_head_root,
-        )
-        assert store.shard_stores[attestation.data.shard].latest_messages[sample_index] == shard_latest_message
-
+    latest_message = spec.LatestMessage(
+        epoch=attestation.data.target.epoch,
+        root=attestation.data.beacon_block_root,
+    )
     assert (
         store.latest_messages[sample_index] == latest_message
     )
+
+    if spec.fork != PHASE0:
+        latest_message = spec.LatestMessage(
+            epoch=attestation.data.target.epoch,
+            root=attestation.data.beacon_block_root,
+        )
+        shard = attestation.data.shard
+        assert attestation.data.shard_head_root in store.shard_stores[shard].attesting_validators
+        assert len(store.shard_stores[shard].attesting_validators[attestation.data.shard_head_root].difference(
+            set(indexed_attestation.attesting_indices))
+        ) == 0
 
 
 @with_all_phases

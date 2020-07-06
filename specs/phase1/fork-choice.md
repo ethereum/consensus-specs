@@ -12,7 +12,6 @@
   - [Updated data structures](#updated-data-structures)
     - [Extended `Store`](#extended-store)
   - [New data structures](#new-data-structures)
-    - [`ShardLatestMessage`](#shardlatestmessage)
     - [`ShardStore`](#shardstore)
   - [Updated helpers](#updated-helpers)
     - [Updated `get_forkchoice_store`](#updated-get_forkchoice_store)
@@ -46,15 +45,6 @@ class Store(object):
 
 ### New data structures
 
-#### `ShardLatestMessage`
-
-```python
-@dataclass(eq=True, frozen=True)
-class ShardLatestMessage(object):
-    epoch: Epoch
-    root: Root
-```
-
 #### `ShardStore`
 
 ```python
@@ -63,7 +53,7 @@ class ShardStore:
     shard: Shard
     signed_blocks: Dict[Root, SignedShardBlock] = field(default_factory=dict)
     block_states: Dict[Root, ShardState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, ShardLatestMessage] = field(default_factory=dict)
+    attesting_validators: Dict[Root, Set[ValidatorIndex]] = field(default_factory=dict)
 ```
 
 ### Updated helpers
@@ -101,11 +91,18 @@ def get_forkchoice_store(anchor_state: BeaconState) -> Store:
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
-    # TODO: separate shard chain vote
+    shard_head_root = attestation.data.shard_head_root
+
     shard = attestation.data.shard
     for i in attesting_indices:
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
-            shard_latest_message = ShardLatestMessage(epoch=target.epoch, root=attestation.data.shard_head_root)
-            store.shard_stores[shard].latest_messages[i] = shard_latest_message
+
+    # Shard
+    if shard_head_root in store.shard_stores[shard].attesting_validators:
+        store.shard_stores[shard].attesting_validators[shard_head_root] = (
+            store.shard_stores[shard].attesting_validators[shard_head_root].union(set(attesting_indices).union())
+        )
+    else:
+        store.shard_stores[shard].attesting_validators[shard_head_root] = set(attesting_indices)
 ```

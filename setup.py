@@ -307,7 +307,7 @@ ignored_dependencies = [
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
-    'Dict', 'dict', 'field',
+    'Dict', 'Set', 'dict', 'field',
 ]
 
 
