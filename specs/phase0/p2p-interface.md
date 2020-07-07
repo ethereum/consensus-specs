@@ -284,10 +284,13 @@ Signed blocks are sent in their entirety.
 
 The following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 - _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+  i.e. validate that `signed_beacon_block.message.slot <= current_slot`
+  (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
   i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
+- _[IGNORE]_ The block's parent (`block.parent_root`) has been seen locally
+  (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot
@@ -310,6 +313,8 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
+- _[IGNORE]]_ The block being voted for (`aggregate.data.beacon_block_root`) has been seen locally
+  (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation has participants --
   that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
@@ -372,6 +377,8 @@ The following validations MUST pass before forwarding the `attestation` on the s
   (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
   (a client MAY queue future attestations for processing at the appropriate slot).
+- _[IGNORE]]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen locally
+  (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The attestation is unaggregated --
   that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
