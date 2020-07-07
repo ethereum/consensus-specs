@@ -79,6 +79,7 @@ It consists of four main sections:
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
     - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
+    - [Why are these specific gossip parameters chosen?](#why-are-these-specific-gossip-parameters-chosen)
     - [Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?](#why-is-there-maximum_gossip_clock_disparity-when-validating-slot-ranges-of-messages-in-gossip-subnets)
     - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
     - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
@@ -213,12 +214,12 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub#meshsub-an-overlay-mesh-router) will be used:
 
 - `D` (topic stable mesh target count): 6
-- `D_low` (topic stable mesh low watermark): 4
+- `D_low` (topic stable mesh low watermark): 5
 - `D_high` (topic stable mesh high watermark): 12
 - `D_lazy` (gossip target): 6
 - `fanout_ttl` (ttl for fanout maps for topics we are not subscribed to but have published to, seconds): 60
 - `gossip_advertise` (number of windows to gossip about): 3
-- `gossip_history` (number of heartbeat intervals to retain message IDs): 5
+- `gossip_history` (number of heartbeat intervals to retain message IDs): 385
 - `heartbeat_interval` (frequency of heartbeat, seconds): 1
 
 ### Topics and messages
@@ -1145,6 +1146,17 @@ Some examples of where messages could be duplicated:
 * Attestation aggregation strategies where clients partially aggregate attestations and propagate them.
   Partial aggregates could be duplicated
 * Clients re-publishing seen messages
+
+### Why are these specific gossip parameters chosen?
+
+- `D`, `D_low`, `D_high`, `D_lazy`: recommended defaults.
+- `fanout_ttl`: 60  (TODO: increase to cover an epoch?)
+- `gossip_advertise`: 3 (TODO: to increase to 6?)
+- `gossip_history`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 385`. Attestation validity is bounded by an epoch, so this is the safe max bound.
+- `heartbeat_interval`: 1 second, recommended default.
+  For Eth2 specifically, 0.6-0.7s was recommended in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
+  And this parameter will be experimented with in testnets.
+
 
 ### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 
