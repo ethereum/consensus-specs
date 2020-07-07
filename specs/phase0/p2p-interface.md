@@ -263,6 +263,8 @@ Clients MUST reject (fail validation) messages containing an incorrect type, or 
 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
 
+For any optional queueing, clients SHOULD maintain maximum queue sizes to avoid DoS vectors.
+
 Gossipsub v1.1 introduces [Extended Validators](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#extended-validators)
 for the application to aid in the gossipsub peer-scoring scheme.
 We utilize `ACCEPT`, `REJECT`, and `IGNORE`. For each gossipsub topic, there are application specific validations.
