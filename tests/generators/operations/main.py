@@ -1,9 +1,8 @@
 from typing import Iterable
 
-from importlib import import_module
 from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
-from importlib import reload
+from importlib import reload, import_module
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
@@ -47,17 +46,17 @@ if __name__ == "__main__":
         'shard_transition',
     ]] + phase_0_mods  # also run the previous phase 0 tests (but against phase 1 spec)
 
-    gen_runner.run_generator(f"phase0/operations", [
+    gen_runner.run_generator(f"operations", [
         create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods
     ])
     # TODO: disabled for testing
-    # gen_runner.run_generator(f"phase0/operations", [
+    # gen_runner.run_generator(f"operations", [
     #     create_provider(key, mod_name, 'mainnet') for key, mod_name in phase_0_mods
     # ])
-    gen_runner.run_generator(f"phase1/operations", [
+    gen_runner.run_generator(f"operations", [
         create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods
     ])
     # Disabled for now
-    # gen_runner.run_generator(f"phase1/operations", [
+    # gen_runner.run_generator(f"operations", [
     #     create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
     # ])

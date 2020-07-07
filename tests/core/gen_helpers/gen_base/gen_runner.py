@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import sys
 from typing import Iterable, AnyStr, Any, Callable
+import traceback
 
 from ruamel.yaml import (
     YAML,
@@ -152,6 +153,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
+                traceback.print_exc()
     print(f"completed {generator_name}")
 
 
