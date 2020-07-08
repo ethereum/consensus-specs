@@ -263,6 +263,8 @@ Clients MUST reject (fail validation) messages containing an incorrect type, or 
 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
 
+For any optional queueing, clients SHOULD maintain maximum queue sizes to avoid DoS vectors.
+
 Gossipsub v1.1 introduces [Extended Validators](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#extended-validators)
 for the application to aid in the gossipsub peer-scoring scheme.
 We utilize `ACCEPT`, `REJECT`, and `IGNORE`. For each gossipsub topic, there are application specific validations.
@@ -284,7 +286,8 @@ Signed blocks are sent in their entirety.
 
 The following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 - _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+  i.e. validate that `signed_beacon_block.message.slot <= current_slot`
+  (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
   i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
@@ -295,6 +298,10 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the block MAY be queued for later processing while proposers for the block's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+- _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue blocks for processing once the parent block is retrieved).
+- _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 
 ##### `beacon_aggregate_and_proof`
 
@@ -310,7 +317,6 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
-- _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation has participants --
   that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
 - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot --
@@ -321,6 +327,10 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
 - _[REJECT]_ The signature of `aggregate` is valid.
+- _[IGNORE]_ The block being voted for (`aggregate.data.beacon_block_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue aggregates for processing once block is retrieved).
+- _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 
 ##### `voluntary_exit`
 
@@ -376,8 +386,11 @@ The following validations MUST pass before forwarding the `attestation` on the s
   that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
-- _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The signature of `attestation` is valid.
+- _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue aggregates for processing once block is retrieved).
+- _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 
 #### Attestations and Aggregation
 
