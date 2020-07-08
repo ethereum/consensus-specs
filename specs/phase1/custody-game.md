@@ -291,7 +291,7 @@ def get_randao_epoch_for_custody_period(period: uint64, validator_index: Validat
 ### `get_custody_period_for_validator`
 
 ```python
-def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epoch) -> int:
+def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epoch) -> uint64:
     '''
     Return the reveal period for a given validator.
     '''
