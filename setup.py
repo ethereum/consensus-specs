@@ -228,7 +228,7 @@ PHASE1_SUNDRY_FUNCTIONS = '''
 def get_block_data_merkle_root(data: ByteList) -> Root:
     # To get the Merkle root of the block data, we need the Merkle root without the length mix-in
     # The below implements this in the Remerkleable framework
-    return data.get_backing().get_left().merkle_root()
+    return Root(data.get_backing().get_left().merkle_root())
 
 
 _get_start_shard = get_start_shard
