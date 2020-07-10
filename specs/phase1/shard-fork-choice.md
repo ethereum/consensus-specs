@@ -12,7 +12,7 @@
 - [Fork choice](#fork-choice)
   - [Helpers](#helpers)
     - [`get_forkchoice_shard_store`](#get_forkchoice_shard_store)
-    - [`get_shard_latest_attesting_balance`](#get_shard_latest_attesting_balance)
+    - [`get_shard_attesting_balance`](#get_shard_attesting_balance)
     - [`get_shard_head`](#get_shard_head)
     - [`get_shard_ancestor`](#get_shard_ancestor)
     - [`get_pending_shard_blocks`](#get_pending_shard_blocks)
@@ -44,10 +44,10 @@ def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> Shard
     )
 ```
 
-#### `get_shard_latest_attesting_balance`
+#### `get_shard_attesting_balance`
 
 ```python
-def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, root: Root) -> Gwei:
+def get_shard_attesting_balance(store: Store, shard_store: ShardStore, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
@@ -60,7 +60,7 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
 
 ```python
 def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
-    # Execute the LMD-GHOST fork choice
+    # Execute the GHOST fork choice
     beacon_head_root = get_head(store)
     shard_head_state = store.block_states[beacon_head_root].shard_states[shard_store.shard]
     shard_head_root = shard_head_state.latest_block_root
@@ -78,7 +78,7 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
             return shard_head_root
         # Sort by latest attesting balance with ties broken lexicographically
         shard_head_root = max(
-            children, key=lambda root: (get_shard_latest_attesting_balance(store, shard_store, root), root)
+            children, key=lambda root: (get_shard_attesting_balance(store, shard_store, root), root)
         )
 ```
 
