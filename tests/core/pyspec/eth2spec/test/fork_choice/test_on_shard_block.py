@@ -9,7 +9,7 @@ from eth2spec.test.helpers.shard_block import (
 )
 from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root
 from eth2spec.test.helpers.shard_transitions import is_full_crosslink
-from eth2spec.test.helpers.state import state_transition_and_sign_block
+from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot
 from eth2spec.test.helpers.block import build_empty_block
 
 
@@ -67,6 +67,19 @@ def is_in_offset_sets(spec, beacon_head_state, shard):
     return beacon_head_state.slot in offset_slots
 
 
+def create_attestation_for_shard_blocks(spec, beacon_parent_state, shard, committee_index, blocks,
+                                        filter_participant_set=None):
+    shard_transition = spec.get_shard_transition(beacon_parent_state, shard, blocks)
+    attestation = get_valid_on_time_attestation(
+        spec,
+        beacon_parent_state,
+        index=committee_index,
+        shard_transition=shard_transition,
+        signed=False,
+    )
+    return attestation
+
+
 def create_beacon_block_with_shard_transition(
         spec, state, store, shard, shard_blocks_buffer, is_checking_pending_shard_blocks=True):
     beacon_block = build_empty_block(spec, state, slot=state.slot + 1)
@@ -102,12 +115,16 @@ def create_beacon_block_with_shard_transition(
     return beacon_block
 
 
+def apply_all_attestation_to_store(spec, store, attestations):
+    for attestation in attestations:
+        spec.on_attestation(store, attestation)
+
+
 def apply_beacon_block_to_store(spec, state, store, beacon_block):
     signed_beacon_block = state_transition_and_sign_block(spec, state, beacon_block)  # transition!
     store.time = store.time + spec.SECONDS_PER_SLOT
     add_block_to_store(spec, store, signed_beacon_block)
-    for attestation in signed_beacon_block.message.body.attestations:
-        spec.on_attestation(store, attestation)
+    apply_all_attestation_to_store(spec, store, signed_beacon_block.message.body.attestations)
 
 
 def create_and_apply_beacon_and_shard_blocks(spec, state, store, shard, shard_blocks_buffer):
@@ -149,7 +166,6 @@ def test_basic(spec, state):
 
 def create_simple_fork(spec, state, store, shard):
     # Beacon block
-    assert state.slot == 1
     beacon_block = create_beacon_block_with_shard_transition(spec, state, store, shard, [])
     apply_beacon_block_to_store(spec, state, store, beacon_block)
 
@@ -159,15 +175,15 @@ def create_simple_fork(spec, state, store, shard):
     beacon_parent_state = store.block_states[beacon_head_root]
     shard_parent_state = shard_store.block_states[spec.get_shard_head(store, shard_store)]
 
-    # Shard block A on slot 2
+    # Shard block A
     body = b'\x56' * 4
-    shard_block_a = build_shard_block(
+    forking_block_child = build_shard_block(
         spec, beacon_parent_state, shard,
         shard_parent_state=shard_parent_state, slot=beacon_parent_state.slot, body=body, signed=True
     )
-    run_on_shard_block(spec, store, shard_store, shard_block_a)
+    run_on_shard_block(spec, store, shard_store, forking_block_child)
 
-    # Shard block A on slot 2
+    # Shard block B
     body = b'\x78' * 4  # different body
     shard_block_b = build_shard_block(
         spec, beacon_parent_state, shard,
@@ -177,13 +193,13 @@ def create_simple_fork(spec, state, store, shard):
 
     # Set forking_block
     current_head = spec.get_shard_head(store, shard_store)
-    if current_head == shard_block_a.message.hash_tree_root():
-        head_block = shard_block_a
+    if current_head == forking_block_child.message.hash_tree_root():
+        head_block = forking_block_child
         forking_block = shard_block_b
     else:
         assert current_head == shard_block_b.message.hash_tree_root()
         head_block = shard_block_b
-        forking_block = shard_block_a
+        forking_block = forking_block_child
 
     return head_block, forking_block
 
@@ -210,8 +226,83 @@ def test_shard_simple_fork(spec, state):
     state = store.block_states[spec.get_head(store)].copy()
     beacon_block = create_beacon_block_with_shard_transition(spec, state, store, shard, [forking_block],
                                                              is_checking_pending_shard_blocks=False)
-    apply_beacon_block_to_store(spec, state, store, beacon_block)
+    # apply_beacon_block_to_store(spec, state, store, beacon_block)
+    store.time = store.time + spec.SECONDS_PER_SLOT
+    apply_all_attestation_to_store(spec, store, beacon_block.body.attestations)
 
-    # Head block is changed
+    # Head block has been changed
     shard_store = store.shard_stores[shard]
     assert spec.get_shard_head(store, shard_store) == forking_block.message.hash_tree_root()
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+@never_bls  # Set to never_bls for testing `check_pending_shard_blocks`
+def test_ghost(spec, state):
+    if not is_full_crosslink(spec, state):
+        # skip
+        return
+
+    spec.PHASE_1_GENESIS_SLOT = 0  # NOTE: mock genesis slot here
+    state = spec.upgrade_to_phase1(state)
+    init_state = state.copy()
+    shard = spec.Shard(1)
+
+    # Initialization
+    store = initialize_store(spec, state, shard)
+
+    # Create fork from genesis
+    head_block, forking_block = create_simple_fork(spec, init_state, store, shard)
+
+    # Compute the post shard state of forking_block
+    shard_store = store.shard_stores[shard]
+    shard_parent_state = shard_store.block_states[forking_block.message.hash_tree_root()]
+
+    beacon_head_root = spec.get_head(store)
+    beacon_parent_state = store.block_states[beacon_head_root]
+    next_slot(spec, beacon_parent_state)
+
+    # Build a child block of forking_block
+    body = b'child_of_forking_block'
+    forking_block_child = build_shard_block(
+        spec, beacon_parent_state, shard,
+        shard_parent_state=shard_parent_state, slot=shard_parent_state.slot + 1, body=body, signed=True
+    )
+    run_on_shard_block(spec, store, shard_store, forking_block_child)
+
+    # Vote for head_block
+    state = init_state.copy()
+    committee_index = get_committee_index_of_shard(spec, state, head_block.message.slot, shard)
+    attestation = create_attestation_for_shard_blocks(
+        spec, state, shard, committee_index, [head_block],
+        filter_participant_set=lambda committee: set(list(committee)[:len(committee) // 3]),
+    )
+    store.time = store.time + spec.SECONDS_PER_SLOT
+    apply_all_attestation_to_store(spec, store, [attestation])
+
+    # Vote for forking_block
+    state = init_state.copy()
+    committee_index = get_committee_index_of_shard(spec, state, forking_block.message.slot, shard)
+    attestation = create_attestation_for_shard_blocks(
+        spec, state, shard, committee_index, [forking_block],
+        filter_participant_set=lambda committee: set(list(committee)[:len(committee) // 4]),
+    )
+    apply_all_attestation_to_store(spec, store, [attestation])
+
+    # Head block has NOT been changed
+    shard_store = store.shard_stores[shard]
+    assert spec.get_shard_head(store, shard_store) == head_block.message.hash_tree_root()
+
+    # Now vote for forking_block's child
+    state = beacon_parent_state.copy()
+    committee_index = get_committee_index_of_shard(spec, state, forking_block_child.message.slot, shard)
+    attestation = create_attestation_for_shard_blocks(
+        spec, state, shard, committee_index, [forking_block_child],
+        filter_participant_set=lambda committee: set(list(committee)[:len(committee) // 4])
+    )
+    store.time = store.time + spec.SECONDS_PER_SLOT
+    apply_all_attestation_to_store(spec, store, [attestation])
+
+    # Head block has been changed to `forking_block_child`
+    shard_store = store.shard_stores[shard]
+    assert spec.get_shard_head(store, shard_store) == forking_block_child.message.hash_tree_root()

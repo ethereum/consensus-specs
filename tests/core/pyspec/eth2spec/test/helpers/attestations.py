@@ -98,7 +98,8 @@ def build_attestation_data(spec, state, slot, index, shard=None, shard_transitio
     return attestation_data
 
 
-def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_transition=None, signed=False):
+def get_valid_on_time_attestation(spec, state, slot=None, index=None, filter_participant_set=None,
+                                  shard_transition=None, signed=False):
     '''
     Construct on-time attestation for next slot
     '''
@@ -112,13 +113,15 @@ def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_tran
         state,
         slot=slot,
         index=index,
+        filter_participant_set=filter_participant_set,
         shard_transition=shard_transition,
         signed=signed,
         on_time=True,
     )
 
 
-def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False, shard_transition=None):
+def get_valid_late_attestation(spec, state, slot=None, index=None, filter_participant_set=None,
+                               signed=False, shard_transition=None):
     '''
     Construct on-time attestation for next slot
     '''
@@ -127,7 +130,7 @@ def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False,
     if index is None:
         index = 0
 
-    return get_valid_attestation(spec, state, slot=slot, index=index,
+    return get_valid_attestation(spec, state, slot=slot, index=index, filter_participant_set=filter_participant_set,
                                  signed=signed, on_time=False, shard_transition=shard_transition)
 
 
