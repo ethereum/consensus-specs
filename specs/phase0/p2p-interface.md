@@ -655,14 +655,16 @@ Implementers are free to implement such behavior in their own way.
 
 #### Goodbye
 
-**Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
+**Protocol ID:** ``/eth2/beacon_chain/req/goodbye/2/``
 
 Request, Response Content:
 ```
 (
-  uint64
+  code: uint64
+  message: List[byte, 256]
 )
 ```
+
 Client MAY send goodbye messages upon disconnection. The reason field MAY be one of the following values:
 
 - 1: Client shut down.
@@ -676,6 +678,8 @@ The range `[4, 127]` is RESERVED for future usage.
 The request/response MUST be encoded as a single SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
+
+*Note*: By convention, the `message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes). Clients MUST treat as valid any byte sequences.
 
 #### BeaconBlocksByRange
 
