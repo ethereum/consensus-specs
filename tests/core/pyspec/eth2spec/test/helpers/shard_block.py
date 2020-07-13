@@ -52,17 +52,17 @@ def build_shard_block(spec,
     return signed_block
 
 
-def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
+def get_shard_transitions(spec, beacon_parent_state, shard_block_dict):
     shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
-    on_time_slot = parent_beacon_state.slot + 1
+    on_time_slot = beacon_parent_state.slot + 1
     for shard, blocks in shard_block_dict.items():
-        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
+        shard_transition = spec.get_shard_transition(beacon_parent_state, shard, blocks)
         offset_slots = spec.compute_offset_slots(
-            spec.get_latest_slot_for_shard(parent_beacon_state, shard),
+            spec.get_latest_slot_for_shard(beacon_parent_state, shard),
             on_time_slot,
         )
         len_offset_slots = len(offset_slots)
-        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
+        shard_transition = spec.get_shard_transition(beacon_parent_state, shard, blocks)
 
         if len(blocks) > 0:
             shard_block_root = blocks[-1].message.hash_tree_root()

@@ -13,6 +13,7 @@
   - [Helpers](#helpers)
     - [`get_forkchoice_shard_store`](#get_forkchoice_shard_store)
     - [`get_shard_attesting_balance`](#get_shard_attesting_balance)
+    - [`get_subtree_attesting_balance`](#get_subtree_attesting_balance)
     - [`get_shard_head`](#get_shard_head)
     - [`get_shard_ancestor`](#get_shard_ancestor)
     - [`get_pending_shard_blocks`](#get_pending_shard_blocks)
@@ -56,6 +57,33 @@ def get_shard_attesting_balance(store: Store, shard_store: ShardStore, root: Roo
     ))
 ```
 
+#### `get_subtree_attesting_balance`
+
+```python
+def get_subtree_attesting_balance(store: Store, shard_store: ShardStore, shard_blocks: Dict[Root, SignedShardBlock],
+                                  current_root: Root, subtree_scores: Dict[Root, Gwei]) -> Dict[Root, Gwei]:
+    """
+    Return the updated ``subtree_scores`` includes the scores of ``current_root`` and its children
+    """
+    subtree_scores = subtree_scores.copy()  # Avoid side effect
+    children = [
+        root for root, shard_block in shard_blocks.items()
+        if shard_block.shard_parent_root == current_root
+    ]
+    if len(children) == 0:
+        subtree_scores[current_root] = get_shard_attesting_balance(store, shard_store, current_root)
+    else:
+        # The attesting balances that vote for current_root
+        score = get_shard_attesting_balance(store, shard_store, current_root)
+        # The attesting balances that vote for current_root's children
+        for root in children:
+            subtree_scores = get_subtree_attesting_balance(store, shard_store, shard_blocks, root, subtree_scores)
+            score += subtree_scores[root]
+        subtree_scores[current_root] = score
+
+    return subtree_scores
+```
+
 #### `get_shard_head`
 
 ```python
@@ -68,18 +96,20 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
         root: signed_shard_block.message for root, signed_shard_block in shard_store.signed_blocks.items()
         if signed_shard_block.message.slot > shard_head_state.slot
     }
+    subtree_scores: Dict[Root, Gwei] = {}  # dynamic programming: calculate the sub tree scores first
+    subtree_scores = get_subtree_attesting_balance(store, shard_store, shard_blocks, shard_head_root, subtree_scores)
     while True:
-        # Find the valid child block roots
         children = [
             root for root, shard_block in shard_blocks.items()
             if shard_block.shard_parent_root == shard_head_root
         ]
         if len(children) == 0:
             return shard_head_root
-        # Sort by latest attesting balance with ties broken lexicographically
-        shard_head_root = max(
-            children, key=lambda root: (get_shard_attesting_balance(store, shard_store, root), root)
-        )
+        else:
+            shard_head_root = max(
+                # children, key=lambda root: (get_shard_attesting_balance(store, shard_store, root), root)
+                children, key=lambda root: (subtree_scores[root], root)
+            )
 ```
 
 #### `get_shard_ancestor`
