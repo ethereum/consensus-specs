@@ -47,7 +47,8 @@ def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> Shard
 #### `get_shard_latest_attesting_balance`
 
 ```python
-def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, root: Root) -> Gwei:
+def get_shard_latest_attesting_balance(store: Store, shard: Shard, root: Root) -> Gwei:
+    shard_store = store.shard_stores[shard]
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
@@ -58,7 +59,7 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
             # would be ignored once their newer vote is accepted. Check if it makes sense.
             and get_shard_ancestor(
                 store,
-                shard_store,
+                shard,
                 shard_store.latest_messages[i].root,
                 shard_store.signed_blocks[root].message.slot,
             ) == root
@@ -69,10 +70,14 @@ def get_shard_latest_attesting_balance(store: Store, shard_store: ShardStore, ro
 #### `get_shard_head`
 
 ```python
-def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
+def get_shard_head(store: Store, shard: Shard) -> Root:
     # Execute the LMD-GHOST fork choice
+    """
+    Execute the LMD-GHOST fork choice.
+    """
+    shard_store = store.shard_stores[shard]
     beacon_head_root = get_head(store)
-    shard_head_state = store.block_states[beacon_head_root].shard_states[shard_store.shard]
+    shard_head_state = store.block_states[beacon_head_root].shard_states[shard]
     shard_head_root = shard_head_state.latest_block_root
     shard_blocks = {
         root: signed_shard_block.message for root, signed_shard_block in shard_store.signed_blocks.items()
@@ -88,17 +93,18 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
             return shard_head_root
         # Sort by latest attesting balance with ties broken lexicographically
         shard_head_root = max(
-            children, key=lambda root: (get_shard_latest_attesting_balance(store, shard_store, root), root)
+            children, key=lambda root: (get_shard_latest_attesting_balance(store, shard, root), root)
         )
 ```
 
 #### `get_shard_ancestor`
 
 ```python
-def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: Slot) -> Root:
+def get_shard_ancestor(store: Store, shard: Shard, root: Root, slot: Slot) -> Root:
+    shard_store = store.shard_stores[shard]
     block = shard_store.signed_blocks[root].message
     if block.slot > slot:
-        return get_shard_ancestor(store, shard_store, block.shard_parent_root, slot)
+        return get_shard_ancestor(store, shard, block.shard_parent_root, slot)
     elif block.slot == slot:
         return root
     else:
@@ -109,17 +115,17 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
 #### `get_pending_shard_blocks`
 
 ```python
-def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[SignedShardBlock]:
+def get_pending_shard_blocks(store: Store, shard: Shard) -> Sequence[SignedShardBlock]:
     """
     Return the canonical shard block branch that has not yet been crosslinked.
     """
-    shard = shard_store.shard
+    shard_store = store.shard_stores[shard]
 
     beacon_head_root = get_head(store)
     beacon_head_state = store.block_states[beacon_head_root]
     latest_shard_block_root = beacon_head_state.shard_states[shard].latest_block_root
 
-    shard_head_root = get_shard_head(store, shard_store)
+    shard_head_root = get_shard_head(store, shard)
     root = shard_head_root
     signed_shard_blocks = []
     while root != latest_shard_block_root:
@@ -136,9 +142,9 @@ def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[
 #### `on_shard_block`
 
 ```python
-def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: SignedShardBlock) -> None:
+def on_shard_block(store: Store, shard: Shard, signed_shard_block: SignedShardBlock) -> None:
+    shard_store = store.shard_stores[shard]
     shard_block = signed_shard_block.message
-    shard = shard_store.shard
 
     # Check shard
     # TODO: check it in networking spec
