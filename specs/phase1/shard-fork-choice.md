@@ -54,7 +54,7 @@ def get_shard_attesting_balance(store: Store, shard: Shard, root: Root) -> Gwei:
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
-        if root in shard_store.attesting_validators and i in shard_store.attesting_validators[root]
+        if root in shard_store.block_attesting_indices and i in shard_store.block_attesting_indices[root]
     ))
 ```
 
@@ -64,7 +64,7 @@ def get_shard_attesting_balance(store: Store, shard: Shard, root: Root) -> Gwei:
 def get_subtree_attesting_balance(store: Store, shard: Shard, shard_blocks: Dict[Root, SignedShardBlock],
                                   current_root: Root, subtree_scores: Dict[Root, Gwei]) -> Dict[Root, Gwei]:
     """
-    Return the updated ``subtree_scores`` includes the scores of ``current_root`` and its children
+    Return the updated ``subtree_scores`` includes the scores of ``current_root`` and its children.
     """
     subtree_scores = subtree_scores.copy()  # Avoid side effect
     children = [
@@ -77,6 +77,8 @@ def get_subtree_attesting_balance(store: Store, shard: Shard, shard_blocks: Dict
         # The attesting balances that vote for current_root
         score = get_shard_attesting_balance(store, shard, current_root)
         # The attesting balances that vote for current_root's children
+        # NOTE & TBD: it would double count the attester who voted for the ancestor and descendant.
+        # NOTE & TBD: it would double count the attester who voted for different forks.
         for root in children:
             subtree_scores = get_subtree_attesting_balance(store, shard, shard_blocks, root, subtree_scores)
             score += subtree_scores[root]
@@ -100,20 +102,19 @@ def get_shard_head(store: Store, shard: Shard) -> Root:
         root: signed_shard_block.message for root, signed_shard_block in shard_store.signed_blocks.items()
         if signed_shard_block.message.slot > shard_head_state.slot
     }
-    subtree_scores: Dict[Root, Gwei] = {}  # dynamic programming: calculate the subtree scores first
+    # Calculate the scores of the subtrees
+    subtree_scores: Dict[Root, Gwei] = {}
     subtree_scores = get_subtree_attesting_balance(store, shard, shard_blocks, shard_head_root, subtree_scores)
     while True:
+        # Find the valid child block roots
         children = [
             root for root, shard_block in shard_blocks.items()
             if shard_block.shard_parent_root == shard_head_root
         ]
         if len(children) == 0:
             return shard_head_root
-        else:
-            shard_head_root = max(
-                # children, key=lambda root: (get_shard_attesting_balance(store, shard_store, root), root)
-                children, key=lambda root: (subtree_scores[root], root)
-            )
+        # Sort by subtree attesting balance with ties broken lexicographically
+        shard_head_root = max(children, key=lambda root: (subtree_scores[root], root))
 ```
 
 #### `get_shard_ancestor`
@@ -139,7 +140,6 @@ def get_pending_shard_blocks(store: Store, shard: Shard) -> Sequence[SignedShard
     Return the canonical shard block branch that has not yet been crosslinked.
     """
     shard_store = store.shard_stores[shard]
-
     beacon_head_root = get_head(store)
     beacon_head_state = store.block_states[beacon_head_root]
     latest_shard_block_root = beacon_head_state.shard_states[shard].latest_block_root
@@ -193,7 +193,7 @@ def on_shard_block(store: Store, shard: Shard, signed_shard_block: SignedShardBl
     shard_state_transition(shard_state, signed_shard_block, beacon_parent_state, validate_result=True)
 
     # Add new block to the store
-    # Note: storing `SignedShardBlock` format for computing `ShardTransition.proposer_signature_aggregate` 
+    # NOTE: storing `SignedShardBlock` format for computing `ShardTransition.proposer_signature_aggregate` 
     shard_store.signed_blocks[hash_tree_root(shard_block)] = signed_shard_block
 
     # Add new state for this block to the store

@@ -31,8 +31,8 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
             root=attestation.data.beacon_block_root,
         )
         shard = attestation.data.shard
-        assert attestation.data.shard_head_root in store.shard_stores[shard].attesting_validators
-        assert len(store.shard_stores[shard].attesting_validators[attestation.data.shard_head_root].difference(
+        assert attestation.data.shard_head_root in store.shard_stores[shard].block_attesting_indices
+        assert len(store.shard_stores[shard].block_attesting_indices[attestation.data.shard_head_root].difference(
             set(indexed_attestation.attesting_indices))
         ) == 0
 

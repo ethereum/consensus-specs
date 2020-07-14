@@ -40,6 +40,7 @@ class Store(object):
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
+    # Shard chains
     shard_stores: Dict[Shard, ShardStore] = field(default_factory=dict)
 ```
 
@@ -53,7 +54,7 @@ class ShardStore:
     shard: Shard
     signed_blocks: Dict[Root, SignedShardBlock] = field(default_factory=dict)
     block_states: Dict[Root, ShardState] = field(default_factory=dict)
-    attesting_validators: Dict[Root, Set[ValidatorIndex]] = field(default_factory=dict)
+    block_attesting_indices: Dict[Root, Set[ValidatorIndex]] = field(default_factory=dict)
 ```
 
 ### Updated helpers
@@ -99,10 +100,10 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
 
     # Shard
-    if shard_head_root in store.shard_stores[shard].attesting_validators:
-        store.shard_stores[shard].attesting_validators[shard_head_root] = (
-            store.shard_stores[shard].attesting_validators[shard_head_root].union(set(attesting_indices).union())
+    if shard_head_root in store.shard_stores[shard].block_attesting_indices:
+        store.shard_stores[shard].block_attesting_indices[shard_head_root] = (
+            store.shard_stores[shard].block_attesting_indices[shard_head_root].union(set(attesting_indices).union())
         )
     else:
-        store.shard_stores[shard].attesting_validators[shard_head_root] = set(attesting_indices)
+        store.shard_stores[shard].block_attesting_indices[shard_head_root] = set(attesting_indices)
 ```
