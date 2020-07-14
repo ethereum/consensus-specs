@@ -48,7 +48,8 @@ def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> Shard
 #### `get_shard_attesting_balance`
 
 ```python
-def get_shard_attesting_balance(store: Store, shard_store: ShardStore, root: Root) -> Gwei:
+def get_shard_attesting_balance(store: Store, shard: Shard, root: Root) -> Gwei:
+    shard_store = store.shard_stores[shard]
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
@@ -60,7 +61,7 @@ def get_shard_attesting_balance(store: Store, shard_store: ShardStore, root: Roo
 #### `get_subtree_attesting_balance`
 
 ```python
-def get_subtree_attesting_balance(store: Store, shard_store: ShardStore, shard_blocks: Dict[Root, SignedShardBlock],
+def get_subtree_attesting_balance(store: Store, shard: Shard, shard_blocks: Dict[Root, SignedShardBlock],
                                   current_root: Root, subtree_scores: Dict[Root, Gwei]) -> Dict[Root, Gwei]:
     """
     Return the updated ``subtree_scores`` includes the scores of ``current_root`` and its children
@@ -71,13 +72,13 @@ def get_subtree_attesting_balance(store: Store, shard_store: ShardStore, shard_b
         if shard_block.shard_parent_root == current_root
     ]
     if len(children) == 0:
-        subtree_scores[current_root] = get_shard_attesting_balance(store, shard_store, current_root)
+        subtree_scores[current_root] = get_shard_attesting_balance(store, shard, current_root)
     else:
         # The attesting balances that vote for current_root
-        score = get_shard_attesting_balance(store, shard_store, current_root)
+        score = get_shard_attesting_balance(store, shard, current_root)
         # The attesting balances that vote for current_root's children
         for root in children:
-            subtree_scores = get_subtree_attesting_balance(store, shard_store, shard_blocks, root, subtree_scores)
+            subtree_scores = get_subtree_attesting_balance(store, shard, shard_blocks, root, subtree_scores)
             score += subtree_scores[root]
         subtree_scores[current_root] = score
 
@@ -87,17 +88,20 @@ def get_subtree_attesting_balance(store: Store, shard_store: ShardStore, shard_b
 #### `get_shard_head`
 
 ```python
-def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
-    # Execute the GHOST fork choice
+def get_shard_head(store: Store, shard: Shard) -> Root:
+    """
+    Execute the GHOST fork choice.
+    """
+    shard_store = store.shard_stores[shard]
     beacon_head_root = get_head(store)
-    shard_head_state = store.block_states[beacon_head_root].shard_states[shard_store.shard]
+    shard_head_state = store.block_states[beacon_head_root].shard_states[shard]
     shard_head_root = shard_head_state.latest_block_root
     shard_blocks = {
         root: signed_shard_block.message for root, signed_shard_block in shard_store.signed_blocks.items()
         if signed_shard_block.message.slot > shard_head_state.slot
     }
-    subtree_scores: Dict[Root, Gwei] = {}  # dynamic programming: calculate the sub tree scores first
-    subtree_scores = get_subtree_attesting_balance(store, shard_store, shard_blocks, shard_head_root, subtree_scores)
+    subtree_scores: Dict[Root, Gwei] = {}  # dynamic programming: calculate the subtree scores first
+    subtree_scores = get_subtree_attesting_balance(store, shard, shard_blocks, shard_head_root, subtree_scores)
     while True:
         children = [
             root for root, shard_block in shard_blocks.items()
@@ -115,10 +119,11 @@ def get_shard_head(store: Store, shard_store: ShardStore) -> Root:
 #### `get_shard_ancestor`
 
 ```python
-def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: Slot) -> Root:
+def get_shard_ancestor(store: Store, shard: Shard, root: Root, slot: Slot) -> Root:
+    shard_store = store.shard_stores[shard]
     block = shard_store.signed_blocks[root].message
     if block.slot > slot:
-        return get_shard_ancestor(store, shard_store, block.shard_parent_root, slot)
+        return get_shard_ancestor(store, shard, block.shard_parent_root, slot)
     elif block.slot == slot:
         return root
     else:
@@ -129,17 +134,17 @@ def get_shard_ancestor(store: Store, shard_store: ShardStore, root: Root, slot: 
 #### `get_pending_shard_blocks`
 
 ```python
-def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[SignedShardBlock]:
+def get_pending_shard_blocks(store: Store, shard: Shard) -> Sequence[SignedShardBlock]:
     """
     Return the canonical shard block branch that has not yet been crosslinked.
     """
-    shard = shard_store.shard
+    shard_store = store.shard_stores[shard]
 
     beacon_head_root = get_head(store)
     beacon_head_state = store.block_states[beacon_head_root]
     latest_shard_block_root = beacon_head_state.shard_states[shard].latest_block_root
 
-    shard_head_root = get_shard_head(store, shard_store)
+    shard_head_root = get_shard_head(store, shard)
     root = shard_head_root
     signed_shard_blocks = []
     while root != latest_shard_block_root:
@@ -156,9 +161,9 @@ def get_pending_shard_blocks(store: Store, shard_store: ShardStore) -> Sequence[
 #### `on_shard_block`
 
 ```python
-def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: SignedShardBlock) -> None:
+def on_shard_block(store: Store, shard: Shard, signed_shard_block: SignedShardBlock) -> None:
+    shard_store = store.shard_stores[shard]
     shard_block = signed_shard_block.message
-    shard = shard_store.shard
 
     # Check shard
     # TODO: check it in networking spec
