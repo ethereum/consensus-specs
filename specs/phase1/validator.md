@@ -40,7 +40,7 @@
       - [`SignedAggregateAndProof`](#signedaggregateandproof)
   - [Light client committee](#light-client-committee)
     - [Preparation](#preparation)
-    - [Light clent vote](#light-clent-vote)
+    - [Light client vote](#light-client-vote)
       - [Light client vote data](#light-client-vote-data)
         - [`LightClientVoteData`](#lightclientvotedata)
       - [Construct vote](#construct-vote)
@@ -162,7 +162,7 @@ def get_shard_winning_roots(state: BeaconState,
         committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
 
         # Loop over all shard transition roots, looking for a winning root
-        shard_transition_roots = set([a.data.shard_transition_root for a in shard_attestations])
+        shard_transition_roots = set(a.data.shard_transition_root for a in shard_attestations)  # non-duplicate
         for shard_transition_root in sorted(shard_transition_roots):
             transition_attestations = [
                 a for a in shard_attestations
@@ -294,12 +294,12 @@ def get_shard_transition_fields(
     for slot in offset_slots:
         if slot in shard_block_slots:
             shard_block = shard_blocks[shard_block_slots.index(slot)]
-            shard_data_roots.append(hash_tree_root(shard_block.message.body))
+            shard_data_roots.append(get_block_data_merkle_root(shard_block.message.body))
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
         shard_state = shard_state.copy()
-        shard_state_transition(shard_state, shard_block, validate=False)
+        process_shard_block(shard_state, shard_block.message)
         shard_states.append(shard_state)
         shard_block_lengths.append(len(shard_block.message.body))
 
@@ -390,11 +390,11 @@ def is_in_next_light_client_committee(state: BeaconState, index: ValidatorIndex)
     return index in next_committee
 ```
 
-#### Light clent vote
+#### Light client vote
 
 During a period of epochs that the validator is a part of the light client committee (`validator_index in get_light_client_committee(state, epoch)`), the validator creates and broadcasts a `LightClientVote` at each slot.
 
-A validator should create and broadcast the `light_client_vote` to the `light_client_votes` pubsub topic when either (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) two-thirds of the `slot` have transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `light_client_vote` to the `light_client_votes` pubsub topic when either (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the `slot` have transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
 
 - Let `light_client_committee = get_light_client_committee(state, compute_epoch_at_slot(slot))`
 

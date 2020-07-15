@@ -8,7 +8,10 @@ from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
     run_attestation_processing,
 )
-from eth2spec.test.helpers.shard_transitions import run_shard_transitions_processing
+from eth2spec.test.helpers.shard_transitions import (
+    run_shard_transitions_processing,
+    is_full_crosslink,
+)
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
     get_shard_transitions,
@@ -40,11 +43,6 @@ def get_attestations_and_shard_transitions(spec, state, shard_block_dict):
         if shard_transition != spec.ShardTransition()
     ]
     return attestations, shard_transitions
-
-
-def is_full_crosslink(spec, state):
-    epoch = spec.compute_epoch_at_slot(state.slot)
-    return spec.get_committee_count_per_slot(state, epoch) >= spec.get_active_shard_count(state)
 
 
 def run_successful_crosslink_tests(spec, state, target_len_offset_slot):

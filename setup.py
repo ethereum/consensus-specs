@@ -94,7 +94,7 @@ from dataclasses import (
 
 from lru import LRU
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, uint_to_bytes
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
@@ -118,7 +118,7 @@ from dataclasses import (
 
 from lru import LRU
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, uint_to_bytes
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64, bit,
     ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
@@ -216,11 +216,21 @@ get_matching_head_attestations = cache_this(
 
 _get_attesting_indices = get_attesting_indices
 get_attesting_indices = cache_this(
-    lambda state, data, bits: (state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()),
+    lambda state, data, bits: (
+        state.randao_mixes.hash_tree_root(),
+        state.validators.hash_tree_root(), data.hash_tree_root(), bits.hash_tree_root()
+    ),
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
 PHASE1_SUNDRY_FUNCTIONS = '''
+
+def get_block_data_merkle_root(data: ByteList) -> Root:
+    # To get the Merkle root of the block data, we need the Merkle root without the length mix-in
+    # The below implements this in the Remerkleable framework
+    return Root(data.get_backing().get_left().merkle_root())
+
+
 _get_start_shard = get_start_shard
 get_start_shard = cache_this(
     lambda state, slot: (state.validators.hash_tree_root(), slot),
@@ -519,7 +529,7 @@ setup(
         "py_ecc==4.0.0",
         "milagro_bls_binding==1.3.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.16",
+        "remerkleable==0.1.17",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

@@ -35,39 +35,39 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v19-pyspec
+          venv_name: v22-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v19-pyspec
+          venv_name: v22-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
           venv_path: ./venv
   restore_deposit_contract_compiler_cached_venv:
     description: "Restore the venv from cache for the deposit contract compiler"
     steps:
       - restore_cached_venv:
-          venv_name: v18-deposit-contract-compiler
+          venv_name: v23-deposit-contract-compiler
           reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
   save_deposit_contract_compiler_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract compiler"
     steps:
       - save_cached_venv:
-          venv_name: v18-deposit-contract-compiler
+          venv_name: v23-deposit-contract-compiler
           reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
           venv_path: ./deposit_contract/compiler/venv
   restore_deposit_contract_tester_cached_venv:
     description: "Restore the venv from cache for the deposit contract tester"
     steps:
       - restore_cached_venv:
-          venv_name: v19-deposit-contract-tester
+          venv_name: v22-deposit-contract-tester
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
   save_deposit_contract_tester_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract tester"
     steps:
       - save_cached_venv:
-          venv_name: v19-deposit-contract-tester
+          venv_name: v22-deposit-contract-tester
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
           venv_path: ./deposit_contract/tester/venv
 jobs:

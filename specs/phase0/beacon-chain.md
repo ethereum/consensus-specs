@@ -170,9 +170,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `BASE_REWARDS_PER_EPOCH` | `4` |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
-| `JUSTIFICATION_BITS_LENGTH` | `4` |
+| `BASE_REWARDS_PER_EPOCH` | `uint64(4)` |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
+| `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
 | `ENDIANNESS` | `'little'` |
 
 ## Configuration
@@ -183,18 +183,18 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) |
-| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) |
-| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
-| `SHUFFLE_ROUND_COUNT` | `90` |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
-| `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
-| `HYSTERESIS_QUOTIENT` | `4` |
-| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `1` |
-| `HYSTERESIS_UPWARD_MULTIPLIER` | `5` |
+| `ETH1_FOLLOW_DISTANCE` | `uint64(2**10)` (= 1,024) |
+| `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
+| `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
+| `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
+| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
+| `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
+| `MIN_GENESIS_TIME` | `uint64(1578009600)` (Jan 3, 2020) |
+| `HYSTERESIS_QUOTIENT` | `uint64(4)` |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
+| `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -218,37 +218,37 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `GENESIS_DELAY` | `172800` | seconds | 2 days |
-| `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK` | `14` | seconds | 14 seconds |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
-| `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**5` (= 32) | epochs | ~3.4 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+| `GENESIS_DELAY` | `uint64(172800)` | seconds | 2 days |
+| `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
+| `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
+| `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**5)` (= 32) | epochs | ~3.4 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
-| `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~52,262 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validators |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 years |
+| `EPOCHS_PER_SLASHINGS_VECTOR` | `uint64(2**13)` (= 8,192) | epochs | ~36 days |
+| `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
+| `VALIDATOR_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | validators |
 
 ### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_FACTOR` | `2**6` (= 64) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
-| `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
+| `BASE_REWARD_FACTOR` | `uint64(2**6)` (= 64) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
+| `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**5)` (= 32) |
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12` epochs (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
@@ -587,7 +587,7 @@ def bytes_to_uint64(data: bytes) -> uint64:
     """
     Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
-    return int.from_bytes(data, ENDIANNESS)
+    return uint64(int.from_bytes(data, ENDIANNESS))
 ```
 
 ### Crypto
@@ -735,7 +735,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
             + uint_to_bytes(uint8(current_round))
             + uint_to_bytes(uint32(position // 256))
         )
-        byte = source[(position % 256) // 8]
+        byte = uint8(source[(position % 256) // 8])
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
 
@@ -751,9 +751,10 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
     """
     assert len(indices) > 0
     MAX_RANDOM_BYTE = 2**8 - 1
-    i = 0
+    i = uint64(0)
+    total = uint64(len(indices))
     while True:
-        candidate_index = indices[compute_shuffled_index(i % len(indices), len(indices), seed)]
+        candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
@@ -773,7 +774,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     """
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[compute_shuffled_index(i, len(indices), seed)] for i in range(start, end)]
+    return [indices[compute_shuffled_index(uint64(i), uint64(len(indices)), seed)] for i in range(start, end)]
 ```
 
 #### `compute_epoch_at_slot`
@@ -932,7 +933,7 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
     Return the validator churn limit for the current epoch.
     """
     active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
+    return max(MIN_PER_EPOCH_CHURN_LIMIT, uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT)
 ```
 
 #### `get_seed`
@@ -953,9 +954,9 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of committees in each slot for the given ``epoch``.
     """
-    return max(1, min(
+    return max(uint64(1), min(
         MAX_COMMITTEES_PER_SLOT,
-        len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
+        uint64(len(get_active_validator_indices(state, epoch))) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
     ))
 ```
 
@@ -1314,7 +1315,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
     # Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bits[1:] = state.justification_bits[:-1]
+    state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
     state.justification_bits[0] = 0b0
     matching_target_attestations = get_matching_target_attestations(state, previous_epoch)  # Previous epoch
     if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:

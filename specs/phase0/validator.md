@@ -273,7 +273,7 @@ An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` wher
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    return state.genesis_time + slot * SECONDS_PER_SLOT
+    return uint64(state.genesis_time + slot * SECONDS_PER_SLOT)
 ```
 
 ```python
@@ -307,7 +307,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
-    default_vote = votes_to_consider[-1] if any(votes_to_consider) else state.eth1_data
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state.eth1_data
 
     return max(
         valid_votes,
@@ -399,7 +399,7 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
 - Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
-- Let `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
+- Let `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, get_current_epoch(head_state))`.
 
 #### Construct attestation
 
@@ -443,7 +443,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     slots_since_epoch_start = slot % SLOTS_PER_EPOCH
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return (committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT
+    return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation
