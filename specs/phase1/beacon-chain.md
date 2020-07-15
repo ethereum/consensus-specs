@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- The Beacon Chain for Shards
+# Ethereum 2.0 Phase 1 -- The Beacon Chain with Shards
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -532,7 +532,7 @@ def get_active_shard_count(state: BeaconState) -> uint64:
 ```python
 def get_online_validator_indices(state: BeaconState) -> Set[ValidatorIndex]:
     active_validators = get_active_validator_indices(state, get_current_epoch(state))
-    return set([i for i in active_validators if state.online_countdown[i] != 0])
+    return set(i for i in active_validators if state.online_countdown[i] != 0)  # non-duplicate
 ```
 
 #### `get_shard_committee`
@@ -559,7 +559,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
 ```python
 def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the light client committee of no more than ``TARGET_COMMITTEE_SIZE`` validators.
+    Return the light client committee of no more than ``LIGHT_CLIENT_COMMITTEE_SIZE`` validators.
     """
     source_epoch = compute_committee_source_epoch(epoch, LIGHT_CLIENT_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
@@ -1084,8 +1084,9 @@ def process_light_client_committee_updates(state: BeaconState) -> None:
     """
     Update light client committees.
     """
-    if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
+    next_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    if next_epoch % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
         state.current_light_committee = state.next_light_committee
-        new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
+        new_committee = get_light_client_committee(state, next_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
