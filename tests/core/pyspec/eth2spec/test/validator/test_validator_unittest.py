@@ -40,9 +40,9 @@ def run_is_candidate_block(spec, eth1_block, period_start, success=True):
 
 
 def get_min_new_period_epochs(spec):
-    return int(
-        spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2  # to seconds
-        / spec.SECONDS_PER_SLOT / spec.SLOTS_PER_EPOCH
+    return (
+        (spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2)  # to seconds
+        // spec.SECONDS_PER_SLOT // spec.SLOTS_PER_EPOCH
     )
 
 

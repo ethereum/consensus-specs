@@ -273,7 +273,7 @@ An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` wher
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    return state.genesis_time + slot * SECONDS_PER_SLOT
+    return uint64(state.genesis_time + slot * SECONDS_PER_SLOT)
 ```
 
 ```python
@@ -443,7 +443,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     slots_since_epoch_start = slot % SLOTS_PER_EPOCH
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return (committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT
+    return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation
