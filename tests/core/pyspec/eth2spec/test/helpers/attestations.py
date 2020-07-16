@@ -88,7 +88,7 @@ def build_attestation_data(spec, state, slot, index, shard=None, shard_transitio
             data.shard_transition_root = shard_transition.hash_tree_root()
         else:
             if on_time:
-                if data.slot == spec.PHASE_1_FORK_SLOT:
+                if data.slot == spec.GENESIS_SLOT:
                     data.shard_head_root = spec.Root()
                     data.shard_transition_root = spec.ShardTransition().hash_tree_root()
                 else:

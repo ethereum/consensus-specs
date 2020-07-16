@@ -772,6 +772,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct shard number
         shard = compute_shard_from_committee_index(state, data.index, data.slot)
         assert data.shard == shard
+        # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
         if data.slot == PHASE_1_FORK_SLOT:
             assert data.shard_transition_root == hash_tree_root(ShardTransition())
         else:
@@ -979,6 +980,7 @@ def verify_empty_shard_transition(state: BeaconState, shard_transitions: Sequenc
 def process_shard_transitions(state: BeaconState,
                               shard_transitions: Sequence[ShardTransition],
                               attestations: Sequence[Attestation]) -> None:
+    # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
     if compute_previous_slot(state.slot) != PHASE_1_FORK_SLOT:
         # Process crosslinks
         process_crosslinks(state, shard_transitions, attestations)
