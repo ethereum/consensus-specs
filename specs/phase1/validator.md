@@ -310,6 +310,9 @@ def get_shard_transition_fields(
 def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
+    if beacon_state.slot == PHASE_1_FORK_SLOT:
+        return ShardTransition()
+
     offset_slots = compute_offset_slots(
         get_latest_slot_for_shard(beacon_state, shard),
         Slot(beacon_state.slot + 1),

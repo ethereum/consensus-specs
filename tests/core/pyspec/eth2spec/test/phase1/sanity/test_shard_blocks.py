@@ -51,10 +51,12 @@ def test_valid_shard_block(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
+
     shard = 0
     shard_state = beacon_state.shard_states[shard]
-    signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
+    signed_shard_block = build_shard_block(spec, state, shard, slot=beacon_state.slot, signed=True)
 
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state)
 
@@ -71,7 +73,9 @@ def test_invalid_shard_parent_root(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
+
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -88,7 +92,8 @@ def test_invalid_beacon_parent_root(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -105,7 +110,8 @@ def test_invalid_slot(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -123,7 +129,8 @@ def test_invalid_proposer_index(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -147,7 +154,8 @@ def test_out_of_bound_offset(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     slot = (
         beacon_state.shard_states[shard].slot
@@ -170,7 +178,8 @@ def test_invalid_offset(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     # 4 is not in `SHARD_BLOCK_OFFSETS`
     shard = 0
     slot = beacon_state.shard_states[shard].slot + 4
@@ -191,7 +200,8 @@ def test_empty_block_body(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, body=b'', signed=True)
@@ -212,7 +222,8 @@ def test_invalid_signature(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=False)
@@ -233,7 +244,8 @@ def test_max_offset(spec, state):
         # skip
         return
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     slot = beacon_state.shard_states[shard].slot + spec.SHARD_BLOCK_OFFSETS[spec.MAX_SHARD_BLOCKS_PER_ATTESTATION - 1]
     transition_to(spec, beacon_state, slot)
@@ -253,7 +265,8 @@ def test_pending_shard_parent_block(spec, state):
         return
 
     # Block N
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block_1 = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)

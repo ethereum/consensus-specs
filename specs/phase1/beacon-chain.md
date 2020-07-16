@@ -760,20 +760,23 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(committee)
 
-    if attestation.data.target.epoch == get_current_epoch(state):
-        assert attestation.data.source == state.current_justified_checkpoint
+    if data.target.epoch == get_current_epoch(state):
+        assert data.source == state.current_justified_checkpoint
     else:
-        assert attestation.data.source == state.previous_justified_checkpoint
+        assert data.source == state.previous_justified_checkpoint
 
     # Type 1: on-time attestations
-    if is_on_time_attestation(state, attestation.data):
+    if is_on_time_attestation(state, data):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
         # Correct shard number
-        shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
-        assert attestation.data.shard == shard
-        # On-time attestations should have a non-empty shard transition root
-        assert attestation.data.shard_transition_root != hash_tree_root(ShardTransition())
+        shard = compute_shard_from_committee_index(state, data.index, data.slot)
+        assert data.shard == shard
+        if data.slot == PHASE_1_FORK_SLOT:
+            assert data.shard_transition_root == hash_tree_root(ShardTransition())
+        else:
+            # On-time attestations should have a non-empty shard transition root
+            assert data.shard_transition_root != hash_tree_root(ShardTransition())
     # Type 2: no shard transition
     else:
         # Ensure delayed attestation
@@ -811,7 +814,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```python
 def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
     # TODO: only need to check it once when phase 1 starts
-    assert state.slot > PHASE_1_GENESIS_SLOT
+    assert state.slot > PHASE_1_FORK_SLOT
 
     # Correct data root count
     offset_slots = get_offset_slots(state, shard)
@@ -976,8 +979,10 @@ def verify_empty_shard_transition(state: BeaconState, shard_transitions: Sequenc
 def process_shard_transitions(state: BeaconState,
                               shard_transitions: Sequence[ShardTransition],
                               attestations: Sequence[Attestation]) -> None:
-    # Process crosslinks
-    process_crosslinks(state, shard_transitions, attestations)
+    if compute_previous_slot(state.slot) != PHASE_1_FORK_SLOT:
+        # Process crosslinks
+        process_crosslinks(state, shard_transitions, attestations)
+
     # Verify the empty proposal shard states
     assert verify_empty_shard_transition(state, shard_transitions)
 ```

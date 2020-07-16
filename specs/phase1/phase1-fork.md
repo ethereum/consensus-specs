@@ -35,18 +35,18 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `PHASE_1_FORK_VERSION` | `Version('0x01000000')` |
-| `PHASE_1_GENESIS_SLOT` | `2**5` **TBD** |
+| `PHASE_1_FORK_SLOT` | `Slot(0)` **TBD** |
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 
 ## Fork to Phase 1
 
 ### Fork trigger
 
-TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `PHASE_1_GENESIS_SLOT`, where `PHASE_1_GENESIS_SLOT % SLOTS_PER_EPOCH == 0`.
+TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `PHASE_1_FORK_SLOT`, where `PHASE_1_FORK_SLOT % SLOTS_PER_EPOCH == 0`.
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot == PHASE_1_GENESIS_SLOT`, an irregular state change is made to upgrade to Phase 1.
+After `process_slots` of Phase 0 finishes, if `state.slot == PHASE_1_FORK_SLOT`, an irregular state change is made to upgrade to Phase 1.
 
 ```python
 def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
@@ -102,7 +102,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         current_epoch_start_shard=Shard(0),
         shard_states=List[ShardState, MAX_SHARDS](
             ShardState(
-                slot=pre.slot,
+                slot=compute_previous_slot(pre.slot),
                 gasprice=MIN_GASPRICE,
                 latest_block_root=Root(),
             ) for i in range(INITIAL_ACTIVE_SHARDS)
