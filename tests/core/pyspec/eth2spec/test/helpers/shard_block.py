@@ -12,7 +12,15 @@ def sign_shard_block(spec, beacon_state, shard, block, proposer_index=None):
 
     privkey = privkeys[proposer_index]
     domain = spec.get_domain(beacon_state, spec.DOMAIN_SHARD_PROPOSAL, spec.compute_epoch_at_slot(slot))
-    signing_root = spec.compute_signing_root(block.message, domain)
+    header = spec.ShardBlockHeader(
+        shard_parent_root=block.message.shard_parent_root,
+        beacon_parent_root=block.message.beacon_parent_root,
+        slot=block.message.slot,
+        shard=block.message.shard,
+        proposer_index=block.message.proposer_index,
+        body_root=spec.get_block_data_merkle_root(block.message.body),
+    )
+    signing_root = spec.compute_signing_root(header, domain)
     block.signature = bls.Sign(privkey, signing_root)
 
 
@@ -22,7 +30,7 @@ def build_shard_block(spec,
                       slot=None,
                       body=None,
                       shard_parent_state=None,
-                      signed=False):
+                      signed=True):
     if shard_parent_state is None:
         shard_parent_state = beacon_state.shard_states[shard]
 

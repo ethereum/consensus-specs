@@ -49,7 +49,7 @@ def test_validator_slashed_after_chunk_challenge(spec, state):
 
     assert state.validators[validator_index].slashed == 0
 
-    transition_to(spec, state, state.slot + spec.MAX_CHUNK_CHALLENGE_DELAY * spec.SLOTS_PER_EPOCH)
+    transition_to(spec, state, state.slot + (spec.EPOCHS_PER_CUSTODY_PERIOD + 1) * spec.SLOTS_PER_EPOCH)
 
     state.validators[validator_index].slashed = 0
 

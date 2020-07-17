@@ -73,7 +73,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**14` (= 16,384) | epochs | ~73 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 | `MAX_CHUNK_CHALLENGE_DELAY` | `2**15` (= 32,768) | epochs | ~146 days |
-| `CHUNK_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 
 ### Max operations per block
 
