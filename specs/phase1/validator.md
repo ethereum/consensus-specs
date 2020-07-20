@@ -311,7 +311,7 @@ def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
     # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
-    if beacon_state.slot == PHASE_1_FORK_SLOT:
+    if beacon_state.slot == GENESIS_SLOT:
         return ShardTransition()
 
     offset_slots = compute_offset_slots(
