@@ -11,6 +11,7 @@
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
   - [Shard block verification functions](#shard-block-verification-functions)
+    - [`compute_shard_block_header_root`](#compute_shard_block_header_root)
     - [`verify_shard_block_message`](#verify_shard_block_message)
     - [`verify_shard_block_signature`](#verify_shard_block_signature)
 - [Shard state transition function](#shard-state-transition-function)
@@ -26,6 +27,22 @@ This document describes the shard transition function and fraud proofs as part o
 ## Helper functions
 
 ### Shard block verification functions
+
+
+#### `compute_shard_block_header_root`
+
+```python
+def compute_shard_block_header_root(block: ShardBlock) -> Root:
+    header = ShardBlockHeader(
+        shard_parent_root=block.shard_parent_root,
+        beacon_parent_root=block.beacon_parent_root,
+        slot=block.slot,
+        shard=block.shard,
+        proposer_index=block.proposer_index,
+        body_root=get_block_data_merkle_root(block.body),
+    )
+    return hash_tree_root(header)
+```
 
 #### `verify_shard_block_message`
 
@@ -61,15 +78,8 @@ def verify_shard_block_signature(beacon_parent_state: BeaconState,
     block = signed_block.message
     proposer = beacon_parent_state.validators[block.proposer_index]
     domain = get_domain(beacon_parent_state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(block.slot))
-    header = ShardBlockHeader(
-        shard_parent_root=block.shard_parent_root,
-        beacon_parent_root=block.beacon_parent_root,
-        slot=block.slot,
-        shard=block.shard,
-        proposer_index=block.proposer_index,
-        body_root=get_block_data_merkle_root(block.body),
-    )
-    signing_root = compute_signing_root(header, domain)
+    header_root = compute_shard_block_header_root(block)
+    signing_root = compute_signing_root(header_root, domain)
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
@@ -102,7 +112,7 @@ def process_shard_block(shard_state: ShardState,
     shard_block_length = len(block.body)
     shard_state.gasprice = compute_updated_gasprice(prev_gasprice, uint64(shard_block_length))
     if shard_block_length != 0:
-        shard_state.latest_block_root = hash_tree_root(block)
+        shard_state.latest_block_root = compute_shard_block_header_root(block)
 ```
 
 ## Fraud proofs

@@ -269,7 +269,7 @@ A validator should create and broadcast the `attestation` to the associated atte
 
 ##### Head shard root
 
-Set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
+Set `attestation_data.shard_head_root = compute_shard_block_header_root(shard_head_block)`.
 
 ##### Shard transition
 

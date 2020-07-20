@@ -80,7 +80,7 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
         if index == shard:
             assert shard_state != pre_shard_states[index]
             assert shard_state == shard_transition.shard_states[len(shard_transition.shard_states) - 1]
-            assert shard_state.latest_block_root == shard_block.message.hash_tree_root()
+            assert shard_state.latest_block_root == spec.compute_shard_block_header_root(shard_block.message)
             if target_len_offset_slot == 1:
                 assert shard_state.gasprice > pre_gasprice
         else:

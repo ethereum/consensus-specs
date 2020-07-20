@@ -178,8 +178,8 @@ def on_shard_block(store: Store, shard_store: ShardStore, signed_shard_block: Si
 
     # Add new block to the store
     # Note: storing `SignedShardBlock` format for computing `ShardTransition.proposer_signature_aggregate` 
-    shard_store.signed_blocks[hash_tree_root(shard_block)] = signed_shard_block
+    shard_store.signed_blocks[compute_shard_block_header_root(shard_block)] = signed_shard_block
 
     # Add new state for this block to the store
-    shard_store.block_states[hash_tree_root(shard_block)] = shard_state
+    shard_store.block_states[compute_shard_block_header_root(shard_block)] = shard_state
 ```

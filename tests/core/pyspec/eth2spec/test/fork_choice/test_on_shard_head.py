@@ -1,5 +1,3 @@
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-
 from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_except, never_bls
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.shard_block import (
@@ -22,7 +20,7 @@ def run_on_shard_block(spec, store, shard_store, signed_block, valid=True):
             assert False
 
     spec.on_shard_block(store, shard_store, signed_block)
-    assert shard_store.signed_blocks[hash_tree_root(signed_block.message)] == signed_block
+    assert shard_store.signed_blocks[spec.compute_shard_block_header_root(signed_block.message)] == signed_block
 
 
 def apply_shard_block(spec, store, shard_store, beacon_parent_state, shard_blocks_buffer):
@@ -37,7 +35,7 @@ def apply_shard_block(spec, store, shard_store, beacon_parent_state, shard_block
     )
     shard_blocks_buffer.append(shard_block)
     run_on_shard_block(spec, store, shard_store, shard_block)
-    assert spec.get_shard_head(store, shard_store) == shard_block.message.hash_tree_root()
+    assert spec.get_shard_head(store, shard_store) == spec.compute_shard_block_header_root(shard_block.message)
 
 
 def check_pending_shard_blocks(spec, store, shard_store, shard_blocks_buffer):
@@ -77,7 +75,7 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
             state,
             index=committee_index,
             shard_transition=shard_transition,
-            signed=False,
+            signed=True,
         )
         assert attestation.data.shard == shard
         beacon_block.body.attestations = [attestation]

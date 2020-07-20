@@ -38,7 +38,7 @@ def run_shard_blocks(spec, shard_state, signed_shard_block, beacon_parent_state,
     shard_block_length = len(block.body)
     assert shard_state.gasprice == spec.compute_updated_gasprice(pre_shard_state.gasprice, shard_block_length)
     if shard_block_length != 0:
-        shard_state.latest_block_root == block.hash_tree_root()
+        shard_state.latest_block_root == spec.compute_shard_block_header_root(block)
     else:
         shard_state.latest_block_root == pre_shard_state.latest_block_root
 
