@@ -58,9 +58,18 @@ def verify_shard_block_message(beacon_parent_state: BeaconState,
 ```python
 def verify_shard_block_signature(beacon_parent_state: BeaconState,
                                  signed_block: SignedShardBlock) -> bool:
-    proposer = beacon_parent_state.validators[signed_block.message.proposer_index]
-    domain = get_domain(beacon_parent_state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(signed_block.message.slot))
-    signing_root = compute_signing_root(signed_block.message, domain)
+    block = signed_block.message
+    proposer = beacon_parent_state.validators[block.proposer_index]
+    domain = get_domain(beacon_parent_state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(block.slot))
+    header = ShardBlockHeader(
+        shard_parent_root=block.shard_parent_root,
+        beacon_parent_root=block.beacon_parent_root,
+        slot=block.slot,
+        shard=block.shard,
+        proposer_index=block.proposer_index,
+        body_root=get_block_data_merkle_root(block.body),
+    )
+    signing_root = compute_signing_root(header, domain)
     return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
