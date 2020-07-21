@@ -463,7 +463,7 @@ def get_light_client_slot_signature(state: BeaconState, slot: Slot, privkey: int
 def is_light_client_aggregator(state: BeaconState, slot: Slot, slot_signature: BLSSignature) -> bool:
     committee = get_light_client_committee(state, compute_epoch_at_slot(slot))
     modulo = max(1, len(committee) // TARGET_LIGHT_CLIENT_AGGREGATORS_PER_SLOT)
-    return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate
