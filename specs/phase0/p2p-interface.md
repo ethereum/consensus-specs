@@ -1160,7 +1160,6 @@ Some examples of where messages could be duplicated:
   enough for `IWANT`s to respond to `IHAVE`s in the context of the shorter
   `heartbeat_interval`. If `mcache_gossip` is increased, this param should be
   increased to be at least `3` (~2 seconds) more than `mcache_gossip`.
-  should be increased to be at least 
 - `mcache_gossip`: 3, recommended default. This can be increased to 5 or 6
   (~4 seconds) if gossip times are longer than expected and the current window
   does not provide enough responsiveness during adverse conditions.
