@@ -202,7 +202,7 @@ and will in most cases be out of sync with the ENR sequence number.
 
 ## The gossip domain: gossipsub
 
-Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) libp2p Protocol
+Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md) libp2p Protocol
 including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md) extension.
 
 **Protocol ID:** `/meshsub/1.1.0`
@@ -211,16 +211,17 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 *Note*: Parameters listed here are subject to a large-scale network feasibility study.
 
-The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub#meshsub-an-overlay-mesh-router) will be used:
+The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
 - `D` (topic stable mesh target count): 6
 - `D_low` (topic stable mesh low watermark): 5
 - `D_high` (topic stable mesh high watermark): 12
 - `D_lazy` (gossip target): 6
+- `heartbeat_interval` (frequency of heartbeat, seconds): 0.7
 - `fanout_ttl` (ttl for fanout maps for topics we are not subscribed to but have published to, seconds): 60
-- `gossip_advertise` (number of windows to gossip about): 3
-- `gossip_history` (number of heartbeat intervals to retain message IDs): 385
-- `heartbeat_interval` (frequency of heartbeat, seconds): 1
+- `mcache_len` (number of windows to retain full messages in cache for `IWANT` responses): 6
+- `mcache_gossip` (number of windows to gossip about): 3
+- `seen_ttl` (number of heartbeat intervals to retain message IDs): 550
 
 ### Topics and messages
 
@@ -1150,12 +1151,21 @@ Some examples of where messages could be duplicated:
 ### Why are these specific gossip parameters chosen?
 
 - `D`, `D_low`, `D_high`, `D_lazy`: recommended defaults.
-- `fanout_ttl`: 60  (TODO: increase to cover an epoch?)
-- `gossip_advertise`: 3 (TODO: to increase to 6?)
-- `gossip_history`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 385`. Attestation validity is bounded by an epoch, so this is the safe max bound.
-- `heartbeat_interval`: 1 second, recommended default.
-  For Eth2 specifically, 0.6-0.7s was recommended in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
-  And this parameter will be experimented with in testnets.
+- `heartbeat_interval`: 0.7 second, recommended for eth2 in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
+- `fanout_ttl`: 60, recommended default.
+  Fanout is primarily used by committees publishing attestations to subnets.
+  This happens once per epoch per validator and the subnet changes each epoch
+  so there is little to gain in having a `fanout_ttl` be increased from the recommended default.
+- `mcache_len`: 6, increase by one to ensure that mcache is around for long
+  enough for `IWANT`s to respond to `IHAVE`s in the context of the shorter
+  `heartbeat_interval`. If `mcache_gossip` is increased, this param should be
+  increased to be at least `3` (~2 seconds) more than `mcache_gossip`.
+  should be increased to be at least 
+- `mcache_gossip`: 3, recommended default. This can be increased to 5 or 6
+  (~4 seconds) if gossip times are longer than expected and the current window
+  does not provide enough responsiveness during adverse conditions.
+- `seen_ttl`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 550`.
+  Attestation gossip validity is bounded by an epoch, so this is the safe max bound.
 
 
 ### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
