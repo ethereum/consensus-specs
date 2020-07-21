@@ -149,7 +149,9 @@ def case03_aggregate():
     else:
         raise Exception("Should have been INVALID")
 
-    yield f'aggregate_na_pubkeys', {
+    # No signatures to aggregate. Follow IETF BLS spec, return `None` to represent INVALID.
+    # https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02#section-2.8
+    yield f'aggregate_na_signatures', {
         'input': [],
         'output': None,
     }
