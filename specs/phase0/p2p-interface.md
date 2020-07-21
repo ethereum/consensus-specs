@@ -1151,8 +1151,8 @@ Some examples of where messages could be duplicated:
 ### Why are these specific gossip parameters chosen?
 
 - `D`, `D_low`, `D_high`, `D_lazy`: recommended defaults.
-- `heartbeat_interval`: 0.7 second, recommended for eth2 in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
-- `fanout_ttl`: 60, recommended default.
+- `heartbeat_interval`: 0.7 seconds, recommended for eth2 in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
+- `fanout_ttl`: 60 seconds, recommended default.
   Fanout is primarily used by committees publishing attestations to subnets.
   This happens once per epoch per validator and the subnet changes each epoch
   so there is little to gain in having a `fanout_ttl` be increased from the recommended default.
