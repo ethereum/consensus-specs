@@ -21,8 +21,8 @@ def test_initialize_beacon_state_from_eth1(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    genesis_time = eth1_timestamp + spec.MIN_GENESIS_DELAY + spec.GENESIS_ALIGNMENT - eth1_timestamp % spec.GENESIS_ALIGNMENT
-    assert state.genesis_time == genesis_time
+    genesis_delay = spec.MIN_GENESIS_DELAY + spec.GENESIS_ALIGNMENT - eth1_timestamp % spec.GENESIS_ALIGNMENT
+    assert state.genesis_time == eth1_timestamp + genesis_delay
     assert len(state.validators) == deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == deposit_count
@@ -58,8 +58,8 @@ def test_initialize_beacon_state_some_small_balances(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    genesis_time = eth1_timestamp + spec.MIN_GENESIS_DELAY + spec.GENESIS_ALIGNMENT - eth1_timestamp % spec.GENESIS_ALIGNMENT
-    assert state.genesis_time == genesis_time
+    genesis_delay = spec.MIN_GENESIS_DELAY + spec.GENESIS_ALIGNMENT - eth1_timestamp % spec.GENESIS_ALIGNMENT
+    assert state.genesis_time == eth1_timestamp + genesis_delay
     assert len(state.validators) == small_deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == len(deposits)
