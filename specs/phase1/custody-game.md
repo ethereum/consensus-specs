@@ -25,7 +25,6 @@
     - [`CustodyKeyReveal`](#custodykeyreveal)
     - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
 - [Helpers](#helpers)
-  - [`get_block_data_merkle_root`](#get_block_data_merkle_root)
   - [`replace_empty_or_append`](#replace_empty_or_append)
   - [`legendre_bit`](#legendre_bit)
   - [`get_custody_atoms`](#get_custody_atoms)
@@ -127,7 +126,7 @@ class CustodyChunkResponse(Container):
     challenge_index: uint64
     chunk_index: uint64
     chunk: ByteVector[BYTES_PER_CUSTODY_CHUNK]
-    branch: Vector[Root, CUSTODY_RESPONSE_DEPTH]
+    branch: Vector[Root, CUSTODY_RESPONSE_DEPTH + 1]
 ```
 
 #### `CustodySlashing`
@@ -180,12 +179,7 @@ class EarlyDerivedSecretReveal(Container):
     mask: Bytes32
 ```
 
-
 ## Helpers
-
-### `get_block_data_merkle_root`
-
-`get_block_data_merkle_root(data: ByteList) -> Root` is the function that returns the Merkle root of the block data without the length mix-in.
 
 ### `replace_empty_or_append`
 
@@ -381,7 +375,7 @@ def process_chunk_challenge_response(state: BeaconState,
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
-        depth=CUSTODY_RESPONSE_DEPTH,
+        depth=CUSTODY_RESPONSE_DEPTH + 1,  # Add 1 for the List length mix-in
         index=response.chunk_index,
         root=challenge.data_root,
     )
@@ -523,7 +517,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
     # Verify that the provided data matches the shard-transition
     assert (
-        get_block_data_merkle_root(custody_slashing.data)
+        hash_tree_root(custody_slashing.data)
         == shard_transition.shard_data_roots[custody_slashing.data_index]
     )
     assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]
