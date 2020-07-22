@@ -77,7 +77,9 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 # Time parameters
 # ---------------------------------------------------------------
 # 172800 seconds (2 days)
-GENESIS_DELAY: 172800
+MIN_GENESIS_DELAY: 172800
+# 86400 seconds (1 day)
+GENESIS_ALIGNMENT: 86400
 # 12 seconds
 SECONDS_PER_SLOT: 12
 # 2**0 (= 1) slots 12 seconds
