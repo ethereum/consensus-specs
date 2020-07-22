@@ -13,16 +13,17 @@ from eth2spec.test.helpers.state import state_transition_and_sign_block
 from eth2spec.test.helpers.block import build_empty_block
 
 
-def run_on_shard_block(spec, store, shard, signed_block, valid=True):
+def run_on_shard_block(spec, store, signed_block, valid=True):
+    shard = signed_block.message.shard
     if not valid:
         try:
-            spec.on_shard_block(store, shard, signed_block)
+            spec.on_shard_block(store, signed_block)
         except AssertionError:
             return
         else:
             assert False
 
-    spec.on_shard_block(store, shard, signed_block)
+    spec.on_shard_block(store, signed_block)
     shard_store = store.shard_stores[shard]
     assert shard_store.signed_blocks[hash_tree_root(signed_block.message)] == signed_block
 
@@ -53,7 +54,7 @@ def create_and_apply_shard_block(spec, store, shard, beacon_parent_state, shard_
         shard_parent_state=shard_parent_state, slot=beacon_parent_state.slot, body=body, signed=True
     )
     shard_blocks_buffer.append(shard_block)
-    run_on_shard_block(spec, store, shard, shard_block)
+    run_on_shard_block(spec, store, shard_block)
     assert spec.get_shard_head(store, shard) == shard_block.message.hash_tree_root()
 
 
@@ -183,7 +184,7 @@ def create_simple_fork(spec, state, store, shard):
         spec, beacon_parent_state, shard,
         shard_parent_state=shard_parent_state, slot=beacon_parent_state.slot, body=body, signed=True
     )
-    run_on_shard_block(spec, store, shard, forking_block_child)
+    run_on_shard_block(spec, store, forking_block_child)
 
     # Shard block B
     body = b'\x78' * 4  # different body
@@ -191,7 +192,7 @@ def create_simple_fork(spec, state, store, shard):
         spec, beacon_parent_state, shard,
         shard_parent_state=shard_parent_state, slot=beacon_parent_state.slot, body=body, signed=True
     )
-    run_on_shard_block(spec, store, shard, shard_block_b)
+    run_on_shard_block(spec, store, shard_block_b)
 
     # Set forking_block
     current_head = spec.get_shard_head(store, shard)

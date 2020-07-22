@@ -142,13 +142,10 @@ def get_pending_shard_blocks(store: Store, shard: Shard) -> Sequence[SignedShard
 #### `on_shard_block`
 
 ```python
-def on_shard_block(store: Store, shard: Shard, signed_shard_block: SignedShardBlock) -> None:
-    shard_store = store.shard_stores[shard]
+def on_shard_block(store: Store, signed_shard_block: SignedShardBlock) -> None:
     shard_block = signed_shard_block.message
-
-    # Check shard
-    # TODO: check it in networking spec
-    assert shard_block.shard == shard
+    shard = shard_block.shard
+    shard_store = store.shard_stores[shard]
 
     # Check shard parent exists
     assert shard_block.shard_parent_root in shard_store.block_states
