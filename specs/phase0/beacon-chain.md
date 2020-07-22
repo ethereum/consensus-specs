@@ -1148,7 +1148,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
-        genesis_time=genesis_time=eth1_timestamp + MIN_GENESIS_DELAY + GENESIS_ALIGNMENT - eth1_timestamp % GENESIS_ALIGNMENT,
+        genesis_time=eth1_timestamp + MIN_GENESIS_DELAY + GENESIS_ALIGNMENT - eth1_timestamp % GENESIS_ALIGNMENT,
         fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
