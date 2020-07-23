@@ -111,7 +111,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 proof-of-work chain. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
+In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 chain defined by `DEPOSIT_CHAIN_ID` and `DEPOSIT_NETWORK_ID`. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 

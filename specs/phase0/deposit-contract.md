@@ -31,12 +31,14 @@ This document represents the specification for the beacon chain deposit contract
 
 | Name | Value |
 | - | - |
+| `DEPOSIT_CHAIN_ID` | `1` |
+| `DEPOSIT_NETWORK_ID` | `1` |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 chain defined by `DEPOSIT_CHAIN_ID` and `DEPOSIT_NETWORK_ID` for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2.
 
 ### `deposit` function
 
