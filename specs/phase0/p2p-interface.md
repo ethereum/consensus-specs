@@ -336,6 +336,10 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (via both gossip and non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
+  `get_ancestor(store, hash_tree_root(block), compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  == store.finalized_checkpoint.root`
+
 
 ##### `voluntary_exit`
 
@@ -396,6 +400,11 @@ The following validations MUST pass before forwarding the `attestation` on the s
   (via both gossip and non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
+  `get_ancestor(store, hash_tree_root(block), compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  == store.finalized_checkpoint.root`
+
+
 
 #### Attestations and Aggregation
 
