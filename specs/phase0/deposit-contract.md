@@ -10,7 +10,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-  - [Contract](#contract)
+- [Configuration](#configuration)
 - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
   - [`deposit` function](#deposit-function)
     - [Deposit amount](#deposit-amount)
@@ -27,16 +27,29 @@ This document represents the specification for the beacon chain deposit contract
 
 ## Constants
 
-### Contract
+The following values are (non-configurable) constants used throughout the specification.
 
 | Name | Value |
 | - | - |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+
+## Configuration
+
+*Note*: The default mainnet configuration values are included here for spec-design purposes.
+The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory.
+These configurations are updated for releases and may be out of sync during `dev` changes.
+
+| Name | Value |
+| - | - |
+| `DEPOSIT_CHAIN_ID` | `1` |
+| `DEPOSIT_NETWORK_ID` | `1` |
+| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum 1.0 chain defined by the [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2.
+
+_Note_: See [here](https://chainid.network/) for a comprehensive list of public Ethereum chain chain-id's and network-id's.
 
 ### `deposit` function
 
