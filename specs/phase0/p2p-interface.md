@@ -295,15 +295,18 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue blocks for processing once the parent block is retrieved).
+- _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` -- i.e.
+  `get_ancestor(store, block.parent_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  == store.finalized_checkpoint.root`
 - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot
   in the context of the current shuffling (defined by `parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the block MAY be queued for later processing while proposers for the block's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
-- _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
-  (via both gossip and non-gossip sources)
-  (a client MAY queue blocks for processing once the parent block is retrieved).
-- _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 
 ##### `beacon_aggregate_and_proof`
 
