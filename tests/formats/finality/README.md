@@ -2,7 +2,7 @@
 
 The aim of the tests for the finality rules.
 
-- [`finality`](./finality.md): transitions triggered by one or more blocks.
+- `finality`: transitions triggered by one or more blocks.
 
 ## Test case format
 
