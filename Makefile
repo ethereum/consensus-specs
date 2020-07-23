@@ -86,7 +86,7 @@ find_test: pyspec
 
 citest: pyspec
 	mkdir -p tests/core/pyspec/test-reports/eth2spec; . venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -n 4 --disable-bls --junitxml=eth2spec/test_results.xml eth2spec
+	python -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
