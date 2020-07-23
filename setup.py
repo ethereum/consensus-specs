@@ -110,6 +110,7 @@ from eth2spec.config.config_util import apply_constants_config
 from typing import (
     Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
 )
+import math
 
 from dataclasses import (
     dataclass,
@@ -404,6 +405,7 @@ class PySpecCommand(Command):
                     specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
                     specs/phase1/phase1-fork.md
+                    specs/phase1/light-client-sync.md
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
