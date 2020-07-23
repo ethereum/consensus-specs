@@ -30,6 +30,7 @@ LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 
 export DAPP_SKIP_BUILD:=1
 export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
+export DAPP_LIB:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)/lib
 export DAPP_JSON:=build/combined.json
 
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
