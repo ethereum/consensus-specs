@@ -41,7 +41,7 @@ It consists of four main sections:
       - [Requesting side](#requesting-side)
       - [Responding side](#responding-side)
     - [Encoding strategies](#encoding-strategies)
-      - [SSZ-encoding strategy (with or without Snappy)](#ssz-encoding-strategy-with-or-without-snappy)
+      - [SSZ-snappy encoding strategy](#ssz-snappy-encoding-strategy)
     - [Messages](#messages)
       - [Status](#status)
       - [Goodbye](#goodbye)
@@ -550,20 +550,18 @@ Clients MUST treat as valid any byte sequences.
 ### Encoding strategies
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction.
-Two values are possible at this time:
+Only one value is possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md).
-  This encoding type MUST be supported by all clients.
+-  `ssz_snappy`: The contents are first [SSZ-encoded](../../ssz/simple-serialize.md)
+  and then compressed with [Snappy](https://github.com/google/snappy) frames compression.
   For objects containing a single field, only the field is SSZ-encoded not a container with a single field.
-  For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
--  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) frames compression.
   This encoding type MUST be supported by all clients.
 
-#### SSZ-encoding strategy (with or without Snappy)
+#### SSZ-snappy encoding strategy
 
 The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md) outlines how objects are SSZ-encoded.
 
-If the Snappy variant is selected, we feed the serialized form of the object to the Snappy compressor on encoding.
+To achieve snappy encoding on top of SSZ, we feed the serialized form of the object to the Snappy compressor on encoding.
 The inverse happens on decoding.
 
 Snappy has two formats: "block" and "frames" (streaming).
@@ -572,14 +570,14 @@ To support large requests and response chunks, snappy-framing is used.
 Since snappy frame contents [have a maximum size of `65536` bytes](https://github.com/google/snappy/blob/master/framing_format.txt#L104)
 and frame headers are just `identifier (1) + checksum (4)` bytes, the expected buffering of a single frame is acceptable.
 
-**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes,
+**Encoding-dependent header:** Req/Resp protocols using the `ssz_snappy` encoding strategy MUST encode the length of the raw SSZ bytes,
 encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
 *Writing*: By first computing and writing the SSZ byte length, the SSZ encoder can then directly write the chunk contents to the stream.
-If Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
+When Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
 
 *Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
-If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
+When snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
 Before reading the payload, the header MUST be validated:
 - The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
@@ -588,7 +586,6 @@ Before reading the payload, the header MUST be validated:
 After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
 
 A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
-- For `ssz` this is: `n`
 - For `ssz_snappy` this is: `32 + n + n // 6`.
   This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
 
@@ -1299,7 +1296,7 @@ Thus, libp2p transparently handles message delimiting in the underlying stream.
 libp2p streams are full-duplex, and each party is responsible for closing their write side (like in TCP).
 We can therefore use stream closure to mark the end of the request and response independently.
 
-Nevertheless, in the case of `ssz` and `ssz_snappy`, messages are still length-prefixed with the length of the underlying data:
+Nevertheless, in the case of `ssz_snappy`, messages are still length-prefixed with the length of the underlying data:
 * A basic reader can prepare a correctly sized buffer before reading the message
 * A more advanced reader can stream-decode SSZ given the length of the SSZ data.
 * Alignment with protocols like gRPC over HTTP/2 that prefix with length
