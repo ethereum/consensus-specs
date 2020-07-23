@@ -18,7 +18,7 @@ contract DepositContractTest is DSTest {
 
   // --- SUCCESS TESTS ---
 
-  // Tests initilized storage values, comparing vyper and solidity
+  // Tests initialized storage values, comparing vyper and solidity
   function test_empty_root() public {
     bytes32 zHash = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 zHashN = zHash;
