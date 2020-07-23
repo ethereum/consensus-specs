@@ -555,6 +555,7 @@ Only one value is possible at this time:
 -  `ssz_snappy`: The contents are first [SSZ-encoded](../../ssz/simple-serialize.md)
   and then compressed with [Snappy](https://github.com/google/snappy) frames compression.
   For objects containing a single field, only the field is SSZ-encoded not a container with a single field.
+  For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
   This encoding type MUST be supported by all clients.
 
 #### SSZ-snappy encoding strategy
