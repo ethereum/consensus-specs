@@ -6,6 +6,9 @@ TEST_VECTOR_DIR = ../eth2.0-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
 DEPOSIT_CONTRACT_COMPILER_DIR = ./deposit_contract/compiler
 DEPOSIT_CONTRACT_TESTER_DIR = ./deposit_contract/tester
+SOLIDITY_DEPOSIT_CONTRACT_DIR = ./solidity_deposit_contract
+SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_contract.sol
+SOLIDITY_DEPOSIT_CONTRACT_ABI = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_contract.json
 CONFIGS_DIR = ./configs
 
 # Collect a list of generator names
@@ -24,6 +27,10 @@ COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
+
+export DAPP_SKIP_BUILD:=1
+export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
+export DAPP_JSON:=build/combined.json
 
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
         install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
@@ -107,23 +114,27 @@ lint: pyspec
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1
 
-install_deposit_contract_tester:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt
+# install_deposit_contract_tester:
+# 	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt
 
 test_deposit_contract:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
-	python -m pytest .
+	dapp test -v --fuzz-runs 5
 
-install_deposit_contract_compiler:
-	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); python3.7 -m venv venv; . venv/bin/activate; pip3.7 install -r requirements.txt
+# install_deposit_contract_compiler:
+# 	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); python3.7 -m venv venv; . venv/bin/activate; pip3.7 install -r requirements.txt
 
 compile_deposit_contract:
-	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
-	python3.7 deposit_contract/compile.py ../contracts/validator_registration.vy
+	@git submodule update --recursive --init
+	@solc --metadata-literal --optimize --optimize-runs 5000000 --bin --abi --combined-json=abi,bin,bin-runtime,srcmap,srcmap-runtime,ast,metadata,storage-layout --overwrite -o build $(SOLIDITY_DEPOSIT_CONTRACT_SOURCE) $(SOLIDITY_DEPOSIT_CONTRACT_DIR)/tests/deposit_contract.t.sol
+	@/bin/echo -n '{"abi": ' > $(SOLIDITY_DEPOSIT_CONTRACT_ABI)
+	@cat build/DepositContract.abi >> $(SOLIDITY_DEPOSIT_CONTRACT_ABI)
+	@/bin/echo -n ', "bytecode": "0x' >> $(SOLIDITY_DEPOSIT_CONTRACT_ABI)
+	@cat build/DepositContract.bin >> $(SOLIDITY_DEPOSIT_CONTRACT_ABI)
+	@/bin/echo -n '"}' >> $(SOLIDITY_DEPOSIT_CONTRACT_ABI)
 
-test_compile_deposit_contract:
-	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
-	python3.7 -m pytest .
+# test_compile_deposit_contract:
+# 	cd $(DEPOSIT_CONTRACT_COMPILER_DIR); . venv/bin/activate; \
+# 	python3.7 -m pytest .
 
 # Runs a generator, identified by param 1
 define run_generator
