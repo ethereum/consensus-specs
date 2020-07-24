@@ -26,3 +26,17 @@ def run_shard_transitions_processing(spec, state, shard_transitions, attestation
 
     # yield post-state
     yield 'post', state
+
+
+def get_shard_transition_of_committee(spec, state, committee_index, shard_blocks=None):
+    if shard_blocks is None:
+        shard_blocks = []
+
+    shard = spec.compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard_transition = spec.get_shard_transition(state, shard, shard_blocks=shard_blocks)
+    return shard_transition
+
+
+def is_full_crosslink(spec, state):
+    epoch = spec.compute_epoch_at_slot(state.slot)
+    return spec.get_committee_count_per_slot(state, epoch) >= spec.get_active_shard_count(state)

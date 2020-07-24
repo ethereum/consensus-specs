@@ -66,6 +66,8 @@
 * **union**: union type containing one of the given subtypes
     * notation `Union[type_0, type_1, ...]`, e.g. `union[null, uint64]`
 
+*Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due to their different serialization requirements. Similarly, both `List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally `Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization efficiencies.
+
 ### Variable-size and fixed-size
 
 We recursively define "variable-size" types to be lists, unions, `Bitlist` and all types that contain a variable-size type. All other types are said to be "fixed-size".
@@ -88,9 +90,9 @@ Assuming a helper function `default(type)` which returns the default value for `
 | `boolean` | `False` |
 | `Container` | `[default(type) for type in container]` |
 | `Vector[type, N]` | `[default(type)] * N` |
-| `Bitvector[boolean, N]` | `[False] * N` |
+| `Bitvector[N]` | `[False] * N` |
 | `List[type, N]` | `[]` |
-| `Bitlist[boolean, N]` | `[]` |
+| `Bitlist[N]` | `[]` |
 | `Union[type_0, type_1, ...]` | `default(type_0)` |
 
 #### `is_zero`
@@ -211,13 +213,17 @@ We first define helper functions:
    * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
    * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
    * containers: `len(fields)`
-* `pack(value)`: given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `pack_bits(bits)`: Given the `bits` of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. And then pack `bitfield_bytes` into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `pack(values)`: Given ordered objects of the same basic type:
+   1. Serialize `values` into bytes.
+   2. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
+   3. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
+   4. Return the chunks.
+* `pack_bits(bits)`: Given the bits of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. Then return `pack(bitfield_bytes)`.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
 * `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
-    * The merkleization depends on the effective input, which can be padded/limited:
+    * The merkleization depends on the effective input, which must be padded/limited:
         - if no limit: pad the `chunks` with zeroed chunks to `next_pow_of_two(len(chunks))` (virtually for memory efficiency).
-        - if `limit > len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
+        - if `limit >= len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
         - if `limit < len(chunks)`: do not merkleize, input exceeds limit. Raise an error instead.
     * Then, merkleize the chunks (empty input is padded to 1 zero chunk):
         - If `1` chunk: the root is the chunk itself.
@@ -249,7 +255,7 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 | Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
 | Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/utils/ssz) |
-| TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz-js) |
+| TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz) |
 | Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/go-ssz](https://github.com/prysmaticlabs/go-ssz) |
 | Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |

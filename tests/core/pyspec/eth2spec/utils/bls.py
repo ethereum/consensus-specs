@@ -14,6 +14,22 @@ Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
 STUB_COORDINATES = _signature_to_G2(Z2_SIGNATURE)
 
 
+def use_milagro():
+    """
+    Shortcut to use Milagro as BLS library
+    """
+    global bls
+    bls = milagro_bls
+
+
+def use_py_ecc():
+    """
+    Shortcut to use Py-ecc as BLS library
+    """
+    global bls
+    bls = py_ecc_bls
+
+
 def only_with_bls(alt_return=None):
     """
     Decorator factory to make a function only run when BLS is active. Otherwise return the default.

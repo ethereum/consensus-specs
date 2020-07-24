@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- The Beacon Chain for Shards
+# Ethereum 2.0 Phase 1 -- The Beacon Chain with Shards
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,6 +12,11 @@
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Misc](#misc)
+  - [Shard block configs](#shard-block-configs)
+  - [Gwei values](#gwei-values)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
+  - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
   - [Extended `Attestation`](#extended-attestation)
@@ -47,14 +52,11 @@
     - [`get_shard_committee`](#get_shard_committee)
     - [`get_light_client_committee`](#get_light_client_committee)
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [`get_indexed_attestation`](#get_indexed_attestation)
+    - [`get_committee_count_delta`](#get_committee_count_delta)
     - [`get_start_shard`](#get_start_shard)
-    - [`get_shard`](#get_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
     - [`get_offset_slots`](#get_offset_slots)
   - [Predicates](#predicates)
-    - [`verify_attestation_custody`](#verify_attestation_custody)
-    - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
     - [`is_on_time_attestation`](#is_on_time_attestation)
     - [`is_winning_attestation`](#is_winning_attestation)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
@@ -70,9 +72,10 @@
         - [`process_crosslinks`](#process_crosslinks)
         - [`verify_empty_shard_transition`](#verify_empty_shard_transition)
         - [`process_shard_transitions`](#process_shard_transitions)
-      - [New Attester slashing processing](#new-attester-slashing-processing)
+      - [New default validator for deposits](#new-default-validator-for-deposits)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
+    - [Phase 1 final updates](#phase-1-final-updates)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
     - [Light client committee updates](#light-client-committee-updates)
@@ -100,23 +103,53 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 ### Misc
 
-| Name | Value | Unit | Duration |
-| - | - | - | - | 
+| Name | Value |
+| - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
-| `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
+
+### Shard block configs
+
+| Name | Value | Unit |
+| - | - | - |
+| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | bytes |
+| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) |  bytes |
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | - |
+| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | - |
+| `BYTES_PER_CUSTODY_CHUNK` | `2**12` (= 4,096) | bytes |
+| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - | 
+
+### Gwei values
+
+| Name | Value |
+| - | - |
+| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | 
+| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | 
+
+### Initial values
+
+| Name | Value |
+| - | - |
+| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | 
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `ONLINE_PERIOD` | `OnlineEpochs(2**3)` (= 8) | online epochs | ~51 mins |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | |
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) | |
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
-| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
-| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
-| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
-| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
-| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
-| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | |
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` |
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
+| `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x84000000')` |
+| `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x85000000')` |
 
 ## Updated containers
 
@@ -133,6 +166,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
+    # Shard vote
+    shard: Shard
     # Current-slot shard block root
     shard_head_root: Root
     # Shard transition root
@@ -145,7 +180,6 @@ class AttestationData(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits_blocks: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -165,8 +199,9 @@ class PendingAttestation(Container):
 
 ```python
 class IndexedAttestation(Container):
-    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
-    attestation: Attestation
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Extended `AttesterSlashing`
@@ -197,7 +232,9 @@ class Validator(Container):
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
     next_custody_secret_to_reveal: uint64
-    max_reveal_lateness: Epoch
+    # TODO: The max_reveal_lateness doesn't really make sense anymore.
+    # So how do we incentivise early custody key reveals now?
+    all_custody_secrets_revealed_epoch: Epoch  # to be initialized to FAR_FUTURE_EPOCH
 ```
 
 ### Extended `BeaconBlockBody`
@@ -216,13 +253,15 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
+    chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
+    chunk_challenge_responses: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES]
     custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
+    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
     # Shards
     shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     # Light clients
-    light_client_signature_bitfield: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
+    light_client_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
 ```
 
@@ -285,6 +324,7 @@ class BeaconState(Container):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # Phase 1
+    current_epoch_start_shard: Shard
     shard_states: List[ShardState, MAX_SHARDS]
     online_countdown: List[OnlineEpochs, VALIDATOR_REGISTRY_LIMIT]  # not a raw byte array, considered its large size.
     current_light_committee: CompactCommittee
@@ -294,6 +334,8 @@ class BeaconState(Container):
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                     EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS]
+    custody_chunk_challenge_index: uint64
 ```
 
 ## New containers
@@ -338,7 +380,6 @@ class ShardBlockHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    transition_digest: Bytes32
     latest_block_root: Root
 ```
 
@@ -351,6 +392,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
+    # The root is of ByteList[MAX_SHARD_BLOCK_SIZE]
     shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
@@ -452,7 +494,7 @@ def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
 #### `compute_updated_gasprice`
 
 ```python
-def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint8) -> Gwei:
+def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64) -> Gwei:
     if shard_block_length > TARGET_SHARD_BLOCK_SIZE:
         delta = (prev_gasprice * (shard_block_length - TARGET_SHARD_BLOCK_SIZE)
                  // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
@@ -490,7 +532,7 @@ def get_active_shard_count(state: BeaconState) -> uint64:
 ```python
 def get_online_validator_indices(state: BeaconState) -> Set[ValidatorIndex]:
     active_validators = get_active_validator_indices(state, get_current_epoch(state))
-    return set([i for i in active_validators if state.online_countdown[i] != 0])
+    return set(i for i in active_validators if state.online_countdown[i] != 0)  # non-duplicate
 ```
 
 #### `get_shard_committee`
@@ -517,7 +559,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
 ```python
 def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the light client committee of no more than ``TARGET_COMMITTEE_SIZE`` validators.
+    Return the light client committee of no more than ``LIGHT_CLIENT_COMMITTEE_SIZE`` validators.
     """
     source_epoch = compute_committee_source_epoch(epoch, LIGHT_CLIENT_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
@@ -527,26 +569,33 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
         seed=seed,
         index=0,
         count=get_active_shard_count(beacon_state),
-    )[:TARGET_COMMITTEE_SIZE]
+    )[:LIGHT_CLIENT_COMMITTEE_SIZE]
 ```
 
 #### `get_shard_proposer_index`
 
 ```python
 def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard) -> ValidatorIndex:
-    committee = get_shard_committee(beacon_state, compute_epoch_at_slot(slot), shard)
-    r = bytes_to_int(get_seed(beacon_state, get_current_epoch(beacon_state), DOMAIN_SHARD_COMMITTEE)[:8])
+    """
+    Return the proposer's index of shard block at ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    committee = get_shard_committee(beacon_state, epoch, shard)
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_COMMITTEE) + uint_to_bytes(slot))
+    r = bytes_to_uint64(seed[:8])
     return committee[r % len(committee)]
 ```
 
-#### `get_indexed_attestation`
+#### `get_committee_count_delta`
 
 ```python
-def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> IndexedAttestation:
-    committee = get_beacon_committee(beacon_state, attestation.data.slot, attestation.data.index)
-    return IndexedAttestation(
-        committee=committee,
-        attestation=attestation,
+def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: Slot) -> uint64:
+    """
+    Return the sum of committee counts in range ``[start_slot, stop_slot)``.
+    """
+    return sum(
+        get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
+        for slot in range(start_slot, stop_slot)
     )
 ```
 
@@ -554,21 +603,35 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
 
 ```python
 def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
-    # TODO: implement start shard logic
-    return Shard(0)
-```
-
-#### `get_shard`
-
-```python
-def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    return compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
+    """
+    Return the start shard at ``slot``.
+    """
+    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
+    active_shard_count = get_active_shard_count(state)
+    if current_epoch_start_slot == slot:
+        return state.current_epoch_start_shard
+    elif slot > current_epoch_start_slot:
+        # Current epoch or the next epoch lookahead
+        shard_delta = get_committee_count_delta(state, start_slot=current_epoch_start_slot, stop_slot=slot)
+        return Shard((state.current_epoch_start_shard + shard_delta) % active_shard_count)
+    else:
+        # Previous epoch
+        shard_delta = get_committee_count_delta(state, start_slot=slot, stop_slot=current_epoch_start_slot)
+        max_committees_per_epoch = MAX_COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH
+        return Shard(
+            # Ensure positive
+            (state.current_epoch_start_shard + max_committees_per_epoch * active_shard_count - shard_delta)
+            % active_shard_count
+        )
 ```
 
 #### `get_latest_slot_for_shard`
 
 ```python
 def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
+    """
+    Return the latest slot number of the given ``shard``.
+    """
     return state.shard_states[shard].slot
 ```
 
@@ -577,82 +640,23 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
 ```python
 def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
     """
-    Return the offset slots of the given ``shard`` between that latest included slot and current slot.
+    Return the offset slots of the given ``shard``.
+    The offset slot are after the latest slot and before current slot. 
     """
     return compute_offset_slots(get_latest_slot_for_shard(state, shard), state.slot)
 ```
 
 ### Predicates
 
-#### `verify_attestation_custody`
-
-```python
-def verify_attestation_custody(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
-    """
-    Check if ``indexed_attestation`` has valid signature against non-empty custody bits.
-    """
-    attestation = indexed_attestation.attestation
-    aggregation_bits = attestation.aggregation_bits
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    all_pubkeys = []
-    all_signing_roots = []
-    for block_index, custody_bits in enumerate(attestation.custody_bits_blocks):
-        assert len(custody_bits) == len(indexed_attestation.committee)
-        for participant, aggregation_bit, custody_bit in zip(
-            indexed_attestation.committee, aggregation_bits, custody_bits
-        ):
-            if aggregation_bit:
-                all_pubkeys.append(state.validators[participant].pubkey)
-                # Note: only 2N distinct message hashes
-                attestation_wrapper = AttestationCustodyBitWrapper(
-                    attestation_data_root=hash_tree_root(attestation.data),
-                    block_index=block_index,
-                    bit=custody_bit,
-                )
-                all_signing_roots.append(compute_signing_root(attestation_wrapper, domain))
-            else:
-                assert not custody_bit
-    return bls.AggregateVerify(all_pubkeys, all_signing_roots, signature=attestation.signature)
-```
-
-#### Updated `is_valid_indexed_attestation`
-
-Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
-
-```python
-def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
-    """
-    Check if ``indexed_attestation`` has valid indices and signature.
-    """
-    # Verify aggregate signature
-    attestation = indexed_attestation.attestation
-    aggregation_bits = attestation.aggregation_bits
-    if not any(aggregation_bits) or len(aggregation_bits) != len(indexed_attestation.committee):
-        return False
-
-    if len(attestation.custody_bits_blocks) == 0:
-        # fall back on phase0 behavior if there is no shard data.
-        domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-        all_pubkeys = []
-        for participant, aggregation_bit in zip(indexed_attestation.committee, aggregation_bits):
-            if aggregation_bit:
-                all_pubkeys.append(state.validators[participant].pubkey)
-        signing_root = compute_signing_root(indexed_attestation.attestation.data, domain)
-        return bls.FastAggregateVerify(all_pubkeys, signing_root, signature=attestation.signature)
-    else:
-        return verify_attestation_custody(state, indexed_attestation)
-```
-
 #### `is_on_time_attestation`
 
 ```python
 def is_on_time_attestation(state: BeaconState,
-                           attestation: Attestation) -> bool:
+                           attestation_data: AttestationData) -> bool:
     """
-    Check if the given attestation is on-time.
+    Check if the given ``attestation_data`` is on-time.
     """
-    # TODO: MIN_ATTESTATION_INCLUSION_DELAY should always be 1
-    return attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY == state.slot
+    return attestation_data.slot == compute_previous_slot(state.slot)
 ```
 
 #### `is_winning_attestation`
@@ -663,11 +667,11 @@ def is_winning_attestation(state: BeaconState,
                            committee_index: CommitteeIndex,
                            winning_root: Root) -> bool:
     """
-    Check if ``attestation`` helped contribute to the successful crosslink of
-    ``winning_root`` formed by ``committee_index`` committee at the current slot.
+    Check if on-time ``attestation`` helped contribute to the successful crosslink of
+    ``winning_root`` formed by ``committee_index`` committee.
     """
     return (
-        attestation.data.slot == state.slot
+        is_on_time_attestation(state, attestation.data)
         and attestation.data.index == committee_index
         and attestation.data.shard_transition_root == winning_root
     )
@@ -710,7 +714,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_light_client_signatures(state, block.body)
+    process_light_client_aggregate(state, block.body)
     process_operations(state, block.body)
 ```
 
@@ -747,7 +751,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.index < get_committee_count_at_slot(state, data.slot)
+    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
     assert data.index < get_active_shard_count(state)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
@@ -761,20 +765,19 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     else:
         assert attestation.data.source == state.previous_justified_checkpoint
 
-    shard = get_shard(state, attestation)
-
-    # Type 1: on-time attestations, the custody bits should be non-empty.
-    if attestation.custody_bits_blocks != []:
-        # Ensure on-time attestation
-        assert is_on_time_attestation(state, attestation)
-        # Correct data root count
-        assert len(attestation.custody_bits_blocks) == len(get_offset_slots(state, shard))
+    # Type 1: on-time attestations
+    if is_on_time_attestation(state, attestation.data):
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
-    # Type 2: no shard transition, no custody bits
+        # Correct shard number
+        shard = compute_shard_from_committee_index(state, attestation.data.index, attestation.data.slot)
+        assert attestation.data.shard == shard
+        # On-time attestations should have a non-empty shard transition root
+        assert attestation.data.shard_transition_root != hash_tree_root(ShardTransition())
+    # Type 2: no shard transition
     else:
         # Ensure delayed attestation
-        assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY < state.slot  
+        assert data.slot < compute_previous_slot(state.slot)
         # Late attestations cannot have a shard transition root
         assert data.shard_transition_root == Root()
 
@@ -846,6 +849,9 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
             shard_parent_root = hash_tree_root(header)
             headers.append(header)
             proposers.append(proposal_index)
+        else:
+            # Must have a stub for `shard_data_root` if empty slot
+            assert transition.shard_data_roots[i] == Root()
 
         prev_gasprice = shard_state.gasprice
 
@@ -869,9 +875,10 @@ def process_crosslink_for_shard(state: BeaconState,
                                 committee_index: CommitteeIndex,
                                 shard_transition: ShardTransition,
                                 attestations: Sequence[Attestation]) -> Root:
-    committee = get_beacon_committee(state, state.slot, committee_index)
+    on_time_attestation_slot = compute_previous_slot(state.slot)
+    committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
     online_indices = get_online_validator_indices(state)
-    shard = compute_shard_from_committee_index(state, committee_index, state.slot)
+    shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
 
     # Loop over all shard transition roots
     shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
@@ -881,9 +888,6 @@ def process_crosslink_for_shard(state: BeaconState,
         for attestation in transition_attestations:
             participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
             transition_participants = transition_participants.union(participants)
-            assert attestation.data.shard_head_root == shard_transition.shard_data_roots[
-                len(shard_transition.shard_data_roots) - 1
-            ]
 
         enough_online_stake = (
             get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
@@ -895,6 +899,12 @@ def process_crosslink_for_shard(state: BeaconState,
 
         # Attestation <-> shard transition consistency
         assert shard_transition_root == hash_tree_root(shard_transition)
+
+        # Check `shard_head_root` of the winning root
+        last_offset_index = len(shard_transition.shard_states) - 1
+        shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+        for attestation in transition_attestations:
+            assert attestation.data.shard_head_root == shard_head_root
 
         # Apply transition
         apply_shard_transition(state, shard, shard_transition)
@@ -926,16 +936,19 @@ def process_crosslink_for_shard(state: BeaconState,
 def process_crosslinks(state: BeaconState,
                        shard_transitions: Sequence[ShardTransition],
                        attestations: Sequence[Attestation]) -> None:
-    committee_count = get_committee_count_at_slot(state, state.slot)
+    on_time_attestation_slot = compute_previous_slot(state.slot)
+    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
     for committee_index in map(CommitteeIndex, range(committee_count)):
-        shard = compute_shard_from_committee_index(state, committee_index, state.slot)
         # All attestations in the block for this committee/shard and current slot
+        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
+        # Since the attestations are validated, all `shard_attestations` satisfy `attestation.data.shard == shard`
         shard_attestations = [
             attestation for attestation in attestations
-            if is_on_time_attestation(state, attestation) and attestation.data.index == committee_index
+            if is_on_time_attestation(state, attestation.data) and attestation.data.index == committee_index
         ]
-
-        winning_root = process_crosslink_for_shard(state, committee_index, shard_transitions[shard], shard_attestations)
+        winning_root = process_crosslink_for_shard(
+            state, committee_index, shard_transitions[shard], shard_attestations
+        )
         if winning_root != Root():
             # Mark relevant pending attestations as creating a successful crosslink
             for pending_attestation in state.current_epoch_attestations:
@@ -969,64 +982,51 @@ def process_shard_transitions(state: BeaconState,
     assert verify_empty_shard_transition(state, shard_transitions)
 ```
 
-##### New Attester slashing processing
+##### New default validator for deposits
 
 ```python
-def get_indices_from_committee(
-        committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE],
-        bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Sequence[ValidatorIndex]:
-    assert len(bits) == len(committee)
-    return [validator_index for i, validator_index in enumerate(committee) if bits[i]]
-```
-
-```python
-def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
-    indexed_attestation_1 = attester_slashing.attestation_1
-    indexed_attestation_2 = attester_slashing.attestation_2
-
-    assert is_slashable_attestation_data(
-        indexed_attestation_1.attestation.data,
-        indexed_attestation_2.attestation.data,
-    )
-    assert is_valid_indexed_attestation(state, indexed_attestation_1)
-    assert is_valid_indexed_attestation(state, indexed_attestation_2)
-
-    indices_1 = get_indices_from_committee(
-        indexed_attestation_1.committee,
-        indexed_attestation_1.attestation.aggregation_bits,
-    )
-    indices_2 = get_indices_from_committee(
-        indexed_attestation_2.committee,
-        indexed_attestation_2.attestation.aggregation_bits,
+def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
+    amount = deposit.data.amount
+    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+    next_custody_secret_to_reveal = get_custody_period_for_validator(
+        ValidatorIndex(len(state.validators)),
+        get_current_epoch(state),
     )
 
-    slashed_any = False
-    indices = set(indices_1).intersection(indices_2)
-    for index in sorted(indices):
-        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
-            slash_validator(state, index)
-            slashed_any = True
-    assert slashed_any
+    return Validator(
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
+        activation_epoch=FAR_FUTURE_EPOCH,
+        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+        effective_balance=effective_balance,
+        next_custody_secret_to_reveal=next_custody_secret_to_reveal,
+        all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
+    )
 ```
 
 #### Light client processing
 
 ```python
-def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockBody) -> None:
+def process_light_client_aggregate(state: BeaconState, block_body: BeaconBlockBody) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
+    previous_slot = compute_previous_slot(state.slot)
+    previous_block_root = get_block_root_at_slot(state, previous_slot)
+
     total_reward = Gwei(0)
     signer_pubkeys = []
     for bit_index, participant_index in enumerate(committee):
-        if block_body.light_client_signature_bitfield[bit_index]:
+        if block_body.light_client_bits[bit_index]:
             signer_pubkeys.append(state.validators[participant_index].pubkey)
-            increase_balance(state, participant_index, get_base_reward(state, participant_index))
-            total_reward += get_base_reward(state, participant_index)
+            if not state.validators[participant_index].slashed:
+                increase_balance(state, participant_index, get_base_reward(state, participant_index))
+                total_reward += get_base_reward(state, participant_index)
 
     increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
 
-    slot = compute_previous_slot(state.slot)
-    signing_root = compute_signing_root(get_block_root_at_slot(state, slot),
-                                        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(slot)))
+    signing_root = compute_signing_root(previous_block_root,
+                                        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(previous_slot)))
     assert optional_fast_aggregate_verify(signer_pubkeys, signing_root, block_body.light_client_signature)
 ```
 
@@ -1040,16 +1040,27 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_reveal_deadlines(state)
+    process_challenge_deadlines(state)
     process_slashings(state)
-    process_final_updates(state)
+    process_final_updates(state)  # phase 0 final updates
+    process_phase_1_final_updates(state)
+```
+
+#### Phase 1 final updates
+
+```python
+def process_phase_1_final_updates(state: BeaconState) -> None:
     process_custody_final_updates(state)
     process_online_tracking(state)
     process_light_client_committee_updates(state)
+
+    # Update current_epoch_start_shard
+    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
 ```
 
 #### Custody game updates
 
-`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md), 
+`process_reveal_deadlines`, `process_challenge_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md), 
 
 #### Online-tracking
 
@@ -1073,8 +1084,9 @@ def process_light_client_committee_updates(state: BeaconState) -> None:
     """
     Update light client committees.
     """
-    if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
+    next_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    if next_epoch % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
         state.current_light_committee = state.next_light_committee
-        new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
+        new_committee = get_light_client_committee(state, next_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
