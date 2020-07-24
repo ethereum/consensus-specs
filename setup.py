@@ -141,11 +141,6 @@ def ceillog2(x: uint64) -> int:
     return (x - 1).bit_length()
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
-# Monkey patch hash cache
-_hash = hash
-hash_cache: Dict[bytes, Bytes32] = {}
-
-
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
     """
     A stub function return mocking Eth1Data.
@@ -154,12 +149,6 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
         deposit_root=block.deposit_root,
         deposit_count=block.deposit_count,
         block_hash=hash_tree_root(block))
-
-
-def hash(x: bytes) -> Bytes32:  # type: ignore
-    if x not in hash_cache:
-        hash_cache[x] = Bytes32(_hash(x))
-    return hash_cache[x]
 
 
 def cache_this(key_fn, value_fn, lru_size):  # type: ignore
