@@ -315,6 +315,28 @@ def test_empty_epoch_transition_not_finalizing(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_proposer_self_slashing(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    assert not state.validators[block.proposer_index].slashed
+
+    proposer_slashing = get_valid_proposer_slashing(
+        spec, state, slashed_index=block.proposer_index, signed_1=True, signed_2=True)
+    block.body.proposer_slashings.append(proposer_slashing)
+
+    # The header is processed *before* the block body:
+    # the proposer was not slashed before the body, thus the block is valid.
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    # The proposer slashed themselves.
+    assert state.validators[block.proposer_index].slashed
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+
+@with_all_phases
+@spec_state_test
 def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
     pre_state = state.copy()
