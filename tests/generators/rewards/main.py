@@ -12,6 +12,7 @@ from gen_from_tests.gen import generate_from_tests
 from importlib import reload
 from eth2spec.config import config_util
 from eth2spec.test.context import PHASE0
+from eth2spec.utils import bls
 
 
 def create_provider(tests_src, config_name: str) -> gen_typing.TestProvider:
@@ -20,6 +21,7 @@ def create_provider(tests_src, config_name: str) -> gen_typing.TestProvider:
         config_util.prepare_config(configs_path, config_name)
         reload(spec_phase0)
         reload(spec_phase1)
+        bls.use_milagro()
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:

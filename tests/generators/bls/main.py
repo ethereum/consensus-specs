@@ -321,6 +321,7 @@ def create_provider(handler_name: str,
 
 
 if __name__ == "__main__":
+    bls.use_py_ecc()  # Py-ecc is chosen instead of Milagro, since the code is better understood to be correct.
     gen_runner.run_generator("bls", [
         create_provider('sign', case01_sign),
         create_provider('verify', case02_verify),
