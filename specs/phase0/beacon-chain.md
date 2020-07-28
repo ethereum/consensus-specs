@@ -1306,7 +1306,7 @@ def get_attesting_balance(state: BeaconState, attestations: Sequence[PendingAtte
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
     # Initial FFG checkpoint values have a `0x00` stub for `root`.
-    # Skip updating FFG checkpoints in first two epochs to avoid corner cases that might result in modifying this stub.
+    # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
 
@@ -1514,7 +1514,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
-    # No rewards are applied at end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
+    # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
