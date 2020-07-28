@@ -105,7 +105,7 @@ def test_process_beacon_block_with_normal_shard_transition(spec, state):
         # skip
         return
 
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
     committee_index = spec.CommitteeIndex(0)
@@ -123,7 +123,7 @@ def test_process_beacon_block_with_empty_proposal_transition(spec, state):
         # skip
         return
 
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
     committee_index = spec.CommitteeIndex(0)
@@ -146,7 +146,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
         # skip
         return
 
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
 
     # build shard block
     shard = 0
@@ -179,7 +179,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_custody_key_reveal(spec, state):
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
     block = build_empty_block(spec, state, slot=state.slot + 1)
@@ -192,7 +192,7 @@ def test_custody_key_reveal(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_early_derived_secret_reveal(spec, state):
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
     block = build_empty_block(spec, state, slot=state.slot + 1)
     early_derived_secret_reveal = get_valid_early_derived_secret_reveal(spec, state)
     block.body.early_derived_secret_reveals = [early_derived_secret_reveal]
@@ -208,7 +208,7 @@ def test_custody_slashing(spec, state):
         # skip
         return
 
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
 
     # Build shard block
     shard = 0

@@ -8,7 +8,10 @@ from eth2spec.test.helpers.shard_block import (
     get_committee_index_of_shard,
 )
 from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root
-from eth2spec.test.helpers.state import state_transition_and_sign_block
+from eth2spec.test.helpers.state import (
+    state_transition_and_sign_block,
+    transition_to_valid_shard_slot,
+)
 from eth2spec.test.helpers.block import build_empty_block
 
 
@@ -102,21 +105,18 @@ def apply_shard_and_beacon(spec, state, store, shard_store, shard_blocks_buffer)
 @spec_state_test
 @never_bls  # Set to never_bls for testing `check_pending_shard_blocks`
 def test_basic(spec, state):
-    spec.PHASE_1_GENESIS_SLOT = 0  # NOTE: mock genesis slot here
-    state = spec.upgrade_to_phase1(state)
-    shard = spec.Shard(1)
+    transition_to_valid_shard_slot(spec, state)
 
     # Initialization
     store = spec.get_forkchoice_store(state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
+    shard = spec.Shard(1)
     shard_store = spec.get_forkchoice_shard_store(state, shard)
     shard_head_root = spec.get_shard_head(store, shard_store)
     assert shard_head_root == state.shard_states[shard].latest_block_root
-    assert shard_store.block_states[shard_head_root].slot == 1
     assert shard_store.block_states[shard_head_root] == state.shard_states[shard]
-
     # For mainnet config, it's possible that only one committee of `shard` per epoch.
     # we set this counter to test more rounds.
     shard_committee_counter = 2

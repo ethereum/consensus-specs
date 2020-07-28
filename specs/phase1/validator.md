@@ -31,7 +31,7 @@
     - [`FullAttestation`](#fullattestation)
     - [Timing](#timing)
     - [Attestation data](#attestation-data)
-      - [Head shard root](#head-shard-root)
+      - [Shard head root](#shard-head-root)
       - [Shard transition](#shard-transition)
     - [Construct attestation](#construct-attestation)
   - [Attestation Aggregation](#attestation-aggregation)
@@ -267,9 +267,9 @@ A validator should create and broadcast the `attestation` to the associated atte
 
 *Note*: We assume that the fork choice only follows branches with valid `offset_slots` with respect to the most recent beacon state shard transition for the queried shard.
 
-##### Head shard root
+##### Shard head root
 
-Set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
+If `attestation_data.slot == GENESIS_SLOT`, set `attestation_data.shard_head_root = Root()`. Otherwise, set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
 
 ##### Shard transition
 
@@ -310,6 +310,10 @@ def get_shard_transition_fields(
 def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
+    # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
+    if beacon_state.slot == GENESIS_SLOT:
+        return ShardTransition()
+
     offset_slots = compute_offset_slots(
         get_latest_slot_for_shard(beacon_state, shard),
         Slot(beacon_state.slot + 1),
