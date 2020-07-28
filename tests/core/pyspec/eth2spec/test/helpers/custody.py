@@ -150,7 +150,7 @@ def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_ind
     chunk_index = chunk_challenge.chunk_index
 
     leaf_index = chunk_index + 2**spec.CUSTODY_RESPONSE_DEPTH
-    serialized_length = (len(custody_data_block)).to_bytes(32, 'little')
+    serialized_length = len(custody_data_block).to_bytes(32, 'little')
     data_branch = build_proof(custody_data_block.get_backing().get_left(), leaf_index) + [serialized_length]
 
     return spec.CustodyChunkResponse(

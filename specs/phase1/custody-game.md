@@ -516,12 +516,8 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     shard_transition = custody_slashing.shard_transition
     assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
     # Verify that the provided data matches the shard-transition
-    assert (
-        hash_tree_root(custody_slashing.data)
-        == shard_transition.shard_data_roots[custody_slashing.data_index]
-    )
     assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]
-
+    assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
     # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     assert custody_slashing.malefactor_index in attesters
