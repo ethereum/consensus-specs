@@ -22,7 +22,7 @@ from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard
 
 
 def get_initial_env(spec, state, target_len_offset_slot):
-    state = transition_to_valid_shard_slot(spec, state)
+    transition_to_valid_shard_slot(spec, state)
     committee_index = spec.CommitteeIndex(0)
     target_shard_slot = state.slot + target_len_offset_slot - 1
     shard = spec.compute_shard_from_committee_index(state, committee_index, target_shard_slot)

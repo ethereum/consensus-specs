@@ -69,7 +69,7 @@ def build_attestation_data(spec, state, slot, index, shard=None, shard_transitio
         source_epoch = state.current_justified_checkpoint.epoch
         source_root = state.current_justified_checkpoint.root
 
-    attestation_data = spec.AttestationData(
+    data = spec.AttestationData(
         slot=slot,
         index=index,
         beacon_block_root=block_root,
@@ -79,23 +79,27 @@ def build_attestation_data(spec, state, slot, index, shard=None, shard_transitio
 
     if spec.fork == PHASE1:
         if shard is None:
-            shard = spec.compute_shard_from_committee_index(state, attestation_data.index, attestation_data.slot)
-        attestation_data.shard = shard
+            shard = spec.compute_shard_from_committee_index(state, data.index, data.slot)
+        data.shard = shard
 
         if shard_transition is not None:
             last_offset_index = len(shard_transition.shard_data_roots) - 1
-            attestation_data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
-            attestation_data.shard_transition_root = shard_transition.hash_tree_root()
+            data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+            data.shard_transition_root = shard_transition.hash_tree_root()
         else:
             if on_time:
-                shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
-                last_offset_index = len(shard_transition.shard_data_roots) - 1
-                attestation_data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
-                attestation_data.shard_transition_root = shard_transition.hash_tree_root()
+                if data.slot == spec.GENESIS_SLOT:
+                    data.shard_head_root = spec.Root()
+                    data.shard_transition_root = spec.ShardTransition().hash_tree_root()
+                else:
+                    shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
+                    last_offset_index = len(shard_transition.shard_data_roots) - 1
+                    data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+                    data.shard_transition_root = shard_transition.hash_tree_root()
             else:
-                attestation_data.shard_head_root = state.shard_states[shard].latest_block_root
-                attestation_data.shard_transition_root = spec.Root()
-    return attestation_data
+                data.shard_head_root = state.shard_states[shard].latest_block_root
+                data.shard_transition_root = spec.Root()
+    return data
 
 
 def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_transition=None, signed=False):

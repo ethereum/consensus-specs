@@ -109,9 +109,9 @@ from dataclasses import (
 
 from lru import LRU
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint64,
+    View, boolean, Container, List, Vector, uint8, uint32, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
@@ -133,9 +133,9 @@ from dataclasses import (
 
 from lru import LRU
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint64, uint8, bit,
+    View, boolean, Container, List, Vector, uint8, uint32, uint64, bit,
     ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
@@ -156,11 +156,6 @@ def ceillog2(x: uint64) -> int:
     return (x - 1).bit_length()
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
-# Monkey patch hash cache
-_hash = hash
-hash_cache: Dict[bytes, Bytes32] = {}
-
-
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
     """
     A stub function return mocking Eth1Data.
@@ -169,12 +164,6 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
         deposit_root=block.deposit_root,
         deposit_count=block.deposit_count,
         block_hash=hash_tree_root(block))
-
-
-def hash(x: bytes) -> Bytes32:  # type: ignore
-    if x not in hash_cache:
-        hash_cache[x] = Bytes32(_hash(x))
-    return hash_cache[x]
 
 
 def cache_this(key_fn, value_fn, lru_size):  # type: ignore
@@ -547,7 +536,7 @@ setup(
         "py_ecc==4.0.0",
         "milagro_bls_binding==1.3.0",
         "dataclasses==0.6",
-        "remerkleable==0.1.16",
+        "remerkleable==0.1.17",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

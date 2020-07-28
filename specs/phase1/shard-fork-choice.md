@@ -37,7 +37,7 @@ def get_forkchoice_shard_store(anchor_state: BeaconState, shard: Shard) -> Shard
         shard=shard,
         signed_blocks={
             anchor_state.shard_states[shard].latest_block_root: SignedShardBlock(
-                message=ShardBlock(slot=anchor_state.slot, shard=shard)
+                message=ShardBlock(slot=compute_previous_slot(anchor_state.slot), shard=shard)
             )
         },
         block_states={anchor_state.shard_states[shard].latest_block_root: anchor_state.copy().shard_states[shard]},

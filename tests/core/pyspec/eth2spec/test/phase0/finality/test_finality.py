@@ -1,4 +1,4 @@
-from eth2spec.test.context import PHASE0, spec_state_test, never_bls, with_all_phases, with_phases
+from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 
@@ -28,9 +28,8 @@ def check_finality(spec,
         assert state.finalized_checkpoint == prev_state.finalized_checkpoint
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
-@never_bls
 def test_finality_no_updates_at_genesis(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
@@ -54,7 +53,6 @@ def test_finality_no_updates_at_genesis(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_finality_rule_4(spec, state):
     # get past first two epochs that finality does not run on
     next_epoch_via_block(spec, state)
@@ -80,7 +78,6 @@ def test_finality_rule_4(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_finality_rule_1(spec, state):
     # get past first two epochs that finality does not run on
     next_epoch_via_block(spec, state)
@@ -108,7 +105,6 @@ def test_finality_rule_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_finality_rule_2(spec, state):
     # get past first two epochs that finality does not run on
     next_epoch_via_block(spec, state)
@@ -138,7 +134,6 @@ def test_finality_rule_2(spec, state):
 
 @with_all_phases
 @spec_state_test
-@never_bls
 def test_finality_rule_3(spec, state):
     """
     Test scenario described here
