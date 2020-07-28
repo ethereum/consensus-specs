@@ -111,7 +111,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 proof-of-work chain. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
+In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 chain defined by `DEPOSIT_CHAIN_ID` and `DEPOSIT_NETWORK_ID`. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
@@ -465,7 +465,7 @@ def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSigna
 def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
     committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
-    return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate
