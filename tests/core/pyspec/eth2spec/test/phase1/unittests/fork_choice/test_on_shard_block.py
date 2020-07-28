@@ -37,7 +37,7 @@ def initialize_store(spec, state, shards):
         shard_head_root = spec.get_shard_head(store, shard)
         assert shard_head_root == state.shard_states[shard].latest_block_root
         shard_store = store.shard_stores[shard]
-        assert shard_store.block_states[shard_head_root].slot == 1
+        assert shard_store.block_states[shard_head_root].slot == 0
         assert shard_store.block_states[shard_head_root] == state.shard_states[shard]
 
     return store
