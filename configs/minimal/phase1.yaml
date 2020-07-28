@@ -71,8 +71,6 @@ EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 64
 EPOCHS_PER_CUSTODY_PERIOD: 32
 # [customized] quicker for testing
 CUSTODY_PERIOD_TO_RANDAO_PADDING: 8
-# [customized] quicker for testing
-CUSTODY_RESPONSE_DEADLINE: 64
 # [customize for faster testing]
 MAX_CHUNK_CHALLENGE_DELAY: 64
 
