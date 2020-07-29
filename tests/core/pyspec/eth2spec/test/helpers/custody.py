@@ -113,7 +113,7 @@ def get_valid_chunk_challenge(spec, state, attestation, shard_transition, data_i
 def custody_chunkify(spec, x):
     chunks = [bytes(x[i:i + spec.BYTES_PER_CUSTODY_CHUNK]) for i in range(0, len(x), spec.BYTES_PER_CUSTODY_CHUNK)]
     chunks[-1] = chunks[-1].ljust(spec.BYTES_PER_CUSTODY_CHUNK, b"\0")
-    return chunks
+    return [ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](c) for c in chunks]
 
 
 def build_proof(anchor, leaf_index):
@@ -149,12 +149,14 @@ def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_ind
 
     chunk_index = chunk_challenge.chunk_index
 
-    data_branch = build_proof(custody_data_block.get_backing().get_left(), chunk_index + 2**spec.CUSTODY_RESPONSE_DEPTH)
+    leaf_index = chunk_index + 2**spec.CUSTODY_RESPONSE_DEPTH
+    serialized_length = len(custody_data_block).to_bytes(32, 'little')
+    data_branch = build_proof(custody_data_block.get_backing().get_left(), leaf_index) + [serialized_length]
 
     return spec.CustodyChunkResponse(
         challenge_index=challenge_index,
         chunk_index=chunk_index,
-        chunk=ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](chunks[chunk_index]),
+        chunk=chunks[chunk_index],
         branch=data_branch,
     )
 
@@ -165,7 +167,7 @@ def get_custody_test_vector(bytelength, offset=0):
 
 
 def get_sample_shard_transition(spec, start_slot, block_lengths):
-    b = [spec.get_block_data_merkle_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
+    b = [spec.hash_tree_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
          for x in block_lengths]
     shard_transition = spec.ShardTransition(
         start_slot=start_slot,
@@ -200,5 +202,5 @@ def get_custody_slashable_shard_transition(spec, start_slot, block_lengths, cust
     slashable_test_vector = get_custody_slashable_test_vector(spec, custody_secret,
                                                               block_lengths[0], slashable=slashable)
     block_data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](slashable_test_vector)
-    shard_transition.shard_data_roots[0] = spec.get_block_data_merkle_root(block_data)
+    shard_transition.shard_data_roots[0] = spec.hash_tree_root(block_data)
     return shard_transition, slashable_test_vector
