@@ -403,7 +403,8 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
-
+- _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
+  `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(attestation.data.target.epoch)) == attestation.data.target.root`
 
 
 #### Attestations and Aggregation
