@@ -851,6 +851,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
                 body_root=transition.shard_data_roots[i]
             )
             shard_parent_root = hash_tree_root(header)
+            assert shard_state.latest_block_root == shard_parent_root
             headers.append(header)
             proposers.append(proposal_index)
         else:
