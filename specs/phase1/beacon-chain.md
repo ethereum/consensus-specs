@@ -47,6 +47,7 @@
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [New `get_committee_count_per_slot`](#new-get_committee_count_per_slot)
     - [`get_active_shard_count`](#get_active_shard_count)
     - [`get_online_validator_indices`](#get_online_validator_indices)
     - [`get_shard_committee`](#get_shard_committee)
