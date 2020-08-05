@@ -50,7 +50,11 @@ def config(request):
 
 @fixture(autouse=True)
 def bls_default(request):
-    disable_bls = request.config.getoption("--disable-bls")
+    try:
+        disable_bls = request.config.getoption("--disable-bls")
+    except ValueError:
+        disable_bls = False
+
     if disable_bls:
         context.DEFAULT_BLS_ACTIVE = False
 

@@ -74,3 +74,16 @@ def test_get_start_shard_previous_slot(spec, state):
         - spec.get_committee_count_delta(state, start_slot=slot, stop_slot=current_epoch_start_slot)
     ) % active_shard_count
     assert start_shard == expected_start_shard
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+def test_get_start_shard_far_past_epoch(spec, state):
+    initial_epoch = spec.get_current_epoch(state)
+    initial_start_slot = spec.compute_start_slot_at_epoch(initial_epoch)
+    initial_start_shard = state.current_epoch_start_shard
+
+    for _ in range(spec.MAX_SHARDS + 2):
+        next_epoch(spec, state)
+
+    assert spec.get_start_shard(state, initial_start_slot) == initial_start_shard

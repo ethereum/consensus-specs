@@ -106,6 +106,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | Name | Value |
 | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
+| `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
 
@@ -520,11 +521,24 @@ def compute_committee_source_epoch(epoch: Epoch, period: uint64) -> Epoch:
 
 ### Beacon state accessors
 
+#### New `get_committee_count_per_slot`
+
+```python
+def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
+    """
+    Return the number of committees in each slot for the given ``epoch``.
+    """
+    return max(uint64(1), min(
+        get_active_shard_count(state),
+        uint64(len(get_active_validator_indices(state, epoch))) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
+    ))
+```
+
 #### `get_active_shard_count`
 
 ```python
 def get_active_shard_count(state: BeaconState) -> uint64:
-    return len(state.shard_states)  # May adapt in the future, or change over time.
+    return INITIAL_ACTIVE_SHARDS
 ```
 
 #### `get_online_validator_indices`
@@ -545,12 +559,11 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
     source_epoch = compute_committee_source_epoch(epoch, SHARD_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    active_shard_count = get_active_shard_count(beacon_state)
     return compute_committee(
         indices=active_validator_indices,
         seed=seed,
         index=shard,
-        count=active_shard_count,
+        count=get_active_shard_count(beacon_state),
     )
 ```
 
@@ -617,10 +630,11 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     else:
         # Previous epoch
         shard_delta = get_committee_count_delta(state, start_slot=slot, stop_slot=current_epoch_start_slot)
-        max_committees_per_epoch = MAX_COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH
+        max_committees_per_slot = active_shard_count
+        max_committees_in_span = max_committees_per_slot * (current_epoch_start_slot - slot)
         return Shard(
             # Ensure positive
-            (state.current_epoch_start_shard + max_committees_per_epoch * active_shard_count - shard_delta)
+            (state.current_epoch_start_shard + max_committees_in_span - shard_delta)
             % active_shard_count
         )
 ```
@@ -752,7 +766,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < get_committee_count_per_slot(state, data.target.epoch)
-    assert data.index < get_active_shard_count(state)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
