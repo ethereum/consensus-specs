@@ -868,8 +868,9 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
 
     # Save updated state
-    state.shard_states[shard] = transition.shard_states[len(transition.shard_states) - 1]
-    state.shard_states[shard].slot = compute_previous_slot(state.slot)
+    shard_state = transition.shard_states[len(transition.shard_states) - 1].copy()
+    shard_state.slot = compute_previous_slot(state.slot)
+    state.shard_states[shard] = shard_state
 ```
 
 ###### `process_crosslink_for_shard`
