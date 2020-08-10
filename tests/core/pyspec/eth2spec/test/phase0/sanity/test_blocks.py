@@ -76,6 +76,9 @@ def test_empty_block_transition(spec, state):
 
     yield 'pre', state
 
+    # Ensure pre-state has default randao
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) == spec.Bytes32()
+
     block = build_empty_block_for_next_slot(spec, state)
 
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -97,6 +100,9 @@ def test_empty_block_transition_large_validator_set(spec, state):
     pre_eth1_votes = len(state.eth1_data_votes)
 
     yield 'pre', state
+
+    # Ensure pre-state has default randao
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) == spec.Bytes32()
 
     block = build_empty_block_for_next_slot(spec, state)
 

@@ -47,7 +47,7 @@
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_committee_count_per_slot`](#new-get_committee_count_per_slot)
+    - [Updated `get_committee_count_per_slot`](#updated-get_committee_count_per_slot)
     - [`get_active_shard_count`](#get_active_shard_count)
     - [`get_online_validator_indices`](#get_online_validator_indices)
     - [`get_shard_committee`](#get_shard_committee)
@@ -522,7 +522,7 @@ def compute_committee_source_epoch(epoch: Epoch, period: uint64) -> Epoch:
 
 ### Beacon state accessors
 
-#### New `get_committee_count_per_slot`
+#### Updated `get_committee_count_per_slot`
 
 ```python
 def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
@@ -539,6 +539,10 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
 
 ```python
 def get_active_shard_count(state: BeaconState) -> uint64:
+    """
+    Return the number of active shards.
+    Note that this puts an upper bound on the number of committees per slot.
+    """
     return INITIAL_ACTIVE_SHARDS
 ```
 
