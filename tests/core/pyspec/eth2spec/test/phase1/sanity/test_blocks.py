@@ -8,7 +8,6 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.custody import (
-    get_custody_secret,
     get_custody_slashable_test_vector,
     get_valid_chunk_challenge,
     get_valid_custody_chunk_response,
@@ -16,6 +15,7 @@ from eth2spec.test.helpers.custody import (
     get_valid_custody_slashing,
     get_valid_early_derived_secret_reveal,
 )
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
     get_committee_index_of_shard,
@@ -215,7 +215,12 @@ def test_custody_slashing(spec, state):
     committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
     # Create slashable shard block body
     validator_index = spec.get_beacon_committee(state, state.slot, committee_index)[0]
-    custody_secret = get_custody_secret(spec, state, validator_index)
+    custody_secret = spec.get_custody_secret(
+        state,
+        validator_index,
+        privkeys[validator_index],
+        spec.get_current_epoch(state),
+    )
     slashable_body = get_custody_slashable_test_vector(spec, custody_secret, length=100, slashable=True)
     shard_block = build_shard_block(spec, state, shard, body=slashable_body, slot=state.slot, signed=True)
     shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
