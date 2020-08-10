@@ -31,7 +31,7 @@ def pytest_addoption(parser):
         help="config: make the pyspec use the specified configuration"
     )
     parser.addoption(
-        "--disable-bls", action="store_true",
+        "--disable-bls", action="store_true", default=False,
         help="bls-default: make tests that are not dependent on BLS run without BLS"
     )
     parser.addoption(
@@ -50,11 +50,7 @@ def config(request):
 
 @fixture(autouse=True)
 def bls_default(request):
-    try:
-        disable_bls = request.config.getoption("--disable-bls")
-    except ValueError:
-        disable_bls = False
-
+    disable_bls = request.config.getoption("--disable-bls")
     if disable_bls:
         context.DEFAULT_BLS_ACTIVE = False
 
