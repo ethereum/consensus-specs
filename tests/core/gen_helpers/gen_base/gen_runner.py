@@ -135,7 +135,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
                 written_part = False
                 meta = dict()
-                for (name, out_kind, data) in test_case.case_fn():
+
+                output = test_case.case_fn()
+                # If the output is `None`, that means the testcase doesn't support this fork or this config.
+                if output is None:
+                    continue
+
+                for (name, out_kind, data) in output:
                     written_part = True
                     if out_kind == "meta":
                         meta[name] = data
