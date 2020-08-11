@@ -193,19 +193,6 @@ def sign_indexed_attestation(spec, state, indexed_attestation):
     indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
 
 
-def get_attestation_custody_signature(spec, state, attestation_data, block_index, bit, privkey):
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
-    signing_root = spec.compute_signing_root(
-        spec.AttestationCustodyBitWrapper(
-            attestation_data_root=attestation_data.hash_tree_root(),
-            block_index=block_index,
-            bit=bit,
-        ),
-        domain,
-    )
-    return bls.Sign(privkey, signing_root)
-
-
 def sign_attestation(spec, state, attestation):
     participants = spec.get_attesting_indices(
         state,
