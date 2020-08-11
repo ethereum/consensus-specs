@@ -35,7 +35,6 @@
   - [`ShardState`](#shardstate)
   - [`ShardTransition`](#shardtransition)
   - [`CompactCommittee`](#compactcommittee)
-  - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
     - [`compute_previous_slot`](#compute_previous_slot)
@@ -406,15 +405,6 @@ class ShardTransition(Container):
 class CompactCommittee(Container):
     pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
     compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
-```
-
-### `AttestationCustodyBitWrapper`
-
-```python
-class AttestationCustodyBitWrapper(Container):
-    attestation_data_root: Root
-    block_index: uint64
-    bit: boolean
 ```
 
 ## Helper functions
