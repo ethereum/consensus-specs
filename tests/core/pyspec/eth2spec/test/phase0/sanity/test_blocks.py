@@ -73,11 +73,9 @@ def test_same_slot_block_transition(spec, state):
 def test_empty_block_transition(spec, state):
     pre_slot = state.slot
     pre_eth1_votes = len(state.eth1_data_votes)
+    pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     yield 'pre', state
-
-    # Ensure pre-state has default randao
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) == spec.Bytes32()
 
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -88,7 +86,7 @@ def test_empty_block_transition(spec, state):
 
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 
 
 @with_all_phases
@@ -98,11 +96,9 @@ def test_empty_block_transition(spec, state):
 def test_empty_block_transition_large_validator_set(spec, state):
     pre_slot = state.slot
     pre_eth1_votes = len(state.eth1_data_votes)
+    pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     yield 'pre', state
-
-    # Ensure pre-state has default randao
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) == spec.Bytes32()
 
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -113,7 +109,7 @@ def test_empty_block_transition_large_validator_set(spec, state):
 
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 
 
 def process_and_sign_block_without_header_validations(spec, state, block):
