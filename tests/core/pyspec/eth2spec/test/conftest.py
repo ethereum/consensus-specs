@@ -59,8 +59,8 @@ def bls_default(request):
 def bls_type(request):
     bls_type = request.config.getoption("--bls-type")
     if bls_type == "py_ecc":
-        bls_utils.bls = bls_utils.py_ecc_bls
+        bls_utils.use_py_ecc()
     elif bls_type == "milagro":
-        bls_utils.bls = bls_utils.milagro_bls
+        bls_utils.use_milagro()
     else:
         raise Exception(f"unrecognized bls type: {bls_type}")

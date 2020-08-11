@@ -111,7 +111,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 proof-of-work chain. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
+In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 chain defined by `DEPOSIT_CHAIN_ID` and `DEPOSIT_NETWORK_ID`. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
@@ -273,7 +273,7 @@ An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` wher
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    return state.genesis_time + slot * SECONDS_PER_SLOT
+    return uint64(state.genesis_time + slot * SECONDS_PER_SLOT)
 ```
 
 ```python
@@ -399,7 +399,7 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
 - Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
-- Let `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
+- Let `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, get_current_epoch(head_state))`.
 
 #### Construct attestation
 
@@ -443,7 +443,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     slots_since_epoch_start = slot % SLOTS_PER_EPOCH
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return (committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT
+    return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation
@@ -465,7 +465,7 @@ def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSigna
 def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
     committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
-    return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate

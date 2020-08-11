@@ -149,7 +149,9 @@ def case03_aggregate():
     else:
         raise Exception("Should have been INVALID")
 
-    yield f'aggregate_na_pubkeys', {
+    # No signatures to aggregate. Follow IETF BLS spec, return `None` to represent INVALID.
+    # https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02#section-2.8
+    yield f'aggregate_na_signatures', {
         'input': [],
         'output': None,
     }
@@ -319,6 +321,7 @@ def create_provider(handler_name: str,
 
 
 if __name__ == "__main__":
+    bls.use_py_ecc()  # Py-ecc is chosen instead of Milagro, since the code is better understood to be correct.
     gen_runner.run_generator("bls", [
         create_provider('sign', case01_sign),
         create_provider('verify', case02_verify),

@@ -41,7 +41,7 @@ It consists of four main sections:
       - [Requesting side](#requesting-side)
       - [Responding side](#responding-side)
     - [Encoding strategies](#encoding-strategies)
-      - [SSZ-encoding strategy (with or without Snappy)](#ssz-encoding-strategy-with-or-without-snappy)
+      - [SSZ-snappy encoding strategy](#ssz-snappy-encoding-strategy)
     - [Messages](#messages)
       - [Status](#status)
       - [Goodbye](#goodbye)
@@ -79,6 +79,7 @@ It consists of four main sections:
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
     - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
+    - [Why are these specific gossip parameters chosen?](#why-are-these-specific-gossip-parameters-chosen)
     - [Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?](#why-is-there-maximum_gossip_clock_disparity-when-validating-slot-ranges-of-messages-in-gossip-subnets)
     - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
     - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
@@ -201,7 +202,7 @@ and will in most cases be out of sync with the ENR sequence number.
 
 ## The gossip domain: gossipsub
 
-Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) libp2p Protocol
+Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md) libp2p Protocol
 including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md) extension.
 
 **Protocol ID:** `/meshsub/1.1.0`
@@ -210,16 +211,17 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 *Note*: Parameters listed here are subject to a large-scale network feasibility study.
 
-The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub#meshsub-an-overlay-mesh-router) will be used:
+The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
 - `D` (topic stable mesh target count): 6
-- `D_low` (topic stable mesh low watermark): 4
+- `D_low` (topic stable mesh low watermark): 5
 - `D_high` (topic stable mesh high watermark): 12
 - `D_lazy` (gossip target): 6
+- `heartbeat_interval` (frequency of heartbeat, seconds): 0.7
 - `fanout_ttl` (ttl for fanout maps for topics we are not subscribed to but have published to, seconds): 60
-- `gossip_advertise` (number of windows to gossip about): 3
-- `gossip_history` (number of heartbeat intervals to retain message IDs): 5
-- `heartbeat_interval` (frequency of heartbeat, seconds): 1
+- `mcache_len` (number of windows to retain full messages in cache for `IWANT` responses): 6
+- `mcache_gossip` (number of windows to gossip about): 3
+- `seen_ttl` (number of heartbeat intervals to retain message IDs): 550
 
 ### Topics and messages
 
@@ -263,6 +265,8 @@ Clients MUST reject (fail validation) messages containing an incorrect type, or 
 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
 
+For any optional queueing, clients SHOULD maintain maximum queue sizes to avoid DoS vectors.
+
 Gossipsub v1.1 introduces [Extended Validators](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#extended-validators)
 for the application to aid in the gossipsub peer-scoring scheme.
 We utilize `ACCEPT`, `REJECT`, and `IGNORE`. For each gossipsub topic, there are application specific validations.
@@ -284,12 +288,20 @@ Signed blocks are sent in their entirety.
 
 The following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 - _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+  i.e. validate that `signed_beacon_block.message.slot <= current_slot`
+  (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
   i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue blocks for processing once the parent block is retrieved).
+- _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` -- i.e.
+  `get_ancestor(store, block.parent_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  == store.finalized_checkpoint.root`
 - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot
   in the context of the current shuffling (defined by `parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
@@ -310,7 +322,6 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
-- _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation has participants --
   that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
 - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot --
@@ -321,6 +332,14 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
 - _[REJECT]_ The signature of `aggregate` is valid.
+- _[IGNORE]_ The block being voted for (`aggregate.data.beacon_block_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue aggregates for processing once block is retrieved).
+- _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
+  `get_ancestor(store, aggregate.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  == store.finalized_checkpoint.root`
+
 
 ##### `voluntary_exit`
 
@@ -376,8 +395,16 @@ The following validations MUST pass before forwarding the `attestation` on the s
   that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
-- _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The signature of `attestation` is valid.
+- _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
+  (via both gossip and non-gossip sources)
+  (a client MAY queue aggregates for processing once block is retrieved).
+- _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
+  `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  == store.finalized_checkpoint.root`
+
+
 
 #### Attestations and Aggregation
 
@@ -535,20 +562,19 @@ Clients MUST treat as valid any byte sequences.
 ### Encoding strategies
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction.
-Two values are possible at this time:
+Only one value is possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](../../ssz/simple-serialize.md).
-  This encoding type MUST be supported by all clients.
+-  `ssz_snappy`: The contents are first [SSZ-encoded](../../ssz/simple-serialize.md)
+  and then compressed with [Snappy](https://github.com/google/snappy) frames compression.
   For objects containing a single field, only the field is SSZ-encoded not a container with a single field.
   For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
--  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy) frames compression.
   This encoding type MUST be supported by all clients.
 
-#### SSZ-encoding strategy (with or without Snappy)
+#### SSZ-snappy encoding strategy
 
 The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md) outlines how objects are SSZ-encoded.
 
-If the Snappy variant is selected, we feed the serialized form of the object to the Snappy compressor on encoding.
+To achieve snappy encoding on top of SSZ, we feed the serialized form of the object to the Snappy compressor on encoding.
 The inverse happens on decoding.
 
 Snappy has two formats: "block" and "frames" (streaming).
@@ -557,14 +583,14 @@ To support large requests and response chunks, snappy-framing is used.
 Since snappy frame contents [have a maximum size of `65536` bytes](https://github.com/google/snappy/blob/master/framing_format.txt#L104)
 and frame headers are just `identifier (1) + checksum (4)` bytes, the expected buffering of a single frame is acceptable.
 
-**Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST encode the length of the raw SSZ bytes,
+**Encoding-dependent header:** Req/Resp protocols using the `ssz_snappy` encoding strategy MUST encode the length of the raw SSZ bytes,
 encoded as an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
 *Writing*: By first computing and writing the SSZ byte length, the SSZ encoder can then directly write the chunk contents to the stream.
-If Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
+When Snappy is applied, it can be passed through a buffered Snappy writer to compress frame by frame.
 
 *Reading*: After reading the expected SSZ byte length, the SSZ decoder can directly read the contents from the stream.
-If snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
+When snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
 Before reading the payload, the header MUST be validated:
 - The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
@@ -573,7 +599,6 @@ Before reading the payload, the header MUST be validated:
 After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
 
 A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
-- For `ssz` this is: `n`
 - For `ssz_snappy` this is: `32 + n + n // 6`.
   This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
 
@@ -1146,6 +1171,25 @@ Some examples of where messages could be duplicated:
   Partial aggregates could be duplicated
 * Clients re-publishing seen messages
 
+### Why are these specific gossip parameters chosen?
+
+- `D`, `D_low`, `D_high`, `D_lazy`: recommended defaults.
+- `heartbeat_interval`: 0.7 seconds, recommended for eth2 in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
+- `fanout_ttl`: 60 seconds, recommended default.
+  Fanout is primarily used by committees publishing attestations to subnets.
+  This happens once per epoch per validator and the subnet changes each epoch
+  so there is little to gain in having a `fanout_ttl` be increased from the recommended default.
+- `mcache_len`: 6, increase by one to ensure that mcache is around for long
+  enough for `IWANT`s to respond to `IHAVE`s in the context of the shorter
+  `heartbeat_interval`. If `mcache_gossip` is increased, this param should be
+  increased to be at least `3` (~2 seconds) more than `mcache_gossip`.
+- `mcache_gossip`: 3, recommended default. This can be increased to 5 or 6
+  (~4 seconds) if gossip times are longer than expected and the current window
+  does not provide enough responsiveness during adverse conditions.
+- `seen_ttl`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 550`.
+  Attestation gossip validity is bounded by an epoch, so this is the safe max bound.
+
+
 ### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 
 For some gossip channels (e.g. those for Attestations and BeaconBlocks),
@@ -1265,7 +1309,7 @@ Thus, libp2p transparently handles message delimiting in the underlying stream.
 libp2p streams are full-duplex, and each party is responsible for closing their write side (like in TCP).
 We can therefore use stream closure to mark the end of the request and response independently.
 
-Nevertheless, in the case of `ssz` and `ssz_snappy`, messages are still length-prefixed with the length of the underlying data:
+Nevertheless, in the case of `ssz_snappy`, messages are still length-prefixed with the length of the underlying data:
 * A basic reader can prepare a correctly sized buffer before reading the message
 * A more advanced reader can stream-decode SSZ given the length of the SSZ data.
 * Alignment with protocols like gRPC over HTTP/2 that prefix with length

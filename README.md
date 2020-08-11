@@ -2,7 +2,7 @@
 
 [![Join the chat at https://discord.gg/hpFs23p](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/hpFs23p) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
+To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://eth.wiki/sharding/Sharding-FAQs) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
 This repository hosts the current Eth2 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 

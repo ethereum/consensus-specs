@@ -63,6 +63,7 @@ def run_standard_custody_slashing_test(spec,
                                        slashing_message_data=None,
                                        correct=True,
                                        valid=True):
+    transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     if shard_lateness is None:
         shard_lateness = spec.SLOTS_PER_EPOCH
     transition_to(spec, state, state.slot + shard_lateness)
@@ -124,7 +125,7 @@ def test_multiple_epochs_custody(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_many_epochs_custody(spec, state):
-    yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 10)
+    yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5)
 
 
 @with_all_phases_except([PHASE0])

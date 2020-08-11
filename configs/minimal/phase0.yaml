@@ -51,6 +51,9 @@ SECONDS_PER_ETH1_BLOCK: 14
 
 # Deposit contract
 # ---------------------------------------------------------------
+# Ethereum Goerli testnet
+DEPOSIT_CHAIN_ID: 5
+DEPOSIT_NETWORK_ID: 5
 # **TBD**
 DEPOSIT_CONTRACT_ADDRESS: 0x1234567890123456789012345678901234567890
 

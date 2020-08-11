@@ -10,7 +10,7 @@ from eth2spec.test.helpers.custody import (
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
-from eth2spec.test.helpers.state import next_epoch_via_block, transition_to
+from eth2spec.test.helpers.state import next_epoch_via_block, transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
@@ -32,6 +32,8 @@ def run_process_custody_final_updates(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_validator_withdrawal_delay(spec, state):
+    transition_to_valid_shard_slot(spec, state)
+    transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     spec.initiate_validator_exit(state, 0)
     assert state.validators[0].withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
@@ -43,6 +45,8 @@ def test_validator_withdrawal_delay(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
+    transition_to_valid_shard_slot(spec, state)
+    transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     spec.initiate_validator_exit(state, 0)
     assert state.validators[0].withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
@@ -66,7 +70,8 @@ def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
-    transition_to(spec, state, state.slot + 1)
+    transition_to_valid_shard_slot(spec, state)
+    transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     shard = 0
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_sample_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
@@ -114,7 +119,8 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state):
-    transition_to(spec, state, state.slot + 1)
+    transition_to_valid_shard_slot(spec, state)
+    transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     shard = 0
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_sample_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))

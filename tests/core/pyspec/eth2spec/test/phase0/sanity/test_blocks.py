@@ -315,6 +315,28 @@ def test_empty_epoch_transition_not_finalizing(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_proposer_self_slashing(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    assert not state.validators[block.proposer_index].slashed
+
+    proposer_slashing = get_valid_proposer_slashing(
+        spec, state, slashed_index=block.proposer_index, signed_1=True, signed_2=True)
+    block.body.proposer_slashings.append(proposer_slashing)
+
+    # The header is processed *before* the block body:
+    # the proposer was not slashed before the body, thus the block is valid.
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    # The proposer slashed themselves.
+    assert state.validators[block.proposer_index].slashed
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+
+@with_all_phases
+@spec_state_test
 def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
     pre_state = state.copy()
@@ -484,7 +506,7 @@ def test_duplicate_attester_slashing(spec, state):
 
 # All AttesterSlashing tests should be adopted for Phase 1 but helper support is not yet there
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_no_overlap(spec, state):
     # Skip test if config cannot handle multiple AttesterSlashings per block
@@ -525,7 +547,7 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
     check_attester_slashing_effect(spec, pre_state, state, full_indices)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_partial_overlap(spec, state):
     # Skip test if config cannot handle multiple AttesterSlashings per block
@@ -768,7 +790,7 @@ def test_voluntary_exit(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_double_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]

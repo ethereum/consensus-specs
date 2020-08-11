@@ -7,6 +7,7 @@ from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.test.context import PHASE0, PHASE1
+from eth2spec.utils import bls
 
 
 def create_provider(fork_name: str, handler_name: str, tests_src_mod_name: str, config_name: str) -> gen_typing.TestProvider:
@@ -14,6 +15,7 @@ def create_provider(fork_name: str, handler_name: str, tests_src_mod_name: str, 
         config_util.prepare_config(configs_path, config_name)
         reload(spec_phase0)
         reload(spec_phase1)
+        bls.use_milagro()
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
