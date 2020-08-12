@@ -300,3 +300,11 @@ def with_phases(phases, other_phases=None):
             return ret
         return wrapper
     return decorator
+
+
+def disable_process_reveal_deadlines(fn):
+    def entry(*args, spec: Spec, **kw):
+        if hasattr(spec, 'process_reveal_deadlines'):
+            spec.process_reveal_deadlines = lambda state: None
+        return fn(*args, spec=spec, **kw)
+    return with_meta_tags({'reveal_deadlines_setting': 1})(entry)

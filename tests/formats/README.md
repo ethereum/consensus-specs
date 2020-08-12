@@ -165,6 +165,9 @@ bls_setting: int     -- optional, can have 3 different values:
                                  but there is no change of outcome when running the test if BLS is ON or OFF.
                             1: known as "BLS required" - if the test validity is strictly dependent on BLS being ON
                             2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
+reveal_deadlines_setting:   -- optional, can have 2 different values:
+                            0: default, `process_reveal_deadlines` is ON.
+                            1: `process_reveal_deadlines` is OFF.
 ```
 
 

@@ -7,9 +7,10 @@ Sanity tests to cover a series of one or more blocks being processed, aiming to 
 ### `meta.yaml`
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
-bls_setting: int       -- see general test-format spec.
-blocks_count: int      -- the number of blocks processed in this test.
+description: string            -- Optional. Description of test case, purely for debugging purposes.
+bls_setting: int               -- see general test-format spec.
+reveal_deadlines_setting: int  -- see general test-format spec.
+blocks_count: int              -- the number of blocks processed in this test.
 ```
 
 

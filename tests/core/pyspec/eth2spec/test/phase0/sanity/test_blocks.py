@@ -23,6 +23,7 @@ from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_comm
 from eth2spec.test.context import (
     PHASE0, PHASE1,
     spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
+    disable_process_reveal_deadlines,
 )
 
 
@@ -762,8 +763,9 @@ def prepare_signed_exits(spec, state, indices):
 # exceeding the minimal-config randao mixes memory size.
 # Applies to all voluntary-exit sanity block tests.
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
+@disable_process_reveal_deadlines
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
@@ -811,8 +813,9 @@ def test_double_validator_exit_same_block(spec, state):
     yield 'post', None
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
+@disable_process_reveal_deadlines
 def test_multiple_different_validator_exits_same_block(spec, state):
     validator_indices = [
         spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
