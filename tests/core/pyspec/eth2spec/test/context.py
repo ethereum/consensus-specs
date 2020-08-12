@@ -1,9 +1,11 @@
+import pytest
+
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
+from .exceptions import SkippedTest
 from .helpers.genesis import create_genesis_state
-
 from .utils import vector_test, with_meta_tags
 
 from random import Random
@@ -22,10 +24,15 @@ def reload_specs():
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
 
 SpecForkName = NewType("SpecForkName", str)
+ConfigName = NewType("ConfigName", str)
 
 PHASE0 = SpecForkName('phase0')
 PHASE1 = SpecForkName('phase1')
 ALL_PHASES = (PHASE0, PHASE1)
+
+MAINNET = ConfigName('mainnet')
+MINIMAL = ConfigName('minimal')
+
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -175,6 +182,17 @@ def single_phase(fn):
 DEFAULT_BLS_ACTIVE = True
 
 
+is_pytest = True
+
+
+def dump_skipping_message(reason: str) -> None:
+    message = f"[Skipped test] {reason}"
+    if is_pytest:
+        pytest.skip(message)
+    else:
+        raise SkippedTest(message)
+
+
 def spec_test(fn):
     # Bls switch must be wrapped by vector_test,
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
@@ -275,7 +293,8 @@ def with_phases(phases, other_phases=None):
             if 'phase' in kw:
                 phase = kw.pop('phase')
                 if phase not in phases:
-                    return
+                    dump_skipping_message(f"doesn't support this fork: {phase}")
+                    return None
                 run_phases = [phase]
 
             available_phases = set(run_phases)
@@ -300,3 +319,30 @@ def with_phases(phases, other_phases=None):
             return ret
         return wrapper
     return decorator
+
+
+def with_configs(configs):
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            available_configs = set(configs)
+            if spec.CONFIG_NAME not in available_configs:
+                dump_skipping_message(f"doesn't support this config: {spec.CONFIG_NAME}")
+                return None
+
+            return fn(*args, spec=spec, **kw)
+        return wrapper
+    return decorator
+
+
+def only_full_crosslink(fn):
+    def is_full_crosslink(spec, state):
+        epoch = spec.compute_epoch_at_slot(state.slot)
+        return spec.get_committee_count_per_slot(state, epoch) >= spec.get_active_shard_count(state)
+
+    def wrapper(*args, spec: Spec, state: Any, **kw):
+        # TODO: update condition to "phase1+" if we have phase2
+        if spec.fork == PHASE1 and not is_full_crosslink(spec, state):
+            dump_skipping_message("only for full crosslink")
+            return None
+        return fn(*args, spec=spec, state=state, **kw)
+    return wrapper

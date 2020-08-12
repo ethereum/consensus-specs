@@ -1,9 +1,11 @@
 from typing import Dict, Sequence
 
 from eth2spec.test.context import (
-    PHASE0,
+    PHASE0, MINIMAL,
     with_all_phases_except,
     spec_state_test,
+    only_full_crosslink,
+    with_configs,
 )
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
@@ -22,7 +24,6 @@ from eth2spec.test.helpers.shard_block import (
     get_sample_shard_block_body,
     get_shard_transitions,
 )
-from eth2spec.test.helpers.shard_transitions import is_full_crosslink
 from eth2spec.test.helpers.state import state_transition_and_sign_block, transition_to_valid_shard_slot, transition_to
 
 
@@ -99,12 +100,8 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_process_beacon_block_with_normal_shard_transition(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
@@ -117,12 +114,8 @@ def test_process_beacon_block_with_normal_shard_transition(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_process_beacon_block_with_empty_proposal_transition(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     transition_to_valid_shard_slot(spec, state)
 
     target_len_offset_slot = 1
@@ -140,12 +133,8 @@ def test_process_beacon_block_with_empty_proposal_transition(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     transition_to_valid_shard_slot(spec, state)
 
     # build shard block
@@ -178,6 +167,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@with_configs([MINIMAL])
 def test_custody_key_reveal(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
@@ -202,12 +192,8 @@ def test_early_derived_secret_reveal(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_custody_slashing(spec, state):
-    # NOTE: this test is only for full crosslink (minimal config), not for mainnet
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     transition_to_valid_shard_slot(spec, state)
 
     # Build shard block

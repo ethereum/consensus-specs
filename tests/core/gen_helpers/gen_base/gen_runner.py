@@ -10,6 +10,13 @@ from ruamel.yaml import (
 
 from gen_base.gen_typing import TestProvider
 
+from eth2spec.test import context
+from eth2spec.test.exceptions import SkippedTest
+
+
+# Flag that the runner does NOT run test via pytest
+context.is_pytest = False
+
 
 def validate_output_dir(path_str):
     path = Path(path_str)
@@ -136,19 +143,19 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 written_part = False
                 meta = dict()
 
-                output = test_case.case_fn()
-                # If the output is `None`, that means the testcase doesn't support this fork or this config.
-                if output is None:
+                try:
+                    for (name, out_kind, data) in test_case.case_fn():
+                        written_part = True
+                        if out_kind == "meta":
+                            meta[name] = data
+                        if out_kind == "data":
+                            output_part("data", name, dump_yaml_fn(data, name, file_mode, yaml))
+                        if out_kind == "ssz":
+                            output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
+                except SkippedTest as e:
+                    print(e)
                     continue
 
-                for (name, out_kind, data) in output:
-                    written_part = True
-                    if out_kind == "meta":
-                        meta[name] = data
-                    if out_kind == "data":
-                        output_part("data", name, dump_yaml_fn(data, name, file_mode, yaml))
-                    if out_kind == "ssz":
-                        output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
                 # Once all meta data is collected (if any), write it to a meta data file.
                 if len(meta) != 0:
                     written_part = True

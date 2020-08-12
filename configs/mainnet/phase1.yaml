@@ -1,5 +1,6 @@
 # Mainnet preset - phase 1
 
+CONFIG_NAME: "mainnet"
 
 # phase1-fork
 # ---------------------------------------------------------------
