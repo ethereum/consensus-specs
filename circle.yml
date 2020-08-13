@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: ethereum/solc:0.6.8-alpine
+      - image: ethereum/solc:0.6.11-alpine
     steps:
       - checkout
       - run:

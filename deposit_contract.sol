@@ -9,7 +9,7 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity 0.6.8;
+pragma solidity 0.6.11;
 
 // This interface is designed to be compatible with the Vyper version.
 /// @notice This is the Ethereum 2.0 deposit contract interface.
@@ -62,8 +62,6 @@ interface ERC165 {
 /// @notice This is the Ethereum 2.0 deposit contract interface.
 /// For more information see the Phase 0 specification under https://github.com/ethereum/eth2.0-specs
 contract DepositContract is IDepositContract, ERC165 {
-    uint constant GWEI = 1e9;
-
     uint constant DEPOSIT_CONTRACT_TREE_DEPTH = 32;
     // NOTE: this also ensures `deposit_count` will fit into 64-bits
     uint constant MAX_DEPOSIT_COUNT = 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1;
@@ -123,8 +121,8 @@ contract DepositContract is IDepositContract, ERC165 {
 
         // Check deposit amount
         require(msg.value >= 1 ether, "DepositContract: deposit value too low");
-        require(msg.value % GWEI == 0, "DepositContract: deposit value not multiple of gwei");
-        uint deposit_amount = msg.value / GWEI;
+        require(msg.value % 1 gwei == 0, "DepositContract: deposit value not multiple of gwei");
+        uint deposit_amount = msg.value / 1 gwei;
         require(deposit_amount <= type(uint64).max, "DepositContract: deposit value too high");
 
         // Emit `DepositEvent` log
