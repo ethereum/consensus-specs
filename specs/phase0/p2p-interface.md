@@ -207,11 +207,12 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 **Protocol ID:** `/meshsub/1.1.0`
 
-**Gossipsub Parameters**
+### Gossipsub parameters
 
 *Note*: Parameters listed here are subject to a large-scale network feasibility study.
 
-The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
+The following gossipsub
+[parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
 - `D` (topic stable mesh target count): 6
 - `D_low` (topic stable mesh low watermark): 5
@@ -225,7 +226,8 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master
 
 ### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages).
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf
+(gossipsub messages are enveloped in protobuf messages).
 Topic strings have form: `/eth2/ForkDigestValue/Name/Encoding`.
 This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
@@ -239,7 +241,8 @@ This defines both the type of data being sent on the topic and how the data fiel
 *Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available.
 Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
 
-Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`.
+Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
+has a maximum size of `GOSSIP_MAX_SIZE`.
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
