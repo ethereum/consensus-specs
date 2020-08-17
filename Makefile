@@ -54,7 +54,7 @@ partial_clean:
 	rm -rf $(PY_SPEC_DIR)/.coverage
 	rm -rf $(PY_SPEC_DIR)/test-reports
 	rm -rf eth2spec.egg-info dist build
-
+	rm -rf build
 
 clean: partial_clean
 	rm -rf venv
