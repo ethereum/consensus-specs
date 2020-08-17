@@ -4,7 +4,6 @@ TEST_LIBS_DIR = ./tests/core
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 TEST_VECTOR_DIR = ../eth2.0-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
-DEPOSIT_CONTRACT_COMPILER_DIR = ./deposit_contract/compiler
 SOLIDITY_DEPOSIT_CONTRACT_DIR = ./solidity_deposit_contract
 SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_contract.sol
 SOLIDITY_FILE_NAME = deposit_contract.json
@@ -46,7 +45,6 @@ partial_clean:
 	rm -rf .pytest_cache
 	rm -f .coverage
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
-	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/.pytest_cache
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_DIR)/phase0
 	rm -rf $(PY_SPEC_DIR)/phase1
