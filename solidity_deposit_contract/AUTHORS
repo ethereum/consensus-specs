@@ -1,0 +1,28 @@
+The contract logic here is based on the deposit contract written in Vyper.
+
+The original repository (https://github.com/ethereum/deposit_contract) had the following authors:
+
+@NIC619
+@carver
+@hwwhww
+@davesque
+@ralexstokes
+@ChihChengLiang
+@nisdas
+@djrtwo
+@JustinDrake
+@vbuterin
+@njgheorghita
+@CarlBeek
+
+In eth2.0-specs repository (https://github.com/ethereum/eth2.0-specs), its current location, it had the following additional authors:
+
+@daejunpark
+
+And this repository has the following authors:
+
+@axic
+@MrChico
+@chriseth
+
+(All of the above are GitHub usernames in order of they appeared first in the commit history.)
