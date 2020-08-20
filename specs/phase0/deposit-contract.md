@@ -16,7 +16,7 @@
     - [Deposit amount](#deposit-amount)
     - [Withdrawal credentials](#withdrawal-credentials)
     - [`DepositEvent` log](#depositevent-log)
-- [Vyper code](#vyper-code)
+- [Solidity code](#solidity-code)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -53,7 +53,7 @@ _Note_: See [here](https://chainid.network/) for a comprehensive list of public 
 
 ### `deposit` function
 
-The deposit contract has a public `deposit` function to make deposits. It takes as arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32`. The first three arguments populate a [`DepositData`](./beacon-chain.md#depositdata) object, and `deposit_data_root` is the expected `DepositData` root as a protection against malformatted calldata.
+The deposit contract has a public `deposit` function to make deposits. It takes as arguments `bytes calldata pubkey, bytes calldata withdrawal_credentials, bytes calldata signature, bytes32 deposit_data_root`. The first three arguments populate a [`DepositData`](./beacon-chain.md#depositdata) object, and `deposit_data_root` is the expected `DepositData` root as a protection against malformatted calldata.
 
 #### Deposit amount
 
@@ -72,8 +72,8 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 Every Ethereum 1.0 deposit emits a `DepositEvent` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
-## Vyper code
+## Solidity code
 
-The deposit contract source code, written in Vyper, is available [here](../../deposit_contract/contracts/validator_registration.vy).
+The deposit contract source code, written in Solidity, is available [here](../../solidity_deposit_contract/deposit_contract.sol).
 
 *Note*: To save on gas, the deposit contract uses a progressive Merkle root calculation algorithm that requires only O(log(n)) storage. See [here](https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py) for a Python implementation, and [here](https://github.com/runtimeverification/verified-smart-contracts/blob/master/deposit/formal-incremental-merkle-tree-algorithm.pdf) for a formal correctness proof.
