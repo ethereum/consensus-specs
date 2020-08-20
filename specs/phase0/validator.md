@@ -200,8 +200,8 @@ Note that this lookahead does not apply to proposing, which must be checked duri
 
 `get_committee_assignment` should be called at the start of each epoch
 to get the assignment for the next epoch (`current_epoch + 1`).
-A validator should plan for future assignments by noting at which future slot
-they will have to attest and joining the committee index attestation subnet related to their committee assignment.
+A validator should plan for future assignments by noting their assigned attestation
+slot and joining the committee index attestation subnet related to their committee assignment.
 
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
