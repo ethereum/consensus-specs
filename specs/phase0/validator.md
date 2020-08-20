@@ -229,7 +229,7 @@ that satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-
 There is one proposer per slot, so if there are N active validators any individual validator
 will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
 
-*Note*: In this sectio, `state` is the state of the slot for the block proposal _without_ the block yet applied.
+*Note*: In this section, `state` is the state of the slot for the block proposal _without_ the block yet applied.
 That is, `state` is the `previous_state` processed through any empty slots up to the assigned slot using `process_slots(previous_state, slot)`.
 
 #### Preparing for a `BeaconBlock`
