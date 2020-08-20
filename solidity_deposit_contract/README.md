@@ -1,4 +1,4 @@
-# eth2-deposit-contract
+# Deposit Contract
 
 ## History
 
@@ -6,10 +6,10 @@ This is a rewrite of the [Vyper Eth 2.0 deposit contract](https://github.com/eth
 
 The original motivation was to run the SMTChecker and the new Yul IR generator option (`--ir`) in the compiler.
 
-As of June 2020, this contract (the version tagged as [`r1`](https://github.com/axic/eth2-deposit-contract/tree/r1) in GitHub repository [axic/eth2-deposit-contract](https://github.com/axic/eth2-deposit-contract/tree/r1)) has been verified and is considered for adoption.
+As of June 2020, version `r1` of the Solidity deposit contract has been verified and is considered for adoption.
 See this [blog post](https://blog.ethereum.org/2020/06/23/eth2-quick-update-no-12/) for more information.
 
-In August 2020, tag [`r2`](https://github.com/axic/eth2-deposit-contract/tree/r2) was released with metadata modifications and relicensed to CC0-1.0. Afterward, this contract has been ported back to `eth2.0-specs` repository and replaced the Vyper deposit contract.
+In August 2020, version `r2` was released with metadata modifications and relicensed to CC0-1.0. Afterward, this contract has been ported back to from [`axic/eth2-deposit-contract`](https://github.com/axic/eth2-deposit-contract) to this repository and replaced the Vyper deposit contract.
 
 ## Running web3 tests
 
