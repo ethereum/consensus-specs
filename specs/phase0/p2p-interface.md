@@ -728,7 +728,7 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
-Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period
+Clients MUST keep a record of signed blocks seen since the start of the weak subjectivity period
 and MUST support serving requests of blocks up to their own `head_block_root`.
 
 Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
