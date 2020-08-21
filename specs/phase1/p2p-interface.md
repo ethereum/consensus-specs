@@ -17,6 +17,13 @@ It consists of four main sections:
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
+  - [Prerequisites](#prerequisites)
+- [Network fundamentals](#network-fundamentals)
+- [Eth2 network interaction domains](#eth2-network-interaction-domains)
+  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 

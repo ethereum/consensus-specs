@@ -44,32 +44,19 @@ commands:
           venv_name: v22-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
           venv_path: ./venv
-  restore_deposit_contract_compiler_cached_venv:
-    description: "Restore the venv from cache for the deposit contract compiler"
-    steps:
-      - restore_cached_venv:
-          venv_name: v23-deposit-contract-compiler
-          reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
-  save_deposit_contract_compiler_cached_venv:
-    description: "Save the venv to cache for later use of the deposit contract compiler"
-    steps:
-      - save_cached_venv:
-          venv_name: v23-deposit-contract-compiler
-          reqs_checksum: cache-{{ checksum "deposit_contract/compiler/requirements.txt" }}
-          venv_path: ./deposit_contract/compiler/venv
   restore_deposit_contract_tester_cached_venv:
     description: "Restore the venv from cache for the deposit contract tester"
     steps:
       - restore_cached_venv:
-          venv_name: v22-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
+          venv_name: v23-deposit-contract-tester
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
   save_deposit_contract_tester_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract tester"
     steps:
       - save_cached_venv:
-          venv_name: v22-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "deposit_contract/tester/requirements.txt" }}
-          venv_path: ./deposit_contract/tester/venv
+          venv_name: v23-deposit-contract-tester
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
+          venv_path: ./solidity_deposit_contract/web3_tester/venv
 jobs:
   checkout_specs:
     docker:
@@ -145,20 +132,49 @@ jobs:
       - run:
           name: Run linter
           command: make lint
-  install_deposit_contract_compiler:
+  build_deposit_contract:
     docker:
-        # The deposit contract compiler is pinned to python 3.7 because of the vyper version pin.
-        - image: circleci/python:3.7
-    working_directory: ~/specs-repo
+      - image: ethereum/solc:0.6.11-alpine
     steps:
-      - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_deposit_contract_compiler_cached_venv
+      - checkout
       - run:
-          name: Install deposit contract compiler requirements
-          command: make install_deposit_contract_compiler
-      - save_deposit_contract_compiler_cached_venv
-  install_deposit_contract_tester:
+          name: Install build essentials
+          command: |
+            apk update
+            apk add git make
+      - run:
+          name: Compile the contract
+          command: |
+            make compile_deposit_contract
+            git diff --color --exit-code
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./solidity_deposit_contract/deposit_contract.json
+            - ./build/combined.json
+            - ./solidity_deposit_contract/lib
+  test_deposit_contract:
+    docker:
+      - image: nixorg/nix:circleci
+    steps:
+      - checkout
+      - restore_cache:
+          key: nix-store-test-v2
+      - attach_workspace:
+          at: /tmp/
+      - run:
+          name: Test the contract
+          command: |
+            mkdir build
+            cp -r /tmp/build/* build
+            cp -r /tmp/solidity_deposit_contract/lib/* ./solidity_deposit_contract/lib
+            cp -r /tmp/solidity_deposit_contract/deposit_contract.json ./solidity_deposit_contract/deposit_contract.json
+            nix-shell --command 'make test_deposit_contract' ./solidity_deposit_contract/shell.nix
+      - save_cache:
+          key: nix-store-test-v2
+          paths:
+            - /nix
+  install_deposit_contract_web3_tester:
     docker:
       - image: circleci/python:3.8
     working_directory: ~/specs-repo
@@ -168,20 +184,9 @@ jobs:
       - restore_deposit_contract_tester_cached_venv
       - run:
           name: Install deposit contract tester requirements
-          command: make install_deposit_contract_tester
+          command: make install_deposit_contract_web3_tester
       - save_deposit_contract_tester_cached_venv
-  test_compile_deposit_contract:
-    docker:
-      - image: circleci/python:3.7
-    working_directory: ~/specs-repo
-    steps:
-      - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_deposit_contract_compiler_cached_venv
-      - run:
-          name: Run deposit contract compile test
-          command: make test_compile_deposit_contract
-  test_deposit_contract:
+  test_deposit_contract_web3_tests:
     docker:
       - image: circleci/python:3.8
     working_directory: ~/specs-repo
@@ -190,9 +195,8 @@ jobs:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_deposit_contract_tester_cached_venv
       - run:
-          name: Run deposit contract test
-          command: make test_deposit_contract
-
+          name: Run deposit contract test with web3.py
+          command: make test_deposit_contract_web3_tests
 workflows:
   version: 2.1
   test_spec:
@@ -209,15 +213,15 @@ workflows:
       - lint:
           requires:
             - test
-      - install_deposit_contract_compiler:
+      - install_deposit_contract_web3_tester:
           requires:
             - checkout_specs
-      - test_compile_deposit_contract:
+      - test_deposit_contract_web3_tests:
           requires:
-            - install_deposit_contract_compiler
-      - install_deposit_contract_tester:
-          requires:
-            - checkout_specs
+            - install_deposit_contract_web3_tester
+  build_and_test_deposit_contract:
+    jobs:
+      - build_deposit_contract
       - test_deposit_contract:
           requires:
-            - install_deposit_contract_tester
+            - build_deposit_contract
