@@ -417,6 +417,7 @@ class ShardTransition(Container):
 ```python
 class ShardTransitionCandidate(Container):
     transition_root: Hash
+    block_root: Hash
     slot: Slot
     index: CommitteeIndex
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
@@ -685,35 +686,6 @@ def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
 
 ### Predicates
 
-#### `is_on_time_attestation`
-
-```python
-def is_on_time_attestation(state: BeaconState,
-                           attestation_data: AttestationData) -> bool:
-    """
-    Check if the given ``attestation_data`` is on-time.
-    """
-    return attestation_data.slot == compute_previous_slot(state.slot)
-```
-
-#### `is_winning_attestation`
-
-```python
-def is_winning_attestation(state: BeaconState,
-                           attestation: PendingAttestation,
-                           committee_index: CommitteeIndex,
-                           winning_root: Root) -> bool:
-    """
-    Check if on-time ``attestation`` helped contribute to the successful crosslink of
-    ``winning_root`` formed by ``committee_index`` committee.
-    """
-    return (
-        is_on_time_attestation(state, attestation.data)
-        and attestation.data.index == committee_index
-        and attestation.data.shard_transition_root == winning_root
-    )
-```
-
 #### `optional_aggregate_verify`
 
 ```python
@@ -818,14 +790,15 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Process shard transition
     success = False
     for candidate in shard_transition_candidates:
-        if ((candidate.transition_root, candidate.slot, candidate.index) ==
-                (attestation.data.shard_transition_root, attestation.data.slot, attestation.data.index)):
+        if ((candidate.transition_root, candidate.block_root, candidate.slot, candidate.index) ==
+                (attestation.data.shard_transition_root, attestation.data.shard_block_root, attestation.data.slot, attestation.data.index)):
             candidate.aggregation_bits = bitwise_or(candidate.aggregation_bits, attestation.aggregation_bits)
             success = True
             # Invariant: `shard_transition_candidates` contains <= 1 item with any given `data`
     if success is False:
         shard_transition_candidates.append(ShardTransitionCandidate(
             transition_root=attestation.data.shard_transition_root,
+            block_root=attestation.data.shard_block_root,
             slot=attestation.data.slot,
             index=attestation.data.index,
             aggregation_bits=attestation.aggregation_bits
@@ -846,7 +819,7 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
     
     # Extract matching ShardTransitionCandidate
     all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
-    matching_candidates = [c for c in all_candidates if c.data == hash_tree_root(transition)]
+    matching_candidates = [c for c in all_candidates if c.shard_transition_root == hash_tree_root(transition)]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 
@@ -903,6 +876,9 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
             assert transition.shard_data_roots[i] == Root()
 
         prev_gasprice = shard_state.gasprice
+        
+    # Verify last header root is correct
+    assert hash_tree_root(headers[-1]) == matching_candidate.block_root
 
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
     signing_roots = [
