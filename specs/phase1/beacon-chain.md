@@ -109,6 +109,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
+| `MAX_VALIDATORS` | `2**22` (= 4,194,304) |
 
 ### Shard block configs
 
@@ -152,6 +153,12 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_LIGHT_SELECTION_PROOF` | `DomainType('0x84000000')` |
 | `DOMAIN_LIGHT_AGGREGATE_AND_PROOF` | `DomainType('0x85000000')` |
 
+### Reward flag locations
+
+| Name | Value |
+| - | - |
+| `FLAG_CROSSLINK` | 1 |
+
 ## Updated containers
 
 The following containers have updated definitions in Phase 1.
@@ -167,8 +174,6 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Shard vote
-    shard: Shard
     # Current-slot shard block root
     shard_head_root: Root
     # Shard transition root
@@ -330,6 +335,10 @@ class BeaconState(Container):
     online_countdown: List[OnlineEpochs, VALIDATOR_REGISTRY_LIMIT]  # not a raw byte array, considered its large size.
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
+    current_shard_transition_candidates: List[ShardTransitionCandidate, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    previous_shard_transition_candidates: List[ShardTransitionCandidate, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    current_epoch_reward_flags: List[Bitvector[8], MAX_VALIDATORS] 
+    previous_epoch_reward_flags: List[Bitvector[8], MAX_VALIDATORS] 
     # Custody game
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
@@ -390,6 +399,8 @@ class ShardState(Container):
 class ShardTransition(Container):
     # Starting from slot
     start_slot: Slot
+    # Shard
+    shard: Shard
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
@@ -399,6 +410,16 @@ class ShardTransition(Container):
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
     proposer_signature_aggregate: BLSSignature
+```
+
+### `ShardTransitionCandidate`
+
+```python
+class ShardTransitionCandidate(Container):
+    transition_root: Hash
+    slot: Slot
+    index: CommitteeIndex
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
 ```
 
 ### `CompactCommittee`
@@ -412,6 +433,13 @@ class CompactCommittee(Container):
 ## Helper functions
 
 ### Misc
+
+### `bitwise_or`
+
+```python
+def bitwise_or(a: Bitlist, b: Bitlist) -> Bitlist:
+    return Bitlist([a_item | b_item for a_item, b_item in zip(a, b)])
+```
 
 #### `compute_previous_slot`
 
@@ -755,10 +783,10 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ##### New Attestation processing
 
-###### `validate_attestation`
+###### `process_attestation`
 
 ```python
-def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < get_committee_count_per_slot(state, data.target.epoch)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
@@ -767,74 +795,83 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(committee)
-
-    if data.target.epoch == get_current_epoch(state):
-        assert data.source == state.current_justified_checkpoint
-    else:
-        assert data.source == state.previous_justified_checkpoint
-
-    # Type 1: on-time attestations
-    if is_on_time_attestation(state, data):
-        # Correct parent block root
-        assert data.beacon_block_root == get_block_root_at_slot(state, compute_previous_slot(state.slot))
-        # Correct shard number
-        shard = compute_shard_from_committee_index(state, data.index, data.slot)
-        assert data.shard == shard
-        # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
-        if data.slot > GENESIS_SLOT:
-            # On-time attestations should have a non-empty shard transition root
-            assert data.shard_transition_root != hash_tree_root(ShardTransition())
-        else:
-            assert data.shard_transition_root == hash_tree_root(ShardTransition())
-    # Type 2: no shard transition
-    else:
-        # Ensure delayed attestation
-        assert data.slot < compute_previous_slot(state.slot)
-        # Late attestations cannot have a shard transition root
-        assert data.shard_transition_root == Root()
-
-    # Signature check
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
-```
-
-###### Updated `process_attestation`
-
-```python
-def process_attestation(state: BeaconState, attestation: Attestation) -> None:
-    validate_attestation(state, attestation)
-    # Store pending attestation for epoch processing
+    
     pending_attestation = PendingAttestation(
         aggregation_bits=attestation.aggregation_bits,
         data=attestation.data,
         inclusion_delay=state.slot - attestation.data.slot,
         proposer_index=get_beacon_proposer_index(state),
-        crosslink_success=False,  # To be filled in during process_shard_transitions
     )
-    if attestation.data.target.epoch == get_current_epoch(state):
+
+    if data.target.epoch == get_current_epoch(state):
+        assert data.source == state.current_justified_checkpoint
         state.current_epoch_attestations.append(pending_attestation)
+        shard_transition_candidates = state.current_shard_transition_candidates
     else:
+        assert data.source == state.previous_justified_checkpoint
         state.previous_epoch_attestations.append(pending_attestation)
+        shard_transition_candidates = state.previous_shard_transition_candidates
+
+    # Signature check
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation)) moote
+
+    # Process shard transition
+    success = False
+    for candidate in shard_transition_candidates:
+        if ((candidate.transition_root, candidate.slot, candidate.index) ==
+                (attestation.data.shard_transition_root, attestation.data.slot, attestation.data.index)):
+            candidate.aggregation_bits = bitwise_or(candidate.aggregation_bits, attestation.aggregation_bits)
+            success = True
+            # Invariant: `shard_transition_candidates` contains <= 1 item with any given `data`
+    if success is False:
+        shard_transition_candidates.append(ShardTransitionCandidate(
+            transition_root=attestation.data.shard_transition_root,
+            slot=attestation.data.slot,
+            index=attestation.data.index,
+            aggregation_bits=attestation.aggregation_bits
+        ))
 ```
 
 ##### Shard transition processing
 
-###### `apply_shard_transition`
+###### `process_shard_transition`
 
 ```python
-def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
+def process_shard_transition(state: BeaconState, transition: ShardTransition) -> None:
     # TODO: only need to check it once when phase 1 starts
     assert state.slot > PHASE_1_FORK_SLOT
+    
+    shard = (get_start_shard(state, transition.slot) + transition.index) % get_active_shard_count(state)
+    assert shard == transition.shard < get_active_shard_count(state)
+    
+    # Extract matching ShardTransitionCandidate
+    all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
+    matching_candidates = [c for c in all_candidates if c.data == hash_tree_root(transition)]
+    assert len(matching_candidates) == 1
+    matching_candidate = matching_candidates[0]
 
     # Correct data root count
-    offset_slots = get_offset_slots(state, shard)
+    offset_slots = compute_offset_slots(get_latest_slot_for_shard(state, shard), matching_candidate.slot)
     assert (
         len(transition.shard_data_roots)
         == len(transition.shard_states)
         == len(transition.shard_block_lengths)
         == len(offset_slots)
     )
+    # Correct starting slot
     assert transition.start_slot == offset_slots[0]
+    
+    # Extract total and participating committee
+    committee = get_beacon_committee(state, matching_candidate.slot, matching_candidate.index)
+    online_indices = get_online_validator_indices(state)
+    online_committee = online_indices.intersection(committee)
+    participants = [committee[i] if matching_candidate.aggregation_bits[i] for i in range(len(committee))]
+    online_participants = online_indices.intersection(participants)
+    
+    # Confirm sufficient balance
+    assert = get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2
 
+    # Process the transition
     headers = []
     proposers = []
     prev_gasprice = state.shard_states[shard].gasprice
@@ -874,129 +911,40 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     ]
     # Verify combined proposer signature
     assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
+    
+    # Shard proposer rewards and cost
+    states_slots_lengths = zip(
+        shard_transition.shard_states,
+        get_offset_slots(state, shard),
+        shard_transition.shard_block_lengths
+    )
+    for shard_state, slot, length in states_slots_lengths:
+        proposer_index = get_shard_proposer_index(state, slot, shard)
+        decrease_balance(state, proposer_index, shard_state.gasprice * length)
 
     # Copy and save updated shard state
     shard_state = copy(transition.shard_states[len(transition.shard_states) - 1])
     shard_state.slot = compute_previous_slot(state.slot)
     state.shard_states[shard] = shard_state
+    
+    # Save rewards
+    is_current = slot_to_epoch(matching_candidate.slot) == get_current_epoch(state)
+    flags = (state.current_epoch_reward_flags if is_current else state.previous_epoch_reward_flags)
+    for index in online_participants:
+        shuffled_position = get_active_validators(state, slot_to_epoch(matching_candidate.slot)).index(index)
+        flags[shuffled_position] |= FLAG_CROSSLINK
+    estimated_attester_reward = sum([get_base_reward(state, attester) for attester in online_participants])
+    proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
-###### `process_crosslink_for_shard`
+##### Verify ShardTransition uniqueness
 
-```python
-def process_crosslink_for_shard(state: BeaconState,
-                                committee_index: CommitteeIndex,
-                                shard_transition: ShardTransition,
-                                attestations: Sequence[Attestation]) -> Root:
-    on_time_attestation_slot = compute_previous_slot(state.slot)
-    committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
-    online_indices = get_online_validator_indices(state)
-    shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
-
-    # Loop over all shard transition roots
-    shard_transition_roots = set([a.data.shard_transition_root for a in attestations])
-    for shard_transition_root in sorted(shard_transition_roots):
-        transition_attestations = [a for a in attestations if a.data.shard_transition_root == shard_transition_root]
-        transition_participants: Set[ValidatorIndex] = set()
-        for attestation in transition_attestations:
-            participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-            transition_participants = transition_participants.union(participants)
-
-        enough_online_stake = (
-            get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
-            get_total_balance(state, online_indices.intersection(committee)) * 2
-        )
-        # If not enough stake, try next transition root
-        if not enough_online_stake:
-            continue
-
-        # Attestation <-> shard transition consistency
-        assert shard_transition_root == hash_tree_root(shard_transition)
-
-        # Check `shard_head_root` of the winning root
-        last_offset_index = len(shard_transition.shard_states) - 1
-        shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
-        for attestation in transition_attestations:
-            assert attestation.data.shard_head_root == shard_head_root
-
-        # Apply transition
-        apply_shard_transition(state, shard, shard_transition)
-        # Apply proposer reward and cost
-        beacon_proposer_index = get_beacon_proposer_index(state)
-        estimated_attester_reward = sum([get_base_reward(state, attester) for attester in transition_participants])
-        proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
-        increase_balance(state, beacon_proposer_index, proposer_reward)
-        states_slots_lengths = zip(
-            shard_transition.shard_states,
-            get_offset_slots(state, shard),
-            shard_transition.shard_block_lengths
-        )
-        for shard_state, slot, length in states_slots_lengths:
-            proposer_index = get_shard_proposer_index(state, slot, shard)
-            decrease_balance(state, proposer_index, shard_state.gasprice * length)
-
-        # Return winning transition root
-        return shard_transition_root
-
-    # No winning transition root, ensure empty and return empty root
-    assert shard_transition == ShardTransition()
-    return Root()
-```
-
-###### `process_crosslinks`
-
-```python
-def process_crosslinks(state: BeaconState,
-                       shard_transitions: Sequence[ShardTransition],
-                       attestations: Sequence[Attestation]) -> None:
-    on_time_attestation_slot = compute_previous_slot(state.slot)
-    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
-    for committee_index in map(CommitteeIndex, range(committee_count)):
-        # All attestations in the block for this committee/shard and current slot
-        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
-        # Since the attestations are validated, all `shard_attestations` satisfy `attestation.data.shard == shard`
-        shard_attestations = [
-            attestation for attestation in attestations
-            if is_on_time_attestation(state, attestation.data) and attestation.data.index == committee_index
-        ]
-        winning_root = process_crosslink_for_shard(
-            state, committee_index, shard_transitions[shard], shard_attestations
-        )
-        if winning_root != Root():
-            # Mark relevant pending attestations as creating a successful crosslink
-            for pending_attestation in state.current_epoch_attestations:
-                if is_winning_attestation(state, pending_attestation, committee_index, winning_root):
-                    pending_attestation.crosslink_success = True
-```
-
-###### `verify_empty_shard_transition`
-
-```python
-def verify_empty_shard_transition(state: BeaconState, shard_transitions: Sequence[ShardTransition]) -> bool:
-    """
-    Verify that a `shard_transition` in a block is empty if an attestation was not processed for it.
-    """
+````python
+def verify_shard_transition_uniqueness(block: BeaconBlock):
     for shard in range(get_active_shard_count(state)):
-        if state.shard_states[shard].slot != compute_previous_slot(state.slot):
-            if shard_transitions[shard] != ShardTransition():
-                return False
-    return True
-```
-
-###### `process_shard_transitions`
-
-```python
-def process_shard_transitions(state: BeaconState,
-                              shard_transitions: Sequence[ShardTransition],
-                              attestations: Sequence[Attestation]) -> None:
-    # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
-    if compute_previous_slot(state.slot) > GENESIS_SLOT:
-        # Process crosslinks
-        process_crosslinks(state, shard_transitions, attestations)
-
-    # Verify the empty proposal shard states
-    assert verify_empty_shard_transition(state, shard_transitions)
-```
+        assert len([transition for transition in block.shard_transitions if transition.shard == shard]) <= 1
+````
 
 ##### New default validator for deposits
 
@@ -1068,6 +1016,7 @@ def process_epoch(state: BeaconState) -> None:
 def process_phase_1_final_updates(state: BeaconState) -> None:
     process_custody_final_updates(state)
     process_online_tracking(state)
+    reset_crosslink_data(state)
     process_light_client_committee_updates(state)
 
     # Update current_epoch_start_shard
@@ -1091,6 +1040,31 @@ def process_online_tracking(state: BeaconState) -> None:
     for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
         for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
             state.online_countdown[index] = ONLINE_PERIOD
+```
+
+#### Crosslink-related operations
+
+```python
+def reset_crosslink_data(state: BeaconState) -> None:
+    state.previous_shard_transition_candidates = state.current_shard_transition_candidates
+    state.current_shard_transition_candidates = []
+    
+    # Process crosslink contribution rewards
+    current_crosslinkers = set([
+        v for i, v in enumerate(get_active_validators(state, get_current_epoch(state))) if 
+        state.current_epoch_reward_flags[i] & FLAG_CROSSLINK
+    ])
+    previous_crosslinkers = set([
+        v for i, v in enumerate(get_active_validators(state, get_previous_epoch(state))) if 
+        state.previous_epoch_reward_flags[i] & FLAG_CROSSLINK
+    ])
+    crosslinkers = current_crosslinkers.union(previous_crosslinkers)
+    total_crosslinking_balance = get_total_balance(state, crosslinkers) // EFFECTIVE_BALANCE_INCREMENT
+    total_balance = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    for index in crosslinkers:
+        increase_balance(state, index, get_base_reward(state, index) * total_crosslinking_balance // total_balance
+    state.current_epoch_reward_flags = List[Bitvector[8], MAX_VALIDATORS]([0] * len(get_active_validators(state, get_current_epoch(state) + 1))
+    state.previous_epoch_reward_flags = List[Bitvector[8], MAX_VALIDATORS]([0] * len(get_active_validators(state, get_current_epoch(state)))
 ```
 
 #### Light client committee updates
