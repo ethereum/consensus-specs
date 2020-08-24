@@ -502,14 +502,15 @@ def compute_shard_from_committee_index(state: BeaconState, index: CommitteeIndex
     return Shard((index + get_start_shard(state, slot)) % active_shards)
 ```
 
-#### `compute_offset_slots`
+#### `compute_admissible_slots`
 
 ```python
-def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
+def compute_admissible_slots(start_slot: Slot) -> Sequence[Slot]:
     """
-    Return the offset slots that are greater than ``start_slot`` and less than ``end_slot``.
+    Return the admissible slots for shard blocks, assuming the most recent shard state
+    was at slot `start_slot`
     """
-    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS if start_slot + x < end_slot]
+    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS]
 ```
 
 #### `compute_updated_gasprice`
@@ -673,17 +674,6 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
     return state.shard_states[shard].slot
 ```
 
-#### `get_offset_slots`
-
-```python
-def get_offset_slots(state: BeaconState, shard: Shard) -> Sequence[Slot]:
-    """
-    Return the offset slots of the given ``shard``.
-    The offset slot are after the latest slot and before current slot. 
-    """
-    return compute_offset_slots(get_latest_slot_for_shard(state, shard), state.slot)
-```
-
 ### Predicates
 
 #### `optional_aggregate_verify`
@@ -807,6 +797,78 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Shard transition processing
 
+###### `execute_shard_transition`
+
+```python
+def execute_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> ShardState:
+    """
+    Applies the given ShardTransition to the appropriate ShardState. Also processes shard proposer rewards and fees.
+    """
+    shard_state = state.shard_states[shard]
+    prev_gasprice = shard_state.gasprice
+    shard_parent_root = shard_state.latest_block_root
+    admissible_slots = compute_admissible_slots(transition.start_slot)[:len(transition.shard_data_roots)]
+    assert (
+        len(transition.shard_data_roots)
+        == len(transition.shard_states)
+        == len(transition.shard_block_lengths)
+        == len(admissible_slots)
+    )
+    # Process the shard transition; in the mean time, reconstruct the headers for signature
+    # verification and the proposers for reward/penalty calculation
+    headers = []
+    proposers = []
+    for i, slot in enumerate(admissible_slots):
+        shard_block_length = transition.shard_block_lengths[i]
+        shard_state = transition.shard_states[i]
+        # Verify correct calculation of gas prices and slots
+        assert shard_state.gasprice == compute_updated_gasprice(prev_gasprice, shard_block_length)
+        assert shard_state.slot == slot
+        # Collect the non-empty proposals result
+        if shard_block_length > 0:
+            shard_proposer_index = get_shard_proposer_index(state, slot, shard)
+            # Reconstruct shard headers
+            header = ShardBlockHeader(
+                shard_parent_root=shard_parent_root,
+                beacon_parent_root=get_block_root_at_slot(state, slot),
+                slot=slot,
+                shard=shard,
+                proposer_index=shard_proposer_index,
+                body_root=transition.shard_data_roots[i]
+            )
+            shard_parent_root = hash_tree_root(header)
+            headers.append(header)
+            proposers.append(proposal_index)
+        else:
+            # Must have a stub for `shard_data_root` if empty slot
+            assert transition.shard_data_roots[i] == Root()
+            
+    # Verify combined proposer signature
+    pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
+    signing_roots = [
+        compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(header.slot)))
+        for header in headers
+    ]
+    assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
+    
+    # Shard proposer rewards and cost
+    states_slots_lengths = zip(
+        shard_transition.shard_states,
+        get_offset_slots(state, shard),
+        shard_transition.shard_block_lengths
+    )
+    for shard_state, slot, length in states_slots_lengths:
+        proposer_index = get_shard_proposer_index(state, slot, shard)
+        proposer_reward = get_base_reward(state, proposer_index) * get_online_validator_indices(state) // get_active_shard_count(state)
+        increase_balance(state, proposer_index, proposer_reward)
+        decrease_balance(state, proposer_index, shard_state.gasprice * length // TARGET_SHARD_BLOCK_SIZE)
+        
+    # Copy and save updated shard state
+    shard_state = copy(transition.shard_states[len(transition.shard_states) - 1])
+    shard_state.slot = compute_previous_slot(state.slot)
+    state.shard_states[shard] = shard_state
+```
+
 ###### `process_shard_transition`
 
 ```python
@@ -823,17 +885,6 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 
-    # Correct data root count
-    offset_slots = compute_offset_slots(get_latest_slot_for_shard(state, shard), matching_candidate.slot)
-    assert (
-        len(transition.shard_data_roots)
-        == len(transition.shard_states)
-        == len(transition.shard_block_lengths)
-        == len(offset_slots)
-    )
-    # Correct starting slot
-    assert transition.start_slot == offset_slots[0]
-    
     # Extract total and participating committee
     committee = get_beacon_committee(state, matching_candidate.slot, matching_candidate.index)
     online_indices = get_online_validator_indices(state)
@@ -845,65 +896,12 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
     assert = get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2
 
     # Process the transition
-    headers = []
-    proposers = []
-    prev_gasprice = state.shard_states[shard].gasprice
-    shard_parent_root = state.shard_states[shard].latest_block_root
-    for i, offset_slot in enumerate(offset_slots):
-        shard_block_length = transition.shard_block_lengths[i]
-        shard_state = transition.shard_states[i]
-        # Verify correct calculation of gas prices and slots
-        assert shard_state.gasprice == compute_updated_gasprice(prev_gasprice, shard_block_length)
-        assert shard_state.slot == offset_slot
-        # Collect the non-empty proposals result
-        is_empty_proposal = shard_block_length == 0
-        if not is_empty_proposal:
-            proposal_index = get_shard_proposer_index(state, offset_slot, shard)
-            # Reconstruct shard headers
-            header = ShardBlockHeader(
-                shard_parent_root=shard_parent_root,
-                beacon_parent_root=get_block_root_at_slot(state, offset_slot),
-                slot=offset_slot,
-                shard=shard,
-                proposer_index=proposal_index,
-                body_root=transition.shard_data_roots[i]
-            )
-            shard_parent_root = hash_tree_root(header)
-            headers.append(header)
-            proposers.append(proposal_index)
-        else:
-            # Must have a stub for `shard_data_root` if empty slot
-            assert transition.shard_data_roots[i] == Root()
-
-        prev_gasprice = shard_state.gasprice
-        
+    execute_shard_transition(state, shard, transition)
+   
     # Verify last header root is correct
     assert hash_tree_root(headers[-1]) == matching_candidate.block_root
 
-    pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
-    signing_roots = [
-        compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(header.slot)))
-        for header in headers
-    ]
-    # Verify combined proposer signature
-    assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
-    
-    # Shard proposer rewards and cost
-    states_slots_lengths = zip(
-        shard_transition.shard_states,
-        get_offset_slots(state, shard),
-        shard_transition.shard_block_lengths
-    )
-    for shard_state, slot, length in states_slots_lengths:
-        proposer_index = get_shard_proposer_index(state, slot, shard)
-        decrease_balance(state, proposer_index, shard_state.gasprice * length)
-
-    # Copy and save updated shard state
-    shard_state = copy(transition.shard_states[len(transition.shard_states) - 1])
-    shard_state.slot = compute_previous_slot(state.slot)
-    state.shard_states[shard] = shard_state
-    
-    # Save rewards
+    # Save attester and beacon proposer rewards
     is_current = slot_to_epoch(matching_candidate.slot) == get_current_epoch(state)
     flags = (state.current_epoch_reward_flags if is_current else state.previous_epoch_reward_flags)
     for index in online_participants:
