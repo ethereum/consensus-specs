@@ -737,6 +737,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     process_custody_game_operations(state, body)
 
     for_ops(body.shard_transitions, process_shard_transition)
+    
+    verify_shard_transition_uniqueness(body)
 
     # TODO process_operations(body.shard_receipt_proofs, process_shard_receipt_proofs)
 ```
@@ -805,8 +807,6 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
     Applies the given ShardTransition to the appropriate ShardState. Also processes shard proposer rewards and fees.
     """
     shard_state = state.shard_states[shard]
-    prev_gasprice = shard_state.gasprice
-    shard_parent_root = shard_state.latest_block_root
     admissible_slots = compute_admissible_slots(transition.start_slot)[:len(transition.shard_data_roots)]
     assert (
         len(transition.shard_data_roots)
@@ -816,6 +816,8 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
     )
     # Process the shard transition; in the mean time, reconstruct the headers for signature
     # verification and the proposers for reward/penalty calculation
+    prev_gasprice = shard_state.gasprice
+    shard_parent_root = shard_state.latest_block_root
     headers = []
     proposers = []
     for i, slot in enumerate(admissible_slots):
@@ -842,6 +844,7 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
         else:
             # Must have a stub for `shard_data_root` if empty slot
             assert transition.shard_data_roots[i] == Root()
+        prev_gasprice = shard_state.gasprice
             
     # Verify combined proposer signature
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
@@ -920,9 +923,9 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
 ##### Verify ShardTransition uniqueness
 
 ````python
-def verify_shard_transition_uniqueness(block: BeaconBlock):
+def verify_shard_transition_uniqueness(body: BeaconBlockBody):
     for shard in range(get_active_shard_count(state)):
-        assert len([transition for transition in block.shard_transitions if transition.shard == shard]) <= 1
+        assert len([transition for transition in body.shard_transitions if transition.shard == shard]) <= 1
 ````
 
 ##### New default validator for deposits
@@ -995,7 +998,7 @@ def process_epoch(state: BeaconState) -> None:
 def process_phase_1_final_updates(state: BeaconState) -> None:
     process_custody_final_updates(state)
     process_online_tracking(state)
-    reset_crosslink_data(state)
+    process_crosslink_data(state)
     process_light_client_committee_updates(state)
 
     # Update current_epoch_start_shard
@@ -1024,7 +1027,7 @@ def process_online_tracking(state: BeaconState) -> None:
 #### Crosslink-related operations
 
 ```python
-def reset_crosslink_data(state: BeaconState) -> None:
+def process_crosslink_data(state: BeaconState) -> None:
     state.previous_shard_transition_candidates = state.current_shard_transition_candidates
     state.current_shard_transition_candidates = []
     
