@@ -1032,24 +1032,17 @@ def process_crosslink_data(state: BeaconState) -> None:
     state.current_shard_transition_candidates = []
     
     # Process crosslink contribution rewards
-    current_crosslinker_indices = set([
-        index for i, index in enumerate(get_active_validator_indices(state, get_current_epoch(state))) if 
-        state.current_epoch_reward_flags[i] & FLAG_CROSSLINK
-    ])
-    previous_crosslinker_indices = set([
+   crosslinker_indices = set([
         index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state))) if 
         state.previous_epoch_reward_flags[i] & FLAG_CROSSLINK
     ])
-    crosslinker_indices = current_crosslinker_indices.union(previous_crosslinker_indices)
     total_crosslinking_balance = get_total_balance(state, crosslinker_indices) // EFFECTIVE_BALANCE_INCREMENT
     total_balance = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     for index in crosslinker_indices:
         increase_balance(state, index, get_base_reward(state, index) * total_crosslinking_balance // total_balance)
+    state.previous_epoch_reward_flags = state.current_epoch_reward_flags
     state.current_epoch_reward_flags = List[Bitvector[8], MAX_VALIDATORS](
         [0] * len(get_active_validator_indices(state, get_current_epoch(state) + 1))
-    )
-    state.previous_epoch_reward_flags = List[Bitvector[8], MAX_VALIDATORS](
-        [0] * len(get_active_validator_indices(state, get_current_epoch(state)))
     )
 ```
 
