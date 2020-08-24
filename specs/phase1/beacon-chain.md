@@ -838,7 +838,7 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
             )
             shard_parent_root = hash_tree_root(header)
             headers.append(header)
-            proposers.append(get_shard_proposer_index(state, slot, shard))
+            proposers.append(shard_proposer_index)
         else:
             # Must have a stub for `shard_data_root` if empty slot
             assert transition.shard_data_roots[i] == Root()
