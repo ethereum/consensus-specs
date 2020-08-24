@@ -107,7 +107,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
-| `MAX_VALIDATORS` | `2**22` (= 4,194,304) |
+| `MAX_VALIDATORS` | `MAX_VALIDATORS_PER_COMMITTEE * SLOTS_PER_EPOCH * INITIAL_ACTIVE_SHARDS` (= 4,194,304) |
 
 ### Shard block configs
 
