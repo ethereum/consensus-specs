@@ -107,7 +107,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
-| `MAX_VALIDATORS` | `MAX_VALIDATORS_PER_COMMITTEE * SLOTS_PER_EPOCH * INITIAL_ACTIVE_SHARDS` (= 4,194,304) |
+| `MAX_ACTIVE_VALIDATORS` | `MAX_VALIDATORS_PER_COMMITTEE * SLOTS_PER_EPOCH * INITIAL_ACTIVE_SHARDS` (= 4,194,304) |
 
 ### Shard block configs
 
@@ -335,8 +335,8 @@ class BeaconState(Container):
     next_light_committee: CompactCommittee
     current_shard_transition_candidates: List[ShardTransitionCandidate, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     previous_shard_transition_candidates: List[ShardTransitionCandidate, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_reward_flags: List[Bitvector[8], MAX_VALIDATORS] 
-    previous_epoch_reward_flags: List[Bitvector[8], MAX_VALIDATORS] 
+    current_epoch_reward_flags: List[Bitvector[8], MAX_ACTIVE_VALIDATORS] 
+    previous_epoch_reward_flags: List[Bitvector[8], MAX_ACTIVE_VALIDATORS] 
     # Custody game
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
@@ -1041,7 +1041,7 @@ def process_crosslink_data(state: BeaconState) -> None:
     for index in crosslinker_indices:
         increase_balance(state, index, get_base_reward(state, index) * total_crosslinking_balance // total_balance)
     state.previous_epoch_reward_flags = state.current_epoch_reward_flags
-    state.current_epoch_reward_flags = List[Bitvector[8], MAX_VALIDATORS](
+    state.current_epoch_reward_flags = List[Bitvector[8], MAX_ACTIVE_VALIDATORS](
         [0] * len(get_active_validator_indices(state, get_current_epoch(state) + 1))
     )
 ```
