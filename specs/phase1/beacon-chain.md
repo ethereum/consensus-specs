@@ -17,6 +17,7 @@
   - [Initial values](#initial-values)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
+  - [Reward flag locations](#reward-flag-locations)
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
   - [Extended `Attestation`](#extended-attestation)
@@ -34,15 +35,17 @@
   - [`ShardBlockHeader`](#shardblockheader)
   - [`ShardState`](#shardstate)
   - [`ShardTransition`](#shardtransition)
+  - [`ShardTransitionCandidate`](#shardtransitioncandidate)
   - [`CompactCommittee`](#compactcommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
+  - [`bitwise_or`](#bitwise_or)
     - [`compute_previous_slot`](#compute_previous_slot)
     - [`pack_compact_validator`](#pack_compact_validator)
     - [`unpack_compact_validator`](#unpack_compact_validator)
     - [`committee_to_compact_committee`](#committee_to_compact_committee)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
-    - [`compute_offset_slots`](#compute_offset_slots)
+    - [`compute_admissible_slots`](#compute_admissible_slots)
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -56,26 +59,30 @@
     - [`get_start_shard`](#get_start_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
   - [Predicates](#predicates)
-    - [`is_on_time_attestation`](#is_on_time_attestation)
-    - [`is_winning_attestation`](#is_winning_attestation)
+    - [`is_candidate_for_attestation_data`](#is_candidate_for_attestation_data)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
     - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [New Attestation processing](#new-attestation-processing)
-        - [`validate_attestation`](#validate_attestation)
-        - [Updated `process_attestation`](#updated-process_attestation)
+        - [`process_attestation`](#process_attestation)
       - [Shard transition processing](#shard-transition-processing)
-        - [`apply_shard_transition`](#apply_shard_transition)
-        - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
-        - [`process_crosslinks`](#process_crosslinks)
-        - [`verify_empty_shard_transition`](#verify_empty_shard_transition)
+        - [`get_online_beacon_committee`](#get_online_beacon_committee)
+        - [`validate_shard_transition`](#validate_shard_transition)
+        - [`execute_shard_transition`](#execute_shard_transition)
+        - [`process_shard_transition`](#process_shard_transition)
+      - [Verify ShardTransition uniqueness](#verify-shardtransition-uniqueness)
+        - [`verify_shard_transition_uniqueness`](#verify_shard_transition_uniqueness)
       - [New default validator for deposits](#new-default-validator-for-deposits)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
+    - [New rewards processing](#new-rewards-processing)
+      - [`get_crosslink_deltas`](#get_crosslink_deltas)
+      - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Phase 1 final updates](#phase-1-final-updates)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
+    - [Crosslink-related final updates](#crosslink-related-final-updates)
     - [Light client committee updates](#light-client-committee-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -674,6 +681,19 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
 
 ### Predicates
 
+#### `is_candidate_for_attestation_data`
+
+```python
+def is_candidate_for_attestation_data(candidate: ShardTransitionCandidate, data: AttestationData) -> bool:
+    """
+    Return whether the ``candidate`` is for the supplied ``data``
+    """
+    return (
+        (candidate.transition_root, candidate.block_root, candidate.slot, candidate.index)
+        == (data.shard_transition_root, data.shard_block_root, data.slot, data.index)
+    )
+```
+
 #### `optional_aggregate_verify`
 
 ```python
@@ -779,10 +799,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Process shard transition
     candidate_exists = False
     for candidate in shard_transition_candidates:
-        if (
-            (candidate.transition_root, candidate.block_root, candidate.slot, candidate.index)
-            == (data.shard_transition_root, data.shard_block_root, data.slot, data.index)
-        ):
+        if is_candidate_for_attestation_data(candidate, data):
             candidate.aggregation_bits = bitwise_or(candidate.aggregation_bits, attestation.aggregation_bits)
             candidate_exists = True
             # Invariant: `shard_transition_candidates` contains <= 1 item with any given `data`
