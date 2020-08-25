@@ -798,14 +798,43 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Shard transition processing
 
-###### `execute_shard_transition`
+###### `get_online_beacon_committee`
 
 ```python
-def execute_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> ShardState:
+def get_online_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> List[ValidatorIndex]:
+    committee = get_beacon_committee(state, slot, index)
+    online_indices = get_online_validator_indices(state)
+    return online_indices.intersection(committee)
+```
+
+```python
+def get_online_transition_participants(state: BeaconState, candidate: ShardTransitionCandidate) -> List[ValidatorIndex]:
+    committee = get_beacon_committee(state, candidate.slot, candidate.index)
+    participants = [committee[i] for i in range(len(committee)) if candidate.aggregation_bits[i]]
+    online_indices = get_online_validator_indices(state)
+    return online_indices.intersection(participants)
+```
+
+###### `validate_shard_transition`
+
+```python
+def validate_shard_transition(state: BeaconState,
+                              transition: ShardTransition,
+                              candidate: ShardTransitionCandidate) -> None:
     """
-    Applies the given ShardTransition to the appropriate ShardState. Also processes shard proposer rewards and fees.
+    Validates that the given ShardTransition is sufficiently voted upon, is self consistent,
+    and matchines the transition candidate.
     """
-    shard_state = state.shard_states[shard]
+    # Validate transition and candidate shard coherence
+    shard = (get_start_shard(state, transition.slot) + candidate.index) % get_active_shard_count(state)
+    assert shard == transition.shard < get_active_shard_count(state)
+
+    # Confirm sufficient balance
+    online_committee = get_online_beacon_committee(state, candidate.slot, candidate.index)
+    online_participants = get_online_transition_participants(state, candidate)
+    assert get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2
+
+    # Validate transition lengths adhere to expected slot range
     admissible_slots = compute_admissible_slots(transition.start_slot)[:len(transition.shard_data_roots)]
     assert (
         len(transition.shard_data_roots)
@@ -813,8 +842,11 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
         == len(transition.shard_block_lengths)
         == len(admissible_slots)
     )
-    # Process the shard transition; in the mean time, reconstruct the headers for signature
-    # verification and the proposers for reward/penalty calculation
+
+    shard_state = state.shard_states[shard]
+
+    # Process the shard transition;
+    # in the mean time, reconstruct the headers for signature verification
     prev_gasprice = shard_state.gasprice
     shard_parent_root = shard_state.latest_block_root
     headers = []
@@ -844,7 +876,10 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
             # Must have a stub for `shard_data_root` if empty slot
             assert transition.shard_data_roots[i] == Root()
         prev_gasprice = shard_state.gasprice
-            
+
+    # Verify last header root is correct with respect to the transition candidate
+    assert hash_tree_root(headers[-1]) == candidate.block_root
+
     # Verify combined proposer signature
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
     signing_roots = [
@@ -852,8 +887,21 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
         for header in headers
     ]
     assert optional_aggregate_verify(pubkeys, signing_roots, transition.proposer_signature_aggregate)
-    
-    # Shard proposer rewards and cost
+```
+
+###### `execute_shard_transition`
+
+```python
+def apply_shard_transition_updates(state: BeaconState,
+                                   transition: ShardTransition,
+                                   candidate: ShardTransitionCandidate) -> None:
+    """
+    Applies the given ShardTransition to the appropriate ShardState. Also processes shard proposer rewards and fees.
+    """
+    shard = transition.shard
+    admissible_slots = compute_admissible_slots(transition.start_slot)[:len(transition.shard_data_roots)]
+
+    # Shard proposer rewards and block size cost
     states_slots_lengths = zip(
         transition.shard_states,
         admissible_slots,
@@ -868,11 +916,23 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
         )
         increase_balance(state, proposer_index, proposer_reward)
         decrease_balance(state, proposer_index, shard_state.gasprice * length // TARGET_SHARD_BLOCK_SIZE)
-        
+
     # Copy and save updated shard state
     shard_state = copy(transition.shard_states[len(transition.shard_states) - 1])
     shard_state.slot = compute_previous_slot(state.slot)
     state.shard_states[shard] = shard_state
+
+    # Save attester and beacon proposer rewards
+    is_current = compute_epoch_at_slot(candidate.slot) == get_current_epoch(state)
+    flags = (state.current_epoch_reward_flags if is_current else state.previous_epoch_reward_flags)
+    online_participants = get_online_transition_participants(state, candidate)
+    for validator_index in online_participants:
+        epoch = compute_epoch_at_slot(candidate.slot)
+        shuffled_position = get_active_validator_indices(state, epoch).index(validator_index)
+        flags[shuffled_position] |= FLAG_CROSSLINK
+    estimated_attester_reward = sum([get_base_reward(state, attester) for attester in online_participants])
+    proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
 ###### `process_shard_transition`
@@ -881,42 +941,18 @@ def execute_shard_transition(state: BeaconState, shard: Shard, transition: Shard
 def process_shard_transition(state: BeaconState, transition: ShardTransition) -> None:
     # TODO: only need to check it once when phase 1 starts
     assert state.slot > PHASE_1_FORK_SLOT
-    
-    shard = (get_start_shard(state, transition.slot) + transition.index) % get_active_shard_count(state)
-    assert shard == transition.shard < get_active_shard_count(state)
-    
+
     # Extract matching ShardTransitionCandidate
     all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
     matching_candidates = [c for c in all_candidates if c.shard_transition_root == hash_tree_root(transition)]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 
-    # Extract total and participating committee
-    committee = get_beacon_committee(state, matching_candidate.slot, matching_candidate.index)
-    online_indices = get_online_validator_indices(state)
-    online_committee = online_indices.intersection(committee)
-    participants = [committee[i] for i in range(len(committee)) if matching_candidate.aggregation_bits[i]]
-    online_participants = online_indices.intersection(participants)
-    
-    # Confirm sufficient balance
-    assert get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2
+    # Validate the shard transition
+    validate_shard_transition(state, transition, matching_candidate)
 
-    # Process the transition
-    execute_shard_transition(state, shard, transition)
-   
-    # Verify last header root is correct
-    assert hash_tree_root(headers[-1]) == matching_candidate.block_root
-
-    # Save attester and beacon proposer rewards
-    is_current = compute_epoch_at_slot(matching_candidate.slot) == get_current_epoch(state)
-    flags = (state.current_epoch_reward_flags if is_current else state.previous_epoch_reward_flags)
-    for validator_index in online_participants:
-        epoch = compute_epoch_at_slot(matching_candidate.slot)
-        shuffled_position = get_active_validator_indices(state, epoch).index(validator_index)
-        flags[shuffled_position] |= FLAG_CROSSLINK
-    estimated_attester_reward = sum([get_base_reward(state, attester) for attester in online_participants])
-    proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
-    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+    # Apply the transition updates
+    apply_shard_transition_updates(state, transition, matching_candidate)
 ```
 
 ##### Verify ShardTransition uniqueness
