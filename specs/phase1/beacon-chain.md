@@ -21,7 +21,6 @@
 - [Updated containers](#updated-containers)
   - [Extended `AttestationData`](#extended-attestationdata)
   - [Extended `Attestation`](#extended-attestation)
-  - [Extended `PendingAttestation`](#extended-pendingattestation)
   - [Extended `IndexedAttestation`](#extended-indexedattestation)
   - [Extended `AttesterSlashing`](#extended-attesterslashing)
   - [Extended `Validator`](#extended-validator)
@@ -77,8 +76,12 @@
       - [New default validator for deposits](#new-default-validator-for-deposits)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
-    - [New rewards processing](#new-rewards-processing)
-      - [`get_crosslink_deltas`](#get_crosslink_deltas)
+    - [New justification and finalization processing](#new-justification-and-finalization-processing)
+      - [`process_justification_and_finalization`](#process_justification_and_finalization)
+    - [New rewards and penalties processing](#new-rewards-and-penalties-processing)
+      - [`get_unslashed_participant_indices`](#get_unslashed_participant_indices)
+      - [`get_standard_flag_deltas`](#get_standard_flag_deltas)
+      - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Phase 1 final updates](#phase-1-final-updates)
     - [Custody game updates](#custody-game-updates)
@@ -1059,15 +1062,68 @@ def process_epoch(state: BeaconState) -> None:
     process_phase_1_final_updates(state)
 ```
 
+#### New justification and finalization processing
+
+Note that the justification and finalization core logic is entire unchanged.
+The changes to the following function from Phase 0 are related to the use of flags to tract participation.
+
+##### `process_justification_and_finalization`
+
+```python
+def process_justification_and_finalization(state: BeaconState) -> None:
+    # Initial FFG checkpoint values have a `0x00` stub for `root`.
+    # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
+    if get_current_epoch(state) <= GENESIS_EPOCH + 1:
+        return
+
+    previous_epoch = get_previous_epoch(state)
+    current_epoch = get_current_epoch(state)
+    old_previous_justified_checkpoint = state.previous_justified_checkpoint
+    old_current_justified_checkpoint = state.current_justified_checkpoint
+
+    # Process justifications
+    state.previous_justified_checkpoint = state.current_justified_checkpoint
+    state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
+    state.justification_bits[0] = 0b0
+    matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, get_previous_epoch(state))
+    if get_total_balance(state, matching_target_attesting_indices) * 3 >= get_total_active_balance(state) * 2:
+        state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
+                                                        root=get_block_root(state, previous_epoch))
+        state.justification_bits[1] = 0b1
+    matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, get_current_epoch(state))
+    if get_total_balance(state, matching_target_attesting_indices) * 3 >= get_total_active_balance(state) * 2:
+        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch,
+                                                        root=get_block_root(state, current_epoch))
+        state.justification_bits[0] = 0b1
+
+    # Process finalizations
+    bits = state.justification_bits
+    # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
+    if all(bits[1:4]) and old_previous_justified_checkpoint.epoch + 3 == current_epoch:
+        state.finalized_checkpoint = old_previous_justified_checkpoint
+    # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
+    if all(bits[1:3]) and old_previous_justified_checkpoint.epoch + 2 == current_epoch:
+        state.finalized_checkpoint = old_previous_justified_checkpoint
+    # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
+    if all(bits[0:3]) and old_current_justified_checkpoint.epoch + 2 == current_epoch:
+        state.finalized_checkpoint = old_current_justified_checkpoint
+    # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
+    if all(bits[0:2]) and old_current_justified_checkpoint.epoch + 1 == current_epoch:
+        state.finalized_checkpoint = old_current_justified_checkpoint
+```
+
 #### New rewards and penalties processing
 
 ##### `get_unslashed_participant_indices`
 
 ```python
-def get_unslashed_participant_indices(state: BeaconState, flag: uint8) -> Set[ValidatorIndex]:
+def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Epoch=None) -> Set[ValidatorIndex]:
+    assert epoch in [get_current_epoch(state), get_previous_epoch(state)]
+
+    flags = state.current_epoch_reward_flags if epoch == get_current_epoch(state) else state.previous_epoch_reward_flags
     participant_indices = [
-        index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
-        if state.previous_epoch_reward_flags[i] & flag
+        index for i, index in enumerate(get_active_validator_indices(state, epoch))
+        if flags[i] & flag
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participant_indices))
 ```
@@ -1078,7 +1134,7 @@ def get_unslashed_participant_indices(state: BeaconState, flag: uint8) -> Set[Va
 def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-    unslashed_participant_indices = get_unslashed_participant_indices(state, flag)
+    unslashed_participant_indices = get_unslashed_participant_indices(state, flag, get_previous_epoch(state))
     for index in get_eligible_validator_indices(state):
         if index in unslashed_participant_indices:
             if is_in_inactivity_leak(state):
@@ -1101,13 +1157,12 @@ def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return inactivity reward/penalty deltas for each validator.
+    Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices`
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     if is_in_inactivity_leak(state):
-        matching_target_attesting_indices = set([
-            index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
-            if state.previous_epoch_reward_flags[i] & FLAG_TARGET
-        ])
+        previous_epoch = get_previous_epoch(state)
+        matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, previous_epoch)
         for index in get_eligible_validator_indices(state):
             # If validator is performing optimally this cancels all rewards for a neutral balance
             base_reward = get_base_reward(state, index)
@@ -1119,57 +1174,6 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     # No rewards associated with inactivity penalties
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     return rewards, penalties
-```
-
-##### `process_justification_and_finalization`
-
-```python
-def process_justification_and_finalization(state: BeaconState) -> None:
-    # Initial FFG checkpoint values have a `0x00` stub for `root`.
-    # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
-    if get_current_epoch(state) <= GENESIS_EPOCH + 1:
-        return
-
-    previous_epoch = get_previous_epoch(state)
-    current_epoch = get_current_epoch(state)
-    old_previous_justified_checkpoint = state.previous_justified_checkpoint
-    old_current_justified_checkpoint = state.current_justified_checkpoint
-
-    # Process justifications
-    state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
-    state.justification_bits[0] = 0b0
-    matching_target_attestering_indices = set([
-        index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
-        if state.previous_epoch_reward_flags[i] & FLAG_TARGET
-    ])
-    if get_total_balance(state, matching_target_attestering_indices) * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
-                                                        root=get_block_root(state, previous_epoch))
-        state.justification_bits[1] = 0b1
-    matching_target_attestering_indices = set([
-        index for i, index in enumerate(get_active_validator_indices(state, get_current_epoch(state)))
-        if state.current_epoch_reward_flags[i] & FLAG_TARGET
-    ])
-    if get_total_balance(state, matching_target_attestering_indices) * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch,
-                                                        root=get_block_root(state, current_epoch))
-        state.justification_bits[0] = 0b1
-
-    # Process finalizations
-    bits = state.justification_bits
-    # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if all(bits[1:4]) and old_previous_justified_checkpoint.epoch + 3 == current_epoch:
-        state.finalized_checkpoint = old_previous_justified_checkpoint
-    # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if all(bits[1:3]) and old_previous_justified_checkpoint.epoch + 2 == current_epoch:
-        state.finalized_checkpoint = old_previous_justified_checkpoint
-    # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if all(bits[0:3]) and old_current_justified_checkpoint.epoch + 2 == current_epoch:
-        state.finalized_checkpoint = old_current_justified_checkpoint
-    # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if all(bits[0:2]) and old_current_justified_checkpoint.epoch + 1 == current_epoch:
-        state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
 ##### `process_rewards_and_penalties`
