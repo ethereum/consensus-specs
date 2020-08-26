@@ -387,6 +387,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
   i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`,
   where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
   which may be pre-computed along with the committee information for the signature check.
+- _[REJECT]_ The committee index is within the expected range -- i.e. `data.index < get_committee_count_per_slot(state, data.target.epoch)`
 - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots
   (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
@@ -397,6 +398,8 @@ The following validations MUST pass before forwarding the `attestation` on the s
   that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
+- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
+  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
   (via both gossip and non-gossip sources)
