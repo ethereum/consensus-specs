@@ -163,6 +163,11 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | Name | Value |
 | - | - |
 | `FLAG_CROSSLINK` | 1 |
+| `FLAG_SOURCE` | 2 |
+| `FLAG_TARGET` | 4 |
+| `FLAG_HEAD` | 8 |
+| `FLAG_VERY_TIMELY` | 16 |
+| `FLAG_TIMELY` | 32 |
 
 ## Updated containers
 
@@ -192,18 +197,6 @@ class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     signature: BLSSignature
-```
-
-### Extended `PendingAttestation`
-
-```python
-class PendingAttestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
-    data: AttestationData
-    inclusion_delay: Slot
-    proposer_index: ValidatorIndex
-    # Phase 1
-    crosslink_success: boolean
 ```
 
 ### Extended `IndexedAttestation`
@@ -301,7 +294,7 @@ class SignedBeaconBlock(Container):
 
 ### Extended `BeaconState`
 
-Note that aside from the new additions, `Validator` and `PendingAttestation` have new definitions.
+Note that aside from the new additions, `Validator` has a new definition.
 
 ```python
 class BeaconState(Container):
@@ -326,9 +319,6 @@ class BeaconState(Container):
     randao_mixes: Vector[Root, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Attestations
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
@@ -777,14 +767,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(committee)
     
-    pending_attestation = PendingAttestation(
-        aggregation_bits=attestation.aggregation_bits,
-        data=attestation.data,
-        inclusion_delay=state.slot - attestation.data.slot,
-        proposer_index=get_beacon_proposer_index(state),
-    )
+    is_current_epoch_attestation = (data.target.epoch == get_current_epoch(state))
 
-    if data.target.epoch == get_current_epoch(state):
+    if is_current_epoch_attestation:
         assert data.source == state.current_justified_checkpoint
         state.current_epoch_attestations.append(pending_attestation)
         shard_transition_candidates = state.current_shard_transition_candidates
@@ -795,6 +780,23 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Signature check
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    
+    # Process target, source, head, timeliness
+    flags_to_set = FLAG_SOURCE
+    if attestation.data.target.root == get_block_root(state, attestation.data.target.epoch):
+        flags_to_set |= FLAG_TARGET
+    if attestation.data.beacon_block_root == get_block_root_at_slot(state, attestation.data.slot):
+        flags_to_set |= FLAG_HEAD
+    if state.slot - attestation.data.slot == 1:
+        flags_to_set |= FLAG_VERY_TIMELY
+    if state.slot - attestation.data.slot <= integer_squareroot(SLOTS_PER_EPOCH):
+        flags_to_set |= FLAG_TIMELY
+        
+    flags = (state.current_epoch_reward_flags if is_current_epoch_attestation else state.previous_epoch_reward_flags)
+    
+    for participant in get_attesting_indices(state, attestation.data, attestation.aggregation_bits):
+        shuffled_position = get_active_validator_indices(state, compute_epoch_at_slot(attestation.data.slot)).index(validator_index)
+        flags[shuffled_position] |= flags_to_set
 
     # Process shard transition
     candidate_exists = False
@@ -1047,26 +1049,51 @@ def process_epoch(state: BeaconState) -> None:
     process_phase_1_final_updates(state)
 ```
 
-#### New rewards processing
+#### New rewards and penalties processing
 
-
-##### `get_crosslink_deltas`
+##### `get_standard_flag_deltas`
 
 ```python
-def get_crosslink_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-    crosslinker_indices = set([
+    participant_indices = set([
         index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
-        if state.previous_epoch_reward_flags[i] & FLAG_CROSSLINK
+        if state.previous_epoch_reward_flags[i] & flag
     ])
-    total_crosslinking_balance = get_total_balance(state, crosslinker_indices) // EFFECTIVE_BALANCE_INCREMENT
+    total_participating_balance = get_total_balance(state, participant_indices) // EFFECTIVE_BALANCE_INCREMENT
     total_balance = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     for index in get_eligible_validator_indices(state):
         if index in crosslinker_indices:
-            rewards[index] += get_base_reward(state, index) * total_crosslinking_balance // total_balance
+            rewards[index] += get_base_reward(state, index) * total_participating_balance // total_balance
         else:
             penalties[index] += get_base_reward(state, index)
+    return rewards, penalties
+```
+
+##### `get_inactivity_penalty_deltas`
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return inactivity reward/penalty deltas for each validator.
+    """
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    if is_in_inactivity_leak(state):
+        matching_target_attesting_indices = set([
+            index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
+            if state.previous_epoch_reward_flags[i] & FLAG_TARGET
+        ])
+        for index in get_eligible_validator_indices(state):
+            # If validator is performing optimally this cancels all rewards for a neutral balance
+            base_reward = get_base_reward(state, index)
+            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * base_reward - get_proposer_reward(state, index))
+            if index not in matching_target_attesting_indices:
+                effective_balance = state.validators[index].effective_balance
+                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
+
+    # No rewards associated with inactivity penalties
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
     return rewards, penalties
 ```
 
@@ -1078,13 +1105,22 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    attestation_rewards, attestation_penalties = get_attestation_deltas(state)
-    crosslink_rewards, crosslink_penalties = get_crosslink_deltas(state)
-    for index in range(len(state.validators)):
-        increase_balance(state, ValidatorIndex(index), attestation_rewards[index])
-        increase_balance(state, ValidatorIndex(index), crosslink_rewards[index])
-        decrease_balance(state, ValidatorIndex(index), attestation_penalties[index])
-        decrease_balance(state, ValidatorIndex(index), crosslink_penalties[index])
+    rewards_and_penalties = [
+        get_standard_flag_deltas(state, FLAG_CROSSLINK),
+        get_standard_flag_deltas(state, FLAG_SOURCE),
+        get_standard_flag_deltas(state, FLAG_TARGET),
+        get_standard_flag_deltas(state, FLAG_HEAD),
+        get_standard_flag_deltas(state, FLAG_VERY_TIMELY),
+        get_standard_flag_deltas(state, FLAG_TIMELY),
+        get_inactivity_penalty_deltas(state),
+        get_crosslink_deltas(state)
+    ]
+    for (rewards, penalties) in rewards_and_penalties:
+        for index in range(len(state.validators)):
+            increase_balance(state, ValidatorIndex(index), attestation_rewards[index])
+            increase_balance(state, ValidatorIndex(index), crosslink_rewards[index])
+            decrease_balance(state, ValidatorIndex(index), attestation_penalties[index])
+            decrease_balance(state, ValidatorIndex(index), crosslink_penalties[index])
 ```
 
 #### Phase 1 final updates
