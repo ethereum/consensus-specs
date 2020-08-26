@@ -771,11 +771,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     if is_current_epoch_attestation:
         assert data.source == state.current_justified_checkpoint
-        state.current_epoch_attestations.append(pending_attestation)
         shard_transition_candidates = state.current_shard_transition_candidates
     else:
         assert data.source == state.previous_justified_checkpoint
-        state.previous_epoch_attestations.append(pending_attestation)
         shard_transition_candidates = state.previous_shard_transition_candidates
 
     # Signature check
@@ -795,8 +793,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     flags = (state.current_epoch_reward_flags if is_current_epoch_attestation else state.previous_epoch_reward_flags)
     
     for participant in get_attesting_indices(state, attestation.data, attestation.aggregation_bits):
-        shuffled_position = get_active_validator_indices(state, compute_epoch_at_slot(attestation.data.slot)).index(validator_index)
-        flags[shuffled_position] |= flags_to_set
+        active_position = get_active_validator_indices(state, data.target.epoch).index(validator_index)
+        flags[active_position] |= flags_to_set
 
     # Process shard transition
     candidate_exists = False
@@ -1168,10 +1166,8 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     ]
     for (rewards, penalties) in rewards_and_penalties:
         for index in range(len(state.validators)):
-            increase_balance(state, ValidatorIndex(index), attestation_rewards[index])
-            increase_balance(state, ValidatorIndex(index), crosslink_rewards[index])
-            decrease_balance(state, ValidatorIndex(index), attestation_penalties[index])
-            decrease_balance(state, ValidatorIndex(index), crosslink_penalties[index])
+            increase_balance(state, ValidatorIndex(index), rewards[index])
+            decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
 
 #### Phase 1 final updates
@@ -1201,6 +1197,7 @@ def process_online_tracking(state: BeaconState) -> None:
             state.online_countdown[index] = state.online_countdown[index] - 1
 
     # Process pending attestations
+    # TODO REDO
     for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
         for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
             state.online_countdown[index] = ONLINE_PERIOD
