@@ -135,7 +135,10 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 
 ##### Shard transitions
 
-Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain.md#shardtransition) objects are included in the block. Default each to an empty `ShardTransition()`. Then for each committee assigned to the slot with an associated `committee_index` and `shard`, set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
+Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain.md#shardtransition) objects are included in the block.
+Default each to an empty `ShardTransition()`.
+Then for each committee assigned to the slot with an associated `committee_index` and `shard`,
+set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
 
 Specifically:
 * Call `shards, winning_roots = get_shard_winning_roots(state, block.body.attestations)`
@@ -222,7 +225,12 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 Assignments and the core of this duty are unchanged from Phase 0. There are a few additional fields related to the assigned shard chain.
 
-The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec](./beacon-chain.md) utilizes `shard_transition_root: Root` rather than a full `ShardTransition`. For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation` are used to send the accompanying `ShardTransition` in its entirety. Note that due to the properties of SSZ `hash_tree_root`, the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
+The `Attestation` and `AttestationData` defined in the [Phase 1 Beacon Chain spec](./beacon-chain.md) utilizes
+`shard_transition_root: Root` rather than a full `ShardTransition`.
+For the purposes of the validator and p2p layer, a modified `FullAttestationData` and containing `FullAttestation`
+are used to send the accompanying `ShardTransition` in its entirety.
+Note that due to the properties of SSZ `hash_tree_root`,
+the root and signatures of `AttestationData` and `FullAttestationData` are equivalent.
 
 #### `FullAttestationData`
 
@@ -254,18 +262,24 @@ class FullAttestation(Container):
 
 Note the timing of when to create/broadcast is altered from Phase 1.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid `BeaconBlock` from the expected beacon block proposer and a valid `ShardBlock` for the expected shard block proposer for the assigned `slot` or (b) one-half of the `slot` has transpired (`SECONDS_PER_SLOT / 2` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either
+(a) the validator has received a valid `BeaconBlock` from the expected beacon block proposer
+and a valid `ShardBlock` for the expected shard block proposer for the assigned `slot`
+or (b) one-half of the `slot` has transpired (`SECONDS_PER_SLOT / 2` seconds after the start of `slot`)
+-- whichever comes _first_.
 
 #### Attestation data
 
-`attestation_data` is constructed in the same manner as Phase 0 but uses `FullAttestationData` with the addition of two fields -- `shard_head_root` and `shard_transition`.
+`attestation_data` is constructed in the same manner as Phase 0 but uses `FullAttestationData`
+with the addition of two fields -- `shard_head_root` and `shard_transition`.
 
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
 - Let `shard_head_block` be the result of running the fork choice on the assigned shard chain during the assigned slot.
 - Let `shard_blocks` be the shard blocks in the chain starting immediately _after_ the most recent crosslink (`head_state.shard_transitions[shard].latest_block_root`) up to the `shard_head_block` (i.e. the value of the shard fork choice store of `get_pending_shard_blocks(store, shard_store)`).
 
-*Note*: We assume that the fork choice only follows branches with valid `offset_slots` with respect to the most recent beacon state shard transition for the queried shard.
+*Note*: We assume that the fork choice only follows branches with valid `admissible_slots` with respect
+to the most recent beacon state shard transition for the queried shard.
 
 ##### Shard head root
 
@@ -341,19 +355,25 @@ def get_shard_transition(beacon_state: BeaconState,
 
 Next, the validator creates `attestation`, a `FullAttestation` as defined above.
 
-`attestation.data`, `attestation.aggregation_bits`, and `attestation.signature` are unchanged from Phase 0. But safety/validity in signing the message is premised upon calculation of the "custody bit" [TODO].
+`attestation.data`, `attestation.aggregation_bits`, and `attestation.signature` are unchanged from Phase 0.
+But safety/validity in signing the message is premised upon calculation of the "custody bit" [TODO].
 
 ### Attestation Aggregation
 
-Some validators are selected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
+Some validators are selected to locally aggregate attestations with a similar `attestation_data`
+to their constructed `attestation` for the assigned `slot`.
 
-Aggregation selection and the core of this duty are largely unchanged from Phase 0. Any additional components or changes are noted.
+Aggregation selection and the core of this duty are largely unchanged from Phase 0.
+Any additional components or changes are noted.
 
 #### Broadcast aggregate
 
 Note the timing of when to broadcast aggregates is altered in Phase 1+.
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) three-fourths of the way through the `slot`-that is, `SECONDS_PER_SLOT * 3 / 4` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`),
+then they broadcast their best aggregate as a `SignedAggregateAndProof`
+to the global aggregate channel (`beacon_aggregate_and_proof`) three-fourths of the way through the `slot`
+-- that is, `SECONDS_PER_SLOT * 3 / 4` seconds after the start of `slot`.
 
 ##### `AggregateAndProof`
 
