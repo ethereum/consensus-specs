@@ -766,7 +766,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(committee)
-    
+
     is_current_epoch_attestation = (data.target.epoch == get_current_epoch(state))
 
     if is_current_epoch_attestation:
@@ -778,7 +778,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Signature check
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
-    
+
     # Process target, source, head, timeliness
     flags_to_set = FLAG_SOURCE
     if attestation.data.target.root == get_block_root(state, attestation.data.target.epoch):
@@ -789,11 +789,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         flags_to_set |= FLAG_VERY_TIMELY
     if state.slot - attestation.data.slot <= integer_squareroot(SLOTS_PER_EPOCH):
         flags_to_set |= FLAG_TIMELY
-        
+
     flags = (state.current_epoch_reward_flags if is_current_epoch_attestation else state.previous_epoch_reward_flags)
-    
+
     for participant in get_attesting_indices(state, attestation.data, attestation.aggregation_bits):
-        active_position = get_active_validator_indices(state, data.target.epoch).index(validator_index)
+        active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
         flags[active_position] |= flags_to_set
 
     # Process shard transition
@@ -1049,21 +1049,35 @@ def process_epoch(state: BeaconState) -> None:
 
 #### New rewards and penalties processing
 
+##### `get_unslashed_participant_indices`
+
+```python
+def get_unslashed_participant_indices(state: BeaconState, flag: uint8) -> Set[ValidatorIndex]:
+    participant_indices = [
+        index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
+        if state.previous_epoch_reward_flags[i] & flag
+    ]
+    return set(filter(lambda index: not state.validators[index].slashed, participant_indices))
+```
+
 ##### `get_standard_flag_deltas`
 
 ```python
 def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-    participant_indices = set([
-        index for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state)))
-        if state.previous_epoch_reward_flags[i] & flag
-    ])
-    total_participating_balance = get_total_balance(state, participant_indices) // EFFECTIVE_BALANCE_INCREMENT
-    total_balance = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    unslashed_participant_indices = get_unslashed_participant_indices(state, flag)
     for index in get_eligible_validator_indices(state):
-        if index in crosslinker_indices:
-            rewards[index] += get_base_reward(state, index) * total_participating_balance // total_balance
+        if index in unslashed_participant_indices:
+            if is_in_inactivity_leak(state):
+                # Since full base reward will be canceled out by inactivity penalty deltas,
+                # optimal participation receives full base reward compensation here.
+                rewards[index] += get_base_reward(state, index)
+            else:
+                increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
+                total_participating_balance = get_total_balance(state, unslashed_participant_indices) // increment
+                total_balance = get_total_active_balance(state) // increment
+                rewards[index] += get_base_reward(state, index) * total_participating_balance // total_balance
         else:
             penalties[index] += get_base_reward(state, index)
     return rewards, penalties
@@ -1162,7 +1176,6 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         get_standard_flag_deltas(state, FLAG_VERY_TIMELY),
         get_standard_flag_deltas(state, FLAG_TIMELY),
         get_inactivity_penalty_deltas(state),
-        get_crosslink_deltas(state)
     ]
     for (rewards, penalties) in rewards_and_penalties:
         for index in range(len(state.validators)):
