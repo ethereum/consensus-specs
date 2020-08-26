@@ -796,18 +796,18 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Process target, source, head, timeliness
     flags_to_set = FLAG_SOURCE
-    if attestation.data.target.root == get_block_root(state, attestation.data.target.epoch):
+    if data.target.root == get_block_root(state, data.target.epoch):
         flags_to_set |= FLAG_TARGET
-    if attestation.data.beacon_block_root == get_block_root_at_slot(state, attestation.data.slot):
+    if data.beacon_block_root == get_block_root_at_slot(state, data.slot):
         flags_to_set |= FLAG_HEAD
-    if state.slot - attestation.data.slot == 1:
+    if state.slot - data.slot == 1:
         flags_to_set |= FLAG_VERY_TIMELY
-    if state.slot - attestation.data.slot <= integer_squareroot(SLOTS_PER_EPOCH):
+    if state.slot - data.slot <= integer_squareroot(SLOTS_PER_EPOCH):
         flags_to_set |= FLAG_TIMELY
 
     flags = (state.current_epoch_reward_flags if is_current_epoch_attestation else state.previous_epoch_reward_flags)
 
-    for participant in get_attesting_indices(state, attestation.data, attestation.aggregation_bits):
+    for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
         active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
         flags[active_position] |= flags_to_set
 
@@ -1117,7 +1117,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 ##### `get_unslashed_participant_indices`
 
 ```python
-def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Epoch=None) -> Set[ValidatorIndex]:
+def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Epoch) -> Set[ValidatorIndex]:
     assert epoch in [get_current_epoch(state), get_previous_epoch(state)]
 
     flags = state.current_epoch_reward_flags if epoch == get_current_epoch(state) else state.previous_epoch_reward_flags
@@ -1226,9 +1226,11 @@ def process_online_tracking(state: BeaconState) -> None:
             state.online_countdown[index] = state.online_countdown[index] - 1
 
     # Process pending attestations
-    # TODO REDO
-    for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
-        for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
+    for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state))):
+        if state.previous_epoch_reward_flags[i] & FLAG_SOURCE:
+            state.online_countdown[index] = ONLINE_PERIOD
+    for i, index in enumerate(get_active_validator_indices(state, get_current_epoch(state))):
+        if state.current_epoch_reward_flags[i] & FLAG_SOURCE:
             state.online_countdown[index] = ONLINE_PERIOD
 ```
 
