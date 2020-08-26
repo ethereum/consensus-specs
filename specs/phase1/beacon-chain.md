@@ -46,6 +46,7 @@
     - [`committee_to_compact_committee`](#committee_to_compact_committee)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
     - [`compute_admissible_slots`](#compute_admissible_slots)
+    - [`compute_offset_slots`](#compute_offset_slots)
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -506,6 +507,17 @@ def compute_admissible_slots(start_slot: Slot) -> Sequence[Slot]:
     was at slot `start_slot`
     """
     return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS]
+```
+
+#### `compute_offset_slots`
+
+```python
+def compute_offset_slots(start_slot: Slot, end_slot: Slot) -> Sequence[Slot]:
+    """
+    Return the offset slots for shard blocks up to a particular `end_slot`,
+    assuming the most recent shard state was at slot `start_slot`
+    """
+    return [slot for slot in compute_admissible_slots(start_slot) if slot < end_slot]
 ```
 
 #### `compute_updated_gasprice`
