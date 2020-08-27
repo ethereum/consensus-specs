@@ -83,10 +83,10 @@
       - [`get_standard_flag_deltas`](#get_standard_flag_deltas)
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
+    - [New participation record rotation](#new-participation-record-rotation)
     - [Phase 1 final updates](#phase-1-final-updates)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
-    - [Crosslink-related final updates](#crosslink-related-final-updates)
     - [Light client committee updates](#light-client-committee-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -166,12 +166,12 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 | Name | Value |
 | - | - |
-| `FLAG_CROSSLINK` | 1 |
-| `FLAG_SOURCE` | 2 |
-| `FLAG_TARGET` | 4 |
-| `FLAG_HEAD` | 8 |
-| `FLAG_VERY_TIMELY` | 16 |
-| `FLAG_TIMELY` | 32 |
+| `FLAG_CROSSLINK` | 0 |
+| `FLAG_SOURCE` | 1 |
+| `FLAG_TARGET` | 2 |
+| `FLAG_HEAD` | 3 |
+| `FLAG_VERY_TIMELY` | 4 |
+| `FLAG_TIMELY` | 5 |
 
 ## Updated containers
 
@@ -188,6 +188,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
+    # Shard vote
+    shard: Shard
     # Current-slot shard block root
     shard_head_root: Root
     # Shard transition root
@@ -267,7 +269,7 @@ class BeaconBlockBody(Container):
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
     custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
     # Shards
-    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
+    shard_transitions: List[ShardTransition, MAX_SHARDS]
     # Light clients
     light_client_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
@@ -323,6 +325,9 @@ class BeaconState(Container):
     randao_mixes: Vector[Root, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    # Attestations *DEPRECATED FIELDS*
+    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
@@ -695,7 +700,7 @@ def is_candidate_for_attestation_data(candidate: ShardTransitionCandidate, data:
     """
     return (
         (candidate.transition_root, candidate.block_root, candidate.slot, candidate.index)
-        == (data.shard_transition_root, data.shard_block_root, data.slot, data.index)
+        == (data.shard_transition_root, data.shard_head_root, data.slot, data.index)
     )
 ```
 
@@ -795,21 +800,22 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     # Process target, source, head, timeliness
-    flags_to_set = FLAG_SOURCE
+    flags_to_set = [FLAG_SOURCE]
     if data.target.root == get_block_root(state, data.target.epoch):
-        flags_to_set |= FLAG_TARGET
-    if data.beacon_block_root == get_block_root_at_slot(state, data.slot):
-        flags_to_set |= FLAG_HEAD
+        flags_to_set.append(FLAG_TARGET)
+        if data.beacon_block_root == get_block_root_at_slot(state, data.slot):
+            flags_to_set.append(FLAG_HEAD)
     if state.slot - data.slot == 1:
-        flags_to_set |= FLAG_VERY_TIMELY
+        flags_to_set.append(FLAG_VERY_TIMELY)
     if state.slot - data.slot <= integer_squareroot(SLOTS_PER_EPOCH):
-        flags_to_set |= FLAG_TIMELY
+        flags_to_set.append(FLAG_TIMELY)
 
     flags = (state.current_epoch_reward_flags if is_current_epoch_attestation else state.previous_epoch_reward_flags)
 
     for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
         active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
-        flags[active_position] |= flags_to_set
+        for flag in flags_to_set:
+            flags[active_position][flag] = True
 
     # Process shard transition
     candidate_exists = False
@@ -821,7 +827,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     if not candidate_exists:
         shard_transition_candidates.append(ShardTransitionCandidate(
             transition_root=data.shard_transition_root,
-            block_root=data.shard_block_root,
+            block_root=data.shard_head_root,
             slot=data.slot,
             index=data.index,
             aggregation_bits=attestation.aggregation_bits
@@ -833,14 +839,14 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ###### `get_online_beacon_committee`
 
 ```python
-def get_online_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> List[ValidatorIndex]:
+def get_online_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Sequence[ValidatorIndex]:
     committee = get_beacon_committee(state, slot, index)
     online_indices = get_online_validator_indices(state)
     return online_indices.intersection(committee)
 ```
 
 ```python
-def get_online_transition_participants(state: BeaconState, candidate: ShardTransitionCandidate) -> List[ValidatorIndex]:
+def get_online_transition_participants(state: BeaconState, candidate: ShardTransitionCandidate) -> Sequence[ValidatorIndex]:
     committee = get_beacon_committee(state, candidate.slot, candidate.index)
     participants = [committee[i] for i in range(len(committee)) if candidate.aggregation_bits[i]]
     online_indices = get_online_validator_indices(state)
@@ -961,7 +967,7 @@ def apply_shard_transition_updates(state: BeaconState,
     for validator_index in online_participants:
         epoch = compute_epoch_at_slot(candidate.slot)
         shuffled_position = get_active_validator_indices(state, epoch).index(validator_index)
-        flags[shuffled_position] |= FLAG_CROSSLINK
+        flags[shuffled_position][FLAG_CROSSLINK] = True
     estimated_attester_reward = sum([get_base_reward(state, attester) for attester in online_participants])
     proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
@@ -992,7 +998,7 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
 ###### `verify_shard_transition_uniqueness`
 
 ```python
-def verify_shard_transition_uniqueness(state: BeaconState, shard_transitions: List[ShardTransition]) -> None:
+def verify_shard_transition_uniqueness(state: BeaconState, shard_transitions: Sequence[ShardTransition]) -> None:
     for shard in range(get_active_shard_count(state)):
         transitions_for_shard = [transition for transition in shard_transitions if transition.shard == shard]
         assert len(transitions_for_shard) <= 1
@@ -1123,7 +1129,7 @@ def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Ep
     flags = state.current_epoch_reward_flags if epoch == get_current_epoch(state) else state.previous_epoch_reward_flags
     participant_indices = [
         index for i, index in enumerate(get_active_validator_indices(state, epoch))
-        if flags[i] & flag
+        if flags[i][flag]
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participant_indices))
 ```
@@ -1199,13 +1205,30 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
             decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
 
+#### New participation record rotation
+
+`rotate_participation_records` is called by `process_final_updates` in Phase 0.
+
+It is overridden in Phase 1 to account for the switch from `*_epoch_attestations` to `*_epoch_reward_flags`,
+and the addition of `*_shard_transition_candidates`.
+
+```python
+def rotate_participation_records(state: BeaconState) -> None:
+    state.previous_shard_transition_candidates = state.current_shard_transition_candidates
+    state.current_shard_transition_candidates = []
+
+    state.previous_epoch_reward_flags = state.current_epoch_reward_flags
+    state.current_epoch_reward_flags = List[Bitvector[8], MAX_ACTIVE_VALIDATORS](
+        Bitvector[8]() for _ in get_active_validator_indices(state, get_current_epoch(state) + 1)
+    )
+```
+
 #### Phase 1 final updates
 
 ```python
 def process_phase_1_final_updates(state: BeaconState) -> None:
     process_custody_final_updates(state)
     process_online_tracking(state)
-    process_crosslink_final_updates(state)
     process_light_client_committee_updates(state)
 
     # Update current_epoch_start_shard
@@ -1227,24 +1250,11 @@ def process_online_tracking(state: BeaconState) -> None:
 
     # Process pending attestations
     for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state))):
-        if state.previous_epoch_reward_flags[i] & FLAG_SOURCE:
+        if state.previous_epoch_reward_flags[i][FLAG_SOURCE]:
             state.online_countdown[index] = ONLINE_PERIOD
     for i, index in enumerate(get_active_validator_indices(state, get_current_epoch(state))):
-        if state.current_epoch_reward_flags[i] & FLAG_SOURCE:
+        if state.current_epoch_reward_flags[i][FLAG_SOURCE]:
             state.online_countdown[index] = ONLINE_PERIOD
-```
-
-#### Crosslink-related final updates
-
-```python
-def process_crosslink_final_updates(state: BeaconState) -> None:
-    state.previous_shard_transition_candidates = state.current_shard_transition_candidates
-    state.current_shard_transition_candidates = []
-    
-    state.previous_epoch_reward_flags = state.current_epoch_reward_flags
-    state.current_epoch_reward_flags = List[Bitvector[8], MAX_ACTIVE_VALIDATORS](
-        [0] * len(get_active_validator_indices(state, get_current_epoch(state) + 1))
-    )
 ```
 
 #### Light client committee updates
