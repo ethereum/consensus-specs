@@ -232,7 +232,22 @@ PHASE1_SUNDRY_FUNCTIONS = '''
 _get_start_shard = get_start_shard
 get_start_shard = cache_this(
     lambda state, slot: (state.validators.hash_tree_root(), slot),
-    _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
+    _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)
+
+_get_unslashed_participant_indices = get_unslashed_participant_indices
+get_unslashed_participant_indices = cache_this(
+    lambda state, flag, epoch: (state.hash_tree_root(), flag, epoch),
+    _get_unslashed_participant_indices, lru_size=10)
+
+_get_standard_flag_deltas = get_standard_flag_deltas
+get_standard_flag_deltas = cache_this(
+    lambda state, flag: (state.hash_tree_root(), flag),
+    _get_standard_flag_deltas, lru_size=10)
+
+_get_inactivity_penalty_deltas = get_inactivity_penalty_deltas
+get_inactivity_penalty_deltas = cache_this(
+    lambda state: (state.hash_tree_root()),
+    _get_inactivity_penalty_deltas, lru_size=10)'''
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_class_objects: Dict[str, str]) -> str:

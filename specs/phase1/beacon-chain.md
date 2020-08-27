@@ -71,8 +71,8 @@
         - [`validate_shard_transition`](#validate_shard_transition)
         - [`execute_shard_transition`](#execute_shard_transition)
         - [`process_shard_transition`](#process_shard_transition)
-      - [Verify ShardTransition uniqueness](#verify-shardtransition-uniqueness)
-        - [`verify_shard_transition_uniqueness`](#verify_shard_transition_uniqueness)
+      - [Verify ShardTransitions](#verify-shardtransitions)
+        - [`validate_shard_transitions`](#validate_shard_transitions)
       - [New default validator for deposits](#new-default-validator-for-deposits)
     - [Light client processing](#light-client-processing)
   - [Epoch transition](#epoch-transition)
@@ -766,7 +766,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # See custody game spec.
     process_custody_game_operations(state, body)
 
-    verify_shard_transition_uniqueness(state, body.shard_transitions)
+    validate_shard_transitions(state, body.shard_transitions)
     for_ops(body.shard_transitions, process_shard_transition)
 
     # TODO process_operations(body.shard_receipt_proofs, process_shard_receipt_proofs)
@@ -839,14 +839,15 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ###### `get_online_beacon_committee`
 
 ```python
-def get_online_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Sequence[ValidatorIndex]:
+def get_online_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Set[ValidatorIndex]:
     committee = get_beacon_committee(state, slot, index)
     online_indices = get_online_validator_indices(state)
     return online_indices.intersection(committee)
 ```
 
 ```python
-def get_online_transition_participants(state: BeaconState, candidate: ShardTransitionCandidate) -> Sequence[ValidatorIndex]:
+def get_online_transition_participants(state: BeaconState,
+                                       candidate: ShardTransitionCandidate) -> Set[ValidatorIndex]:
     committee = get_beacon_committee(state, candidate.slot, candidate.index)
     participants = [committee[i] for i in range(len(committee)) if candidate.aggregation_bits[i]]
     online_indices = get_online_validator_indices(state)
@@ -864,7 +865,7 @@ def validate_shard_transition(state: BeaconState,
     and matchines the transition candidate.
     """
     # Validate transition and candidate shard coherence
-    shard = (get_start_shard(state, transition.slot) + candidate.index) % get_active_shard_count(state)
+    shard = (get_start_shard(state, candidate.slot) + candidate.index) % get_active_shard_count(state)
     assert shard == transition.shard < get_active_shard_count(state)
 
     # Confirm sufficient balance
@@ -881,6 +882,8 @@ def validate_shard_transition(state: BeaconState,
         == len(admissible_slots)
     )
 
+    assert admissible_slots[0] == state.shard_states[shard].slot + 1
+
     shard_state = state.shard_states[shard]
 
     # Process the shard transition;
@@ -894,6 +897,8 @@ def validate_shard_transition(state: BeaconState,
         shard_state = transition.shard_states[i]
         # Verify correct calculation of gas prices and slots
         assert shard_state.gasprice == compute_updated_gasprice(prev_gasprice, shard_block_length)
+        print(slot)
+        print(shard_state.slot)
         assert shard_state.slot == slot
         # Collect the non-empty proposals result
         if shard_block_length > 0:
@@ -982,7 +987,7 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
 
     # Extract matching ShardTransitionCandidate
     all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
-    matching_candidates = [c for c in all_candidates if c.shard_transition_root == hash_tree_root(transition)]
+    matching_candidates = [c for c in all_candidates if c.transition_root == hash_tree_root(transition)]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 
@@ -993,12 +998,16 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
     apply_shard_transition_updates(state, transition, matching_candidate)
 ```
 
-##### Verify ShardTransition uniqueness
+##### Verify ShardTransitions
 
-###### `verify_shard_transition_uniqueness`
+###### `validate_shard_transitions`
 
 ```python
-def verify_shard_transition_uniqueness(state: BeaconState, shard_transitions: Sequence[ShardTransition]) -> None:
+def validate_shard_transitions(state: BeaconState, shard_transitions: Sequence[ShardTransition]) -> None:
+    # Validate shard transitions in sorted order
+    assert shard_transitions == sorted(shard_transitions, key=lambda transition: transition.shard)
+
+    # Validate shard transition uniqueness
     for shard in range(get_active_shard_count(state)):
         transitions_for_shard = [transition for transition in shard_transitions if transition.shard == shard]
         assert len(transitions_for_shard) <= 1
@@ -1219,7 +1228,7 @@ def rotate_participation_records(state: BeaconState) -> None:
 
     state.previous_epoch_reward_flags = state.current_epoch_reward_flags
     state.current_epoch_reward_flags = List[Bitvector[8], MAX_ACTIVE_VALIDATORS](
-        Bitvector[8]() for _ in get_active_validator_indices(state, get_current_epoch(state) + 1)
+        Bitvector[8]() for _ in get_active_validator_indices(state, Epoch(get_current_epoch(state) + 1))
     )
 ```
 
