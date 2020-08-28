@@ -194,6 +194,7 @@ def select_transition_from_winning_roots(state: BeaconState,
         if root not in full_transitions:
             continue
 
+        # TODO: add state.shard_state coherence and header validity validation
         transition = full_transitions[root]
         admissible_slots = compute_admissible_slots(transition.start_slot)[:len(transition.shard_data_roots)]
         if (

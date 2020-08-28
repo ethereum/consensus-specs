@@ -338,7 +338,7 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
             active_validator_indices = spec.get_active_validator_indices(state, start_epoch)
             for participant in participants:
                 position = active_validator_indices.index(participant)
-                state.current_epoch_reward_flags[position] = Bitvector[8](1, 1, 1, 1, 1, 0, 0, 0)
+                state.current_epoch_reward_flags[position] = Bitvector[8](1, 1, 1, 1, 1, 1, 0, 0)
         next_slot(spec, state)
 
     return []
