@@ -9,7 +9,7 @@ from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
 )
 from eth2spec.test.helpers.shard_transitions import (
-    run_shard_transitions_processing,
+    run_shard_transition_processing,
     is_full_crosslink,
 )
 from eth2spec.test.helpers.shard_block import (
@@ -67,14 +67,14 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
     for attestation in attestations:
         _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    _, winning_roots = spec.get_shard_winning_roots(state, attestations)
+    winning_roots = spec.get_shard_winning_roots(state, shard)
     assert len(winning_roots) == 1
     shard_transition = shard_transitions[shard]
     assert winning_roots[0] == shard_transition.hash_tree_root()
 
     pre_gasprice = state.shard_states[shard].gasprice
     pre_shard_states = state.shard_states.copy()
-    yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations)
+    yield from run_shard_transition_processing(spec, state, shard_transition)
 
     for index, shard_state in enumerate(state.shard_states):
         if index == shard:

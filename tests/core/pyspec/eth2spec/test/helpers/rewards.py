@@ -1,11 +1,12 @@
 from random import Random
 from lru import LRU
 
+from eth2spec.test.context import PHASE0
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
 from eth2spec.test.helpers.deposits import mock_deposit
-from eth2spec.test.helpers.state import next_epoch
-from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
+from eth2spec.test.helpers.state import next_epoch, next_slot
+from eth2spec.utils.ssz.ssz_typing import Container, uint64, List, Bitvector
 
 
 class Deltas(Container):
@@ -148,8 +149,12 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
     yield 'inactivity_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
-    matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+    previous_epoch = spec.get_previous_epoch(state)
+    if spec.fork == PHASE0:
+        matching_attestations = spec.get_matching_target_attestations(state, previous_epoch)
+        matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+    else:
+        matching_attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_TARGET, previous_epoch)
 
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
@@ -285,8 +290,16 @@ def run_test_half_full(spec, state):
 def run_test_one_attestation_one_correct(spec, state):
     cached_prepare_state_with_attestations(spec, state)
 
-    # Remove all attestations except for the first one
-    state.previous_epoch_attestations = state.previous_epoch_attestations[:1]
+    if spec.fork == PHASE0:
+        # Remove all attestations except for the first one
+        state.previous_epoch_attestations = state.previous_epoch_attestations[:1]
+    else:
+        # Zero out all particiaption flags except for the first one
+        assert state.previous_epoch_reward_flags[0] != Bitvector[8]()
+        state.previous_epoch_reward_flags = (
+            [state.previous_epoch_reward_flags[0]]
+            + [Bitvector[8]()] * len(state.previous_epoch_reward_flags)
+        )
 
     yield from run_deltas(spec, state)
 
@@ -328,11 +341,20 @@ def run_test_some_very_low_effective_balances_that_attested(spec, state):
 def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     cached_prepare_state_with_attestations(spec, state)
 
-    # Remove attestation
-    attestation = state.previous_epoch_attestations[0]
-    state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
+    if spec.fork == PHASE0:
+        # Remove attestation
+        attestation = state.previous_epoch_attestations[0]
+        state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
+        indices = spec.get_unslashed_attesting_indices(state, [attestation])
+    else:
+        active_validator_indices = spec.get_active_validator_indices(state, spec.get_previous_epoch(state))
+        indices = active_validator_indices[:5]
+        # Remove votes for select indices
+        for index in indices:
+            position = active_validator_indices.index(index)
+            state.previous_epoch_reward_flags[position] = Bitvector[8]()
+
     # Set removed indices effective balance to very low amount
-    indices = spec.get_unslashed_attesting_indices(state, [attestation])
     for i, index in enumerate(indices):
         state.validators[index].effective_balance = i
 
@@ -378,16 +400,33 @@ def run_test_full_mixed_delay(spec, state, rng=Random(1234)):
 
 
 def run_test_proposer_not_in_attestations(spec, state):
+    if spec.fork != PHASE0:
+        # Gather proposers for epoch in question for later use
+        state_copy = state.copy()
+        next_epoch(spec, state_copy)
+        proposers = []
+        for _ in range(spec.SLOTS_PER_EPOCH):
+            proposers.append(spec.get_beacon_proposer_index(state_copy))
+            next_slot(spec, state_copy)
+
     cached_prepare_state_with_attestations(spec, state)
 
-    # Get an attestation where the proposer is not in the committee
-    non_proposer_attestations = []
-    for a in state.previous_epoch_attestations:
-        if a.proposer_index not in spec.get_unslashed_attesting_indices(state, [a]):
-            non_proposer_attestations.append(a)
+    if spec.fork == PHASE0:
+        # Get an attestation where the proposer is not in the committee
+        non_proposer_attestations = []
+        for a in state.previous_epoch_attestations:
+            if a.proposer_index not in spec.get_unslashed_attesting_indices(state, [a]):
+                non_proposer_attestations.append(a)
 
-    assert any(non_proposer_attestations)
-    state.previous_epoch_attestations = non_proposer_attestations
+        assert any(non_proposer_attestations)
+        state.previous_epoch_attestations = non_proposer_attestations
+    else:
+        # Remove all proposers from participation
+        previous_epoch = spec.get_previous_epoch(state)
+        active_validator_indices = spec.get_active_validator_indices(state, previous_epoch)
+        for proposer_index in proposers:
+            position = active_validator_indices.index(proposer_index)
+            state.previous_epoch_reward_flags[position] = Bitvector[8]()
 
     yield from run_deltas(spec, state)
 

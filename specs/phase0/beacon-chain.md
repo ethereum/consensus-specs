@@ -1565,6 +1565,13 @@ def process_slashings(state: BeaconState) -> None:
 #### Final updates
 
 ```python
+def rotate_participation_records(state: BeaconState) -> None:
+    # Rotate current/previous epoch attestations
+    state.previous_epoch_attestations = state.current_epoch_attestations
+    state.current_epoch_attestations = []
+```
+
+```python
 def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = Epoch(current_epoch + 1)
@@ -1590,9 +1597,8 @@ def process_final_updates(state: BeaconState) -> None:
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
-    # Rotate current/previous epoch attestations
-    state.previous_epoch_attestations = state.current_epoch_attestations
-    state.current_epoch_attestations = []
+    # Rotate participation records
+    rotate_participation_records(state)
 ```
 
 ### Block processing

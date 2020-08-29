@@ -1,4 +1,7 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.context import (
+    PHASE0,
+    with_phases, with_all_phases, spec_state_test,
+)
 import eth2spec.test.helpers.rewards as rewards_helpers
 
 
@@ -143,9 +146,13 @@ def test_proposer_not_in_attestations(spec, state):
     yield from rewards_helpers.run_test_proposer_not_in_attestations(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_attestations_at_later_slots(spec, state):
+    """
+    Only run with phase 0 because the flag accounting in subsequent phases
+    disallows duplicates to make it to the rewards phase
+    """
     yield from rewards_helpers.run_test_duplicate_attestations_at_later_slots(spec, state)
 
 

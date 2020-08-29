@@ -135,58 +135,79 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody
 
 ##### Shard transitions
 
-Exactly `MAX_SHARDS` [`ShardTransition`](./beacon-chain.md#shardtransition) objects are included in the block.
-Default each to an empty `ShardTransition()`.
-Then for each committee assigned to the slot with an associated `committee_index` and `shard`,
-set `shard_transitions[shard] = full_transitions[winning_root]` if the committee had enough weight to form a crosslink this slot.
+Up to `MAX_SHARDS` [`ShardTransition`](./beacon-chain.md#shardtransition) objects are included in the block
+(at most one per shard, and must be sorted by shard, numerically increasing).
+A `ShardTransition` inclusion signals sufficient committee support for crosslink to be processed.
+In the event that this block triggers multiple committee thresholds for the same shard to be met,
+the `ShardTransition` for the committee from the latest slot should be included.
+
+That is, for each shard, search `ShardTransitionCandidate`s in state from most recent to least recent slot
+for sufficient committee participation,
+going no further than those for slots equal to `state.shard_states[shard].slot + 1`.
+
+If sufficient votes have been made for any `ShardTransitionCandidate` and the validator's node knows the 
+`ShardTransition` associated with `shard_transition_candidate.shard_transition_root`, stop the search for that shard
+and add the `shard_transition` to `block.shard_transitions`.
+
 
 Specifically:
-* Call `shards, winning_roots = get_shard_winning_roots(state, block.body.attestations)`
-* Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s found in `attestations` to the corresponding full `ShardTransition`
-* Then for each `shard` and `winning_root` in `zip(shards, winning_roots)` set `shard_transitions[shard] = full_transitions[winning_root]`
+* Let `shard_transitions = []`
+* For each `shard` in `range(get_active_shard_count(state))`
+    * Call `winning_roots = get_shard_winning_roots(state, shard)`
+    * Let `full_transitions` be a dictionary mapping from the `shard_transition_root`s
+      found in `attestations` to the corresponding full `ShardTransition`
+    * Let `full_transitions_for_shard` be that dictionary filtered with only `ShardTransitions` with shard equal to `shard`
+    * Call `winning_transition = select_transition_from_winning_roots(state, winning_roots, full_transitions_for_shard)`
+    * If `winning_transition is not None`, append `winning_transition` to `shard_transitions`
+* Set `block.shard_transitions = shard_transitions`
 
-*Note*: The `state` passed into `get_shard_winning_roots` must be transitioned the slot of `block.slot` to run accurately due to the internal use of `get_online_validator_indices` and `is_on_time_attestation`.
+*Note*: The `state` passed into `get_shard_winning_roots` must be transitioned the slot of `block.slot`
+_and_ include the `block.attestations` in that transition to get accurate participation acocunting.
 
 ```python
-def get_shard_winning_roots(state: BeaconState,
-                            attestations: Sequence[Attestation]) -> Tuple[Sequence[Shard], Sequence[Root]]:
-    shards = []
+def get_shard_winning_roots(state: BeaconState, shard: Shard) -> Sequence[Root]:
+    all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
+    shard_candidates = [
+        candidate for candidate in all_candidates
+        if (
+            shard == (get_start_shard(state, candidate.slot) + candidate.index) % get_active_shard_count(state)
+            and candidate.slot > state.shard_states[shard].slot
+        )
+    ]
+    sorted_shard_candidates = sorted(shard_candidates, key=lambda candidate: candidate.slot, reverse=True)
+
     winning_roots = []
-    online_indices = get_online_validator_indices(state)
-    on_time_attestation_slot = compute_previous_slot(state.slot)
-    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(on_time_attestation_slot))
-    for committee_index in map(CommitteeIndex, range(committee_count)):
-        shard = compute_shard_from_committee_index(state, committee_index, on_time_attestation_slot)
-        # All attestations in the block for this committee/shard and are "on time"
-        shard_attestations = [
-            attestation for attestation in attestations
-            if is_on_time_attestation(state, attestation.data) and attestation.data.index == committee_index
-        ]
-        committee = get_beacon_committee(state, on_time_attestation_slot, committee_index)
+    for candidate in sorted_shard_candidates:
+        online_committee = get_online_beacon_committee(state, candidate.slot, candidate.index)
+        online_participants = get_online_transition_participants(state, candidate)
+        if get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2:
+            winning_roots.append(candidate.transition_root)
 
-        # Loop over all shard transition roots, looking for a winning root
-        shard_transition_roots = set(a.data.shard_transition_root for a in shard_attestations)  # non-duplicate
-        for shard_transition_root in sorted(shard_transition_roots):
-            transition_attestations = [
-                a for a in shard_attestations
-                if a.data.shard_transition_root == shard_transition_root
-            ]
-            transition_participants: Set[ValidatorIndex] = set()
-            for attestation in transition_attestations:
-                participants = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-                transition_participants = transition_participants.union(participants)
-
-            enough_online_stake = (
-                get_total_balance(state, online_indices.intersection(transition_participants)) * 3 >=
-                get_total_balance(state, online_indices.intersection(committee)) * 2
-            )
-            if enough_online_stake:
-                shards.append(shard)
-                winning_roots.append(shard_transition_root)
-                break
-
-    return shards, winning_roots
+    return winning_roots
 ```
+
+```python
+def select_transition_from_winning_roots(state: BeaconState,
+                                         winning_roots: Sequence[Root],
+                                         full_transitions: Dict[Root, ShardTransition]) -> Optional[ShardTransition]:
+    for root in winning_roots:
+        if root not in full_transitions:
+            continue
+
+        # TODO: add state.shard_state coherence and header validity validation
+        transition = full_transitions[root]
+        admissible_slots = compute_admissible_slots(transition.start_slot)[:len(transition.shard_data_roots)]
+        if (
+            len(transition.shard_data_roots)
+            == len(transition.shard_states)
+            == len(transition.shard_block_lengths)
+            == len(admissible_slots)
+        ):
+            return transition
+
+    return None
+```
+
 
 ##### Light client fields
 

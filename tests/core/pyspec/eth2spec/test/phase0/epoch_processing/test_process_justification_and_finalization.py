@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import spec_state_test, with_all_phases, PHASE0
 from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import (
     run_epoch_processing_with
 )
@@ -9,7 +9,7 @@ def run_process_just_and_fin(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_justification_and_finalization')
 
 
-def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False, messed_up_target=False):
+def add_mock_attestations_phase0(spec, state, epoch, source, target, sufficient_support, messed_up_target):
     # we must be at the end of the epoch
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
@@ -65,6 +65,41 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
             ))
             if messed_up_target:
                 attestations[len(attestations) - 1].data.target.root = b'\x99' * 32
+
+
+def add_mock_attestations_phase1(spec, state, epoch, sufficient_support, messed_up_target):
+    # we must be at the end of the epoch
+    assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
+
+    total_balance = spec.get_total_active_balance(state)
+    if sufficient_support:
+        remaining_balance = int(total_balance * 2 // 3)  # can become negative
+    else:
+        remaining_balance = int(total_balance * 1 // 2)  # can become negative
+
+    current_epoch = spec.get_current_epoch(state)
+    flags = (state.current_epoch_reward_flags if epoch == current_epoch else state.previous_epoch_reward_flags)
+    for i, index in enumerate(spec.get_active_validator_indices(state, epoch)):
+        # Check if we already have had sufficient balance. (and undone if we don't want it).
+        # If so, do not create more attestations. (we do not have empty pending attestations normally anyway)
+        if remaining_balance < 0:
+            return
+
+        remaining_balance -= int(state.validators[index].effective_balance)
+
+        flags[i][spec.FLAG_SOURCE] = True
+        flags[i][spec.FLAG_TARGET] = not messed_up_target
+
+
+def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False, messed_up_target=False):
+    # we must be at the end of the epoch
+    assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
+    assert epoch in [spec.get_previous_epoch(state), spec.get_current_epoch(state)]
+
+    if spec.fork == PHASE0:
+        add_mock_attestations_phase0(spec, state, epoch, source, target, sufficient_support, messed_up_target)
+    else:
+        add_mock_attestations_phase1(spec, state, epoch, sufficient_support, messed_up_target)
 
 
 def get_checkpoints(spec, epoch):
