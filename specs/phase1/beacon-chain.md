@@ -817,15 +817,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     flags = (state.current_epoch_reward_flags if is_current_epoch_attestation else state.previous_epoch_reward_flags)
 
-    # Reward proposer for new attestations
+    # Update participation flags
     for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
         active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
         if not flags[active_position][FLAG_SOURCE]:
             increase_balance(state, get_beacon_proposer_index(state), get_proposer_reward(state, participant))
-
-    # Update participation flags
-    for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
-        active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
         for flag in flags_to_set:
             flags[active_position][flag] = True
 
@@ -1096,7 +1092,7 @@ def process_epoch(state: BeaconState) -> None:
 #### New justification and finalization processing
 
 Note that the justification and finalization core logic is entire unchanged.
-The changes to the following function from Phase 0 are related to the use of flags to tract participation.
+The changes to the following function from Phase 0 are related to the use of flags to track participation.
 
 ##### `process_justification_and_finalization`
 
@@ -1209,7 +1205,6 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
             # If validator is performing optimally this cancels all rewards for a neutral balance
             base_reward = get_base_reward(state, index)
             penalties[index] += Gwei(PHASE1_BASE_REWARDS_PER_EPOCH * base_reward)
-            # penalties[index] += Gwei(PHASE1_BASE_REWARDS_PER_EPOCH * base_reward - get_proposer_reward(state, index))
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
