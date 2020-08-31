@@ -152,8 +152,8 @@ GeneralizedIndex = NewType('GeneralizedIndex', int)
 SSZObject = TypeVar('SSZObject', bound=View)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
-def ceillog2(x: uint64) -> int:
-    return (x - 1).bit_length()
+def ceillog2(x: uint64) -> uint64:
+    return uint64((x - 1).bit_length())
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
