@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     PHASE0,
     with_all_phases_except,
+    only_full_crosslink,
     spec_state_test,
 )
 from eth2spec.test.helpers.attestations import (
@@ -10,7 +11,6 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.shard_transitions import (
     run_shard_transitions_processing,
-    is_full_crosslink,
 )
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
@@ -92,31 +92,22 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_basic_crosslinks(spec, state):
-    if not is_full_crosslink(spec, state):
-        # Skip this test
-        return
-
     yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=1)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_multiple_offset_slots(spec, state):
-    if not is_full_crosslink(spec, state):
-        # Skip this test
-        return
-
     yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=2)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_no_winning_root(spec, state):
-    if not is_full_crosslink(spec, state):
-        # Skip this test
-        return
-
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot=1)
     init_slot = state.slot
 
@@ -163,11 +154,8 @@ def test_no_winning_root(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_wrong_shard_transition_root(spec, state):
-    if not is_full_crosslink(spec, state):
-        # Skip this test
-        return
-
     state, shard, target_shard_slot = get_initial_env(spec, state, target_len_offset_slot=1)
     init_slot = state.slot
 

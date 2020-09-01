@@ -1,11 +1,11 @@
 from eth2spec.test.helpers.custody import (
     get_valid_custody_slashing,
-    get_custody_secret,
     get_custody_slashable_shard_transition,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_typing import ByteList
 from eth2spec.test.helpers.state import get_balance, transition_to
 from eth2spec.test.context import (
@@ -77,7 +77,12 @@ def run_standard_custody_slashing_test(spec,
     if block_lengths is None:
         block_lengths = [2**15 // 3] * len(offset_slots)
 
-    custody_secret = get_custody_secret(spec, state, validator_index)
+    custody_secret = spec.get_custody_secret(
+        state,
+        validator_index,
+        privkeys[validator_index],
+        spec.get_current_epoch(state),
+    )
     shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(
         spec,
         state.slot,

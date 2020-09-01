@@ -1,6 +1,6 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
-from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_except, never_bls
+from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_except, never_bls, only_full_crosslink
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
@@ -8,7 +8,6 @@ from eth2spec.test.helpers.shard_block import (
     get_committee_index_of_shard,
 )
 from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root
-from eth2spec.test.helpers.shard_transitions import is_full_crosslink
 from eth2spec.test.helpers.state import state_transition_and_sign_block
 from eth2spec.test.helpers.block import build_empty_block
 
@@ -209,11 +208,8 @@ def create_simple_fork(spec, state, store, shard):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_shard_simple_fork(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     spec.PHASE_1_GENESIS_SLOT = 0  # NOTE: mock genesis slot here
     state = spec.upgrade_to_phase1(state)
     shard = spec.Shard(1)
@@ -237,11 +233,8 @@ def test_shard_simple_fork(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_shard_latest_messages_for_different_shards(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     spec.PHASE_1_GENESIS_SLOT = 0  # NOTE: mock genesis slot here
     state = spec.upgrade_to_phase1(state)
     shard_0 = spec.Shard(0)
