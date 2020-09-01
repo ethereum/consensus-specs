@@ -1193,7 +1193,7 @@ def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-  """
+    """
     Return inactivity reward/penalty deltas for each validator.
     Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices`
     """
