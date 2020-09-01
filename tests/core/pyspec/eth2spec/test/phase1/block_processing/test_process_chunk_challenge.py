@@ -9,10 +9,10 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
     PHASE0,
-    with_all_phases_except,
-    spec_state_test,
     expect_assertion_error,
     disable_process_reveal_deadlines,
+    spec_state_test,
+    with_all_phases_except,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 

@@ -179,15 +179,6 @@ def get_sample_shard_transition(spec, start_slot, block_lengths):
     return shard_transition
 
 
-def get_custody_secret(spec, state, validator_index, epoch=None):
-    period = spec.get_custody_period_for_validator(validator_index, epoch if epoch is not None
-                                                   else spec.get_current_epoch(state))
-    epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, validator_index)
-    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
-    signing_root = spec.compute_signing_root(spec.Epoch(epoch_to_sign), domain)
-    return bls.Sign(privkeys[validator_index], signing_root)
-
-
 def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=True):
     test_vector = get_custody_test_vector(length)
     offset = 0

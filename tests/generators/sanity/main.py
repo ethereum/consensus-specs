@@ -54,4 +54,3 @@ if __name__ == "__main__":
     # gen_runner.run_generator(f"sanity", [
     #     create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
     # ])
-

@@ -5,6 +5,7 @@ setup(
     packages=['gen_base', 'gen_from_tests'],
     install_requires=[
         "ruamel.yaml==0.16.5",
-        "eth-utils==1.6.0"
+        "eth-utils==1.6.0",
+        "pytest>=4.4",
     ]
 )
