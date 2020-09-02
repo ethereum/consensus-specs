@@ -16,6 +16,13 @@ def sign_shard_block(spec, beacon_state, shard, block, proposer_index=None):
     block.signature = bls.Sign(privkey, signing_root)
 
 
+def get_offset_slots(spec, state, shard):
+    return spec.compute_offset_slots(
+        spec.get_latest_slot_for_shard(state, shard),
+        state.slot + 1,
+    )
+
+
 def build_shard_block(spec,
                       beacon_state,
                       shard,
@@ -53,9 +60,12 @@ def build_shard_block(spec,
 
 
 def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
-    shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
+    shard_transitions = []
     on_time_slot = parent_beacon_state.slot + 1
-    for shard, blocks in shard_block_dict.items():
+    for shard in range(spec.get_active_shard_count(parent_beacon_state)):
+        if shard not in shard_block_dict:
+            continue
+        blocks = shard_block_dict[shard]
         shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
         offset_slots = spec.compute_offset_slots(
             spec.get_latest_slot_for_shard(parent_beacon_state, shard),
@@ -64,11 +74,11 @@ def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
         len_offset_slots = len(offset_slots)
         shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
 
-        if len(blocks) > 0:
-            shard_block_root = blocks[-1].message.hash_tree_root()
-            assert shard_transition.shard_states[len_offset_slots - 1].latest_block_root == shard_block_root
-            assert shard_transition.shard_states[len_offset_slots - 1].slot == offset_slots[-1]
-        shard_transitions[shard] = shard_transition
+        shard_block_root = blocks[-1].message.hash_tree_root()
+        assert shard_transition.shard_states[len_offset_slots - 1].latest_block_root == shard_block_root
+        assert shard_transition.shard_states[len_offset_slots - 1].slot == offset_slots[-1]
+
+        shard_transitions.append(shard_transition)
 
     return shard_transitions
 

@@ -259,7 +259,7 @@ def next_epoch_with_attestations(spec,
                     if spec.fork == PHASE1:
                         shard = spec.compute_shard_from_committee_index(post_state, index, slot_to_attest)
                         shard_transition = get_shard_transition_of_committee(spec, post_state, index)
-                        block.body.shard_transitions[shard] = shard_transition
+                        block.body.shard_transitions.append(shard_transition)
                     else:
                         shard_transition = None
 
@@ -297,10 +297,8 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
     start_epoch = spec.get_current_epoch(state)
     next_epoch_start_slot = spec.compute_start_slot_at_epoch(start_epoch + 1)
     attestations = []
-    print(spec.fork)
     if spec.fork == PHASE0:
         for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
-            print("adding attestations to state")
             # create an attestation for each index in each slot in epoch
             if state.slot < next_epoch_start_slot:
                 for committee_index in range(spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))):
@@ -357,11 +355,8 @@ def cached_prepare_state_with_attestations(spec, state):
     # The input state is likely already cached, so the hash-tree-root does not affect speed.
     key = (spec.fork, state.hash_tree_root())
     global _prep_state_cache_dict
-    if key not in _prep_state_cache_dict:
-        prepare_state_with_attestations(spec, state)
-        _prep_state_cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
-    else:
-        print("cched_prepare_state.. cache hit")
+    prepare_state_with_attestations(spec, state)
+    _prep_state_cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
 
     # Put the LRU cache result into the state view, as if we transitioned the original view
     state.set_backing(_prep_state_cache_dict[key])

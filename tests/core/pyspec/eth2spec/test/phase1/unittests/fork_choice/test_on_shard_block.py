@@ -85,7 +85,6 @@ def create_attestation_for_shard_blocks(spec, beacon_parent_state, shard, commit
 
 def create_beacon_block_with_shard_transition(
         spec, state, store, shard, shard_blocks_buffer, is_checking_pending_shard_blocks=True):
-    beacon_block = build_empty_block(spec, state, slot=state.slot + 1)
     committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
     has_shard_committee = committee_index is not None  # has committee of `shard` at this slot
 
@@ -99,7 +98,8 @@ def create_beacon_block_with_shard_transition(
             check_pending_shard_blocks(spec, store, shard, shard_blocks_buffer)
         # Use temporary next state to get ShardTransition of shard block
         shard_transitions = get_shard_transitions(spec, state, shard_block_dict={shard: shard_blocks_buffer})
-        shard_transition = shard_transitions[shard]
+        assert len(shard_transitions) == 1
+        shard_transition = shard_transitions[0]
         attestation = get_valid_on_time_attestation(
             spec,
             state,

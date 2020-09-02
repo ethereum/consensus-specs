@@ -1,3 +1,6 @@
+from eth2spec.test.helpers.shard_block import (
+    get_offset_slots,
+)
 from eth2spec.test.helpers.custody import (
     get_valid_custody_slashing,
     get_custody_secret,
@@ -73,7 +76,7 @@ def run_standard_custody_slashing_test(spec,
     if validator_index is None:
         validator_index = spec.get_beacon_committee(state, state.slot, shard)[0]
 
-    offset_slots = spec.get_offset_slots(state, shard)
+    offset_slots = get_offset_slots(spec, state, shard)
     if block_lengths is None:
         block_lengths = [2**15 // 3] * len(offset_slots)
 
