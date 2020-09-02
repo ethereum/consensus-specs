@@ -158,7 +158,6 @@ def test_no_winning_root(spec, state):
     assert len(winning_roots) == 0
 
     # No winning root, shard_transition should fail
-    pre_shard_states = state.shard_states.copy()
     yield from run_shard_transition_processing(spec, state, shard_transition, valid=False)
 
 
@@ -194,7 +193,6 @@ def test_wrong_shard_transition_root(spec, state):
         signed=True,
         on_time=True,
     )
-    attestations = [attestation]
 
     next_slot(spec, state)
 

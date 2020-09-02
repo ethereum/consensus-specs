@@ -962,7 +962,7 @@ def apply_shard_transition_updates(state: BeaconState,
     Applies the given ShardTransition to the appropriate ShardState. Also processes shard proposer rewards and fees.
     """
     shard = transition.shard
-    admissible_slots = compute_admissible_slots(transition.start_slot - 1)[:len(transition.shard_data_roots)]
+    admissible_slots = compute_admissible_slots(Slot(transition.start_slot - 1))[:len(transition.shard_data_roots)]
 
     # Shard proposer rewards and block size cost
     states_slots_lengths = zip(
