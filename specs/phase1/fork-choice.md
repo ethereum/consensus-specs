@@ -37,7 +37,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    blocks: Dict[Root, Union[BeaconBlock, BeaconBlockHeader]] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
@@ -71,11 +71,17 @@ class ShardStore:
 #### Updated `get_forkchoice_store`
 
 ```python
-def get_forkchoice_store(anchor_state: BeaconState) -> Store:
-    anchor_block_header = anchor_state.latest_block_header.copy()
-    if anchor_block_header.state_root == Bytes32():
-        anchor_block_header.state_root = hash_tree_root(anchor_state)
-    anchor_root = hash_tree_root(anchor_block_header)
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock=None) -> Store:
+    anchor_block_or_header: Union[BeaconBlock, BeaconBlockHeader]
+    if anchor_block is None:
+        assert anchor_state.slot == GENESIS_SLOT
+        anchor_block_or_header = copy(anchor_state.latest_block_header)
+        if anchor_block_or_header.state_root == Bytes32():
+            anchor_block_or_header.state_root = hash_tree_root(anchor_state)
+    else:
+        assert anchor_block.state_root == hash_tree_root(anchor_state)
+        anchor_block_or_header = anchor_block
+    anchor_root = hash_tree_root(anchor_block_or_header)
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
@@ -85,7 +91,7 @@ def get_forkchoice_store(anchor_state: BeaconState) -> Store:
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
-        blocks={anchor_root: anchor_block_header},
+        blocks={anchor_root: anchor_block_or_header},
         block_states={anchor_root: anchor_state.copy()},
         checkpoint_states={justified_checkpoint: anchor_state.copy()},
         shard_stores={
