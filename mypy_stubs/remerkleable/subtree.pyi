@@ -1,8 +1,8 @@
-from remerkleable.core import BackedView as BackedView, BasicTypeDef as BasicTypeDef, BasicView as BasicView, TypeDef as TypeDef, View as View
+from remerkleable.core import BackedView as BackedView, BasicView as BasicView, View as View
 from remerkleable.tree import Link as Link, to_gindex as to_gindex
 from typing import Any, Type
 
-class SubtreeView(BackedView, TypeDef):
+class SubtreeView(BackedView):
     @classmethod
     def is_packed(cls: Any) -> bool: ...
     @classmethod
