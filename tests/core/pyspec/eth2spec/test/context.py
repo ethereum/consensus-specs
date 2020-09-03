@@ -329,12 +329,15 @@ def disable_process_reveal_deadlines(fn):
     return with_meta_tags({'reveal_deadlines_setting': 1})(entry)
 
 
-def with_configs(configs):
+def with_configs(configs, reason=None):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             available_configs = set(configs)
             if spec.CONFIG_NAME not in available_configs:
-                dump_skipping_message(f"doesn't support this config: {spec.CONFIG_NAME}")
+                message = f"doesn't support this config: {spec.CONFIG_NAME}."
+                if reason is not None:
+                    message = f"{message} Reason: {reason}"
+                dump_skipping_message(message)
                 return None
 
             return fn(*args, spec=spec, **kw)

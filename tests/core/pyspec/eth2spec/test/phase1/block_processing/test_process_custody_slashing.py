@@ -10,10 +10,12 @@ from eth2spec.utils.ssz.ssz_typing import ByteList
 from eth2spec.test.helpers.state import get_balance, transition_to
 from eth2spec.test.context import (
     PHASE0,
+    MINIMAL,
     with_all_phases_except,
     spec_state_test,
     expect_assertion_error,
     disable_process_reveal_deadlines,
+    with_configs,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 
@@ -113,6 +115,7 @@ def run_standard_custody_slashing_test(spec,
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state)
 
@@ -120,6 +123,7 @@ def test_custody_slashing(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_incorrect_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, correct=False)
 
@@ -127,6 +131,7 @@ def test_incorrect_custody_slashing(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_multiple_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3)
 
@@ -134,6 +139,7 @@ def test_multiple_epochs_custody(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_many_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5)
 
@@ -141,6 +147,7 @@ def test_many_epochs_custody(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_invalid_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(
         spec,
