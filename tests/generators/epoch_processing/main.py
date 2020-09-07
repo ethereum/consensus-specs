@@ -47,14 +47,12 @@ if __name__ == "__main__":
     gen_runner.run_generator(f"epoch_processing", [
         create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods
     ])
-    # TODO: disabled for testing
-    # gen_runner.run_generator(f"epoch_processing", [
-    #     create_provider(key, mod_name, 'mainnet') for key, mod_name in phase_0_mods
-    # ])
+    gen_runner.run_generator(f"epoch_processing", [
+        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods
+    ])
     gen_runner.run_generator(f"epoch_processing", [
         create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods
     ])
-    # Disabled for now
-    # gen_runner.run_generator(f"epoch_processing", [
-    #     create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
-    # ])
+    gen_runner.run_generator(f"epoch_processing", [
+        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
+    ])
