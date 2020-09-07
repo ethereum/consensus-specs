@@ -34,7 +34,7 @@ def test_full_random_2(spec, state):
 @spec_test
 @single_phase
 def test_full_random_low_balances(spec, state):
-    yield from rewards_helpers.run_test_full_random(spec, state)
+    yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(4040))
 
 
 @with_all_phases
@@ -42,4 +42,4 @@ def test_full_random_low_balances(spec, state):
 @spec_test
 @single_phase
 def test_full_random_misc_balances(spec, state):
-    yield from rewards_helpers.run_test_full_random(spec, state)
+    yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(5050))

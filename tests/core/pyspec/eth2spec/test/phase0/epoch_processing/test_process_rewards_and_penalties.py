@@ -1,4 +1,5 @@
 from eth2spec.test.context import (
+    PHASE0,
     spec_state_test, spec_test,
     with_all_phases, single_phase,
     with_custom_state,
@@ -67,20 +68,37 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
-    for i, attestation in enumerate(state.previous_epoch_attestations):
-        if i % 3 == 0:
-            # Mess up some head votes
-            attestation.data.beacon_block_root = b'\x56' * 32
-        if i % 3 == 1:
-            # Message up some target votes
-            attestation.data.target.root = b'\x23' * 32
-        if i % 3 == 2:
-            # Keep some votes 100% correct
-            pass
+
+    if spec.fork == PHASE0:
+        for i, attestation in enumerate(state.previous_epoch_attestations):
+            if i % 3 == 0:
+                # Mess up some head votes
+                attestation.data.beacon_block_root = b'\x56' * 32
+            if i % 3 == 1:
+                # Message up some target votes
+                attestation.data.target.root = b'\x23' * 32
+            if i % 3 == 2:
+                # Keep some votes 100% correct
+                pass
+    else:
+        for i, flag in enumerate(state.previous_epoch_reward_flags):
+            if i % 2 == 0:
+                # Message up some target votes
+                flag[spec.FLAG_HEAD] = 0
+                if i % 3 == 0:
+                    # Mess up some head votes in addition to target
+                    flag[spec.FLAG_HEAD] = 0
+            if i % 2 == 1:
+                # Keep some votes 100% correct
+                pass
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    if spec.fork == PHASE0:
+        attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    else:
+        previous_epoch = spec.get_previous_epoch(state)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
     assert len(attesting_indices) > 0
     # No balance checks, non-trivial base on group rewards
     # Mainly for consensus tests
@@ -97,7 +115,12 @@ def test_full_attestations_misc_balances(spec, state):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    if spec.fork == PHASE0:
+        attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    else:
+        previous_epoch = spec.get_previous_epoch(state)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+
     assert len(attesting_indices) > 0
     assert len(attesting_indices) != len(pre_state.validators)
     assert any(v.effective_balance != spec.MAX_EFFECTIVE_BALANCE for v in state.validators)
@@ -108,6 +131,7 @@ def test_full_attestations_misc_balances(spec, state):
             assert state.balances[index] < pre_state.balances[index]
         else:
             assert state.balances[index] == pre_state.balances[index]
+
     # Check if base rewards are consistent with effective balance.
     brs = {}
     for index in attesting_indices:
@@ -122,13 +146,17 @@ def test_full_attestations_misc_balances(spec, state):
 @spec_test
 @with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
 @single_phase
-def test_full_attestations_one_validaor_one_gwei(spec, state):
+def test_full_attestations_one_validator_one_gwei(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
 
     yield from run_process_rewards_and_penalties(spec, state)
 
     # Few assertions. Mainly to check that this extreme case can run without exception
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    if spec.fork == PHASE0:
+        attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    else:
+        previous_epoch = spec.get_previous_epoch(state)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
     assert len(attesting_indices) == 1
 
 
@@ -156,19 +184,25 @@ def run_with_participation(spec, state, participation_fn):
         return att_participants
 
     attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
-    proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
+    if spec.fork == PHASE0:
+        proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
 
     pre_state = state.copy()
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    if spec.fork == PHASE0:
+        attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    else:
+        previous_epoch = spec.get_previous_epoch(state)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+
     assert len(attesting_indices) == len(participated)
 
     for index in range(len(pre_state.validators)):
         if spec.is_in_inactivity_leak(state):
-            # Proposers can still make money during a leak
-            if index in proposer_indices and index in participated:
+            if spec.fork == PHASE0 and index in proposer_indices and index in attesting_indices:
+                # Proposers rewards are given at end of epoch in Phase 0 so can make money during a leak
                 assert state.balances[index] > pre_state.balances[index]
             # If not proposer but participated optimally, should have exactly neutral balance
             elif index in attesting_indices:
@@ -176,7 +210,7 @@ def run_with_participation(spec, state, participation_fn):
             else:
                 assert state.balances[index] < pre_state.balances[index]
         else:
-            if index in participated:
+            if index in attesting_indices:
                 assert state.balances[index] > pre_state.balances[index]
             else:
                 assert state.balances[index] < pre_state.balances[index]
@@ -274,7 +308,12 @@ def test_duplicate_attestation(spec, state):
     yield from run_process_rewards_and_penalties(spec, dup_state)
 
     for index in participants:
-        assert state.balances[index] < single_state.balances[index]
+        if spec.fork == PHASE0:
+            # All rewards, no penalties
+            assert state.balances[index] < single_state.balances[index]
+        else:
+            # Gets the crosslink penalty which outways the participation rewards due to low participation
+            assert state.balances[index] > single_state.balances[index]
         assert single_state.balances[index] == dup_state.balances[index]
 
 
@@ -283,19 +322,32 @@ def test_duplicate_attestation(spec, state):
 # Case when some eligible attestations are slashed. Modifies attesting_balance and consequently rewards/penalties.
 def test_attestations_some_slashed(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
-    attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
+    if spec.fork == PHASE0:
+        attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
+    else:
+        attesting_indices_before_slashings = list(spec.get_unslashed_participant_indices(
+            state,
+            spec.FLAG_SOURCE,
+            spec.get_previous_epoch(state)
+        ))
 
     # Slash maximum amount of validators allowed per epoch.
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    assert len(state.previous_epoch_attestations) == len(attestations)
+    if spec.fork == PHASE0:
+        assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = state.copy()
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    if spec.fork == PHASE0:
+        attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    else:
+        previous_epoch = spec.get_previous_epoch(state)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+
     assert len(attesting_indices) > 0
     assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
     for index in range(len(pre_state.validators)):

@@ -1,28 +1,26 @@
 from eth2spec.test.context import expect_assertion_error
 
 
-def run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=True):
+def run_shard_transition_processing(spec, state, shard_transition, valid=True):
     """
-    Run ``process_shard_transitions``, yielding:
+    Run ``process_shard_transition``, yielding:
       - pre-state ('pre')
-      - shard_transitions ('shard_transitions')
-      - attestations ('attestations')
+      - shard_transition ('shard_transition')
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
     # yield pre-state
     yield 'pre', state
-    yield 'shard_transitions', shard_transitions
-    yield 'attestations', attestations
+    yield 'shard_transition', shard_transition
 
-    # If the attestation is invalid, processing is aborted, and there is no post-state.
+    # If the shard transition is invalid, processing is aborted, and there is no post-state.
     if not valid:
-        expect_assertion_error(lambda: spec.process_shard_transitions(state, shard_transitions, attestations))
+        expect_assertion_error(lambda: spec.process_shard_transition(state, shard_transition))
         yield 'post', None
         return
 
     # process crosslinks
-    spec.process_shard_transitions(state, shard_transitions, attestations)
+    spec.process_shard_transition(state, shard_transition)
 
     # yield post-state
     yield 'post', state

@@ -9,7 +9,7 @@ from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
 )
 from eth2spec.test.helpers.shard_transitions import (
-    run_shard_transitions_processing,
+    run_shard_transition_processing,
     is_full_crosslink,
 )
 from eth2spec.test.helpers.shard_block import (
@@ -67,14 +67,14 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
     for attestation in attestations:
         _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    _, winning_roots = spec.get_shard_winning_roots(state, attestations)
+    winning_roots = spec.get_shard_winning_roots(state, shard)
     assert len(winning_roots) == 1
     shard_transition = shard_transitions[shard]
     assert winning_roots[0] == shard_transition.hash_tree_root()
 
     pre_gasprice = state.shard_states[shard].gasprice
     pre_shard_states = state.shard_states.copy()
-    yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations)
+    yield from run_shard_transition_processing(spec, state, shard_transition)
 
     for index, shard_state in enumerate(state.shard_states):
         if index == shard:
@@ -86,8 +86,15 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
         else:
             assert shard_state == pre_shard_states[index]
 
-    for pending_attestation in state.current_epoch_attestations:
-        assert bool(pending_attestation.crosslink_success) is True
+    if spec.fork == PHASE0:
+        for pending_attestation in state.current_epoch_attestations:
+            assert bool(pending_attestation.crosslink_success) is True
+    else:
+        participants = spec.get_unslashed_attesting_indices(state, attestations)
+        active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+        for participant in participants:
+            position = active_indices.index(participant)
+            assert state.current_epoch_reward_flags[position][spec.FLAG_CROSSLINK]
 
 
 @with_all_phases_except([PHASE0])
@@ -147,18 +154,11 @@ def test_no_winning_root(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    _, winning_roots = spec.get_shard_winning_roots(state, [attestation])
+    winning_roots = spec.get_shard_winning_roots(state, shard)
     assert len(winning_roots) == 0
 
-    # No winning root, shard_transitions[shard] is empty
-    shard_transitions = [spec.ShardTransition()] * spec.MAX_SHARDS
-    pre_shard_states = state.shard_states.copy()
-    yield from run_shard_transitions_processing(spec, state, shard_transitions, [attestation])
-
-    for pending_attestation in state.current_epoch_attestations:
-        assert bool(pending_attestation.crosslink_success) is False
-
-    assert state.shard_states == pre_shard_states
+    # No winning root, shard_transition should fail
+    yield from run_shard_transition_processing(spec, state, shard_transition, valid=False)
 
 
 @with_all_phases_except([PHASE0])
@@ -193,16 +193,15 @@ def test_wrong_shard_transition_root(spec, state):
         signed=True,
         on_time=True,
     )
-    attestations = [attestation]
 
     next_slot(spec, state)
 
-    run_attestation_processing(spec, state, attestation)
+    _, _, _ = run_attestation_processing(spec, state, attestation)
 
     # Check if winning root != shard_transition.hash_tree_root()
-    _, winning_roots = spec.get_shard_winning_roots(state, attestations)
+    winning_roots = spec.get_shard_winning_roots(state, shard)
     assert len(winning_roots) == 1
     shard_transition = shard_transitions[shard]
     assert winning_roots[0] != shard_transition.hash_tree_root()
 
-    yield from run_shard_transitions_processing(spec, state, shard_transitions, attestations, valid=False)
+    yield from run_shard_transition_processing(spec, state, shard_transition, valid=False)

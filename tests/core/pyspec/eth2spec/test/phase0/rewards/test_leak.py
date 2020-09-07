@@ -1,4 +1,8 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.context import (
+    PHASE0,
+    with_phases,
+    with_all_phases, spec_state_test,
+)
 from eth2spec.test.helpers.rewards import leaking
 import eth2spec.test.helpers.rewards as rewards_helpers
 
@@ -31,10 +35,14 @@ def test_quarter_full_leak(spec, state):
     yield from rewards_helpers.run_test_partial(spec, state, 0.25)
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 @leaking()
 def test_full_but_partial_participation_leak(spec, state):
+    """
+    Only run with phase 0 because the flag accounting in subsequent phases
+    doesn't have a notion of partially filled attestations by the time we get to rewards.
+    """
     yield from rewards_helpers.run_test_full_but_partial_participation(spec, state)
 
 

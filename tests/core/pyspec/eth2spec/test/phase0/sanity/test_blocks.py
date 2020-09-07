@@ -19,9 +19,11 @@ from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
+from eth2spec.utils.ssz.ssz_typing import Bitvector
+
 
 from eth2spec.test.context import (
-    PHASE0, PHASE1,
+    PHASE0,
     spec_test,
     spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
     with_custom_state, single_phase,
@@ -760,26 +762,25 @@ def test_attestation(spec, state):
     attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     index = 0
-    if spec.fork == PHASE1:
-        shard = spec.compute_shard_from_committee_index(state, index, state.slot)
-        shard_transition = get_shard_transition_of_committee(spec, state, index)
-        attestation_block.body.shard_transitions[shard] = shard_transition
-    else:
+    if spec.fork == PHASE0:
         shard_transition = None
+        pre_current_attestations_len = len(state.current_epoch_attestations)
+    else:
+        shard_transition = get_shard_transition_of_committee(spec, state, index)
+        attestation_block.body.shard_transitions.append(shard_transition)
 
     attestation = get_valid_attestation(
         spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
     )
 
     # Add to state via block transition
-    pre_current_attestations_len = len(state.current_epoch_attestations)
     attestation_block.body.attestations.append(attestation)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
-    assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
-
-    # Epoch transition should move to previous_epoch_attestations
-    pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
+    if spec.fork == PHASE0:
+        assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
+        # Epoch transition should move to previous_epoch_attestations
+        pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
 
     epoch_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_epoch_block = state_transition_and_sign_block(spec, state, epoch_block)
@@ -787,8 +788,21 @@ def test_attestation(spec, state):
     yield 'blocks', [signed_attestation_block, signed_epoch_block]
     yield 'post', state
 
-    assert len(state.current_epoch_attestations) == 0
-    assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
+    if spec.fork == PHASE0:
+        assert len(state.current_epoch_attestations) == 0
+        assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
+    else:
+        # No participants in current epoch
+        unique_current_flags = set(state.current_epoch_reward_flags)
+        assert len(unique_current_flags) == 1
+        assert unique_current_flags.pop() == Bitvector[8]()
+
+        # Participants are set for previous epoch
+        participants = spec.get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+        active_indices = spec.get_active_validator_indices(state, spec.get_previous_epoch(state))
+        for participant in participants:
+            position = active_indices.index(participant)
+            assert state.previous_epoch_reward_flags[position] == Bitvector[8](1, 1, 1, 1, 1, 1, 0, 0)
 
 
 def prepare_signed_exits(spec, state, indices):

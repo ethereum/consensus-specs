@@ -52,6 +52,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
     epoch = get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
+        genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
@@ -87,11 +88,6 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         randao_mixes=pre.randao_mixes,
         # Slashings
         slashings=pre.slashings,
-        # Attestations
-        # previous_epoch_attestations is cleared on upgrade. 
-        previous_epoch_attestations=List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH](),
-        # empty in pre state, since the upgrade is performed just after an epoch boundary.
-        current_epoch_attestations=List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH](),
         # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
@@ -109,6 +105,14 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         online_countdown=[ONLINE_PERIOD] * len(pre.validators),  # all online
         current_light_committee=CompactCommittee(),  # computed after state creation
         next_light_committee=CompactCommittee(),
+        current_shard_transition_candidates=List[ShardTransitionCandidate, MAX_ATTESTATIONS * SLOTS_PER_EPOCH](),
+        previous_shard_transition_candidates=List[ShardTransitionCandidate, MAX_ATTESTATIONS * SLOTS_PER_EPOCH](),
+        current_epoch_reward_flags=List[Bitvector[8], MAX_ACTIVE_VALIDATORS](
+            Bitvector[8]() for _ in get_active_validator_indices(pre, get_current_epoch(pre))
+        ),
+        previous_epoch_reward_flags=List[Bitvector[8], MAX_ACTIVE_VALIDATORS](
+            Bitvector[8]() for _ in get_active_validator_indices(pre, get_previous_epoch(pre))
+        ),
         # Custody game
         exposed_derived_secrets=[()] * EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS,
         # exposed_derived_secrets will fully default to zeroes
