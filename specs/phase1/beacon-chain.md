@@ -82,9 +82,6 @@
     - [New rewards and penalties processing](#new-rewards-and-penalties-processing)
       - [`get_unslashed_participant_indices`](#get_unslashed_participant_indices)
       - [`get_standard_flag_deltas`](#get_standard_flag_deltas)
-      - [`get_source_deltas`](#get_source_deltas)
-      - [`get_target_deltas`](#get_target_deltas)
-      - [`get_head_deltas`](#get_head_deltas)
       - [`get_inclusion_delay_deltas`](#get_inclusion_delay_deltas)
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
       - [`get_crosslink_deltas`](#get_crosslink_deltas)
@@ -1196,36 +1193,6 @@ def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[
     return rewards, penalties
 ```
 
-##### `get_source_deltas`
-
-```python
-def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    """
-    Return attester micro-rewards/penalties for source-vote for each validator.
-    """
-    return get_standard_flag_deltas(state, FLAG_SOURCE)
-```
-
-##### `get_target_deltas`
-
-```python
-def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    """
-    Return attester micro-rewards/penalties for target-vote for each validator.
-    """
-    return get_standard_flag_deltas(state, FLAG_TARGET)
-```
-
-##### `get_head_deltas`
-
-```python
-def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    """
-    Return attester micro-rewards/penalties for head-vote for each validator.
-    """
-    return get_standard_flag_deltas(state, FLAG_HEAD)
-```
-
 ##### `get_inclusion_delay_deltas`
 
 ```python
@@ -1291,10 +1258,10 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
 
     rewards_and_penalties = [
-        get_source_deltas(state),
-        get_target_deltas(state),
-        get_head_deltas(state),
-        get_crosslink_deltas(state),
+        get_standard_flag_deltas(state, FLAG_SOURCE),
+        get_standard_flag_deltas(state, FLAG_TARGET),
+        get_standard_flag_deltas(state, FLAG_HEAD),
+        get_standard_flag_deltas(state, FLAG_CROSSLINK),
         get_inclusion_delay_deltas(state),
         get_inactivity_penalty_deltas(state),
     ]

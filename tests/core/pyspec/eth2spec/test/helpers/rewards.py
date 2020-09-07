@@ -65,20 +65,22 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, deltas_nam
     Run ``component_delta_fn``, yielding:
       - deltas ('{``deltas_name``}')
     """
-    rewards, penalties = component_delta_fn(state)
-
     if spec.fork == PHASE0:
         if deltas_name == 'source_deltas':
             matching_att_fn = spec.get_matching_source_attestations
+            component_delta_fn = spec.get_source_deltas
         elif deltas_name == 'target_deltas':
             matching_att_fn = spec.get_matching_target_attestations
+            component_delta_fn = spec.get_target_deltas
         elif deltas_name == 'head_deltas':
             matching_att_fn = spec.get_matching_head_attestations
+            component_delta_fn = spec.get_head_deltas
         else:
             raise Exception("`deltas_name` must be one of ['source_deltas', 'target_deltas', 'head_deltas']")
 
         matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
         matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+        rewards, penalties = component_delta_fn(state)
     else:
         if deltas_name == 'source_deltas':
             reward_flag = spec.FLAG_SOURCE
@@ -89,6 +91,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, deltas_nam
         else:
             raise Exception("`deltas_name` must be one of ['source_deltas', 'target_deltas', 'head_deltas']")
         matching_indices = spec.get_unslashed_participant_indices(state, reward_flag, spec.get_previous_epoch(state))
+        rewards, penalties = spec.get_standard_flag_deltas(state, reward_flag)
     eligible_indices = spec.get_eligible_validator_indices(state)
 
     yield deltas_name, Deltas(rewards=rewards, penalties=penalties)
