@@ -365,6 +365,7 @@ def get_shard_transition(beacon_state: BeaconState,
 
     return ShardTransition(
         start_slot=offset_slots[0],
+        shard=shard,
         shard_block_lengths=shard_block_lengths,
         shard_data_roots=shard_data_roots,
         shard_states=shard_states,

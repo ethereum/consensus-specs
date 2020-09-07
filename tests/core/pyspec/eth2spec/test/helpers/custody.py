@@ -167,12 +167,14 @@ def get_custody_test_vector(bytelength, offset=0):
 
 
 def get_sample_shard_transition(spec, start_slot, block_lengths):
-    b = [spec.hash_tree_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
-         for x in block_lengths]
+    data_roots = [
+        spec.hash_tree_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
+        for x in block_lengths
+    ]
     shard_transition = spec.ShardTransition(
         start_slot=start_slot,
         shard_block_lengths=block_lengths,
-        shard_data_roots=b,
+        shard_data_roots=data_roots,
         shard_states=[spec.ShardState() for x in block_lengths],
         proposer_signature_aggregate=spec.BLSSignature(),
     )

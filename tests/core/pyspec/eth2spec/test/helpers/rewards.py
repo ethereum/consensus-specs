@@ -42,39 +42,60 @@ def run_deltas(spec, state):
         spec,
         state,
         spec.get_source_deltas,
-        spec.get_matching_source_attestations,
         'source_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
         spec.get_target_deltas,
-        spec.get_matching_target_attestations,
         'target_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
         spec.get_head_deltas,
-        spec.get_matching_head_attestations,
         'head_deltas',
     )
     yield from run_get_inclusion_delay_deltas(spec, state)
     yield from run_get_inactivity_penalty_deltas(spec, state)
 
 
-def run_attestation_component_deltas(spec, state, component_delta_fn, matching_att_fn, deltas_name):
+def run_attestation_component_deltas(spec, state, component_delta_fn, deltas_name):
     """
     Run ``component_delta_fn``, yielding:
       - deltas ('{``deltas_name``}')
     """
-    rewards, penalties = component_delta_fn(state)
+    if spec.fork == PHASE0:
+        if deltas_name == 'source_deltas':
+            matching_att_fn = spec.get_matching_source_attestations
+            component_delta_fn = spec.get_source_deltas
+        elif deltas_name == 'target_deltas':
+            matching_att_fn = spec.get_matching_target_attestations
+            component_delta_fn = spec.get_target_deltas
+        elif deltas_name == 'head_deltas':
+            matching_att_fn = spec.get_matching_head_attestations
+            component_delta_fn = spec.get_head_deltas
+        else:
+            raise Exception("`deltas_name` must be one of ['source_deltas', 'target_deltas', 'head_deltas']")
+
+        matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
+        matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+        rewards, penalties = component_delta_fn(state)
+    else:
+        if deltas_name == 'source_deltas':
+            reward_flag = spec.FLAG_SOURCE
+        elif deltas_name == 'target_deltas':
+            reward_flag = spec.FLAG_TARGET
+        elif deltas_name == 'head_deltas':
+            reward_flag = spec.FLAG_HEAD
+        else:
+            raise Exception("`deltas_name` must be one of ['source_deltas', 'target_deltas', 'head_deltas']")
+        matching_indices = spec.get_unslashed_participant_indices(state, reward_flag, spec.get_previous_epoch(state))
+        rewards, penalties = spec.get_standard_flag_deltas(state, reward_flag)
+    eligible_indices = spec.get_eligible_validator_indices(state)
 
     yield deltas_name, Deltas(rewards=rewards, penalties=penalties)
 
-    matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
-    matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
-    eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
         if index not in eligible_indices:
             assert rewards[index] == 0
@@ -106,8 +127,12 @@ def run_get_inclusion_delay_deltas(spec, state):
 
     yield 'inclusion_delay_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    eligible_attestations = spec.get_matching_source_attestations(state, spec.get_previous_epoch(state))
-    attesting_indices = spec.get_unslashed_attesting_indices(state, eligible_attestations)
+    previous_epoch = spec.get_previous_epoch(state)
+    if spec.fork == PHASE0:
+        eligible_attestations = spec.get_matching_source_attestations(state, previous_epoch)
+        attesting_indices = spec.get_unslashed_attesting_indices(state, eligible_attestations)
+    else:
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
 
     rewarded_indices = set()
     rewarded_proposer_indices = set()
@@ -115,23 +140,37 @@ def run_get_inclusion_delay_deltas(spec, state):
     # Track those that are rewarded and track proposers that should be rewarded
     for index in range(len(state.validators)):
         if index in attesting_indices and has_enough_for_reward(spec, state, index):
-            assert rewards[index] > 0
+            if spec.fork == PHASE0:
+                # If included at all, should have an inclusion delay reward
+                assert rewards[index] > 0
+            else:
+                # Reward conditioned upon being at least FLAG_TIMELY
+                active_indices = spec.get_active_validator_indices(state, previous_epoch)
+                position = active_indices.index(index)
+                if state.previous_epoch_reward_flags[position][spec.FLAG_TIMELY]:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
+
             rewarded_indices.add(index)
 
-            # Track proposer of earliest included attestation for the validator defined by index
-            earliest_attestation = min([
-                a for a in eligible_attestations
-                if index in spec.get_attesting_indices(state, a.data, a.aggregation_bits)
-            ], key=lambda a: a.inclusion_delay)
-            rewarded_proposer_indices.add(earliest_attestation.proposer_index)
+            if spec.fork == PHASE0:
+                # Track proposer of earliest included attestation for the validator defined by index
+                earliest_attestation = min([
+                    a for a in eligible_attestations
+                    if index in spec.get_attesting_indices(state, a.data, a.aggregation_bits)
+                ], key=lambda a: a.inclusion_delay)
+                rewarded_proposer_indices.add(earliest_attestation.proposer_index)
 
-    # Ensure all expected proposers have been rewarded
-    # Track rewarde indices
-    proposing_indices = [a.proposer_index for a in eligible_attestations]
-    for index in proposing_indices:
-        if index in rewarded_proposer_indices:
-            assert rewards[index] > 0
-            rewarded_indices.add(index)
+    # Proposers are rewarded during block processing in Phase 1+
+    if spec.fork == PHASE0:
+        # Ensure all expected proposers have been rewarded
+        # Track rewarde indices
+        proposing_indices = [a.proposer_index for a in eligible_attestations]
+        for index in proposing_indices:
+            if index in rewarded_proposer_indices:
+                assert rewards[index] > 0
+                rewarded_indices.add(index)
 
     # Ensure all expected non-rewarded indices received no reward
     for index in range(len(state.validators)):
@@ -165,7 +204,11 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
         if spec.is_in_inactivity_leak(state):
             base_reward = spec.get_base_reward(state, index)
-            base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
+            if spec.fork == PHASE0:
+                base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
+            else:
+                base_penalty = spec.PHASE1_BASE_REWARDS_PER_EPOCH * base_reward
+
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices:
@@ -252,6 +295,17 @@ def slash_random_validators(spec, state, rng):
             spec.slash_validator(state, index)
 
 
+def reconcile_active_validator_lists(spec, state):
+    if spec.fork != PHASE0:
+        # adjust rewards flag sizes based on updated active validator set size
+        state.current_epoch_reward_flags = [
+            Bitvector[8]() for _ in spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+        ]
+        state.previous_epoch_reward_flags = [
+            Bitvector[8]() for _ in spec.get_active_validator_indices(state, spec.get_previous_epoch(state))
+        ]
+
+
 def run_test_empty(spec, state):
     # Do not add any attestations to state
 
@@ -276,9 +330,15 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
 def run_test_partial(spec, state, fraction_filled):
     cached_prepare_state_with_attestations(spec, state)
 
-    # Remove portion of attestations
-    num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
-    state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
+    if spec.fork == PHASE0:
+        # Remove portion of attestations
+        num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
+        state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
+    else:
+        # Remove portion of participation flags
+        num_offline = int(len(state.previous_epoch_reward_flags) * (1 - fraction_filled))
+        for i in range(num_offline):
+            state.previous_epoch_reward_flags[i] = Bitvector[8]()
 
     yield from run_deltas(spec, state)
 
@@ -365,36 +425,58 @@ def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, 
     cached_prepare_state_with_attestations(spec, state)
 
     # Make fraction_incorrect of pending attestations have bad target/head as specified
-    num_incorrect = int(fraction_incorrect * len(state.previous_epoch_attestations))
-    for pending_attestation in state.previous_epoch_attestations[:num_incorrect]:
-        if not correct_target:
-            pending_attestation.data.target.root = b'\x55' * 32
-        if not correct_head:
-            pending_attestation.data.beacon_block_root = b'\x66' * 32
+    if spec.fork == PHASE0:
+        num_incorrect = int(fraction_incorrect * len(state.previous_epoch_attestations))
+        for pending_attestation in state.previous_epoch_attestations[:num_incorrect]:
+            if not correct_target:
+                pending_attestation.data.target.root = b'\x55' * 32
+            if not correct_head:
+                pending_attestation.data.beacon_block_root = b'\x66' * 32
+    else:
+        num_incorrect = int(fraction_incorrect * len(state.previous_epoch_reward_flags))
+        for flag in state.previous_epoch_reward_flags[:num_incorrect]:
+            flag[spec.FLAG_TARGET] = correct_target
+            flag[spec.FLAG_HEAD] = correct_head
 
     yield from run_deltas(spec, state)
 
 
 def run_test_full_delay_one_slot(spec, state):
     cached_prepare_state_with_attestations(spec, state)
-    for a in state.previous_epoch_attestations:
-        a.inclusion_delay += 1
+    if spec.fork == PHASE0:
+        for a in state.previous_epoch_attestations:
+            a.inclusion_delay += 1
+    else:
+        for flag in state.previous_epoch_reward_flags:
+            flag[spec.FLAG_VERY_TIMELY] = False
+            flag[spec.FLAG_TIMELY] = True
 
     yield from run_deltas(spec, state)
 
 
 def run_test_full_delay_max_slots(spec, state):
     cached_prepare_state_with_attestations(spec, state)
-    for a in state.previous_epoch_attestations:
-        a.inclusion_delay += spec.SLOTS_PER_EPOCH
+    if spec.fork == PHASE0:
+        for a in state.previous_epoch_attestations:
+            a.inclusion_delay += spec.SLOTS_PER_EPOCH
+    else:
+        for flag in state.previous_epoch_reward_flags:
+            flag[spec.FLAG_VERY_TIMELY] = False
+            flag[spec.FLAG_TIMELY] = False
 
     yield from run_deltas(spec, state)
 
 
 def run_test_full_mixed_delay(spec, state, rng=Random(1234)):
     cached_prepare_state_with_attestations(spec, state)
-    for a in state.previous_epoch_attestations:
-        a.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+    inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+    if spec.fork == PHASE0:
+        for a in state.previous_epoch_attestations:
+            a.inclusion_delay = inclusion_delay
+    else:
+        for flag in state.previous_epoch_reward_flags:
+            flag[spec.FLAG_VERY_TIMELY] = inclusion_delay == 1
+            flag[spec.FLAG_TIMELY] = inclusion_delay <= spec.integer_squareroot(spec.SLOTS_PER_EPOCH)
 
     yield from run_deltas(spec, state)
 
@@ -478,19 +560,42 @@ def run_test_full_random(spec, state, rng=Random(8020)):
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng)
     slash_random_validators(spec, state, rng)
+    reconcile_active_validator_lists(spec, state)
 
     cached_prepare_state_with_attestations(spec, state)
 
-    for pending_attestation in state.previous_epoch_attestations:
-        # ~1/3 have bad target
-        if rng.randint(0, 2) == 0:
-            pending_attestation.data.target.root = b'\x55' * 32
-        # ~1/3 have bad head
-        if rng.randint(0, 2) == 0:
-            pending_attestation.data.beacon_block_root = b'\x66' * 32
-        # ~50% participation
-        pending_attestation.aggregation_bits = [rng.choice([True, False]) for _ in pending_attestation.aggregation_bits]
-        # Random inclusion delay
-        pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+    if spec.fork == PHASE0:
+        for pending_attestation in state.previous_epoch_attestations:
+            # ~1/3 have bad target
+            if rng.randint(0, 2) == 0:
+                pending_attestation.data.target.root = b'\x55' * 32
+            # ~1/3 have bad head
+            if rng.randint(0, 2) == 0:
+                pending_attestation.data.beacon_block_root = b'\x66' * 32
+            # ~50% participation
+            pending_attestation.aggregation_bits = [
+                rng.choice([True, False]) for _ in pending_attestation.aggregation_bits
+            ]
+            # Random inclusion delay
+            pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+    else:
+        for i, flag in enumerate(state.previous_epoch_reward_flags):
+            # ~50% don't participate
+            if rng.randint(0, 1) == 0:
+                state.previous_epoch_reward_flags[i] = Bitvector[8]()
+                continue
+
+            # For the remaining participants...
+            # ~1/3 have bad target (and thus head)
+            if rng.randint(0, 2) == 0:
+                flag[spec.FLAG_TARGET] = False
+                flag[spec.FLAG_HEAD] = False
+            # ~1/3 have bad head
+            if rng.randint(0, 2) == 0:
+                flag[spec.FLAG_HEAD] = False
+            # Random inclusion delay dictates timeliness flags
+            inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+            flag[spec.FLAG_VERY_TIMELY] = inclusion_delay == 1
+            flag[spec.FLAG_TIMELY] = inclusion_delay <= spec.integer_squareroot(spec.SLOTS_PER_EPOCH)
 
     yield from run_deltas(spec, state)

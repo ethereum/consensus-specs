@@ -1565,19 +1565,14 @@ def process_slashings(state: BeaconState) -> None:
 #### Final updates
 
 ```python
-def rotate_participation_records(state: BeaconState) -> None:
-    # Rotate current/previous epoch attestations
-    state.previous_epoch_attestations = state.current_epoch_attestations
-    state.current_epoch_attestations = []
+def process_eth1_data_votes_updates(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
+        state.eth1_data_votes = []
 ```
 
 ```python
-def process_final_updates(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    next_epoch = Epoch(current_epoch + 1)
-    # Reset eth1 data votes
-    if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
-        state.eth1_data_votes = []
+def process_effective_balances_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
@@ -1589,16 +1584,45 @@ def process_final_updates(state: BeaconState) -> None:
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    # Reset slashings
+```
+
+```python
+def process_slashings_updates(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
-    # Set randao mix
+```
+
+```python
+def process_randao_mixes_updates(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
+    next_epoch = Epoch(current_epoch + 1)
     state.randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
-    # Set historical root accumulator
+```
+
+```python
+def process_historical_roots_updates(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
-    # Rotate participation records
-    rotate_participation_records(state)
+```
+
+
+```python
+def process_participation_record_updates(state: BeaconState) -> None:
+    # Rotate current/previous epoch attestations
+    state.previous_epoch_attestations = state.current_epoch_attestations
+    state.current_epoch_attestations = []
+```
+
+```python
+def process_final_updates(state: BeaconState) -> None:
+    process_eth1_data_votes_updates(state)
+    process_effective_balances_updates(state)
+    process_slashings_updates(state)
+    process_randao_mixes_updates(state)
+    process_historical_roots_updates(state)
+    process_participation_record_updates(state)
 ```
 
 ### Block processing

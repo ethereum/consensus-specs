@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
+- [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
   - [Shard block configs](#shard-block-configs)
@@ -81,10 +82,14 @@
     - [New rewards and penalties processing](#new-rewards-and-penalties-processing)
       - [`get_unslashed_participant_indices`](#get_unslashed_participant_indices)
       - [`get_standard_flag_deltas`](#get_standard_flag_deltas)
+      - [`get_inclusion_delay_deltas`](#get_inclusion_delay_deltas)
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
+      - [`get_crosslink_deltas`](#get_crosslink_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
-    - [New participation record rotation](#new-participation-record-rotation)
-    - [Phase 1 final updates](#phase-1-final-updates)
+    - [Updated final updates](#updated-final-updates)
+      - [New participation record rotation](#new-participation-record-rotation)
+      - [Start shard updates](#start-shard-updates)
+      - [New final updates](#new-final-updates)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
     - [Light client committee updates](#light-client-committee-updates)
@@ -111,7 +116,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `PHASE1_BASE_REWARDS_PER_EPOCH` | `uint64(6)` |
+| `PHASE1_BASE_REWARDS_PER_EPOCH` | `uint64(5)` |
 
 ## Configuration
 
@@ -954,7 +959,7 @@ def apply_shard_transition_updates(state: BeaconState,
     Applies the given ShardTransition to the appropriate ShardState. Also processes shard proposer rewards and fees.
     """
     shard = transition.shard
-    admissible_slots = compute_admissible_slots(transition.start_slot - 1)[:len(transition.shard_data_roots)]
+    admissible_slots = compute_admissible_slots(Slot(transition.start_slot - 1))[:len(transition.shard_data_roots)]
 
     # Shard proposer rewards and block size cost
     states_slots_lengths = zip(
@@ -1085,8 +1090,7 @@ def process_epoch(state: BeaconState) -> None:
     process_reveal_deadlines(state)
     process_challenge_deadlines(state)
     process_slashings(state)
-    process_final_updates(state)  # phase 0 final updates
-    process_phase_1_final_updates(state)
+    process_final_updates(state)
 ```
 
 #### New justification and finalization processing
@@ -1189,11 +1193,32 @@ def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[
     return rewards, penalties
 ```
 
+##### `get_inclusion_delay_deltas`
+
+```python
+def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return proposer and inclusion delay micro-rewards/penalties for each validator.
+
+    FLAG_VERY_TIMELY and FLAG_TIMELY each account for half of a base reward,
+    resulting in the maximum of one base reward for timeliness.
+    """
+    very_timely_rewards, _ = get_standard_flag_deltas(state, FLAG_VERY_TIMELY)
+    timely_rewards, _ = get_standard_flag_deltas(state, FLAG_TIMELY)
+    rewards = []
+    for very_timely_reward, timely_reward in zip(very_timely_rewards, timely_rewards):
+        rewards.append((very_timely_reward + timely_reward) // 2)
+
+    # No penalties associated with inclusion delay
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    return rewards, penalties
+```
+
 ##### `get_inactivity_penalty_deltas`
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-  """
+    """
     Return inactivity reward/penalty deltas for each validator.
     Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices`
     """
@@ -1214,6 +1239,16 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     return rewards, penalties
 ```
 
+##### `get_crosslink_deltas`
+
+```python
+def get_crosslink_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return attester micro-rewards/penalties for crosslink-vote for each validator.
+    """
+    return get_standard_flag_deltas(state, FLAG_CROSSLINK)
+```
+
 ##### `process_rewards_and_penalties`
 
 ```python
@@ -1223,12 +1258,11 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
 
     rewards_and_penalties = [
-        get_standard_flag_deltas(state, FLAG_CROSSLINK),
         get_standard_flag_deltas(state, FLAG_SOURCE),
         get_standard_flag_deltas(state, FLAG_TARGET),
         get_standard_flag_deltas(state, FLAG_HEAD),
-        get_standard_flag_deltas(state, FLAG_VERY_TIMELY),
-        get_standard_flag_deltas(state, FLAG_TIMELY),
+        get_standard_flag_deltas(state, FLAG_CROSSLINK),
+        get_inclusion_delay_deltas(state),
         get_inactivity_penalty_deltas(state),
     ]
     for (rewards, penalties) in rewards_and_penalties:
@@ -1237,15 +1271,12 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
             decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
 
-#### New participation record rotation
+#### Updated final updates
 
-`rotate_participation_records` is called by `process_final_updates` in Phase 0.
-
-It is overridden in Phase 1 to account for the switch from `*_epoch_attestations` to `*_epoch_reward_flags`,
-and the addition of `*_shard_transition_candidates`.
+##### New participation record rotation
 
 ```python
-def rotate_participation_records(state: BeaconState) -> None:
+def process_participation_record_updates(state: BeaconState) -> None:
     state.previous_shard_transition_candidates = state.current_shard_transition_candidates
     state.current_shard_transition_candidates = []
 
@@ -1255,16 +1286,27 @@ def rotate_participation_records(state: BeaconState) -> None:
     )
 ```
 
-#### Phase 1 final updates
+##### Start shard updates
 
 ```python
-def process_phase_1_final_updates(state: BeaconState) -> None:
+def process_start_shard_updates(state: BeaconState) -> None:
+    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
+```
+
+##### New final updates
+
+```python
+def process_final_updates(state: BeaconState) -> None:
+    process_eth1_data_votes_updates(state)
+    process_effective_balances_updates(state)
+    process_slashings_updates(state)
+    process_randao_mixes_updates(state)
+    process_historical_roots_updates(state)
     process_custody_final_updates(state)
     process_online_tracking(state)
     process_light_client_committee_updates(state)
-
-    # Update current_epoch_start_shard
-    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
+    process_participation_record_updates(state)
+    process_start_shard_updates(state)
 ```
 
 #### Custody game updates

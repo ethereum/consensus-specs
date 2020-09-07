@@ -176,15 +176,6 @@ def test_no_attestations_all_penalties(spec, state):
 
 
 def run_with_participation(spec, state, participation_fn):
-    if spec.fork != PHASE0:
-        # Gather proposers for epoch in question for later use
-        state_copy = state.copy()
-        next_epoch(spec, state_copy)
-        proposer_indices = []
-        for _ in range(spec.SLOTS_PER_EPOCH):
-            proposer_indices.append(spec.get_beacon_proposer_index(state_copy))
-            next_slot(spec, state_copy)
-
     participated = set()
 
     def participation_tracker(slot, comm_index, comm):
@@ -210,20 +201,16 @@ def run_with_participation(spec, state, participation_fn):
 
     for index in range(len(pre_state.validators)):
         if spec.is_in_inactivity_leak(state):
-            if index in proposer_indices and index in participated:
-                if spec.fork == PHASE0:
-                    # Proposers can still make money during a leak
-                    assert state.balances[index] > pre_state.balances[index]
-                else:
-                    # In phase 1, proposer rewards are given in process_attetation so stable here
-                    assert state.balances[index] == pre_state.balances[index]
+            if spec.fork == PHASE0 and index in proposer_indices and index in attesting_indices:
+                # Proposers rewards are given at end of epoch in Phase 0 so can make money during a leak
+                assert state.balances[index] > pre_state.balances[index]
             # If not proposer but participated optimally, should have exactly neutral balance
             elif index in attesting_indices:
                 assert state.balances[index] == pre_state.balances[index]
             else:
                 assert state.balances[index] < pre_state.balances[index]
         else:
-            if index in participated:
+            if index in attesting_indices:
                 assert state.balances[index] > pre_state.balances[index]
             else:
                 assert state.balances[index] < pre_state.balances[index]

@@ -29,9 +29,13 @@ def test_quarter_full(spec, state):
     yield from rewards_helpers.run_test_partial(spec, state, 0.25)
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 def test_full_but_partial_participation(spec, state):
+    """
+    Only run with phase 0 because the flag accounting in subsequent phases
+    doesn't have a notion of partially filled attestations by the time we get to rewards.
+    """
     yield from rewards_helpers.run_test_full_but_partial_participation(spec, state)
 
 
@@ -111,9 +115,13 @@ def test_full_half_incorrect_target_incorrect_head(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 def test_full_half_incorrect_target_correct_head(spec, state):
+    """
+    `process_attestation` in Phase 1+ prevents FLAG_HEAD from being set unless FLAG_TARGET is also set.
+    Thus this case is unreachable in Phase 1+ and is not tested to avoid a degenerate state test case.
+    """
     yield from rewards_helpers.run_test_full_fraction_incorrect(
         spec, state,
         correct_target=False,
