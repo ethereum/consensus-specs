@@ -49,7 +49,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index, shard=None, shard_transition=None, on_time=True):
+def build_attestation_data(spec, state, slot, index, shard=None, shard_transition=None):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -90,52 +90,15 @@ def build_attestation_data(spec, state, slot, index, shard=None, shard_transitio
             data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
             data.shard_transition_root = shard_transition.hash_tree_root()
         else:
-            if on_time:
-                if data.slot == spec.GENESIS_SLOT:
-                    data.shard_head_root = spec.Root()
-                    data.shard_transition_root = spec.ShardTransition().hash_tree_root()
-                else:
-                    shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
-                    last_offset_index = len(shard_transition.shard_data_roots) - 1
-                    data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
-                    data.shard_transition_root = shard_transition.hash_tree_root()
+            if data.slot == spec.GENESIS_SLOT:
+                data.shard_head_root = spec.Root()
+                data.shard_transition_root = spec.ShardTransition().hash_tree_root()
             else:
-                data.shard_head_root = state.shard_states[shard].latest_block_root
-                data.shard_transition_root = spec.Root()
+                shard_transition = spec.get_shard_transition(state, shard, shard_blocks=[])
+                last_offset_index = len(shard_transition.shard_data_roots) - 1
+                data.shard_head_root = shard_transition.shard_states[last_offset_index].latest_block_root
+                data.shard_transition_root = shard_transition.hash_tree_root()
     return data
-
-
-def get_valid_on_time_attestation(spec, state, slot=None, index=None, shard_transition=None, signed=False):
-    '''
-    Construct on-time attestation for next slot
-    '''
-    if slot is None:
-        slot = state.slot
-    if index is None:
-        index = 0
-
-    return get_valid_attestation(
-        spec,
-        state,
-        slot=slot,
-        index=index,
-        shard_transition=shard_transition,
-        signed=signed,
-        on_time=True,
-    )
-
-
-def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False, shard_transition=None):
-    '''
-    Construct on-time attestation for next slot
-    '''
-    if slot is None:
-        slot = state.slot
-    if index is None:
-        index = 0
-
-    return get_valid_attestation(spec, state, slot=slot, index=index,
-                                 signed=signed, on_time=False, shard_transition=shard_transition)
 
 
 def get_valid_attestation(spec,
@@ -144,8 +107,7 @@ def get_valid_attestation(spec,
                           index=None,
                           filter_participant_set=None,
                           shard_transition=None,
-                          signed=False,
-                          on_time=True):
+                          signed=False):
     # If filter_participant_set filters everything, the attestation has 0 participants, and cannot be signed.
     # Thus strictly speaking invalid when no participant is added later.
     if slot is None:
@@ -154,7 +116,7 @@ def get_valid_attestation(spec,
         index = 0
 
     attestation_data = build_attestation_data(
-        spec, state, slot=slot, index=index, shard_transition=shard_transition, on_time=on_time
+        spec, state, slot=slot, index=index, shard_transition=shard_transition,
     )
 
     beacon_committee = spec.get_beacon_committee(
@@ -264,7 +226,7 @@ def next_epoch_with_attestations(spec,
 
                     cur_attestation = get_valid_attestation(
                         spec, post_state, slot_to_attest,
-                        shard_transition=shard_transition, index=index, signed=True, on_time=True
+                        shard_transition=shard_transition, index=index, signed=True,
                     )
                     block.body.attestations.append(cur_attestation)
 
@@ -273,7 +235,7 @@ def next_epoch_with_attestations(spec,
             committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
             for index in range(committees_per_slot):
                 prev_attestation = get_valid_attestation(
-                    spec, post_state, slot_to_attest, index=index, signed=True, on_time=False)
+                    spec, post_state, slot_to_attest, index=index, signed=True)
                 block.body.attestations.append(prev_attestation)
 
         signed_block = state_transition_and_sign_block(spec, post_state, block)

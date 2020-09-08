@@ -770,7 +770,7 @@ def test_attestation(spec, state):
         attestation_block.body.shard_transitions.append(shard_transition)
 
     attestation = get_valid_attestation(
-        spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
+        spec, state, shard_transition=shard_transition, index=index, signed=True
     )
 
     # Add to state via block transition

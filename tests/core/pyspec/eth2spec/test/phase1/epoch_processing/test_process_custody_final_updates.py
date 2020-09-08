@@ -11,7 +11,7 @@ from eth2spec.test.helpers.custody import (
     get_sample_shard_transition
 )
 from eth2spec.test.helpers.attestations import (
-    get_valid_on_time_attestation,
+    get_valid_attestation,
 )
 from eth2spec.test.helpers.state import next_epoch_via_block, transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
@@ -78,8 +78,8 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
     shard = 0
     offset_slots = get_offset_slots(spec, state, shard)
     shard_transition = get_sample_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
+    attestation = get_valid_attestation(spec, state, index=shard, signed=True,
+                                        shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -127,8 +127,8 @@ def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state)
     shard = 0
     offset_slots = get_offset_slots(spec, state, shard)
     shard_transition = get_sample_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
+    attestation = get_valid_attestation(spec, state, index=shard, signed=True,
+                                        shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 

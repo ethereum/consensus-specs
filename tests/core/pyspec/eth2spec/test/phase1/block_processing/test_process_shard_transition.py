@@ -5,7 +5,6 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
-    get_valid_on_time_attestation,
     run_attestation_processing,
 )
 from eth2spec.test.helpers.shard_transitions import (
@@ -33,7 +32,7 @@ def get_initial_env(spec, state, target_len_offset_slot):
 def get_attestations_and_shard_transitions(spec, state, shard_block_dict):
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
     attestations = [
-        get_valid_on_time_attestation(
+        get_valid_attestation(
             spec, state,
             index=get_committee_index_of_shard(spec, state, state.slot, shard),
             shard_transition=shard_transition,
@@ -147,7 +146,6 @@ def test_no_winning_root(spec, state):
         # Decrease attested participants to 1/3 committee
         filter_participant_set=lambda committee: set(list(committee)[:len(committee) // 3]),
         signed=True,
-        on_time=True,
     )
 
     next_slot(spec, state)
@@ -191,7 +189,6 @@ def test_wrong_shard_transition_root(spec, state):
         index=committee_index,
         shard_transition=wrong_shard_transition,
         signed=True,
-        on_time=True,
     )
 
     next_slot(spec, state)

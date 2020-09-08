@@ -44,7 +44,7 @@ def test_success_multi_proposer_index_iterations(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_previous_epoch(spec, state):
-    attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
+    attestation = get_valid_attestation(spec, state, signed=True)
     next_epoch_via_block(spec, state)
 
     yield from run_attestation_processing(spec, state, attestation)
@@ -95,7 +95,7 @@ def test_before_inclusion_delay(spec, state):
 @with_all_phases
 @spec_state_test
 def test_after_epoch_slots(spec, state):
-    attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
+    attestation = get_valid_attestation(spec, state, signed=True)
 
     # increment past latest inclusion slot
     transition_to_slot_via_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH + 1)
@@ -172,7 +172,7 @@ def test_mismatched_target_and_slot(spec, state):
     next_epoch_via_block(spec, state)
     next_epoch_via_block(spec, state)
 
-    attestation = get_valid_attestation(spec, state, on_time=False)
+    attestation = get_valid_attestation(spec, state)
     attestation.data.slot = attestation.data.slot - spec.SLOTS_PER_EPOCH
 
     sign_attestation(spec, state, attestation)
@@ -185,7 +185,7 @@ def test_mismatched_target_and_slot(spec, state):
 def test_old_target_epoch(spec, state):
     assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
 
-    attestation = get_valid_attestation(spec, state, signed=True, on_time=False)
+    attestation = get_valid_attestation(spec, state, signed=True)
 
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)  # target epoch will be too old to handle
 
@@ -250,7 +250,7 @@ def test_invalid_current_source_root(spec, state):
     state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
     state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32' * 32)
 
-    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1, on_time=False)
+    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Test logic sanity checks:

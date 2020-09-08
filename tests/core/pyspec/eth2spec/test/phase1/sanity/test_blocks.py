@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
 )
-from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
+from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.custody import (
     get_custody_secret,
@@ -54,7 +54,7 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
 
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
     attestations = [
-        get_valid_on_time_attestation(
+        get_valid_attestation(
             spec,
             state,
             index=committee_index,
@@ -155,7 +155,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
     shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
-    attestation = get_valid_on_time_attestation(
+    attestation = get_valid_attestation(
         spec, state, index=committee_index,
         shard_transition=shard_transitions[shard], signed=True,
     )
@@ -221,7 +221,7 @@ def test_custody_slashing(spec, state):
     shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
 
-    attestation = get_valid_on_time_attestation(
+    attestation = get_valid_attestation(
         spec, state, index=committee_index,
         shard_transition=shard_transitions[shard], signed=True,
     )

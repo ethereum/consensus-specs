@@ -1,7 +1,7 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_except, never_bls
-from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
+from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
     get_shard_transitions,
@@ -73,7 +73,7 @@ def is_in_offset_sets(spec, beacon_head_state, shard):
 def create_attestation_for_shard_blocks(spec, beacon_parent_state, shard, committee_index, blocks,
                                         filter_participant_set=None):
     shard_transition = spec.get_shard_transition(beacon_parent_state, shard, blocks)
-    attestation = get_valid_on_time_attestation(
+    attestation = get_valid_attestation(
         spec,
         beacon_parent_state,
         index=committee_index,
@@ -100,7 +100,7 @@ def create_beacon_block_with_shard_transition(
         shard_transitions = get_shard_transitions(spec, state, shard_block_dict={shard: shard_blocks_buffer})
         assert len(shard_transitions) == 1
         shard_transition = shard_transitions[0]
-        attestation = get_valid_on_time_attestation(
+        attestation = get_valid_attestation(
             spec,
             state,
             index=committee_index,
