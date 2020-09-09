@@ -115,7 +115,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
-
+from eth2spec.utils.exceptions import ValidationError
 from eth2spec.utils.hash_function import hash
 
 SSZObject = TypeVar('SSZObject', bound=View)
@@ -139,7 +139,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
-
+from eth2spec.utils.exceptions import ValidationError
 from eth2spec.utils.hash_function import hash
 
 # Whenever phase 1 is loaded, make sure we have the latest phase0
