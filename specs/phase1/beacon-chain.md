@@ -424,6 +424,8 @@ class ShardTransition(Container):
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
     proposer_signature_aggregate: BLSSignature
+    # Final shard chain head block root
+    final_shard_head_root: Bytes32
 ```
 
 ### `ShardTransitionCandidate`
@@ -935,7 +937,7 @@ def validate_shard_transition(state: BeaconState,
 
     # Verify last header root is correct with respect to the transition candidate
     if any(headers):
-        assert hash_tree_root(headers[-1]) == candidate.block_root
+        assert hash_tree_root(headers[-1]) == candidate.block_root == transition.final_shard_head_root
     else:
         # All empty block transitions, block root should be unchanged
         assert state.shard_states[shard].latest_block_root == candidate.block_root
@@ -1004,7 +1006,7 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
 
     # Extract matching ShardTransitionCandidate
     all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
-    matching_candidates = [c for c in all_candidates if c.transition_root == hash_tree_root(transition)]
+    matching_candidates = [c for c in all_candidates if (c.transition_root, c.block_root) == (hash_tree_root(transition), transition.final_shard_head_root)]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 
