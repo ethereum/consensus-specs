@@ -31,7 +31,7 @@ def pytest_addoption(parser):
         help="config: make the pyspec use the specified configuration"
     )
     parser.addoption(
-        "--disable-bls", action="store_true",
+        "--disable-bls", action="store_true", default=False,
         help="bls-default: make tests that are not dependent on BLS run without BLS"
     )
     parser.addoption(

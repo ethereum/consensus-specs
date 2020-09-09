@@ -22,8 +22,12 @@ from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_comm
 
 from eth2spec.test.context import (
     PHASE0, PHASE1,
-    spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases, dump_skipping_message,
+    spec_test, spec_state_test, dump_skipping_message,
+    with_phases, with_all_phases, single_phase,
+    expect_assertion_error, always_bls,
     disable_process_reveal_deadlines,
+    with_custom_state,
+    large_validator_set,
 )
 
 
@@ -71,6 +75,7 @@ def test_same_slot_block_transition(spec, state):
 def test_empty_block_transition(spec, state):
     pre_slot = state.slot
     pre_eth1_votes = len(state.eth1_data_votes)
+    pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     yield 'pre', state
 
@@ -83,7 +88,30 @@ def test_empty_block_transition(spec, state):
 
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
+
+
+@with_all_phases
+@spec_test
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@single_phase
+def test_empty_block_transition_large_validator_set(spec, state):
+    pre_slot = state.slot
+    pre_eth1_votes = len(state.eth1_data_votes)
+    pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert len(state.eth1_data_votes) == pre_eth1_votes + 1
+    assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 
 
 def process_and_sign_block_without_header_validations(spec, state, block):
@@ -274,6 +302,26 @@ def test_skipped_slots(spec, state):
 @with_all_phases
 @spec_state_test
 def test_empty_epoch_transition(spec, state):
+    pre_slot = state.slot
+    yield 'pre', state
+
+    block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert state.slot == block.slot
+    for slot in range(pre_slot, state.slot):
+        assert spec.get_block_root_at_slot(state, slot) == block.parent_root
+
+
+@with_all_phases
+@spec_test
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@single_phase
+def test_empty_epoch_transition_large_validator_set(spec, state):
     pre_slot = state.slot
     yield 'pre', state
 

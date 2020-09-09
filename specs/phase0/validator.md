@@ -194,9 +194,14 @@ def is_proposer(state: BeaconState, validator_index: ValidatorIndex) -> bool:
 
 ### Lookahead
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead
+on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot.
+Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and joining the committee index attestation subnet related to their committee assignment.
+`get_committee_assignment` should be called at the start of each epoch
+to get the assignment for the next epoch (`current_epoch + 1`).
+A validator should plan for future assignments by noting their assigned attestation
+slot and joining the committee index attestation subnet related to their committee assignment.
 
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
@@ -214,9 +219,18 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 
 ### Block proposal
 
-A validator is expected to propose a [`SignedBeaconBlock`](./beacon-chain.md#signedbeaconblock) at the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator creates, signs, and broadcasts a `block` that is a child of `parent` that satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`SignedBeaconBlock`](./beacon-chain.md#signedbeaconblock) at
+the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`.
+To propose, the validator selects the `BeaconBlock`, `parent`,
+that in their view of the fork choice is the head of the chain during `slot - 1`.
+The validator creates, signs, and broadcasts a `block` that is a child of `parent`
+that satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
 
-There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
+There is one proposer per slot, so if there are N active validators any individual validator
+will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
+
+*Note*: In this section, `state` is the state of the slot for the block proposal _without_ the block yet applied.
+That is, `state` is the `previous_state` processed through any empty slots up to the assigned slot using `process_slots(previous_state, slot)`.
 
 #### Preparing for a `BeaconBlock`
 
@@ -251,7 +265,13 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 ##### Eth1 Data
 
-The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates immediately allowing new deposits to be processed. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
+The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data.
+This recent data contains an Eth1 block hash as well as the associated deposit root
+(as calculated by the `get_deposit_root()` method of the deposit contract) and
+deposit count after execution of the corresponding Eth1 block.
+If over half of the block proposers in the current Eth1 voting period vote for the same
+`eth1_data` then `state.eth1_data` updates immediately allowing new deposits to be processed.
+Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
 ###### `Eth1Block`
 

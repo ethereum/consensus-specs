@@ -158,6 +158,15 @@ def low_single_balance(spec):
     return [1]
 
 
+def large_validator_set(spec):
+    """
+    Helper method to create a series of default balances.
+    Usage: `@with_custom_state(balances_fn=default_balances, ...)`
+    """
+    num_validators = 2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
 def single_phase(fn):
     """
     Decorator that filters out the phases data.

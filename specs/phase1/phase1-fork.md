@@ -36,7 +36,6 @@ Warning: this configuration is not definitive.
 | - | - |
 | `PHASE_1_FORK_VERSION` | `Version('0x01000000')` |
 | `PHASE_1_FORK_SLOT` | `Slot(0)` **TBD** |
-| `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
 
 ## Fork to Phase 1
 
