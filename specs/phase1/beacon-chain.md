@@ -36,6 +36,7 @@
   - [`ShardState`](#shardstate)
   - [`ShardTransition`](#shardtransition)
   - [`ShardTransitionCandidate`](#shardtransitioncandidate)
+  - [`ShardTransitionCandidateData`](#shardtransitioncandidatedata)
   - [`CompactCommittee`](#compactcommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
@@ -60,7 +61,7 @@
     - [`get_start_shard`](#get_start_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
   - [Predicates](#predicates)
-    - [`is_candidate_for_attestation_data`](#is_candidate_for_attestation_data)
+    - [`get_transition_candidate_data`](#get_transition_candidate_data)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
     - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
   - [Block processing](#block-processing)
@@ -424,19 +425,24 @@ class ShardTransition(Container):
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
     proposer_signature_aggregate: BLSSignature
-    # Final shard chain head block root
-    final_shard_head_root: Bytes32
 ```
 
 ### `ShardTransitionCandidate`
 
 ```python
 class ShardTransitionCandidate(Container):
+    data: ShardTransitionCandidateData
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+```
+
+### `ShardTransitionCandidateData`
+
+```python
+class ShardTransitionCandidateData(Container):
     transition_root: Root
     block_root: Root
     slot: Slot
     index: CommitteeIndex
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
 ```
 
 ### `CompactCommittee`
@@ -703,16 +709,18 @@ def get_latest_slot_for_shard(state: BeaconState, shard: Shard) -> Slot:
 
 ### Predicates
 
-#### `is_candidate_for_attestation_data`
+#### `get_transition_candidate_data`
 
 ```python
-def is_candidate_for_attestation_data(candidate: ShardTransitionCandidate, data: AttestationData) -> bool:
+def get_transition_candidate_data(data: AttestationData) -> ShardTransitionCandidateData:
     """
-    Return whether the ``candidate`` is for the supplied ``data``
+    Return the subset of the AttestationData relevant to shard transitions
     """
-    return (
-        (candidate.transition_root, candidate.block_root, candidate.slot, candidate.index)
-        == (data.shard_transition_root, data.shard_head_root, data.slot, data.index)
+    return ShardTransitionCandidateData(
+        transition_root=data.shard_transition_root,
+        block_root=data.shard_head_root,
+        slot=data.slot,
+        index=data.index,
     )
 ```
 
@@ -835,7 +843,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Process shard transition
     candidate_exists = False
     for candidate in shard_transition_candidates:
-        if is_candidate_for_attestation_data(candidate, data):
+        if candidate.data == get_transition_candidate_data(data):
             candidate.aggregation_bits = Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([
                 candidate_bit or aggregation_bit
                 for candidate_bit, aggregation_bit in zip(candidate.aggregation_bits, attestation.aggregation_bits)
@@ -845,11 +853,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
             # Invariant: `shard_transition_candidates` contains <= 1 item with any given `data`
     if not candidate_exists:
         shard_transition_candidates.append(ShardTransitionCandidate(
-            transition_root=data.shard_transition_root,
-            block_root=data.shard_head_root,
-            slot=data.slot,
-            index=data.index,
-            aggregation_bits=attestation.aggregation_bits
+            data=get_transition_candidate_data(data),
+            aggregation_bits=attestation.aggregation_bits,
         ))
 ```
 
@@ -867,7 +872,7 @@ def get_online_beacon_committee(state: BeaconState, slot: Slot, index: Committee
 ```python
 def get_online_transition_participants(state: BeaconState,
                                        candidate: ShardTransitionCandidate) -> Set[ValidatorIndex]:
-    committee = get_beacon_committee(state, candidate.slot, candidate.index)
+    committee = get_beacon_committee(state, candidate.data.slot, candidate.data.index)
     participants = [committee[i] for i in range(len(committee)) if candidate.aggregation_bits[i]]
     online_indices = get_online_validator_indices(state)
     return online_indices.intersection(participants)
@@ -884,11 +889,11 @@ def validate_shard_transition(state: BeaconState,
     and matchines the transition candidate.
     """
     # Validate transition and candidate shard coherence
-    shard = (get_start_shard(state, candidate.slot) + candidate.index) % get_active_shard_count(state)
+    shard = (get_start_shard(state, candidate.data.slot) + candidate.data.index) % get_active_shard_count(state)
     assert shard == transition.shard < get_active_shard_count(state)
 
     # Confirm sufficient balance
-    online_committee = get_online_beacon_committee(state, candidate.slot, candidate.index)
+    online_committee = get_online_beacon_committee(state, candidate.data.slot, candidate.data.index)
     online_participants = get_online_transition_participants(state, candidate)
     assert get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2
 
@@ -937,10 +942,12 @@ def validate_shard_transition(state: BeaconState,
 
     # Verify last header root is correct with respect to the transition candidate
     if any(headers):
-        assert hash_tree_root(headers[-1]) == candidate.block_root == transition.final_shard_head_root
+        last_header = headers[len(headers) - 1]
+        last_shard_state = transition.shard_states[len(transition.shard_states) - 1]
+        assert hash_tree_root(last_header) == candidate.data.block_root == last_shard_state.latest_block_root
     else:
         # All empty block transitions, block root should be unchanged
-        assert state.shard_states[shard].latest_block_root == candidate.block_root
+        assert state.shard_states[shard].latest_block_root == candidate.data.block_root
 
     # Verify combined proposer signature
     pubkeys = [state.validators[proposer].pubkey for proposer in proposers]
@@ -985,11 +992,11 @@ def apply_shard_transition_updates(state: BeaconState,
     state.shard_states[shard] = shard_state
 
     # Save attester and beacon proposer rewards
-    is_current = compute_epoch_at_slot(candidate.slot) == get_current_epoch(state)
+    is_current = compute_epoch_at_slot(candidate.data.slot) == get_current_epoch(state)
     flags = (state.current_epoch_reward_flags if is_current else state.previous_epoch_reward_flags)
     online_participants = get_online_transition_participants(state, candidate)
     for validator_index in online_participants:
-        epoch = compute_epoch_at_slot(candidate.slot)
+        epoch = compute_epoch_at_slot(candidate.data.slot)
         shuffled_position = get_active_validator_indices(state, epoch).index(validator_index)
         flags[shuffled_position][FLAG_CROSSLINK] = True
     estimated_attester_reward = sum([get_base_reward(state, attester) for attester in online_participants])
@@ -1003,10 +1010,17 @@ def apply_shard_transition_updates(state: BeaconState,
 def process_shard_transition(state: BeaconState, transition: ShardTransition) -> None:
     # TODO: only need to check it once when phase 1 starts
     assert state.slot > PHASE_1_FORK_SLOT
+    # Do not attempt to transition the Genesis transition stub
+    assert transition != ShardTransition()
 
     # Extract matching ShardTransitionCandidate
     all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
-    matching_candidates = [c for c in all_candidates if (c.transition_root, c.block_root) == (hash_tree_root(transition), transition.final_shard_head_root)]
+    latest_block_root = transition.shard_states[len(transition.shard_states) - 1].latest_block_root
+    matching_candidates = [
+        c for c in all_candidates
+        if (c.data.transition_root, c.data.block_root)
+        == (hash_tree_root(transition), latest_block_root)
+    ]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 

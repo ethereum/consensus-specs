@@ -220,7 +220,8 @@ def next_epoch_with_attestations(spec,
                 for index in range(committees_per_slot):
                     if spec.fork == PHASE1:
                         shard_transition = get_shard_transition_of_committee(spec, post_state, index)
-                        block.body.shard_transitions.append(shard_transition)
+                        if shard_transition != spec.ShardTransition():
+                            block.body.shard_transitions.append(shard_transition)
                     else:
                         shard_transition = None
 

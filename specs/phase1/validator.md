@@ -158,7 +158,7 @@ Specifically:
       found in `attestations` to the corresponding full `ShardTransition`
     * Let `full_transitions_for_shard` be that dictionary filtered with only `ShardTransitions` with shard equal to `shard`
     * Call `winning_transition = select_transition_from_winning_roots(state, winning_roots, full_transitions_for_shard)`
-    * If `winning_transition is not None`, append `winning_transition` to `shard_transitions`
+    * If `winning_transition != ShardTransition()`, append `winning_transition` to `shard_transitions`
 * Set `block.shard_transitions = shard_transitions`
 
 *Note*: The `state` passed into `get_shard_winning_roots` must be transitioned the slot of `block.slot`
@@ -170,18 +170,20 @@ def get_shard_winning_roots(state: BeaconState, shard: Shard) -> Sequence[Root]:
     shard_candidates = [
         candidate for candidate in all_candidates
         if (
-            shard == (get_start_shard(state, candidate.slot) + candidate.index) % get_active_shard_count(state)
-            and candidate.slot > state.shard_states[shard].slot
+            shard == (
+                get_start_shard(state, candidate.data.slot) + candidate.data.index
+            ) % get_active_shard_count(state)
+            and candidate.data.slot > state.shard_states[shard].slot
         )
     ]
-    sorted_shard_candidates = sorted(shard_candidates, key=lambda candidate: candidate.slot, reverse=True)
+    sorted_shard_candidates = sorted(shard_candidates, key=lambda candidate: candidate.data.slot, reverse=True)
 
     winning_roots = []
     for candidate in sorted_shard_candidates:
-        online_committee = get_online_beacon_committee(state, candidate.slot, candidate.index)
+        online_committee = get_online_beacon_committee(state, candidate.data.slot, candidate.data.index)
         online_participants = get_online_transition_participants(state, candidate)
         if get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2:
-            winning_roots.append(candidate.transition_root)
+            winning_roots.append(candidate.data.transition_root)
 
     return winning_roots
 ```
@@ -189,7 +191,7 @@ def get_shard_winning_roots(state: BeaconState, shard: Shard) -> Sequence[Root]:
 ```python
 def select_transition_from_winning_roots(state: BeaconState,
                                          winning_roots: Sequence[Root],
-                                         full_transitions: Dict[Root, ShardTransition]) -> Optional[ShardTransition]:
+                                         full_transitions: Dict[Root, ShardTransition]) -> ShardTransition:
     for root in winning_roots:
         if root not in full_transitions:
             continue
@@ -205,7 +207,7 @@ def select_transition_from_winning_roots(state: BeaconState,
         ):
             return transition
 
-    return None
+    return ShardTransition()
 ```
 
 

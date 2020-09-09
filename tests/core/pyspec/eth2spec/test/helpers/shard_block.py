@@ -66,13 +66,15 @@ def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
         if shard not in shard_block_dict:
             continue
         blocks = shard_block_dict[shard]
-        shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
         offset_slots = spec.compute_offset_slots(
             spec.get_latest_slot_for_shard(parent_beacon_state, shard),
             on_time_slot,
         )
         len_offset_slots = len(offset_slots)
         shard_transition = spec.get_shard_transition(parent_beacon_state, shard, blocks)
+        # Do not add stub genesis transitions
+        if shard_transition == spec.ShardTransition():
+            continue
 
         shard_block_root = blocks[-1].message.hash_tree_root()
         assert shard_transition.shard_states[len_offset_slots - 1].latest_block_root == shard_block_root
