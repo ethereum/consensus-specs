@@ -170,18 +170,18 @@ def get_shard_winning_roots(state: BeaconState, shard: Shard) -> Sequence[Root]:
     shard_candidates = [
         candidate for candidate in all_candidates
         if (
-            shard == (get_start_shard(state, candidate.slot) + candidate.index) % get_active_shard_count(state)
-            and candidate.slot > state.shard_states[shard].slot
+            shard == (get_start_shard(state, candidate.data.slot) + candidate.data.index) % get_active_shard_count(state)
+            and candidate.data.slot > state.shard_states[shard].slot
         )
     ]
-    sorted_shard_candidates = sorted(shard_candidates, key=lambda candidate: candidate.slot, reverse=True)
+    sorted_shard_candidates = sorted(shard_candidates, key=lambda candidate: candidate.data.slot, reverse=True)
 
     winning_roots = []
     for candidate in sorted_shard_candidates:
-        online_committee = get_online_beacon_committee(state, candidate.slot, candidate.index)
+        online_committee = get_online_beacon_committee(state, candidate.data.slot, candidate.data.index)
         online_participants = get_online_transition_participants(state, candidate)
         if get_total_balance(state, online_participants) * 3 >= get_total_balance(state, online_committee) * 2:
-            winning_roots.append(candidate.transition_root)
+            winning_roots.append(candidate.data.transition_root)
 
     return winning_roots
 ```

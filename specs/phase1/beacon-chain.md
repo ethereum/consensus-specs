@@ -36,6 +36,7 @@
   - [`ShardState`](#shardstate)
   - [`ShardTransition`](#shardtransition)
   - [`ShardTransitionCandidate`](#shardtransitioncandidate)
+  - [`ShardTransitionCandidateData`](#shardtransitioncandidatedata)
   - [`CompactCommittee`](#compactcommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
@@ -60,7 +61,7 @@
     - [`get_start_shard`](#get_start_shard)
     - [`get_latest_slot_for_shard`](#get_latest_slot_for_shard)
   - [Predicates](#predicates)
-    - [`is_candidate_for_attestation_data`](#is_candidate_for_attestation_data)
+    - [`get_transition_candidate_data`](#get_transition_candidate_data)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
     - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
   - [Block processing](#block-processing)
@@ -719,7 +720,7 @@ def get_transition_candidate_data(data: AttestationData) -> ShardTransitionCandi
         transition_root=data.shard_transition_root,
         block_root=data.shard_head_root,
         slot=data.slot,
-        index=data.index
+        index=data.index,
     )
 ```
 
@@ -853,7 +854,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     if not candidate_exists:
         shard_transition_candidates.append(ShardTransitionCandidate(
             data=get_transition_candidate_data(data),
-            aggregation_bits=attestation.aggregation_bits
+            aggregation_bits=attestation.aggregation_bits,
         ))
 ```
 
@@ -1010,7 +1011,7 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
 
     # Extract matching ShardTransitionCandidate
     all_candidates = state.current_shard_transition_candidates + state.previous_shard_transition_candidates
-    matching_candidates = [c for c in all_candidates if c.transition_root == hash_tree_root(transition)]
+    matching_candidates = [c for c in all_candidates if c.data.transition_root == hash_tree_root(transition)]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]
 
