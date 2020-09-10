@@ -86,7 +86,6 @@
       - [`get_standard_flag_deltas`](#get_standard_flag_deltas)
       - [`get_inclusion_delay_deltas`](#get_inclusion_delay_deltas)
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
-      - [`get_crosslink_deltas`](#get_crosslink_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Updated final updates](#updated-final-updates)
       - [New participation record rotation](#new-participation-record-rotation)
@@ -852,10 +851,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Update participation flags
     for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
         active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
-        if not flags[active_position][FLAG_SOURCE]:
         for flag in flags_to_set:
+            # Give proposer reward for new flags
             if not flags[active_position][flag]:
-                increase_balance(state, get_beacon_proposer_index(state), get_base_reward(state, participant) // BEACON_PROPOSER_REWARD_DENOMINATOR)
+                proposer_reward = Gwei(get_base_reward(state, participant) // BEACON_PROPOSER_REWARD_DENOMINATOR)
+                increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
             flags[active_position][flag] = True
 
     # Process shard transition
@@ -1214,7 +1214,9 @@ def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Ep
 ##### `get_standard_flag_deltas`
 
 ```python
-def get_standard_flag_deltas(state: BeaconState, flag: uint8, denominator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_standard_flag_deltas(state: BeaconState,
+                             flag: uint8,
+                             denominator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
     unslashed_participant_indices = get_unslashed_participant_indices(state, flag, get_previous_epoch(state))
@@ -1229,7 +1231,10 @@ def get_standard_flag_deltas(state: BeaconState, flag: uint8, denominator: uint6
                 # optimal participation receives full base reward compensation here.
                 rewards[index] += get_base_reward(state, index) // denominator
             else:
-                rewards[index] += (get_base_reward(state, index) * total_participating_balance // total_balance) // denominator
+                rewards[index] += (
+                    (get_base_reward(state, index) * total_participating_balance // total_balance)
+                    // denominator
+                )
         else:
             penalties[index] += get_base_reward(state, index) // denominator
     return rewards, penalties
@@ -1258,16 +1263,6 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     # No rewards associated with inactivity penalties
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     return rewards, penalties
-```
-
-##### `get_crosslink_deltas`
-
-```python
-def get_crosslink_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    """
-    Return attester micro-rewards/penalties for crosslink-vote for each validator.
-    """
-    return get_standard_flag_deltas(state, FLAG_CROSSLINK)
 ```
 
 ##### `process_rewards_and_penalties`
@@ -1345,10 +1340,10 @@ def process_online_tracking(state: BeaconState) -> None:
 
     # Process pending attestations
     for i, index in enumerate(get_active_validator_indices(state, get_previous_epoch(state))):
-        if state.previous_epoch_reward_flags[i][FLAG_SOURCE]:
+        if any(state.previous_epoch_reward_flags[i]):
             state.online_countdown[index] = ONLINE_PERIOD
     for i, index in enumerate(get_active_validator_indices(state, get_current_epoch(state))):
-        if state.current_epoch_reward_flags[i][FLAG_SOURCE]:
+        if any(state.current_epoch_reward_flags[i]):
             state.online_countdown[index] = ONLINE_PERIOD
 ```
 
