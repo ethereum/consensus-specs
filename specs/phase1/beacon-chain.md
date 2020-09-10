@@ -13,6 +13,7 @@
 - [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
+  - [Reward denominators](#reward-denominators)
   - [Shard block configs](#shard-block-configs)
   - [Gwei values](#gwei-values)
   - [Initial values](#initial-values)
@@ -84,7 +85,6 @@
     - [New rewards and penalties processing](#new-rewards-and-penalties-processing)
       - [`get_unslashed_participant_indices`](#get_unslashed_participant_indices)
       - [`get_standard_flag_deltas`](#get_standard_flag_deltas)
-      - [`get_inclusion_delay_deltas`](#get_inclusion_delay_deltas)
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Updated final updates](#updated-final-updates)
@@ -114,10 +114,6 @@ We define the following Python custom types for type hinting and readability:
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.
-
-| Name | Value |
-| - | - |
-| `PHASE1_BASE_REWARDS_PER_EPOCH` | `uint64(5)` |
 
 ## Configuration
 
@@ -1249,13 +1245,20 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices`
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
+    attestation_reward_denominators = [
+        TARGET_REWARD_DENOMINATOR,
+        HEAD_REWARD_DENOMINATOR,
+        CROSSLINK_REWARD_DENOMINATOR,
+        VERY_TIMELY_REWARD_DENOMINATOR,
+        TIMELY_REWARD_DENOMINATOR,
+    ]
     if is_in_inactivity_leak(state):
         previous_epoch = get_previous_epoch(state)
         matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, previous_epoch)
         for index in get_eligible_validator_indices(state):
-            # If validator is performing optimally this cancels all rewards for a neutral balance
-            base_reward = get_base_reward(state, index)
-            penalties[index] += Gwei(PHASE1_BASE_REWARDS_PER_EPOCH * base_reward)
+            # If validator is performing optimally this cancels all attestation rewards for a neutral balance
+            for reward_denominator in attestation_reward_denominators:
+                penalties[index] += Gwei(get_base_reward(state, index) // reward_denominator)
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)

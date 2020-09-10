@@ -237,7 +237,14 @@ def run_get_inactivity_penalty_deltas(spec, state):
             if spec.fork == PHASE0:
                 base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
             else:
-                base_penalty = spec.PHASE1_BASE_REWARDS_PER_EPOCH * base_reward
+                attestation_reward_denominators = [
+                    spec.TARGET_REWARD_DENOMINATOR,
+                    spec.HEAD_REWARD_DENOMINATOR,
+                    spec.CROSSLINK_REWARD_DENOMINATOR,
+                    spec.VERY_TIMELY_REWARD_DENOMINATOR,
+                    spec.TIMELY_REWARD_DENOMINATOR,
+                ]
+                base_penalty = sum(base_reward // demon for demon in attestation_reward_denominators)
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
