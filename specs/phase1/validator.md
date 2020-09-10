@@ -158,7 +158,7 @@ Specifically:
       found in `attestations` to the corresponding full `ShardTransition`
     * Let `full_transitions_for_shard` be that dictionary filtered with only `ShardTransitions` with shard equal to `shard`
     * Call `winning_transition = select_transition_from_winning_roots(state, winning_roots, full_transitions_for_shard)`
-    * If `winning_transition is not None`, append `winning_transition` to `shard_transitions`
+    * If `winning_transition != ShardTransition()`, append `winning_transition` to `shard_transitions`
 * Set `block.shard_transitions = shard_transitions`
 
 *Note*: The `state` passed into `get_shard_winning_roots` must be transitioned the slot of `block.slot`
@@ -170,7 +170,9 @@ def get_shard_winning_roots(state: BeaconState, shard: Shard) -> Sequence[Root]:
     shard_candidates = [
         candidate for candidate in all_candidates
         if (
-            shard == (get_start_shard(state, candidate.data.slot) + candidate.data.index) % get_active_shard_count(state)
+            shard == (
+                get_start_shard(state, candidate.data.slot) + candidate.data.index
+            ) % get_active_shard_count(state)
             and candidate.data.slot > state.shard_states[shard].slot
         )
     ]
@@ -189,7 +191,7 @@ def get_shard_winning_roots(state: BeaconState, shard: Shard) -> Sequence[Root]:
 ```python
 def select_transition_from_winning_roots(state: BeaconState,
                                          winning_roots: Sequence[Root],
-                                         full_transitions: Dict[Root, ShardTransition]) -> Optional[ShardTransition]:
+                                         full_transitions: Dict[Root, ShardTransition]) -> ShardTransition:
     for root in winning_roots:
         if root not in full_transitions:
             continue
@@ -205,7 +207,7 @@ def select_transition_from_winning_roots(state: BeaconState,
         ):
             return transition
 
-    return None
+    return ShardTransition()
 ```
 
 
@@ -364,6 +366,7 @@ def get_shard_transition(beacon_state: BeaconState,
         proposer_signature_aggregate = NO_SIGNATURE
 
     return ShardTransition(
+        committee_slot=beacon_state.slot,
         start_slot=offset_slots[0],
         shard=shard,
         shard_block_lengths=shard_block_lengths,

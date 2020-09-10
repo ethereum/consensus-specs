@@ -172,6 +172,7 @@ def get_sample_shard_transition(spec, start_slot, block_lengths):
         for x in block_lengths
     ]
     shard_transition = spec.ShardTransition(
+        committee_slot=spec.compute_admissible_slots(start_slot)[:len(block_lengths)][-1],
         start_slot=start_slot,
         shard_block_lengths=block_lengths,
         shard_data_roots=data_roots,
