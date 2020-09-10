@@ -69,6 +69,7 @@
       - [New Attestation processing](#new-attestation-processing)
         - [`process_attestation`](#process_attestation)
       - [Shard transition processing](#shard-transition-processing)
+      - [`get_shard_from_transition_candidate`](#get_shard_from_transition_candidate)
         - [`get_online_beacon_committee`](#get_online_beacon_committee)
         - [`validate_shard_transition`](#validate_shard_transition)
         - [`execute_shard_transition`](#execute_shard_transition)
@@ -412,6 +413,8 @@ class ShardState(Container):
 
 ```python
 class ShardTransition(Container):
+    # Slot that the committee/attestation was from
+    committee_slot: Slot
     # Starting from slot
     start_slot: Slot
     # Shard
@@ -860,6 +863,13 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Shard transition processing
 
+##### `get_shard_from_transition_candidate`
+
+```python
+def get_shard_from_transition_candidate(state: BeaconState, candidate: ShardTransitionCandidate) -> Shard:
+    return (get_start_shard(state, candidate.data.slot) + candidate.data.index) % get_active_shard_count(state)
+```
+
 ###### `get_online_beacon_committee`
 
 ```python
@@ -889,6 +899,7 @@ def validate_shard_transition(state: BeaconState,
     and matchines the transition candidate.
     """
     # Validate transition and candidate shard coherence
+    shard = get_shard_from_transition_candidate(state, candidate)
     shard = (get_start_shard(state, candidate.data.slot) + candidate.data.index) % get_active_shard_count(state)
     assert shard == transition.shard < get_active_shard_count(state)
 
@@ -1018,8 +1029,8 @@ def process_shard_transition(state: BeaconState, transition: ShardTransition) ->
     latest_block_root = transition.shard_states[len(transition.shard_states) - 1].latest_block_root
     matching_candidates = [
         c for c in all_candidates
-        if (c.data.transition_root, c.data.block_root)
-        == (hash_tree_root(transition), latest_block_root)
+        if (c.data.transition_root, c.data.block_root, get_shard_from_transition_candidate(state, c), c.data.slot)
+        == (hash_tree_root(transition), latest_block_root, transition.shard, transition.committee_slot)
     ]
     assert len(matching_candidates) == 1
     matching_candidate = matching_candidates[0]

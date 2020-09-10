@@ -366,6 +366,7 @@ def get_shard_transition(beacon_state: BeaconState,
         proposer_signature_aggregate = NO_SIGNATURE
 
     return ShardTransition(
+        committee_slot=beacon_state.slot,
         start_slot=offset_slots[0],
         shard=shard,
         shard_block_lengths=shard_block_lengths,
