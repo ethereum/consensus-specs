@@ -135,6 +135,21 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
 | `MAX_ACTIVE_VALIDATORS` | `MAX_VALIDATORS_PER_COMMITTEE * SLOTS_PER_EPOCH * INITIAL_ACTIVE_SHARDS` (= 4,194,304) |
 
+### Reward denominators
+
+| Name | Value |
+| - | - |
+| `BEACON_PROPOSER_REWARD_DENOMINATOR` | `2**4` (= 16) |
+| `SHARD_PROPOSER_REWARD_DENOMINATOR` | `2**4` (= 16) |
+| `MICRO_REWARD_DENOMINATOR` | `2**4` (= 16) |
+| `TARGET_REWARD_DENOMINATOR` | `2**2` (= 4) |
+| `HEAD_REWARD_DENOMINATOR` | `2**3` (= 8) |
+| `VERY_TIMELY_REWARD_DENOMINATOR` | `2**4` (= 16) |
+| `TIMELY_REWARD_DENOMINATOR` | `2**3` (= 8) |
+| `CROSSLINK_REWARD_DENOMINATOR` | `2**2` (= 4) |
+
+Note: the sum of the inverses of these values **must** sum to 1.
+
 ### Shard block configs
 
 | Name | Value | Unit |
@@ -182,11 +197,10 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | Name | Value |
 | - | - |
 | `FLAG_CROSSLINK` | 0 |
-| `FLAG_SOURCE` | 1 |
-| `FLAG_TARGET` | 2 |
-| `FLAG_HEAD` | 3 |
-| `FLAG_VERY_TIMELY` | 4 |
-| `FLAG_TIMELY` | 5 |
+| `FLAG_TARGET` | 1 |
+| `FLAG_HEAD` | 2 |
+| `FLAG_VERY_TIMELY` | 3 |
+| `FLAG_TIMELY` | 4 |
 
 ## Updated containers
 
@@ -823,7 +837,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     # Process target, source, head, timeliness
-    flags_to_set = [FLAG_SOURCE]
+    flags_to_set = []
     if data.target.root == get_block_root(state, data.target.epoch):
         flags_to_set.append(FLAG_TARGET)
         if data.beacon_block_root == get_block_root_at_slot(state, data.slot):
@@ -839,8 +853,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
         active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
         if not flags[active_position][FLAG_SOURCE]:
-            increase_balance(state, get_beacon_proposer_index(state), get_proposer_reward(state, participant))
         for flag in flags_to_set:
+            if not flags[active_position][flag]:
+                increase_balance(state, get_beacon_proposer_index(state), get_base_reward(state, participant) // BEACON_PROPOSER_REWARD_DENOMINATOR)
             flags[active_position][flag] = True
 
     # Process shard transition
@@ -989,10 +1004,10 @@ def apply_shard_transition_updates(state: BeaconState,
     )
     for shard_state, slot, length in states_slots_lengths:
         proposer_index = get_shard_proposer_index(state, slot, shard)
+        online_participants = get_online_transition_participants(state, candidate)
         proposer_reward = (
-            get_base_reward(state, proposer_index)
-            * len(get_online_validator_indices(state))
-            // get_active_shard_count(state)
+            sum([get_base_reward(state, index) for index in online_participants])
+            // (get_active_shard_count(state) * SHARD_PROPOSER_REWARD_DENOMINATOR)
         )
         increase_balance(state, proposer_index, proposer_reward)
         decrease_balance(state, proposer_index, shard_state.gasprice * length // TARGET_SHARD_BLOCK_SIZE)
@@ -1175,11 +1190,11 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
-    `get_base_reward` runs exactly as in Phase 0 but with the updated `PHASE1_BASE_REWARDS_PER_EPOCH`
+    `get_base_reward` runs exactly as in Phase 0 but with dividing by `BASE_REWARDS_PER_EPOCH` removed
     """
     total_balance = get_total_active_balance(state)
     effective_balance = state.validators[index].effective_balance
-    return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
+    return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
 ```
 
 ##### `get_unslashed_participant_indices`
@@ -1199,7 +1214,7 @@ def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Ep
 ##### `get_standard_flag_deltas`
 
 ```python
-def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_standard_flag_deltas(state: BeaconState, flag: uint8, denominator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
     unslashed_participant_indices = get_unslashed_participant_indices(state, flag, get_previous_epoch(state))
@@ -1212,32 +1227,11 @@ def get_standard_flag_deltas(state: BeaconState, flag: uint8) -> Tuple[Sequence[
             if is_in_inactivity_leak(state):
                 # Since full base reward will be canceled out by inactivity penalty deltas,
                 # optimal participation receives full base reward compensation here.
-                rewards[index] += get_base_reward(state, index)
+                rewards[index] += get_base_reward(state, index) // denominator
             else:
-                rewards[index] += get_base_reward(state, index) * total_participating_balance // total_balance
+                rewards[index] += (get_base_reward(state, index) * total_participating_balance // total_balance) // denominator
         else:
-            penalties[index] += get_base_reward(state, index)
-    return rewards, penalties
-```
-
-##### `get_inclusion_delay_deltas`
-
-```python
-def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    """
-    Return proposer and inclusion delay micro-rewards/penalties for each validator.
-
-    FLAG_VERY_TIMELY and FLAG_TIMELY each account for half of a base reward,
-    resulting in the maximum of one base reward for timeliness.
-    """
-    very_timely_rewards, _ = get_standard_flag_deltas(state, FLAG_VERY_TIMELY)
-    timely_rewards, _ = get_standard_flag_deltas(state, FLAG_TIMELY)
-    rewards = []
-    for very_timely_reward, timely_reward in zip(very_timely_rewards, timely_rewards):
-        rewards.append((very_timely_reward + timely_reward) // 2)
-
-    # No penalties associated with inclusion delay
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+            penalties[index] += get_base_reward(state, index) // denominator
     return rewards, penalties
 ```
 
@@ -1285,11 +1279,11 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
 
     rewards_and_penalties = [
-        get_standard_flag_deltas(state, FLAG_SOURCE),
-        get_standard_flag_deltas(state, FLAG_TARGET),
-        get_standard_flag_deltas(state, FLAG_HEAD),
-        get_standard_flag_deltas(state, FLAG_CROSSLINK),
-        get_inclusion_delay_deltas(state),
+        get_standard_flag_deltas(state, FLAG_TARGET, TARGET_REWARD_DENOMINATOR),
+        get_standard_flag_deltas(state, FLAG_HEAD, HEAD_REWARD_DENOMINATOR),
+        get_standard_flag_deltas(state, FLAG_CROSSLINK, CROSSLINK_REWARD_DENOMINATOR),
+        get_standard_flag_deltas(state, FLAG_TIMELY, VERY_TIMELY_REWARD_DENOMINATOR),
+        get_standard_flag_deltas(state, FLAG_TIMELY, TIMELY_REWARD_DENOMINATOR),
         get_inactivity_penalty_deltas(state),
     ]
     for (rewards, penalties) in rewards_and_penalties:
