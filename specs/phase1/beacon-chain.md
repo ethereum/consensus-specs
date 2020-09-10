@@ -1282,7 +1282,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         get_standard_flag_deltas(state, FLAG_TARGET, TARGET_REWARD_DENOMINATOR),
         get_standard_flag_deltas(state, FLAG_HEAD, HEAD_REWARD_DENOMINATOR),
         get_standard_flag_deltas(state, FLAG_CROSSLINK, CROSSLINK_REWARD_DENOMINATOR),
-        get_standard_flag_deltas(state, FLAG_TIMELY, VERY_TIMELY_REWARD_DENOMINATOR),
+        get_standard_flag_deltas(state, FLAG_VERY_TIMELY, VERY_TIMELY_REWARD_DENOMINATOR),
         get_standard_flag_deltas(state, FLAG_TIMELY, TIMELY_REWARD_DENOMINATOR),
         get_inactivity_penalty_deltas(state),
     ]
