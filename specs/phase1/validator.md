@@ -281,9 +281,9 @@ def get_shard_transition_fields(
     shard: Shard,
     shard_blocks: Sequence[SignedShardBlock],
 ) -> Tuple[Sequence[uint64], Sequence[Root], Sequence[ShardState]]:
-    shard_states = []
-    shard_data_roots = []
-    shard_block_lengths = []
+    shard_block_lengths = []  # type: PyList[uint64]
+    shard_data_roots = []  # type: PyList[Root]
+    shard_states = []  # type: PyList[ShardState]
 
     shard_state = beacon_state.shard_states[shard]
     shard_block_slots = [shard_block.message.slot for shard_block in shard_blocks]
@@ -301,7 +301,7 @@ def get_shard_transition_fields(
         shard_state = shard_state.copy()
         process_shard_block(shard_state, shard_block.message)
         shard_states.append(shard_state)
-        shard_block_lengths.append(len(shard_block.message.body))
+        shard_block_lengths.append(uint64(len(shard_block.message.body)))
 
     return shard_block_lengths, shard_data_roots, shard_states
 ```

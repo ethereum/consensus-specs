@@ -395,9 +395,9 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The attestation's epoch matches its target -- i.e. `attestation.data.target.epoch ==
   compute_epoch_at_slot(attestation.data.slot)`
 - _[REJECT]_ The attestation is unaggregated --
-  that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+  that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`
+  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
@@ -410,7 +410,6 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
-
 
 
 

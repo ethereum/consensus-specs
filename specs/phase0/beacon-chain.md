@@ -195,6 +195,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `HYSTERESIS_QUOTIENT` | `uint64(4)` |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
+| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(3)` |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -773,7 +774,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     Return the committee corresponding to ``indices``, ``seed``, ``index``, and committee ``count``.
     """
     start = (len(indices) * index) // count
-    end = (len(indices) * (index + 1)) // count
+    end = (len(indices) * uint64(index + 1)) // count
     return [indices[compute_shuffled_index(uint64(i), uint64(len(indices)), seed)] for i in range(start, end)]
 ```
 
@@ -1454,7 +1455,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
             if index in get_attesting_indices(state, a.data, a.aggregation_bits)
         ], key=lambda a: a.inclusion_delay)
         rewards[attestation.proposer_index] += get_proposer_reward(state, index)
-        max_attester_reward = get_base_reward(state, index) - get_proposer_reward(state, index)
+        max_attester_reward = Gwei(get_base_reward(state, index) - get_proposer_reward(state, index))
         rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
 
     # No penalties associated with inclusion delay
@@ -1554,10 +1555,11 @@ def process_registry_updates(state: BeaconState) -> None:
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
+    adjusted_total_slashing_balance = min(sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER, total_balance)
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
-            penalty_numerator = validator.effective_balance // increment * min(sum(state.slashings) * 3, total_balance)
+            penalty_numerator = validator.effective_balance // increment * adjusted_total_slashing_balance
             penalty = penalty_numerator // total_balance * increment
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
@@ -1574,7 +1576,7 @@ def process_final_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        HYSTERESIS_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT
+        HYSTERESIS_INCREMENT = uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         if (

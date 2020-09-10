@@ -125,6 +125,7 @@ from eth2spec.config.config_util import apply_constants_config
 from typing import (
     Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
 )
+from typing import List as PyList
 
 from dataclasses import (
     dataclass,
@@ -152,8 +153,10 @@ GeneralizedIndex = NewType('GeneralizedIndex', int)
 SSZObject = TypeVar('SSZObject', bound=View)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
-def ceillog2(x: uint64) -> int:
-    return (x - 1).bit_length()
+def ceillog2(x: int) -> uint64:
+    if x < 1:
+        raise ValueError(f"ceillog2 accepts only positive values, x={x}")
+    return uint64((x - 1).bit_length())
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
 def get_eth1_data(block: Eth1Block) -> Eth1Data:

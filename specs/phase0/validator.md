@@ -168,7 +168,7 @@ def get_committee_assignment(state: BeaconState,
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
-    next_epoch = get_current_epoch(state) + 1
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -460,7 +460,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
     """
-    slots_since_epoch_start = slot % SLOTS_PER_EPOCH
+    slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
     return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
