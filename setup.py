@@ -99,7 +99,7 @@ apply_constants_config(globals())
 
 PHASE0_IMPORTS = '''from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, Union
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
 )
 
 from dataclasses import (
@@ -123,7 +123,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, Union
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
 )
 
 from dataclasses import (
@@ -292,7 +292,7 @@ ignored_dependencies = [
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
-    'Dict', 'dict', 'field', 'Union'
+    'Dict', 'dict', 'field'
 ]
 
 
