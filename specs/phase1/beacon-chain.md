@@ -88,10 +88,8 @@
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
       - [`get_crosslink_deltas`](#get_crosslink_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
-    - [Updated final updates](#updated-final-updates)
       - [New participation record rotation](#new-participation-record-rotation)
       - [Start shard updates](#start-shard-updates)
-      - [New final updates](#new-final-updates)
     - [Custody game updates](#custody-game-updates)
     - [Online-tracking](#online-tracking)
     - [Light client committee updates](#light-client-committee-updates)
@@ -1117,7 +1115,16 @@ def process_epoch(state: BeaconState) -> None:
     process_reveal_deadlines(state)
     process_challenge_deadlines(state)
     process_slashings(state)
-    process_final_updates(state)
+    process_eth1_data_votes_updates(state)
+    process_effective_balances_updates(state)
+    process_slashings_updates(state)
+    process_randao_mixes_updates(state)
+    process_historical_roots_updates(state)
+    process_custody_final_updates(state)
+    process_online_tracking(state)
+    process_light_client_committee_updates(state)
+    process_participation_record_updates(state)
+    process_start_shard_updates(state)
 ```
 
 #### New justification and finalization processing
@@ -1298,8 +1305,6 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
             decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
 
-#### Updated final updates
-
 ##### New participation record rotation
 
 ```python
@@ -1318,22 +1323,6 @@ def process_participation_record_updates(state: BeaconState) -> None:
 ```python
 def process_start_shard_updates(state: BeaconState) -> None:
     state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
-```
-
-##### New final updates
-
-```python
-def process_final_updates(state: BeaconState) -> None:
-    process_eth1_data_votes_updates(state)
-    process_effective_balances_updates(state)
-    process_slashings_updates(state)
-    process_randao_mixes_updates(state)
-    process_historical_roots_updates(state)
-    process_custody_final_updates(state)
-    process_online_tracking(state)
-    process_light_client_committee_updates(state)
-    process_participation_record_updates(state)
-    process_start_shard_updates(state)
 ```
 
 #### Custody game updates

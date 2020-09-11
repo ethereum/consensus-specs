@@ -116,7 +116,12 @@
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Registry updates](#registry-updates)
     - [Slashings](#slashings)
-    - [Final updates](#final-updates)
+    - [Eth1 data votes updates](#eth1-data-votes-updates)
+    - [Effective balances updates](#effective-balances-updates)
+    - [Slashings balances updates](#slashings-balances-updates)
+    - [Randao mixes updates](#randao-mixes-updates)
+    - [Historical roots updates](#historical-roots-updates)
+    - [Participation records rotation](#participation-records-rotation)
   - [Block processing](#block-processing)
     - [Block header](#block-header)
     - [RANDAO](#randao)
@@ -1256,7 +1261,12 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_slashings(state)
-    process_final_updates(state)
+    process_eth1_data_votes_updates(state)
+    process_effective_balances_updates(state)
+    process_slashings_updates(state)
+    process_randao_mixes_updates(state)
+    process_historical_roots_updates(state)
+    process_participation_record_updates(state)
 ```
 
 #### Helper functions
@@ -1562,7 +1572,7 @@ def process_slashings(state: BeaconState) -> None:
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
-#### Final updates
+#### Eth1 data votes updates
 
 ```python
 def process_eth1_data_votes_updates(state: BeaconState) -> None:
@@ -1570,6 +1580,8 @@ def process_eth1_data_votes_updates(state: BeaconState) -> None:
     if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
 ```
+
+#### Effective balances updates
 
 ```python
 def process_effective_balances_updates(state: BeaconState) -> None:
@@ -1586,11 +1598,15 @@ def process_effective_balances_updates(state: BeaconState) -> None:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
 ```
 
+#### Slashings balances updates
+
 ```python
 def process_slashings_updates(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
 ```
+
+#### Randao mixes updates
 
 ```python
 def process_randao_mixes_updates(state: BeaconState) -> None:
@@ -1598,6 +1614,8 @@ def process_randao_mixes_updates(state: BeaconState) -> None:
     next_epoch = Epoch(current_epoch + 1)
     state.randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
 ```
+
+#### Historical roots updates
 
 ```python
 def process_historical_roots_updates(state: BeaconState) -> None:
@@ -1607,22 +1625,13 @@ def process_historical_roots_updates(state: BeaconState) -> None:
         state.historical_roots.append(hash_tree_root(historical_batch))
 ```
 
+#### Participation records rotation
 
 ```python
 def process_participation_record_updates(state: BeaconState) -> None:
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
-```
-
-```python
-def process_final_updates(state: BeaconState) -> None:
-    process_eth1_data_votes_updates(state)
-    process_effective_balances_updates(state)
-    process_slashings_updates(state)
-    process_randao_mixes_updates(state)
-    process_historical_roots_updates(state)
-    process_participation_record_updates(state)
 ```
 
 ### Block processing

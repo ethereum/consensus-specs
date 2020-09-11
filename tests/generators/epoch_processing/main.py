@@ -3,11 +3,16 @@ from typing import Iterable
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.test.phase0.epoch_processing import (
-    test_process_final_updates,
     test_process_justification_and_finalization,
-    test_process_registry_updates,
     test_process_rewards_and_penalties,
-    test_process_slashings
+    test_process_registry_updates,
+    test_process_slashings,
+    test_process_eth1_data_votes_updates,
+    test_process_effective_balances_updates,
+    test_process_slashings_updates,
+    test_process_randao_mixes_updates,
+    test_process_historical_roots_updates,
+    test_process_participation_record_updates,
 )
 from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
@@ -39,15 +44,25 @@ def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typin
 
 if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
-        create_provider('final_updates', test_process_final_updates, 'minimal'),
-        create_provider('final_updates', test_process_final_updates, 'mainnet'),
         create_provider('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
         create_provider('justification_and_finalization', test_process_justification_and_finalization, 'mainnet'),
-        create_provider('registry_updates', test_process_registry_updates, 'minimal'),
-        create_provider('registry_updates', test_process_registry_updates, 'mainnet'),
         create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'minimal'),
         # runs full epochs filled with data, with uncached ssz. Disabled for now.
         # create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'mainnet'),
+        create_provider('registry_updates', test_process_registry_updates, 'minimal'),
+        create_provider('registry_updates', test_process_registry_updates, 'mainnet'),
         create_provider('slashings', test_process_slashings, 'minimal'),
         create_provider('slashings', test_process_slashings, 'mainnet'),
+        create_provider('eth1_data_votes_updates', test_process_eth1_data_votes_updates, 'minimal'),
+        create_provider('eth1_data_votes_updates', test_process_eth1_data_votes_updates, 'mainnet'),
+        create_provider('effective_balances_updates', test_process_effective_balances_updates, 'minimal'),
+        create_provider('effective_balances_updates', test_process_effective_balances_updates, 'mainnet'),
+        create_provider('slashings_updates', test_process_slashings_updates, 'minimal'),
+        create_provider('slashings_updates', test_process_slashings_updates, 'mainnet'),
+        create_provider('randao_mixes_updates', test_process_randao_mixes_updates, 'minimal'),
+        create_provider('randao_mixes_updates', test_process_randao_mixes_updates, 'mainnet'),
+        create_provider('historical_roots_updates', test_process_historical_roots_updates, 'minimal'),
+        create_provider('historical_roots_updates', test_process_historical_roots_updates, 'mainnet'),
+        create_provider('participation_record_updates', test_process_participation_record_updates, 'minimal'),
+        create_provider('participation_record_updates', test_process_participation_record_updates, 'mainnet'),
     ])
