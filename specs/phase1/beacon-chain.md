@@ -135,8 +135,9 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | Name | Value |
 | - | - |
 | `ATTESTATION_INCLUSION_REWARD_DENOMINATOR` | `2**4` (= 16) |
-| `SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR` | `2**5` (= 32) |
-| `CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR` | `2**5` (= 32) |
+| `SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR` | `2**6` (= 64) |
+| `CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR` | `2**6` (= 64) |
+| `SHARD_TRANSITION_INCLUSION_REWARD_DENOMINATOR` | `2**5` (= 32) |
 | `SHARD_PROPOSER_REWARD_DENOMINATOR` | `2**4` (= 16) |
 | `TARGET_REWARD_DENOMINATOR` | `2**2` (= 4) |
 | `HEAD_REWARD_DENOMINATOR` | `2**3` (= 8) |
@@ -1006,7 +1007,7 @@ def apply_shard_transition_updates(state: BeaconState,
         online_participants = get_online_transition_participants(state, candidate)
         shard_proposer_reward = (
             sum([get_base_reward(state, index) for index in online_participants])
-            // (get_active_shard_count(state) * SHARD_PROPOSER_REWARD_DENOMINATOR)
+            // get_active_shard_count(state) // SHARD_PROPOSER_REWARD_DENOMINATOR
         )
         increase_balance(state, shard_proposer_index, shard_proposer_reward)
         decrease_balance(state, shard_proposer_index, shard_state.gasprice * length // TARGET_SHARD_BLOCK_SIZE)
@@ -1027,7 +1028,7 @@ def apply_shard_transition_updates(state: BeaconState,
     # Proposer reward is simply 1/N of the allocated reward where N is the number of committees in that slot
     proposer = get_beacon_proposer_index(state)
     committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(transition.committee_slot))
-    proposer_reward = get_base_reward(state, proposer) // SHARD_PROPOSER_REWARD_DENOMINATOR // committee_count)
+    proposer_reward = get_base_reward(state, proposer) // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR // committee_count)
     increase_balance(state, proposer, proposer_reward)
 ```
 
