@@ -134,9 +134,10 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 | Name | Value |
 | - | - |
-| `BEACON_PROPOSER_REWARD_DENOMINATOR` | `2**4` (= 16) |
+| `ATTESTATION_INCLUSION_REWARD_DENOMINATOR` | `2**4` (= 16) |
+| `SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR` | `2**5` (= 32) |
+| `CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR` | `2**5` (= 32) |
 | `SHARD_PROPOSER_REWARD_DENOMINATOR` | `2**4` (= 16) |
-| `MICRO_REWARD_DENOMINATOR` | `2**4` (= 16) |
 | `TARGET_REWARD_DENOMINATOR` | `2**2` (= 4) |
 | `HEAD_REWARD_DENOMINATOR` | `2**3` (= 8) |
 | `VERY_TIMELY_REWARD_DENOMINATOR` | `2**4` (= 16) |
@@ -850,7 +851,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         for flag in flags_to_set:
             # Give proposer reward for new flags
             if not flags[active_position][flag]:
-                proposer_reward = Gwei(get_base_reward(state, participant) // BEACON_PROPOSER_REWARD_DENOMINATOR)
+                # 4 total flags that can be set (target, head, very timely, timely); see code directly above, so
+                # 1/4 reward for setting each one
+                proposer_reward = Gwei(get_base_reward(state, participant) // ATTESTATION_INCLUSION_REWARD_DENOMINATOR // 4)
                 increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
             flags[active_position][flag] = True
 
@@ -999,14 +1002,14 @@ def apply_shard_transition_updates(state: BeaconState,
         transition.shard_block_lengths
     )
     for shard_state, slot, length in states_slots_lengths:
-        proposer_index = get_shard_proposer_index(state, slot, shard)
+        shard_proposer_index = get_shard_proposer_index(state, slot, shard)
         online_participants = get_online_transition_participants(state, candidate)
-        proposer_reward = (
+        shard_proposer_reward = (
             sum([get_base_reward(state, index) for index in online_participants])
             // (get_active_shard_count(state) * SHARD_PROPOSER_REWARD_DENOMINATOR)
         )
-        increase_balance(state, proposer_index, proposer_reward)
-        decrease_balance(state, proposer_index, shard_state.gasprice * length // TARGET_SHARD_BLOCK_SIZE)
+        increase_balance(state, shard_proposer_index, shard_proposer_reward)
+        decrease_balance(state, shard_proposer_index, shard_state.gasprice * length // TARGET_SHARD_BLOCK_SIZE)
 
     # Copy and save updated shard state
     shard_state = copy(transition.shard_states[len(transition.shard_states) - 1])
@@ -1021,9 +1024,11 @@ def apply_shard_transition_updates(state: BeaconState,
         epoch = compute_epoch_at_slot(candidate.data.slot)
         shuffled_position = get_active_validator_indices(state, epoch).index(validator_index)
         flags[shuffled_position][FLAG_CROSSLINK] = True
-    estimated_attester_reward = sum([get_base_reward(state, attester) for attester in online_participants])
-    proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
-    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+    # Proposer reward is simply 1/N of the allocated reward where N is the number of committees in that slot
+    proposer = get_beacon_proposer_index(state)
+    committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(transition.committee_slot))
+    proposer_reward = get_base_reward(state, proposer) // SHARD_PROPOSER_REWARD_DENOMINATOR // committee_count)
+    increase_balance(state, proposer, proposer_reward)
 ```
 
 ###### `process_shard_transition`
