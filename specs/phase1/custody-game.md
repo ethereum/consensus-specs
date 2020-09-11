@@ -89,7 +89,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
-| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 
 ## Data structures
 
@@ -383,7 +382,8 @@ def process_chunk_challenge_response(state: BeaconState,
     state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
+    proposer_reward = Gwei(get_base_reward(state, proposer_index) // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR)
+    increase_balance(state, proposer_index, proposer_reward)
 ```
 
 #### Custody key reveals
@@ -422,11 +422,11 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
 
     # Reward Block Proposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(
-        state,
-        proposer_index,
-        Gwei(get_base_reward(state, reveal.revealer_index) // MINOR_REWARD_QUOTIENT)
+    proposer_reward = Gwei(
+        get_base_reward(state, reveal.revealer_index)
+        // SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR
     )
+    increase_balance(state, proposer_index, proposer_reward)
 ```
 
 #### Early derived secret reveals
@@ -467,7 +467,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
             get_base_reward(state, reveal.revealed_index)
             * SLOTS_PER_EPOCH
             // len(get_active_validator_indices(state, get_current_epoch(state)))
-            // PROPOSER_REWARD_QUOTIENT
+            # // PROPOSER_REWARD_QUOTIENT
         )
         penalty = Gwei(
             max_proposer_slot_reward
