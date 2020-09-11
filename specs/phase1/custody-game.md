@@ -382,7 +382,11 @@ def process_chunk_challenge_response(state: BeaconState,
     state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
-    proposer_reward = Gwei(get_base_reward(state, proposer_index) // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR // MAX_CUSTODY_CHUNK_CHALLENGES)
+    proposer_reward = Gwei(
+        get_base_reward(state, proposer_index)
+        // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR
+        // MAX_CUSTODY_CHUNK_CHALLENGES
+    )
     increase_balance(state, proposer_index, proposer_reward)
 ```
 
@@ -478,7 +482,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
             * EARLY_DERIVED_SECRET_REVEAL_PENALTY_FACTOR
             * (len(state.exposed_derived_secrets[derived_secret_location]) + 1)
         )
-moose
+
         # Apply penalty
         proposer_index = get_beacon_proposer_index(state)
         whistleblower_index = reveal.masker_index
