@@ -854,7 +854,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
             if not flags[active_position][flag]:
                 # 4 total flags that can be set (target, head, very timely, timely); see code directly above, so
                 # 1/4 reward for setting each one
-                proposer_reward = Gwei(get_base_reward(state, participant) // ATTESTATION_INCLUSION_REWARD_DENOMINATOR // 4)
+                proposer_reward = Gwei(
+                    get_base_reward(state, participant)
+                    // ATTESTATION_INCLUSION_REWARD_DENOMINATOR
+                    // 4
+                )
                 increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
             flags[active_position][flag] = True
 
@@ -1028,7 +1032,11 @@ def apply_shard_transition_updates(state: BeaconState,
     # Proposer reward is simply 1/N of the allocated reward where N is the number of committees in that slot
     proposer = get_beacon_proposer_index(state)
     committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(transition.committee_slot))
-    proposer_reward = get_base_reward(state, proposer) // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR // committee_count)
+    proposer_reward = Gwei(
+        get_base_reward(state, proposer)
+        // SHARD_TRANSITION_INCLUSION_REWARD_DENOMINATOR
+        // committee_count
+    )
     increase_balance(state, proposer, proposer_reward)
 ```
 
