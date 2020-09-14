@@ -30,4 +30,5 @@ The following parameters were used to generate the bytecode for the `DepositCont
 * Contract Name: `DepositContract`
 * Compiler Version: Solidity `v0.6.11+commit.5ef660b1`
 * Optimization Enabled: `Yes` with `5000000` runs
-* Other Settings: `default evmVersion`
+* EVM Version: `default` (Istanbul)
+* Metadata Options: `--metadata-literal` (to verify metadata hash)
