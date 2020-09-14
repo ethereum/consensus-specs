@@ -32,3 +32,7 @@ The following parameters were used to generate the bytecode for the `DepositCont
 * Optimization Enabled: `Yes` with `5000000` runs
 * EVM Version: `default` (Istanbul)
 * Metadata Options: `--metadata-literal` (to verify metadata hash)
+
+```sh
+solc --optimize --optimize-runs 5000000 --metadata-literal --bin deposit_contract.sol
+```
