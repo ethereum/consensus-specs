@@ -23,3 +23,11 @@ Install the latest version of `dapp` by following the instructions at [dapp.tool
 ```sh
 make test_deposit_contract
 ```
+## Verifying bytecode
+
+The following parameters were used to generate the bytecode for the `DepositContract` available in this repository:
+
+* Contract Name: `DepositContract`
+* Compiler Version: Solidity `v0.6.11+commit.5ef660b1`
+* Optimization Enabled: `Yes` with `5000000` runs
+* Other Settings: `default evmVersion`
