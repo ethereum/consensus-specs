@@ -11,7 +11,7 @@ See this [blog post](https://blog.ethereum.org/2020/06/23/eth2-quick-update-no-1
 
 In August 2020, version `r2` was released with metadata modifications and relicensed to CC0-1.0. Afterward, this contract has been ported back to from [`axic/eth2-deposit-contract`](https://github.com/axic/eth2-deposit-contract) to this repository and replaced the Vyper deposit contract.
 
-## Compiling solidity
+## Compiling solidity deposit contract
 
 In the `eth2.0-specs` directory run:
 ```sh
