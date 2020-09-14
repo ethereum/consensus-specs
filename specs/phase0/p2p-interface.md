@@ -246,7 +246,7 @@ Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
 
 ```python
-   message-id: (SHA256(message.data))[0..8]
+   message-id: (SHA256(message.data))[0:8]
 ```
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
