@@ -129,21 +129,21 @@ Configuration is not namespaced. Instead it is strictly an extension;
 
 | Name | Value |
 | - | - | 
-| `MAX_SHARDS` | `2**10` (= 1024) |
-| `INITIAL_ACTIVE_SHARDS` | `2**6` (= 64) |
-| `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | 
+| `MAX_SHARDS` | `uint64(2**10)` (= 1024) |
+| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) |
+| `LIGHT_CLIENT_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) |
 | `MAX_ACTIVE_VALIDATORS` | `MAX_VALIDATORS_PER_COMMITTEE * SLOTS_PER_EPOCH * INITIAL_ACTIVE_SHARDS` (= 4,194,304) |
 
 ### Shard block configs
 
 | Name | Value | Unit |
 | - | - | - |
-| `MAX_SHARD_BLOCK_SIZE` | `2**20` (= 1,048,576) | bytes |
-| `TARGET_SHARD_BLOCK_SIZE` | `2**18` (= 262,144) |  bytes |
-| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | - |
+| `MAX_SHARD_BLOCK_SIZE` | `uint64(2**20)` (= 1,048,576) | bytes |
+| `TARGET_SHARD_BLOCK_SIZE` | `uint64(2**18)` (= 262,144) |  bytes |
+| `SHARD_BLOCK_OFFSETS` | `List[uint64, 12]([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233])` | - |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | - |
-| `BYTES_PER_CUSTODY_CHUNK` | `2**12` (= 4,096) | bytes |
+| `BYTES_PER_CUSTODY_CHUNK` | `uint64(2**12)` (= 4,096) | bytes |
 | `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - | 
 
 ### Gwei values
@@ -570,7 +570,7 @@ def compute_committee_source_epoch(epoch: Epoch, period: uint64) -> Epoch:
     """
     Return the source epoch for computing the committee.
     """
-    source_epoch = epoch - epoch % period
+    source_epoch = Epoch(epoch - epoch % period)
     if source_epoch >= period:
         source_epoch -= period  # `period` epochs lookahead
     return source_epoch
@@ -641,7 +641,7 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
     return compute_committee(
         indices=active_validator_indices,
         seed=seed,
-        index=0,
+        index=uint64(0),
         count=get_active_shard_count(beacon_state),
     )[:LIGHT_CLIENT_COMMITTEE_SIZE]
 ```
@@ -667,10 +667,10 @@ def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: S
     """
     Return the sum of committee counts in range ``[start_slot, stop_slot)``.
     """
-    return sum(
+    return uint64(sum(
         get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
         for slot in range(start_slot, stop_slot)
-    )
+    ))
 ```
 
 #### `get_start_shard`

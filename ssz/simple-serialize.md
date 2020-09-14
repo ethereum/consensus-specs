@@ -165,7 +165,7 @@ variable_lengths = [len(part) for part in variable_parts]
 assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
 # Interleave offsets of variable-size parts with fixed-size parts
-variable_offsets = [serialize(sum(fixed_lengths + variable_lengths[:i])) for i in range(len(value))]
+variable_offsets = [serialize(uint32(sum(fixed_lengths + variable_lengths[:i]))) for i in range(len(value))]
 fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
 
 # Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
