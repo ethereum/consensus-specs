@@ -243,12 +243,11 @@ Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-The `message-id` of a gossipsub message MUST be:
+The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
 
 ```python
-   message-id: base64(SHA256(message.data))
+   message-id: SHA256(message.data)[0:8]
 ```
-where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc4648#section-3.2) with padding characters omitted.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
