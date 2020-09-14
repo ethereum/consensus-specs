@@ -81,6 +81,20 @@ def test_invalid_sig_1_and_2(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
+def test_invalid_sig_1_and_2_swap(spec, state):
+    # Get valid signatures for the slashings
+    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
+
+    # But swap them
+    signature_1 = proposer_slashing.signed_header_1.signature
+    proposer_slashing.signed_header_1.signature = proposer_slashing.signed_header_2.signature
+    proposer_slashing.signed_header_2.signature = signature_1
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_invalid_proposer_index(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
     # Index just too high (by 1)
@@ -122,11 +136,26 @@ def test_epochs_are_different(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_headers_are_same(spec, state):
+def test_headers_are_same_sigs_are_same(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
 
     # set headers to be the same
-    proposer_slashing.signed_header_2 = proposer_slashing.signed_header_1
+    proposer_slashing.signed_header_2 = proposer_slashing.signed_header_1.copy()
+
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_headers_are_same_sigs_are_different(spec, state):
+    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
+
+    # set headers to be the same
+    proposer_slashing.signed_header_2 = proposer_slashing.signed_header_1.copy()
+    # but signatures to be different
+    proposer_slashing.signed_header_2.signature = proposer_slashing.signed_header_2.signature[:-1] + b'\x00'
+
+    assert proposer_slashing.signed_header_1.signature != proposer_slashing.signed_header_2.signature
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
