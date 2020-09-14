@@ -23,7 +23,11 @@ Install the latest version of `dapp` by following the instructions at [dapp.tool
 ```sh
 make test_deposit_contract
 ```
-## Verifying bytecode
+## Compiling solidity
+
+In the `eth2.0-specs` directory run:
+```sh
+make compile_deposit_contract
 
 The following parameters were used to generate the bytecode for the `DepositContract` available in this repository:
 
