@@ -87,7 +87,8 @@ def add_mock_attestations_phase1(spec, state, epoch, sufficient_support, messed_
 
         remaining_balance -= int(state.validators[index].effective_balance)
 
-        flags[i][spec.FLAG_SOURCE] = True
+        if spec.fork == PHASE0:
+            flags[i][spec.FLAG_SOURCE] = True
         flags[i][spec.FLAG_TARGET] = not messed_up_target
 
 

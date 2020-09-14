@@ -244,7 +244,7 @@ get_unslashed_participant_indices = cache_this(
 
 _get_standard_flag_deltas = get_standard_flag_deltas
 get_standard_flag_deltas = cache_this(
-    lambda state, flag: (state.hash_tree_root(), flag),
+    lambda state, flag, denominator: (state.hash_tree_root(), flag, denominator),
     _get_standard_flag_deltas, lru_size=10)
 
 _get_inactivity_penalty_deltas = get_inactivity_penalty_deltas

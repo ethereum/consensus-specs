@@ -800,9 +800,14 @@ def test_attestation(spec, state):
         # Participants are set for previous epoch
         participants = spec.get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
         active_indices = spec.get_active_validator_indices(state, spec.get_previous_epoch(state))
+        expected_flags = [
+            spec.FLAG_CROSSLINK, spec.FLAG_TARGET, spec.FLAG_HEAD,
+            spec.FLAG_VERY_TIMELY, spec.FLAG_TIMELY,
+        ]
         for participant in participants:
             position = active_indices.index(participant)
-            assert state.previous_epoch_reward_flags[position] == Bitvector[8](1, 1, 1, 1, 1, 1, 0, 0)
+            for flag in expected_flags:
+                assert state.previous_epoch_reward_flags[position][flag]
 
 
 def prepare_signed_exits(spec, state, indices):

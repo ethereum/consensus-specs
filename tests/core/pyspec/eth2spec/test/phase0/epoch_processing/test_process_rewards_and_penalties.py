@@ -84,7 +84,7 @@ def test_full_attestations_random_incorrect_fields(spec, state):
         for i, flag in enumerate(state.previous_epoch_reward_flags):
             if i % 2 == 0:
                 # Message up some target votes
-                flag[spec.FLAG_HEAD] = 0
+                flag[spec.FLAG_TARGET] = 0
                 if i % 3 == 0:
                     # Mess up some head votes in addition to target
                     flag[spec.FLAG_HEAD] = 0
@@ -98,7 +98,7 @@ def test_full_attestations_random_incorrect_fields(spec, state):
         attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     else:
         previous_epoch = spec.get_previous_epoch(state)
-        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_TARGET, previous_epoch)
     assert len(attesting_indices) > 0
     # No balance checks, non-trivial base on group rewards
     # Mainly for consensus tests
@@ -119,7 +119,7 @@ def test_full_attestations_misc_balances(spec, state):
         attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     else:
         previous_epoch = spec.get_previous_epoch(state)
-        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_TARGET, previous_epoch)
 
     assert len(attesting_indices) > 0
     assert len(attesting_indices) != len(pre_state.validators)
@@ -156,7 +156,7 @@ def test_full_attestations_one_validator_one_gwei(spec, state):
         attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     else:
         previous_epoch = spec.get_previous_epoch(state)
-        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_TARGET, previous_epoch)
     assert len(attesting_indices) == 1
 
 
@@ -195,7 +195,7 @@ def run_with_participation(spec, state, participation_fn):
         attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     else:
         previous_epoch = spec.get_previous_epoch(state)
-        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_TARGET, previous_epoch)
 
     assert len(attesting_indices) == len(participated)
 
@@ -327,7 +327,7 @@ def test_attestations_some_slashed(spec, state):
     else:
         attesting_indices_before_slashings = list(spec.get_unslashed_participant_indices(
             state,
-            spec.FLAG_SOURCE,
+            spec.FLAG_TARGET,
             spec.get_previous_epoch(state)
         ))
 
@@ -346,7 +346,7 @@ def test_attestations_some_slashed(spec, state):
         attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     else:
         previous_epoch = spec.get_previous_epoch(state)
-        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_SOURCE, previous_epoch)
+        attesting_indices = spec.get_unslashed_participant_indices(state, spec.FLAG_TARGET, previous_epoch)
 
     assert len(attesting_indices) > 0
     assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
