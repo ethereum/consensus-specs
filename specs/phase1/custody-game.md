@@ -88,7 +88,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
-| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
+| `EARLY_DERIVED_SECRET_REVEAL_PENALTY_FACTOR` | `2**1` (= 2) |
 
 ## Data structures
 
@@ -382,7 +382,11 @@ def process_chunk_challenge_response(state: BeaconState,
     state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
-    proposer_reward = Gwei(get_base_reward(state, proposer_index) // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR)
+    proposer_reward = Gwei(
+        get_base_reward(state, proposer_index)
+        // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR
+        // MAX_CUSTODY_CHUNK_CHALLENGES
+    )
     increase_balance(state, proposer_index, proposer_reward)
 ```
 
@@ -424,6 +428,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     proposer_index = get_beacon_proposer_index(state)
     proposer_reward = Gwei(
         get_base_reward(state, reveal.revealer_index)
+        * SLOTS_PER_EPOCH
+        * EPOCHS_PER_CUSTODY_PERIOD
+        // len(get_active_validator_indices(state, get_current_epoch(state)))
         // SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR
     )
     increase_balance(state, proposer_index, proposer_reward)
@@ -466,12 +473,13 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
         max_proposer_slot_reward = (
             get_base_reward(state, reveal.revealed_index)
             * SLOTS_PER_EPOCH
+            * EPOCHS_PER_CUSTODY_PERIOD
             // len(get_active_validator_indices(state, get_current_epoch(state)))
-            # // PROPOSER_REWARD_QUOTIENT
+            // SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR
         )
         penalty = Gwei(
             max_proposer_slot_reward
-            * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE
+            * EARLY_DERIVED_SECRET_REVEAL_PENALTY_FACTOR
             * (len(state.exposed_derived_secrets[derived_secret_location]) + 1)
         )
 
