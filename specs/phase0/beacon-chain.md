@@ -61,6 +61,8 @@
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
     - [BLS Signatures](#bls-signatures)
+      - [IETF standard](#ietf-standard)
+      - [Eth2 BLS wrappers](#eth2-bls-wrappers)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
     - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
@@ -174,6 +176,8 @@ The following values are (non-configurable) constants used throughout the specif
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
 | `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
 | `ENDIANNESS` | `'little'` |
+| `G1_INFINATY_POINT` | `BLSPubkey(b'\xc0' + b'\x00' * 47)` |
+| `G2_INFINATY_POINT` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Configuration
 
@@ -603,17 +607,49 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 #### BLS Signatures
 
+##### IETF standard
+
 Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-03](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
 
-- `def Sign(SK: int, message: Bytes) -> BLSSignature`
-- `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
+- `def Sign(SK: int, message: bytes) -> BLSSignature`
+- `def Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
-- `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
+- `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
+- `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
 *Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
+
+##### Eth2 BLS wrappers
+
+We use the following Eth2-specific BLS wrappers to be compatible with IETF BLS standard.
+
+```python
+def is_zero_sk(PK: int) -> bool:
+    return PK == G1_INFINATY_POINT
+```
+
+```python
+def Eth2Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
+    if is_zero_sk(PK) and signature == G2_INFINATY_POINT:
+        return True
+    else:
+        return bls.Verify(PK, message, signature)
+```
+
+```python
+def Eth2AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
+    PKs = [PK for PK in PKs if not is_zero_sk(PK)]
+    messages = [message for PK, message in zip(PKs, messages) if not is_zero_sk(PK)]
+    return bls.AggregateVerify(PKs, messages, signature)
+```
+
+```python
+def Eth2FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
+    PKs = [PK for PK in PKs if not is_zero_sk(PK)]
+    return bls.FastAggregateVerify(PKs, message, signature)
+```
 
 ### Predicates
 
