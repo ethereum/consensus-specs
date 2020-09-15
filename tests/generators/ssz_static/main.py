@@ -21,7 +21,8 @@ MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10
 
 
-def create_test_case(rng: Random, typ, mode: random_value.RandomizationMode, chaos: bool) -> Iterable[gen_typing.TestCasePart]:
+def create_test_case(rng: Random, typ,
+                     mode: random_value.RandomizationMode, chaos: bool) -> Iterable[gen_typing.TestCasePart]:
     value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
     yield "value", "data", encode.encode(value)
     yield "serialized", "ssz", serialize(value)
@@ -38,7 +39,8 @@ def get_spec_ssz_types(spec):
     ]
 
 
-def ssz_static_cases(fork_name: str, seed: int, name, ssz_type, mode: random_value.RandomizationMode, chaos: bool, count: int):
+def ssz_static_cases(fork_name: str, seed: int, name, ssz_type,
+                     mode: random_value.RandomizationMode, chaos: bool, count: int):
     random_mode_name = mode.to_name()
 
     # Reproducible RNG

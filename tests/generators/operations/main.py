@@ -10,7 +10,8 @@ from eth2spec.test.context import PHASE0, PHASE1
 from eth2spec.utils import bls
 
 
-def create_provider(fork_name: str, handler_name: str, tests_src_mod_name: str, config_name: str) -> gen_typing.TestProvider:
+def create_provider(fork_name: str, handler_name: str,
+                    tests_src_mod_name: str, config_name: str) -> gen_typing.TestProvider:
     def prepare_fn(configs_path: str) -> str:
         config_util.prepare_config(configs_path, config_name)
         reload(spec_phase0)

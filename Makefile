@@ -1,6 +1,7 @@
 SPEC_DIR = ./specs
 SSZ_DIR = ./ssz
 TEST_LIBS_DIR = ./tests/core
+TEST_GENERATORS_DIR = ./tests/generators
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 TEST_VECTOR_DIR = ../eth2.0-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
@@ -112,6 +113,10 @@ lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1
+
+lint_generators: pyspec
+	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
+	flake8  --config $(LINTER_CONFIG_FILE)
 
 compile_deposit_contract:
 	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)
