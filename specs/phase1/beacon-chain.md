@@ -919,7 +919,6 @@ def validate_shard_transition(state: BeaconState,
     """
     # Validate transition and candidate shard coherence
     shard = get_shard_from_transition_candidate(state, candidate)
-    shard = (get_start_shard(state, candidate.data.slot) + candidate.data.index) % get_active_shard_count(state)
     assert shard == transition.shard < get_active_shard_count(state)
 
     # Confirm sufficient balance
