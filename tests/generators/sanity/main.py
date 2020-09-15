@@ -31,24 +31,24 @@ def create_provider(fork_name: str, handler_name: str, tests_src_mod_name: str, 
 
 
 if __name__ == "__main__":
-    phase_0_mods = [(key, 'eth2spec.test.phase0.sanity.test_' + key) for key in [
+    phase_0_mods = {key: 'eth2spec.test.phase0.sanity.test_' + key for key in [
         'blocks',
         'slots',
-    ]]
-    phase_1_mods = [(key, 'eth2spec.test.phase1.sanity.test_' + key) for key in [
+    ]}
+    phase_1_mods = {**{key: 'eth2spec.test.phase1.sanity.test_' + key for key in [
         'blocks',  # more phase 1 specific block tests
         'shard_blocks',
-    ]] + phase_0_mods  # also run the previous phase 0 tests (but against phase 1 spec)
+    ]}, **phase_0_mods} # also run the previous phase 0 tests (but against phase 1 spec)
 
     gen_runner.run_generator(f"sanity", [
-        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods
+        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods.items()
     ])
     gen_runner.run_generator(f"sanity", [
-        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods
+        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods.items()
     ])
     gen_runner.run_generator(f"sanity", [
-        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods
+        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods.items()
     ])
     gen_runner.run_generator(f"sanity", [
-        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
+        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods.items()
     ])

@@ -31,28 +31,28 @@ def create_provider(fork_name: str, handler_name: str, tests_src_mod_name: str, 
 
 
 if __name__ == "__main__":
-    phase_0_mods = [(key, 'eth2spec.test.phase0.epoch_processing.test_process_' + key) for key in [
+    phase_0_mods = {key: 'eth2spec.test.phase0.epoch_processing.test_process_' + key for key in [
         'final_updates',
         'justification_and_finalization',
         'registry_updates',
         'rewards_and_penalties',
         'slashings',
-    ]]
-    phase_1_mods = [(key, 'eth2spec.test.phase1.epoch_processing.test_process_' + key) for key in [
+    ]}
+    phase_1_mods = {**{key: 'eth2spec.test.phase1.epoch_processing.test_process_' + key for key in [
         'challenge_deadlines',
         'custody_final_updates',
         'reveal_deadlines',
-    ]] + phase_0_mods  # also run the previous phase 0 tests (but against phase 1 spec)
+    ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against phase 1 spec)
 
     gen_runner.run_generator(f"epoch_processing", [
-        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods
+        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods.items()
     ])
     gen_runner.run_generator(f"epoch_processing", [
-        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods
+        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods.items()
     ])
     gen_runner.run_generator(f"epoch_processing", [
-        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods
+        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods.items()
     ])
     gen_runner.run_generator(f"epoch_processing", [
-        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
+        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods.items()
     ])

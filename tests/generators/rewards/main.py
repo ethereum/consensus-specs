@@ -31,26 +31,23 @@ def create_provider(fork_name: str, handler_name: str, tests_src_mod_name: str, 
 
 
 if __name__ == "__main__":
-    phase_0_mods = [(key, 'eth2spec.test.phase0.rewards.test_'+key) for key in [
-        'basic',
+    phase_0_mods = {key: 'eth2spec.test.phase0.rewards.test_'+key for key in [
         'basic',
         'leak',
-        'leak',
         'random',
-        'random',
-    ]]
+    ]}
     # No additional phase 1 specific rewards tests, yet.
     phase_1_mods = phase_0_mods
 
     gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods
+        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods.items()
     ])
     gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods
+        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods.items()
     ])
     gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods
+        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods.items()
     ])
     gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods
+        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods.items()
     ])
