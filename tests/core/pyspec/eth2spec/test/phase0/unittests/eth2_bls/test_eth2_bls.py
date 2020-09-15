@@ -10,6 +10,6 @@ def test_eth2_verify(spec, state):
 
     # Valid in IETF BLS v3
     # TODO: will be invalid when we update it to v4
-    assert spec.bls.Verify(PK, message, signature)
+    assert spec.bls._Verify(PK, message, signature)
     # Valid in Eth2 spec
     assert spec.Eth2Verify(PK, message, signature)

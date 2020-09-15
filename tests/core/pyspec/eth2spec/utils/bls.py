@@ -45,7 +45,7 @@ def only_with_bls(alt_return=None):
 
 
 @only_with_bls(alt_return=True)
-def Verify(PK, message, signature):
+def _Verify(PK, message, signature):
     try:
         result = bls.Verify(PK, message, signature)
     except Exception:
@@ -55,7 +55,7 @@ def Verify(PK, message, signature):
 
 
 @only_with_bls(alt_return=True)
-def AggregateVerify(pubkeys, messages, signature):
+def _AggregateVerify(pubkeys, messages, signature):
     try:
         result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
     except Exception:
@@ -65,7 +65,7 @@ def AggregateVerify(pubkeys, messages, signature):
 
 
 @only_with_bls(alt_return=True)
-def FastAggregateVerify(pubkeys, message, signature):
+def _FastAggregateVerify(pubkeys, message, signature):
     try:
         result = bls.FastAggregateVerify(list(pubkeys), message, signature)
     except Exception:

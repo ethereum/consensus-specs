@@ -612,12 +612,12 @@ def bytes_to_uint64(data: bytes) -> uint64:
 Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-03](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
 
 - `def Sign(SK: int, message: bytes) -> BLSSignature`
-- `def Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
-- `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
+- `def _Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool`
+- `def _AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
+- `def _FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `Eth2Verify(...)` is used.
+Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
 *Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
 
@@ -635,20 +635,20 @@ def Eth2Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
     if is_zero_sk(PK) and signature == G2_INFINATY_POINT:
         return True
     else:
-        return bls.Verify(PK, message, signature)
+        return bls._Verify(PK, message, signature)
 ```
 
 ```python
 def Eth2AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
     PKs = [PK for PK in PKs if not is_zero_sk(PK)]
     messages = [message for PK, message in zip(PKs, messages) if not is_zero_sk(PK)]
-    return bls.AggregateVerify(PKs, messages, signature)
+    return bls._AggregateVerify(PKs, messages, signature)
 ```
 
 ```python
 def Eth2FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
     PKs = [PK for PK in PKs if not is_zero_sk(PK)]
-    return bls.FastAggregateVerify(PKs, message, signature)
+    return bls._FastAggregateVerify(PKs, message, signature)
 ```
 
 ### Predicates
