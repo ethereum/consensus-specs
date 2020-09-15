@@ -1,4 +1,5 @@
 from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 
 
 def run_on_tick(spec, store, time, new_justified_checkpoint=False):
@@ -19,14 +20,14 @@ def run_on_tick(spec, store, time, new_justified_checkpoint=False):
 @with_all_phases
 @spec_state_test
 def test_basic(spec, state):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     run_on_tick(spec, store, store.time + 1)
 
 
 @with_all_phases
 @spec_state_test
 def test_update_justified_single(spec, state):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     next_epoch = spec.get_current_epoch(state) + 1
     next_epoch_start_slot = spec.compute_start_slot_at_epoch(next_epoch)
     seconds_until_next_epoch = next_epoch_start_slot * spec.SECONDS_PER_SLOT - store.time
@@ -42,7 +43,7 @@ def test_update_justified_single(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_same_slot_at_epoch_boundary(spec, state):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
@@ -59,7 +60,7 @@ def test_no_update_same_slot_at_epoch_boundary(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_not_epoch_boundary(spec, state):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
 
     store.best_justified_checkpoint = spec.Checkpoint(
         epoch=store.justified_checkpoint.epoch + 1,
@@ -72,7 +73,7 @@ def test_no_update_not_epoch_boundary(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_new_justified_equal_epoch(spec, state):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
@@ -91,7 +92,7 @@ def test_no_update_new_justified_equal_epoch(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_update_new_justified_later_epoch(spec, state):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     store.best_justified_checkpoint = spec.Checkpoint(
