@@ -617,7 +617,7 @@ Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specificati
 - `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
 - `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
+Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `Eth2Verify(...)` is used.
 
 *Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
 
@@ -731,7 +731,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     pubkeys = [state.validators[i].pubkey for i in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
-    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
+    return Eth2FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
 
 #### `is_valid_merkle_branch`
@@ -1258,7 +1258,7 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[signed_block.message.proposer_index]
     signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
-    return bls.Verify(proposer.pubkey, signing_root, signed_block.signature)
+    return Eth2Verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
 ```python
@@ -1677,7 +1677,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
     signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
-    assert bls.Verify(proposer.pubkey, signing_root, body.randao_reveal)
+    assert Eth2Verify(proposer.pubkey, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -1730,7 +1730,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
         domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
         signing_root = compute_signing_root(signed_header.message, domain)
-        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
+        assert Eth2Verify(proposer.pubkey, signing_root, signed_header.signature)
 
     slash_validator(state, header_1.proposer_index)
 ```
@@ -1829,7 +1829,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
+        if not Eth2Verify(pubkey, signing_root, deposit.data.signature):
             return
 
         # Add validator and balance entries
@@ -1858,7 +1858,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
     signing_root = compute_signing_root(voluntary_exit, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    assert Eth2Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
