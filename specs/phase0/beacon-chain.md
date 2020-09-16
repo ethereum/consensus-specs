@@ -647,7 +647,7 @@ def bls_verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bo
 
 ```python
 def bls_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
-    return bls_aggregate_verify(pubkeys, [messsage], signature)
+    return bls_aggregate_verify(pubkeys, [messsage] * len(pubkeys), signature)
 ```
 
 ### Predicates
