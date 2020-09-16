@@ -628,9 +628,6 @@ Eth2 wraps the above endpoints from draft v4 of the IETF BLS signature standard 
 
 ```python
 def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
-    if len(pubkeys) == 0:
-        return False
-
     # Filter out (pubkey, message) pairs with an infinity pubkey
     pubkeys_and_messages = [(pubkey, message) for pubkey, message in zip(pubkeys, messages)
                             if pubkey != G1_INFINITY_POINT]

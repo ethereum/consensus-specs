@@ -10,8 +10,7 @@ message = b'\x12' * 32
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_eth2_verify(spec, state):
-
+def test_eth2_verify_point_at_infinity(spec, state):
     # Valid in IETF BLS v3
     # TODO: will be invalid when we update it to v4
     assert spec.ietf._Verify(infinity_pubkey, message, infinity_signature)
@@ -22,7 +21,7 @@ def test_eth2_verify(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_eth2_aggregate_verify(spec, state):
+def test_eth2_aggregate_verify_point_at_infinity(spec, state):
     pubkeys = [infinity_pubkey]
     signatures = [infinity_signature]
     for privkey in range(1, 3):
@@ -41,7 +40,17 @@ def test_eth2_aggregate_verify(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_eth2_fast_aggregate_verify(spec, state):
+def test_eth2_aggregate_verify_no_signature(spec, state):
+    # Invalid in IETF BLS v3
+    assert not spec.ietf._AggregateVerify([], [], infinity_signature)
+    # Valid in Eth2 spec
+    assert spec.bls_aggregate_verify([], [], infinity_signature)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_eth2_fast_aggregate_verify_point_at_infinity(spec, state):
     pubkeys = [infinity_pubkey]
     signatures = [infinity_signature]
     for privkey in range(1, 3):
