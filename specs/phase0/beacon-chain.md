@@ -637,7 +637,7 @@ def is_infinity_signature(signature: BLSSignature) -> bool:
 
 ```python
 def Eth2Verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
-    # IETF standard v4 disallows pubkey at point of infinity. To make this case valid, check this special
+    # IETF standard v4 disallows when pubkey is point at infinity. To make this case valid, check this special
     # case beforehand.
     if is_infinity_pubkey(pubkey):
         return is_infinity_signature(signature)
@@ -650,13 +650,13 @@ def Eth2AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes],
     if len(pubkeys) == 0:
         return False
 
-    # IETF standard v4 disallows pubkey at point of infinity. To make this case valid, remove the pubkeys of point
-    # at infinity beforehand.
+    # IETF standard v4 disallows when pubkey is point at infinity. To make this case valid, remove the point
+    # at infinity pubkeys beforehand.
     pubkeys_and_messages = [(pubkey, message) for pubkey, message in zip(pubkeys, messages)
                             if not is_infinity_pubkey(pubkey)]
     pubkeys, messages = list(zip(*pubkeys_and_messages))
 
-    # If all the pubkeys are point at infinity, verify if the signature is at at infinity.
+    # If all the pubkeys are point at infinity, verify if the signature is at infinity.
     if len(pubkeys) == 0:
         return is_infinity_signature(signature)
 
@@ -669,11 +669,11 @@ def Eth2FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signat
     if len(pubkeys) == 0:
         return False
 
-    # IETF standard v4 disallows pubkey at point of infinity. To make this case valid, remove the pubkeys of point
-    # at infinity beforehand.
+    # IETF standard v4 disallows when pubkey is point at infinity. To make this case valid, remove the point
+    # at infinity pubkeys beforehand.
     pubkeys = [pubkey for pubkey in pubkeys if not is_infinity_pubkey(pubkey)]
 
-    # If all the pubkeys are point at infinity, verify if the signature is at at infinity.
+    # If all the pubkeys are point at infinity, verify if the signature is at infinity.
     if len(pubkeys) == 0:
         return is_infinity_signature(signature)
 
