@@ -2,6 +2,26 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
+## Table of contents
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Constants](#constants)
+- [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
+- [Weak Subjectivity Period](#weak-subjectivity-period)
+  - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
+- [Weak Subjectivity Sync](#weak-subjectivity-sync)
+  - [Weak Subjectivity Sync Procedure](#weak-subjectivity-sync-procedure)
+  - [Checking for Stale Weak Subjectivity Checkpoint](#checking-for-stale-weak-subjectivity-checkpoint)
+- [Distributing Weak Subjectivity Checkpoints](#distributing-weak-subjectivity-checkpoints)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 ## Introduction
 This document is a guide for implementing the Weak Subjectivity protections in Phase 0 of Ethereum 2.0. For more information about weak subjectivity and why it is required, please refer to:
 - [Weak Subjectivity in Eth2.0](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
