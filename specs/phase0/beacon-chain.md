@@ -62,7 +62,7 @@
     - [`hash_tree_root`](#hash_tree_root)
     - [BLS signatures](#bls-signatures)
       - [IETF standard](#ietf-standard)
-      - [Eth2 wrappers](#eth2-bls-wrappers)
+      - [Eth2 wrappers](#eth2-wrappers)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
     - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
