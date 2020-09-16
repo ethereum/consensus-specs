@@ -60,9 +60,9 @@
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
-    - [BLS Signatures](#bls-signatures)
+    - [BLS signatures](#bls-signatures)
       - [IETF standard](#ietf-standard)
-      - [Eth2 BLS wrappers](#eth2-bls-wrappers)
+      - [Eth2 wrappers](#eth2-bls-wrappers)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
     - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
@@ -605,23 +605,26 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../../ssz/simple-serialize.md#merkleization).
 
-#### BLS Signatures
+#### BLS signatures
 
 ##### IETF standard
 
-Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-03](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
+This specification refers to [draft v4 of the IETF BLS signature standard](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, the following endpoints are used with the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite:
 
-- `def Sign(SK: int, message: bytes) -> BLSSignature`
+- `def Sign(secret_key: int, message: bytes) -> BLSSignature`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def _Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool`
-- `def _AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
-- `def _FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
+- `def _Verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bool`
+- `def _AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
+- `def _FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
+For notational clarity the above endpoints are accessed through the `bls` module, e.g. `bls._Verify`.
 
-##### Eth2 BLS wrappers
+##### Eth2 wrappers
 
-We use the following Eth2-specific BLS wrappers to be compatible with IETF BLS standard.
+Eth2 wraps the above endpoints from draft v4 of the IETF BLS signature standard to make two changes:
+
+- allow infinity pubkeys (replicating [draft v3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03) for historical reasons)
+- allow empty aggregate signatures for phases 1+
 
 ```python
 def is_infinity_pubkey(pubkey: BLSPubkey) -> bool:
@@ -634,27 +637,13 @@ def is_infinity_signature(signature: BLSSignature) -> bool:
 ```
 
 ```python
-def Eth2Verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
-    # IETF standard v4 disallows when pubkey is point at infinity. To make this case valid, check this special
-    # case beforehand.
-    if is_infinity_pubkey(pubkey):
-        return is_infinity_signature(signature)
-    return bls._Verify(pubkey, message, signature)
-```
-
-```python
-def Eth2AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
-    # Based on IETF BLS standard, the len(pubkeys) should be at least 1.
-    if len(pubkeys) == 0:
-        return False
-
-    # IETF standard v4 disallows when pubkey is point at infinity. To make this case valid, remove the point
-    # at infinity pubkeys beforehand.
+def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
+    # Filter out (pubkey, message) pairs with an infinity pubkey
     pubkeys_and_messages = [(pubkey, message) for pubkey, message in zip(pubkeys, messages)
                             if not is_infinity_pubkey(pubkey)]
     pubkeys, messages = list(zip(*pubkeys_and_messages))
 
-    # If all the pubkeys are point at infinity, verify if the signature is at infinity.
+    # If all the pubkeys are infinity pubkeys check the signature is the infinity signature
     if len(pubkeys) == 0:
         return is_infinity_signature(signature)
 
@@ -662,20 +651,13 @@ def Eth2AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes],
 ```
 
 ```python
-def Eth2FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
-    # Based on IETF BLS standard, the len(pubkeys) should be at least 1.
-    if len(pubkeys) == 0:
-        return False
+def bls_verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
+    return bls_aggregate_verify([pubkey], [message], signature)
+```
 
-    # IETF standard v4 disallows when pubkey is point at infinity. To make this case valid, remove the point
-    # at infinity pubkeys beforehand.
-    pubkeys = [pubkey for pubkey in pubkeys if not is_infinity_pubkey(pubkey)]
-
-    # If all the pubkeys are point at infinity, verify if the signature is at infinity.
-    if len(pubkeys) == 0:
-        return is_infinity_signature(signature)
-
-    return bls._FastAggregateVerify(pubkeys, message, signature)
+```python
+def bls_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
+    return bls_aggregate_verify(pubkeys, [messsage], signature)
 ```
 
 ### Predicates
@@ -758,7 +740,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     pubkeys = [state.validators[i].pubkey for i in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
-    return Eth2FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
+    return bls_fast_aggregate_verify(pubkeys, signing_root, indexed_attestation.signature)
 ```
 
 #### `is_valid_merkle_branch`
@@ -1285,7 +1267,7 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[signed_block.message.proposer_index]
     signing_root = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
-    return Eth2Verify(proposer.pubkey, signing_root, signed_block.signature)
+    return bls_verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
 ```python
@@ -1704,7 +1686,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
     signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
-    assert Eth2Verify(proposer.pubkey, signing_root, body.randao_reveal)
+    assert bls_verify(proposer.pubkey, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -1757,7 +1739,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
         domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
         signing_root = compute_signing_root(signed_header.message, domain)
-        assert Eth2Verify(proposer.pubkey, signing_root, signed_header.signature)
+        assert bls_verify(proposer.pubkey, signing_root, signed_header.signature)
 
     slash_validator(state, header_1.proposer_index)
 ```
@@ -1856,7 +1838,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        if not Eth2Verify(pubkey, signing_root, deposit.data.signature):
+        if not bls_verify(pubkey, signing_root, deposit.data.signature):
             return
 
         # Add validator and balance entries
@@ -1885,7 +1867,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
     signing_root = compute_signing_root(voluntary_exit, domain)
-    assert Eth2Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    assert bls_verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
