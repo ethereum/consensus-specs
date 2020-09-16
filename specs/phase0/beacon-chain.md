@@ -617,7 +617,7 @@ This specification refers to [draft v4 of the IETF BLS signature standard](https
 - `def _AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
 - `def _FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-For notational clarity the above endpoints are accessed through the `bls` module, e.g. `bls._Verify`.
+For notational clarity the above endpoints are accessed through the `ietf_v4` module, e.g. `eitf_v4._AggregateVerify`.
 
 ##### Eth2 wrappers
 
@@ -637,7 +637,7 @@ def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes]
     if len(pubkeys) == 0:
         return signature == G2_INFINITY_POINT
 
-    return bls._AggregateVerify(pubkeys, messages, signature)
+    return ietf_v4._AggregateVerify(pubkeys, messages, signature)
 ```
 
 ```python
