@@ -93,7 +93,7 @@ Clients may choose to validate that the input Weak Subjectivity Checkpoint is no
     ws_period = compute_weak_subjectivity_period(ws_state)
     ws_state_epoch = compute_epoch_at_slot(ws_state.slot)
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
-    assert current_epoch > ws_state_epoch + ws_period, "The input Weak Subjectivity Checkpoint is stale"
+    assert current_epoch <= ws_state_epoch + ws_period, "The input Weak Subjectivity Checkpoint is stale"
 ```
 
 ## Distributing Weak Subjectivity Checkpoints
