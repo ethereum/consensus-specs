@@ -176,8 +176,8 @@ The following values are (non-configurable) constants used throughout the specif
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
 | `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
 | `ENDIANNESS` | `'little'` |
-| `G1_INFINATY_POINT` | `BLSPubkey(b'\xc0' + b'\x00' * 47)` |
-| `G2_INFINATY_POINT` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `G1_INFINITY_POINT` | `BLSPubkey(b'\xc0' + b'\x00' * 47)` |
+| `G2_INFINITY_POINT` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Configuration
 
@@ -626,29 +626,58 @@ Within these specifications, BLS signatures are treated as a module for notation
 We use the following Eth2-specific BLS wrappers to be compatible with IETF BLS standard.
 
 ```python
-def is_zero_sk(PK: int) -> bool:
-    return PK == G1_INFINATY_POINT
+def is_infinity_pubkey(pubkey: BLSPubkey) -> bool:
+    return pubkey == G1_INFINITY_POINT
 ```
 
 ```python
-def Eth2Verify(PK: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
-    if is_zero_sk(PK) and signature == G2_INFINATY_POINT:
-        return True
-    else:
-        return bls._Verify(PK, message, signature)
+def is_infinity_signature(signature: BLSSignature) -> bool:
+    return signature == G2_INFINITY_POINT
 ```
 
 ```python
-def Eth2AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
-    PKs = [PK for PK in PKs if not is_zero_sk(PK)]
-    messages = [message for PK, message in zip(PKs, messages) if not is_zero_sk(PK)]
-    return bls._AggregateVerify(PKs, messages, signature)
+def Eth2Verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bool:
+    # IETF standard v4 disallows pubkey at point of infinity. To make this case valid, check this special
+    # case beforehand.
+    if is_infinity_pubkey(pubkey):
+        return is_infinity_signature(signature)
+    return bls._Verify(pubkey, message, signature)
 ```
 
 ```python
-def Eth2FastAggregateVerify(PKs: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
-    PKs = [PK for PK in PKs if not is_zero_sk(PK)]
-    return bls._FastAggregateVerify(PKs, message, signature)
+def Eth2AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
+    # Based on IETF BLS standard, the len(pubkeys) should be at least 1.
+    if len(pubkeys) == 0:
+        return False
+
+    # IETF standard v4 disallows pubkey at point of infinity. To make this case valid, remove the pubkeys of point
+    # at infinity beforehand.
+    pubkeys_and_messages = [(pubkey, message) for pubkey, message in zip(pubkeys, messages)
+                            if not is_infinity_pubkey(pubkey)]
+    pubkeys, messages = list(zip(*pubkeys_and_messages))
+
+    # If all the pubkeys are point at infinity, verify if the signature is at at infinity.
+    if len(pubkeys) == 0:
+        return is_infinity_signature(signature)
+
+    return bls._AggregateVerify(pubkeys, messages, signature)
+```
+
+```python
+def Eth2FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
+    # Based on IETF BLS standard, the len(pubkeys) should be at least 1.
+    if len(pubkeys) == 0:
+        return False
+
+    # IETF standard v4 disallows pubkey at point of infinity. To make this case valid, remove the pubkeys of point
+    # at infinity beforehand.
+    pubkeys = [pubkey for pubkey in pubkeys if not is_infinity_pubkey(pubkey)]
+
+    # If all the pubkeys are point at infinity, verify if the signature is at at infinity.
+    if len(pubkeys) == 0:
+        return is_infinity_signature(signature)
+
+    return bls._FastAggregateVerify(pubkeys, message, signature)
 ```
 
 ### Predicates
