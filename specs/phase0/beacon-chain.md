@@ -617,7 +617,7 @@ The following endpoints refer to [draft v4 of the IETF BLS signature standard](h
 - `def _AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
 - `def _FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-For notational clarity the above endpoints are accessed through the `ietf` module, e.g. `eitf._AggregateVerify`.
+For notational clarity the above endpoints are accessed through the `ietf` module, e.g. `ietf._AggregateVerify`.
 
 ##### Eth2 wrappers
 
