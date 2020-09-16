@@ -627,25 +627,15 @@ Eth2 wraps the above endpoints from draft v4 of the IETF BLS signature standard 
 - allow empty aggregate signatures for phases 1+
 
 ```python
-def is_infinity_pubkey(pubkey: BLSPubkey) -> bool:
-    return pubkey == G1_INFINITY_POINT
-```
-
-```python
-def is_infinity_signature(signature: BLSSignature) -> bool:
-    return signature == G2_INFINITY_POINT
-```
-
-```python
 def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
     # Filter out (pubkey, message) pairs with an infinity pubkey
     pubkeys_and_messages = [(pubkey, message) for pubkey, message in zip(pubkeys, messages)
-                            if not is_infinity_pubkey(pubkey)]
+                            if pubkey != G1_INFINITY_POINT]
     pubkeys, messages = list(zip(*pubkeys_and_messages))
 
     # If all the pubkeys are infinity pubkeys check the signature is the infinity signature
     if len(pubkeys) == 0:
-        return is_infinity_signature(signature)
+        return signature == G2_INFINITY_POINT
 
     return bls._AggregateVerify(pubkeys, messages, signature)
 ```
