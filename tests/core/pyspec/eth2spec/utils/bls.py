@@ -81,10 +81,9 @@ def Aggregate(signatures):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Sign(SK, message):
-    if bls == py_ecc_bls:
-        return bls.Sign(SK, message)
-    else:
-        return bls.Sign(SK.to_bytes(32, 'big'), message)
+    if bls == milagro_bls:
+        SK = SK.to_bytes(32, 'big')
+    return bls.Sign(SK, message)
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)
@@ -99,4 +98,6 @@ def AggregatePKs(pubkeys):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def SkToPk(SK):
+    if bls == milagro_bls:
+        SK = SK.to_bytes(32, 'big')
     return bls.SkToPk(SK)
