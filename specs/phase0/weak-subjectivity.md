@@ -55,7 +55,7 @@ A brief reference for what these values look like in practice:
 ## Weak Subjectivity Sync
 Clients should allow users to input a Weak Subjectivity Checkpoint at startup, and guarantee that any successful sync leads to the given Weak Subjectivity Checkpoint being in the canonical chain. If such a sync is not possible, the client should treat this as a critical and irrecoverable failure.
 
-**Weak Subjectivity Sync Procedure**:
+### Weak Subjectivity Sync Procedure
 1. Take a Weak Subjectivity Checkpoint as a CLI parameter input in `block_root:epoch_number` format, where `block_root` is the root of a block at epoch `epoch_number`. Example:
 ```
 0x8584188b86a9296932785cc2827b925f9deebacce6d72ad8d53171fa046b43d9:9544
@@ -63,7 +63,8 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
 2.  - *IF* `epoch_number > store.finalized_checkpoint.epoch`, then *ASSERT* during block sync that block with root `block_root` is in the sync path at epoch `epoch_number`. Emit descriptive critical error if this assert fails, then exit client process.
     - *IF* `epoch_number <= store.finalized_checkpoint.epoch`, then *ASSERT* that the block in the canonical chain at epoch `epoch_number` has root `block_root`. Emit descriptive critical error if this assert fails, then exit client process.
 
-Additionally, clients may choose to validate that the input Weak Subjectivity Checkpoint is not stale at the time of startup. To support this mechanism, the client needs to take the state at the Weak Subjectivity Checkpoint as a CLI parameter input (or fetch the state associated with the input Weak Subjectivity Checkpoint from some source). The check can be implemented in the following way:
+### Checking for Stale Weak Subjectivity Checkpoint
+Clients may choose to validate that the input Weak Subjectivity Checkpoint is not stale at the time of startup. To support this mechanism, the client needs to take the state at the Weak Subjectivity Checkpoint as a CLI parameter input (or fetch the state associated with the input Weak Subjectivity Checkpoint from some source). The check can be implemented in the following way:
 ```python
   def is_within_weak_subjectivity_period(store, ws_state, ws_checkpoint):
     # Clients may choose to validate the input state against the input Weak Subjectivity Checkpoint
