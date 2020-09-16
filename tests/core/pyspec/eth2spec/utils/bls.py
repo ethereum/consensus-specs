@@ -75,7 +75,7 @@ def _FastAggregateVerify(pubkeys, message, signature):
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
-def Aggregate(signatures):
+def _Aggregate(signatures):
     return bls.Aggregate(signatures)
 
 

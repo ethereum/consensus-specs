@@ -2,6 +2,7 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.test.context import PHASE0
 
 
 def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
@@ -87,9 +88,13 @@ def build_empty_block(spec, state, slot=None):
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
     empty_block.proposer_index = spec.get_beacon_proposer_index(state)
-    empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     empty_block.parent_root = parent_block_root
+    empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     apply_randao_reveal(spec, state, empty_block)
+
+    if spec.fork != PHASE0:
+        empty_block.body.light_client_signature = spec.G2_INFINITY_POINT
+
     return empty_block
 
 

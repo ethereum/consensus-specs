@@ -14,7 +14,6 @@
   - [Misc](#misc)
   - [Shard block configs](#shard-block-configs)
   - [Gwei values](#gwei-values)
-  - [Initial values](#initial-values)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
@@ -125,12 +124,6 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | - | - |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | 
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | 
-
-### Initial values
-
-| Name | Value |
-| - | - |
-| `NO_SIGNATURE` | `BLSSignature(b'\x00' * 96)` | 
 
 ### Time parameters
 

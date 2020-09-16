@@ -184,7 +184,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
                 privkey
             )
         )
-    return bls.Aggregate(signatures)
+    return spec.bls_aggregate_signatures(signatures)
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):

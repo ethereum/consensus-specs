@@ -27,7 +27,7 @@ def test_eth2_aggregate_verify_point_at_infinity(spec, state):
     for privkey in range(1, 3):
         pubkeys.append(spec.ietf.SkToPk(privkey))
         signatures.append(spec.ietf.Sign(privkey, message))
-    signature = spec.ietf.Aggregate(signatures)
+    signature = spec.bls_aggregate_signatures(signatures)
     messages = [message] * 3
 
     # Valid in IETF BLS v3
@@ -56,10 +56,20 @@ def test_eth2_fast_aggregate_verify_point_at_infinity(spec, state):
     for privkey in range(1, 3):
         pubkeys.append(spec.ietf.SkToPk(privkey))
         signatures.append(spec.ietf.Sign(privkey, message))
-    signature = spec.ietf.Aggregate(signatures)
+    signature = spec.bls_aggregate_signatures(signatures)
 
     # Valid in IETF BLS v3
     # TODO: check if it should be invalid in v4
     assert spec.ietf._FastAggregateVerify(pubkeys, message, signature)
     # Valid in Eth2 spec
     assert spec.bls_fast_aggregate_verify(pubkeys, message, signature)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_eth2_fast_aggregate_verify_no_signature(spec, state):
+    # Invalid in IETF BLS v3
+    assert not spec.ietf._FastAggregateVerify([], message, infinity_signature)
+    # Valid in Eth2 spec
+    assert spec.bls_fast_aggregate_verify([], message, infinity_signature)

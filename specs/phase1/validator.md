@@ -321,13 +321,8 @@ def get_shard_transition(beacon_state: BeaconState,
     shard_block_lengths, shard_data_roots, shard_states = (
         get_shard_transition_fields(beacon_state, shard, shard_blocks)
     )
-
-    if len(shard_blocks) > 0:
-        proposer_signatures = [shard_block.signature for shard_block in shard_blocks]
-        proposer_signature_aggregate = ietf.Aggregate(proposer_signatures)
-    else:
-        proposer_signature_aggregate = NO_SIGNATURE
-
+    proposer_signatures = [shard_block.signature for shard_block in shard_blocks]
+    proposer_signature_aggregate = bls_aggregate_signatures(proposer_signatures)
     return ShardTransition(
         start_slot=offset_slots[0],
         shard_block_lengths=shard_block_lengths,
@@ -483,7 +478,7 @@ Collect `light_client_votes` seen via gossip during the `slot` that have an equi
 ```python
 def get_aggregate_light_client_signature(light_client_votes: Sequence[LightClientVote]) -> BLSSignature:
     signatures = [light_client_vote.signature for light_client_vote in light_client_votes]
-    return ietf.Aggregate(signatures)
+    return bls_aggregate_signatures(signatures)
 ```
 
 #### Broadcast aggregate

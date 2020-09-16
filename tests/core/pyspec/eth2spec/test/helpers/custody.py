@@ -23,7 +23,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     # Generate masker's signature on the mask
     signing_root = spec.compute_signing_root(mask, domain)
     masker_signature = bls.Sign(privkeys[masker_index], signing_root)
-    masked_reveal = bls.Aggregate([reveal, masker_signature])
+    masked_reveal = spec.bls_aggregate_signatures([reveal, masker_signature])
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,

@@ -612,7 +612,7 @@ def bytes_to_uint64(data: bytes) -> uint64:
 This specification refers to [draft v4 of the IETF BLS signature standard](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, the following endpoints are used with the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite:
 
 - `def Sign(secret_key: int, message: bytes) -> BLSSignature`
-- `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
+- `def _Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
 - `def _Verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bool`
 - `def _AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
 - `def _FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
@@ -625,6 +625,13 @@ Eth2 wraps the above endpoints from draft v4 of the IETF BLS signature standard 
 
 - allow infinity pubkeys (replicating [draft v3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03) for historical reasons)
 - allow empty aggregate signatures for phases 1+
+
+```python
+def bls_aggregate_signatures(signatures: Sequence[BLSSignature]) -> BLSSignature:
+    if len(signatures) == 0:
+        return G2_INFINITY_POINT
+    return ietf._Aggregate(signatures)
+```
 
 ```python
 def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:

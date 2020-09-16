@@ -138,12 +138,12 @@ def case03_aggregate():
         sigs = [bls.Sign(privkey, message) for privkey in PRIVKEYS]
         yield f'aggregate_{encode_hex(message)}', {
             'input': [encode_hex(sig) for sig in sigs],
-            'output': encode_hex(bls.Aggregate(sigs)),
+            'output': encode_hex(bls._Aggregate(sigs)),
         }
 
     # Invalid pubkeys -- len(pubkeys) == 0
     try:
-        bls.Aggregate([])
+        bls._Aggregate([])
     except Exception:
         pass
     else:
@@ -161,7 +161,7 @@ def case04_fast_aggregate_verify():
     for i, message in enumerate(MESSAGES):
         privkeys = PRIVKEYS[:i + 1]
         sigs = [bls.Sign(privkey, message) for privkey in privkeys]
-        aggregate_signature = bls.Aggregate(sigs)
+        aggregate_signature = bls._Aggregate(sigs)
         pubkeys = [bls.SkToPk(privkey) for privkey in privkeys]
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
@@ -247,7 +247,7 @@ def case05_aggregate_verify():
         messages_serial.append(encode_hex(message))
         sigs.append(sig)
 
-    aggregate_signature = bls.Aggregate(sigs)
+    aggregate_signature = bls._Aggregate(sigs)
     assert bls._AggregateVerify(pubkeys, messages, aggregate_signature)
     assert milagro_bls.AggregateVerify(pubkeys, messages, aggregate_signature)
     yield f'aggregate_verify_valid', {
