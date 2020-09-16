@@ -619,8 +619,6 @@ Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specificati
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
-*Note*: The non-standard configuration of the BLS and hash to curve specs is temporary and will be resolved once IETF releases BLS spec draft 3.
-
 ##### Eth2 BLS wrappers
 
 We use the following Eth2-specific BLS wrappers to be compatible with IETF BLS standard.
