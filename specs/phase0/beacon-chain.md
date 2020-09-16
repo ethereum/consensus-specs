@@ -609,7 +609,7 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 ##### IETF standard
 
-This specification refers to [draft v4 of the IETF BLS signature standard](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, the following endpoints are used with the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite:
+The following endpoints refer to [draft v4 of the IETF BLS signature standard](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite:
 
 - `def Sign(secret_key: int, message: bytes) -> BLSSignature`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
@@ -617,14 +617,14 @@ This specification refers to [draft v4 of the IETF BLS signature standard](https
 - `def _AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
 - `def _FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-For notational clarity the above endpoints are accessed through the `ietf` module, e.g. `eitf_v4._AggregateVerify`.
+For notational clarity the above endpoints are accessed through the `ietf` module, e.g. `eitf._AggregateVerify`.
 
 ##### Eth2 wrappers
 
 Eth2 wraps the above endpoints from draft v4 of the IETF BLS signature standard to make two changes:
 
 - allow infinity pubkeys (replicating [draft v3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03) for historical reasons)
-- allow empty aggregate signatures for phases 1+
+- allow empty aggregate signatures (for phases 1+)
 
 ```python
 def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
