@@ -324,7 +324,7 @@ def get_shard_transition(beacon_state: BeaconState,
 
     if len(shard_blocks) > 0:
         proposer_signatures = [shard_block.signature for shard_block in shard_blocks]
-        proposer_signature_aggregate = bls.Aggregate(proposer_signatures)
+        proposer_signature_aggregate = ietf.Aggregate(proposer_signatures)
     else:
         proposer_signature_aggregate = NO_SIGNATURE
 
@@ -432,7 +432,7 @@ def get_light_client_vote_signature(state: BeaconState,
                                     privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(light_client_vote_data.slot))
     signing_root = compute_signing_root(light_client_vote_data, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ###### `LightClientVote`
@@ -460,7 +460,7 @@ A validator is selected to aggregate based upon the return value of `is_light_cl
 def get_light_client_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_LIGHT_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ```python
@@ -483,7 +483,7 @@ Collect `light_client_votes` seen via gossip during the `slot` that have an equi
 ```python
 def get_aggregate_light_client_signature(light_client_votes: Sequence[LightClientVote]) -> BLSSignature:
     signatures = [light_client_vote.signature for light_client_vote in light_client_votes]
-    return bls.Aggregate(signatures)
+    return ietf.Aggregate(signatures)
 ```
 
 #### Broadcast aggregate
@@ -517,7 +517,7 @@ def get_light_aggregate_and_proof_signature(state: BeaconState,
     aggregate = aggregate_and_proof.aggregate
     domain = get_domain(state, DOMAIN_LIGHT_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
     signing_root = compute_signing_root(aggregate_and_proof, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ##### `LightAggregateAndProof`
@@ -557,7 +557,7 @@ def get_custody_secret(state: BeaconState,
     epoch_to_sign = get_randao_epoch_for_custody_period(period, validator_index)
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     signing_root = compute_signing_root(Epoch(epoch_to_sign), domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 Note that the valid custody secret is always the one for the **attestation target epoch**, not to be confused with the epoch in which the shard block was generated. While they are the same most of the time, getting this wrong at custody epoch boundaries would result in a custody slashing.

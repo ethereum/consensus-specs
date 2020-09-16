@@ -699,7 +699,7 @@ def optional_aggregate_verify(pubkeys: Sequence[BLSPubkey],
     if len(pubkeys) == 0:
         return signature == NO_SIGNATURE
     else:
-        return Eth2AggregateVerify(pubkeys, messages, signature)
+        return bls_aggregate_verify(pubkeys, messages, signature)
 ```
 
 #### `optional_fast_aggregate_verify`
@@ -713,7 +713,7 @@ def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes3
     if len(pubkeys) == 0:
         return signature == NO_SIGNATURE
     else:
-        return Eth2FastAggregateVerify(pubkeys, message, signature)
+        return bls_fast_aggregate_verify(pubkeys, message, signature)
 ```
 
 ### Block processing

@@ -121,7 +121,7 @@ To submit a deposit:
 - Set `deposit_data.withdrawal_credentials` to `withdrawal_credentials`.
 - Set `deposit_data.amount` to `amount`.
 - Let `deposit_message` be a `DepositMessage` with all the `DepositData` contents except the `signature`.
-- Let `signature` be the result of `bls.Sign` of the `compute_signing_root(deposit_message, domain)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (_Warning_: Deposits _must_ be signed with `GENESIS_FORK_VERSION`, calling `compute_domain` without a second argument defaults to the correct version).
+- Let `signature` be the result of `ietf.Sign` of the `compute_signing_root(deposit_message, domain)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (_Warning_: Deposits _must_ be signed with `GENESIS_FORK_VERSION`, calling `compute_domain` without a second argument defaults to the correct version).
 - Let `deposit_data_root` be `hash_tree_root(deposit_data)`.
 - Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32)` along with a deposit of `amount` Gwei.
 
@@ -260,7 +260,7 @@ Set `block.body.randao_reveal = epoch_signature` where `epoch_signature` is obta
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(compute_epoch_at_slot(block.slot), domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ##### Eth1 Data
@@ -384,7 +384,7 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(block, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ### Attesting
@@ -443,7 +443,7 @@ Set `attestation.signature = attestation_signature` where `attestation_signature
 def get_attestation_signature(state: BeaconState, attestation_data: AttestationData, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = compute_signing_root(attestation_data, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 #### Broadcast attestation
@@ -478,7 +478,7 @@ A validator is selected to aggregate based upon the return value of `is_aggregat
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ```python
@@ -509,7 +509,7 @@ Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_sig
 ```python
 def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
     signatures = [attestation.signature for attestation in attestations]
-    return bls.Aggregate(signatures)
+    return ietf.Aggregate(signatures)
 ```
 
 #### Broadcast aggregate
@@ -543,7 +543,7 @@ def get_aggregate_and_proof_signature(state: BeaconState,
     aggregate = aggregate_and_proof.aggregate
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
     signing_root = compute_signing_root(aggregate_and_proof, domain)
-    return bls.Sign(privkey, signing_root)
+    return ietf.Sign(privkey, signing_root)
 ```
 
 ##### `AggregateAndProof`

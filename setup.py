@@ -114,7 +114,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
-from eth2spec.utils import bls
+from eth2spec.utils import bls as ietf
 
 from eth2spec.utils.hash_function import hash
 
@@ -139,7 +139,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64, bit,
     ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
-from eth2spec.utils import bls
+from eth2spec.utils import bls as ietf
 
 from eth2spec.utils.hash_function import hash
 

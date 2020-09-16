@@ -61,7 +61,7 @@ def verify_shard_block_signature(beacon_parent_state: BeaconState,
     proposer = beacon_parent_state.validators[signed_block.message.proposer_index]
     domain = get_domain(beacon_parent_state, DOMAIN_SHARD_PROPOSAL, compute_epoch_at_slot(signed_block.message.slot))
     signing_root = compute_signing_root(signed_block.message, domain)
-    return Eth2Verify(proposer.pubkey, signing_root, signed_block.signature)
+    return bls_verify(proposer.pubkey, signing_root, signed_block.signature)
 ```
 
 ## Shard state transition function

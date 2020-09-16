@@ -16,7 +16,7 @@ def run_get_signature_test(spec, state, obj, domain, get_signature_fn, privkey, 
         signing_ssz_object = obj
     signature = get_signature_fn(state, obj, privkey)
     signing_root = spec.compute_signing_root(signing_ssz_object, domain)
-    assert spec.Eth2Verify(pubkey, signing_root, signature)
+    assert spec.bls_verify(pubkey, signing_root, signature)
 
 
 def run_get_committee_assignment(spec, state, epoch, validator_index, valid=True):
@@ -440,7 +440,7 @@ def test_get_aggregate_signature(spec, state):
     signature = spec.get_aggregate_signature(attestations)
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
-    assert spec.Eth2FastAggregateVerify(attesting_pubkeys, signing_root, signature)
+    assert spec.bls_fast_aggregate_verify(attesting_pubkeys, signing_root, signature)
 
 
 @with_all_phases

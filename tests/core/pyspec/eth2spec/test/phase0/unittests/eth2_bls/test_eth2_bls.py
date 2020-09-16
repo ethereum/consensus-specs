@@ -14,9 +14,9 @@ def test_eth2_verify(spec, state):
 
     # Valid in IETF BLS v3
     # TODO: will be invalid when we update it to v4
-    assert spec.bls._Verify(infinity_pubkey, message, infinity_signature)
+    assert spec.ietf._Verify(infinity_pubkey, message, infinity_signature)
     # Valid in Eth2 spec
-    assert spec.Eth2Verify(infinity_pubkey, message, infinity_signature)
+    assert spec.bls_verify(infinity_pubkey, message, infinity_signature)
 
 
 @with_all_phases
@@ -26,16 +26,16 @@ def test_eth2_aggregate_verify(spec, state):
     pubkeys = [infinity_pubkey]
     signatures = [infinity_signature]
     for privkey in range(1, 3):
-        pubkeys.append(spec.bls.SkToPk(privkey))
-        signatures.append(spec.bls.Sign(privkey, message))
-    signature = spec.bls.Aggregate(signatures)
+        pubkeys.append(spec.ietf.SkToPk(privkey))
+        signatures.append(spec.ietf.Sign(privkey, message))
+    signature = spec.ietf.Aggregate(signatures)
     messages = [message] * 3
 
     # Valid in IETF BLS v3
     # TODO: will be invalid when we update it to v4
-    assert spec.bls._AggregateVerify(pubkeys, messages, signature)
+    assert spec.ietf._AggregateVerify(pubkeys, messages, signature)
     # Valid in Eth2 spec
-    assert spec.Eth2AggregateVerify(pubkeys, messages, signature)
+    assert spec.bls_aggregate_verify(pubkeys, messages, signature)
 
 
 @with_all_phases
@@ -45,12 +45,12 @@ def test_eth2_fast_aggregate_verify(spec, state):
     pubkeys = [infinity_pubkey]
     signatures = [infinity_signature]
     for privkey in range(1, 3):
-        pubkeys.append(spec.bls.SkToPk(privkey))
-        signatures.append(spec.bls.Sign(privkey, message))
-    signature = spec.bls.Aggregate(signatures)
+        pubkeys.append(spec.ietf.SkToPk(privkey))
+        signatures.append(spec.ietf.Sign(privkey, message))
+    signature = spec.ietf.Aggregate(signatures)
 
     # Valid in IETF BLS v3
     # TODO: check if it should be invalid in v4
-    assert spec.bls._FastAggregateVerify(pubkeys, message, signature)
+    assert spec.ietf._FastAggregateVerify(pubkeys, message, signature)
     # Valid in Eth2 spec
-    assert spec.Eth2FastAggregateVerify(pubkeys, message, signature)
+    assert spec.bls_fast_aggregate_verify(pubkeys, message, signature)

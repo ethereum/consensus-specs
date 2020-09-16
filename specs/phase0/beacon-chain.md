@@ -617,7 +617,7 @@ This specification refers to [draft v4 of the IETF BLS signature standard](https
 - `def _AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool`
 - `def _FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool`
 
-For notational clarity the above endpoints are accessed through the `ietf_v4` module, e.g. `eitf_v4._AggregateVerify`.
+For notational clarity the above endpoints are accessed through the `ietf` module, e.g. `eitf_v4._AggregateVerify`.
 
 ##### Eth2 wrappers
 
@@ -628,16 +628,17 @@ Eth2 wraps the above endpoints from draft v4 of the IETF BLS signature standard 
 
 ```python
 def bls_aggregate_verify(pubkeys: Sequence[BLSPubkey], messages: Sequence[bytes], signature: BLSSignature) -> bool:
+    if len(pubkeys) == 0:
+        return False
+
     # Filter out (pubkey, message) pairs with an infinity pubkey
     pubkeys_and_messages = [(pubkey, message) for pubkey, message in zip(pubkeys, messages)
                             if pubkey != G1_INFINITY_POINT]
-    pubkeys, messages = list(zip(*pubkeys_and_messages))
-
     # If all the pubkeys are infinity pubkeys check the signature is the infinity signature
-    if len(pubkeys) == 0:
+    if len(pubkeys_and_messages) == 0:
         return signature == G2_INFINITY_POINT
-
-    return ietf_v4._AggregateVerify(pubkeys, messages, signature)
+    pubkeys, messages = list(zip(*pubkeys_and_messages))
+    return ietf._AggregateVerify(pubkeys, messages, signature)
 ```
 
 ```python
@@ -647,7 +648,7 @@ def bls_verify(pubkey: BLSPubkey, message: bytes, signature: BLSSignature) -> bo
 
 ```python
 def bls_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: bytes, signature: BLSSignature) -> bool:
-    return bls_aggregate_verify(pubkeys, [messsage] * len(pubkeys), signature)
+    return bls_aggregate_verify(pubkeys, [message] * len(pubkeys), signature)
 ```
 
 ### Predicates

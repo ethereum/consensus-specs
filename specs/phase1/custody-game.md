@@ -241,7 +241,7 @@ Extract the custody secrets from the signature
 
 ```python
 def get_custody_secrets(key: BLSSignature) -> Sequence[int]:
-    full_G2_element = bls.signature_to_G2(key)
+    full_G2_element = ietf.signature_to_G2(key)
     signature = full_G2_element[0].coeffs
     signature_bytes = b"".join(x.to_bytes(48, "little") for x in signature)
     secrets = [int.from_bytes(signature_bytes[i:i + BYTES_PER_CUSTODY_ATOM], "little")
@@ -413,7 +413,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     # Verify signature
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     signing_root = compute_signing_root(epoch_to_sign, domain)
-    assert Eth2Verify(revealer.pubkey, signing_root, reveal.reveal)
+    assert bls_verify(revealer.pubkey, signing_root, reveal.reveal)
 
     # Process reveal
     if is_exited and is_exit_period_reveal:
@@ -451,7 +451,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
 
     domain = get_domain(state, DOMAIN_RANDAO, reveal.epoch)
     signing_roots = [compute_signing_root(root, domain) for root in [hash_tree_root(reveal.epoch), reveal.mask]]
-    assert Eth2AggregateVerify(pubkeys, signing_roots, reveal.reveal)
+    assert bls_aggregate_verify(pubkeys, signing_roots, reveal.reveal)
 
     if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         # Full slashing when the secret was revealed so early it may be a valid custody
@@ -501,7 +501,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     whistleblower = state.validators[custody_slashing.whistleblower_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_SLASHING, get_current_epoch(state))
     signing_root = compute_signing_root(custody_slashing, domain)
-    assert Eth2Verify(whistleblower.pubkey, signing_root, signed_custody_slashing.signature)
+    assert bls_verify(whistleblower.pubkey, signing_root, signed_custody_slashing.signature)
     # Verify that the whistleblower is slashable
     assert is_slashable_validator(whistleblower, get_current_epoch(state))
     # Verify that the claimed malefactor is slashable
@@ -528,7 +528,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     signing_root = compute_signing_root(epoch_to_sign, domain)
-    assert Eth2Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
+    assert bls_verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
 
     # Compute the custody bit
     computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_secret, custody_slashing.data)
