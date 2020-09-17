@@ -7,7 +7,7 @@ from eth2spec.test.helpers.shard_block import (
     get_shard_transitions,
     get_committee_index_of_shard,
 )
-from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root
+from eth2spec.test.helpers.fork_choice import add_block_to_store, get_anchor_root, get_genesis_forkchoice_store
 from eth2spec.test.helpers.state import state_transition_and_sign_block
 from eth2spec.test.helpers.block import build_empty_block
 
@@ -28,7 +28,7 @@ def run_on_shard_block(spec, store, signed_block, valid=True):
 
 
 def initialize_store(spec, state, shards):
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 

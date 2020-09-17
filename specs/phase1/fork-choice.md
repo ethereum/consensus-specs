@@ -71,11 +71,9 @@ class ShardStore:
 #### Updated `get_forkchoice_store`
 
 ```python
-def get_forkchoice_store(anchor_state: BeaconState) -> Store:
-    anchor_block_header = anchor_state.latest_block_header.copy()
-    if anchor_block_header.state_root == Bytes32():
-        anchor_block_header.state_root = hash_tree_root(anchor_state)
-    anchor_root = hash_tree_root(anchor_block_header)
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
@@ -85,7 +83,7 @@ def get_forkchoice_store(anchor_state: BeaconState) -> Store:
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
-        blocks={anchor_root: anchor_block_header},
+        blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: anchor_state.copy()},
         checkpoint_states={justified_checkpoint: anchor_state.copy()},
         shard_stores={

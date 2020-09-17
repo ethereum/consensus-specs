@@ -127,6 +127,7 @@ from eth2spec.config.config_util import apply_constants_config
 from typing import (
     Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
 )
+from typing import List as PyList
 
 from dataclasses import (
     dataclass,
