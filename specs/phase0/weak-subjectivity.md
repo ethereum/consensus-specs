@@ -24,7 +24,7 @@
 <!-- /TOC -->
 
 ## Introduction
-This document is a guide for implementing the Weak Subjectivity protections in Phase 0 of Ethereum 2.0. For more information about weak subjectivity and why it is required, please refer to:
+This document is a guide for implementing the Weak Subjectivity protections in Phase 0 of Ethereum 2.0. This document is still a work-in-progress, and is subject to large changes. For more information about weak subjectivity and why it is required, please refer to:
 - [Weak Subjectivity in Eth2.0](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
 - [Proof of Stake: How I Learned to Love Weak Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)
 
@@ -46,8 +46,6 @@ The Weak Subjectivity Period is the number of recent epochs within which there m
 `SAFETY_DECAY` is defined as the maximum percentage tolerable loss in the one-third safety margin of FFG finality. Thus, any attack exploiting the Weak Subjectivity Period has a safety margin of at least `1/3 - SAFETY_DECAY/100`.
 
 ### Calculating the Weak Subjectivity Period
-For more information about this calculation, refer to [Weak Subjectivity in Eth2.0](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2).
-
 *Note*: `compute_weak_subjectivity_period()` is planned to be updated when a more accurate calculation is made.
 
 ```python
@@ -60,6 +58,10 @@ For more information about this calculation, refer to [Weak Subjectivity in Eth2
         weak_subjectivity_period += SAFETY_DECAY * val_count / (2 * 100 * MIN_PER_EPOCH_CHURN_LIMIT)
     return weak_subjectivity_period
 ```
+
+*Details about the calculation*:
+- `100` appears in the denominator to get the actual percentage ratio from `SAFETY_DECAY`
+- For more information about other terms in this equation, refer to [Weak Subjectivity in Eth2.0](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
 
 A brief reference for what these values look like in practice:
 
