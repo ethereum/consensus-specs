@@ -62,6 +62,8 @@ def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Ca
 
     p0 = phases[PHASE0]
     balances = balances_fn(p0)
+    if balances is None:
+        return None
     activation_threshold = threshold_fn(p0)
 
     state = create_genesis_state(spec=p0, validator_balances=balances,
@@ -88,6 +90,9 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
             global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
+                if state is None:
+                    dump_skipping_message(f"doesn't support this configuration: {spec.CONFIG_NAME}")
+                    return None
                 _custom_state_cache_dict[key] = state.get_backing()
 
             # Take an entry out of the LRU.
@@ -160,10 +165,14 @@ def low_single_balance(spec):
 
 def large_validator_set(spec):
     """
-    Helper method to create a series of default balances.
+    Helper method to create a large series of default balances.
+    Return None if too large for standard test processing.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
     num_validators = 2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
+    if num_validators > spec.SLOTS_PER_EPOCH * 256:
+        # Larger than limit of public/private keys pre-generated
+        return None
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
