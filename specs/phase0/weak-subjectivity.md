@@ -76,7 +76,7 @@ A brief reference for what these values look like in practice:
 Clients should allow users to input a Weak Subjectivity Checkpoint at startup, and guarantee that any successful sync leads to the given Weak Subjectivity Checkpoint being in the canonical chain. If such a sync is not possible, the client should treat this as a critical and irrecoverable failure.
 
 ### Weak Subjectivity Sync Procedure
-1. Take a Weak Subjectivity Checkpoint as a CLI parameter input in `block_root:epoch_number` format, where `block_root` is the root of a block at epoch `epoch_number`. Example:
+1. Take a Weak Subjectivity Checkpoint as a CLI parameter input in `block_root:epoch_number` format, where `block_root` and `epoch_number` represent a valid `Checkpoint`. Example of the format:
 ```
 0x8584188b86a9296932785cc2827b925f9deebacce6d72ad8d53171fa046b43d9:9544
 ```
