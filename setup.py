@@ -382,12 +382,14 @@ class PySpecCommand(Command):
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
+                    specs/phase0/weak-subjectivity.md
                 """
             elif self.spec_fork == "phase1":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
+                    specs/phase0/weak-subjectivity.md
                     specs/phase1/custody-game.md
                     specs/phase1/beacon-chain.md
                     specs/phase1/shard-transition.md
