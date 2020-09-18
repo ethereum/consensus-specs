@@ -1,18 +1,21 @@
 from eth2spec.test.helpers.custody import (
     get_valid_custody_slashing,
-    get_custody_secret,
     get_custody_slashable_shard_transition,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_typing import ByteList
 from eth2spec.test.helpers.state import get_balance, transition_to
 from eth2spec.test.context import (
     PHASE0,
+    MINIMAL,
     with_all_phases_except,
     spec_state_test,
     expect_assertion_error,
+    disable_process_reveal_deadlines,
+    with_configs,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 
@@ -77,7 +80,12 @@ def run_standard_custody_slashing_test(spec,
     if block_lengths is None:
         block_lengths = [2**15 // 3] * len(offset_slots)
 
-    custody_secret = get_custody_secret(spec, state, validator_index)
+    custody_secret = spec.get_custody_secret(
+        state,
+        validator_index,
+        privkeys[validator_index],
+        spec.get_current_epoch(state),
+    )
     shard_transition, slashable_test_vector = get_custody_slashable_shard_transition(
         spec,
         state.slot,
@@ -106,30 +114,40 @@ def run_standard_custody_slashing_test(spec,
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_incorrect_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, correct=False)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_multiple_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_many_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5)
 
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_invalid_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(
         spec,

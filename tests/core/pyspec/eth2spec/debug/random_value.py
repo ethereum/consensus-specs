@@ -68,9 +68,8 @@ def get_random_ssz_object(rng: Random,
         else:
             return typ(get_random_bytes_list(rng, rng.randint(0, min(max_bytes_length, typ.limit()))))
     if issubclass(typ, ByteVector):
-        # Sanity, don't generate absurdly big random values
-        # If a client is aiming to performance-test, they should create a benchmark suite.
-        assert typ.type_byte_length() <= max_bytes_length
+        # Random byte vectors can be bigger than max bytes size, e.g. custody chunk data.
+        # No max-bytes-length limitation here.
         if mode == RandomizationMode.mode_zero:
             return typ(b'\x00' * typ.type_byte_length())
         elif mode == RandomizationMode.mode_max:

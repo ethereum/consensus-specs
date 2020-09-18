@@ -9,9 +9,12 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
     PHASE0,
-    with_all_phases_except,
-    spec_state_test,
+    MINIMAL,
     expect_assertion_error,
+    disable_process_reveal_deadlines,
+    spec_state_test,
+    with_all_phases_except,
+    with_configs,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 
@@ -67,6 +70,8 @@ def run_custody_chunk_response_processing(spec, state, custody_response, valid=T
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
+@disable_process_reveal_deadlines
 def test_challenge_appended(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
@@ -89,6 +94,8 @@ def test_challenge_appended(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_challenge_empty_element_replaced(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
@@ -113,6 +120,8 @@ def test_challenge_empty_element_replaced(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_duplicate_challenge(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
@@ -137,6 +146,8 @@ def test_duplicate_challenge(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_second_challenge(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
@@ -163,6 +174,8 @@ def test_second_challenge(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_multiple_epochs_custody(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 3)
@@ -186,6 +199,8 @@ def test_multiple_epochs_custody(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_many_epochs_custody(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 20)
@@ -209,6 +224,8 @@ def test_many_epochs_custody(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_off_chain_attestation(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
@@ -228,6 +245,8 @@ def test_off_chain_attestation(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_custody_response(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
@@ -258,6 +277,8 @@ def test_custody_response(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_custody_response_chunk_index_2(spec, state):
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
 
@@ -287,6 +308,8 @@ def test_custody_response_chunk_index_2(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_custody_response_multiple_epochs(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 3)
@@ -317,6 +340,8 @@ def test_custody_response_multiple_epochs(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@disable_process_reveal_deadlines
+@with_configs([MINIMAL], reason="too slow")
 def test_custody_response_many_epochs(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * 20)

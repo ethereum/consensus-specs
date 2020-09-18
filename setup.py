@@ -119,6 +119,8 @@ from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
 
 SSZObject = TypeVar('SSZObject', bound=View)
+
+CONFIG_NAME = 'mainnet'
 '''
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
@@ -151,6 +153,8 @@ reload(phase0)
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
 SSZObject = TypeVar('SSZObject', bound=View)
+
+CONFIG_NAME = 'mainnet'
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: int) -> uint64:
