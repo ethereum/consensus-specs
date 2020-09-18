@@ -54,6 +54,8 @@ def load_config_file(configs_dir: str, presets_name: str) -> Dict[str, Any]:
             out[k] = [int(item) if item.isdigit() else item for item in v]
         elif isinstance(v, str) and v.startswith("0x"):
             out[k] = bytes.fromhex(v[2:])
+        elif k == "CONFIG_NAME":
+            out[k] = str(v)
         else:
             out[k] = int(v)
     return out

@@ -1,6 +1,5 @@
 from eth2spec.test.context import (
-    PHASE0,
-    spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
+    spec_state_test, expect_assertion_error, always_bls, with_all_phases
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
@@ -194,10 +193,7 @@ def test_participants_already_slashed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-# Some of the following tests are phase0 only: phase 1 lists participants with bitfields instead of index list.
-
-
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att1_high_index(spec, state):
@@ -210,7 +206,7 @@ def test_att1_high_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att2_high_index(spec, state):
@@ -223,7 +219,7 @@ def test_att2_high_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att1_empty_indices(spec, state):
@@ -235,7 +231,7 @@ def test_att1_empty_indices(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att2_empty_indices(spec, state):
@@ -247,7 +243,7 @@ def test_att2_empty_indices(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_all_empty_indices(spec, state):
@@ -262,7 +258,7 @@ def test_all_empty_indices(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att1_bad_extra_index(spec, state):
@@ -278,7 +274,7 @@ def test_att1_bad_extra_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att1_bad_replaced_index(spec, state):
@@ -294,7 +290,7 @@ def test_att1_bad_replaced_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att2_bad_extra_index(spec, state):
@@ -310,7 +306,7 @@ def test_att2_bad_extra_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att2_bad_replaced_index(spec, state):
@@ -326,7 +322,7 @@ def test_att2_bad_replaced_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att1_duplicate_index_normal_signed(spec, state):
@@ -346,7 +342,7 @@ def test_att1_duplicate_index_normal_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att2_duplicate_index_normal_signed(spec, state):
@@ -366,7 +362,7 @@ def test_att2_duplicate_index_normal_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att1_duplicate_index_double_signed(spec, state):
@@ -381,7 +377,7 @@ def test_att1_duplicate_index_double_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_att2_duplicate_index_double_signed(spec, state):
@@ -396,7 +392,7 @@ def test_att2_duplicate_index_double_signed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_unsorted_att_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
@@ -409,7 +405,7 @@ def test_unsorted_att_1(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_unsorted_att_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)

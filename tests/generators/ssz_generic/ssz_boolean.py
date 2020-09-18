@@ -12,4 +12,3 @@ def invalid_cases():
     yield "byte_rev_nibble", invalid_test_case(lambda: b'\x10')
     yield "byte_0x80", invalid_test_case(lambda: b'\x80')
     yield "byte_full", invalid_test_case(lambda: b'\xff')
-

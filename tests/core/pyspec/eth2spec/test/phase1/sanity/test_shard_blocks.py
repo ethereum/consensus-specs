@@ -4,12 +4,12 @@ from eth2spec.test.context import (
     expect_assertion_error,
     spec_state_test,
     with_all_phases_except,
+    only_full_crosslink,
 )
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
     sign_shard_block,
 )
-from eth2spec.test.helpers.shard_transitions import is_full_crosslink
 from eth2spec.test.helpers.state import next_slot, transition_to_valid_shard_slot, transition_to
 
 
@@ -46,15 +46,14 @@ def run_shard_blocks(spec, shard_state, signed_shard_block, beacon_parent_state,
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_valid_shard_block(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
-    signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
+    signed_shard_block = build_shard_block(spec, state, shard, slot=beacon_state.slot, signed=True)
 
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state)
 
@@ -66,12 +65,11 @@ def test_valid_shard_block(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_invalid_shard_parent_root(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
 
-    beacon_state = transition_to_valid_shard_slot(spec, state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -83,12 +81,10 @@ def test_invalid_shard_parent_root(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_invalid_beacon_parent_root(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -100,12 +96,10 @@ def test_invalid_beacon_parent_root(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_invalid_slot(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -118,12 +112,10 @@ def test_invalid_slot(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@only_full_crosslink
 def test_invalid_proposer_index(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)
@@ -141,13 +133,10 @@ def test_invalid_proposer_index(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_out_of_bound_offset(spec, state):
-    # TODO: Handle this edge case properly
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     slot = (
         beacon_state.shard_states[shard].slot
@@ -165,12 +154,10 @@ def test_out_of_bound_offset(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_invalid_offset(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     # 4 is not in `SHARD_BLOCK_OFFSETS`
     shard = 0
     slot = beacon_state.shard_states[shard].slot + 4
@@ -186,12 +173,10 @@ def test_invalid_offset(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_empty_block_body(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, body=b'', signed=True)
@@ -207,12 +192,10 @@ def test_empty_block_body(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_invalid_signature(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=False)
@@ -228,12 +211,10 @@ def test_invalid_signature(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_max_offset(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     slot = beacon_state.shard_states[shard].slot + spec.SHARD_BLOCK_OFFSETS[spec.MAX_SHARD_BLOCKS_PER_ATTESTATION - 1]
     transition_to(spec, beacon_state, slot)
@@ -247,13 +228,11 @@ def test_max_offset(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+@only_full_crosslink
 def test_pending_shard_parent_block(spec, state):
-    if not is_full_crosslink(spec, state):
-        # skip
-        return
-
     # Block N
-    beacon_state = transition_to_valid_shard_slot(spec, state)
+    beacon_state = state.copy()
+    transition_to_valid_shard_slot(spec, beacon_state)
     shard = 0
     shard_state = beacon_state.shard_states[shard]
     signed_shard_block_1 = build_shard_block(spec, beacon_state, shard, slot=beacon_state.slot, signed=True)

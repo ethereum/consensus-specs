@@ -31,7 +31,7 @@
     - [`FullAttestation`](#fullattestation)
     - [Timing](#timing)
     - [Attestation data](#attestation-data)
-      - [Head shard root](#head-shard-root)
+      - [Shard head root](#shard-head-root)
       - [Shard transition](#shard-transition)
     - [Construct attestation](#construct-attestation)
   - [Attestation Aggregation](#attestation-aggregation)
@@ -267,9 +267,9 @@ A validator should create and broadcast the `attestation` to the associated atte
 
 *Note*: We assume that the fork choice only follows branches with valid `offset_slots` with respect to the most recent beacon state shard transition for the queried shard.
 
-##### Head shard root
+##### Shard head root
 
-Set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
+If `attestation_data.slot == GENESIS_SLOT`, set `attestation_data.shard_head_root = Root()`. Otherwise, set `attestation_data.shard_head_root = hash_tree_root(shard_head_block)`.
 
 ##### Shard transition
 
@@ -281,9 +281,9 @@ def get_shard_transition_fields(
     shard: Shard,
     shard_blocks: Sequence[SignedShardBlock],
 ) -> Tuple[Sequence[uint64], Sequence[Root], Sequence[ShardState]]:
-    shard_states = []
-    shard_data_roots = []
-    shard_block_lengths = []
+    shard_block_lengths = []  # type: PyList[uint64]
+    shard_data_roots = []  # type: PyList[Root]
+    shard_states = []  # type: PyList[ShardState]
 
     shard_state = beacon_state.shard_states[shard]
     shard_block_slots = [shard_block.message.slot for shard_block in shard_blocks]
@@ -294,14 +294,14 @@ def get_shard_transition_fields(
     for slot in offset_slots:
         if slot in shard_block_slots:
             shard_block = shard_blocks[shard_block_slots.index(slot)]
-            shard_data_roots.append(get_block_data_merkle_root(shard_block.message.body))
+            shard_data_roots.append(hash_tree_root(shard_block.message.body))
         else:
             shard_block = SignedShardBlock(message=ShardBlock(slot=slot, shard=shard))
             shard_data_roots.append(Root())
         shard_state = shard_state.copy()
         process_shard_block(shard_state, shard_block.message)
         shard_states.append(shard_state)
-        shard_block_lengths.append(len(shard_block.message.body))
+        shard_block_lengths.append(uint64(len(shard_block.message.body)))
 
     return shard_block_lengths, shard_data_roots, shard_states
 ```
@@ -310,6 +310,10 @@ def get_shard_transition_fields(
 def get_shard_transition(beacon_state: BeaconState,
                          shard: Shard,
                          shard_blocks: Sequence[SignedShardBlock]) -> ShardTransition:
+    # NOTE: We currently set `PHASE_1_FORK_SLOT` to `GENESIS_SLOT` for test vectors.
+    if beacon_state.slot == GENESIS_SLOT:
+        return ShardTransition()
+
     offset_slots = compute_offset_slots(
         get_latest_slot_for_shard(beacon_state, shard),
         Slot(beacon_state.slot + 1),

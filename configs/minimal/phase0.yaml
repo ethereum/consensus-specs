@@ -1,5 +1,6 @@
 # Minimal preset
 
+CONFIG_NAME: "minimal"
 
 # Misc
 # ---------------------------------------------------------------
@@ -26,7 +27,8 @@ HYSTERESIS_QUOTIENT: 4
 HYSTERESIS_DOWNWARD_MULTIPLIER: 1
 # 5 (plus 1.25)
 HYSTERESIS_UPWARD_MULTIPLIER: 5
-
+# 3
+PROPORTIONAL_SLASHING_MULTIPLIER: 3
 
 
 # Fork Choice
@@ -99,8 +101,6 @@ SLOTS_PER_HISTORICAL_ROOT: 64
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 # [customized] higher frequency of committee turnover and faster time to acceptable voluntary exit
 SHARD_COMMITTEE_PERIOD: 64
-# [customized] fast catchup crosslinks
-MAX_EPOCHS_PER_CROSSLINK: 4
 # 2**2 (= 4) epochs
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 

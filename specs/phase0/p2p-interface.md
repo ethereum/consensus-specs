@@ -243,12 +243,11 @@ Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-The `message-id` of a gossipsub message MUST be:
+The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
 
 ```python
-   message-id: base64(SHA256(message.data))
+   message-id: SHA256(message.data)[0:8]
 ```
-where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc4648#section-3.2) with padding characters omitted.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
@@ -383,6 +382,7 @@ The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated a
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
 The following validations MUST pass before forwarding the `attestation` on the subnet.
+- _[REJECT]_ The committee index is within the expected range -- i.e. `data.index < get_committee_count_per_slot(state, data.target.epoch)`.
 - _[REJECT]_ The attestation is for the correct subnet --
   i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`,
   where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
@@ -391,8 +391,12 @@ The following validations MUST pass before forwarding the `attestation` on the s
   (within a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
   (a client MAY queue future attestations for processing at the appropriate slot).
+- _[REJECT]_ The attestation's epoch matches its target -- i.e. `attestation.data.target.epoch ==
+  compute_epoch_at_slot(attestation.data.slot)`
 - _[REJECT]_ The attestation is unaggregated --
-  that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+  that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
+  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
@@ -400,6 +404,8 @@ The following validations MUST pass before forwarding the `attestation` on the s
   (via both gossip and non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
+  `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(attestation.data.target.epoch)) == attestation.data.target.root`
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
@@ -723,7 +729,7 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
-Clients MUST keep a record of signed blocks seen since the since the start of the weak subjectivity period
+Clients MUST keep a record of signed blocks seen since the start of the weak subjectivity period
 and MUST support serving requests of blocks up to their own `head_block_root`.
 
 Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.

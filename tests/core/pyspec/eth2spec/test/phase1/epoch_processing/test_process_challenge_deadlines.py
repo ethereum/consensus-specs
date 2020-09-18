@@ -5,11 +5,13 @@ from eth2spec.test.helpers.custody import (
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
-from eth2spec.test.helpers.state import transition_to
+from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
     PHASE0,
-    with_all_phases_except,
+    MINIMAL,
     spec_state_test,
+    with_all_phases_except,
+    with_configs,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
@@ -25,8 +27,10 @@ def run_process_challenge_deadlines(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_validator_slashed_after_chunk_challenge(spec, state):
-    transition_to(spec, state, state.slot + 1)
+    transition_to_valid_shard_slot(spec, state)
+    transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     shard = 0
     offset_slots = spec.get_offset_slots(state, shard)
     shard_transition = get_sample_shard_transition(spec, state.slot, [2**15 // 3] * len(offset_slots))

@@ -15,7 +15,7 @@ DIR = os.path.dirname(__file__)
 
 
 def get_deposit_contract_json():
-    file_path = os.path.join(DIR, '../../contracts/validator_registration.json')
+    file_path = os.path.join(DIR, '../../deposit_contract.json')
     deposit_contract_json = open(file_path).read()
     return json.loads(deposit_contract_json)
 

@@ -1,7 +1,6 @@
 from eth2spec.test.context import (
-    PHASE0,
     spec_state_test, spec_test,
-    with_all_phases, with_phases, single_phase,
+    with_all_phases, single_phase,
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
@@ -25,7 +24,7 @@ def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_genesis_epoch_no_attestations_no_penalties(spec, state):
     pre_state = state.copy()
@@ -38,7 +37,7 @@ def test_genesis_epoch_no_attestations_no_penalties(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_genesis_epoch_full_attestations_no_rewards(spec, state):
     attestations = []

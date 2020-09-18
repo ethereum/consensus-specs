@@ -1,12 +1,13 @@
 # Minimal preset - phase 1
 
+CONFIG_NAME: "minimal"
 
 # phase1-fork
 # ---------------------------------------------------------------
 # [customized] for testnet distinction
 PHASE_1_FORK_VERSION: 0x01000001
-# [customized] for testing
-PHASE_1_GENESIS_SLOT: 8
+# [STUB]
+PHASE_1_FORK_SLOT: 0
 # [customized] reduced for testing
 INITIAL_ACTIVE_SHARDS: 2
 
@@ -66,15 +67,13 @@ DOMAIN_LIGHT_AGGREGATE_AND_PROOF: 0x85000000
 # 2**1 (= 2) epochs
 RANDAO_PENALTY_EPOCHS: 2
 # [customized] quicker for testing
-EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 128
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 64
 # [customized] quicker for testing
-EPOCHS_PER_CUSTODY_PERIOD: 64
+EPOCHS_PER_CUSTODY_PERIOD: 32
 # [customized] quicker for testing
 CUSTODY_PERIOD_TO_RANDAO_PADDING: 8
-# [customized] quicker for testing
-CUSTODY_RESPONSE_DEADLINE: 128
 # [customize for faster testing]
-MAX_CHUNK_CHALLENGE_DELAY: 128
+MAX_CHUNK_CHALLENGE_DELAY: 64
 
 
 # Misc parameters
