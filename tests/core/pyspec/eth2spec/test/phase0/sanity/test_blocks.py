@@ -21,11 +21,12 @@ from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
 
 from eth2spec.test.context import (
-    PHASE0, PHASE1,
+    PHASE0, PHASE1, MINIMAL,
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
     disable_process_reveal_deadlines,
+    with_configs,
     with_custom_state,
     large_validator_set,
 )
@@ -92,6 +93,8 @@ def test_empty_block_transition(spec, state):
 
 
 @with_all_phases
+@with_configs([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @single_phase
@@ -318,6 +321,8 @@ def test_empty_epoch_transition(spec, state):
 
 
 @with_all_phases
+@with_configs([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @single_phase
