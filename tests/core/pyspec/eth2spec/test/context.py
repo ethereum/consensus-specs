@@ -160,7 +160,7 @@ def low_single_balance(spec):
 
 def large_validator_set(spec):
     """
-    Helper method to create a series of default balances.
+    Helper method to create a large series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
     num_validators = 2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
