@@ -87,8 +87,8 @@ if __name__ == "__main__":
         seed += 1
     settings.append((seed, "minimal", random_value.RandomizationMode.mode_random, True, 30))
     seed += 1
-    # settings.append((seed, "mainnet", random_value.RandomizationMode.mode_random, False, 5))
-    # seed += 1
+    settings.append((seed, "mainnet", random_value.RandomizationMode.mode_random, False, 5))
+    seed += 1
 
     for fork in [PHASE0, PHASE1]:
         gen_runner.run_generator("ssz_static", [
