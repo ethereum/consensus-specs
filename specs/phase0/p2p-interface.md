@@ -734,7 +734,7 @@ and MUST support serving requests of blocks up to their own `head_block_root`.
 
 Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
 
-The following blocks, where they exist, MUST be send in consecutive order.
+The following blocks, where they exist, MUST be sent in consecutive order.
 
 Clients MAY limit the number of blocks in the response.
 
