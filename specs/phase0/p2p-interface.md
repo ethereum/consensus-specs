@@ -725,7 +725,7 @@ A request MUST NOT have a 0 slot increment, i.e. `step >= 1`.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
-The request MUST be encoded as a SSZ-container.
+The request MUST be encoded as an SSZ-container.
 
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
