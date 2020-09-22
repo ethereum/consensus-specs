@@ -1,7 +1,11 @@
 from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.fork_choice import add_attestation_to_store, add_block_to_store, get_anchor_root
+from eth2spec.test.helpers.fork_choice import (
+    add_attestation_to_store,
+    add_block_to_store, get_anchor_root,
+    get_genesis_forkchoice_store,
+)
 from eth2spec.test.helpers.state import (
     next_epoch,
     state_transition_and_sign_block,
@@ -12,7 +16,7 @@ from eth2spec.test.helpers.state import (
 @spec_state_test
 def test_genesis(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
@@ -21,7 +25,7 @@ def test_genesis(spec, state):
 @spec_state_test
 def test_chain_no_attestations(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
@@ -44,7 +48,7 @@ def test_split_tie_breaker_no_attestations(spec, state):
     genesis_state = state.copy()
 
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
@@ -72,13 +76,13 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     genesis_state = state.copy()
 
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     anchor_root = get_anchor_root(spec, state)
     assert spec.get_head(store) == anchor_root
 
     # build longer tree
     long_state = genesis_state.copy()
-    for i in range(3):
+    for _ in range(3):
         long_block = build_empty_block_for_next_slot(spec, long_state)
         signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
         add_block_to_store(spec, store, signed_long_block)
@@ -100,7 +104,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
 @spec_state_test
 def test_filtered_block_tree(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     anchor_root = get_anchor_root(spec, state)
 
     # transition state past initial couple of epochs

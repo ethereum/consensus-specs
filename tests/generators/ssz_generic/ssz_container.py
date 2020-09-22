@@ -85,7 +85,7 @@ def valid_cases():
 def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
     return b[:offset_index] + \
            (change(int.from_bytes(b[offset_index:offset_index + 4], byteorder='little')) & 0xffffffff) \
-               .to_bytes(length=4, byteorder='little') + \
+           .to_bytes(length=4, byteorder='little') + \
            b[offset_index + 4:]
 
 

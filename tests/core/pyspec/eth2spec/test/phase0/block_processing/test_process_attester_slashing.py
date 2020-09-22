@@ -193,9 +193,6 @@ def test_participants_already_slashed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-# Some of the following tests are phase0 only: phase 1 lists participants with bitfields instead of index list.
-
-
 @with_all_phases
 @spec_state_test
 @always_bls
