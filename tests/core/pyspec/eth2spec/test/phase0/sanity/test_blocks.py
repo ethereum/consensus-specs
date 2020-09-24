@@ -316,6 +316,10 @@ def test_empty_epoch_transition(spec, state):
     for slot in range(pre_slot, state.slot):
         assert spec.get_block_root_at_slot(state, slot) == block.parent_root
 
+    if spec.fork != PHASE0:
+        for count in state.online_countdown:
+            assert count == spec.ONLINE_PERIOD - 1
+
 
 @with_all_phases
 @spec_test

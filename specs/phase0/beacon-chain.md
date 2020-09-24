@@ -1133,6 +1133,9 @@ def slash_validator(state: BeaconState,
 
 ```python
 def add_validator(state: BeaconState, deposit: Deposit, amount: Gwei) -> None:
+    """
+    Add a new validator to the given ``state``.
+    """
     state.validators.append(get_validator_from_deposit(state, deposit))
     state.balances.append(amount)
 ```

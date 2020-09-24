@@ -1,12 +1,8 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import (
-    run_epoch_processing_with, run_epoch_processing_to
+    run_process_final_updates, run_epoch_processing_to
 )
 from eth2spec.test.helpers.state import transition_to
-
-
-def run_process_final_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_final_updates')
 
 
 @with_all_phases

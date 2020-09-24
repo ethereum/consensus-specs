@@ -41,7 +41,6 @@
   - [`CompactCommittee`](#compactcommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
-    - [`bitwise_or`](#bitwise_or)
     - [`compute_previous_slot`](#compute_previous_slot)
     - [`pack_compact_validator`](#pack_compact_validator)
     - [`unpack_compact_validator`](#unpack_compact_validator)
@@ -473,13 +472,6 @@ class CompactCommittee(Container):
 
 ### Misc
 
-#### `bitwise_or`
-
-```python
-def bitwise_or(a: Bitlist, b: Bitlist) -> Bitlist:
-    return Bitlist([a_item or b_item for a_item, b_item in zip(a, b)])
-```
-
 #### `compute_previous_slot`
 
 ```python
@@ -776,8 +768,12 @@ def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes3
 
 ```python
 def add_validator(state: BeaconState, deposit: Deposit, amount: Gwei) -> None:
+    """
+    Add a new validator to the given ``state``.
+    """
     state.validators.append(get_validator_from_deposit(state, deposit))
     state.balances.append(amount)
+    # Phase 1 new `online_countdown` field.
     state.online_countdown.append(ONLINE_PERIOD)
 ```
 
