@@ -41,7 +41,6 @@
   - [`CompactCommittee`](#compactcommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
-  - [`bitwise_or`](#bitwise_or)
     - [`compute_previous_slot`](#compute_previous_slot)
     - [`pack_compact_validator`](#pack_compact_validator)
     - [`unpack_compact_validator`](#unpack_compact_validator)
@@ -65,6 +64,8 @@
     - [`get_transition_candidate_data`](#get_transition_candidate_data)
     - [`optional_aggregate_verify`](#optional_aggregate_verify)
     - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [Updated `add_validator`](#updated-add_validator)
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [New Attestation processing](#new-attestation-processing)
@@ -471,13 +472,6 @@ class CompactCommittee(Container):
 
 ### Misc
 
-### `bitwise_or`
-
-```python
-def bitwise_or(a: Bitlist, b: Bitlist) -> Bitlist:
-    return Bitlist([a_item or b_item for a_item, b_item in zip(a, b)])
-```
-
 #### `compute_previous_slot`
 
 ```python
@@ -766,6 +760,21 @@ def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes3
         return signature == NO_SIGNATURE
     else:
         return bls.FastAggregateVerify(pubkeys, message, signature)
+```
+
+### Beacon state mutators
+
+#### Updated `add_validator`
+
+```python
+def add_validator(state: BeaconState, deposit: Deposit, amount: Gwei) -> None:
+    """
+    Add a new validator to the given ``state``.
+    """
+    state.validators.append(get_validator_from_deposit(state, deposit))
+    state.balances.append(amount)
+    # Phase 1 new `online_countdown` field.
+    state.online_countdown.append(ONLINE_PERIOD)
 ```
 
 ### Block processing
@@ -1350,8 +1359,8 @@ def process_final_updates(state: BeaconState) -> None:
 ```python
 def process_online_tracking(state: BeaconState) -> None:
     # Slowly remove validators from the "online" set if they do not show up
-    for index in range(len(state.validators)):
-        if state.online_countdown[index] != 0:
+    for index, validator in enumerate(state.validators):
+        if state.online_countdown[index] != 0 and is_active_validator(validator, get_current_epoch(state)):
             state.online_countdown[index] = state.online_countdown[index] - 1
 
     # Process pending attestations

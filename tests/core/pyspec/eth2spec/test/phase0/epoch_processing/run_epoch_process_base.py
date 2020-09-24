@@ -43,3 +43,7 @@ def run_epoch_processing_with(spec, state, process_name: str):
     yield 'pre', state
     getattr(spec, process_name)(state)
     yield 'post', state
+
+
+def run_process_final_updates(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_final_updates')

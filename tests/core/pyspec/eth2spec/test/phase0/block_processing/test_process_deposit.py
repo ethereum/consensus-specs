@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, PHASE0
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -56,6 +56,9 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         assert state.validators[validator_index].effective_balance == effective
 
     assert state.eth1_deposit_index == state.eth1_data.deposit_count
+
+    if spec.fork != PHASE0:
+        assert len(state.online_countdown) == len(state.validators)
 
 
 @with_all_phases

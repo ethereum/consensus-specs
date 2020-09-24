@@ -102,6 +102,7 @@
     - [`decrease_balance`](#decrease_balance)
     - [`initiate_validator_exit`](#initiate_validator_exit)
     - [`slash_validator`](#slash_validator)
+    - [`add_validator`](#add_validator)
 - [Genesis](#genesis)
   - [Genesis state](#genesis-state)
   - [Genesis block](#genesis-block)
@@ -1126,6 +1127,17 @@ def slash_validator(state: BeaconState,
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
 
+#### `add_validator`
+
+```python
+def add_validator(state: BeaconState, deposit: Deposit, amount: Gwei) -> None:
+    """
+    Add a new validator to the given ``state``.
+    """
+    state.validators.append(get_validator_from_deposit(state, deposit))
+    state.balances.append(amount)
+```
+
 ## Genesis
 
 Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 block, let `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` where:
@@ -1825,8 +1837,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             return
 
         # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(state, deposit))
-        state.balances.append(amount)
+        add_validator(state, deposit, amount)
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
