@@ -56,10 +56,10 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value | Unit |
 | - | - | - |
-| `CUSTODY_PRIME` | `2 ** 256 - 189` | - |
-| `CUSTODY_SECRETS` | `3` | - |
-| `BYTES_PER_CUSTODY_ATOM` | `32` | bytes |
-| `CUSTODY_PROBABILITY_EXPONENT` | `10` | - |
+| `CUSTODY_PRIME` | `int(2 ** 256 - 189)` | - |
+| `CUSTODY_SECRETS` | `uint64(3)` | - |
+| `BYTES_PER_CUSTODY_ATOM` | `uint64(32)` | bytes |
+| `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)` | - |
 
 ## Configuration
 
@@ -67,29 +67,28 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `RANDAO_PENALTY_EPOCHS` | `2**1` (= 2) | epochs | 12.8 minutes |
-| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**15` (= 32,768) | epochs | ~146 days |
-| `EPOCHS_PER_CUSTODY_PERIOD` | `2**14` (= 16,384) | epochs | ~73 days |
-| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
-| `MAX_CHUNK_CHALLENGE_DELAY` | `2**15` (= 32,768) | epochs | ~146 days |
+| `RANDAO_PENALTY_EPOCHS` | `uint64(2**1)` (= 2) | epochs | 12.8 minutes |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `uint64(2**15)` (= 32,768) | epochs | ~146 days |
+| `EPOCHS_PER_CUSTODY_PERIOD` | `uint64(2**14)` (= 16,384) | epochs | ~73 days |
+| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `uint64(2**11)` (= 2,048) | epochs | ~9 days |
+| `MAX_CHUNK_CHALLENGE_DELAY` | `uint64(2**15)` (= 32,768) | epochs | ~146 days |
 
 ### Max operations per block
 
 | Name | Value |
 | - | - |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `2**20` (= 1,048,576) |
-| `MAX_CUSTODY_KEY_REVEALS` | `2**8` (= 256) |
-| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `2**0` (= 1) |
-| `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `2**4` (= 16) |
-| `MAX_CUSTODY_SLASHINGS` | `2**0` (= 1) |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `uint64(2**20)` (= 1,048,576) |
+| `MAX_CUSTODY_KEY_REVEALS` | `uint64(2**8)` (= 256) |
+| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `uint64(2**0)` (= 1) |
+| `MAX_CUSTODY_CHUNK_CHALLENGES` | `uint64(2**2)` (= 4) |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16) |
+| `MAX_CUSTODY_SLASHINGS` | `uint64(2**0)` (= 1) |
 
 ### Reward and penalty quotients
 
 | Name | Value |
 | - | - |
-| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
-| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
+| `EARLY_DERIVED_SECRET_REVEAL_PENALTY_FACTOR` | `uint64(2**1)` (= 2) |
 
 ## Data structures
 
@@ -265,12 +264,12 @@ def universal_hash_function(data_chunks: Sequence[bytes], secrets: Sequence[int]
 ### `compute_custody_bit`
 
 ```python
-def compute_custody_bit(key: BLSSignature, data: ByteList[MAX_SHARD_BLOCK_SIZE]) -> bit:
+def compute_custody_bit(key: BLSSignature, data: ByteList) -> bit:
     custody_atoms = get_custody_atoms(data)
     secrets = get_custody_secrets(key)
     uhf = universal_hash_function(custody_atoms, secrets)
     legendre_bits = [legendre_bit(uhf + secrets[0] + i, CUSTODY_PRIME) for i in range(CUSTODY_PROBABILITY_EXPONENT)]
-    return all(legendre_bits)
+    return bit(all(legendre_bits))
 ```
 
 ### `get_randao_epoch_for_custody_period`
@@ -316,7 +315,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify the attestation
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge the attestation
-    max_attestation_challenge_epoch = challenge.attestation.data.target.epoch + MAX_CHUNK_CHALLENGE_DELAY
+    max_attestation_challenge_epoch = Epoch(challenge.attestation.data.target.epoch + MAX_CHUNK_CHALLENGE_DELAY)
     assert get_current_epoch(state) <= max_attestation_challenge_epoch
     # Verify it is not too late to challenge the responder
     responder = state.validators[challenge.responder_index]
@@ -383,7 +382,12 @@ def process_chunk_challenge_response(state: BeaconState,
     state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
+    proposer_reward = Gwei(
+        get_base_reward(state, proposer_index)
+        // CHUNK_RESPONSE_INCLUSION_REWARD_DENOMINATOR
+        // MAX_CUSTODY_CHUNK_CHALLENGES
+    )
+    increase_balance(state, proposer_index, proposer_reward)
 ```
 
 #### Custody key reveals
@@ -422,11 +426,14 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
 
     # Reward Block Proposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(
-        state,
-        proposer_index,
-        Gwei(get_base_reward(state, reveal.revealer_index) // MINOR_REWARD_QUOTIENT)
+    proposer_reward = Gwei(
+        get_base_reward(state, reveal.revealer_index)
+        * SLOTS_PER_EPOCH
+        * EPOCHS_PER_CUSTODY_PERIOD
+        // len(get_active_validator_indices(state, get_current_epoch(state)))
+        // SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR
     )
+    increase_balance(state, proposer_index, proposer_reward)
 ```
 
 #### Early derived secret reveals
@@ -438,7 +445,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
     Note that this function mutates ``state``.
     """
     revealed_validator = state.validators[reveal.revealed_index]
-    derived_secret_location = reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
+    derived_secret_location = uint64(reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS)
 
     assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
     assert reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
@@ -466,12 +473,13 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
         max_proposer_slot_reward = (
             get_base_reward(state, reveal.revealed_index)
             * SLOTS_PER_EPOCH
+            * EPOCHS_PER_CUSTODY_PERIOD
             // len(get_active_validator_indices(state, get_current_epoch(state)))
-            // PROPOSER_REWARD_QUOTIENT
+            // SUBKEY_REVEAL_INCLUSION_REWARD_DENOMINATOR
         )
         penalty = Gwei(
             max_proposer_slot_reward
-            * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE
+            * EARLY_DERIVED_SECRET_REVEAL_PENALTY_FACTOR
             * (len(state.exposed_derived_secrets[derived_secret_location]) + 1)
         )
 

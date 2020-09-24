@@ -2,6 +2,7 @@
 # Note: the intention of this file (for now) is to illustrate what a mainnet configuration could look like.
 # Some of these constants may still change before the launch of Phase 0.
 
+CONFIG_NAME: "mainnet"
 
 # Misc
 # ---------------------------------------------------------------
@@ -27,6 +28,8 @@ HYSTERESIS_QUOTIENT: 4
 HYSTERESIS_DOWNWARD_MULTIPLIER: 1
 # 5 (plus 1.25)
 HYSTERESIS_UPWARD_MULTIPLIER: 5
+# 3
+PROPORTIONAL_SLASHING_MULTIPLIER: 3
 
 
 # Fork Choice
@@ -99,8 +102,6 @@ SLOTS_PER_HISTORICAL_ROOT: 8192
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 # 2**8 (= 256) epochs ~27 hours
 SHARD_COMMITTEE_PERIOD: 256
-# 2**6 (= 64) epochs ~7 hours
-MAX_EPOCHS_PER_CROSSLINK: 64
 # 2**2 (= 4) epochs 25.6 minutes
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 

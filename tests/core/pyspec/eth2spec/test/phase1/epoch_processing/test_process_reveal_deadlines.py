@@ -4,7 +4,9 @@ from eth2spec.test.helpers.custody import (
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.context import (
     PHASE0,
+    MINIMAL,
     with_all_phases_except,
+    with_configs,
     spec_state_test,
 )
 from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
@@ -17,6 +19,7 @@ def run_process_challenge_deadlines(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_validator_slashed_after_reveal_deadline(spec, state):
     assert state.validators[0].slashed == 0
     transition_to(spec, state, spec.get_randao_epoch_for_custody_period(0, 0) * spec.SLOTS_PER_EPOCH)
@@ -36,6 +39,7 @@ def test_validator_slashed_after_reveal_deadline(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_validator_not_slashed_after_reveal(spec, state):
     transition_to(spec, state, spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)

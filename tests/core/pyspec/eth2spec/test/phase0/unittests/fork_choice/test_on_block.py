@@ -2,10 +2,11 @@ from copy import deepcopy
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block, transition_unsigned_block, \
     build_empty_block
-from eth2spec.test.helpers.attestations import next_epoch_with_attestations
-from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
+from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
+from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block, transition_to
 
 
 def run_on_block(spec, store, signed_block, valid=True):
@@ -37,7 +38,7 @@ def apply_next_epoch_with_attestations(spec, state, store):
 @spec_state_test
 def test_basic(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 100
     spec.on_tick(store, time)
     assert store.time == time
@@ -61,7 +62,7 @@ def test_basic(spec, state):
 @spec_state_test
 def test_on_block_checkpoints(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 100
     spec.on_tick(store, time)
 
@@ -87,7 +88,7 @@ def test_on_block_checkpoints(spec, state):
 @spec_state_test
 def test_on_block_future_block(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
 
     # do not tick time
 
@@ -101,7 +102,7 @@ def test_on_block_future_block(spec, state):
 @spec_state_test
 def test_on_block_bad_parent_root(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 100
     spec.on_tick(store, time)
 
@@ -121,7 +122,7 @@ def test_on_block_bad_parent_root(spec, state):
 @spec_state_test
 def test_on_block_before_finalized(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 100
     spec.on_tick(store, time)
 
@@ -140,7 +141,7 @@ def test_on_block_before_finalized(spec, state):
 @spec_state_test
 def test_on_block_finalized_skip_slots(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 100
     spec.on_tick(store, time)
 
@@ -160,16 +161,18 @@ def test_on_block_finalized_skip_slots(spec, state):
 @spec_state_test
 def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     # Initialization
-    next_epoch(spec, state)
-    store = spec.get_forkchoice_store(state)
-
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
+    block = build_empty_block_for_next_slot(spec, state)
+    transition_unsigned_block(spec, state, block)
+    block.state_root = state.hash_tree_root()
+    store = spec.get_forkchoice_store(state, block)
     store.finalized_checkpoint = spec.Checkpoint(
         epoch=store.finalized_checkpoint.epoch + 2,
         root=store.finalized_checkpoint.root
     )
 
     # First transition through the epoch to ensure no skipped slots
-    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
+    state, store, _ = apply_next_epoch_with_attestations(spec, state, store)
 
     # Now build a block at later slot than finalized epoch
     # Includes finalized block in chain, but not at appropriate skip slot
@@ -183,7 +186,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
 @spec_state_test
 def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 0
     spec.on_tick(store, time)
 
@@ -214,7 +217,7 @@ def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
 @spec_state_test
 def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 0
     spec.on_tick(store, time)
 
@@ -264,7 +267,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
 @spec_state_test
 def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Initialization
-    store = spec.get_forkchoice_store(state)
+    store = get_genesis_forkchoice_store(spec, state)
     time = 100
     spec.on_tick(store, time)
 

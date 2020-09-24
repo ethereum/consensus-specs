@@ -11,6 +11,24 @@ See this [blog post](https://blog.ethereum.org/2020/06/23/eth2-quick-update-no-1
 
 In August 2020, version `r2` was released with metadata modifications and relicensed to CC0-1.0. Afterward, this contract has been ported back to from [`axic/eth2-deposit-contract`](https://github.com/axic/eth2-deposit-contract) to this repository and replaced the Vyper deposit contract.
 
+## Compiling solidity deposit contract
+
+In the `eth2.0-specs` directory run:
+```sh
+make compile_deposit_contract
+```
+
+The following parameters were used to generate the bytecode for the `DepositContract` available in this repository:
+
+* Contract Name: `DepositContract`
+* Compiler Version: Solidity `v0.6.11+commit.5ef660b1`
+* Optimization Enabled: `Yes` with `5000000` runs
+* Metadata Options: `--metadata-literal` (to verify metadata hash)
+
+```sh
+solc --optimize --optimize-runs 5000000 --metadata-literal --bin deposit_contract.sol
+```
+
 ## Running web3 tests
 
 1. In the `eth2.0-specs` directory run `make install_deposit_contract_web3_tester` to install the tools needed (make sure to have Python 3.7 and pip installed).

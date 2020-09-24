@@ -1,3 +1,6 @@
+from eth2spec.phase0 import spec as phase0_spec
+
+
 def get_anchor_root(spec, state):
     anchor_block_header = state.latest_block_header.copy()
     if anchor_block_header.state_root == spec.Bytes32():
@@ -25,3 +28,10 @@ def add_attestation_to_store(spec, store, attestation):
         spec.on_tick(store, next_epoch_time)
 
     spec.on_attestation(store, attestation)
+
+
+def get_genesis_forkchoice_store(spec, genesis_state):
+    assert genesis_state.slot == spec.GENESIS_SLOT
+    # The genesis block must be a Phase 0 `BeaconBlock`
+    genesis_block = phase0_spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
+    return spec.get_forkchoice_store(genesis_state, genesis_block)

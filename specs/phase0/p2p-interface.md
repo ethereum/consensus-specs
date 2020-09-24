@@ -243,12 +243,11 @@ Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-The `message-id` of a gossipsub message MUST be:
+The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
 
 ```python
-   message-id: base64(SHA256(message.data))
+   message-id: SHA256(message.data)[0:8]
 ```
-where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc4648#section-3.2) with padding characters omitted.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
@@ -383,6 +382,7 @@ The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated a
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
 The following validations MUST pass before forwarding the `attestation` on the subnet.
+- _[REJECT]_ The committee index is within the expected range -- i.e. `data.index < get_committee_count_per_slot(state, data.target.epoch)`.
 - _[REJECT]_ The attestation is for the correct subnet --
   i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`,
   where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
@@ -394,7 +394,9 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The attestation's epoch matches its target -- i.e. `attestation.data.target.epoch ==
   compute_epoch_at_slot(attestation.data.slot)`
 - _[REJECT]_ The attestation is unaggregated --
-  that is, it has exactly one participating validator (`len([bit in bit attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+  that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
+  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
@@ -407,7 +409,6 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
-
 
 
 

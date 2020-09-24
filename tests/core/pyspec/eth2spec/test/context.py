@@ -1,9 +1,11 @@
+import pytest
+
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
+from .exceptions import SkippedTest
 from .helpers.genesis import create_genesis_state
-
 from .utils import vector_test, with_meta_tags
 
 from random import Random
@@ -22,10 +24,15 @@ def reload_specs():
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
 
 SpecForkName = NewType("SpecForkName", str)
+ConfigName = NewType("ConfigName", str)
 
 PHASE0 = SpecForkName('phase0')
 PHASE1 = SpecForkName('phase1')
 ALL_PHASES = (PHASE0, PHASE1)
+
+MAINNET = ConfigName('mainnet')
+MINIMAL = ConfigName('minimal')
+
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -153,7 +160,7 @@ def low_single_balance(spec):
 
 def large_validator_set(spec):
     """
-    Helper method to create a series of default balances.
+    Helper method to create a large series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
     num_validators = 2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
@@ -182,6 +189,17 @@ def single_phase(fn):
 #    (tests that are heavily performance impacted / require unsigned state transitions)
 # - Most tests respect the BLS setting.
 DEFAULT_BLS_ACTIVE = True
+
+
+is_pytest = True
+
+
+def dump_skipping_message(reason: str) -> None:
+    message = f"[Skipped test] {reason}"
+    if is_pytest:
+        pytest.skip(message)
+    else:
+        raise SkippedTest(message)
 
 
 def spec_test(fn):
@@ -255,6 +273,24 @@ def bls_switch(fn):
     return entry
 
 
+def disable_process_reveal_deadlines(fn):
+    """
+    Decorator to make a function execute with `process_reveal_deadlines` OFF.
+    This is for testing long-range epochs transition without considering the reveal-deadline slashing effect.
+    """
+    def entry(*args, spec: Spec, **kw):
+        if hasattr(spec, 'process_reveal_deadlines'):
+            old_state = spec.process_reveal_deadlines
+            spec.process_reveal_deadlines = lambda state: None
+
+        yield from fn(*args, spec=spec, **kw)
+
+        if hasattr(spec, 'process_reveal_deadlines'):
+            spec.process_reveal_deadlines = old_state
+
+    return with_meta_tags({'reveal_deadlines_setting': 1})(entry)
+
+
 def with_all_phases(fn):
     """
     A decorator for running a test with every phase
@@ -284,7 +320,8 @@ def with_phases(phases, other_phases=None):
             if 'phase' in kw:
                 phase = kw.pop('phase')
                 if phase not in phases:
-                    return
+                    dump_skipping_message(f"doesn't support this fork: {phase}")
+                    return None
                 run_phases = [phase]
 
             available_phases = set(run_phases)
@@ -309,3 +346,33 @@ def with_phases(phases, other_phases=None):
             return ret
         return wrapper
     return decorator
+
+
+def with_configs(configs, reason=None):
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            available_configs = set(configs)
+            if spec.CONFIG_NAME not in available_configs:
+                message = f"doesn't support this config: {spec.CONFIG_NAME}."
+                if reason is not None:
+                    message = f"{message} Reason: {reason}"
+                dump_skipping_message(message)
+                return None
+
+            return fn(*args, spec=spec, **kw)
+        return wrapper
+    return decorator
+
+
+def only_full_crosslink(fn):
+    def is_full_crosslink(spec, state):
+        epoch = spec.compute_epoch_at_slot(state.slot)
+        return spec.get_committee_count_per_slot(state, epoch) >= spec.get_active_shard_count(state)
+
+    def wrapper(*args, spec: Spec, state: Any, **kw):
+        # TODO: update condition to "phase1+" if we have phase2
+        if spec.fork == PHASE1 and not is_full_crosslink(spec, state):
+            dump_skipping_message("only for full crosslink")
+            return None
+        return fn(*args, spec=spec, state=state, **kw)
+    return wrapper

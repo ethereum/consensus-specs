@@ -130,8 +130,11 @@ jobs:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
-          name: Run linter
+          name: Run linter for pyspec
           command: make lint
+      - run:
+          name: Run linter for test generators
+          command: make lint_generators
   build_deposit_contract:
     docker:
       - image: ethereum/solc:0.6.11-alpine

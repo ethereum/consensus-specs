@@ -31,36 +31,54 @@ def run_deltas(spec, state):
     """
     Run all deltas functions yielding:
       - pre-state ('pre')
-      - source deltas ('source_deltas')
+      - [Phase 0] source deltas ('source_deltas')
       - target deltas ('target_deltas')
       - head deltas ('head_deltas')
-      - inclusion delay deltas ('inclusion_delay_deltas')
+      - [Phase 0] inclusion delay deltas ('inclusion_delay_deltas')
+      - [Phase 1+] very timely deltas ('very_timely_deltas')
+      - [Phase 1+] timely deltas ('timely_deltas')
+      - [Phase 1+] crosslink deltas ('crosslink_deltas')
       - inactivity penalty deltas ('inactivity_penalty_deltas')
     """
     yield 'pre', state
+
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_source_deltas,
-        'source_deltas',
-    )
-    yield from run_attestation_component_deltas(
-        spec,
-        state,
-        spec.get_target_deltas,
         'target_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_head_deltas,
         'head_deltas',
     )
-    yield from run_get_inclusion_delay_deltas(spec, state)
+    if spec.fork == PHASE0:
+        yield from run_attestation_component_deltas(
+            spec,
+            state,
+            'source_deltas',
+        )
+        yield from run_get_inclusion_delay_deltas(spec, state)
+    else:
+        yield from run_attestation_component_deltas(
+            spec,
+            state,
+            'very_timely_deltas',
+        )
+        yield from run_attestation_component_deltas(
+            spec,
+            state,
+            'timely_deltas',
+        )
+        yield from run_attestation_component_deltas(
+            spec,
+            state,
+            'crosslink_deltas',
+        )
     yield from run_get_inactivity_penalty_deltas(spec, state)
 
 
-def run_attestation_component_deltas(spec, state, component_delta_fn, deltas_name):
+def run_attestation_component_deltas(spec, state, deltas_name):
     """
     Run ``component_delta_fn``, yielding:
       - deltas ('{``deltas_name``}')
@@ -82,16 +100,28 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, deltas_nam
         matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
         rewards, penalties = component_delta_fn(state)
     else:
-        if deltas_name == 'source_deltas':
-            reward_flag = spec.FLAG_SOURCE
-        elif deltas_name == 'target_deltas':
+        if deltas_name == 'target_deltas':
             reward_flag = spec.FLAG_TARGET
+            reward_denominator = spec.TARGET_REWARD_DENOMINATOR
         elif deltas_name == 'head_deltas':
             reward_flag = spec.FLAG_HEAD
+            reward_denominator = spec.HEAD_REWARD_DENOMINATOR
+        elif deltas_name == 'very_timely_deltas':
+            reward_flag = spec.FLAG_VERY_TIMELY
+            reward_denominator = spec.VERY_TIMELY_REWARD_DENOMINATOR
+        elif deltas_name == 'timely_deltas':
+            reward_flag = spec.FLAG_TIMELY
+            reward_denominator = spec.TIMELY_REWARD_DENOMINATOR
+        elif deltas_name == 'crosslink_deltas':
+            reward_flag = spec.FLAG_CROSSLINK
+            reward_denominator = spec.CROSSLINK_REWARD_DENOMINATOR
         else:
-            raise Exception("`deltas_name` must be one of ['source_deltas', 'target_deltas', 'head_deltas']")
+            raise Exception(
+                "`deltas_name` must be one of"
+                + "[target_deltas', 'head_deltas', 'very_timely_deltas', 'timely_deltas', 'crosslink_deltas']"
+            )
         matching_indices = spec.get_unslashed_participant_indices(state, reward_flag, spec.get_previous_epoch(state))
-        rewards, penalties = spec.get_standard_flag_deltas(state, reward_flag)
+        rewards, penalties = spec.get_standard_flag_deltas(state, reward_flag, reward_denominator)
     eligible_indices = spec.get_eligible_validator_indices(state)
 
     yield deltas_name, Deltas(rewards=rewards, penalties=penalties)
@@ -207,7 +237,14 @@ def run_get_inactivity_penalty_deltas(spec, state):
             if spec.fork == PHASE0:
                 base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
             else:
-                base_penalty = spec.PHASE1_BASE_REWARDS_PER_EPOCH * base_reward
+                attestation_reward_denominators = [
+                    spec.TARGET_REWARD_DENOMINATOR,
+                    spec.HEAD_REWARD_DENOMINATOR,
+                    spec.CROSSLINK_REWARD_DENOMINATOR,
+                    spec.VERY_TIMELY_REWARD_DENOMINATOR,
+                    spec.TIMELY_REWARD_DENOMINATOR,
+                ]
+                base_penalty = sum(base_reward // demon for demon in attestation_reward_denominators)
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0

@@ -23,10 +23,13 @@ from eth2spec.utils.ssz.ssz_typing import Bitvector
 
 
 from eth2spec.test.context import (
-    PHASE0,
-    spec_test,
-    spec_state_test, with_all_phases, expect_assertion_error, always_bls, with_phases,
-    with_custom_state, single_phase,
+    PHASE0, MINIMAL,
+    spec_test, spec_state_test, dump_skipping_message,
+    with_phases, with_all_phases, single_phase,
+    expect_assertion_error, always_bls,
+    disable_process_reveal_deadlines,
+    with_configs,
+    with_custom_state,
     large_validator_set,
 )
 
@@ -92,6 +95,8 @@ def test_empty_block_transition(spec, state):
 
 
 @with_all_phases
+@with_configs([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @single_phase
@@ -318,6 +323,8 @@ def test_empty_epoch_transition(spec, state):
 
 
 @with_all_phases
+@with_configs([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @single_phase
@@ -340,10 +347,9 @@ def test_empty_epoch_transition_large_validator_set(spec, state):
 @with_all_phases
 @spec_state_test
 def test_empty_epoch_transition_not_finalizing(spec, state):
-    # Don't run for non-minimal configs, it takes very long, and the effect
-    # of calling finalization/justification is just the same as with the minimal configuration.
     if spec.SLOTS_PER_EPOCH > 8:
-        return
+        return dump_skipping_message("Skip mainnet config for saving time."
+                                     " Minimal config suffice to cover the target-of-test.")
 
     # copy for later balance lookups.
     pre_balances = list(state.balances)
@@ -529,9 +535,8 @@ def test_attester_slashing(spec, state):
 @with_all_phases
 @spec_state_test
 def test_duplicate_attester_slashing(spec, state):
-    # Skip test if config cannot handle multiple AttesterSlashings per block
     if spec.MAX_ATTESTER_SLASHINGS < 2:
-        return
+        return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
     attester_slashings = [attester_slashing, attester_slashing.copy()]
@@ -558,9 +563,8 @@ def test_duplicate_attester_slashing(spec, state):
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_no_overlap(spec, state):
-    # Skip test if config cannot handle multiple AttesterSlashings per block
     if spec.MAX_ATTESTER_SLASHINGS < 2:
-        return
+        return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     # copy for later balance lookups.
     pre_state = state.copy()
@@ -599,9 +603,8 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_partial_overlap(spec, state):
-    # Skip test if config cannot handle multiple AttesterSlashings per block
     if spec.MAX_ATTESTER_SLASHINGS < 2:
-        return
+        return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     # copy for later balance lookups.
     pre_state = state.copy()
@@ -800,9 +803,14 @@ def test_attestation(spec, state):
         # Participants are set for previous epoch
         participants = spec.get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
         active_indices = spec.get_active_validator_indices(state, spec.get_previous_epoch(state))
+        expected_flags = [
+            spec.FLAG_CROSSLINK, spec.FLAG_TARGET, spec.FLAG_HEAD,
+            spec.FLAG_VERY_TIMELY, spec.FLAG_TIMELY,
+        ]
         for participant in participants:
             position = active_indices.index(participant)
-            assert state.previous_epoch_reward_flags[position] == Bitvector[8](1, 1, 1, 1, 1, 1, 0, 0)
+            for flag in expected_flags:
+                assert state.previous_epoch_reward_flags[position][flag]
 
 
 def prepare_signed_exits(spec, state, indices):
@@ -823,8 +831,9 @@ def prepare_signed_exits(spec, state, indices):
 # exceeding the minimal-config randao mixes memory size.
 # Applies to all voluntary-exit sanity block tests.
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
+@disable_process_reveal_deadlines
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
@@ -872,8 +881,9 @@ def test_double_validator_exit_same_block(spec, state):
     yield 'post', None
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
+@disable_process_reveal_deadlines
 def test_multiple_different_validator_exits_same_block(spec, state):
     validator_indices = [
         spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
@@ -949,9 +959,9 @@ def test_historical_batch(spec, state):
 @with_all_phases
 @spec_state_test
 def test_eth1_data_votes_consensus(spec, state):
-    # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
     if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
-        return
+        return dump_skipping_message("Skip test if config with longer `EPOCHS_PER_ETH1_VOTING_PERIOD` for saving time."
+                                     " Minimal config suffice to cover the target-of-test.")
 
     voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -993,9 +1003,9 @@ def test_eth1_data_votes_consensus(spec, state):
 @with_all_phases
 @spec_state_test
 def test_eth1_data_votes_no_consensus(spec, state):
-    # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
     if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
-        return
+        return dump_skipping_message("Skip test if config with longer `EPOCHS_PER_ETH1_VOTING_PERIOD` for saving time."
+                                     " Minimal config suffice to cover the target-of-test.")
 
     voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
 

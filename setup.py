@@ -119,12 +119,15 @@ from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
 
 SSZObject = TypeVar('SSZObject', bound=View)
+
+CONFIG_NAME = 'mainnet'
 '''
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
     Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
 )
+from typing import List as PyList
 
 from dataclasses import (
     dataclass,
@@ -150,10 +153,14 @@ reload(phase0)
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
 SSZObject = TypeVar('SSZObject', bound=View)
+
+CONFIG_NAME = 'mainnet'
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
-def ceillog2(x: uint64) -> int:
-    return (x - 1).bit_length()
+def ceillog2(x: int) -> uint64:
+    if x < 1:
+        raise ValueError(f"ceillog2 accepts only positive values, x={x}")
+    return uint64((x - 1).bit_length())
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
@@ -241,7 +248,7 @@ get_unslashed_participant_indices = cache_this(
 
 _get_standard_flag_deltas = get_standard_flag_deltas
 get_standard_flag_deltas = cache_this(
-    lambda state, flag: (state.hash_tree_root(), flag),
+    lambda state, flag, denominator: (state.hash_tree_root(), flag, denominator),
     _get_standard_flag_deltas, lru_size=10)
 
 _get_inactivity_penalty_deltas = get_inactivity_penalty_deltas
@@ -409,12 +416,14 @@ class PySpecCommand(Command):
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
+                    specs/phase0/weak-subjectivity.md
                 """
             elif self.spec_fork == "phase1":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
+                    specs/phase0/weak-subjectivity.md
                     specs/phase1/custody-game.md
                     specs/phase1/beacon-chain.md
                     specs/phase1/shard-transition.md
