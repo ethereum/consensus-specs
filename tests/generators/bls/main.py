@@ -161,9 +161,11 @@ def case02_verify():
 def case03_aggregate():
     for message in MESSAGES:
         sigs = [bls.Sign(privkey, message) for privkey in PRIVKEYS]
+        aggregate_sig = bls.Aggregate(sigs)
+        assert aggregate_sig == milagro_bls.Aggregate(sigs)
         yield f'aggregate_{encode_hex(message)}', {
             'input': [encode_hex(sig) for sig in sigs],
-            'output': encode_hex(bls.Aggregate(sigs)),
+            'output': encode_hex(aggregate_sig),
         }
 
     # Invalid pubkeys -- len(pubkeys) == 0
@@ -173,6 +175,14 @@ def case03_aggregate():
     yield f'aggregate_na_signatures', {
         'input': [],
         'output': None,
+    }
+
+    # Valid to aggregate G2 point at infinity
+    aggregate_sig = bls.Aggregate([Z2_SIGNATURE])
+    assert aggregate_sig == milagro_bls.Aggregate([Z2_SIGNATURE]) == Z2_SIGNATURE
+    yield f'aggregate_infinity_signature', {
+        'input': [Z2_SIGNATURE],
+        'output': aggregate_sig,
     }
 
 
