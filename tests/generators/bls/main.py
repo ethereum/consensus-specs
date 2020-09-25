@@ -86,7 +86,7 @@ def case01_sign():
     # expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)  # TODO: enable it when milagro is ready
     yield f'sign_case_zero_privkey', {
         'input': {
-            'privkey': ZERO_PRIVKEY_BYTES,
+            'privkey': encode_hex(ZERO_PRIVKEY_BYTES),
             'message': encode_hex(message),
         },
         'output': None
@@ -181,8 +181,8 @@ def case03_aggregate():
     aggregate_sig = bls.Aggregate([Z2_SIGNATURE])
     assert aggregate_sig == milagro_bls.Aggregate([Z2_SIGNATURE]) == Z2_SIGNATURE
     yield f'aggregate_infinity_signature', {
-        'input': [Z2_SIGNATURE],
-        'output': aggregate_sig,
+        'input': [encode_hex(Z2_SIGNATURE)],
+        'output': encode_hex(aggregate_sig),
     }
 
 
