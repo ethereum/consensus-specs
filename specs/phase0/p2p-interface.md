@@ -246,7 +246,8 @@ Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
 The optional `from` (1), `seqno` (3), `signature` (5) and `key` (6) protobuf fields are omitted from the message,
 since messages are identified by content, anonymous, and signed where necessary in the application layer.
-Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictNoSign` signature policy. 
+Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictNoSign`
+[signature policy](https://github.com/libp2p/specs/blob/master/pubsub/README.md#signature-policy-options). 
 
 The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
 
