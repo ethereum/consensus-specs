@@ -40,6 +40,7 @@ MESSAGES = [
     bytes(b'\x56' * 32),
     bytes(b'\xab' * 32),
 ]
+SAMPLE_MESSAGE = b'\x12' * 32
 
 PRIVKEYS = [
     # Curve order is 256 so private keys are 32 bytes at most.
@@ -48,16 +49,30 @@ PRIVKEYS = [
     hex_to_int('0x0000000000000000000000000000000047b8192d77bf871b62e87859d653922725724a5c031afeabc60bcef5ff665138'),
     hex_to_int('0x00000000000000000000000000000000328388aff0d4a5b7dc9205abd374e7e98f3cd9f3418edb4eafda5fb16473d216'),
 ]
+PUBKEYS = [bls.SkToPk(privkey) for privkey in PRIVKEYS]
 
 Z1_PUBKEY = b'\xc0' + b'\x00' * 47
 NO_SIGNATURE = b'\x00' * 96
 Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
+ZERO_PRIVKEY = 0
+ZERO_PRIVKEY_BYTES = b'\x00' * 32
+
+
+def expect_exception(func, *args):
+    try:
+        func(*args)
+    except Exception:
+        pass
+    else:
+        raise Exception("should have raised exception")
 
 
 def case01_sign():
+    # Valid cases
     for privkey in PRIVKEYS:
         for message in MESSAGES:
             sig = bls.Sign(privkey, message)
+            assert sig == milagro_bls.Sign(to_bytes(privkey), message)  # double-check with milagro
             identifier = f'{int_to_hex(privkey)}_{encode_hex(message)}'
             yield f'sign_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
@@ -66,6 +81,16 @@ def case01_sign():
                 },
                 'output': encode_hex(sig)
             }
+    # Edge case: privkey == 0
+    expect_exception(bls.Sign, ZERO_PRIVKEY, message)
+    # expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)  # TODO: enable it when milagro is ready
+    yield f'sign_case_zero_privkey', {
+        'input': {
+            'privkey': ZERO_PRIVKEY_BYTES,
+            'message': encode_hex(message),
+        },
+        'output': None
+    }
 
 
 def case02_verify():
@@ -120,17 +145,17 @@ def case02_verify():
                 'output': False,
             }
 
-        # Valid pubkey and signature with the point at infinity
-        assert bls.Verify(Z1_PUBKEY, message, Z2_SIGNATURE)
-        assert milagro_bls.Verify(Z1_PUBKEY, message, Z2_SIGNATURE)
-        yield f'verify_infinity_pubkey_and_infinity_signature', {
-            'input': {
-                'pubkey': encode_hex(Z1_PUBKEY),
-                'message': encode_hex(message),
-                'signature': encode_hex(Z2_SIGNATURE),
-            },
-            'output': True,
-        }
+    # Invalid pubkey and signature with the point at infinity
+    assert not bls.Verify(Z1_PUBKEY, SAMPLE_MESSAGE, Z2_SIGNATURE)
+    # assert not milagro_bls.Verify(Z1_PUBKEY, SAMPLE_MESSAGE, Z2_SIGNATURE)  # TODO: enable it when milagro is ready
+    yield f'verify_infinity_pubkey_and_infinity_signature', {
+        'input': {
+            'pubkey': encode_hex(Z1_PUBKEY),
+            'message': encode_hex(SAMPLE_MESSAGE),
+            'signature': encode_hex(Z2_SIGNATURE),
+        },
+        'output': False,
+    }
 
 
 def case03_aggregate():
@@ -142,13 +167,7 @@ def case03_aggregate():
         }
 
     # Invalid pubkeys -- len(pubkeys) == 0
-    try:
-        bls.Aggregate([])
-    except Exception:
-        pass
-    else:
-        raise Exception("Should have been INVALID")
-
+    expect_exception(bls.Aggregate, [])
     # No signatures to aggregate. Follow IETF BLS spec, return `None` to represent INVALID.
     # https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02#section-2.8
     yield f'aggregate_na_signatures', {
@@ -231,6 +250,23 @@ def case04_fast_aggregate_verify():
         'output': False,
     }
 
+    # Invalid pubkeys and signature -- pubkeys contains point at infinity
+    pubkeys = PUBKEYS.copy()
+    pubkeys_with_infinity = pubkeys + [Z1_PUBKEY]
+    signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
+    aggregate_signature = bls.Aggregate(signatures)
+    assert not bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
+    # TODO: enable it when milagro is ready
+    # assert not milagro_bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
+    yield f'fast_aggregate_verify_infinity_pubkey', {
+        'input': {
+            'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
+            'messages': encode_hex(SAMPLE_MESSAGE),
+            'signature': encode_hex(aggregate_signature),
+        },
+        'output': False,
+    }
+
 
 def case05_aggregate_verify():
     pubkeys = []
@@ -291,6 +327,21 @@ def case05_aggregate_verify():
             'pubkeys': [],
             'messages': [],
             'signature': encode_hex(NO_SIGNATURE),
+        },
+        'output': False,
+    }
+
+    # Invalid pubkeys and signature -- pubkeys contains point at infinity
+    pubkeys_with_infinity = pubkeys + [Z1_PUBKEY]
+    messages_with_sample = messages + [SAMPLE_MESSAGE]
+    assert not bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
+    # TODO: enable it when milagro is ready
+    # assert not milagro_bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
+    yield f'aggregate_verify_infinity_pubkey', {
+        'input': {
+            'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
+            'messages': [encode_hex(message) for message in messages_with_sample],
+            'signature': encode_hex(aggregate_signature),
         },
         'output': False,
     }

@@ -99,4 +99,7 @@ def AggregatePKs(pubkeys):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def SkToPk(SK):
-    return bls.SkToPk(SK)
+    if bls == py_ecc_bls:
+        return bls.SkToPk(SK)
+    else:
+        return bls.SkToPk(SK.to_bytes(32, 'big'))
