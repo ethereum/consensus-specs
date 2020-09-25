@@ -171,7 +171,7 @@ def case03_aggregate():
     # Invalid pubkeys -- len(pubkeys) == 0
     expect_exception(bls.Aggregate, [])
     # No signatures to aggregate. Follow IETF BLS spec, return `None` to represent INVALID.
-    # https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02#section-2.8
+    # https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-2.8
     yield f'aggregate_na_signatures', {
         'input': [],
         'output': None,
