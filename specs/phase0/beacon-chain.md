@@ -195,7 +195,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `HYSTERESIS_QUOTIENT` | `uint64(4)` |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
-| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(3)` |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -219,7 +218,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `GENESIS_DELAY` | `uint64(172800)` | seconds | 2 days |
+| `GENESIS_DELAY` | `uint64(604800)` | seconds | 7 days |
 | `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
 | `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
@@ -248,10 +247,13 @@ The following values are (non-configurable) constants used throughout the specif
 | `BASE_REWARD_FACTOR` | `uint64(2**6)` (= 64) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**24)` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**5)` (= 32) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**26)` (= 67,108,864) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (=128) |
+| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)` |
 
-- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12` epochs (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
+
+- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stablizes, this value will be upgraded to `3` to provide the maximal minimum accoutable safety margin.
 
 ### Max operations per block
 
