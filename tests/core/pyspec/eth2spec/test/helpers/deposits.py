@@ -80,12 +80,12 @@ def prepare_full_genesis_deposits(spec,
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
-            deposit_data_list,
-            pubkey,
-            privkey,
-            amount,
-            withdrawal_credentials,
-            signed,
+            deposit_data_list=deposit_data_list,
+            pubkey=pubkey,
+            privkey=privkey,
+            amount=amount,
+            withdrawal_credentials=withdrawal_credentials,
+            signed=signed,
         )
         genesis_deposits.append(deposit)
 
@@ -116,11 +116,11 @@ def prepare_random_genesis_deposits(spec,
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(random_byte)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
-            deposit_data_list,
-            pubkey,
-            privkey,
-            amount,
-            withdrawal_credentials,
+            deposit_data_list=deposit_data_list,
+            pubkey=pubkey,
+            privkey=privkey,
+            amount=amount,
+            withdrawal_credentials=withdrawal_credentials,
             signed=True,
         )
         deposits.append(deposit)
