@@ -1,3 +1,5 @@
+from random import Random
+
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
@@ -62,27 +64,67 @@ def deposit_from_context(spec, deposit_data_list, index):
     return deposit, root, deposit_data_list
 
 
-def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False, deposit_data_list=None):
+def prepare_full_genesis_deposits(spec,
+                                  amount,
+                                  deposit_count,
+                                  min_pubkey_index=0,
+                                  signed=False,
+                                  deposit_data_list=None):
     if deposit_data_list is None:
         deposit_data_list = []
     genesis_deposits = []
-    for validator_index in range(genesis_validator_count):
-        pubkey = pubkeys[validator_index]
-        privkey = privkeys[validator_index]
+    for pubkey_index in range(min_pubkey_index, min_pubkey_index + deposit_count):
+        pubkey = pubkeys[pubkey_index]
+        privkey = privkeys[pubkey_index]
         # insecurely use pubkey as withdrawal key if no credentials provided
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
-            deposit_data_list,
-            pubkey,
-            privkey,
-            amount,
-            withdrawal_credentials,
-            signed,
+            deposit_data_list=deposit_data_list,
+            pubkey=pubkey,
+            privkey=privkey,
+            amount=amount,
+            withdrawal_credentials=withdrawal_credentials,
+            signed=signed,
         )
         genesis_deposits.append(deposit)
 
     return genesis_deposits, root, deposit_data_list
+
+
+def prepare_random_genesis_deposits(spec,
+                                    deposit_count,
+                                    max_pubkey_index,
+                                    min_pubkey_index=0,
+                                    max_amount=None,
+                                    min_amount=None,
+                                    deposit_data_list=None,
+                                    rng=Random(3131)):
+    if max_amount is None:
+        max_amount = spec.MAX_EFFECTIVE_BALANCE
+    if min_amount is None:
+        min_amount = spec.MIN_DEPOSIT_AMOUNT
+    if deposit_data_list is None:
+        deposit_data_list = []
+    deposits = []
+    for _ in range(deposit_count):
+        pubkey_index = rng.randint(min_pubkey_index, max_pubkey_index)
+        pubkey = pubkeys[pubkey_index]
+        privkey = privkeys[pubkey_index]
+        amount = rng.randint(min_amount, max_amount)
+        random_byte = bytes([rng.randint(0, 255)])
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(random_byte)[1:]
+        deposit, root, deposit_data_list = build_deposit(
+            spec,
+            deposit_data_list=deposit_data_list,
+            pubkey=pubkey,
+            privkey=privkey,
+            amount=amount,
+            withdrawal_credentials=withdrawal_credentials,
+            signed=True,
+        )
+        deposits.append(deposit)
+    return deposits, root, deposit_data_list
 
 
 def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_credentials=None, signed=False):
