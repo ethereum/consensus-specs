@@ -9,7 +9,7 @@ def create_valid_beacon_state(spec):
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         amount=spec.MAX_EFFECTIVE_BALANCE,
-        pubkey_max_range=deposit_count,
+        deposit_count=deposit_count,
         signed=True,
     )
 
@@ -77,7 +77,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         amount=spec.MAX_EFFECTIVE_BALANCE,
-        pubkey_max_range=deposit_count,
+        deposit_count=deposit_count,
         signed=True,
     )
 
@@ -96,7 +96,7 @@ def test_is_valid_genesis_state_false_not_enough_validator(spec):
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         amount=spec.MAX_EFFECTIVE_BALANCE,
-        pubkey_max_range=deposit_count,
+        deposit_count=deposit_count,
         signed=True,
     )
 

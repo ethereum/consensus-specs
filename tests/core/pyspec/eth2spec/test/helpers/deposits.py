@@ -66,16 +66,16 @@ def deposit_from_context(spec, deposit_data_list, index):
 
 def prepare_full_genesis_deposits(spec,
                                   amount,
-                                  pubkey_max_range,
-                                  pubkey_min_range=0,
+                                  deposit_count,
+                                  min_pubkey_index=0,
                                   signed=False,
                                   deposit_data_list=None):
     if deposit_data_list is None:
         deposit_data_list = []
     genesis_deposits = []
-    for validator_index in range(pubkey_min_range, pubkey_max_range):
-        pubkey = pubkeys[validator_index]
-        privkey = privkeys[validator_index]
+    for pubkey_index in range(min_pubkey_index, min_pubkey_index + deposit_count):
+        pubkey = pubkeys[pubkey_index]
+        privkey = privkeys[pubkey_index]
         # insecurely use pubkey as withdrawal key if no credentials provided
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
         deposit, root, deposit_data_list = build_deposit(
@@ -93,7 +93,7 @@ def prepare_full_genesis_deposits(spec,
 
 
 def prepare_random_genesis_deposits(spec,
-                                    num_deposits,
+                                    deposit_count,
                                     max_pubkey_index,
                                     min_pubkey_index=0,
                                     max_amount=None,
@@ -107,7 +107,7 @@ def prepare_random_genesis_deposits(spec,
     if deposit_data_list is None:
         deposit_data_list = []
     deposits = []
-    for _ in range(num_deposits):
+    for _ in range(deposit_count):
         pubkey_index = rng.randint(min_pubkey_index, max_pubkey_index)
         pubkey = pubkeys[pubkey_index]
         privkey = privkeys[pubkey_index]
