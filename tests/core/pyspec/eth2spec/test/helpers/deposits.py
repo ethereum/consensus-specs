@@ -1,4 +1,4 @@
-import random
+from random import Random
 
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.utils import bls
@@ -98,7 +98,8 @@ def prepare_random_genesis_deposits(spec,
                                     min_pubkey_index=0,
                                     max_amount=None,
                                     min_amount=None,
-                                    deposit_data_list=None):
+                                    deposit_data_list=None,
+                                    rng=Random(3131)):
     if max_amount is None:
         max_amount = spec.MAX_EFFECTIVE_BALANCE
     if min_amount is None:
@@ -107,11 +108,11 @@ def prepare_random_genesis_deposits(spec,
         deposit_data_list = []
     deposits = []
     for _ in range(num_deposits):
-        pubkey_index = random.randint(min_pubkey_index, max_pubkey_index)
+        pubkey_index = rng.randint(min_pubkey_index, max_pubkey_index)
         pubkey = pubkeys[pubkey_index]
         privkey = privkeys[pubkey_index]
-        amount = random.randint(min_amount, max_amount)
-        random_byte = bytes([random.randint(0, 255)])
+        amount = rng.randint(min_amount, max_amount)
+        random_byte = bytes([rng.randint(0, 255)])
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(random_byte)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,

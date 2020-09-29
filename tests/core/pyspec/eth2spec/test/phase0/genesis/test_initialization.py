@@ -156,7 +156,7 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
     # Make a bunch of random deposits
     random_deposits, _, deposit_data_list = prepare_random_genesis_deposits(
         spec,
-        num_deposits=30,
+        num_deposits=20,
         min_pubkey_index=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 5,
         max_pubkey_index=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 5,
     )
