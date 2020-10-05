@@ -83,7 +83,8 @@ def case01_sign():
             }
     # Edge case: privkey == 0
     expect_exception(bls.Sign, ZERO_PRIVKEY, message)
-    # expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)  # TODO: enable it when milagro is ready
+    # TODO enable it when milagro_bls is ready for IETF BLS draft 04
+    # expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)
     yield f'sign_case_zero_privkey', {
         'input': {
             'privkey': encode_hex(ZERO_PRIVKEY_BYTES),
@@ -147,7 +148,7 @@ def case02_verify():
 
     # Invalid pubkey and signature with the point at infinity
     assert not bls.Verify(Z1_PUBKEY, SAMPLE_MESSAGE, Z2_SIGNATURE)
-    # assert not milagro_bls.Verify(Z1_PUBKEY, SAMPLE_MESSAGE, Z2_SIGNATURE)  # TODO: enable it when milagro is ready
+    assert not milagro_bls.Verify(Z1_PUBKEY, SAMPLE_MESSAGE, Z2_SIGNATURE)
     yield f'verify_infinity_pubkey_and_infinity_signature', {
         'input': {
             'pubkey': encode_hex(Z1_PUBKEY),
@@ -266,7 +267,7 @@ def case04_fast_aggregate_verify():
     signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
     aggregate_signature = bls.Aggregate(signatures)
     assert not bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
-    # TODO: enable it when milagro is ready
+    # TODO enable it when milagro_bls is ready for IETF BLS draft 04
     # assert not milagro_bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
     yield f'fast_aggregate_verify_infinity_pubkey', {
         'input': {
@@ -345,8 +346,7 @@ def case05_aggregate_verify():
     pubkeys_with_infinity = pubkeys + [Z1_PUBKEY]
     messages_with_sample = messages + [SAMPLE_MESSAGE]
     assert not bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
-    # TODO: enable it when milagro is ready
-    # assert not milagro_bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
+    assert not milagro_bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
     yield f'aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
