@@ -605,7 +605,7 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 #### BLS Signatures
 
-Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-03](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
+Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
 
 - `def Sign(SK: int, message: Bytes) -> BLSSignature`
 - `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
