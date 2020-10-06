@@ -243,11 +243,21 @@ Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
+The `message-id` of a gossipsub message MUST be the following 20 byte value computed from the message data:
+* If `message.data` can be snappy decompressed:
+    * Let `message-id` be the first 20 bytes of the `SHA256` hash of the snappy decompressed message data,
+      i.e. `SHA256(snappy_decompress(message.data))[:20]`.
+    * Then set the most significant bit of the left-most byte of `message-id` to 1,
+      i.e. `message-id[0] |= (0x01 << 7)`.
+* Otherwise:
+    * Let `message-id` be the first 20 bytes of the `SHA256` hash of the raw message data,
+      i.e. `SHA256(message.data)[:20]`.
+    * Then set the most significant bit of the left-most byte of `message-id` to 0,
+      i.e. `message-id[0] &= (0xFF >> 1)`.
 
-```python
-   message-id: SHA256(message.data)[0:8]
-```
+*Note*: The above logic handles two exceptional cases:
+(1) multiple snappy `data` can decompress to the same value,
+and (2) some message `data` can fail to snappy decompress altogether.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
