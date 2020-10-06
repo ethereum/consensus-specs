@@ -67,11 +67,6 @@ def AggregateVerify(pubkeys, messages, signature):
 
 @only_with_bls(alt_return=True)
 def FastAggregateVerify(pubkeys, message, signature):
-    # TODO: remove it when milagro_bls_binding is fixed
-    # https://github.com/ChihChengLiang/milagro_bls_binding/issues/19
-    if Z1_PUBKEY in pubkeys:
-        return False
-
     try:
         result = bls.FastAggregateVerify(list(pubkeys), message, signature)
     except Exception:
@@ -87,9 +82,6 @@ def Aggregate(signatures):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Sign(SK, message):
-    # TODO: remove it when https://github.com/sigp/milagro_bls/issues/39 is fixed
-    if SK == 0:
-        raise Exception("SK should not be zero")
     if bls == py_ecc_bls:
         return bls.Sign(SK, message)
     else:

@@ -83,8 +83,7 @@ def case01_sign():
             }
     # Edge case: privkey == 0
     expect_exception(bls.Sign, ZERO_PRIVKEY, message)
-    # TODO enable it when milagro_bls is ready for IETF BLS draft 04
-    # expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)
+    expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)
     yield f'sign_case_zero_privkey', {
         'input': {
             'privkey': encode_hex(ZERO_PRIVKEY_BYTES),
@@ -267,8 +266,7 @@ def case04_fast_aggregate_verify():
     signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
     aggregate_signature = bls.Aggregate(signatures)
     assert not bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
-    # TODO enable it when milagro_bls is ready for IETF BLS draft 04
-    # assert not milagro_bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
+    assert not milagro_bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
     yield f'fast_aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
