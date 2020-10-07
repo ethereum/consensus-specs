@@ -230,7 +230,7 @@ def get_head(store: Store) -> Root:
     while True:
         children = [
             root for root in blocks.keys()
-            if blocks[root].parent_root == head and blocks[root].slot > justified_slot
+            if blocks[root].parent_root == head
         ]
         if len(children) == 0:
             return head
