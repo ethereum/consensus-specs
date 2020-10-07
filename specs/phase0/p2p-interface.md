@@ -54,8 +54,6 @@ It consists of four main sections:
     - [ENR structure](#enr-structure)
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [`eth2` field](#eth2-field)
-      - [General capabilities](#general-capabilities)
-    - [Topic advertisement](#topic-advertisement)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
@@ -846,12 +844,10 @@ The response MUST consist of a single `response_chunk`.
 
 ## The discovery domain: discv5
 
-Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery.
+Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) (Protocol version v5.1) is used for peer discovery.
 
 `discv5` is a standalone protocol, running on UDP on a dedicated port, meant for peer discovery only.
 `discv5` supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are (or will be) requirements in this context.
-
-:warning: Under construction. :warning:
 
 ### Integration into libp2p stacks
 
@@ -934,19 +930,6 @@ Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `ne
 Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`.
 Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients,
 these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
-
-#### General capabilities
-
-ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner.
-The concrete solution is currently undefined.
-Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
-
-### Topic advertisement
-
-discv5's topic advertisement feature is not expected to be ready for mainnet launch of Phase 0.
-
-Once this feature is built out and stable, we expect to use topic advertisement as a rendezvous facility for peers on shards.
-Until then, the ENR [attestation subnet bitfield](#attestation-subnet-bitfield) will be used for discovery of peers on particular subnets.
 
 # Design decision rationale
 
@@ -1408,7 +1391,7 @@ discv5 supports self-certified, flexible peer records (ENRs) and topic-based adv
 On the other hand, libp2p Kademlia DHT is a fully-fledged DHT protocol/implementations
 with content routing and storage capabilities, both of which are irrelevant in this context.
 
-We assume that Eth 1.0 nodes will evolve to support discv5.
+Eth 1.0 nodes will evolve to support discv5.
 By sharing the discovery network between Eth 1.0 and 2.0,
 we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks,
 to which smaller networks are more vulnerable.
