@@ -76,6 +76,7 @@ It consists of four main sections:
     - [How do we upgrade gossip channels (e.g. changes in encoding, compression)?](#how-do-we-upgrade-gossip-channels-eg-changes-in-encoding-compression)
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
+    - [Why are we using the `StrictNoSign` signature policy?](#why-are-we-using-the-strictnosign-signature-policy)
     - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
     - [Why are these specific gossip parameters chosen?](#why-are-these-specific-gossip-parameters-chosen)
     - [Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?](#why-is-there-maximum_gossip_clock_disparity-when-validating-slot-ranges-of-messages-in-gossip-subnets)
@@ -243,6 +244,11 @@ Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesi
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`.
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
+
+The optional `from` (1), `seqno` (3), `signature` (5) and `key` (6) protobuf fields are omitted from the message,
+since messages are identified by content, anonymous, and signed where necessary in the application layer.
+Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictNoSign`
+[signature policy](https://github.com/libp2p/specs/blob/master/pubsub/README.md#signature-policy-options). 
 
 The `message-id` of a gossipsub message MUST be the following 20 byte value computed from the message data:
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
@@ -1156,10 +1162,16 @@ since the domain is finite anyway, and calculating a digest's preimage would be 
 Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash),
 so hashing topics would bloat messages unnecessarily.
 
+### Why are we using the `StrictNoSign` signature policy?
+
+The policy omits the `from` (1), `seqno` (3), `signature` (5) and `key` (6) fields. These fields would:
+- Expose origin of sender (`from`), type of sender (based on `seqno`)
+- Add extra unused data to the gossip, since message IDs are based on `data`, not on the `from` and `seqno`.
+- Introduce more message validation than necessary, e.g. no `signature`.
+
 ### Why are we overriding the default libp2p pubsub `message-id`?
 
-For our current purposes, there is no need to address messages based on source peer,
-and it seems likely we might even override the message `from` to obfuscate the peer.
+For our current purposes, there is no need to address messages based on source peer, or track a message `seqno`.
 By overriding the default `message-id` to use content-addressing we can filter unnecessary duplicates before hitting the application layer.
 
 Some examples of where messages could be duplicated:
