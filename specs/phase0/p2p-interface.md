@@ -178,6 +178,9 @@ This section outlines constants that are used in this spec.
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY` | `0x00000000` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`  | `0x01000000` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
+
 
 ## MetaData
 
@@ -244,16 +247,12 @@ Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
 The `message-id` of a gossipsub message MUST be the following 20 byte value computed from the message data:
-* If `message.data` can be snappy decompressed:
-    * Let `message-id` be the first 20 bytes of the `SHA256` hash of the snappy decompressed message data,
-      i.e. `SHA256(snappy_decompress(message.data))[:20]`.
-    * Then set the most significant bit of the left-most byte of `message-id` to 1,
-      i.e. `message-id[0] |= (0x01 << 7)`.
-* Otherwise:
-    * Let `message-id` be the first 20 bytes of the `SHA256` hash of the raw message data,
-      i.e. `SHA256(message.data)[:20]`.
-    * Then set the most significant bit of the left-most byte of `message-id` to 0,
-      i.e. `message-id[0] &= (0xFF >> 1)`.
+* If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of `MESSAGE_DOMAIN_VALID_SNAPPY` with the snappy decompressed message data,
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + snappy_decompress(message.data))[:20]`.
+* Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of `MESSAGE_DOMAIN_INVALID_SNAPPY` with the raw message data,
+  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + message.data)[:20]`.
 
 *Note*: The above logic handles two exceptional cases:
 (1) multiple snappy `data` can decompress to the same value,
