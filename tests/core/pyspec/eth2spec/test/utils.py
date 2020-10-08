@@ -39,24 +39,20 @@ def vector_test(description: str = None):
                     if value is None:
                         continue
                     if isinstance(value, View):
-                        yield key, 'data', encode(value)
                         yield key, 'ssz', serialize(value)
                     elif isinstance(value, bytes):
-                        yield key, 'data', encode(value)
                         yield key, 'ssz', value
                     elif isinstance(value, list) and all([isinstance(el, (View, bytes)) for el in value]):
                         for i, el in enumerate(value):
                             if isinstance(el, View):
-                                yield f'{key}_{i}', 'data', encode(el)
                                 yield f'{key}_{i}', 'ssz', serialize(el)
                             elif isinstance(el, bytes):
-                                yield f'{key}_{i}', 'data', encode(el)
                                 yield f'{key}_{i}', 'ssz', el
                         yield f'{key}_count', 'meta', len(value)
                     else:
                         # Not a ssz value.
                         # The data will now just be yielded as any python data,
-                        #  something that should be encodeable by the generator runner.
+                        #  something that should be encodable by the generator runner.
                         yield key, 'data', value
 
             # check generator mode, may be None/else.

@@ -9,6 +9,7 @@ from ruamel.yaml import (
 )
 
 from gen_base.gen_typing import TestProvider
+from snappy import compress
 
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
@@ -180,7 +181,8 @@ def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
 
 def dump_ssz_fn(data: AnyStr, name: str, file_mode: str):
     def dump(case_path: Path):
-        out_path = case_path / Path(name + '.ssz')
+        out_path = case_path / Path(name + '.ssz_snappy')
+        compressed = compress(data)
         with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
-            f.write(data)
+            f.write(compressed)
     return dump

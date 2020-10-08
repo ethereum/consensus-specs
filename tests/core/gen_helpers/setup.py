@@ -7,5 +7,6 @@ setup(
         "ruamel.yaml==0.16.5",
         "eth-utils==1.6.0",
         "pytest>=4.4",
+        "python-snappy==0.5.4",
     ]
 )
