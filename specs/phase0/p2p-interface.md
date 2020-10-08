@@ -211,8 +211,6 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 **Gossipsub Parameters**
 
-*Note*: Parameters listed here are subject to a large-scale network feasibility study.
-
 The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
 - `D` (topic stable mesh target count): 6
@@ -224,6 +222,11 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master
 - `mcache_len` (number of windows to retain full messages in cache for `IWANT` responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (number of heartbeat intervals to retain message IDs): 550
+
+*Note*: Gossipsub v1.1 introduces a number of
+[additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
+for peer scoring and other attack mitigations.
+These are currently under investigation and will be spec'd and released to mainnet when they are ready.
 
 ### Topics and messages
 
