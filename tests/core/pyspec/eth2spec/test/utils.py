@@ -1,5 +1,4 @@
 from typing import Dict, Any
-from eth2spec.debug.encode import encode
 from eth2spec.utils.ssz.ssz_typing import View
 from eth2spec.utils.ssz.ssz_impl import serialize
 
