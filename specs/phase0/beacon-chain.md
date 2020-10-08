@@ -183,7 +183,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `ETH1_FOLLOW_DISTANCE` | `uint64(2**10)` (= 1,024) |
+| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) |
 | `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
@@ -226,7 +226,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**5)` (= 32) | epochs | ~3.4 hours |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
