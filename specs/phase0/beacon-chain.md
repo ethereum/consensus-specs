@@ -1809,6 +1809,11 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
     voluntary_exit = signed_voluntary_exit.message
     validator = state.validators[voluntary_exit.validator_index]
+
+    # Slashed validators cannot voluntarily exit
+    if validator.slashed:
+        return
+
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify exit has not been initiated
