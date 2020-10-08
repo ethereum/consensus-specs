@@ -289,7 +289,7 @@ class Eth1Block(Container):
 
 Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
 
-An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` where:
+An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state, eth1_chain)` where:
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
