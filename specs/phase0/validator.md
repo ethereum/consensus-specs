@@ -393,7 +393,7 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 A validator should generate a uniform random variable `slot_timing_entropy` between `(-SECONDS_PER_SLOT/6, SECONDS_PER_SLOT/6)` using local entropy at the beginning of each slot.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when the earlier of either of these two events occurs:
+A validator should create and broadcast the `attestation` to the associated attestation subnet when the earlier one of these two events occurs:
   - the validator has received a valid block from the expected block proposer for the assigned `slot`, or
   - `SECONDS_PER_SLOT/3 + slot_timing_entropy` seconds have elapsed since the start of the `slot` (using the `slot_timing_entropy` generated in this slot)
 
