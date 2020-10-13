@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test, spec_test,
     with_all_phases, single_phase,
+    with_phases, PHASE0,
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
@@ -12,6 +13,7 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     get_valid_attestation,
+    sign_attestation,
     prepare_state_with_attestations,
 )
 from eth2spec.test.helpers.rewards import leaking
@@ -276,6 +278,135 @@ def test_duplicate_attestation(spec, state):
     for index in participants:
         assert state.balances[index] < single_state.balances[index]
         assert single_state.balances[index] == dup_state.balances[index]
+
+
+# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
+# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
+@with_phases([PHASE0])
+@spec_state_test
+def test_duplicate_participants_different_attestation_1(spec, state):
+    """
+    Same attesters get two different attestations on chain for the same inclusion delay
+    Earlier attestation (by list order) is correct, later has incorrect head
+    Note: although these are slashable, they can validly be included
+    """
+    correct_attestation = get_valid_attestation(spec, state, signed=True)
+    incorrect_attestation = correct_attestation.copy()
+    incorrect_attestation.data.beacon_block_root = b'\x42' * 32
+    sign_attestation(spec, state, incorrect_attestation)
+
+    indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
+    participants = get_indexed_attestation_participants(spec, indexed_attestation)
+
+    assert len(participants) > 0
+
+    single_correct_state = state.copy()
+    dup_state = state.copy()
+
+    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
+    add_attestations_to_state(spec, dup_state, [correct_attestation, incorrect_attestation], inclusion_slot)
+
+    next_epoch(spec, single_correct_state)
+    next_epoch(spec, dup_state)
+
+    # Run non-duplicate inclusion rewards for comparison. Do not yield test vectors
+    for _ in run_process_rewards_and_penalties(spec, single_correct_state):
+        pass
+
+    # Output duplicate inclusion to test vectors
+    yield from run_process_rewards_and_penalties(spec, dup_state)
+
+    for index in participants:
+        assert state.balances[index] < single_correct_state.balances[index]
+        assert single_correct_state.balances[index] == dup_state.balances[index]
+
+
+# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
+# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
+@with_phases([PHASE0])
+@spec_state_test
+def test_duplicate_participants_different_attestation_2(spec, state):
+    """
+    Same attesters get two different attestations on chain for the same inclusion delay
+    Earlier attestation (by list order) has incorrect head, later is correct
+    Note: although these are slashable, they can validly be included
+    """
+    correct_attestation = get_valid_attestation(spec, state, signed=True)
+    incorrect_attestation = correct_attestation.copy()
+    incorrect_attestation.data.beacon_block_root = b'\x42' * 32
+    sign_attestation(spec, state, incorrect_attestation)
+
+    indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
+    participants = get_indexed_attestation_participants(spec, indexed_attestation)
+
+    assert len(participants) > 0
+
+    single_correct_state = state.copy()
+    dup_state = state.copy()
+
+    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
+    add_attestations_to_state(spec, dup_state, [incorrect_attestation, correct_attestation], inclusion_slot)
+
+    next_epoch(spec, single_correct_state)
+    next_epoch(spec, dup_state)
+
+    # Run non-duplicate inclusion rewards for comparison. Do not yield test vectors
+    for _ in run_process_rewards_and_penalties(spec, single_correct_state):
+        pass
+
+    # Output duplicate inclusion to test vectors
+    yield from run_process_rewards_and_penalties(spec, dup_state)
+
+    for index in participants:
+        assert state.balances[index] < single_correct_state.balances[index]
+        # Inclusion delay does not take into account correctness so equal reward
+        assert single_correct_state.balances[index] == dup_state.balances[index]
+
+
+# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
+# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
+@with_phases([PHASE0])
+@spec_state_test
+def test_duplicate_participants_different_attestation_3(spec, state):
+    """
+    Same attesters get two different attestations on chain for *different* inclusion delay
+    Earlier attestation (by list order) has incorrect head, later is correct
+    Note: although these are slashable, they can validly be included
+    """
+    correct_attestation = get_valid_attestation(spec, state, signed=True)
+    incorrect_attestation = correct_attestation.copy()
+    incorrect_attestation.data.beacon_block_root = b'\x42' * 32
+    sign_attestation(spec, state, incorrect_attestation)
+
+    indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
+    participants = get_indexed_attestation_participants(spec, indexed_attestation)
+
+    assert len(participants) > 0
+
+    single_correct_state = state.copy()
+    dup_state = state.copy()
+
+    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
+    add_attestations_to_state(spec, dup_state, [incorrect_attestation], inclusion_slot)
+    add_attestations_to_state(spec, dup_state, [correct_attestation], inclusion_slot + 1)
+
+    next_epoch(spec, single_correct_state)
+    next_epoch(spec, dup_state)
+
+    # Run non-duplicate inclusion rewards for comparison. Do not yield test vectors
+    for _ in run_process_rewards_and_penalties(spec, single_correct_state):
+        pass
+
+    # Output duplicate inclusion to test vectors
+    yield from run_process_rewards_and_penalties(spec, dup_state)
+
+    for index in participants:
+        assert state.balances[index] < single_correct_state.balances[index]
+        # Inclusion delay does not take into account correctness so equal reward
+        assert single_correct_state.balances[index] == dup_state.balances[index]
 
 
 @with_all_phases
