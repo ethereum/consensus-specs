@@ -391,7 +391,11 @@ def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should generate a uniform random variable `slot_timing_entropy` between `(-SECONDS_PER_SLOT/6, SECONDS_PER_SLOT/6)` using local entropy at the beginning of each slot.
+
+A validator should create and broadcast the `attestation` to the associated attestation subnet when the earlier of either of these two events occurs:
+  - the validator has received a valid block from the expected block proposer for the assigned `slot`, or
+  - `SECONDS_PER_SLOT/3 + slot_timing_entropy` seconds have elapsed since the start of the `slot` (using the `slot_timing_entropy` generated in this slot)
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
