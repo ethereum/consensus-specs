@@ -89,6 +89,8 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
+| `ATTESTATION_PRODUCTION_DIVISOR` | `3` | Defines the fraction of a slot at which attestations are produced on average. |
+| `ATTESTATION_ENTROPY_DIVISOR` | `6` | Defines the fraction of a slot within which period the attestation production is randomized. |
 
 ## Becoming a validator
 
@@ -391,11 +393,11 @@ def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-For each `slot`, a validator should generate a uniform random variable `slot_timing_entropy` between `(-SECONDS_PER_SLOT/6, SECONDS_PER_SLOT/6)` with millisecond resolution and using local entropy.
+For each `slot`, a validator should generate a uniform random variable `slot_timing_entropy` between `(-SECONDS_PER_SLOT/ATTESTATION_ENTROPY_DIVISOR, SECONDS_PER_SLOT/ATTESTATION_ENTROPY_DIVISOR)` with millisecond resolution and using local entropy.
 
 A validator should create and broadcast the `attestation` to the associated attestation subnet when the earlier one of these two events occurs:
   - the validator has received a valid block from the expected block proposer for the assigned `slot`, or
-  - `SECONDS_PER_SLOT/3 + slot_timing_entropy` seconds have elapsed since the start of the `slot` (using the `slot_timing_entropy` generated for this slot)
+  - `SECONDS_PER_SLOT/ATTESTATION_PRODUCTION_DIVISOR + slot_timing_entropy` seconds have elapsed since the start of the `slot` (using the `slot_timing_entropy` generated for this slot)
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
