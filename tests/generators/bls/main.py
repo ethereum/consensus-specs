@@ -270,7 +270,7 @@ def case04_fast_aggregate_verify():
     yield f'fast_aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
-            'messages': encode_hex(SAMPLE_MESSAGE),
+            'message': encode_hex(SAMPLE_MESSAGE),
             'signature': encode_hex(aggregate_signature),
         },
         'output': False,
