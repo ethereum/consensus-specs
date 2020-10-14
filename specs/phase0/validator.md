@@ -396,10 +396,10 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 For each `slot`, a validator must generate a uniform random variable `slot_timing_entropy` between `(-SECONDS_PER_SLOT / ATTESTATION_ENTROPY_DIVISOR, SECONDS_PER_SLOT / ATTESTATION_ENTROPY_DIVISOR)` with millisecond resolution and using local entropy.
 
 A validator must create and broadcast the `attestation` to the associated attestation subnet when the earlier one of the following two events occurs:
-  - The validator has received a valid block from the expected block proposer for the assigned `slot`
+  - The validator has received a valid block from the expected block proposer for the assigned `slot`. In this case, the validator must set a timer for `abs(slot_timing_entropy)`. The end of this timer will be the trigger for attestation production.
   - `SECONDS_PER_SLOT / ATTESTATION_PRODUCTION_DIVISOR + slot_timing_entropy` seconds have elapsed since the start of the `slot` (using the `slot_timing_entropy` generated for this slot)
 
-*Note*: The validator must compute `head_block = get_head(store)` when the earlier of the two above events has occurred. Specifically, `head_block` must be the current head block according to the fork choice when the event was triggered, and not any cached/stored value from a previous time.
+*Note*: The validator must compute `head_block = get_head(store)` when the earlier of the two above events has occurred. Specifically, `head_block` must be the current head block according to the fork choice when the attestation production was triggered, and not any cached/stored value from a previous time.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
