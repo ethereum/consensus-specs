@@ -358,6 +358,10 @@ The `proof` for each deposit must be constructed against the deposit root contai
 
 Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](./beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](./beacon-chain.md#voluntary-exits).
 
+*Note*: If a slashing for a validator is included in the same block as a
+voluntary exit, the voluntary exit will fail and cause the block to be invalid
+due to the slashing being processed first. Implementers must take heed of this
+operation interaction when packing blocks.
 
 #### Packaging into a `SignedBeaconBlock`
 

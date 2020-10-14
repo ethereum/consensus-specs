@@ -9,7 +9,7 @@ from eth2spec.test.helpers.block import (
     sign_block,
     transition_unsigned_block,
 )
-from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
     get_valid_attester_slashing,
@@ -18,6 +18,7 @@ from eth2spec.test.helpers.attester_slashings import (
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
 
 from eth2spec.test.context import (
@@ -792,20 +793,6 @@ def test_attestation(spec, state):
 
     assert len(state.current_epoch_attestations) == 0
     assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
-
-
-def prepare_signed_exits(spec, state, indices):
-    domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
-
-    def create_signed_exit(index):
-        exit = spec.VoluntaryExit(
-            epoch=spec.get_current_epoch(state),
-            validator_index=index,
-        )
-        signing_root = spec.compute_signing_root(exit, domain)
-        return spec.SignedVoluntaryExit(message=exit, signature=bls.Sign(privkeys[index], signing_root))
-
-    return [create_signed_exit(index) for index in indices]
 
 
 # In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
