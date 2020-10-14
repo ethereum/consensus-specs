@@ -399,6 +399,8 @@ A validator should create and broadcast the `attestation` to the associated atte
   - the validator has received a valid block from the expected block proposer for the assigned `slot`, or
   - `SECONDS_PER_SLOT/ATTESTATION_PRODUCTION_DIVISOR + slot_timing_entropy` seconds have elapsed since the start of the `slot` (using the `slot_timing_entropy` generated for this slot)
 
+*Note*: The validator must compute `head_block = get_head(store)` when earlier of the two above listed events has occurred. Specifically, `head_block` must be the current head block according to the fork choice when the event was triggered, and not any cached/stored value from a previous time.
+
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
 #### Attestation data
