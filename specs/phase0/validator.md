@@ -90,7 +90,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_PRODUCTION_DIVISOR` | `3` | Defines the fraction of a slot at which attestations are produced on average. |
-| `ATTESTATION_ENTROPY_DIVISOR` | `6` | Defines the fraction of a slot within which period the attestation production is randomized. |
+| `ATTESTATION_ENTROPY_DIVISOR` | `12` | Defines the fraction of a slot within which period the attestation production is randomized. |
 
 ## Becoming a validator
 
