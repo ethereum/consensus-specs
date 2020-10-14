@@ -42,7 +42,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 @spec_state_test
 def test_slash_and_exit_same_index(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
-    run_slash_and_exit(spec, state, validator_index, validator_index, valid=False)
+    yield from run_slash_and_exit(spec, state, validator_index, validator_index, valid=False)
 
 
 @with_all_phases
@@ -50,4 +50,4 @@ def test_slash_and_exit_same_index(spec, state):
 def test_slash_and_exit_diff_index(spec, state):
     slash_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     exit_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-2]
-    run_slash_and_exit(spec, state, slash_index, exit_index)
+    yield from run_slash_and_exit(spec, state, slash_index, exit_index)
