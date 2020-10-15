@@ -3,6 +3,7 @@ import pytest
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
+from eth2spec.utils.exceptions import ValidationError
 
 from .exceptions import SkippedTest
 from .helpers.genesis import create_genesis_state
@@ -221,6 +222,8 @@ def expect_assertion_error(fn):
     try:
         fn()
         bad = True
+    except ValidationError:
+        pass
     except AssertionError:
         pass
     except IndexError:
