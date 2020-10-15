@@ -372,7 +372,7 @@ It is useful to be able to run a state transition function (working on a copy of
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
     temp_state: BeaconState = state.copy()
     signed_block = SignedBeaconBlock(message=block)
-    temp_state = state_transition(temp_state, signed_block, validate_result=False)
+    state_transition(temp_state, signed_block, validate_result=False)
     return hash_tree_root(temp_state)
 ```
 
