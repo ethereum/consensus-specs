@@ -34,7 +34,6 @@ def create_provider(fork_name: str, handler_name: str,
 if __name__ == "__main__":
     phase_0_mods = {key: 'eth2spec.test.phase0.sanity.test_' + key for key in [
         'blocks',
-        'multi_operations',
         'slots',
     ]}
     phase_1_mods = {**{key: 'eth2spec.test.phase1.sanity.test_' + key for key in [
