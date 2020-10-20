@@ -65,6 +65,7 @@
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
   - [Attester slashing](#attester-slashing)
+- [Protection best practices](#protection-best-practices)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
