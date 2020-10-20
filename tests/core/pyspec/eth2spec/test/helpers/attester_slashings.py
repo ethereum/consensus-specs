@@ -1,8 +1,11 @@
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation, sign_indexed_attestation
 
 
-def get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False):
-    attestation_1 = get_valid_attestation(spec, state, signed=signed_1)
+def get_valid_attester_slashing(spec, state, slot=None, signed_1=False, signed_2=False, filter_participant_set=None):
+    attestation_1 = get_valid_attestation(
+        spec, state,
+        slot=slot, signed=signed_1, filter_participant_set=filter_participant_set
+    )
 
     attestation_2 = attestation_1.copy()
     attestation_2.data.target.root = b'\x01' * 32
@@ -16,14 +19,17 @@ def get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False):
     )
 
 
-def get_valid_attester_slashing_by_indices(spec, state, indices_1, indices_2=None, signed_1=False, signed_2=False):
+def get_valid_attester_slashing_by_indices(spec, state,
+                                           indices_1, indices_2=None,
+                                           slot=None,
+                                           signed_1=False, signed_2=False):
     if indices_2 is None:
         indices_2 = indices_1
 
     assert indices_1 == sorted(indices_1)
     assert indices_2 == sorted(indices_2)
 
-    attester_slashing = get_valid_attester_slashing(spec, state)
+    attester_slashing = get_valid_attester_slashing(spec, state, slot=slot)
 
     attester_slashing.attestation_1.attesting_indices = indices_1
     attester_slashing.attestation_2.attesting_indices = indices_2
