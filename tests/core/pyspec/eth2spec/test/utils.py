@@ -25,13 +25,14 @@ def vector_test(description: str = None):
             def generator_mode():
                 if description is not None:
                     # description can be explicit
-                    yield 'description', 'meta', description
+                    yield 'description', 'meta', description, None
 
                 # transform the yielded data, and add type annotations
                 for data in fn(*args, **kw):
                     # if not 2 items, then it is assumed to be already formatted with a type:
                     # e.g. ("bls_setting", "meta", 1)
                     if len(data) != 2:
+                        data += (None,)  # Add root=None
                         yield data
                         continue
                     # Try to infer the type, but keep it as-is if it's not a SSZ type or bytes.
@@ -39,25 +40,27 @@ def vector_test(description: str = None):
                     if value is None:
                         continue
                     if isinstance(value, View):
-                        yield key, 'data', encode(value)
-                        yield key, 'ssz', serialize(value)
+                        root = encode(value.hash_tree_root())
+                        yield key, 'data', encode(value), root
+                        yield key, 'ssz', serialize(value), root
                     elif isinstance(value, bytes):
-                        yield key, 'data', encode(value)
-                        yield key, 'ssz', value
+                        yield key, 'data', encode(value), None
+                        yield key, 'ssz', value, None
                     elif isinstance(value, list) and all([isinstance(el, (View, bytes)) for el in value]):
                         for i, el in enumerate(value):
                             if isinstance(el, View):
-                                yield f'{key}_{i}', 'data', encode(el)
-                                yield f'{key}_{i}', 'ssz', serialize(el)
+                                root = encode(el.hash_tree_root())
+                                yield f'{key}_{i}', 'data', encode(el), root
+                                yield f'{key}_{i}', 'ssz', serialize(el), root
                             elif isinstance(el, bytes):
-                                yield f'{key}_{i}', 'data', encode(el)
-                                yield f'{key}_{i}', 'ssz', el
-                        yield f'{key}_count', 'meta', len(value)
+                                yield f'{key}_{i}', 'data', encode(el), None
+                                yield f'{key}_{i}', 'ssz', el, None
+                        yield f'{key}_count', 'meta', len(value), None
                     else:
                         # Not a ssz value.
                         # The data will now just be yielded as any python data,
                         #  something that should be encodeable by the generator runner.
-                        yield key, 'data', value
+                        yield key, 'data', value, None
 
             # check generator mode, may be None/else.
             # "pop" removes it, so it is not passed to the inner function.

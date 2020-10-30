@@ -1,9 +1,13 @@
+from pathlib import Path
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
+    List,
     NewType,
     Tuple,
+    Union,
 )
 from dataclasses import dataclass
 
@@ -13,7 +17,13 @@ from dataclasses import dataclass
 #  - "data" for generic
 #  - "ssz" for SSZ encoded bytes
 #  - "meta" for generic data to collect into a meta data dict.
-TestCasePart = NewType("TestCasePart", Tuple[str, str, Any])
+#  - "root" for SSZ hash tree root
+TestCasePart = NewType("TestCasePart", Tuple[str, str, Any, bytes])
+
+
+# A map to trace the overlapping SSZ object output
+# key: str -> (file_path: Path, count: int)
+SSZLookup = NewType("SSZLookup", Dict[str, List[Union[Path, int]]])
 
 
 @dataclass
