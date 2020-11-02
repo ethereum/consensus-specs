@@ -56,7 +56,10 @@ def deposit_from_context(spec, deposit_data_list, index):
     deposit_data = deposit_data_list[index]
     root = hash_tree_root(List[spec.DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
-    proof = list(get_merkle_proof(tree, item_index=index, tree_len=32)) + [(index + 1).to_bytes(32, 'little')]
+    proof = (
+        list(get_merkle_proof(tree, item_index=index, tree_len=32))
+        + [len(deposit_data_list).to_bytes(32, 'little')]
+    )
     leaf = deposit_data.hash_tree_root()
     assert spec.is_valid_merkle_branch(leaf, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH + 1, index, root)
     deposit = spec.Deposit(proof=proof, data=deposit_data)

@@ -1,3 +1,4 @@
+from random import Random
 from eth2spec.utils import bls
 
 from eth2spec.test.helpers.state import (
@@ -20,6 +21,10 @@ from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
+from eth2spec.test.helpers.multi_operations import (
+    run_slash_and_exit,
+    run_test_full_random_operations,
+)
 
 from eth2spec.test.context import (
     PHASE0, PHASE1, MINIMAL,
@@ -882,34 +887,6 @@ def test_multiple_different_validator_exits_same_block(spec, state):
         assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
-    """
-    Helper function to run a test that slashes and exits two validators
-    """
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    yield 'pre', state
-
-    block = build_empty_block_for_next_slot(spec, state)
-
-    proposer_slashing = get_valid_proposer_slashing(
-        spec, state, slashed_index=slash_index, signed_1=True, signed_2=True)
-    signed_exit = prepare_signed_exits(spec, state, [exit_index])[0]
-
-    block.body.proposer_slashings.append(proposer_slashing)
-    block.body.voluntary_exits.append(signed_exit)
-
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=(not valid))
-
-    yield 'blocks', [signed_block]
-
-    if valid:
-        yield 'post', state
-    else:
-        yield 'post', None
-
-
 @with_all_phases
 @spec_state_test
 @disable_process_reveal_deadlines
@@ -1045,3 +1022,27 @@ def test_eth1_data_votes_no_consensus(spec, state):
 
     yield 'blocks', blocks
     yield 'post', state
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_0(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2020))
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_1(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2021))
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_2(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2022))
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_3(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2023))
