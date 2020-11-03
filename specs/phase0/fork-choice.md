@@ -226,11 +226,10 @@ def get_head(store: Store) -> Root:
     blocks = get_filtered_block_tree(store)
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
-    justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     while True:
         children = [
             root for root in blocks.keys()
-            if blocks[root].parent_root == head and blocks[root].slot > justified_slot
+            if blocks[root].parent_root == head
         ]
         if len(children) == 0:
             return head
