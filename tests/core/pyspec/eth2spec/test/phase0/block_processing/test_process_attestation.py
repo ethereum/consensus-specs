@@ -168,7 +168,7 @@ def test_wrong_index_for_slot_1(spec, state):
     current_epoch = spec.get_current_epoch(state)
     committee_count = spec.get_committee_count_per_slot(state, current_epoch)
 
-    attestation = get_valid_attestation(spec, state, index=0, signed=True)
+    attestation = get_valid_attestation(spec, state, index=0)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Invalid index: off by one
@@ -184,7 +184,7 @@ def test_invalid_index(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    # Index index: off by one (with respect to valid range) on purpose
+    # Invalid index: off by one (with respect to valid range) on purpose
     attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT
 
     yield from run_attestation_processing(spec, state, attestation, False)
