@@ -213,8 +213,8 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
-- `D` (topic stable mesh target count): 6
-- `D_low` (topic stable mesh low watermark): 5
+- `D` (topic stable mesh target count): 8
+- `D_low` (topic stable mesh low watermark): 6
 - `D_high` (topic stable mesh high watermark): 12
 - `D_lazy` (gossip target): 6
 - `heartbeat_interval` (frequency of heartbeat, seconds): 0.7
