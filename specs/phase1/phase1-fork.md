@@ -1,28 +1,20 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Ethereum 2.0 Phase 1 -- From Phase 0 to Phase 1](#ethereum-20-phase-1----from-phase-0-to-phase-1)
-  - [Table of contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [Configuration](#configuration)
-  - [Fork to Phase 1](#fork-to-phase-1)
-    - [Fork trigger](#fork-trigger)
-    - [Upgrading the state](#upgrading-the-state)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Ethereum 2.0 Phase 1 -- From Phase 0 to Phase 1
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
-<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
- TODO
 
-<!-- /TOC -->
+- [Introduction](#introduction)
+- [Configuration](#configuration)
+- [Fork to Phase 1](#fork-to-phase-1)
+  - [Fork trigger](#fork-trigger)
+  - [Upgrading the state](#upgrading-the-state)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
 

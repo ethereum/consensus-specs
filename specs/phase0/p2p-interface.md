@@ -54,8 +54,6 @@ It consists of four main sections:
     - [ENR structure](#enr-structure)
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [`eth2` field](#eth2-field)
-      - [General capabilities](#general-capabilities)
-    - [Topic advertisement](#topic-advertisement)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
@@ -78,6 +76,7 @@ It consists of four main sections:
     - [How do we upgrade gossip channels (e.g. changes in encoding, compression)?](#how-do-we-upgrade-gossip-channels-eg-changes-in-encoding-compression)
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
+    - [Why are we using the `StrictNoSign` signature policy?](#why-are-we-using-the-strictnosign-signature-policy)
     - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
     - [Why are these specific gossip parameters chosen?](#why-are-these-specific-gossip-parameters-chosen)
     - [Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?](#why-is-there-maximum_gossip_clock_disparity-when-validating-slot-ranges-of-messages-in-gossip-subnets)
@@ -178,6 +177,9 @@ This section outlines constants that are used in this spec.
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY` | `0x00000000` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`  | `0x01000000` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
+
 
 ## MetaData
 
@@ -209,12 +211,10 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 **Gossipsub Parameters**
 
-*Note*: Parameters listed here are subject to a large-scale network feasibility study.
-
 The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
-- `D` (topic stable mesh target count): 6
-- `D_low` (topic stable mesh low watermark): 5
+- `D` (topic stable mesh target count): 8
+- `D_low` (topic stable mesh low watermark): 6
 - `D_high` (topic stable mesh high watermark): 12
 - `D_lazy` (gossip target): 6
 - `heartbeat_interval` (frequency of heartbeat, seconds): 0.7
@@ -222,6 +222,11 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master
 - `mcache_len` (number of windows to retain full messages in cache for `IWANT` responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (number of heartbeat intervals to retain message IDs): 550
+
+*Note*: Gossipsub v1.1 introduces a number of
+[additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
+for peer scoring and other attack mitigations.
+These are currently under investigation and will be spec'd and released to mainnet when they are ready.
 
 ### Topics and messages
 
@@ -243,11 +248,22 @@ Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-The `message-id` of a gossipsub message MUST be the first 8 bytes of the SHA-256 hash of the message data, i.e.:
+The optional `from` (1), `seqno` (3), `signature` (5) and `key` (6) protobuf fields are omitted from the message,
+since messages are identified by content, anonymous, and signed where necessary in the application layer.
+Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictNoSign`
+[signature policy](https://github.com/libp2p/specs/blob/master/pubsub/README.md#signature-policy-options). 
 
-```python
-   message-id: SHA256(message.data)[0:8]
-```
+The `message-id` of a gossipsub message MUST be the following 20 byte value computed from the message data:
+* If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of `MESSAGE_DOMAIN_VALID_SNAPPY` with the snappy decompressed message data,
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + snappy_decompress(message.data))[:20]`.
+* Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of `MESSAGE_DOMAIN_INVALID_SNAPPY` with the raw message data,
+  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + message.data)[:20]`.
+
+*Note*: The above logic handles two exceptional cases:
+(1) multiple snappy `data` can decompress to the same value,
+and (2) some message `data` can fail to snappy decompress altogether.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
@@ -317,6 +333,8 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
+- _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
+  compute_epoch_at_slot(aggregate.data.slot)`
 - _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
@@ -734,7 +752,7 @@ and MUST support serving requests of blocks up to their own `head_block_root`.
 
 Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
 
-The following blocks, where they exist, MUST be send in consecutive order.
+The following blocks, where they exist, MUST be sent in consecutive order.
 
 Clients MAY limit the number of blocks in the response.
 
@@ -846,12 +864,10 @@ The response MUST consist of a single `response_chunk`.
 
 ## The discovery domain: discv5
 
-Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery.
+Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) (Protocol version v5.1) is used for peer discovery.
 
 `discv5` is a standalone protocol, running on UDP on a dedicated port, meant for peer discovery only.
 `discv5` supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are (or will be) requirements in this context.
-
-:warning: Under construction. :warning:
 
 ### Integration into libp2p stacks
 
@@ -934,19 +950,6 @@ Clients SHOULD connect to peers with `fork_digest`, `next_fork_version`, and `ne
 Clients MAY connect to peers with the same `fork_digest` but a different `next_fork_version`/`next_fork_epoch`.
 Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients,
 these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
-
-#### General capabilities
-
-ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner.
-The concrete solution is currently undefined.
-Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
-
-### Topic advertisement
-
-discv5's topic advertisement feature is not expected to be ready for mainnet launch of Phase 0.
-
-Once this feature is built out and stable, we expect to use topic advertisement as a rendezvous facility for peers on shards.
-Until then, the ENR [attestation subnet bitfield](#attestation-subnet-bitfield) will be used for discovery of peers on particular subnets.
 
 # Design decision rationale
 
@@ -1164,10 +1167,16 @@ since the domain is finite anyway, and calculating a digest's preimage would be 
 Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash),
 so hashing topics would bloat messages unnecessarily.
 
+### Why are we using the `StrictNoSign` signature policy?
+
+The policy omits the `from` (1), `seqno` (3), `signature` (5) and `key` (6) fields. These fields would:
+- Expose origin of sender (`from`), type of sender (based on `seqno`)
+- Add extra unused data to the gossip, since message IDs are based on `data`, not on the `from` and `seqno`.
+- Introduce more message validation than necessary, e.g. no `signature`.
+
 ### Why are we overriding the default libp2p pubsub `message-id`?
 
-For our current purposes, there is no need to address messages based on source peer,
-and it seems likely we might even override the message `from` to obfuscate the peer.
+For our current purposes, there is no need to address messages based on source peer, or track a message `seqno`.
 By overriding the default `message-id` to use content-addressing we can filter unnecessary duplicates before hitting the application layer.
 
 Some examples of where messages could be duplicated:
@@ -1209,8 +1218,6 @@ For minimum and maximum allowable slot broadcast times,
 `MAXIMUM_GOSSIP_CLOCK_DISPARITY` MUST be subtracted and added respectively, marginally extending the valid range.
 Although messages can at times be eagerly gossiped to the network,
 the node's fork choice prevents integration of these messages into the actual consensus until the _actual local start_ of the designated slot.
-
-The value of this constant is currently a placeholder and will be tuned based on data observed in testnets.
 
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
@@ -1408,7 +1415,7 @@ discv5 supports self-certified, flexible peer records (ENRs) and topic-based adv
 On the other hand, libp2p Kademlia DHT is a fully-fledged DHT protocol/implementations
 with content routing and storage capabilities, both of which are irrelevant in this context.
 
-We assume that Eth 1.0 nodes will evolve to support discv5.
+Eth 1.0 nodes will evolve to support discv5.
 By sharing the discovery network between Eth 1.0 and 2.0,
 we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks,
 to which smaller networks are more vulnerable.
@@ -1444,7 +1451,7 @@ ENRs contain `fork_digest` which utilizes the `genesis_validators_root` for a cl
 so prior to knowing genesis, we cannot use `fork_digest` to cleanly find peers on our intended chain.
 Once genesis data is known, we can then form ENRs and safely find peers.
 
-When using an eth1 deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (48hours in mainnet configuration) before `genesis_time`,
+When using an eth1 deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (7 days in mainnet configuration) before `genesis_time`,
 providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
 
 ## Compression/Encoding

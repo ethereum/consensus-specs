@@ -1,7 +1,5 @@
 # Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -226,11 +224,10 @@ def get_head(store: Store) -> Root:
     blocks = get_filtered_block_tree(store)
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
-    justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     while True:
         children = [
             root for root in blocks.keys()
-            if blocks[root].parent_root == head and blocks[root].slot > justified_slot
+            if blocks[root].parent_root == head
         ]
         if len(children) == 0:
             return head
@@ -355,7 +352,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
 
     # Check the block is valid and compute the post-state
-    state = state_transition(pre_state, signed_block, True)
+    state = pre_state.copy()
+    state_transition(state, signed_block, True)
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store

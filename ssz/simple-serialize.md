@@ -1,7 +1,5 @@
 # SimpleSerialize (SSZ)
 
-**Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth2 objects.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -252,7 +250,7 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 | Language | Project | Maintainer | Implementation |
 |-|-|-|-|
 | Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
-| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
+| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/consensus/ssz](https://github.com/sigp/lighthouse/tree/master/consensus/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
 | Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/utils/ssz) |
 | TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz) |

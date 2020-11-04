@@ -6,7 +6,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
@@ -72,14 +72,13 @@ The post-state corresponding to a pre-state `shard_state` and a signed block `si
 def shard_state_transition(shard_state: ShardState,
                            signed_block: SignedShardBlock,
                            beacon_parent_state: BeaconState,
-                           validate_result: bool = True) -> ShardState:
+                           validate_result: bool = True) -> None:
     assert verify_shard_block_message(beacon_parent_state, shard_state, signed_block.message)
 
     if validate_result:
         assert verify_shard_block_signature(beacon_parent_state, signed_block)
 
     process_shard_block(shard_state, signed_block.message)
-    return shard_state
 ```
 
 ```python
