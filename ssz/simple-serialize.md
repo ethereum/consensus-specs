@@ -1,7 +1,5 @@
 # SimpleSerialize (SSZ)
 
-**Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth2 objects.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->

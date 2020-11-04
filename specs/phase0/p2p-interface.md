@@ -1219,8 +1219,6 @@ For minimum and maximum allowable slot broadcast times,
 Although messages can at times be eagerly gossiped to the network,
 the node's fork choice prevents integration of these messages into the actual consensus until the _actual local start_ of the designated slot.
 
-The value of this constant is currently a placeholder and will be tuned based on data observed in testnets.
-
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel.
