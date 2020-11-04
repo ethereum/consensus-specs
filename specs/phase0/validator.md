@@ -607,7 +607,9 @@ Specifically, when signing an `Attestation`, a validator should perform the foll
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
 
 ## Protection best practices
-A validator client should be considered standalone and should consider the beacon node as untrusted. This means that the validator client should protect: 
+
+A validator client should be considered standalone and should consider the beacon node as untrusted. This means that the validator client should protect:
+
 1) Private keys -- private keys should be protected from being exported accidentally or by an attacker.
 2) Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
 3) Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
