@@ -191,7 +191,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
-| `MIN_GENESIS_TIME` | `uint64(1578009600)` (Jan 3, 2020) |
+| `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
 | `HYSTERESIS_QUOTIENT` | `uint64(4)` |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
