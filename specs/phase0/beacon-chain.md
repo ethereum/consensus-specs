@@ -1,7 +1,5 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -177,13 +175,13 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory. These configurations are updated for releases and may be out of sync during `dev` changes.
+*Note*: The default mainnet configuration values are included here for illustrative purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory.
 
 ### Misc
 
 | Name | Value |
 | - | - |
-| `ETH1_FOLLOW_DISTANCE` | `uint64(2**10)` (= 1,024) |
+| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) |
 | `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
@@ -191,11 +189,10 @@ The following values are (non-configurable) constants used throughout the specif
 | `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
-| `MIN_GENESIS_TIME` | `uint64(1578009600)` (Jan 3, 2020) |
+| `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
 | `HYSTERESIS_QUOTIENT` | `uint64(4)` |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
-| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(3)` |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -219,7 +216,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `GENESIS_DELAY` | `uint64(172800)` | seconds | 2 days |
+| `GENESIS_DELAY` | `uint64(604800)` | seconds | 7 days |
 | `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
 | `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
@@ -227,7 +224,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**5)` (= 32) | epochs | ~3.4 hours |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
@@ -248,10 +245,13 @@ The following values are (non-configurable) constants used throughout the specif
 | `BASE_REWARD_FACTOR` | `uint64(2**6)` (= 64) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**24)` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**5)` (= 32) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**26)` (= 67,108,864) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (=128) |
+| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)` |
 
-- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12` epochs (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
+
+- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stablizes, this value will be upgraded to `3` to provide the maximal minimum accoutable safety margin.
 
 ### Max operations per block
 
@@ -603,7 +603,7 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 #### BLS Signatures
 
-Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-03](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-03). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
+Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
 
 - `def Sign(SK: int, message: Bytes) -> BLSSignature`
 - `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
@@ -1189,8 +1189,6 @@ def is_valid_genesis_state(state: BeaconState) -> bool:
     return True
 ```
 
-*Note*: The `is_valid_genesis_state` function (including `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT`) is a placeholder for testing. It has yet to be finalized by the community, and can be updated as necessary.
-
 ### Genesis block
 
 Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
@@ -1200,7 +1198,7 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
 
 ```python
-def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> BeaconState:
+def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> None:
     block = signed_block.message
     # Process slots (including those with no blocks) since block
     process_slots(state, block.slot)
@@ -1212,8 +1210,6 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
     # Verify state root
     if validate_result:
         assert block.state_root == hash_tree_root(state)
-    # Return post-state
-    return state
 ```
 
 ```python

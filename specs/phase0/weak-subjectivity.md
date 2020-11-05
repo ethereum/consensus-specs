@@ -1,7 +1,5 @@
 # Ethereum 2.0 Phase 0 -- Weak Subjectivity Guide
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->

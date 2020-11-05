@@ -1,7 +1,5 @@
 # Ethereum 2.0 Phase 0 -- Deposit Contract
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -43,7 +41,7 @@ These configurations are updated for releases and may be out of sync during `dev
 | - | - |
 | `DEPOSIT_CHAIN_ID` | `1` |
 | `DEPOSIT_NETWORK_ID` | `1` |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
+| `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
 
 ## Ethereum 1.0 deposit contract
 

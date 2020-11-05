@@ -135,20 +135,44 @@ def test_wrong_index_for_committee_signature(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
-@spec_state_test
-@never_bls
-def test_wrong_index_for_slot(spec, state):
+def reduce_state_committee_count_from_max(spec, state):
+    """
+    Modified ``state`` to ensure that it has fewer committees at each slot than ``MAX_COMMITTEES_PER_SLOT``
+    """
     while spec.get_committee_count_per_slot(state, spec.get_current_epoch(state)) >= spec.MAX_COMMITTEES_PER_SLOT:
         state.validators = state.validators[:len(state.validators) // 2]
         state.balances = state.balances[:len(state.balances) // 2]
 
-    index = spec.MAX_COMMITTEES_PER_SLOT - 1
+
+@with_all_phases
+@spec_state_test
+@never_bls
+def test_wrong_index_for_slot_0(spec, state):
+    reduce_state_committee_count_from_max(spec, state)
 
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    attestation.data.index = index
+    # Invalid index: current committees per slot is less than the max
+    attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT - 1
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+@never_bls
+def test_wrong_index_for_slot_1(spec, state):
+    reduce_state_committee_count_from_max(spec, state)
+
+    current_epoch = spec.get_current_epoch(state)
+    committee_count = spec.get_committee_count_per_slot(state, current_epoch)
+
+    attestation = get_valid_attestation(spec, state, index=0)
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    # Invalid index: off by one
+    attestation.data.index = committee_count
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -160,7 +184,7 @@ def test_invalid_index(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    # off by one (with respect to valid range) on purpose
+    # Invalid index: off by one (with respect to valid range) on purpose
     attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT
 
     yield from run_attestation_processing(spec, state, attestation, False)

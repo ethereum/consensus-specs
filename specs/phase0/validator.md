@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- Honest Validator
 
-**Notice**: This document is a work-in-progress for researchers and implementers. This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
+This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
 
 ## Table of contents
 
@@ -65,6 +65,7 @@
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
   - [Attester slashing](#attester-slashing)
+- [Protection best practices](#protection-best-practices)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -129,7 +130,7 @@ To submit a deposit:
 
 ### Process deposit
 
-Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~3.4 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
+Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~8 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~6.8 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -358,6 +359,10 @@ The `proof` for each deposit must be constructed against the deposit root contai
 
 Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](./beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](./beacon-chain.md#voluntary-exits).
 
+*Note*: If a slashing for a validator is included in the same block as a
+voluntary exit, the voluntary exit will fail and cause the block to be invalid
+due to the slashing being processed first. Implementers must take heed of this
+operation interaction when packing blocks.
 
 #### Packaging into a `SignedBeaconBlock`
 
@@ -372,7 +377,7 @@ It is useful to be able to run a state transition function (working on a copy of
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
     temp_state: BeaconState = state.copy()
     signed_block = SignedBeaconBlock(message=block)
-    temp_state = state_transition(temp_state, signed_block, validate_result=False)
+    state_transition(temp_state, signed_block, validate_result=False)
     return hash_tree_root(temp_state)
 ```
 
@@ -604,3 +609,13 @@ Specifically, when signing an `Attestation`, a validator should perform the foll
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
+
+## Protection best practices
+
+A validator client should be considered standalone and should consider the beacon node as untrusted. This means that the validator client should protect:
+
+1) Private keys -- private keys should be protected from being exported accidentally or by an attacker.
+2) Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
+3) Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
+4) Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity leak and potential ejection due to low balance. 
+A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.
