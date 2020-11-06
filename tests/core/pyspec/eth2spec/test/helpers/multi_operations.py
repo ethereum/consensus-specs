@@ -148,8 +148,9 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
         slashed_indices = slashed_indices.union(attester_slashing.attestation_2.attesting_indices)
     block.body.voluntary_exits = get_random_voluntary_exits(spec, state, slashed_indices, rng)
 
+    yield 'pre', state
+
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'pre', state
     yield 'blocks', [signed_block]
     yield 'post', state
