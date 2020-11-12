@@ -93,6 +93,7 @@ It consists of four main sections:
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
+    - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
     - [What's the effect of empty slots on the sync algorithm?](#whats-the-effect-of-empty-slots-on-the-sync-algorithm)
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
@@ -171,6 +172,7 @@ This section outlines constants that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
+| `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
 | `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
@@ -178,7 +180,6 @@ This section outlines constants that are used in this spec.
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `0x00000000` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `0x01000000` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
-
 
 ## MetaData
 
@@ -746,10 +747,17 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
-Clients MUST keep a record of signed blocks seen since the start of the weak subjectivity period
-and MUST support serving requests of blocks up to their own `head_block_root`.
+Clients MUST keep a record of signed blocks seen on the epoch range
+`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+where `current_epoch` is defined by the current wall-clock time,
+and clients MUST support serving requests of blocks on this range.
 
-Clients MUST respond with at least the first block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS` blocks.
+*Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
+MUST backfill the local block database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS`
+to be compliant with `BlocksByRange` requests.
+
+Clients MUST respond with at least the first block that exists in the range, if they have it,
+and no more than `MAX_REQUEST_BLOCKS` blocks.
 
 The following blocks, where they exist, MUST be sent in consecutive order.
 
@@ -1393,6 +1401,31 @@ and the responding side might have moved on to a new finalization point and prun
 To avoid this race condition, we allow the responding side to choose which branch to send to the requesting client.
 The requesting client then goes on to validate the blocks and incorporate them in their own database
 -- because they follow the same rules, they should at this point arrive at the same canonical chain.
+
+### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
+
+Due to economic finality and weak subjectivity requirements of a proof-of-stake blockchain, for a new node to safely join the network
+the node must provide a recent checkpoint found out-of-band. This checkpoint can be in the form of a `root` & `epoch` or it can be the entire
+beacon state and then a simple block sync from there to the head. We expect the latter to be the dominant UX strategy.
+
+These checkpoints *in the worst case* (i.e. very large validator set and maximal allowed safety decay) must be from the
+most recent `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs, and thus a user must be able to block sync to the head from this starting point.
+Thus, this defines the epoch range outside which nodes may prune blocks, and
+the epoch range that a new node syncing from a checkpoint must backfill.
+
+`MIN_EPOCHS_FOR_BLOCK_REQUESTS` is calculated using the arithmetic from `compute_weak_subjectivity_period` found in the
+[weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max epoch range, we use the worst case event of a very large validator size
+(`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
+
+```python
+MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
+    MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
+)
+```
+
+Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024` (~5 months).
+
 
 ### What's the effect of empty slots on the sync algorithm?
 

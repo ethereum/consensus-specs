@@ -20,6 +20,7 @@ Core specifications for Eth2 clients be found in [specs](specs/). These are divi
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
 * [P2P Networking](specs/phase0/p2p-interface.md)
+* [Weak Subjectivity](specs/phase0/weak-subjectivity.md.md)
 
 ### Phase 1
 * [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)

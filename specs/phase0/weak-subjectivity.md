@@ -94,7 +94,9 @@ A brief reference for what these values look like in practice:
 
 ## Weak Subjectivity Sync
 
-Clients should allow users to input a Weak Subjectivity Checkpoint at startup, and guarantee that any successful sync leads to the given Weak Subjectivity Checkpoint along the canonical chain. If such a sync is not possible, the client should treat this as a critical and irrecoverable failure.
+Clients should allow users to input a Weak Subjectivity Checkpoint at startup,
+and guarantee that any successful sync leads to the given Weak Subjectivity Checkpoint along the canonical chain.
+If such a sync is not possible, the client should treat this as a critical and irrecoverable failure.
 
 ### Weak Subjectivity Sync Procedure
 
@@ -112,6 +114,7 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
       Emit descriptive critical error if this assert fails, then exit client process.
 
 ### Checking for Stale Weak Subjectivity Checkpoint
+
 Clients may choose to validate that the input Weak Subjectivity Checkpoint is not stale at the time of startup.
 To support this mechanism, the client needs to take the state at the Weak Subjectivity Checkpoint as
 a CLI parameter input (or fetch the state associated with the input Weak Subjectivity Checkpoint from some source).
