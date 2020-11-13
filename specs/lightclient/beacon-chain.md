@@ -174,7 +174,7 @@ def process_light_client_signature(state: BeaconState, block_body: BeaconBlockBo
     total_reward = Gwei(0)
     active_validator_count = len(get_active_validator_indices(beacon_state, get_current_epoch(state)))
     for participant in participants:
-        reward = get_base_reward(state, participant) * active_validator_count // len(committee)
+        reward = get_base_reward(state, participant) * active_validator_count // len(committee) // SLOTS_PER_EPOCH
         increase_balance(state, participant, reward)
         total_reward += reward        
 
