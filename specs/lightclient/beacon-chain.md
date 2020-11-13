@@ -154,7 +154,7 @@ def process_light_client_signature(state: BeaconState, block_body: BeaconBlockBo
     previous_slot = max(state.slot, 1) - 1
     previous_block_root = get_block_root_at_slot(state, previous_slot)
 
-    # Light clients sign over the previous block root
+    # Light client committees sign over the previous block root
     signing_root = compute_signing_root(
         previous_block_root,
         get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(previous_slot))
@@ -204,5 +204,4 @@ def process_light_client_committee_updates(state: BeaconState) -> None:
         new_committee = get_light_client_committee(state, next_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
-
 
