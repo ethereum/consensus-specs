@@ -33,7 +33,7 @@ This is a standalone patch to the ethereum beacon chain that adds light client s
 
 | Name | Value |
 | - | - | 
-| `LIGHT_CLIENT_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
+| `LIGHT_CLIENT_COMMITTEE_SIZE` | `uint64(2**8)` (= 256) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `BASE_REWARDS_PER_EPOCH` | 5 |
 
@@ -70,6 +70,7 @@ class BeaconState(phase0.BeaconState):
 ```python
 class CompactCommittee(Container):
     pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
+    sum_of_pubkeys: BLSPubkey
     compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
 ```
 
@@ -117,7 +118,11 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
         for i, v in zip(committee, validators)
     ]
     pubkeys = [v.pubkey for v in validators]
-    return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
+    return CompactCommittee(
+        pubkeys=pubkeys,
+        sum_of_pubkeys=bls.AggregatePubkeys(pubkeys),
+        compact_validators=compact_validators
+    )
 ```
 
 ### Beacon state accessors
