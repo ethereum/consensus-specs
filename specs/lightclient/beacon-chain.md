@@ -70,7 +70,17 @@ This is a standalone beacon chain patch adding light client support via sync com
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    # Lightclient
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
@@ -78,7 +88,37 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 #### `BeaconState`
 
 ```python
-class BeaconState(phase0.BeaconState):
+class BeaconState(Container):
+    # Versioning
+    genesis_time: uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    # History
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    # Eth1
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_deposit_index: uint64
+    # Registry
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    # Randomness
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
+    # Slashings
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    # Attestations
+    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    # Finality
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    # Lightclient
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
 ```
@@ -133,7 +173,7 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     start_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
     active_validator_count = uint64(len(get_active_validator_indices(state, start_epoch)))
     sync_committee_size = min(active_validator_count, MAX_SYNC_COMMITTEE_SIZE)
-    seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
+    seed = get_seed(state, start_epoch, DOMAIN_SYNC_COMMITTEE)
     return [compute_shuffled_index(uint64(i), active_validator_count, seed) for i in range(sync_committee_size)]
 ```
 
@@ -148,7 +188,7 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     validators = [state.validators[index] for index in indices]
     pubkeys = [validator.pubkey for validator in validators]
     compact_validators = [compactify_validator(i, v.slashed, v.effective_balance) for i, v in zip(indices, validators)]
-    return SyncCommittee(pubkeys, bls.AggregatePubkeys(pubkeys), compact_validators)
+    return SyncCommittee(pubkeys, bls.AggregatePKs(pubkeys), compact_validators)
 ```
 
 ### Block processing
