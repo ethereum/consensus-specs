@@ -1,31 +1,47 @@
-# Ethereum 2.0 Light Client Support: Beacon Chain Changes
+# Ethereum 2.0 Light Client Support
 
 ## Table of contents
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Constants](#constants)
 - [Configuration](#configuration)
-  - [Domain types](#domain-types)
   - [Misc](#misc)
-- [Updated containers](#updated-containers)
-  - [Extended `BeaconBlockBody`](#extended-beaconblockbody)
-  - [Extended `BeaconState`](#extended-beaconstate)
-- [New containers](#new-containers)
-  - [`CompactCommittee`](#compactcommittee)
+  - [Time parameters](#time-parameters)
+  - [Domain types](#domain-types)
+- [Containers](#containers)
+  - [Extended containers](#extended-containers)
+    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`BeaconState`](#beaconstate)
+  - [New containers](#new-containers)
+    - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
-    - [`pack_compact_validator`](#pack_compact_validator)
-    - [`unpack_compact_validator`](#unpack_compact_validator)
-    - [`committee_to_compact_committee`](#committee_to_compact_committee)
+    - [`compactify_validator`](#compactify_validator)
+    - [`decompactify_validator`](#decompactify_validator)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [`get_light_client_committee`](#get_light_client_committee)
+    - [`get_sync_committee_indices`](#get_sync_committee_indices)
+    - [`get_sync_committee`](#get_sync_committee)
   - [Block processing](#block-processing)
-    - [Light client processing](#light-client-processing)
+    - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-transition)
-    - [Light client committee updates](#light-client-committee-updates)
-  
+    - [Final updates](#updates-updates)
+
 ## Introduction
 
-This is a standalone patch to the ethereum beacon chain that adds light client support.
+This is a standalone beacon chain patch adding light client support via sync committees.
+
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `CompactValidator` | `uint64` | a compact validator |
+
+## Constants
+
+| Name | Value |
+| - | - | 
+| `BASE_REWARDS_PER_EPOCH` | `uint64(5)` |
 
 ## Configuration
 
@@ -33,114 +49,106 @@ This is a standalone patch to the ethereum beacon chain that adds light client s
 
 | Name | Value |
 | - | - | 
-| `LIGHT_CLIENT_COMMITTEE_SIZE` | `uint64(2**8)` (= 256) |
-| `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `BASE_REWARDS_PER_EPOCH` | 5 |
+| `MAX_SYNC_COMMITTEE_SIZE` | `uint64(2**8)` (= 256) |
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
 ### Domain types
 
 | Name | Value |
 | - | - |
-| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` |
+| `DOMAIN_SYNC_COMMITTEE` | `DomainType('0x07000000')` |
 
-## Updated containers
+## Containers
 
-### Extended `BeaconBlockBody`
+### Extended containers
+
+#### `BeaconBlockBody`
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
-    # Bitfield of participants in this light client signature
-    light_client_bits: Bitvector[LIGHT_CLIENT_COMMITTEE_SIZE]
-    light_client_signature: BLSSignature
+    sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
+    sync_committee_signature: BLSSignature
 ```
 
-### Extended `BeaconState`
+#### `BeaconState`
 
 ```python
 class BeaconState(phase0.BeaconState):
-    # Compact representations of the light client committee
-    current_light_committee: CompactCommittee
-    next_light_committee: CompactCommittee
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
 ```
 
-## New containers
+### New containers
 
-### `CompactCommittee`
+#### `SyncCommittee`
 
 ```python
-class CompactCommittee(Container):
-    pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
-    sum_of_pubkeys: BLSPubkey
-    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
+class SyncCommittee(Container):
+    pubkeys: List[BLSPubkey, MAX_SYNC_COMMITTEE_SIZE]
+    pubkeys_aggregate: BLSPubkey
+    compact_validators: List[CompactValidator, MAX_SYNC_COMMITTEE_SIZE]
 ```
 
 ## Helper functions
 
 ### Misc
 
-
-#### `pack_compact_validator`
+#### `compactify_validator`
 
 ```python
-def pack_compact_validator(index: ValidatorIndex, slashed: bool, balance_in_increments: uint64) -> uint64:
+def compactify_validator(index: ValidatorIndex, slashed: bool, effective_balance: Gwei) -> CompactValidator:
     """
-    Create a compact validator object representing index, slashed status, and compressed balance.
-    Takes as input balance-in-increments (// EFFECTIVE_BALANCE_INCREMENT) to preserve symmetry with
-    the unpacking function.
+    Return the compact validator for a given validator index, slashed status and effective balance.
     """
-    return (index << 16) + (slashed << 15) + balance_in_increments
+    return CompactValidator((index << 16) + (slashed << 15) + uint64(effective_balance // EFFECTIVE_BALANCE_INCREMENT))
 ```
 
-#### `unpack_compact_validator`
+#### `decompactify_validator`
 
 ```python
-def unpack_compact_validator(compact_validator: uint64) -> Tuple[ValidatorIndex, bool, uint64]:
+def decompactify_validator(compact_validator: CompactValidator) -> Tuple[ValidatorIndex, bool, Gwei]:
     """
-    Return validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
+    Return the validator index, slashed status and effective balance for a given compact validator.
     """
-    return (
-        ValidatorIndex(compact_validator >> 16),
-        bool((compact_validator >> 15) % 2),
-        compact_validator & (2**15 - 1),
-    )
-```
-
-#### `committee_to_compact_committee`
-
-```python
-def committee_to_compact_committee(state: BeaconState, committee: Sequence[ValidatorIndex]) -> CompactCommittee:
-    """
-    Given a state and a list of validator indices, outputs the ``CompactCommittee`` representing them.
-    """
-    validators = [state.validators[i] for i in committee]
-    compact_validators = [
-        pack_compact_validator(i, v.slashed, v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
-        for i, v in zip(committee, validators)
-    ]
-    pubkeys = [v.pubkey for v in validators]
-    return CompactCommittee(
-        pubkeys=pubkeys,
-        sum_of_pubkeys=bls.AggregatePubkeys(pubkeys),
-        compact_validators=compact_validators
-    )
+    index = ValidatorIndex(compact_validator >> 16)  # from bits 16-63
+    slashed = bool((compact_validator >> 15) % 2)  # from bit 15
+    effective_balance = Gwei(compact_validator & (2**15 - 1)) * EFFECTIVE_BALANCE_INCREMENT  # from bits 0-14
+    return (index, slashed, effective_balance)
 ```
 
 ### Beacon state accessors
 
-#### `get_light_client_committee`
+#### `get_sync_committee_indices`
 
 ```python
-def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the light client committee of no more than ``LIGHT_CLIENT_COMMITTEE_SIZE`` validators.
+    Return the sync committee indices for a given state and epoch.
     """
-    source_epoch = (max(epoch // LIGHT_CLIENT_COMMITTEE_PERIOD, 1) - 1) * LIGHT_CLIENT_COMMITTEE_PERIOD
-    active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
-    seed = get_seed(beacon_state, source_epoch, DOMAIN_LIGHT_CLIENT)
-    return [
-        compute_shuffled_index(i, active_validator_indices, seed)
-        for i in range(min(active_validator_indices, LIGHT_CLIENT_COMMITTEE_SIZE))
-    ]
+    start_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    active_validator_count = uint64(len(get_active_validator_indices(state, start_epoch)))
+    sync_committee_size = min(active_validator_count, MAX_SYNC_COMMITTEE_SIZE)
+    seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
+    return [compute_shuffled_index(uint64(i), active_validator_count, seed) for i in range(sync_committee_size)]
+```
+
+### `get_sync_committee`
+
+```python
+def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
+    """
+    Return the sync committee for a given state and epoch.
+    """
+    indices = get_sync_committee_indices(state, epoch)
+    validators = [state.validators[index] for index in indices]
+    pubkeys = [validator.pubkey for validator in validators]
+    compact_validators = [compactify_validator(i, v.slashed, v.effective_balance) for i, v in zip(indices, validators)]
+    return SyncCommittee(pubkeys, bls.AggregatePubkeys(pubkeys), compact_validators)
 ```
 
 ### Block processing
@@ -148,65 +156,47 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     phase0.process_block(state, block)
-    process_light_client_signature(state, block.body)
+    process_sync_committee(state, block.body)
 ```
 
-#### Light client processing
+#### Sync committee processing
 
 ```python
-def process_light_client_signature(state: BeaconState, block_body: BeaconBlockBody) -> None:
-    committee = get_light_client_committee(state, get_current_epoch(state))
-    previous_slot = max(state.slot, 1) - 1
-    previous_block_root = get_block_root_at_slot(state, previous_slot)
+def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify sync committee bitfield length
+    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
+    assert len(body.sync_committee_bits) == len(committee_indices)
 
-    # Light client committees sign over the previous block root
-    signing_root = compute_signing_root(
-        previous_block_root,
-        get_domain(state, DOMAIN_LIGHT_CLIENT, compute_epoch_at_slot(previous_slot))
-    )
-    
-    participants = [
-        committee[i] for i in range(len(committee)) if block_body.light_client_bits[i]
-    ]
-    
-    signer_pubkeys = [
-        state.validators[participant].pubkey for participant in participants
-    ]
-    
-    assert bls.FastAggregateVerify(signer_pubkeys, signing_root, block_body.light_client_signature)
-    
-    # Process rewards
-    total_reward = Gwei(0)
-    active_validator_count = len(get_active_validator_indices(beacon_state, get_current_epoch(state)))
-    for participant in participants:
-        reward = get_base_reward(state, participant) * active_validator_count // len(committee) // SLOTS_PER_EPOCH
-        increase_balance(state, participant, reward)
-        total_reward += reward        
+    # Verify sync committee aggregate signature signing over the previous slot block root
+    previous_slot = max(state.slot, Slot(1)) - Slot(1)
+    participant_indices = [committee_indices[i] for i in range(len(committee_indices)) if body.sync_committee_bits[i]]
+    participant_pubkeys = [state.validators[participant_index].pubkey for participant_index in participant_indices]
+    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
+    signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
+    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, body.sync_committee_signature)
 
-    increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
+    # Reward sync committee participants
+    participant_rewards = Gwei(0)
+    active_validator_count = uint64(len(get_active_validator_indices(state, get_current_epoch(state))))
+    for participant_index in participant_indices:
+        base_reward = get_base_reward(state, participant_index)
+        reward = Gwei(base_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
+        increase_balance(state, participant_index, reward)
+        participant_rewards += reward
+
+    # Reward beacon proposer
+    increase_balance(state, get_beacon_proposer_index(state), Gwei(participant_rewards // PROPOSER_REWARD_QUOTIENT))
 ```
 
 ### Epoch processing
 
-This epoch transition overrides the phase0 epoch transition:
+#### Final updates
 
 ```python
-def process_epoch(state: BeaconState) -> None:
-    phase0.process_epoch(state)
-    process_light_client_committee_updates(state)
+def process_final_updates(state: BeaconState) -> None:
+    phase0.process_final_updates(state)
+    next_epoch = get_current_epoch(state) + Epoch(1)
+    if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
+        state.current_sync_committee = state.next_sync_committee
+        state.next_sync_committee = get_sync_committee(state, next_epoch + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 ```
-
-#### Light client committee updates
-
-```python
-def process_light_client_committee_updates(state: BeaconState) -> None:
-    """
-    Update light client committees.
-    """
-    next_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
-    if next_epoch % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
-        state.current_light_committee = state.next_light_committee
-        new_committee = get_light_client_committee(state, next_epoch + LIGHT_CLIENT_COMMITTEE_PERIOD)
-        state.next_light_committee = committee_to_compact_committee(state, new_committee)
-```
-
