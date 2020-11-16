@@ -20,7 +20,7 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phase1/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phase1/*.md) $(wildcard $(SPEC_DIR)/lightclient/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
@@ -49,6 +49,7 @@ partial_clean:
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_DIR)/phase0
 	rm -rf $(PY_SPEC_DIR)/phase1
+	rm -rf $(PY_SPEC_DIR)/lightclient
 	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
 	rm -rf $(PY_SPEC_DIR)/.coverage
 	rm -rf $(PY_SPEC_DIR)/test-reports
