@@ -25,23 +25,12 @@
 
 Ethereum 2.0 is designed to be light client friendly. This allows low-resource clients such as mobile phones to access Ethereum 2.0 with reasonable safety and liveness. It also facilitates the development of "bridges" to external blockchains. This document suggests a minimal light client design for the beacon chain that uses the concept of "sync committees" introduced in [./beacon-chain.md](the the light-client-friendliness beacon chain extension).
 
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-
 ## Constants
 
 | Name | Value |
 | - | - |
 | `SYNC_COMMITTEES_GENERALIZED_INDEX` | `GeneralizedIndexConcat(GeneralizedIndex(BeaconBlock, 'state_root'), GeneralizedIndex(BeaconState, 'current_sync_committee'))` |
 | `FORK_GENERALIZED_INDEX` | `GeneralizedIndexConcat(GeneralizedIndex(BeaconBlock, 'state_root'), GeneralizedIndex(BeaconState, 'fork'))` |
-| `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH` | `4` |
-| `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX` | **TBD** |
-| `PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH` | `5` |
-| `PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
 
 ## Containers
 
