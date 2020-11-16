@@ -2,6 +2,10 @@
 
 ## Table of contents
 
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
@@ -24,8 +28,11 @@
     - [`get_sync_committee`](#get_sync_committee)
   - [Block processing](#block-processing)
     - [Sync committee processing](#sync-committee-processing)
-  - [Epoch processing](#epoch-transition)
-    - [Final updates](#updates-updates)
+  - [Epoch processing](#epoch-processing)
+    - [Final updates](#final-updates)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
 
