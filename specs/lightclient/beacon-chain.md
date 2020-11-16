@@ -170,14 +170,14 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     """
     Return the sync committee indices for a given state and epoch.
     """
-    start_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-    active_validator_count = uint64(len(get_active_validator_indices(state, start_epoch)))
+    base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    active_validator_count = uint64(len(get_active_validator_indices(state, base_epoch)))
     sync_committee_size = min(active_validator_count, MAX_SYNC_COMMITTEE_SIZE)
     seed = get_seed(state, start_epoch, DOMAIN_SYNC_COMMITTEE)
     return [compute_shuffled_index(uint64(i), active_validator_count, seed) for i in range(sync_committee_size)]
 ```
 
-### `get_sync_committee`
+#### `get_sync_committee`
 
 ```python
 def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
