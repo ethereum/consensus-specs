@@ -78,16 +78,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(Container):
-    randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Operations
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+class BeaconBlockBody(phase0.BeaconState):
     # Light client
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
@@ -96,36 +87,7 @@ class BeaconBlockBody(Container):
 #### `BeaconState`
 
 ```python
-class BeaconState(Container):
-    # Versioning
-    genesis_time: uint64
-    genesis_validators_root: Root
-    slot: Slot
-    fork: Fork
-    # History
-    latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    # Eth1
-    eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
-    # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Attestations
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
-    previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
-    current_justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
+class BeaconState(phase0.BeaconState):
     # Light client
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee

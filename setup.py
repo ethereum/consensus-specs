@@ -52,8 +52,9 @@ def get_spec(file_name: str) -> SpecObject:
         else:
             # Handle function definitions & ssz_objects
             if pulling_from is not None:
-                if len(line) > 18 and line[:6] == 'class ' and line[-12:] == '(Container):':
-                    name = line[6:-12]
+                if len(line) > 18 and line[:6] == 'class ' and (line[-12:] == '(Container):' or '(phase' in line):
+                    end = -12 if line[-12:] == '(Container):' else line.find('(')
+                    name = line[6:end]
                     # Check consistency with markdown header
                     assert name == current_name
                     block_type = CodeBlockType.SSZ
@@ -172,7 +173,7 @@ from lru import LRU
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist,
 )
 from eth2spec.utils import bls
 
