@@ -133,7 +133,7 @@ def validate_update(memory: LightClientMemory, update: LightClientUpdate) -> boo
 
 #### `update_memory`
 
-```
+```python
 def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
     memory.header = update.header
     epoch = compute_epoch_at_slot(update.header.slot)
