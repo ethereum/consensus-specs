@@ -78,7 +78,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconState):
+class BeaconBlockBody(phase0.BeaconBlockBody):
     # Light client
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
