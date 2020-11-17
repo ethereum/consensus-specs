@@ -43,6 +43,7 @@ This document suggests a minimal light client design for the beacon chain that u
 
 | Name | Value |
 | - | - |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` |
 | `MAX_VALID_LIGHT_CLIENT_UPDATES` | `uint64(2**64 - 1)` |
 
 ### Time parameters
@@ -75,7 +76,7 @@ class LightClientUpdate(Container):
     # Sync committee aggregate signature
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
-    # Fork version corresponding to the aggregate signature
+    # Fork version for the aggregate signature
     fork_version
 ```
 
@@ -122,6 +123,7 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
     # Verify sync committee bitfield length 
     sync_committee = new_snapshot.current_sync_committee
     assert len(update.sync_committee_bits) == len(sync_committee)
+    assert sum(update.sync_committee_bits) > MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
@@ -136,15 +138,16 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
 
 ```python
 def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot) -> None:
+    # Validate update
     assert is_valid_light_client_update(store, update)
+    valid_updates.append(update)
+
     if sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2:
+        # Immediate update when quorum is reached
         store.snapshot = update.snapshot
         valid_updates = []
-    else:
-        valid_updates.append(update)
-
-    # Force an update after the update timeout has elapsed
-    if current_slot > old_snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
-        best_update = max(valid_updates, key=lambda update: sum(update.sync_committee_bits))
-        store.snapshot = best_update.new_snapshot
+    elif current_slot > old_snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
+        # Forced best update when the update timeout has elapsed
+        store.snapshot = max(valid_updates, key=lambda update: sum(update.sync_committee_bits)).new_snapshot
+        valid_updates = []
 ```
