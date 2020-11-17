@@ -85,7 +85,7 @@ def validate_update(memory: LightClientMemory, update: LightClientUpdate) -> boo
     # Verify that it actually updates to a newer slot
     assert update.header.slot > memory.header.slot
     
-    # Convenience as independent variable for convenience
+    # Independent variable for convenience
     committee = memory.current_sync_committee if new_period == current_period else memory.next_sync_committee
     assert len(update.aggregation_bits) == len(committee)
     
