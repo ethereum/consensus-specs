@@ -63,7 +63,7 @@ class LightClientMemory(Container):
     header: BeaconBlockHeader
     # Fork version data
     fork_version: Version
-    # period committees corresponding to the beacon header
+    # sync committees corresponding to the beacon header
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
 ```
