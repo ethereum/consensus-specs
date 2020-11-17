@@ -92,7 +92,7 @@ def validate_update(memory: LightClientMemory, update: LightClientUpdate) -> boo
     
     # Verify signature
     active_pubkeys = [p for (bit, p) in zip(update.aggregation_bits, committee.pubkeys) if bit]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, memory.version)
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, memory.fork_version)
     signing_root = compute_signing_root(update.header, domain)
     assert bls.FastAggregateVerify(pubkeys, signing_root, update.signature)
 
