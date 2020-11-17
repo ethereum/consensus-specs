@@ -44,7 +44,6 @@ class LightClientUpdate(Container):
     # Sync committee signature to that header
     aggregation_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     signature: BLSSignature
-    header_branch: Vector[Bytes32, BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH]
     # Updates fork version
     new_fork: Fork
     fork_branch: Vector[Bytes32, log_2(FORK_GENERALIZED_INDEX)]
