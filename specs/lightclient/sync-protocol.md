@@ -1,4 +1,4 @@
-# Minimal Light Client Design
+# Minimal Light Client
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -11,122 +11,151 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+  - [Time parameters](#time-parameters)
 - [Containers](#containers)
-  - [`LightClientUpdate`](#lightclientupdate)
-- [Helpers](#helpers)
-  - [`LightClientMemory`](#lightclientmemory)
+    - [`LightClientSnapshot`](#lightclientsnapshot)
+    - [`LightClientUpdate`](#lightclientupdate)
+    - [`LightClientStore`](#lightclientstore)
 - [Light client state updates](#light-client-state-updates)
-    - [`validate_update`](#validate_update)
-    - [`update_memory`](#update_memory)
+    - [`is_valid_light_client_update`](#is_valid_light_client_update)
+    - [`process_light_client_update`](#process_light_client_update)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-Ethereum 2.0 is designed to be light client friendly. This allows low-resource clients such as mobile phones to access Ethereum 2.0 with reasonable safety and liveness. It also facilitates the development of "bridges" to external blockchains. This document suggests a minimal light client design for the beacon chain that uses the concept of "sync committees" introduced in [./beacon-chain.md](the the light-client-friendliness beacon chain extension).
+Eth2 is designed to be light client friendly for constrained environments to access Eth2 with reasonable satefy and liveness. Such environments include resource-constrained devices (e.g. phones for trust-minimised wallets) and metered VMs (e.g. blockchain VMs for cross-chain bridges).
+
+This document suggests a minimal light client design for the beacon chain that uses sync committees introduced in [this beacon chain extension](./beacon-chain.md).
 
 ## Constants
 
 | Name | Value |
 | - | - |
-| `SYNC_COMMITTEES_GENERALIZED_INDEX` | `GeneralizedIndexConcat(GeneralizedIndex(BeaconBlock, 'state_root'), GeneralizedIndex(BeaconState, 'current_sync_committee'))` |
-| `FORK_GENERALIZED_INDEX` | `GeneralizedIndexConcat(GeneralizedIndex(BeaconBlock, 'state_root'), GeneralizedIndex(BeaconState, 'fork'))` |
+| `NEXT_SYNC_COMMITTEE_INDEX` | `IndexConcat(Index(BeaconBlock, 'state_root'), Index(BeaconState, 'next_sync_committee'))` |
+| `FORK_INDEX` | `IndexConcat(Index(BeaconBlock, 'state_root'), Index(BeaconState, 'fork'))` |
+
+## Configuration
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `MAX_VALID_LIGHT_CLIENT_UPDATES` | `uint64(2**64 - 1)` |
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `LIGHT_CLIENT_UPDATE_TIMEOUT` | `Slot(2**13)` | slots | ~27 hours |
 
 ## Containers
 
-### `LightClientUpdate`
+#### `LightClientSnapshot`
 
 ```python
-class LightClientUpdate(Container):
-    # Updated beacon header
+class LightClientSnapshot(Container):
+    # Beacon block header
     header: BeaconBlockHeader
-    # Sync committee signature to that header
-    aggregation_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
-    signature: BLSSignature
-    # Updates fork version
-    new_fork: Fork
-    fork_branch: Vector[Bytes32, log_2(FORK_GENERALIZED_INDEX)]
-    # Updated sync committee (and authenticating branch)
-    new_current_sync_committee: SyncCommittee
-    new_next_sync_committee: SyncCommittee
-    sync_committee_branch: Vector[Bytes32, log_2(SYNC_COMMITTEES_GENERALIZED_INDEX)]
-```
-
-## Helpers
-
-### `LightClientMemory`
-
-```python
-class LightClientMemory(Container):
-    # Beacon header which is not expected to revert
-    header: BeaconBlockHeader
-    # Fork version data
-    fork_version: Version
-    # sync committees corresponding to the beacon header
+    # Fork data corresponding to the header
+    fork: Fork
+    # Sync committees corresponding to the header
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
 ```
 
-## Light client state updates
-
-The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending a request containing `(memory.shard, memory.header.slot, slot_range_end)`. It calls `validate_update(memory, update)` on each update that it receives in response. If `sum(update.aggregate_bits) * 3 > len(update.aggregate_bits) * 2` for any valid update, it accepts that update immediately; otherwise, it waits around for some time and then finally calls `update_memory(memory, update)` on the valid update with the highest `sum(update.aggregate_bits)`.
-
-#### `validate_update`
+#### `LightClientUpdate`
 
 ```python
-def validate_update(memory: LightClientMemory, update: LightClientUpdate) -> bool:
-    # Verify the update does not skip a period
-    current_period = compute_epoch_at_slot(memory.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    new_epoch = compute_epoch_of_shard_slot(update.header.slot)
-    new_period = new_epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    assert new_period in (current_period, current_period + 1)  
-    
-    # Verify that it actually updates to a newer slot
-    assert update.header.slot > memory.header.slot
-    
-    # Independent variable for convenience
-    committee = memory.current_sync_committee if new_period == current_period else memory.next_sync_committee
-    assert len(update.aggregation_bits) == len(committee)
-    
-    # Verify signature
-    active_pubkeys = [p for (bit, p) in zip(update.aggregation_bits, committee.pubkeys) if bit]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, memory.fork_version)
-    signing_root = compute_signing_root(update.header, domain)
-    assert bls.FastAggregateVerify(pubkeys, signing_root, update.signature)
+class LightClientUpdate(Container):
+    # Updated snapshot
+    snapshot: LightClientSnapshot
+    # Merkle branches for the updated snapshot
+    fork_branch: Vector[Bytes32, log_2(FORK_INDEX)]
+    next_sync_committee_branch: Vector[Bytes32, log_2(NEXT_SYNC_COMMITTEE_INDEX)]
+    # Sync committee aggregate signature
+    sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
+    sync_committee_signature: BLSSignature
+```
 
-    # Verify Merkle branches of new info
+#### `LightClientStore`
+
+```python
+class LightClientStore(Container):
+    snapshot: LightClientSnapshot
+    valid_updates: List[LightClientUpdate, MAX_VALID_LIGHT_CLIENT_UPDATES]
+```
+
+## Light client state updates
+
+A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the currect slot based on some local clock.
+
+#### `is_valid_light_client_update`
+
+```python
+def is_valid_light_client_update(store: LightClientStore, update: LightClientUpdate) -> bool:
+    # Verify new slot is larger than old slot
+    old_snapshot = store.snapshot
+    new_snapshot = update.snapshot
+    assert new_snapshot.header.slot > old_snapshot.header.slot
+
+    # Verify update does not skip a sync committee period
+    old_period = compute_epoch_at_slot(old_snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    new_period = compute_epoch_at_slot(new_snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    assert new_period in (old_period, old_period + 1)
+
+    # Verify new snapshot sync committees
+    if new_period == old_period:
+        assert new_snapshot.current_sync_committee == old_snapshot.current_sync_committee
+        assert new_snapshot.next_sync_committee == old_snapshot.next_sync_committee
+    else new_period == old_period + 1:
+        assert new_snapshot.current_sync_committee == old_snapshot.next_sync_committee
+        assert is_valid_merkle_branch(
+            leaf=hash_tree_root(new_snapshot.next_sync_committee),
+            branch=update.next_sync_committee_branch,
+            depth=log2(NEXT_SYNC_COMMITTEE_INDEX),
+            index=NEXT_SYNC_COMMITTEE_INDEX % 2**log2(NEXT_SYNC_COMMITTEE_INDEX),
+            root=hash_tree_root(new_snapshot.header),
+        )
+
+    # Verify new snapshot fork
     assert is_valid_merkle_branch(
-        leaf=hash_tree_root(update.new_fork),
+        leaf=hash_tree_root(new_snapshot.fork),
         branch=update.fork_branch,
-        depth=log2(FORK_GENERALIZED_INDEX),
-        index=FORK_GENERALIZED_INDEX % 2**log2(FORK_GENERALIZED_INDEX),
-        root=hash_tree_root(update.header),
+        depth=log2(FORK_INDEX),
+        index=FORK_INDEX % 2**log2(FORK_INDEX),
+        root=hash_tree_root(new_snapshot.header),
     )
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(update.current_sync_committee),
-        branch=update.sync_committee_branch,
-        depth=log2(SYNC_COMMITTEES_GENERALIZED_INDEX),
-        index=SYNC_COMMITTEES_GENERALIZED_INDEX % 2**log2(SYNC_COMMITTEES_GENERALIZED_INDEX),
-        root=hash_tree_root(update.header),
-    )
-    # Verify consistency of committees
-    if new_period == current_period:
-        assert update.new_current_sync_committee == memory.current_sync_committee
-        assert update.new_next_sync_committee == memory.next_sync_committee
-    else:
-        assert update.new_current_sync_committee == memory.next_sync_committee
+
+    # Verify sync committee bitfield length 
+    sync_committee = new_snapshot.current_sync_committee
+    assert len(update.sync_committee_bits) == len(sync_committee)
+
+    # Verify sync committee aggregate signature
+    participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version.current_version)
+    signing_root = compute_signing_root(new_snapshot.header, domain)
+    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
 
     return True
 ```
 
-#### `update_memory`
+#### `process_update`
 
 ```python
-def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
-    memory.header = update.header
-    epoch = compute_epoch_at_slot(update.header.slot)
-    memory.fork_version = update.new_fork.previous_version if epoch < update.new_fork.epoch else update.new_fork.current_version
-    memory.current_sync_committee = update.new_current_sync_committee
-    memory.next_sync_committee == update.new_next_sync_committee
+def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot) -> None:
+    assert is_valid_light_client_update(store, update)
+    if sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2:
+        store.snapshot = update.snapshot
+        valid_updates = []
+    else:
+        valid_updates.append(update)
+
+    # Force an update after the update timeout has elapsed
+    if current_slot > old_snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
+        best_update = max(valid_updates, key=lambda update: sum(update.sync_committee_bits))
+        store.snapshot = best_update.new_snapshot
 ```
