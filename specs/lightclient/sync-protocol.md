@@ -36,7 +36,6 @@ This document suggests a minimal light client design for the beacon chain that u
 | Name | Value |
 | - | - |
 | `NEXT_SYNC_COMMITTEE_INDEX` | `IndexConcat(Index(BeaconBlock, 'state_root'), Index(BeaconState, 'next_sync_committee'))` |
-| `FORK_INDEX` | `IndexConcat(Index(BeaconBlock, 'state_root'), Index(BeaconState, 'fork'))` |
 
 ## Configuration
 
@@ -60,8 +59,6 @@ This document suggests a minimal light client design for the beacon chain that u
 class LightClientSnapshot(Container):
     # Beacon block header
     header: BeaconBlockHeader
-    # Fork data corresponding to the header
-    fork: Fork
     # Sync committees corresponding to the header
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
@@ -73,12 +70,13 @@ class LightClientSnapshot(Container):
 class LightClientUpdate(Container):
     # Updated snapshot
     snapshot: LightClientSnapshot
-    # Merkle branches for the updated snapshot
-    fork_branch: Vector[Bytes32, log_2(FORK_INDEX)]
-    next_sync_committee_branch: Vector[Bytes32, log_2(NEXT_SYNC_COMMITTEE_INDEX)]
+    # Merkle branches for the next sync committee
+    next_sync_committee_branch: Vector[Bytes32, log2(NEXT_SYNC_COMMITTEE_INDEX)]
     # Sync committee aggregate signature
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
+    # Fork version corresponding to the aggregate signature
+    fork_version
 ```
 
 #### `LightClientStore`
@@ -121,22 +119,13 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
             root=hash_tree_root(new_snapshot.header),
         )
 
-    # Verify new snapshot fork
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(new_snapshot.fork),
-        branch=update.fork_branch,
-        depth=log2(FORK_INDEX),
-        index=FORK_INDEX % 2**log2(FORK_INDEX),
-        root=hash_tree_root(new_snapshot.header),
-    )
-
     # Verify sync committee bitfield length 
     sync_committee = new_snapshot.current_sync_committee
     assert len(update.sync_committee_bits) == len(sync_committee)
 
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version.current_version)
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version)
     signing_root = compute_signing_root(new_snapshot.header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
 
