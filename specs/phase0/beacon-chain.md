@@ -190,6 +190,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
 | `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
+| `MAX_GENESIS_TIME` | `uint64(TDB)` (TBD) |
 | `HYSTERESIS_QUOTIENT` | `uint64(4)` |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
@@ -1146,7 +1147,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
-        genesis_time=eth1_timestamp + GENESIS_DELAY,
+        genesis_time=min(eth1_timestamp + GENESIS_DELAY, MAX_GENESIS_TIME)
         fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
@@ -1182,6 +1183,8 @@ Let `genesis_state = candidate_state` whenever `is_valid_genesis_state(candidate
 
 ```python
 def is_valid_genesis_state(state: BeaconState) -> bool:
+    if state.genesis_time == MAX_GENESIS_TIME:
+        return True
     if state.genesis_time < MIN_GENESIS_TIME:
         return False
     if len(get_active_validator_indices(state, GENESIS_EPOCH)) < MIN_GENESIS_ACTIVE_VALIDATOR_COUNT:
