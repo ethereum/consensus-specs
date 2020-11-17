@@ -39,7 +39,7 @@ Ethereum 2.0 is designed to be light client friendly. This allows low-resource c
 
 ```python
 class LightClientUpdate(Container):
-    # Updated beacon header (and authenticating branch)
+    # Updated beacon header
     header: BeaconBlockHeader
     # Sync committee signature to that header
     aggregation_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
