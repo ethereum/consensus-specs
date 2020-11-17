@@ -6,6 +6,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
@@ -78,6 +79,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
+    # Light client
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
@@ -86,6 +88,7 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 ```python
 class BeaconState(phase0.BeaconState):
+    # Light client
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
 ```

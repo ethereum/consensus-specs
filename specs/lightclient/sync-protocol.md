@@ -10,13 +10,14 @@
 
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
 - [Constants](#constants)
 - [Containers](#containers)
   - [`LightClientUpdate`](#lightclientupdate)
 - [Helpers](#helpers)
   - [`LightClientMemory`](#lightclientmemory)
 - [Light client state updates](#light-client-state-updates)
+    - [`validate_update`](#validate_update)
+    - [`update_memory`](#update_memory)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
