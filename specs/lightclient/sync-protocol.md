@@ -47,7 +47,7 @@ class LightClientUpdate(Container):
     # Updates fork version
     new_fork: Fork
     fork_branch: Vector[Bytes32, log_2(FORK_GENERALIZED_INDEX)]
-    # Updated period committee (and authenticating branch)
+    # Updated sync committee (and authenticating branch)
     new_current_sync_committee: SyncCommittee
     new_next_sync_committee: SyncCommittee
     sync_committee_branch: Vector[Bytes32, log_2(SYNC_COMMITTEES_GENERALIZED_INDEX)]
