@@ -8,7 +8,6 @@
 
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
 - [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
@@ -21,7 +20,6 @@
   - [New containers](#new-containers)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc-1)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
@@ -37,11 +35,6 @@
 
 This is a standalone beacon chain patch adding light client support via sync committees.
 
-## Custom types
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-
 ## Constants
 
 | Name | Value |
@@ -54,7 +47,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 | Name | Value |
 | - | - | 
-| `MAX_SYNC_COMMITTEE_SIZE` | `uint64(2**8)` (= 256) |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**8)` (= 256) |
 
 ### Time parameters
 
@@ -77,7 +70,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
     # Light client
-    sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
+    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
 
@@ -96,13 +89,11 @@ class BeaconState(phase0.BeaconState):
 
 ```python
 class SyncCommittee(Container):
-    pubkeys: List[BLSPubkey, MAX_SYNC_COMMITTEE_SIZE]
+    pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
     pubkeys_aggregate: BLSPubkey
 ```
 
 ## Helper functions
-
-### Misc
 
 ### Beacon state accessors
 
@@ -114,18 +105,19 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     Return the sync committee indices for a given state and epoch.
     """
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-    active_validator_count = uint64(len(get_active_validator_indices(state, base_epoch)))
-    sync_committee_size = min(active_validator_count, MAX_SYNC_COMMITTEE_SIZE)
+    active_validator_indices = get_active_validator_indices(state, base_epoch)
+    active_validator_count = uint64(len(active_validator_indices))
     seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
-    i, output = 0, []
-    while i < active_validator_count and len(output) < sync_committee_size:
-        candidate_index = indices[compute_shuffled_index(uint64(i), active_validator_count, seed)]
+    i, sync_committee_indices = 0, []
+    while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
+        shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
+        candidate_index = active_validator_indices[shuffled_index]
         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            output.append(candidate_index)
+            sync_committee_indices.append(candidate_index)
         i += 1
-    return output
+    return sync_committee_indices
 ```
 
 #### `get_sync_committee`
@@ -153,12 +145,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Verify sync committee bitfield length
-    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
-    assert len(body.sync_committee_bits) == len(committee_indices)
-
     # Verify sync committee aggregate signature signing over the previous slot block root
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
+    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
     participant_indices = [committee_indices[i] for i in range(len(committee_indices)) if body.sync_committee_bits[i]]
     participant_pubkeys = [state.validators[participant_index].pubkey for participant_index in participant_indices]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
