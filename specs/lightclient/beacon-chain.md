@@ -22,8 +22,6 @@
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
-    - [`compactify_validator`](#compactify_validator)
-    - [`decompactify_validator`](#decompactify_validator)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
@@ -43,7 +41,6 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `CompactValidator` | `uint64` | a compact validator |
 
 ## Constants
 
@@ -101,35 +98,11 @@ class BeaconState(phase0.BeaconState):
 class SyncCommittee(Container):
     pubkeys: List[BLSPubkey, MAX_SYNC_COMMITTEE_SIZE]
     pubkeys_aggregate: BLSPubkey
-    compact_validators: List[CompactValidator, MAX_SYNC_COMMITTEE_SIZE]
 ```
 
 ## Helper functions
 
 ### Misc
-
-#### `compactify_validator`
-
-```python
-def compactify_validator(index: ValidatorIndex, slashed: bool, effective_balance: Gwei) -> CompactValidator:
-    """
-    Return the compact validator for a given validator index, slashed status and effective balance.
-    """
-    return CompactValidator((index << 16) + (slashed << 15) + uint64(effective_balance // EFFECTIVE_BALANCE_INCREMENT))
-```
-
-#### `decompactify_validator`
-
-```python
-def decompactify_validator(compact_validator: CompactValidator) -> Tuple[ValidatorIndex, bool, Gwei]:
-    """
-    Return the validator index, slashed status and effective balance for a given compact validator.
-    """
-    index = ValidatorIndex(compact_validator >> 16)  # from bits 16-63
-    slashed = bool((compact_validator >> 15) % 2)  # from bit 15
-    effective_balance = Gwei(compact_validator & (2**15 - 1)) * EFFECTIVE_BALANCE_INCREMENT  # from bits 0-14
-    return (index, slashed, effective_balance)
-```
 
 ### Beacon state accessors
 
@@ -144,7 +117,15 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     active_validator_count = uint64(len(get_active_validator_indices(state, base_epoch)))
     sync_committee_size = min(active_validator_count, MAX_SYNC_COMMITTEE_SIZE)
     seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
-    return [compute_shuffled_index(uint64(i), active_validator_count, seed) for i in range(sync_committee_size)]
+    i, output = 0, []
+    while i < active_validator_count and len(output) < sync_committee_size:
+        candidate_index = indices[compute_shuffled_index(uint64(i), active_validator_count, seed)]
+        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
+            output.append(candidate_index)
+        i += 1
+    return output
 ```
 
 #### `get_sync_committee`
@@ -157,8 +138,7 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     indices = get_sync_committee_indices(state, epoch)
     validators = [state.validators[index] for index in indices]
     pubkeys = [validator.pubkey for validator in validators]
-    compact_validators = [compactify_validator(i, v.slashed, v.effective_balance) for i, v in zip(indices, validators)]
-    return SyncCommittee(pubkeys, bls.AggregatePKs(pubkeys), compact_validators)
+    return SyncCommittee(pubkeys, bls.AggregatePKs(pubkeys))
 ```
 
 ### Block processing
