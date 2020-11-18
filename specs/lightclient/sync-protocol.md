@@ -76,10 +76,10 @@ class LightClientUpdate(Container):
     signed_header: BeaconBlockHeader
     # Merkle branch proving ancestry of the header in the snapshot
     ancestry_branch: Vector[Bytes32, log2(FINALIZED_ROOT_INDEX)]
-    # Merkle branches for the next sync committee
+    # Merkle branch for the next sync committee
     next_sync_committee_branch: Vector[Bytes32, log2(NEXT_SYNC_COMMITTEE_INDEX)]
     # Sync committee aggregate signature
-    sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
+    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
     # Fork version for the aggregate signature
     fork_version: Version
@@ -127,7 +127,7 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
     if new_period == old_period:
         assert new_snapshot.current_sync_committee == old_snapshot.current_sync_committee
         assert new_snapshot.next_sync_committee == old_snapshot.next_sync_committee
-    else new_period == old_period + 1:
+    else:
         assert new_snapshot.current_sync_committee == old_snapshot.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(new_snapshot.next_sync_committee),
@@ -140,7 +140,7 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
     # Verify sync committee bitfield length 
     sync_committee = new_snapshot.current_sync_committee
     assert len(update.sync_committee_bits) == len(sync_committee)
-    assert sum(update.sync_committee_bits) > MIN_SYNC_COMMITTEE_PARTICIPANTS
+    assert sum(update.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
@@ -166,9 +166,9 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
     if sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2 and update.snapshot.header != update.signed_header:
         # Immediate update when quorum is reached
         store.snapshot = update.snapshot
-        valid_updates = []
+        store.valid_updates = []
     elif current_slot > old_snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
         # Forced best update when the update timeout has elapsed
-        store.snapshot = max(valid_updates, key=lambda update: sum(update.sync_committee_bits)).new_snapshot
-        valid_updates = []
+        store.snapshot = max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)).snapshot
+        store.valid_updates = []
 ```
