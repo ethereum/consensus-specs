@@ -35,7 +35,8 @@ This document suggests a minimal light client design for the beacon chain that u
 
 | Name | Value |
 | - | - |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `IndexConcat(Index(BeaconBlock, 'state_root'), Index(BeaconState, 'next_sync_committee'))` |
+| `NEXT_SYNC_COMMITTEE_INDEX` | `Index(BeaconState, 'next_sync_committee')` |
+| `FINALIZED_ROOT_INDEX` | `Index(BeaconState, 'finalized_checkpoint', 'root')` |
 
 ## Configuration
 
@@ -71,13 +72,17 @@ class LightClientSnapshot(Container):
 class LightClientUpdate(Container):
     # Updated snapshot
     snapshot: LightClientSnapshot
+    # Header that the new snapshot is a finalized ancestor of
+    signed_header: BeaconBlockHeader
+    # Merkle branch proving ancestry of the header in the snapshot
+    ancestry_branch: Vector[Bytes32, log2(FINALIZED_ROOT_INDEX)]
     # Merkle branches for the next sync committee
     next_sync_committee_branch: Vector[Bytes32, log2(NEXT_SYNC_COMMITTEE_INDEX)]
     # Sync committee aggregate signature
     sync_committee_bits: Bitlist[MAX_SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
     # Fork version for the aggregate signature
-    fork_version
+    fork_version: Version
 ```
 
 #### `LightClientStore`
@@ -105,6 +110,18 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
     old_period = compute_epoch_at_slot(old_snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     new_period = compute_epoch_at_slot(new_snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     assert new_period in (old_period, old_period + 1)
+    
+    # Verify relationship between signed header and ancestor header
+    if update.signed_header == new_snapshot.header:
+        assert update.ancestry_branch == [ZERO_HASH for _ in range(log2(FINALIZED_ROOT_INDEX))]
+    else:
+        assert is_valid_merkle_branch(
+            leaf=hash_tree_root(new_snapshot.header),
+            branch=update.ancestry_branch,
+            depth=log2(FINALIZED_ROOT_INDEX),
+            index=FINALIZED_ROOT_INDEX % 2**log2(FINALIZED_ROOT_INDEX),
+            root=update.signed_header.state_root,
+        )        
 
     # Verify new snapshot sync committees
     if new_period == old_period:
@@ -117,7 +134,7 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
             branch=update.next_sync_committee_branch,
             depth=log2(NEXT_SYNC_COMMITTEE_INDEX),
             index=NEXT_SYNC_COMMITTEE_INDEX % 2**log2(NEXT_SYNC_COMMITTEE_INDEX),
-            root=hash_tree_root(new_snapshot.header),
+            root=new_snapshot.header.state_root,
         )
 
     # Verify sync committee bitfield length 
@@ -128,7 +145,7 @@ def is_valid_light_client_update(store: LightClientStore, update: LightClientUpd
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version)
-    signing_root = compute_signing_root(new_snapshot.header, domain)
+    signing_root = compute_signing_root(update.signed_header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
 
     return True
@@ -142,7 +159,11 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
     assert is_valid_light_client_update(store, update)
     valid_updates.append(update)
 
-    if sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2:
+    # Immediate update "happy path" requires:
+    # (i) 2/3 participation
+    # (ii) an update that refers to the finalized ancestor of a signed block, and not the signed block directly
+    
+    if sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2 and update.snapshot.header != update.signed_header:
         # Immediate update when quorum is reached
         store.snapshot = update.snapshot
         valid_updates = []
