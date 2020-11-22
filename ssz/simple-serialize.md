@@ -247,16 +247,4 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 
 ## Implementations
 
-| Language | Project | Maintainer | Implementation |
-|-|-|-|-|
-| Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
-| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/consensus/ssz](https://github.com/sigp/lighthouse/tree/master/consensus/ssz) |
-| Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
-| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/utils/ssz) |
-| TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz) |
-| Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
-| Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/go-ssz](https://github.com/prysmaticlabs/go-ssz) |
-| Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |
-| C# | | Jordan Andrews | [https://github.com/codingupastorm/csharp-ssz](https://github.com/codingupastorm/csharp-ssz) |
-| C# | Cortex | Sly Gryphon | [https://www.nuget.org/packages/Cortex.SimpleSerialize](https://www.nuget.org/packages/Cortex.SimpleSerialize) |
-| C++ | | Jiyun Kim | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |
+See https://github.com/ethereum/eth2.0-specs/issues/2138 for a list of current known implementations.
