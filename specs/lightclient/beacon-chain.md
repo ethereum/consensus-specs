@@ -123,7 +123,8 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     active_validator_indices = get_active_validator_indices(state, base_epoch)
     active_validator_count = uint64(len(active_validator_indices))
     seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
-    i, sync_committee_indices = 0, []
+    i = 0
+    sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
         candidate_index = active_validator_indices[shuffled_index]

@@ -173,7 +173,7 @@ from lru import LRU
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist,
+    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
 
@@ -460,8 +460,8 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/lightclient/beacon-chain.md
-                    specs/lightclient/sync-protocol.md
                 """
+                # TODO: add specs/lightclient/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
