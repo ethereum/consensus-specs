@@ -20,6 +20,8 @@
   - [New containers](#new-containers)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
+  - [`Predicates`](#predicates)
+    - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)

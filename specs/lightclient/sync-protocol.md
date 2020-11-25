@@ -100,7 +100,7 @@ class LightClientStore(Container):
 
 ## Light client state updates
 
-A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the currect slot based on some local clock.
+A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock.
 
 #### `is_valid_light_client_update`
 
