@@ -47,7 +47,8 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 | Name | Value |
 | - | - | 
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**8)` (= 256) |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1024) |
+| `SYNC_PUBKEY_AGGREGATION_INTERVAL` | `uint64(2**6)` (= 64) |
 
 ### Time parameters
 
@@ -90,7 +91,7 @@ class BeaconState(phase0.BeaconState):
 ```python
 class SyncCommittee(Container):
     pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
-    pubkeys_aggregate: BLSPubkey
+    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_PUBKEY_AGGREGATION_INTERVAL]
 ```
 
 ## Helper functions
@@ -130,7 +131,11 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     indices = get_sync_committee_indices(state, epoch)
     validators = [state.validators[index] for index in indices]
     pubkeys = [validator.pubkey for validator in validators]
-    return SyncCommittee(pubkeys, bls.AggregatePKs(pubkeys))
+    aggregates = [
+        bls.AggregatePKs(pubkeys[i:i+SYNC_PUBKEY_AGGREGATION_INTERVAL])
+        for i in range(0, len(pubkeys), SYNC_PUBKEY_AGGREGATION_INTERVAL)
+    ]
+    return SyncCommittee(pubkeys, aggregates)
 ```
 
 ### Block processing
