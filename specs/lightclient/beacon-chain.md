@@ -49,6 +49,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 | - | - | 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1024) |
 | `SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE` | `uint64(2**6)` (= 64) |
+| `G2_INFINITY_POINT_SIG` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ### Time parameters
 
@@ -108,6 +109,22 @@ class SyncCommittee(Container):
 ```
 
 ## Helper functions
+
+### `Predicates`
+
+#### `optional_fast_aggregate_verify`
+
+```python
+def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+    """
+    If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``G2_INFINITY_POINT_SIG``.
+    Otherwise, verify it with standard BLS FastAggregateVerify API.
+    """
+    if len(pubkeys) == 0:
+        return signature == G2_INFINITY_POINT_SIG
+    else:
+        return bls.FastAggregateVerify(pubkeys, message, signature)
+```
 
 ### Beacon state accessors
 
@@ -173,7 +190,7 @@ def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
     participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, block.sync_committee_signature)
+    assert optional_fast_aggregate_verify(participant_pubkeys, signing_root, block.sync_committee_signature)
 
     # Reward sync committee participants
     participant_rewards = Gwei(0)
