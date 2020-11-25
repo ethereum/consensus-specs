@@ -48,7 +48,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 | Name | Value |
 | - | - | 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1024) |
-| `SYNC_PUBKEY_AGGREGATION_INTERVAL` | `uint64(2**6)` (= 64) |
+| `SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE` | `uint64(2**6)` (= 64) |
 
 ### Time parameters
 
@@ -70,7 +70,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
-    # Light client
+    # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
@@ -79,7 +79,7 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 ```python
 class BeaconState(phase0.BeaconState):
-    # Light client
+    # Sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
 ```
@@ -91,7 +91,7 @@ class BeaconState(phase0.BeaconState):
 ```python
 class SyncCommittee(Container):
     pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
-    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_PUBKEY_AGGREGATION_INTERVAL]
+    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE]
 ```
 
 ## Helper functions
@@ -132,8 +132,8 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     validators = [state.validators[index] for index in indices]
     pubkeys = [validator.pubkey for validator in validators]
     aggregates = [
-        bls.AggregatePKs(pubkeys[i:i+SYNC_PUBKEY_AGGREGATION_INTERVAL])
-        for i in range(0, len(pubkeys), SYNC_PUBKEY_AGGREGATION_INTERVAL)
+        bls.AggregatePKs(pubkeys[i:i + SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE])
+        for i in range(0, len(pubkeys), SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE)
     ]
     return SyncCommittee(pubkeys, aggregates)
 ```
