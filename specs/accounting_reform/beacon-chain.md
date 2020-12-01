@@ -128,24 +128,27 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     flags_to_set = []
     if data.target.root == get_block_root(state, data.target.epoch):
         flags_to_set.append(FLAG_TARGET)
-        if data.beacon_block_root == get_block_root_at_slot(state, data.slot) and state.slot - data.slot == 1:
+
+        is_correct_head = data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+        is_very_timely = state.slot == data.slot + MIN_ATTESTATION_INCLUSION_DELAY
+        if is_correct_head and is_very_timely:
             flags_to_set.append(FLAG_HEAD_AND_VERY_TIMELY)
-    if state.slot - data.slot <= integer_squareroot(SLOTS_PER_EPOCH):
+
+    if state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
         flags_to_set.append(FLAG_TIMELY)
 
     # Update participation flags
     for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
         active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
         for flag, numerator in FLAGS_AND_NUMERATORS:
-            if flag in flags_to_set:
+            if flag in flags_to_set and not flags[active_position][flag]:
+                flags[active_position][flag] = True
                 # Give proposer reward for new flags
-                if not flags[active_position][flag]:
-                    proposer_reward = Gwei(
-                        get_base_reward(state, participant) * numerator
-                        // (REWARD_DENOMINATOR * PROPOSER_REWARD_DENOMINATOR)
-                    )
+                proposer_reward = Gwei(
+                    get_base_reward(state, participant) * numerator
+                    // (REWARD_DENOMINATOR * PROPOSER_REWARD_DENOMINATOR)
+                )
                 increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
-            flags[active_position][flag] = True
 ```
 
 ##### `get_unslashed_participant_indices`
@@ -274,8 +277,8 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     flag_deltas = [
         get_standard_flag_deltas(state, flag, numerator) for (flag, numerator) in FLAGS_AND_NUMERATORS
     ]
-    
-    for (rewards, penalties) in flag_deltas + [get_inactivity_penalty_deltas(state)]:
+    deltas = flag_deltas + [get_inactivity_penalty_deltas]
+    for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
             decrease_balance(state, ValidatorIndex(index), penalties[index])
