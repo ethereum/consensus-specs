@@ -8,6 +8,7 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
     PHASE0,
+    LIGHTCLIENT,
     MINIMAL,
     spec_state_test,
     with_all_phases_except,
@@ -25,7 +26,7 @@ def run_process_challenge_deadlines(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_challenge_deadlines')
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_validator_slashed_after_chunk_challenge(spec, state):

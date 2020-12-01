@@ -1,5 +1,6 @@
 from eth2spec.test.context import (
     PHASE0,
+    LIGHTCLIENT,
 )
 from eth2spec.test.helpers.custody import (
     get_valid_chunk_challenge,
@@ -29,7 +30,7 @@ def run_process_custody_final_updates(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_custody_final_updates')
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT])
 @spec_state_test
 def test_validator_withdrawal_delay(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -42,7 +43,7 @@ def test_validator_withdrawal_delay(spec, state):
     assert state.validators[0].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT])
 @spec_state_test
 def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -67,7 +68,7 @@ def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
     assert state.validators[0].withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT])
 @spec_state_test
 def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -116,7 +117,7 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
     assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT])
 @spec_state_test
 def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state):
     transition_to_valid_shard_slot(spec, state)
