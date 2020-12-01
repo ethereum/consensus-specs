@@ -327,8 +327,13 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
-    default_vote = (votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider)
-                    else Eth1Data(state.eth1_data))
+    # FIXME: Non-substantive casting: a workaround for passing typing linter for future patch forks
+    state_eth1_data = Eth1Data(
+        deposit_root=state.eth1_data.deposit_root,
+        deposit_count=state.eth1_data.deposit_count,
+        block_hash=state.eth1_data.block_hash,
+    )
+    default_vote = (votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data)
 
     return max(
         valid_votes,
