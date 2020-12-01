@@ -333,7 +333,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
         deposit_count=state.eth1_data.deposit_count,
         block_hash=state.eth1_data.block_hash,
     )
-    default_vote = (votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data)
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state.eth1_data
 
     return max(
         valid_votes,
