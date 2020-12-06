@@ -57,7 +57,7 @@
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
-    - [BLS Signatures](#bls-signatures)
+    - [BLS signatures](#bls-signatures)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
     - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
@@ -600,17 +600,17 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../../ssz/simple-serialize.md#merkleization).
 
-#### BLS Signatures
+#### BLS signatures
 
-Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
+The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` define the following functions:
 
-- `def Sign(SK: int, message: Bytes) -> BLSSignature`
-- `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
+- `def Sign(secret_key: int, message: Bytes) -> BLSSignature`
+- `def Verify(pubkey: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
-- `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
+- `def FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
+- `def AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
 
-Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
+The above functions are accessed through the `bls` module, e.g. `bls.Verify`.
 
 ### Predicates
 
