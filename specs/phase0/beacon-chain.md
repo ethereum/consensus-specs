@@ -602,7 +602,7 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 #### BLS signatures
 
-The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` define the following functions:
+The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` defines the following functions:
 
 - `def Sign(secret_key: int, message: Bytes) -> BLSSignature`
 - `def Verify(pubkey: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
