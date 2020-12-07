@@ -66,14 +66,27 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 ### Extended containers
 
-#### `BeaconBlockBody`
+*Note*: Extended SSZ containers inherit all fields from the parent in the original
+order and append any additional fields to the end.
+
+#### `BeaconBlock`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
+class BeaconBlock(phase0.BeaconBlock):
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
+
+#### `BeaconBlockHeader`
+
+```python
+class BeaconBlockHeader(phase0.BeaconBlockHeader):
+    # Sync committee aggregate signature
+    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+    sync_committee_signature: BLSSignature
+```
+
 
 #### `BeaconState`
 
@@ -105,6 +118,7 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     """
     Return the sync committee indices for a given state and epoch.
     """
+    MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(state, base_epoch)
     active_validator_count = uint64(len(active_validator_indices))
@@ -143,21 +157,22 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     phase0.process_block(state, block)
-    process_sync_committee(state, block.body)
+    process_sync_committee(state, block)
 ```
 
 #### Sync committee processing
 
 ```python
-def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
-    previous_slot = max(state.slot, Slot(1)) - Slot(1)
+    previous_slot = Slot(max(state.slot, 1) - 1)
     committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
-    participant_indices = [committee_indices[i] for i in range(len(committee_indices)) if body.sync_committee_bits[i]]
-    participant_pubkeys = [state.validators[participant_index].pubkey for participant_index in participant_indices]
+    participant_indices = [index for index, bit in zip(committee_indices, body.sync_committee_bits) if bit]
+    committee_pubkeys = state.current_sync_committee.pubkeys
+    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, body.sync_committee_signature)
+    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, block.sync_committee_signature)
 
     # Reward sync committee participants
     participant_rewards = Gwei(0)

@@ -28,9 +28,13 @@
 
 ## Introduction
 
-Eth2 is designed to be light client friendly for constrained environments to access Eth2 with reasonable satefy and liveness. Such environments include resource-constrained devices (e.g. phones for trust-minimised wallets) and metered VMs (e.g. blockchain VMs for cross-chain bridges).
+Eth2 is designed to be light client friendly for constrained environments to
+access Eth2 with reasonable safety and liveness.
+Such environments include resource-constrained devices (e.g. phones for trust-minimised wallets)
+and metered VMs (e.g. blockchain VMs for cross-chain bridges).
 
-This document suggests a minimal light client design for the beacon chain that uses sync committees introduced in [this beacon chain extension](./beacon-chain.md).
+This document suggests a minimal light client design for the beacon chain that
+uses sync committees introduced in [this beacon chain extension](./beacon-chain.md).
 
 ## Constants
 
