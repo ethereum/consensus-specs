@@ -92,7 +92,7 @@ def build_empty_block(spec, state, slot=None):
     empty_block.parent_root = parent_block_root
 
     if spec.fork == LIGHTCLIENT:
-        empty_block.body.sync_committee_signature = spec.G2_INFINITY_POINT_SIG
+        empty_block.sync_committee_signature = spec.G2_INFINITY_POINT_SIG
 
     apply_randao_reveal(spec, state, empty_block)
     return empty_block

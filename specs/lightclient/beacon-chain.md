@@ -186,11 +186,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
-    previous_slot = Slot(max(state.slot, 1) - 1)
+    previous_slot = Slot(max(int(state.slot), 1) - 1)
     committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
-    participant_indices = [index for index, bit in zip(committee_indices, body.sync_committee_bits) if bit]
+    participant_indices = [index for index, bit in zip(committee_indices, block.sync_committee_bits) if bit]
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
+    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, block.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, block.sync_committee_signature)
