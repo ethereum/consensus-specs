@@ -216,15 +216,17 @@ workflows:
       - lint:
           requires:
             - test
-      - install_deposit_contract_web3_tester:
-          requires:
-            - checkout_specs
-      - test_deposit_contract_web3_tests:
-          requires:
-            - install_deposit_contract_web3_tester
+      # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests. 
+      # - install_deposit_contract_web3_tester:
+      #     requires:
+      #       - checkout_specs
+      # - test_deposit_contract_web3_tests:
+      #     requires:
+      #       - install_deposit_contract_web3_tester
   build_and_test_deposit_contract:
     jobs:
       - build_deposit_contract
-      - test_deposit_contract:
-          requires:
-            - build_deposit_contract
+      # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests.
+      # - test_deposit_contract:
+      #     requires:
+      #       - build_deposit_contract
