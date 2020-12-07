@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    LIGHTCLIENT,
+    LIGHTCLIENT_PATCH,
     spec_state_test, spec_test,
     with_all_phases, single_phase,
     with_phases, PHASE0,
@@ -163,7 +163,7 @@ def run_with_participation(spec, state, participation_fn):
 
     pre_state = state.copy()
 
-    if spec.fork == LIGHTCLIENT:
+    if spec.fork == LIGHTCLIENT_PATCH:
         sync_committee_indices = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
 
     yield from run_process_rewards_and_penalties(spec, state)
@@ -177,7 +177,7 @@ def run_with_participation(spec, state, participation_fn):
             if index in proposer_indices and index in participated:
                 assert state.balances[index] > pre_state.balances[index]
             elif index in attesting_indices:
-                if spec.fork == LIGHTCLIENT and index in sync_committee_indices:
+                if spec.fork == LIGHTCLIENT_PATCH and index in sync_committee_indices:
                     # The sync committee reward has not been canceled, so the sync committee participants still earn it
                     assert state.balances[index] >= pre_state.balances[index]
                 else:

@@ -2,7 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.test.context import LIGHTCLIENT
+from eth2spec.test.context import LIGHTCLIENT_PATCH
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
@@ -160,7 +160,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
             continue
 
         if spec.is_in_inactivity_leak(state):
-            if spec.fork == LIGHTCLIENT:
+            if spec.fork == LIGHTCLIENT_PATCH:
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH - 1
             else:
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH

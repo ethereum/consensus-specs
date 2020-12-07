@@ -386,7 +386,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
-    'lightclient': LIGHTCLIENT_IMPORT,
+    'lightclient_patch': LIGHTCLIENT_IMPORT,
 }
 
 
@@ -453,7 +453,7 @@ class PySpecCommand(Command):
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
-            elif self.spec_fork == "lightclient":
+            elif self.spec_fork == "lightclient_patch":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md

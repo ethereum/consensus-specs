@@ -1,4 +1,4 @@
-from eth2spec.test.context import LIGHTCLIENT
+from eth2spec.test.context import LIGHTCLIENT_PATCH
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -91,7 +91,7 @@ def build_empty_block(spec, state, slot=None):
     empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     empty_block.parent_root = parent_block_root
 
-    if spec.fork == LIGHTCLIENT:
+    if spec.fork == LIGHTCLIENT_PATCH:
         empty_block.sync_committee_signature = spec.G2_INFINITY_POINT_SIG
 
     apply_randao_reveal(spec, state, empty_block)

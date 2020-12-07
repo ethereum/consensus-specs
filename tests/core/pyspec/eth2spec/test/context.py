@@ -2,7 +2,7 @@ import pytest
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.lightclient import spec as spec_lightclient
+from eth2spec.lightclient_patch import spec as spec_lightclient_patch
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
@@ -20,7 +20,7 @@ from importlib import reload
 def reload_specs():
     reload(spec_phase0)
     reload(spec_phase1)
-    reload(spec_lightclient)
+    reload(spec_lightclient_patch)
 
 
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
@@ -30,9 +30,9 @@ ConfigName = NewType("ConfigName", str)
 
 PHASE0 = SpecForkName('phase0')
 PHASE1 = SpecForkName('phase1')
-LIGHTCLIENT = SpecForkName('lightclient')
+LIGHTCLIENT_PATCH = SpecForkName('lightclient_patch')
 
-ALL_PHASES = (PHASE0, PHASE1, LIGHTCLIENT)
+ALL_PHASES = (PHASE0, PHASE1, LIGHTCLIENT_PATCH)
 
 MAINNET = ConfigName('mainnet')
 MINIMAL = ConfigName('minimal')
@@ -63,7 +63,7 @@ class SpecLightclient(Spec):
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     PHASE1: SpecPhase1
-    LIGHTCLIENT: SpecLightclient
+    LIGHTCLIENT_PATCH: SpecLightclient
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -346,16 +346,16 @@ def with_phases(phases, other_phases=None):
                 phase_dir[PHASE0] = spec_phase0
             if PHASE1 in available_phases:
                 phase_dir[PHASE1] = spec_phase1
-            if LIGHTCLIENT in available_phases:
-                phase_dir[LIGHTCLIENT] = spec_lightclient
+            if LIGHTCLIENT_PATCH in available_phases:
+                phase_dir[LIGHTCLIENT_PATCH] = spec_lightclient_patch
 
             # return is ignored whenever multiple phases are ran. If
             if PHASE0 in run_phases:
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if PHASE1 in run_phases:
                 ret = fn(spec=spec_phase1, phases=phase_dir, *args, **kw)
-            if LIGHTCLIENT in run_phases:
-                ret = fn(spec=spec_lightclient, phases=phase_dir, *args, **kw)
+            if LIGHTCLIENT_PATCH in run_phases:
+                ret = fn(spec=spec_lightclient_patch, phases=phase_dir, *args, **kw)
             return ret
         return wrapper
     return decorator
