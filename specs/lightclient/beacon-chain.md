@@ -21,7 +21,7 @@
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
-    - [`optional_fast_aggregate_verify`](#optional_fast_aggregate_verify)
+    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
@@ -114,10 +114,10 @@ class SyncCommittee(Container):
 
 ### `Predicates`
 
-#### `optional_fast_aggregate_verify`
+#### `eth2_fast_aggregate_verify`
 
 ```python
-def optional_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
     """
     If ``pubkeys`` is an empty list, the given ``signature`` should be a stub ``G2_INFINITY_POINT_SIG``.
     Otherwise, verify it with standard BLS FastAggregateVerify API.
@@ -192,7 +192,7 @@ def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
     participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert optional_fast_aggregate_verify(participant_pubkeys, signing_root, block.sync_committee_signature)
+    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, block.sync_committee_signature)
 
     # Reward sync committee participants
     participant_rewards = Gwei(0)
