@@ -111,6 +111,16 @@ class SyncCommittee(Container):
     pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE]
 ```
 
+## Upgrade from phase0
+
+```python
+def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
+    """
+    The light client patch copies over all phase0 fields, and initializes new fields with default values.
+    """
+    return BeaconState(**{k: getattr(pre, k) for k in pre.fields().keys()})
+```
+
 ## Helper functions
 
 ### `Predicates`

@@ -79,6 +79,8 @@ def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Ca
         # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
         # Decide based on performance/consistency results later.
         state = phases[PHASE1].upgrade_to_phase1(state)
+    elif spec.fork == LIGHTCLIENT_PATCH:  # not generalizing this just yet, unclear final spec fork/patch order.
+        state = phases[LIGHTCLIENT_PATCH].upgrade_to_lightclient_patch(state)
 
     return state
 
