@@ -111,7 +111,7 @@ jobs:
       - checkout
       - run:
           name: Check table of contents
-          command: sudo npm install -g doctoc && make check_toc
+          command: sudo npm install -g doctoc@2 && make check_toc
   codespell:
     docker:
       - image: circleci/python:3.8
@@ -120,7 +120,7 @@ jobs:
       - checkout
       - run:
           name: Check codespell
-          command: pip install codespell --user &&  make codespell
+          command: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
   lint:
     docker:
       - image: circleci/python:3.8
