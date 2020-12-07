@@ -28,6 +28,7 @@
   - [Block processing](#block-processing)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
+    - [Components of attestation deltas](#components-of-attestation-deltas)
     - [Final updates](#final-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -195,19 +196,48 @@ def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
     assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, block.sync_committee_signature)
 
     # Reward sync committee participants
-    participant_rewards = Gwei(0)
+    proposer_reward = Gwei(0)
     active_validator_count = uint64(len(get_active_validator_indices(state, get_current_epoch(state))))
     for participant_index in participant_indices:
         base_reward = get_base_reward(state, participant_index)
-        reward = Gwei(base_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
+        max_participant_reward = base_reward - base_reward // PROPOSER_REWARD_QUOTIENT
+        reward = Gwei(max_participant_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
         increase_balance(state, participant_index, reward)
-        participant_rewards += reward
+        proposer_reward += base_reward // PROPOSER_REWARD_QUOTIENT
 
     # Reward beacon proposer
-    increase_balance(state, get_beacon_proposer_index(state), Gwei(participant_rewards // PROPOSER_REWARD_QUOTIENT))
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
 ### Epoch processing
+
+#### Components of attestation deltas
+
+Changed with `cancel_base_rewards_per_epoch`.
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return inactivity reward/penalty deltas for each validator.
+    """
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    if is_in_inactivity_leak(state):
+        matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
+        matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
+        for index in get_eligible_validator_indices(state):
+            # If validator is performing optimally this cancels all rewards for a neutral balance
+            base_reward = get_base_reward(state, index)
+            # Cancel the base rewards except for sync committee rewards
+            cancel_base_rewards_per_epoch = BASE_REWARDS_PER_EPOCH - 1
+            penalties[index] += Gwei(cancel_base_rewards_per_epoch * base_reward - get_proposer_reward(state, index))
+            if index not in matching_target_attesting_indices:
+                effective_balance = state.validators[index].effective_balance
+                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
+
+    # No rewards associated with inactivity penalties
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    return rewards, penalties
+```
 
 #### Final updates
 
