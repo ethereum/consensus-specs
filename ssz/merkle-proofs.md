@@ -7,7 +7,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Helper functions](#helper-functions)
 - [Generalized Merkle tree index](#generalized-merkle-tree-index)
 - [SSZ object to index](#ssz-object-to-index)
