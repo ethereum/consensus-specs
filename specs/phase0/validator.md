@@ -8,7 +8,6 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
