@@ -6,7 +6,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Constants](#constants)
 - [Configuration](#configuration)
@@ -15,7 +14,8 @@
   - [Domain types](#domain-types)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
-    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`BeaconBlock`](#beaconblock)
+    - [`BeaconBlockHeader`](#beaconblockheader)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
     - [`SyncCommittee`](#synccommittee)
