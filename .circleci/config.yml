@@ -120,7 +120,7 @@ jobs:
       - checkout
       - run:
           name: Check codespell
-          command: pip install codespell --user &&  make codespell
+          command: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
   lint:
     docker:
       - image: circleci/python:3.8
