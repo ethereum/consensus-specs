@@ -225,8 +225,8 @@ def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
     for participant_index in participant_indices:
         base_reward = get_base_reward(state, participant_index)
         max_participant_reward = base_reward - base_reward // PROPOSER_REWARD_QUOTIENT
-        participant_reward = Gwei(max_participant_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
-        increase_balance(state, participant_index, participant_reward)
+        reward = Gwei(max_participant_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
+        increase_balance(state, participant_index, reward)
         proposer_reward += base_reward // PROPOSER_REWARD_QUOTIENT
 
     # Reward beacon proposer
