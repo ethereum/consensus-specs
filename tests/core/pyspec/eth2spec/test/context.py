@@ -51,8 +51,7 @@ class SpecPhase0(Spec):
 
 
 class SpecPhase1(Spec):
-    def upgrade_to_phase1(self, state: spec_phase0.BeaconState) -> spec_phase1.BeaconState:
-        ...
+    ...
 
 
 class SpecLightclient(Spec):

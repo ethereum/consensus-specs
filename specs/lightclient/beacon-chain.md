@@ -26,6 +26,7 @@
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
   - [Block processing](#block-processing)
+    - [Block header](#block-header)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Components of attestation deltas](#components-of-attestation-deltas)
@@ -111,16 +112,6 @@ class SyncCommittee(Container):
     pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE]
 ```
 
-## Upgrade from phase0
-
-```python
-def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
-    """
-    The light client patch copies over all phase0 fields, and initializes new fields with default values.
-    """
-    return BeaconState(**{k: getattr(pre, k) for k in pre.fields().keys()})
-```
-
 ## Helper functions
 
 ### `Predicates`
@@ -187,8 +178,42 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    phase0.process_block(state, block)
+    process_block_header(state, block)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_operations(state, block.body)
     process_sync_committee(state, block)
+```
+
+#### Block header
+
+Process `sync_committee_bits` and `sync_committee_signature` fields.
+
+```python
+def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
+    # Verify that the slots match
+    assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
+    # Verify that proposer index is the correct index
+    assert block.proposer_index == get_beacon_proposer_index(state)
+    # Verify that the parent matches
+    assert block.parent_root == hash_tree_root(state.latest_block_header)
+    # Cache current block as the new latest block
+    state.latest_block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=Bytes32(),  # Overwritten in the next process_slot call
+        body_root=hash_tree_root(block.body),
+        # Lightclient patch fields
+        sync_committee_bits=block.sync_committee_bits,
+        sync_committee_signature=block.sync_committee_signature,
+    )
+
+    # Verify proposer is not slashed
+    proposer = state.validators[block.proposer_index]
+    assert not proposer.slashed
 ```
 
 #### Sync committee processing

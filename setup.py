@@ -460,6 +460,7 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/lightclient/beacon-chain.md
+                    specs/lightclient/lightclient-fork.md
                 """
                 # TODO: add specs/lightclient/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
