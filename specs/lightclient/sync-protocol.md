@@ -39,8 +39,8 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_INDEX` | `Index(BeaconState, 'finalized_checkpoint', 'root')` |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `Index(BeaconState, 'next_sync_committee')` |
+| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
+| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` |
 
 ## Configuration
 
@@ -78,10 +78,10 @@ class LightClientUpdate(Container):
     header: BeaconBlockHeader
     # Next sync committee corresponding to the header
     next_sync_committee: SyncCommittee
-    next_sync_committee_branch: Vector[Bytes32, log2(NEXT_SYNC_COMMITTEE_INDEX)]
+    next_sync_committee_branch: Vector[Bytes32, ceillog2(NEXT_SYNC_COMMITTEE_INDEX)]
     # Finality proof for the update header
     finality_header: BeaconBlockHeader
-    finality_branch: Vector[Bytes32, log2(FINALIZED_ROOT_INDEX)]
+    finality_branch: Vector[Bytes32, ceillog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
@@ -116,28 +116,28 @@ def is_valid_light_client_update(snapshot: LightClientSnapshot, update: LightCli
     # Verify update header root is the finalized root of the finality header, if specified
     if update.finality_header == BeaconBlockHeader():
         signed_header = update.header
-        assert update.finality_branch == [ZERO_HASH for _ in range(log2(FINALIZED_ROOT_INDEX))]
+        assert update.finality_branch == [Bytes32() for _ in range(ceillog2(FINALIZED_ROOT_INDEX))]
     else:
         signed_header = update.finality_header
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.header),
             branch=update.finality_branch,
-            depth=log2(FINALIZED_ROOT_INDEX),
-            index=FINALIZED_ROOT_INDEX % 2**log2(FINALIZED_ROOT_INDEX),
+            depth=ceillog2(FINALIZED_ROOT_INDEX),
+            index=FINALIZED_ROOT_INDEX % 2**ceillog2(FINALIZED_ROOT_INDEX),
             root=update.finality_header.state_root,
         )
 
     # Verify update next sync committee if the update period incremented
     if update_period == snapshot_period:
         sync_committee = snapshot.current_sync_committee
-        assert update.next_sync_committee_branch == [ZERO_HASH for _ in range(log2(NEXT_SYNC_COMMITTEE_INDEX))]
+        assert update.next_sync_committee_branch == [Bytes32() for _ in range(ceillog2(NEXT_SYNC_COMMITTEE_INDEX))]
     else:
         sync_committee = snapshot.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=log2(NEXT_SYNC_COMMITTEE_INDEX),
-            index=NEXT_SYNC_COMMITTEE_INDEX % 2**log2(NEXT_SYNC_COMMITTEE_INDEX),
+            depth=ceillog2(NEXT_SYNC_COMMITTEE_INDEX),
+            index=NEXT_SYNC_COMMITTEE_INDEX % 2**ceillog2(NEXT_SYNC_COMMITTEE_INDEX),
             root=update.header.state_root,
         )
 
@@ -173,11 +173,14 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
     assert is_valid_light_client_update(store.snapshot, update)
     store.valid_updates.append(update)
 
-    if sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2 and update.header != update.finality_header:
+    if (
+        sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2
+        and update.header != update.finality_header
+    ):
         # Apply update if 2/3 quorum is reached and we have a finality proof
         apply_light_client_update(store, update)
         store.valid_updates = []
-    elif current_slot > snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
+    elif current_slot > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
         # Forced best update when the update timeout has elapsed
         apply_light_client_update(store, max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)))
         store.valid_updates = []
