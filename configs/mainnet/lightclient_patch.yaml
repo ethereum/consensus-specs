@@ -1,6 +1,6 @@
 # Mainnet preset - lightclient patch
 
-CONFIG_NAME: "minimal"
+CONFIG_NAME: "mainnet"
 
 # ---------------------------------------------------------------
 
