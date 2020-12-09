@@ -47,17 +47,18 @@
     - [Updated `process_attestation`](#updated-process_attestation)
     - [`update_pending_votes`](#update_pending_votes)
     - [`process_shard_header`](#process_shard_header)
-  - [Shard transition processing](#shard-transition-processing)
   - [Epoch transition](#epoch-transition)
     - [Pending headers](#pending-headers)
-    - [Phase 1 final updates](#phase-1-final-updates)
     - [Custody game updates](#custody-game-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
 
-This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding, based on the ideas [here](https://hackmd.io/G-Iy5jqyT7CXWEz8Ssos8g) and more broadly [here](https://arxiv.org/abs/1809.09044), using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
+This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding,
+based on the ideas [here](https://hackmd.io/G-Iy5jqyT7CXWEz8Ssos8g) and more broadly [here](https://arxiv.org/abs/1809.09044),
+using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
+
 
 ## Custom types
 
@@ -143,6 +144,7 @@ class AttestationData(Container):
 
 ```python
 class BeaconBlock(phase0.BeaconBlock):
+    # insert phase 0 fields
     shard_headers: List[SignedShardHeader, MAX_SHARD_HEADERS]
 ```
 
@@ -458,8 +460,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 #### `update_pending_votes`
 
 ```python
-def update_pending_votes(state: BeaconState,
-                         attestation: Attestation) -> None:
+def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
     # Find and update the PendingShardHeader object, invalid block if pending header not in state
     if compute_epoch_at_slot(attestation.data.slot) == get_current_epoch(state):
         pending_headers = state.current_epoch_pending_shard_headers
@@ -541,9 +542,10 @@ def process_shard_header(state: BeaconState,
     ))
 ```
 
-The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values), the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 - l)`, where `MAX_DEGREE` is the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`. The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
-
-### Shard transition processing
+The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
+the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 - l)`,
+where `MAX_DEGREE` is the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`.
+The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
 
 ### Epoch transition
 
@@ -667,7 +669,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
 ```
 
 ```python
-def reset_pending_headers(state: BeaconState):
+def reset_pending_headers(state: BeaconState) -> None:
     state.previous_epoch_pending_shard_headers = state.current_epoch_pending_shard_headers
     state.current_epoch_pending_shard_headers = []
     # Add dummy "empty" PendingShardHeader (default vote for if no shard header available)
