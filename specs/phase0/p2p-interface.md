@@ -94,6 +94,7 @@ It consists of four main sections:
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
     - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
+    - [Why must the proposer signature be checked when backfilling blocks in the database?](#why-must-the-proposer-signature-be-checked-when-backfilling-blocks-in-the-database)
     - [What's the effect of empty slots on the sync algorithm?](#whats-the-effect-of-empty-slots-on-the-sync-algorithm)
   - [Discovery](#discovery)
     - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
@@ -754,7 +755,10 @@ and clients MUST support serving requests of blocks on this range.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
 MUST backfill the local block database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS`
-to be compliant with `BlocksByRange` requests.
+to be compliant with `BlocksByRange` requests. To safely perform such a
+backfill of blocks to the recent state, the node MUST validate both (1) the
+proposer signatures and (2) that the blocks form a valid chain up to the most
+recent block referenced in the weak subjectivity state.
 
 Clients MUST respond with at least the first block that exists in the range, if they have it,
 and no more than `MAX_REQUEST_BLOCKS` blocks.
@@ -1426,6 +1430,20 @@ MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
 
 Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024` (~5 months).
 
+### Why must the proposer signature be checked when backfilling blocks in the database?
+
+When backfilling blocks in a database from a know safe block/state (e.g. when starting from a weak subjectivity state),
+the node not only must ensure the `BeaconBlock`s form a chain to the known safe block,
+but also must check that the proposer signature is valid in the `SignedBeaconBlock` wrapper.
+
+This is because the signature is not part of the `BeaconBlock` hash chain, and
+thus could be corrupted by an attacker serving valid `BeaconBlock`s but invalid
+signatures contained in `SignedBeaconBlock`.
+
+Although in this particular use case this does not represent a decay in safety
+(due to the assumptions of starting at a weak subjectivity checkpoint), it
+would represent invalid historic data and could be unwittingly transmitted to
+additional nodes.
 
 ### What's the effect of empty slots on the sync algorithm?
 
