@@ -37,6 +37,7 @@ We define the following Python custom types for type hinting and readability:
 | `MAX_SHARDS` | `uint64(2**10)` (= 1024) | Theoretical max shard count (used to determine data structure sizes) |
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 2) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
+| `MAX_SHARD_HEADERS` | `MAX_SHARDS * 4` | |
 
 ### Shard block configs
 
@@ -50,6 +51,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
+| `G2_ONE` | The G2 generator |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
 These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X - w ** revbit(a))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w` is the root of unity and `revbit` is the reverse-bit-order function. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
@@ -92,6 +94,13 @@ class AttestationData(Container):
     shard_header_root: Root
 ```
 
+### `BeaconBlock`
+
+```python
+class BeaconBlock(phase0.BeaconBlock):
+    shard_headers: List[Signed[ShardHeader], MAX_SHARD_HEADERS]
+```
+
 ### `BeaconState`
 
 ```python
@@ -100,6 +109,7 @@ class BeaconState(phase0.BeaconState):
     previous_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
     confirmed_header_root: Root
     shard_gasprice: uint64
+    current_epoch_start_shard: Shard
 ```
 
 ## New containers
@@ -201,7 +211,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
     Return the number of committees in each slot for the given ``epoch``.
     """
     return max(uint64(1), min(
-        get_active_shard_count(state),
+        get_active_shard_count(state, epoch),
         uint64(len(get_active_validator_indices(state, epoch))) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
     ))
 ```
@@ -209,7 +219,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> uint64:
 #### `get_active_shard_count`
 
 ```python
-def get_active_shard_count(state: BeaconState) -> uint64:
+def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of active shards.
     Note that this puts an upper bound on the number of committees per slot.
@@ -231,7 +241,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
         indices=active_validator_indices,
         seed=seed,
         index=shard,
-        count=get_active_shard_count(beacon_state),
+        count=get_active_shard_count(beacon_state, epoch),
     )
 ```
 
@@ -245,21 +255,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     epoch = compute_epoch_at_slot(slot)
     committee = get_shard_committee(beacon_state, epoch, shard)
     seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_COMMITTEE) + uint_to_bytes(slot))
-    r = bytes_to_uint64(seed[:8])
-    return committee[r % len(committee)]
-```
-
-#### `get_committee_count_delta`
-
-```python
-def get_committee_count_delta(state: BeaconState, start_slot: Slot, stop_slot: Slot) -> uint64:
-    """
-    Return the sum of committee counts in range ``[start_slot, stop_slot)``.
-    """
-    return uint64(sum(
-        get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(slot)))
-        for slot in range(start_slot, stop_slot)
-    ))
+    return compute_proposer_index(state, committee, seed)
 ```
 
 #### `get_start_shard`
@@ -270,25 +266,23 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     Return the start shard at ``slot``.
     """
     current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
-    active_shard_count = get_active_shard_count(state)
-    if current_epoch_start_slot == slot:
-        return state.current_epoch_start_shard
-    elif slot > current_epoch_start_slot:
+    shard = state.current_epoch_start_shard
+    if slot > current_epoch_start_slot:
         # Current epoch or the next epoch lookahead
-        shard_delta = get_committee_count_delta(state, start_slot=current_epoch_start_slot, stop_slot=slot)
-        return Shard((state.current_epoch_start_shard + shard_delta) % active_shard_count)
-    else:
+        for _slot in range(current_epoch_start_slot, slot):
+            committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(_slot)))
+            active_shard_count = get_active_shard_count(state, compute_epoch_at_slot(Slot(_slot)))
+            shard = (shard + committee_count) % active_shard_count
+        return Shard(shard)
+    elif slot < current_epoch_start_slot:
         # Previous epoch
-        shard_delta = get_committee_count_delta(state, start_slot=slot, stop_slot=current_epoch_start_slot)
-        max_committees_per_slot = active_shard_count
-        max_committees_in_span = max_committees_per_slot * (current_epoch_start_slot - slot)
-        return Shard(
+        for _slot in list(range(slot, current_epoch_start_slot))[::-1]:
+            committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(_slot)))
+            active_shard_count = get_active_shard_count(state, compute_epoch_at_slot(Slot(_slot)))
             # Ensure positive
-            (state.current_epoch_start_shard + max_committees_in_span - shard_delta)
-            % active_shard_count
-        )
+            shard = (shard + active_shard_count - committee_count) % active_shard_count
+    return Shard(shard)
 ```
-
 
 ### Predicates
 
@@ -320,6 +314,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
+    # Limit is dynamic based on active shard count
+    assert len(body.shard_headers) <= 4 * get_active_shard_count(state, get_current_epoch(state))
+    for_ops(body.shard_headers, process_shard_header)
 
     # See custody game spec.
     process_custody_game_operations(state, body)
@@ -349,18 +346,16 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```python
 def update_pending_votes(state: BeaconState,
                          attestation: Attestation) -> None:
-    if slot_to_epoch(slot) == get_current_epoch(state):
+    if compute_epoch_at_slot(slot) == get_current_epoch(state):
         pending_headers = state.current_epoch_pending_headers
     else:
         pending_headers = state.previous_epoch_pending_headers
     # Create or update the PendingShardHeader object
-    pending_header_index = None
-    for index, header in enumerate(pending_headers):
+    pending_header = None
+    for header in pending_headers:
         if header.root == attestation.data.shard_header_root:
-            pending_header_index = index
-            break
-    assert pending_header_index is not None
-    pending_header = pending_headers[pending_header_index]
+            pending_header = header
+    assert pending_header is not None
     assert pending_header.slot == attestation.data.slot + 1
     assert pending_header.shard == compute_shard_from_committee_index(
         state,
@@ -388,11 +383,11 @@ def update_pending_votes(state: BeaconState,
             pending_header.confirmed = True
 ```
 
-#### `process_shard_data_commitment`
+#### `process_shard_header`
 
 ```python
-def process_shard_data_commitment(state: BeaconState,
-                                  signed_header: Signed[ShardDataHeader]) -> None:
+def process_shard_header(state: BeaconState,
+                         signed_header: Signed[ShardDataHeader]) -> None:
     header = signed_header.message
     header_root = hash_tree_root(header)
     # Verify signature
@@ -408,7 +403,7 @@ def process_shard_data_commitment(state: BeaconState,
         bls.Pairing(header.commitment, G2_ONE)
     )
     # Get the correct pending header list
-    if slot_to_epoch(header.slot) == get_current_epoch(state):
+    if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
         pending_headers = state.current_epoch_pending_headers
     else:
         pending_headers = state.previous_epoch_pending_headers
@@ -430,31 +425,6 @@ def process_shard_data_commitment(state: BeaconState,
 ```
 
 ### Shard transition processing
-
-
-##### New default validator for deposits
-
-```python
-def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
-    amount = deposit.data.amount
-    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    next_custody_secret_to_reveal = get_custody_period_for_validator(
-        ValidatorIndex(len(state.validators)),
-        get_current_epoch(state),
-    )
-
-    return Validator(
-        pubkey=deposit.data.pubkey,
-        withdrawal_credentials=deposit.data.withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
-        next_custody_secret_to_reveal=next_custody_secret_to_reveal,
-        all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
-    )
-```
 
 ### Epoch transition
 
