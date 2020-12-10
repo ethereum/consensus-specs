@@ -22,87 +22,28 @@
 
 ## Introduction
 
-This document is the beacon chain fork choice spec for part of Ethereum 2.0 Phase 1.
+This document is the beacon chain fork choice spec for part of Ethereum 2.0 Phase 1. The only change that we add from phase 0 is that we add a concept of "data dependencies"; a block is only eligible for consideration in the fork choice after a data availability test has been successfully completed for all dependencies. The "root" of a shard block for data dependency purposes is considered to be a DataCommitment object, which is a pair of a Kate commitment and a length.
 
-### Updated data structures
-
-#### Extended `Store`
+## Dependency calculation
 
 ```python
-@dataclass
-class Store(object):
-    time: uint64
-    genesis_time: uint64
-    justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
-    best_justified_checkpoint: Checkpoint
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    shard_stores: Dict[Shard, ShardStore] = field(default_factory=dict)
-```
-
-### New data structures
-
-#### `ShardLatestMessage`
-
-```python
-@dataclass(eq=True, frozen=True)
-class ShardLatestMessage(object):
-    epoch: Epoch
-    root: Root
-```
-
-#### `ShardStore`
-
-```python
-@dataclass
-class ShardStore:
-    shard: Shard
-    signed_blocks: Dict[Root, SignedShardBlock] = field(default_factory=dict)
-    block_states: Dict[Root, ShardState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, ShardLatestMessage] = field(default_factory=dict)
-```
-
-### Updated helpers
-
-#### Updated `get_forkchoice_store`
-
-```python
-def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
-    assert anchor_block.state_root == hash_tree_root(anchor_state)
-    anchor_root = hash_tree_root(anchor_block)
-    anchor_epoch = get_current_epoch(anchor_state)
-    justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    return Store(
-        time=anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot,
-        genesis_time=anchor_state.genesis_time,
-        justified_checkpoint=justified_checkpoint,
-        finalized_checkpoint=finalized_checkpoint,
-        best_justified_checkpoint=justified_checkpoint,
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: anchor_state.copy()},
-        checkpoint_states={justified_checkpoint: anchor_state.copy()},
-        shard_stores={
-            Shard(shard): get_forkchoice_shard_store(anchor_state, Shard(shard))
-            for shard in range(get_active_shard_count(anchor_state))
-        }
+def get_new_dependencies(state: BeaconState) -> Set[DataCommitment]:
+    return set(
+        # Already confirmed during this epoch
+        [c.commitment for c in state.current_epoch_pending_headers if c.confirmed] +
+        # Already confirmed during previous epoch
+        [c.commitment for c in state.previous_epoch_pending_headers if c.confirmed] +
+        # Confirmed in the epoch before the previous
+        [c for c in shard for shard in state.most_recent_confirmed_commitments if c != DataCommitment()]
     )
 ```
 
-#### Updated `update_latest_messages`
-
 ```python
-def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
-    target = attestation.data.target
-    beacon_block_root = attestation.data.beacon_block_root
-    # TODO: separate shard chain vote
-    shard = attestation.data.shard
-    for i in attesting_indices:
-        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
-            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
-            shard_latest_message = ShardLatestMessage(epoch=target.epoch, root=attestation.data.shard_head_root)
-            store.shard_stores[shard].latest_messages[i] = shard_latest_message
+def get_all_dependencies(store: Store, block: BeaconBlock) -> Set[DataCommitment]:
+    if block.slot < SHARDING_FORK_SLOT:
+        return set()
+    else:
+        latest = get_new_dependencies(store.block_states[hash_tree_root(block)])
+        older = get_all_dependencies(store, store.blocks[block.parent_root])
+        return latest.union(older)
 ```
