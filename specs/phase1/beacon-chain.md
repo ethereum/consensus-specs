@@ -108,7 +108,7 @@ class BeaconBlock(phase0.BeaconBlock):
 class BeaconState(phase0.BeaconState):
     current_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
     previous_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
-    two_epochs_ago_confirmed_headers: Vector[Vector[PendingShardHeader, SLOTS_PER_EPOCH], MAX_SHARDS]
+    most_recent_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
 ```
@@ -117,6 +117,16 @@ class BeaconState(phase0.BeaconState):
 
 The following containers are new in Phase 1.
 
+### `DataCommitment`
+
+```python
+class DataCommitment(Container):
+    # Kate commitment to the data
+    point: BLSCommitment
+    # Length of the data in samples
+    length: length
+```
+
 ### `ShardHeader`
 
 ```python
@@ -124,10 +134,8 @@ class ShardHeader(Container):
     # Slot and shard that this header is intended for
     slot: Slot
     shard: Shard
-    # Kate commitment to the data
-    commitment: BLSCommitment
-    # Length of the data in samples
-    length: uint64
+    # The actual data commitment
+    commitment: DataCommitment
     # Proof of the length (more precisely, proof that values at
     # positions >= the length all equal zero)
     length_proof: BLSCommitment
@@ -400,8 +408,8 @@ def process_shard_header(state: BeaconState,
     )
     # Verify length of the header
     assert (
-        bls.Pairing(header.length_proof, SIZE_CHECK_POINTS[header.length]) ==
-        bls.Pairing(header.commitment, G2_ONE)
+        bls.Pairing(header.length_proof, SIZE_CHECK_POINTS[header.commitment.length]) ==
+        bls.Pairing(header.commitment.point, G2_ONE)
     )
     # Get the correct pending header list
     if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
@@ -419,7 +427,6 @@ def process_shard_header(state: BeaconState,
         shard=header.shard,
         commitment=header.commitment,
         root=header_root,
-        length=header.length,
         votes=Bitlist[MAX_COMMITTEE_SIZE]([0] * committee_length),
         confirmed=False
     ))
@@ -499,10 +506,10 @@ def process_pending_headers(state: BeaconState):
                 candidates[winning_index].confirmed = True
     for slot in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
-            state.two_epochs_ago_confirmed_headers[shard][slot] = PendingHeader()
+            state.most_recent_confirmed_commitments[shard][slot] = DataCommitment()
     for c in state.previous_epoch_pending_headers:
         if c.confirmed:
-            state.two_epochs_ago_confirmed_headers[c.shard][c.slot % SLOTS_PER_EPOCH] = c
+            state.most_recent_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
 ```            
 
 ```python
@@ -520,13 +527,13 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
                 # Charge EIP 1559 fee
                 proposer = get_shard_proposer(state, slot, shard)
                 fee = (
-                    (state.shard_gasprice * candidates[i].length) //
+                    (state.shard_gasprice * candidates[i].commitment.length) //
                     TARGET_SAMPLES_PER_BLOCK
                 )
                 decrease_balance(state, proposer, fee)
                 new_gasprice = compute_updated_gasprice(
                     new_gasprice,
-                    candidates[i].length,
+                    candidates[i].commitment.length,
                     adjustment_quotient
                 )
     state.shard_gasprice = new_gasprice
@@ -556,9 +563,8 @@ def reset_pending_headers(state: BeaconState):
             state.current_epoch_pending_headers.append(PendingShardHeader(
                 slot=slot,
                 shard=shard,
-                commitment=BLSCommitment(),
+                commitment=DataCommitment(),
                 root=Root(),
-                length=0,
                 votes=Bitlist[MAX_COMMITTEE_SIZE]([0] * committee_length),
                 confirmed=False
             ))
