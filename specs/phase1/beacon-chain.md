@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding.
+This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding, based on the ideas [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/r1XzqYIOv) and more broadly [here](https://arxiv.org/abs/1809.09044), using Kate commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
 ## Custom types
 
@@ -30,16 +30,13 @@ We define the following Python custom types for type hinting and readability:
 
 ## Configuration
 
-Configuration is not namespaced. Instead it is strictly an extension;
- no constants of phase 0 change, but new constants are adopted for changing behaviors.
-
 ### Misc
 
-| Name | Value |
-| - | - | 
-| `MAX_SHARDS` | `uint64(2**10)` (= 1024) |
-| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 2) | 
+| Name | Value | Notes |
+| - | - | - |
+| `MAX_SHARDS` | `uint64(2**10)` (= 1024) | Theoretical max shard count (used to determine data structure sizes) |
+| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 2) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 
 ### Shard block configs
 
@@ -55,13 +52,13 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | - | - |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
-These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X - w ** revbit(a))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w` is the root of unity and `revbit` is the reverse-bit-order function.
+These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X - w ** revbit(a))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w` is the root of unity and `revbit` is the reverse-bit-order function. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
 
 ### Gwei values
 
 | Name | Value | Unit | Description |
 | - | - | - | - |
-| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | Max gasprice charged for an TARGET-sized shard block |  
+| `MAX_GASPRICE` | `Gwei(2**24)` (= 16,777,216) | Gwei | Max gasprice charged for an TARGET-sized shard block |  
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for an TARGET-sized shard block |
 
 ### Time parameters
@@ -74,7 +71,7 @@ These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_P
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_HEADER` | 0x40 |
+| `DOMAIN_SHARD_HEADER` | `DomainType('0x80000000')` |
 
 ## Updated containers
 
@@ -170,14 +167,14 @@ def compute_shard_from_committee_index(state: BeaconState, index: CommitteeIndex
 #### `compute_updated_gasprice`
 
 ```python
-def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64) -> Gwei:
+def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64, adjustment_quotient: uint64) -> Gwei:
     if shard_block_length > TARGET_SAMPLES_PER_BLOCK:
         delta = (prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
-                 // TARGET_SAMPLES_PER_BLOCK // GASPRICE_ADJUSTMENT_COEFFICIENT)
+                 // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
         return min(prev_gasprice + delta, MAX_GASPRICE)
     else:
         delta = (prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
-                 // TARGET_SAMPLES_PER_BLOCK // GASPRICE_ADJUSTMENT_COEFFICIENT)
+                 // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
         return max(prev_gasprice, MIN_GASPRICE + delta) - delta
 ```
 
@@ -541,6 +538,7 @@ def process_pending_headers(state: BeaconState):
 ```python
 def charge_confirmed_header_fees(state: BeaconState) -> None:
     new_gasprice = state.shard_gasprice
+    adjustment_quotient = get_active_shard_count(state) * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     for slot in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
             confirmed_candidates = [
@@ -558,7 +556,8 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
                 decrease_balance(state, proposer, fee)
                 new_gasprice = compute_updated_gasprice(
                     new_gasprice,
-                    candidates[i].length
+                    candidates[i].length,
+                    adjustment_quotient
                 )
     state.shard_gasprice = new_gasprice
 ```
