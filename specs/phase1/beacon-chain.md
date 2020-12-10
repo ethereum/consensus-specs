@@ -26,7 +26,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `Shard` | `uint64` | a shard number |
+| `Shard` | `uint64` | A shard number |
+| `BLSCommitment` | `bytes48` | A G1 curve point |
 
 ## Configuration
 
