@@ -108,7 +108,7 @@ class BeaconBlock(phase0.BeaconBlock):
 class BeaconState(phase0.BeaconState):
     current_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
     previous_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
-    confirmed_header_root: Root
+    two_epochs_ago_confirmed_headers: Vector[Vector[PendingShardHeader, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
 ```
@@ -497,13 +497,12 @@ def process_pending_headers(state: BeaconState):
                     # If no votes, zero wins
                     winning_index = [c.root for c in candidates].index(Root())
                 candidates[winning_index].confirmed = True
-    confirmed_headers = Vector[
-        Vector[PendingShardHeader, SLOTS_PER_EPOCH], MAX_SHARDS
-    ]()
+    for slot in range(SLOTS_PER_EPOCH):
+        for shard in range(SHARD_COUNT):
+            state.two_epochs_ago_confirmed_headers[shard][slot] = PendingHeader()
     for c in state.previous_epoch_pending_headers:
         if c.confirmed:
-            confirmed_headers[c.shard][c.slot % SLOTS_PER_EPOCH] = c
-    state.confirmed_header_root = hash_tree_root(confirmed_headers)
+            state.two_epochs_ago_confirmed_headers[c.shard][c.slot % SLOTS_PER_EPOCH] = c
 ```            
 
 ```python
