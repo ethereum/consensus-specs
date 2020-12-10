@@ -17,6 +17,8 @@
     - [`LightClientSnapshot`](#lightclientsnapshot)
     - [`LightClientUpdate`](#lightclientupdate)
     - [`LightClientStore`](#lightclientstore)
+- [Helper functions](#helper-functions)
+  - [`get_subtree_index`](#get_subtree_index)
 - [Light client state updates](#light-client-state-updates)
     - [`is_valid_light_client_update`](#is_valid_light_client_update)
     - [`apply_light_client_update`](#apply_light_client_update)
@@ -78,10 +80,10 @@ class LightClientUpdate(Container):
     header: BeaconBlockHeader
     # Next sync committee corresponding to the header
     next_sync_committee: SyncCommittee
-    next_sync_committee_branch: Vector[Bytes32, ceillog2(NEXT_SYNC_COMMITTEE_INDEX)]
+    next_sync_committee_branch: Vector[Bytes32, NEXT_SYNC_COMMITTEE_INDEX.bit_length()]
     # Finality proof for the update header
     finality_header: BeaconBlockHeader
-    finality_branch: Vector[Bytes32, ceillog2(FINALIZED_ROOT_INDEX)]
+    finality_branch: Vector[Bytes32, FINALIZED_ROOT_INDEX.bit_length()]
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
@@ -95,6 +97,15 @@ class LightClientUpdate(Container):
 class LightClientStore(Container):
     snapshot: LightClientSnapshot
     valid_updates: List[LightClientUpdate, MAX_VALID_LIGHT_CLIENT_UPDATES]
+```
+
+## Helper functions
+
+### `get_subtree_index`
+
+```python
+def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
+    return uint64(generalized_index % 2**((generalized_index).bit_length()))
 ```
 
 ## Light client state updates
@@ -116,28 +127,28 @@ def is_valid_light_client_update(snapshot: LightClientSnapshot, update: LightCli
     # Verify update header root is the finalized root of the finality header, if specified
     if update.finality_header == BeaconBlockHeader():
         signed_header = update.header
-        assert update.finality_branch == [Bytes32() for _ in range(ceillog2(FINALIZED_ROOT_INDEX))]
+        assert update.finality_branch == [Bytes32() for _ in range(FINALIZED_ROOT_INDEX.bit_length())]
     else:
         signed_header = update.finality_header
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.header),
             branch=update.finality_branch,
-            depth=ceillog2(FINALIZED_ROOT_INDEX),
-            index=FINALIZED_ROOT_INDEX % 2**ceillog2(FINALIZED_ROOT_INDEX),
+            depth=FINALIZED_ROOT_INDEX.bit_length(),
+            index=get_subtree_index(FINALIZED_ROOT_INDEX),
             root=update.finality_header.state_root,
         )
 
     # Verify update next sync committee if the update period incremented
     if update_period == snapshot_period:
         sync_committee = snapshot.current_sync_committee
-        assert update.next_sync_committee_branch == [Bytes32() for _ in range(ceillog2(NEXT_SYNC_COMMITTEE_INDEX))]
+        assert update.next_sync_committee_branch == [Bytes32() for _ in range(NEXT_SYNC_COMMITTEE_INDEX.bit_length())]
     else:
         sync_committee = snapshot.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=ceillog2(NEXT_SYNC_COMMITTEE_INDEX),
-            index=NEXT_SYNC_COMMITTEE_INDEX % 2**ceillog2(NEXT_SYNC_COMMITTEE_INDEX),
+            depth=NEXT_SYNC_COMMITTEE_INDEX.bit_length(),
+            index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
             root=update.header.state_root,
         )
 
