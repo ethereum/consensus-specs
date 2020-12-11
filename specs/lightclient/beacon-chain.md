@@ -9,6 +9,7 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
 - [Configuration](#configuration)
+  - [Constants](#constants-1)
   - [Misc](#misc)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
@@ -47,13 +48,18 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 ## Configuration
 
+### Constants
+
+| Name | Value |
+| - | - |
+| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+
 ### Misc
 
 | Name | Value |
 | - | - | 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1024) |
 | `SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE` | `uint64(2**6)` (= 64) |
-| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ### Time parameters
 
