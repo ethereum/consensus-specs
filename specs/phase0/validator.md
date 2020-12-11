@@ -16,7 +16,9 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [BLS public key](#bls-public-key)
-    - [BLS withdrawal key](#bls-withdrawal-key)
+    - [Withdrawal credentials](#withdrawal-credentials)
+      - [BLS key credentials](#bls-key-credentials)
+      - [Eth1 address credentials](#eth1-address-credentials)
   - [Submit deposit](#submit-deposit)
   - [Process deposit](#process-deposit)
   - [Validator index](#validator-index)
@@ -101,14 +103,42 @@ A validator must initialize many parameters locally before submitting a deposit 
 
 Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BLS12-381 curve](https://z.cash/blog/new-snark-curve). A private key, `privkey`, must be securely generated along with the resultant `pubkey`. This `privkey` must be "hot", that is, constantly available to sign data throughout the lifetime of the validator.
 
-#### BLS withdrawal key
+#### Withdrawal credentials
 
-A secondary withdrawal private key, `withdrawal_privkey`, must also be securely generated along with the resultant `withdrawal_pubkey`. This `withdrawal_privkey` does not have to be available for signing during the normal lifetime of a validator and can live in "cold storage".
+The `withdrawal_credentials` ultimately control the deposited ETH once the
+validator has exited and is withdrawable. The 0th byte of this 32-byte field,
+called the "withdrawal prefix" defines the withdrawal credential version
+while the remaining 31 bytes define the version-specific content.
 
-The validator constructs their `withdrawal_credentials` via the following:
+The following withdrawal credentials versions are currently supported. The
+validator must choose and construct a version for the `withdrawal_credentials` field.
 
-* Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`.
-* Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
+##### BLS key credentials
+
+BLS withdrawal credentials are controlled by a secondary withdrawal BLS private key, `bls_withdrawal_privkey`.
+This key is securely generated along with the resultant `bls_withdrawal_pubkey`.
+This `withdrawal_privkey` does not have to be available for signing during
+the normal lifetime of a validator and can live in "cold storage".
+
+The validator constructs `withdrawal_credentials` as the following:
+* Set `withdrawal_credentials[:1] = BLS_WITHDRAWAL_PREFIX`.
+* Set `withdrawal_credentials[1:] = hash(bls_withdrawal_pubkey)[1:]`.
+
+##### Eth1 address credentials
+
+Eth1 address credentials are controlled by an eth1 address. This can be an either an externally owned account or a contract.
+
+The withdrawal to the address specified will be a normal ETH transfer (with no payload other than the validator's ETH)
+triggered by an eth1 transaction that will handle gas price/limit and payment of fees.
+
+As long as such a withdrawal account/contract can receive ETH transfers,
+the future withdrawal protocol is agnostic to all other implementation details.
+
+The validator selects a 20-byte eth1 address, `eth1_withdrawal_address`, and constructs `withdrawal_credentials` as the following:
+* Set `withdrawal_credentials[:1] = ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+* Set `withdrawal_credentials[12:] = eth1_withdrawal_address`.
+
+*Note*: Bytes `withdrawal_credentials[1:12]` remain the default `0x00` value.
 
 ### Submit deposit
 
