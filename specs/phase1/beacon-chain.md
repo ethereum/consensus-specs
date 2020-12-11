@@ -141,6 +141,11 @@ class BeaconBlock(phase0.BeaconBlock):
 
 ```python
 class BeaconState(phase0.BeaconState):
+    # Updated fields
+    latest_block_header: BeaconBlockHeader
+    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    # New fields
     current_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
     previous_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
     most_recent_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
