@@ -96,6 +96,8 @@ class BeaconBlockHeader(phase0.BeaconBlockHeader):
 
 ```python
 class BeaconState(phase0.BeaconState):
+    # Updated field
+    latest_block_header: BeaconBlockHeader
     # Sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
