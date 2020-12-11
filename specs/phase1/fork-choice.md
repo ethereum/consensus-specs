@@ -8,14 +8,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-  - [Updated data structures](#updated-data-structures)
-    - [Extended `Store`](#extended-store)
-  - [New data structures](#new-data-structures)
-    - [`ShardLatestMessage`](#shardlatestmessage)
-    - [`ShardStore`](#shardstore)
-  - [Updated helpers](#updated-helpers)
-    - [Updated `get_forkchoice_store`](#updated-get_forkchoice_store)
-    - [Updated `update_latest_messages`](#updated-update_latest_messages)
+- [Dependency calculation](#dependency-calculation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
