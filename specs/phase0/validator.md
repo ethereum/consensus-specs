@@ -104,40 +104,28 @@ Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BL
 
 #### Withdrawal credentials
 
-The `withdrawal_credentials` ultimately control the deposited ETH once the
-validator has exited and is withdrawable. The 0th byte of this 32-byte field,
-called the "withdrawal prefix" defines the withdrawal credential version
-while the remaining 31 bytes define the version-specific content.
+The `withdrawal_credentials` field specifies how a validator's withdrawable balance may be withdrawn. The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes. The following withdrawal prefixes are currently supported.
 
-The following withdrawal credentials versions are currently supported. The
-validator must choose and construct a version for the `withdrawal_credentials` field.
+##### `BLS_WITHDRAWAL_PREFIX`
 
-##### BLS key credentials
+Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair `(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals. The `withdrawal_credentials` field must be constructed such that:
 
-BLS withdrawal credentials are controlled by a secondary withdrawal BLS private key, `bls_withdrawal_privkey`.
-This key is securely generated along with the resultant `bls_withdrawal_pubkey`.
-This `withdrawal_privkey` does not have to be available for signing during
-the normal lifetime of a validator and can live in "cold storage".
+* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
+* `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
 
-The validator constructs `withdrawal_credentials` as the following:
-* Set `withdrawal_credentials[:1] = BLS_WITHDRAWAL_PREFIX`.
-* Set `withdrawal_credentials[1:] = hash(bls_withdrawal_pubkey)[1:]`.
+*Note*: The `bls_withdrawal_pubkey` is not required for validating and can be kept in cold storage.
 
-##### Eth1 address credentials
+##### `ETH1_ADDRESS_WITHDRAWAL_PREFIX`
 
-Eth1 address credentials are controlled by an eth1 address. This can be an either an externally owned account or a contract.
+Withdrawal credentials with the Eth1 address withdrawal prefix specify a 20-byte Eth1 address `eth1_withdrawal_address` as the recipient for all withdrawals. The `eth1_withdrawal_address` can be the address of an externally owned account or of a contract. The `withdrawal_credentials` field must be constructed such that:
 
-The withdrawal to the address specified will be a normal ETH transfer (with no payload other than the validator's ETH)
-triggered by an eth1 transaction that will handle gas price/limit and payment of fees.
+* `withdrawal_credentials[:1] = ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+* `withdrawal_credentials[1:12] == Bytes32()[1:12]`
+* `withdrawal_credentials[12:] = eth1_withdrawal_address`
 
-As long as such a withdrawal account/contract can receive ETH transfers,
-the future withdrawal protocol is agnostic to all other implementation details.
+Withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH) triggered by an Eth1 transaction that will handle gas price/limit and payment of fees. As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers the future withdrawal protocol is agnostic to all other implementation details.
 
-The validator selects a 20-byte eth1 address, `eth1_withdrawal_address`, and constructs `withdrawal_credentials` as the following:
-* Set `withdrawal_credentials[:1] = ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
-* Set `withdrawal_credentials[12:] = eth1_withdrawal_address`.
-
-*Note*: Bytes `withdrawal_credentials[1:12]` remain the default `0x00` value.
+**TODO**: Be explicit about the endianness of `eth1_withdrawal_address`.
 
 ### Submit deposit
 
