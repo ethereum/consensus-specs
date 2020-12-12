@@ -13,7 +13,7 @@
   - [Misc](#misc)
   - [Gwei values](#gwei-values)
   - [Initial values](#initial-values)
-  - [Withdrawal credentials prefixes](#withdrawal-credentials-prefixes)
+  - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Time parameters](#time-parameters)
   - [State list lengths](#state-list-lengths)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -211,7 +211,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
 
-### Withdrawal credentials prefixes
+### Withdrawal prefixes
 
 | Name | Value |
 | - | - |
