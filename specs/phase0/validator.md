@@ -14,8 +14,8 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
   - [Misc](#misc)
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
-    - [BLS public key](#bls-public-key)
-    - [Withdrawal credentials](#withdrawal-credentials)
+    - [`BLS_WITHDRAWAL_PREFIX`](#bls_withdrawal_prefix)
+    - [`ETH1_ADDRESS_WITHDRAWAL_PREFIX`](#eth1_address_withdrawal_prefix)
       - [BLS key credentials](#bls-key-credentials)
       - [Eth1 address credentials](#eth1-address-credentials)
   - [Submit deposit](#submit-deposit)
@@ -104,7 +104,7 @@ Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BL
 
 #### Withdrawal credentials
 
-The `withdrawal_credentials` field specifies how a validator's withdrawable balance may be withdrawn. The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes. The following withdrawal prefixes are currently supported.
+The `withdrawal_credentials` field contrains how a validator's withdrawable balance may be withdrawn. The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes. The following withdrawal prefixes are currently supported.
 
 ##### `BLS_WITHDRAWAL_PREFIX`
 
@@ -113,7 +113,7 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair `(bls
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
 * `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
 
-*Note*: The `bls_withdrawal_pubkey` is not required for validating and can be kept in cold storage.
+*Note*: The `bls_withdrawal_privkey` is not required for validating and can be kept in cold storage.
 
 ##### `ETH1_ADDRESS_WITHDRAWAL_PREFIX`
 
@@ -123,7 +123,7 @@ Withdrawal credentials with the Eth1 address withdrawal prefix specify a 20-byte
 * `withdrawal_credentials[1:12] == Bytes32()[1:12]`
 * `withdrawal_credentials[12:] = eth1_withdrawal_address`
 
-Withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH) triggered by an Eth1 transaction that will handle gas price/limit and payment of fees. As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers the future withdrawal protocol is agnostic to all other implementation details.
+Withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH) triggered by an Eth1 transaction that will handle the gas price and gas limit, as well the payment of fees. As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers the future withdrawal protocol is agnostic to all other implementation details.
 
 **TODO**: Be explicit about the endianness of `eth1_withdrawal_address`.
 
