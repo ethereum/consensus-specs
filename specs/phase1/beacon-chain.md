@@ -332,7 +332,6 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     return Shard(shard)
 ```
 
-### Predicates
 
 ### Block processing
 
