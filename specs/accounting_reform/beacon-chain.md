@@ -228,7 +228,7 @@ def get_standard_flag_deltas(state: BeaconState,
             if is_in_inactivity_leak(state):
                 # Since full base reward will be canceled out by inactivity penalty deltas,
                 # optimal participation receives full base reward compensation here.
-                rewards[index] += get_base_reward(state, index) // denominator
+                rewards[index] += get_base_reward(state, index) * total_balance // REWARD_DENOMINATOR
             else:
                 rewards[index] += (
                     (get_base_reward(state, index) * total_participating_balance // total_balance)
