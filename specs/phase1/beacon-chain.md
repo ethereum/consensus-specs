@@ -91,7 +91,7 @@ We define the following Python custom types for type hinting and readability:
 | `G2_ONE` | The G2 generator |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
-These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X - w ** revbit(a))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w` is the root of unity and `revbit` is the reverse-bit-order function. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
+These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X ** POINTS_PER_SAMPLE - w ** (revbit(a, MAX_SAMPLES_PER_BLOCK) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w` is the root of unity and `revbit` is the reverse-bit-order function. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
 
 ### Gwei values
 
