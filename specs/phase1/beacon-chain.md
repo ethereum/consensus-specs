@@ -146,8 +146,8 @@ class BeaconState(phase0.BeaconState):
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # New fields
-    current_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
-    previous_epoch_pending_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
+    current_epoch_pending_shard_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
+    previous_epoch_pending_shard_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
     most_recent_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
@@ -395,9 +395,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 def update_pending_votes(state: BeaconState,
                          attestation: Attestation) -> None:
     if compute_epoch_at_slot(slot) == get_current_epoch(state):
-        pending_headers = state.current_epoch_pending_headers
+        pending_headers = state.current_epoch_pending_shard_headers
     else:
-        pending_headers = state.previous_epoch_pending_headers
+        pending_headers = state.previous_epoch_pending_shard_headers
     # Create or update the PendingShardHeader object
     pending_header = None
     for header in pending_headers:
@@ -452,9 +452,9 @@ def process_shard_header(state: BeaconState,
     )
     # Get the correct pending header list
     if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
-        pending_headers = state.current_epoch_pending_headers
+        pending_headers = state.current_epoch_pending_shard_headers
     else:
-        pending_headers = state.previous_epoch_pending_headers
+        pending_headers = state.previous_epoch_pending_shard_headers
         
     # Check that this header is not yet in the pending list
     for pending_header in pending_headers:
@@ -517,7 +517,7 @@ def process_pending_headers(state: BeaconState):
         for shard in range(SHARD_COUNT):
             # Pending headers for this (slot, shard) combo
             candidates = [
-                c for c in state.previous_epoch_pending_headers if
+                c for c in state.previous_epoch_pending_shard_headers if
                 (c.slot, c.shard) == (slot, shard)
             ]
             if True not in [c.confirmed for c in candidates]:
@@ -546,7 +546,7 @@ def process_pending_headers(state: BeaconState):
     for slot in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
             state.most_recent_confirmed_commitments[shard][slot] = DataCommitment()
-    for c in state.previous_epoch_pending_headers:
+    for c in state.previous_epoch_pending_shard_headers:
         if c.confirmed:
             state.most_recent_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
 ```            
@@ -558,7 +558,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
     for slot in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
             confirmed_candidates = [
-                c for c in state.previous_epoch_pending_headers if
+                c for c in state.previous_epoch_pending_shard_headers if
                 (c.slot, c.shard, c.confirmed) == (slot, shard, True)
             ]
             if confirmed_candidates:
@@ -580,7 +580,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
 
 ```python
 def reset_pending_headers(state: BeaconState):
-    state.previous_epoch_pending_headers = state.current_epoch_pending_headers
+    state.previous_epoch_pending_shard_headers = state.current_epoch_pending_shard_headers
     shards = [
         compute_shard_from_committee_index(state, index, slot)
         for i in range()
@@ -588,7 +588,7 @@ def reset_pending_headers(state: BeaconState):
         attestation.data.index,
         attestation.data.slot
     )
-    state.current_epoch_pending_headers = []
+    state.current_epoch_pending_shard_headers = []
     # Add dummy "empty" PendingAttestations
     # (default to vote for if no shard header available)
     for slot in range(SLOTS_IN_EPOCH):
@@ -599,7 +599,7 @@ def reset_pending_headers(state: BeaconState):
                 header.slot,
                 header.shard
             ))
-            state.current_epoch_pending_headers.append(PendingShardHeader(
+            state.current_epoch_pending_shard_headers.append(PendingShardHeader(
                 slot=slot,
                 shard=shard,
                 commitment=DataCommitment(),
