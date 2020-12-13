@@ -49,6 +49,12 @@ The numerators add up to 7/8, leaving the remaining 1/8 for proposer rewards and
 | - | - |
 | `FLAGS_AND_NUMERATORS` | `((FLAG_TARGET, TARGET_NUMERATOR), (FLAG_TIMELY, TIMELY_NUMERATOR), (FLAG_HEAD_AND_VERY_TIMELY, HEAD_AND_VERY_TIMELY_NUMERATOR))` |
 
+### Misc
+
+| Name | Value |
+| - | - |
+| `BASE_BALANCE_DENOMINATOR` | `10**9` |
+
 ## Containers
 
 ### Modified containers
@@ -81,6 +87,8 @@ class BeaconState(Container):
     # Current and previous epoch participation flags
     previous_epoch_flags: List[Bitvector[8], VALIDATOR_REGISTRY_LIMIT]
     current_epoch_flags: List[Bitvector[8], VALIDATOR_REGISTRY_LIMIT]
+    # Denominator to real-time-updated balances (NOT effective balances!)
+    balance_denominator: uint64
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
@@ -94,9 +102,15 @@ class BeaconState(Container):
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    return get_base_reward_per_eth(state) * state.validators[index].effective_balance // GWEI_PER_ETH
+```
+
+##### `get_base_reward_per_eth`
+
+```python
+def get_base_reward_per_eth(state: BeaconState) -> Gwei:
     total_balance = get_total_active_balance(state)
-    effective_balance = state.validators[index].effective_balance
-    return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
+    return Gwei(GWEI_PER_ETH * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
 ```
 
 Note: remove the `// BASE_REWARDS_PER_EPOCH`
@@ -215,7 +229,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 ```python
 def get_standard_flag_deltas(state: BeaconState,
                              flag: uint8,
-                             numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+                             numerator: uint64) -> Tuple[Sequence[Gwei], uint64]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
     unslashed_participant_indices = get_unslashed_participant_indices(state, flag, get_previous_epoch(state))
@@ -224,19 +238,18 @@ def get_standard_flag_deltas(state: BeaconState,
     total_participating_balance = get_total_balance(state, unslashed_participant_indices) // increment
     total_balance = get_total_active_balance(state) // increment
     for index in get_eligible_validator_indices(state):
+        base_reward = get_base_reward(state, index)
         if index in unslashed_participant_indices:
             if is_in_inactivity_leak(state):
                 # Since full base reward will be canceled out by inactivity penalty deltas,
                 # optimal participation receives full base reward compensation here.
-                rewards[index] += get_base_reward(state, index) // denominator
+                rewards[index] += base_reward * numerator // REWARD_DENOMINATOR
             else:
                 rewards[index] += (
-                    (get_base_reward(state, index) * total_participating_balance // total_balance)
+                    (base_reward * total_participating_balance // total_balance + base_reward)
                     * numerator // REWARD_DENOMINATOR
                 )
-        else:
-            penalties[index] += get_base_reward(state, index) * numerator // REWARD_DENOMINATOR
-    return rewards, penalties
+    return rewards, get_base_reward_per_eth(state) * numerator // REWARD_DENOMINATOR
 ```
 
 ##### `get_inactivity_penalty_deltas`
@@ -247,7 +260,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     Return inactivity reward/penalty deltas for each validator.
     Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices`
     """
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
     
     total_usual_reward_numerator = sum([numerator for (flag, numerator) in FLAGS_AND_NUMERATORS])
 
@@ -255,15 +268,12 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
         previous_epoch = get_previous_epoch(state)
         matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, previous_epoch)
         for index in get_eligible_validator_indices(state):
-            # If validator is performing optimally this cancels all attestation rewards for a neutral balance
-            penalties[index] += Gwei(get_base_reward(state, index) * total_usual_reward_numerator // INACTIVITY_PENALTY_QUOTIENT))
-            if index not in matching_target_attesting_indices:
+            if index in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
-                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
+                rewards[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
 
     # No rewards associated with inactivity penalties
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    return rewards, penalties
+    return rewards, Gwei(GWEI_PER_ETH * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
 ```
 
 ##### `process_rewards_and_penalties`
@@ -278,8 +288,43 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         get_standard_flag_deltas(state, flag, numerator) for (flag, numerator) in FLAGS_AND_NUMERATORS
     ]
     deltas = flag_deltas + [get_inactivity_penalty_deltas]
-    for (rewards, penalties) in deltas:
+    for (rewards, penalty) in deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
-            decrease_balance(state, ValidatorIndex(index), penalties[index])
+        state.balance_denominator = state.balance_denominator + penalty + (state.balance_denominator - GWEI_PER_ETH) * penalty // GWEI_PER_ETH
+```
+
+#### `process_final_updates`
+
+```python
+def process_final_updates(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
+    next_epoch = Epoch(current_epoch + 1)
+    # Reset eth1 data votes
+    if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
+        state.eth1_data_votes = []
+    # Update effective balances with hysteresis
+    for index, validator in enumerate(state.validators):
+        balance_increments = state.balances[index] * HYSTERESIS_QUOTIENT // state.balance_denominator
+        effective_increments = validator.effective_balance // GWEI_PER_ETH * HYSTERESIS_QUOTIENT
+        if (
+            balance_increments + HYSTERESIS_DOWNWARD_MULTIPLIER < effective_increments
+            or effective_increments + HYSTERESIS_UPWARD_MULTIPLIER < balance_increments
+            or get_current_epoch(state) == validator.withdrawable_epoch
+        ):
+            validator.effective_balance = (state.balances[index] // state.balance_denominator) * GWEI_PER_ETH
+    if state.balance_denominator >= 2 * GWEI_PER_ETH:
+        state.balances = [x//2 for x in state.balances]
+        state.balance_denominator //= 2
+    # Reset slashings
+    state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
+    # Set randao mix
+    state.randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
+    # Set historical root accumulator
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
+        state.historical_roots.append(hash_tree_root(historical_batch))
+    # Rotate current/previous epoch attestations
+    state.previous_epoch_attestations = state.current_epoch_attestations
+    state.current_epoch_attestations = []
 ```
