@@ -362,7 +362,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     # Limit is dynamic based on active shard count
-    assert len(body.shard_headers) <= 4 * get_active_shard_count(state, get_current_epoch(state))
+    assert len(body.shard_headers) <= MAX_SHARD_HEADERS_PER_SHARD * get_active_shard_count(state, get_current_epoch(state))
     for_ops(body.shard_headers, process_shard_header)
 
     # See custody game spec.
