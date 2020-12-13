@@ -49,12 +49,6 @@ The numerators add up to 7/8, leaving the remaining 1/8 for proposer rewards and
 | - | - |
 | `FLAGS_AND_NUMERATORS` | `((FLAG_TARGET, TARGET_NUMERATOR), (FLAG_TIMELY, TIMELY_NUMERATOR), (FLAG_HEAD_AND_VERY_TIMELY, HEAD_AND_VERY_TIMELY_NUMERATOR))` |
 
-### Misc
-
-| Name | Value |
-| - | - |
-| `BASE_BALANCE_DENOMINATOR` | `10**9` |
-
 ## Containers
 
 ### Modified containers
