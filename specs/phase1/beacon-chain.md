@@ -73,7 +73,8 @@ We define the following Python custom types for type hinting and readability:
 | `MAX_SHARDS` | `uint64(2**10)` (= 1024) | Theoretical max shard count (used to determine data structure sizes) |
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 2) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
-| `MAX_SHARD_HEADERS` | `MAX_SHARDS * 4` | |
+| `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
+| `MAX_SHARD_HEADERS` | `MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD` | |
 
 ### Shard block configs
 
