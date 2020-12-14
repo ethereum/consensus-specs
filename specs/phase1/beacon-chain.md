@@ -72,9 +72,10 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**10)` (= 1024) | Theoretical max shard count (used to determine data structure sizes) |
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 2) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `MAX_SHARD_HEADERS` | `MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD` | |
+| `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
 
 ### Shard block configs
 
@@ -89,16 +90,17 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `G2_ONE` | The G2 generator |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` | |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
-These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X ** POINTS_PER_SAMPLE - w ** (revbit(a, MAX_SAMPLES_PER_BLOCK) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w` is the root of unity and `revbit` is the reverse-bit-order function. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
+These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X ** POINTS_PER_SAMPLE - w ** (reverse_bit_order(a, MAX_SAMPLES_PER_BLOCK) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w = ROOT_OF_UNITY`. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
 
 ### Gwei values
 
 | Name | Value | Unit | Description |
 | - | - | - | - |
-| `MAX_GASPRICE` | `Gwei(2**24)` (= 16,777,216) | Gwei | Max gasprice charged for an TARGET-sized shard block |  
-| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for an TARGET-sized shard block |
+| `MAX_GASPRICE` | `Gwei(2**24)` (= 16,777,216) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
+| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
 
 ### Time parameters
 
@@ -146,8 +148,8 @@ class BeaconState(phase0.BeaconState):
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # New fields
-    current_epoch_pending_shard_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
-    previous_epoch_pending_shard_headers: List[PendingHeader, MAX_PENDING_HEADERS * SLOTS_PER_EPOCH]
+    current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
+    previous_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
     most_recent_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
@@ -204,6 +206,17 @@ class PendingShardHeader(Container):
 ## Helper functions
 
 ### Misc
+
+#### `reverse_bit_order`
+
+```python
+def reverse_bit_order(n, order):
+    """
+    Reverse the bit order of an integer n
+    """
+    assert is_power_of_two(order)
+    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
+```
 
 #### `compute_previous_slot`
 
@@ -423,11 +436,11 @@ def update_pending_votes(state: BeaconState,
     ]
     if True not in [c.confirmed for c in all_candidates]:
         # Requirement 2: >= 2/3 of balance attesting
-        participants = get_attesting_indices(state, data, pending_commitment.votes)
+        participants = get_attesting_indices(state, attestationg.data, pending_commitment.votes)
         participants_balance = get_total_balance(state, participants)
-        full_committee = get_beacon_committee(state, data.slot, data.shard)
+        full_committee = get_beacon_committee(state, attestationg.data.slot, attestationg.data.shard)
         full_committee_balance = get_total_balance(state, full_committee)
-        if participants_balance * 2 > full_committee_balance:
+        if participants_balance * 3 > full_committee_balance * 2:
             pending_header.confirmed = True
 ```
 
