@@ -105,11 +105,16 @@ Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BL
 
 #### Withdrawal credentials
 
-The `withdrawal_credentials` field constrains validator withdrawals. The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes. The following withdrawal prefixes are currently supported.
+The `withdrawal_credentials` field constrains validator withdrawals.
+The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes.
+
+The following withdrawal prefixes are currently supported.
 
 ##### `BLS_WITHDRAWAL_PREFIX`
 
-Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair `(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals. The `withdrawal_credentials` field must be such that:
+Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
+`(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals.
+The `withdrawal_credentials` field must be such that:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
 * `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
@@ -118,15 +123,19 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair `(bls
 
 ##### `ETH1_ADDRESS_WITHDRAWAL_PREFIX`
 
-Withdrawal credentials with the Eth1 address withdrawal prefix specify a 20-byte Eth1 address `eth1_withdrawal_address` as the recipient for all withdrawals. The `eth1_withdrawal_address` can be the address of either an externally owned account or of a contract. The `withdrawal_credentials` field must be such that:
+Withdrawal credentials with the Eth1 address withdrawal prefix specify
+a 20-byte Eth1 address `eth1_withdrawal_address` as the recipient for all withdrawals.
+The `eth1_withdrawal_address` can be the address of either an externally owned account or of a contract.
+The `withdrawal_credentials` field must be such that:
 
 * `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
 * `withdrawal_credentials[1:12] == b'\x00' * 11`
 * `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
-Withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH) triggered by an Eth1 transaction that will handle the gas price and gas limit, as well the payment of fees. As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers the future withdrawal protocol is agnostic to all other implementation details.
-
-**TODO**: Be explicit about the endianness of `eth1_withdrawal_address`.
+Withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH)
+triggered by an Eth1 transaction that will handle the gas price and gas limit, as well the payment of fees.
+As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers
+the future withdrawal protocol is agnostic to all other implementation details.
 
 ### Submit deposit
 

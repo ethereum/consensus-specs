@@ -59,9 +59,13 @@ The amount of ETH (rounded down to the closest Gwei) sent to the deposit contrac
 
 #### Withdrawal credentials
 
-One of the `DepositData` fields is `withdrawal_credentials` which constrains validator withdrawals. The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes. The withdrawal prefixes currently supported are `BLS_WITHDRAWAL_PREFIX` and `ETH1_ADDRESS_WITHDRAWAL_PREFIX`. Read more in the [validator guide](./validator.md#withdrawal-credentials).
+One of the `DepositData` fields is `withdrawal_credentials` which constrains validator withdrawals.
+The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes.
+The withdrawal prefixes currently supported are `BLS_WITHDRAWAL_PREFIX` and `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+Read more in the [validator guide](./validator.md#withdrawal-credentials).
 
-*Note*: The deposit contract does not validate the `withdrawal_credentials` field. Support for new withdrawal prefixes can be added without modifying the deposit contract.
+*Note*: The deposit contract does not validate the `withdrawal_credentials` field.
+Support for new withdrawal prefixes can be added without modifying the deposit contract.
 
 #### `DepositEvent` log
 
