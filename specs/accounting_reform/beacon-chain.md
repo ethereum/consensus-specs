@@ -157,7 +157,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Epoch) -> Set[ValidatorIndex]:
     assert epoch in [get_current_epoch(state), get_previous_epoch(state)]
 
-    flags = state.current_epoch_reward_flags if epoch == get_current_epoch(state) else state.previous_epoch_reward_flags
+    flags = state.current_epoch_flags if epoch == get_current_epoch(state) else state.previous_epoch_flags
     participant_indices = [
         index for i, index in enumerate(get_active_validator_indices(state, epoch))
         if flags[i][flag]
