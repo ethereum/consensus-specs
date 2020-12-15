@@ -249,7 +249,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     
-    total_usual_reward_numerator = sum([numerator for (flag, numerator) in FLAGS_AND_NUMERATORS])
+    total_usual_reward_numerator = sum(numerator for (_, numerator) in FLAGS_AND_NUMERATORS)
 
     if is_in_inactivity_leak(state):
         previous_epoch = get_previous_epoch(state)
