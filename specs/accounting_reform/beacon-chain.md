@@ -138,8 +138,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         flags_to_set.append(FLAG_TIMELY)
 
     # Update participation flags
+    active_validator_indices = get_active_validator_indices(state, data.target.epoch)
     for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
-        active_position = get_active_validator_indices(state, data.target.epoch).index(participant)
+        active_position = active_validator_indices.index(participant)
         for flag, numerator in FLAGS_AND_NUMERATORS:
             if flag in flags_to_set and not flags[active_position][flag]:
                 flags[active_position][flag] = True
