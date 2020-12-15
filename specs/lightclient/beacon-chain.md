@@ -15,8 +15,7 @@
   - [Domain types](#domain-types)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
-    - [`BeaconBlock`](#beaconblock)
-    - [`BeaconBlockHeader`](#beaconblockheader)
+    - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
     - [`SyncCommittee`](#synccommittee)
@@ -27,7 +26,6 @@
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
   - [Block processing](#block-processing)
-    - [Block header](#block-header)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Components of attestation deltas](#components-of-attestation-deltas)
@@ -80,19 +78,10 @@ This is a standalone beacon chain patch adding light client support via sync com
 *Note*: Extended SSZ containers inherit all fields from the parent in the original
 order and append any additional fields to the end.
 
-#### `BeaconBlock`
+#### `BeaconBlockBody`
 
 ```python
-class BeaconBlock(phase0.BeaconBlock):
-    # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
-    sync_committee_signature: BLSSignature
-```
-
-#### `BeaconBlockHeader`
-
-```python
-class BeaconBlockHeader(phase0.BeaconBlockHeader):
+class BeaconBlockBody(phase0.BeaconBlockBody):
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
@@ -102,8 +91,6 @@ class BeaconBlockHeader(phase0.BeaconBlockHeader):
 
 ```python
 class BeaconState(phase0.BeaconState):
-    # Updated field
-    latest_block_header: BeaconBlockHeader
     # Sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
@@ -181,51 +168,29 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
 
 ### Block processing
 
-#### Block header
-
-*Note*: The function `process_block_header` is modified to handle the extended `latest_block_header` and process the sync committee.
-
 ```python
-def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
-    # Verify that the slots match
-    assert block.slot == state.slot
-    # Verify that the block is newer than latest block header
-    assert block.slot > state.latest_block_header.slot
-    # Verify that proposer index is the correct index
-    assert block.proposer_index == get_beacon_proposer_index(state)
-    # Verify that the parent matches
-    assert block.parent_root == hash_tree_root(state.latest_block_header)
-    # Cache current block as the new latest block
-    state.latest_block_header = BeaconBlockHeader(
-        slot=block.slot,
-        proposer_index=block.proposer_index,
-        parent_root=block.parent_root,
-        state_root=Bytes32(),  # Overwritten in the next process_slot call
-        body_root=hash_tree_root(block.body),
-        sync_committee_bits=block.sync_committee_bits,
-        sync_committee_signature=block.sync_committee_signature,
-    )
-
-    # Verify proposer is not slashed
-    proposer = state.validators[block.proposer_index]
-    assert not proposer.slashed
-
-    process_sync_committee(state, block)
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_operations(state, block.body)
+    # Light client support
+    process_sync_committee(state, block.body)
 ```
 
 #### Sync committee processing
 
 ```python
-def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
+def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     previous_slot = Slot(max(int(state.slot), 1) - 1)
     committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
-    participant_indices = [index for index, bit in zip(committee_indices, block.sync_committee_bits) if bit]
+    participant_indices = [index for index, bit in zip(committee_indices, body.sync_committee_bits) if bit]
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, block.sync_committee_bits) if bit]
+    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, block.sync_committee_signature)
+    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, body.sync_committee_signature)
 
     # Reward sync committee participants
     proposer_reward = Gwei(0)
