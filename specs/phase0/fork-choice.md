@@ -250,7 +250,7 @@ def get_head(store: Store) -> Root:
         # Sort by latest attesting balance with ties broken lexicographically
         best_child = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
         # Check if this block has more support as a leaf than its best child
-        best_child_support = (get_latest_attesting_balance(store, best_child)
+        best_child_support = get_latest_attesting_balance(store, best_child)
         head_as_leaf_support = get_latest_attesting_balance_as_leaf(store, head)
         if head_as_leaf_support > best_child_support:
           # This block is supported as a leaf more than its best child
