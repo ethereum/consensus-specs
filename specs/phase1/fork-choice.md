@@ -97,13 +97,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ```python
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
+    attestation_slot = attestation.data.slot
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
     # TODO: separate shard chain vote
     shard = attestation.data.shard
     for i in attesting_indices:
-        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
-            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
+        if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
+            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=beacon_block_root)
             shard_latest_message = ShardLatestMessage(epoch=target.epoch, root=attestation.data.shard_head_root)
             store.shard_stores[shard].latest_messages[i] = shard_latest_message
 ```

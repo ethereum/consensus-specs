@@ -20,12 +20,12 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     sample_index = indexed_attestation.attesting_indices[0]
     if spec.fork == PHASE0:
         latest_message = spec.LatestMessage(
-            epoch=attestation.data.target.epoch,
+            slot=attestation.data.slot,
             root=attestation.data.beacon_block_root,
         )
     else:
         latest_message = spec.LatestMessage(
-            epoch=attestation.data.target.epoch,
+            slot=attestation.data.slot,
             root=attestation.data.beacon_block_root,
         )
         shard_latest_message = spec.ShardLatestMessage(
