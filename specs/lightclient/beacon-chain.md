@@ -6,10 +6,10 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Constants](#constants)
 - [Configuration](#configuration)
+  - [Constants](#constants-1)
   - [Misc](#misc)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
@@ -20,12 +20,15 @@
   - [New containers](#new-containers)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
+  - [`Predicates`](#predicates)
+    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
   - [Block processing](#block-processing)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
+    - [Components of attestation deltas](#components-of-attestation-deltas)
     - [Final updates](#final-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -42,6 +45,12 @@ This is a standalone beacon chain patch adding light client support via sync com
 | `BASE_REWARDS_PER_EPOCH` | `uint64(5)` |
 
 ## Configuration
+
+### Constants
+
+| Name | Value |
+| - | - |
+| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ### Misc
 
@@ -69,24 +78,14 @@ This is a standalone beacon chain patch adding light client support via sync com
 *Note*: Extended SSZ containers inherit all fields from the parent in the original
 order and append any additional fields to the end.
 
-#### `BeaconBlock`
+#### `BeaconBlockBody`
 
 ```python
-class BeaconBlock(phase0.BeaconBlock):
+class BeaconBlockBody(phase0.BeaconBlockBody):
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
-
-#### `BeaconBlockHeader`
-
-```python
-class BeaconBlockHeader(phase0.BeaconBlockHeader):
-    # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
-    sync_committee_signature: BLSSignature
-```
-
 
 #### `BeaconState`
 
@@ -109,6 +108,20 @@ class SyncCommittee(Container):
 
 ## Helper functions
 
+### `Predicates`
+
+#### `eth2_fast_aggregate_verify`
+
+```python
+def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+    """
+    Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
+    """
+    if len(pubkeys) == 0 and signature == G2_POINT_AT_INFINITY:
+        return True
+    return bls.FastAggregateVerify(pubkeys, message, signature)
+```
+
 ### Beacon state accessors
 
 #### `get_sync_committee_indices`
@@ -117,13 +130,14 @@ class SyncCommittee(Container):
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
     Return the sync committee indices for a given state and epoch.
-    """
+    """ 
     MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
     active_validator_indices = get_active_validator_indices(state, base_epoch)
     active_validator_count = uint64(len(active_validator_indices))
     seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
-    i, sync_committee_indices = 0, []
+    i = 0
+    sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
         candidate_index = active_validator_indices[shuffled_index]
@@ -156,40 +170,73 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    phase0.process_block(state, block)
-    process_sync_committee(state, block)
+    process_block_header(state, block)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_operations(state, block.body)
+    # Light client support
+    process_sync_committee(state, block.body)
 ```
 
 #### Sync committee processing
 
 ```python
-def process_sync_committee(state: BeaconState, block: BeaconBlock) -> None:
+def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
-    previous_slot = Slot(max(state.slot, 1) - 1)
+    previous_slot = Slot(max(int(state.slot), 1) - 1)
     committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
     participant_indices = [index for index, bit in zip(committee_indices, body.sync_committee_bits) if bit]
     committee_pubkeys = state.current_sync_committee.pubkeys
     participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, block.sync_committee_signature)
+    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, body.sync_committee_signature)
 
     # Reward sync committee participants
-    participant_rewards = Gwei(0)
+    proposer_reward = Gwei(0)
     active_validator_count = uint64(len(get_active_validator_indices(state, get_current_epoch(state))))
     for participant_index in participant_indices:
         base_reward = get_base_reward(state, participant_index)
-        reward = Gwei(base_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
+        max_participant_reward = base_reward - base_reward // PROPOSER_REWARD_QUOTIENT
+        reward = Gwei(max_participant_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
         increase_balance(state, participant_index, reward)
-        participant_rewards += reward
+        proposer_reward += base_reward // PROPOSER_REWARD_QUOTIENT
 
     # Reward beacon proposer
-    increase_balance(state, get_beacon_proposer_index(state), Gwei(participant_rewards // PROPOSER_REWARD_QUOTIENT))
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
 ### Epoch processing
 
+#### Components of attestation deltas
+
+*Note*: The function `get_inactivity_penalty_deltas` is modified with `BASE_REWARDS_PER_EPOCH` replaced by `BASE_REWARDS_PER_EPOCH - 1`.
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return inactivity reward/penalty deltas for each validator.
+    """
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    if is_in_inactivity_leak(state):
+        matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
+        matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
+        for index in get_eligible_validator_indices(state):
+            # Penalize validator so that optimal attestation performance is rewarded with one base reward per epoch
+            base_reward = get_base_reward(state, index)
+            penalties[index] += Gwei((BASE_REWARDS_PER_EPOCH - 1) * base_reward - get_proposer_reward(state, index))
+            if index not in matching_target_attesting_indices:
+                effective_balance = state.validators[index].effective_balance
+                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
+
+    # No rewards associated with inactivity penalties
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    return rewards, penalties
+```
+
 #### Final updates
+
+*Note*: The function `process_final_updates` is modified to handle sync committee updates.
 
 ```python
 def process_final_updates(state: BeaconState) -> None:
