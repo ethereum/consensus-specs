@@ -147,7 +147,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 # Give proposer reward for new flags
                 proposer_reward = Gwei(
                     get_base_reward(state, participant) * numerator
-                    // (REWARD_DENOMINATOR * PROPOSER_REWARD_DENOMINATOR)
+                    // (REWARD_DENOMINATOR * PROPOSER_REWARD_QUOTIENT)
                 )
                 increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
