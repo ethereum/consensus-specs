@@ -246,7 +246,7 @@ def get_standard_flag_deltas(state: BeaconState,
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return inactivity reward/penalty deltas for each validator.
-    Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices`
+    Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices` and `penalties`
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     
@@ -257,7 +257,8 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
         matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, previous_epoch)
         for index in get_eligible_validator_indices(state):
             # If validator is performing optimally this cancels all attestation rewards for a neutral balance
-            penalties[index] += Gwei(get_base_reward(state, index) * total_usual_reward_numerator // INACTIVITY_PENALTY_QUOTIENT))
+            base_reward = get_base_reward(state, index)
+            penalties[index] += Gwei(base_reward * total_usual_reward_numerator // INACTIVITY_PENALTY_QUOTIENT)
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
