@@ -69,7 +69,7 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 ```python
 @dataclass(eq=True, frozen=True)
 class LatestMessage(object):
-    epoch: Epoch
+    slot: Slot
     root: Root
 ```
 
@@ -163,6 +163,22 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     ))
 ```
 
+#### `get_latest_attesting_balance_as_leaf`
+
+```python
+def get_latest_attesting_balance_as_leaf(store: Store, root: Root) -> Gwei:
+    state = store.checkpoint_states[store.justified_checkpoint]
+    active_indices = get_active_validator_indices(state, get_current_epoch(state))
+    return Gwei(sum(
+        state.validators[i].effective_balance for i in active_indices
+        if (i in store.latest_messages
+            # Attestation's LMD vote is for this block
+            and store.latest_messages[i].root == root
+            # Attestation's slot is more than 1 slot after the block in the LMD vote
+            and store.latest_messages[i].slot > store.blocks[store.latest_messages[i].root].slot + 1)
+    ))
+```
+
 #### `filter_block_tree`
 
 ```python
@@ -232,7 +248,14 @@ def get_head(store: Store) -> Root:
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
-        head = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
+        best_child = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
+        # Check if this block has more support as a leaf than its best child
+        best_child_support = (get_latest_attesting_balance(store, best_child)
+        head_as_leaf_support = get_latest_attesting_balance_as_leaf(store, head)
+        if head_as_leaf_support > best_child_support:
+          # This block is supported as a leaf more than its best child
+          return head
+        head = best_child
 ```
 
 #### `should_update_justified_checkpoint`
@@ -305,11 +328,11 @@ def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
 
 ```python
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
-    target = attestation.data.target
+    attestation_slot = attestation.data.slot
     beacon_block_root = attestation.data.beacon_block_root
     for i in attesting_indices:
-        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
-            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
+        if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
+            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=beacon_block_root)
 ```
 
 
