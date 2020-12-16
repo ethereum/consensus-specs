@@ -86,7 +86,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
-| `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
+| `RANDOM_SUBNETS_PER_NODE` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 
@@ -569,9 +569,9 @@ class SignedAggregateAndProof(Container):
 
 ## Phase 0 attestation subnet stability
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each validator must:
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each node must, regardless of the number of validators it's serving:
 
-* Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
+* Randomly select and remain subscribed to at least `RANDOM_SUBNETS_PER_NODE` attestation subnets
 * Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
 * Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
 
