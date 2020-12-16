@@ -241,12 +241,12 @@ def compute_shard_from_committee_index(state: BeaconState, index: CommitteeIndex
 ```python
 def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64, adjustment_quotient: uint64) -> Gwei:
     if shard_block_length > TARGET_SAMPLES_PER_BLOCK:
-        delta = (prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
-                 // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
+        delta = max(1, prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
+                       // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
         return min(prev_gasprice + delta, MAX_GASPRICE)
     else:
-        delta = (prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
-                 // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
+        delta = max(1, prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
+                       // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
         return max(prev_gasprice, MIN_GASPRICE + delta) - delta
 ```
 
