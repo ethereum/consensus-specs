@@ -240,6 +240,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 ```python
 def process_final_updates(state: BeaconState) -> None:
+    # FIXME: unfold the full `process_final_updates` to avoid side effects.
     phase0.process_final_updates(state)
     next_epoch = get_current_epoch(state) + Epoch(1)
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
