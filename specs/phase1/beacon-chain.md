@@ -89,11 +89,11 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
-| `G2_ONE` | The G2 generator |
+| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
 | `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` | |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
-These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK] (X ** POINTS_PER_SAMPLE - w ** (reverse_bit_order(a, MAX_SAMPLES_PER_BLOCK) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w = ROOT_OF_UNITY`. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
+These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_PER_BLOCK-1] (X ** POINTS_PER_SAMPLE - w ** (reverse_bit_order(a, MAX_SAMPLES_PER_BLOCK * 2) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w = ROOT_OF_UNITY`. They are used to verify block size proofs. They can be computed with a one-time O(N^2/log(N)) calculation using fast-linear-combinations in G2.
 
 ### Gwei values
 
@@ -458,10 +458,11 @@ def process_shard_header(state: BeaconState,
         compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER)),
         signed_header.signature
     )
-    # Verify length of the header
+    # Verify length of the header, and simultaneously verify degree.
+    r = hash(header.commitment.point)
     assert (
         bls.Pairing(header.length_proof, SIZE_CHECK_POINTS[header.commitment.length]) ==
-        bls.Pairing(header.commitment.point, G2_ONE)
+        bls.Pairing(header.commitment.point, bls.Add(bls.Multiply(G2_ONE, r), G2_SETUP[-header.commitment.length-1]))
     )
     # Get the correct pending header list
     if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
@@ -483,6 +484,10 @@ def process_shard_header(state: BeaconState,
         confirmed=False
     ))
 ```
+
+The length-and-degree proof works as follows. For a block B with length `l` (so `l` nonzero values in `[0...MAX_SAMPLES_PER_BLOCK-1]`), the length proof is supposed to be `(B / Z) * (r + X**(len(SETUP)-l))`, where `Z` is the minimal polynomial that is zero over `[l...MAX_SAMPLES_PER_BLOCK-1]` (see `SIZE_CHECK_POINTS` above). The goal is to ensure that a proof can only be constructed if (i) `B / Z` is itself non-fractional, meaning that `B` is a multiple of `Z`, and (ii) `deg(B) < MAX_SAMPLES_PER_BLOCK` (the block is not oversized).
+
+This is done by making the proof be a random linear combination of `B / Z` and `(B / Z) * (X**(len(SETUP)-l)`. The length proof will have the degree of `(B / Z) * X**(len(SETUP)-l)`, so `deg(B) - (MAX_SAMPLES_PER_BLOCK - l) + len(SETUP) - l`, simplified to `deg(B) - MAX_SAMPLES_PER_BLOCK + len(SETUP)`. Because it's only possible to generate proofs for polynomials with degree `< len(SETUP)`, it's this only possible to generate the proof if this expression is less than `len(SETUP)`, meaning that `deg(B)` must be strictly less than `MAX_SAMPLES_PER_BLOCK`.
 
 ### Shard transition processing
 
