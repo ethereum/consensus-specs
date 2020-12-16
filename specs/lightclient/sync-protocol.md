@@ -80,10 +80,10 @@ class LightClientUpdate(Container):
     header: BeaconBlockHeader
     # Next sync committee corresponding to the header
     next_sync_committee: SyncCommittee
-    next_sync_committee_branch: Vector[Bytes32, NEXT_SYNC_COMMITTEE_INDEX.bit_length()]
+    next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
     # Finality proof for the update header
     finality_header: BeaconBlockHeader
-    finality_branch: Vector[Bytes32, FINALIZED_ROOT_INDEX.bit_length()]
+    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
@@ -105,7 +105,7 @@ class LightClientStore(Container):
 
 ```python
 def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
-    return uint64(generalized_index % 2**((generalized_index).bit_length()))
+    return uint64(generalized_index % 2**(floorlog2(generalized_index)))
 ```
 
 ## Light client state updates
@@ -127,13 +127,13 @@ def is_valid_light_client_update(snapshot: LightClientSnapshot, update: LightCli
     # Verify update header root is the finalized root of the finality header, if specified
     if update.finality_header == BeaconBlockHeader():
         signed_header = update.header
-        assert update.finality_branch == [Bytes32() for _ in range(FINALIZED_ROOT_INDEX.bit_length())]
+        assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
     else:
         signed_header = update.finality_header
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.header),
             branch=update.finality_branch,
-            depth=FINALIZED_ROOT_INDEX.bit_length(),
+            depth=floorlog2(FINALIZED_ROOT_INDEX),
             index=get_subtree_index(FINALIZED_ROOT_INDEX),
             root=update.finality_header.state_root,
         )
@@ -141,13 +141,13 @@ def is_valid_light_client_update(snapshot: LightClientSnapshot, update: LightCli
     # Verify update next sync committee if the update period incremented
     if update_period == snapshot_period:
         sync_committee = snapshot.current_sync_committee
-        assert update.next_sync_committee_branch == [Bytes32() for _ in range(NEXT_SYNC_COMMITTEE_INDEX.bit_length())]
+        assert update.next_sync_committee_branch == [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
     else:
         sync_committee = snapshot.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=NEXT_SYNC_COMMITTEE_INDEX.bit_length(),
+            depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
             index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
             root=update.header.state_root,
         )

@@ -209,6 +209,12 @@ def ceillog2(x: int) -> uint64:
     if x < 1:
         raise ValueError(f"ceillog2 accepts only positive values, x={x}")
     return uint64((x - 1).bit_length())
+
+
+def floorlog2(x: int) -> uint64:
+    if x < 1:
+        raise ValueError(f"floorlog2 accepts only positive values, x={x}")
+    return uint64(x.bit_length() - 1)
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
@@ -321,7 +327,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
         )
     )
     for k in list(spec_object.functions):
-        if "ceillog2" in k:
+        if "ceillog2" in k or "floorlog2" in k:
             del spec_object.functions[k]
     functions_spec = '\n\n'.join(spec_object.functions.values())
     for k in list(spec_object.constants.keys()):
@@ -379,7 +385,7 @@ ignored_dependencies = [
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
-    'Dict', 'dict', 'field', 'ceillog2',
+    'Dict', 'dict', 'field', 'ceillog2', 'floorlog2',
 ]
 
 
