@@ -163,7 +163,7 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
         bls.AggregatePKs(pubkeys[i:i + SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE])
         for i in range(0, len(pubkeys), SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE)
     ]
-    return SyncCommittee(pubkeys, aggregates)
+    return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=aggregates)
 ```
 
 ### Block processing
