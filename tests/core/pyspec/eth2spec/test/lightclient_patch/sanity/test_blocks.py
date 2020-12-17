@@ -1,5 +1,5 @@
 import random
-from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -15,7 +15,7 @@ from eth2spec.test.context import (
 )
 
 
-def compute_light_client_signature(spec, state, slot, privkey):
+def compute_sync_committee_signature(spec, state, slot, privkey):
     domain = spec.get_domain(state, spec.DOMAIN_SYNC_COMMITTEE, spec.compute_epoch_at_slot(slot))
     if slot == state.slot:
         block_root = build_empty_block_for_next_slot(spec, state).parent_root
@@ -25,7 +25,7 @@ def compute_light_client_signature(spec, state, slot, privkey):
     return bls.Sign(privkey, signing_root)
 
 
-def compute_aggregate_light_client_signature(spec, state, slot, participants):
+def compute_aggregate_sync_committee_signature(spec, state, slot, participants):
     if len(participants) == 0:
         return spec.G2_POINT_AT_INFINITY
 
@@ -33,7 +33,7 @@ def compute_aggregate_light_client_signature(spec, state, slot, participants):
     for validator_index in participants:
         privkey = privkeys[validator_index]
         signatures.append(
-            compute_light_client_signature(
+            compute_sync_committee_signature(
                 spec,
                 state,
                 slot,
@@ -43,7 +43,7 @@ def compute_aggregate_light_client_signature(spec, state, slot, participants):
     return bls.Aggregate(signatures)
 
 
-def run_light_client_sanity_test(spec, state, fraction_full=1.0):
+def run_sync_committee_sanity_test(spec, state, fraction_full=1.0):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
     participants = random.sample(committee, int(len(committee) * fraction_full))
 
@@ -51,7 +51,7 @@ def run_light_client_sanity_test(spec, state, fraction_full=1.0):
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_committee_bits = [index in participants for index in committee]
-    block.body.sync_committee_signature = compute_aggregate_light_client_signature(
+    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
         block.slot - 1,
@@ -65,38 +65,38 @@ def run_light_client_sanity_test(spec, state, fraction_full=1.0):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_full_light_client_committee(spec, state):
+def test_full_sync_committee_committee(spec, state):
     next_epoch(spec, state)
-    yield from run_light_client_sanity_test(spec, state, fraction_full=1.0)
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_half_light_client_committee(spec, state):
+def test_half_sync_committee_committee(spec, state):
     next_epoch(spec, state)
-    yield from run_light_client_sanity_test(spec, state, fraction_full=0.5)
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_empty_light_client_committee(spec, state):
+def test_empty_sync_committee_committee(spec, state):
     next_epoch(spec, state)
-    yield from run_light_client_sanity_test(spec, state, fraction_full=0.0)
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_full_light_client_committee_genesis(spec, state):
-    yield from run_light_client_sanity_test(spec, state, fraction_full=1.0)
+def test_full_sync_committee_committee_genesis(spec, state):
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_half_light_client_committee_genesis(spec, state):
-    yield from run_light_client_sanity_test(spec, state, fraction_full=0.5)
+def test_half_sync_committee_committee_genesis(spec, state):
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_empty_light_client_committee_genesis(spec, state):
-    yield from run_light_client_sanity_test(spec, state, fraction_full=0.0)
+def test_empty_sync_committee_committee_genesis(spec, state):
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
