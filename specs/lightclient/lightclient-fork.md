@@ -75,9 +75,9 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        # Light-client
-        current_sync_committee=SyncCommittee(),
-        next_sync_committee=SyncCommittee(),
     )
+    # Fill in sync committees
+    post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
+    post.next_sync_committee = get_sync_committee(post, get_current_epoch(post) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
     return post
 ```
