@@ -1,5 +1,6 @@
 from eth2spec.test.context import (
     PHASE0,
+    LIGHTCLIENT_PATCH,
     with_all_phases_except,
     only_full_crosslink,
     spec_state_test,
@@ -90,21 +91,21 @@ def run_successful_crosslink_tests(spec, state, target_len_offset_slot):
         assert bool(pending_attestation.crosslink_success) is True
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_basic_crosslinks(spec, state):
     yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=1)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_multiple_offset_slots(spec, state):
     yield from run_successful_crosslink_tests(spec, state, target_len_offset_slot=2)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_no_winning_root(spec, state):
@@ -152,7 +153,7 @@ def test_no_winning_root(spec, state):
     assert state.shard_states == pre_shard_states
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_wrong_shard_transition_root(spec, state):
