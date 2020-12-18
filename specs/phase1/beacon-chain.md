@@ -101,7 +101,7 @@ These points are the G2-side Kate commitments to `product[a in i...MAX_SAMPLES_P
 
 | Name | Value | Unit | Description |
 | - | - | - | - |
-| `MAX_GASPRICE` | `Gwei(2**24)` (= 16,777,216) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
+| `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
 
 ### Time parameters
@@ -309,6 +309,28 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
     )
 ```
 
+#### `compute_proposer_index`
+
+Updated version to get a proposer index that will only allow proposers with a certain minimum balance, ensuring that the balance is always sufficient to cover gas costs.
+
+```python
+def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32, min_effective_balance: GWei = GWei(0)) -> ValidatorIndex:
+    """
+    Return from ``indices`` a random index sampled by effective balance.
+    """
+    assert len(indices) > 0
+    MAX_RANDOM_BYTE = 2**8 - 1
+    i = uint64(0)
+    total = uint64(len(indices))
+    while True:
+        candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
+        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte and effective_balance > min_effective_balance:
+            return candidate_index
+        i += 1
+```
+
 #### `get_shard_proposer_index`
 
 ```python
@@ -318,8 +340,11 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     """
     epoch = compute_epoch_at_slot(slot)
     committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_COMMITTEE) + uint_to_bytes(slot))
-    return compute_proposer_index(state, committee, seed)
+    seed = hash(get_seed(beacon_state, 
+    EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER // HYSTERESIS_QUOTIENT
+
+    return compute_proposer_index(state, committee, seed,
+        state.shard_gasprice * MAX_SAMPLES_PER_BLOCK // TARGET_SAMPLES_PER_BLOCK + EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION)
 ```
 
 #### `get_start_shard`
