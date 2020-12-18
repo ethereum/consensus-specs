@@ -2,52 +2,39 @@
 
 ## Table of contents
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-
-- [Introduction](#introduction)
-- [Constants](#constants)
-  - [Flags](#flags)
-- [Containers](#containers)
-  - [Modified containers](#extended-containers)
-    - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+**TODO**: Generate table of contents with doctoc.
 
 ## Introduction
 
-This is a proposed reform to the eth2 spec that significantly simplifies incentive accounting, removing PendingAttestations.
+This is a proposed incentive accounting simplification which replaces `PendingAttestation` with epoch participation flags.
 
 ## Constants
 
-### Rewards
-
-| Constant | Value |
-| - | - |
-| `TARGET_NUMERATOR` | 32 |
-| `TIMELY_NUMERATOR` | 12 |
-| `HEAD_AND_VERY_TIMELY_NUMERATOR` | 12 |
-| `REWARD_DENOMINATOR` | 64 |
-
-The numerators add up to 7/8, leaving the remaining 1/8 for proposer rewards and other micro rewards to be added in the future.
-
-### Flags
-
-| Flag | Value |
-| - | - |
-| `FLAG_TARGET` | 0 |
-| `FLAG_TIMELY` | 1 |
-| `FLAG_HEAD_AND_VERY_TIMELY` | 2 |
-
-### Convenience structure for flags and numerators
+### Participation flags
 
 | Name | Value |
 | - | - |
-| `FLAGS_AND_NUMERATORS` | `((FLAG_TARGET, TARGET_NUMERATOR), (FLAG_TIMELY, TIMELY_NUMERATOR), (FLAG_HEAD_AND_VERY_TIMELY, HEAD_AND_VERY_TIMELY_NUMERATOR))` |
+| `TIMELY_HEAD_FLAG` | `0` |
+| `TIMELY_SOURCE_FLAG` | `1` |
+| `TIMELY_TARGET_FLAG` | `2` |
+
+### Participation rewards
+
+| Name | Value |
+| - | - |
+| `TIMELY_HEAD_NUMERATOR` | `12` |
+| `TIMELY_SOURCE_NUMERATOR` | `12` |
+| `TIMELY_TARGET_NUMERATOR` | `32` |
+| `REWARD_DENOMINATOR` | `64` |
+
+The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewards and other future micro-rewards.
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `PARTICIPATION_FLAGS_LENGTH` | `8` |
+| `FLAGS_AND_NUMERATORS` | `((TIMELY_HEAD_FLAG, TIMELY_HEAD_NUMERATOR)), (TIMELY_TARGET_FLAG, TIMELY_TARGET_NUMERATOR), (TIMELY_SOURCE_FLAG, TIMELY_SOURCE_NUMERATOR)` |
 
 ## Containers
 
@@ -78,9 +65,9 @@ class BeaconState(Container):
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Current and previous epoch participation flags
-    previous_epoch_flags: List[Bitvector[8], VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_flags: List[Bitvector[8], VALIDATOR_REGISTRY_LIMIT]
+    # Participation
+    previous_epoch_participation: List[Bitvector[PARTICIPATION_FLAGS_LENGTH], VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[Bitvector[PARTICIPATION_FLAGS_LENGTH], VALIDATOR_REGISTRY_LIMIT]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
@@ -92,6 +79,8 @@ class BeaconState(Container):
 
 ##### `get_base_reward`
 
+*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH`.
+
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     total_balance = get_total_active_balance(state)
@@ -99,9 +88,9 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
 ```
 
-Note: remove the `// BASE_REWARDS_PER_EPOCH`
-
 ##### `process_attestation`
+
+*Note*: The function `process_attestation` is modified to do incentive accounting with epoch participation flags.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -113,60 +102,60 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(committee)
-        
+
     if data.target.epoch == get_current_epoch(state):
-        flags = state.current_epoch_flags
-        assert data.source == state.current_justified_checkpoint
+        epoch_participation = state.current_epoch_participation
+        justified_checkpoint = state.current_justified_checkpoint
     else:
-        flags = state.previous_epoch_flags
-        assert data.source == state.previous_justified_checkpoint    
+        epoch_participation = state.previous_epoch_participation
+        justified_checkpoint = state.previous_justified_checkpoint
+
+    # Matching roots
+    is_matching_head = data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+    is_matching_source = data.source == justified_checkpoint
+    is_matching_target = data.target.root == get_block_root(state, data.target.epoch)
+    assert is_matching_source
+
+    # Participation flags
+    participation_flags = []
+    if is_matching_head and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flags.append(TIMELY_HEAD_FLAG)
+    if is_matching_source and state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
+        participation_flags.append(TIMELY_SOURCE_FLAG)
+    if is_matching_target and state.slot <= data.slot + SLOTS_PER_EPOCH:
+        participation_flags.append(TIMELY_TARGET_FLAG)
+
+    # Update epoch participation
+    proposer_reward_numerator = 0
+    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+        for flag, numerator in FLAGS_AND_NUMERATORS:
+            if flag in participation_flags and not epoch_participation[index][flag]:
+                epoch_participation[index][flag] = True
+                proposer_reward_numerator += get_base_reward(state, index) * numerator
+    # Reward proposer
+    proposer_reward = Gwei(proposer_reward_numerator // (REWARD_DENOMINATOR * PROPOSER_REWARD_QUOTIENT))
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 
     # Verify signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
-        
-    # Process flags
-    flags_to_set = []
-    if data.target.root == get_block_root(state, data.target.epoch):
-        flags_to_set.append(FLAG_TARGET)
-
-        is_correct_head = data.beacon_block_root == get_block_root_at_slot(state, data.slot)
-        is_very_timely = state.slot == data.slot + MIN_ATTESTATION_INCLUSION_DELAY
-        if is_correct_head and is_very_timely:
-            flags_to_set.append(FLAG_HEAD_AND_VERY_TIMELY)
-
-    if state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
-        flags_to_set.append(FLAG_TIMELY)
-
-    # Update participation flags
-    active_validator_indices = get_active_validator_indices(state, data.target.epoch)
-    for participant in get_attesting_indices(state, data, attestation.aggregation_bits):
-        active_position = active_validator_indices.index(participant)
-        for flag, numerator in FLAGS_AND_NUMERATORS:
-            if flag in flags_to_set and not flags[active_position][flag]:
-                flags[active_position][flag] = True
-                # Give proposer reward for new flags
-                proposer_reward = Gwei(
-                    get_base_reward(state, participant) * numerator
-                    // (REWARD_DENOMINATOR * PROPOSER_REWARD_QUOTIENT)
-                )
-                increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
-##### `get_unslashed_participant_indices`
+##### `get_unslashed_participating_indices`
 
 ```python
-def get_unslashed_participant_indices(state: BeaconState, flag: uint8, epoch: Epoch) -> Set[ValidatorIndex]:
-    assert epoch in [get_current_epoch(state), get_previous_epoch(state)]
-
-    flags = state.current_epoch_flags if epoch == get_current_epoch(state) else state.previous_epoch_flags
-    participant_indices = [
-        index for i, index in enumerate(get_active_validator_indices(state, epoch))
-        if flags[i][flag]
-    ]
-    return set(filter(lambda index: not state.validators[index].slashed, participant_indices))
+def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: Epoch) -> Set[ValidatorIndex]:
+    assert epoch in (get_current_epoch(state), get_previous_epoch(state))
+    if epoch == get_current_epoch(state):
+        epoch_participation = state.current_epoch_participation
+    else:
+        epoch_participation = state.previous_epoch_participation
+    participating_indices = [index in get_active_validator_indices(state, epoch) if epoch_participation[index][flag]]
+    return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
 ##### `process_justification_and_finalization`
+
+*Note*: The function `process_justification_and_finalization` is modified to replace `matching_target_attestations` with `matching_target_indices`.
 
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
@@ -184,13 +173,13 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     state.previous_justified_checkpoint = state.current_justified_checkpoint
     state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
     state.justification_bits[0] = 0b0
-    matching_target_participants = get_unslashed_participant_indices(state, FLAG_TARGET, get_previous_epoch(state))
-    if get_total_balance(state, matching_target_participants) * 3 >= get_total_active_balance(state) * 2:
+    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG, previous_epoch)
+    if get_total_balance(state, matching_target_indices) * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
                                                         root=get_block_root(state, previous_epoch))
         state.justification_bits[1] = 0b1
-    matching_target_participants = get_unslashed_participant_indices(state, FLAG_TARGET, get_current_epoch(state))
-    if get_total_balance(state, matching_target_participants) * 3 >= get_total_active_balance(state) * 2:
+    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG, current_epoch)
+    if get_total_balance(state, matching_target_indices) * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_checkpoint = Checkpoint(epoch=current_epoch,
                                                         root=get_block_root(state, current_epoch))
         state.justification_bits[0] = 0b1
@@ -211,55 +200,50 @@ def process_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
-##### `get_standard_flag_deltas`
+##### `get_flag_deltas`
 
 ```python
-def get_standard_flag_deltas(state: BeaconState,
-                             flag: uint8,
-                             numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_deltas(state: BeaconState,
+                    flag: uint8,
+                    numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-    unslashed_participant_indices = get_unslashed_participant_indices(state, flag, get_previous_epoch(state))
+    unslashed_participating_indices = get_unslashed_participating_indices(state, flag, get_previous_epoch(state))
 
-    increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-    total_participating_balance = get_total_balance(state, unslashed_participant_indices) // increment
-    total_balance = get_total_active_balance(state) // increment
+    increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
+    unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // increment
+    active_increments = get_total_active_balance(state) // increment
     for index in get_eligible_validator_indices(state):
-        if index in unslashed_participant_indices:
+        base_reward = get_base_reward(state, index)
+        if index in unslashed_participating_indices:
             if is_in_inactivity_leak(state):
-                # Since full base reward will be canceled out by inactivity penalty deltas,
-                # optimal participation receives full base reward compensation here.
-                rewards[index] += get_base_reward(state, index) * numerator * total_balance // REWARD_DENOMINATOR
+                # Optimal participatition fully rewarded to cancel inactivity penalty
+                rewards[index] = base_reward * numerator // REWARD_DENOMINATOR
             else:
-                rewards[index] += (
-                    (get_base_reward(state, index) * total_participating_balance // total_balance)
-                    * numerator // REWARD_DENOMINATOR
-                )
+                rewards[index] = base_reward * numerator * unslashed_participating_increments
+                // (active_increments * REWARD_DENOMINATOR)
         else:
-            penalties[index] += get_base_reward(state, index) * numerator // REWARD_DENOMINATOR
+            penalties[index] = base_reward * numerator // REWARD_DENOMINATOR
     return rewards, penalties
 ```
 
 ##### `get_inactivity_penalty_deltas`
 
+*Note*: The function `get_inactivity_penalty_deltas` is modified in the selection of matching target indices and the removal of `BASE_REWARDS_PER_EPOCH`.
+
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return inactivity reward/penalty deltas for each validator.
-    Note: function exactly the same as Phase 0 other than the selection of `matching_target_attesting_indices` and `penalties`
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-    
-    total_usual_reward_numerator = sum(numerator for (_, numerator) in FLAGS_AND_NUMERATORS)
-
     if is_in_inactivity_leak(state):
-        previous_epoch = get_previous_epoch(state)
-        matching_target_attesting_indices = get_unslashed_participant_indices(state, FLAG_TARGET, previous_epoch)
+        reward_numerator_sum = sum(numerator for (_, numerator) in FLAGS_AND_NUMERATORS)
+        matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG, get_previous_epoch(state))
         for index in get_eligible_validator_indices(state):
             # If validator is performing optimally this cancels all attestation rewards for a neutral balance
-            base_reward = get_base_reward(state, index)
-            penalties[index] += Gwei(base_reward * total_usual_reward_numerator // INACTIVITY_PENALTY_QUOTIENT)
-            if index not in matching_target_attesting_indices:
+            penalties[index] += get_base_reward(state, index) * reward_numerator_sum // REWARD_DENOMINATOR
+            if index not in matching_target_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
 
@@ -270,15 +254,15 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 ##### `process_rewards_and_penalties`
 
+*Note*: The function `process_rewards_and_penalties` is modified to use participation flag deltas.
+
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
     # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    flag_deltas = [
-        get_standard_flag_deltas(state, flag, numerator) for (flag, numerator) in FLAGS_AND_NUMERATORS
-    ]
+    flag_deltas = [get_flag_deltas(state, flag, numerator) for (flag, numerator) in FLAGS_AND_NUMERATORS]
     deltas = flag_deltas + [get_inactivity_penalty_deltas]
     for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):
