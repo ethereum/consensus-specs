@@ -461,10 +461,9 @@ def process_shard_header(state: BeaconState,
         signed_header.signature
     )
     # Verify length of the header, and simultaneously verify degree.
-    r = hash(header.commitment.point)
     assert (
         bls.Pairing(header.length_proof, SIZE_CHECK_POINTS[header.commitment.length]) ==
-        bls.Pairing(header.commitment.point, bls.Add(bls.Multiply(G2_ONE, r), G2_SETUP[-header.commitment.length-1]))
+        bls.Pairing(header.commitment.point, G2_SETUP[-header.commitment.length]))
     )
     # Get the correct pending header list
     if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
@@ -487,9 +486,9 @@ def process_shard_header(state: BeaconState,
     ))
 ```
 
-The length-and-degree proof works as follows. For a block B with length `l` (so `l` nonzero values in `[0...MAX_SAMPLES_PER_BLOCK-1]`), the length proof is supposed to be `(B / Z) * (r + X**(len(SETUP)-l))`, where `Z` is the minimal polynomial that is zero over `[l...MAX_SAMPLES_PER_BLOCK-1]` (see `SIZE_CHECK_POINTS` above). The goal is to ensure that a proof can only be constructed if (i) `B / Z` is itself non-fractional, meaning that `B` is a multiple of `Z`, and (ii) `deg(B) < MAX_SAMPLES_PER_BLOCK` (the block is not oversized).
+The length-and-degree proof works as follows. For a block `B` with length `l` (so `l` nonzero values in `[0...MAX_SAMPLES_PER_BLOCK - 1]`), the length proof is the commitment to the polynomial `(B(X) / Z(X)) * (X**(MAX_DEGREE + 1 - l))`, where `Z` is the minimal polynomial that is zero over `ROOT_OF_UNITY ** [l...MAX_SAMPLES_PER_BLOCK - 1]` (see `SIZE_CHECK_POINTS` above) and `MAX_DEGREE` the the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`. The goal is to ensure that a proof can only be constructed if (i) `B / Z` is itself non-fractional, meaning that `B` is a multiple of `Z`, and (ii) `deg(B) < MAX_SAMPLES_PER_BLOCK` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
 
-This is done by making the proof be a random linear combination of `B / Z` and `(B / Z) * (X**(len(SETUP)-l)`. The length proof will have the degree of `(B / Z) * X**(len(SETUP)-l)`, so `deg(B) - (MAX_SAMPLES_PER_BLOCK - l) + len(SETUP) - l`, simplified to `deg(B) - MAX_SAMPLES_PER_BLOCK + len(SETUP)`. Because it's only possible to generate proofs for polynomials with degree `< len(SETUP)`, it's this only possible to generate the proof if this expression is less than `len(SETUP)`, meaning that `deg(B)` must be strictly less than `MAX_SAMPLES_PER_BLOCK`.
+The length proof will have the degree of `(B(X) / Z(X)) * X**(MAX_DEGREE + 1 - l)`, so `deg(B) - (MAX_SAMPLES_PER_BLOCK - l) + MAX_DEGREE + 1 - l`, simplified to `deg(B) - MAX_SAMPLES_PER_BLOCK + MAX_DEGREE + 1`. Because it's only possible to commit to polynomials with degree `<= MAX_DEGREE`, it's only possible to generate the proof if this expression is less than or equal to `MAX_DEGREE`, meaning that `deg(B)` must be strictly less than `MAX_SAMPLES_PER_BLOCK`.
 
 ### Shard transition processing
 
