@@ -34,7 +34,7 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | Name | Value |
 | - | - |
 | `PARTICIPATION_FLAGS_LENGTH` | `8` |
-| `FLAGS_AND_NUMERATORS` | `((TIMELY_HEAD_FLAG, TIMELY_HEAD_NUMERATOR), (TIMELY_TARGET_FLAG, TIMELY_TARGET_NUMERATOR), (TIMELY_SOURCE_FLAG, TIMELY_SOURCE_NUMERATOR))` |
+| `FLAGS_AND_NUMERATORS` | `((TIMELY_HEAD_FLAG, TIMELY_HEAD_NUMERATOR), (TIMELY_SOURCE_FLAG, TIMELY_SOURCE_NUMERATOR), (TIMELY_TARGET_FLAG, TIMELY_TARGET_NUMERATOR))` |
 
 ## Containers
 
@@ -75,7 +75,7 @@ class BeaconState(Container):
     finalized_checkpoint: Checkpoint
 ```
 
-###  Helpers
+### Helpers
 
 ##### `get_base_reward`
 
@@ -125,7 +125,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     if is_matching_target and state.slot <= data.slot + SLOTS_PER_EPOCH:
         participation_flags.append(TIMELY_TARGET_FLAG)
 
-    # Update epoch participation
+    # Update epoch participation flags
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
         for flag, numerator in FLAGS_AND_NUMERATORS:
@@ -144,7 +144,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: Epoch) -> Set[ValidatorIndex]:
-    assert epoch in (get_current_epoch(state), get_previous_epoch(state))
+    assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
         epoch_participation = state.current_epoch_participation
     else:
@@ -155,7 +155,7 @@ def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: 
 
 ##### `process_justification_and_finalization`
 
-*Note*: The function `process_justification_and_finalization` is modified to replace `matching_target_attestations` with `matching_target_indices`.
+*Note*: The function `process_justification_and_finalization` is modified with `matching_target_attestations` replaced by `matching_target_indices`.
 
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
@@ -203,9 +203,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 ##### `get_flag_deltas`
 
 ```python
-def get_flag_deltas(state: BeaconState,
-                    flag: uint8,
-                    numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag, get_previous_epoch(state))
@@ -217,7 +215,7 @@ def get_flag_deltas(state: BeaconState,
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
             if is_in_inactivity_leak(state):
-                # Optimal participatition fully rewarded to cancel inactivity penalty
+                # Optimal participatition is fully rewarded to cancel the inactivity penalty
                 rewards[index] = base_reward * numerator // REWARD_DENOMINATOR
             else:
                 rewards[index] = base_reward * numerator * unslashed_participating_increments
@@ -263,9 +261,18 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
 
     flag_deltas = [get_flag_deltas(state, flag, numerator) for (flag, numerator) in FLAGS_AND_NUMERATORS]
-    deltas = flag_deltas + [get_inactivity_penalty_deltas]
+    deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
     for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
             decrease_balance(state, ValidatorIndex(index), penalties[index])
+```
+
+##### `process_final_updates`
+
+```python
+def process_final_updates(state: BeaconState) -> None:
+    phase0.process_final_updates(state)
+    state.previous_epoch_participation = state.current_epoch_participation
+    state.current_epoch_participation = []
 ```
