@@ -116,6 +116,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     is_matching_target = data.target.root == get_block_root(state, data.target.epoch)
     assert is_matching_source
 
+    # Verify signature
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+
     # Participation flags
     participation_flags = []
     if is_matching_head and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
@@ -135,9 +138,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Reward proposer
     proposer_reward = Gwei(proposer_reward_numerator // (REWARD_DENOMINATOR * PROPOSER_REWARD_QUOTIENT))
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
-
-    # Verify signature
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
 
 ##### `get_unslashed_participating_indices`
