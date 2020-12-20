@@ -169,7 +169,7 @@ class SyncCommittee(Container):
 
 #### `get_base_reward`
 
-*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH`. Additionally, it is split into `get_base_reward_per_eth` to 
+*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH`. Additionally, it is split into `get_base_reward_per_eth` to allow penalties to be computed to the denominator.
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
