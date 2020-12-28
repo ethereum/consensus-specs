@@ -92,7 +92,8 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` | |
+| `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
 These points are the G2-side Kate commitments to `product[a in i...next_power_of_two(i)] (X ** POINTS_PER_SAMPLE - w ** (reverse_bit_order(a, MAX_SAMPLES_PER_BLOCK * DATA_AVAILABILITY_INVERSE_CODING_RATE) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w = ROOT_OF_UNITY`. They are used to verify block size proofs. They can be computed with a one-time O(N**2/log(N)) calculation using fast-linear-combinations in G2.
