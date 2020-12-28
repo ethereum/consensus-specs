@@ -197,7 +197,7 @@ class PendingShardHeader(Container):
     # Length of the data in samples
     length: uint64
     # Who voted for the header
-    votes: Bitlist[MAX_COMMITTEE_SIZE]
+    votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Has this header been confirmed?
     confirmed: bool
 ```
