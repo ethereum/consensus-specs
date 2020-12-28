@@ -150,7 +150,7 @@ class BeaconState(phase0.BeaconState):
     # New fields
     current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
     previous_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
-    most_recent_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
+    grandparent_epoch_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
 ```
@@ -591,10 +591,10 @@ def process_pending_headers(state: BeaconState):
                 candidates[winning_index].confirmed = True
     for slot in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
-            state.most_recent_confirmed_commitments[shard][slot] = DataCommitment()
+            state.grandparent_epoch_confirmed_commitments[shard][slot] = DataCommitment()
     for c in state.previous_epoch_pending_shard_headers:
         if c.confirmed:
-            state.most_recent_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
+            state.grandparent_epoch_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
 ```            
 
 ```python
