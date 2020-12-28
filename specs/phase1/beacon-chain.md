@@ -513,7 +513,7 @@ def process_shard_header(state: BeaconState,
         shard=header.shard,
         commitment=header.commitment,
         root=header_root,
-        votes=Bitlist[MAX_COMMITTEE_SIZE]([0] * committee_length),
+        votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
         confirmed=False
     ))
 ```
@@ -655,7 +655,7 @@ def reset_pending_headers(state: BeaconState):
                 shard=shard,
                 commitment=DataCommitment(),
                 root=Root(),
-                votes=Bitlist[MAX_COMMITTEE_SIZE]([0] * committee_length),
+                votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
                 confirmed=False
             ))
 
