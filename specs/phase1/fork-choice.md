@@ -27,7 +27,7 @@ def get_new_dependencies(state: BeaconState) -> Set[DataCommitment]:
         # Already confirmed during previous epoch
         [c.commitment for c in state.previous_epoch_pending_headers if c.confirmed] +
         # Confirmed in the epoch before the previous
-        [c for c in shard for shard in state.most_recent_confirmed_commitments if c != DataCommitment()]
+        [c for c in shard for shard in state.grandparent_epoch_confirmed_commitments if c != DataCommitment()]
     )
 ```
 
