@@ -193,7 +193,7 @@ class PendingShardHeader(Container):
     commitment: BLSCommitment
     # hash_tree_root of the ShardHeader (stored so that attestations
     # can be checked against it)
-    root: Hash
+    root: Root
     # Length of the data in samples
     length: uint64
     # Who voted for the header
