@@ -91,7 +91,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
-| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
+| `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
+| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 | `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` |
 
@@ -487,7 +488,9 @@ def process_shard_header(state: BeaconState,
         compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER)),
         signed_header.signature
     )
-    # Verify length of the header, and simultaneously verify degree.
+    # Verify the length by verifying the degree.
+    if header.commitment.length == 0:
+        assert header.degree_proof == G1_SETUP[0]
     assert (
         bls.Pairing(header.degree_proof, G2_SETUP[0]) ==
         bls.Pairing(header.commitment.point, G2_SETUP[-header.commitment.length]))
