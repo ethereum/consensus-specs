@@ -168,7 +168,7 @@ class DataCommitment(Container):
     # Kate commitment to the data
     point: BLSCommitment
     # Length of the data in samples
-    length: length
+    length: uint64
 ```
 
 ### `ShardHeader`
