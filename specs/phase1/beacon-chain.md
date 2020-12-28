@@ -53,7 +53,7 @@
 
 ## Introduction
 
-This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding, based on the ideas [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/r1XzqYIOv) and more broadly [here](https://arxiv.org/abs/1809.09044), using Kate commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
+This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding, based on the ideas [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD) and more broadly [here](https://arxiv.org/abs/1809.09044), using Kate commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
 ## Custom types
 
