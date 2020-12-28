@@ -191,7 +191,7 @@ class ShardHeader(Container):
 ```python
 class PendingShardHeader(Container):
     # Slot and shard that this header is intended for
-    slot: uint64
+    slot: Slot
     shard: Shard
     # Kate commitment to the data
     commitment: BLSCommitment
