@@ -53,7 +53,7 @@
 
 ## Introduction
 
-This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding, based on the ideas [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD) and more broadly [here](https://arxiv.org/abs/1809.09044), using Kate commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
+This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding, based on the ideas [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD) and more broadly [here](https://arxiv.org/abs/1809.09044), using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
 ## Custom types
 
@@ -96,7 +96,7 @@ We define the following Python custom types for type hinting and readability:
 | `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` |
 | `SIZE_CHECK_POINTS` | Type `List[G2, MAX_SAMPLES_PER_BLOCK + 1]`; TO BE COMPUTED |
 
-These points are the G2-side Kate commitments to `product[a in i...next_power_of_two(i)] (X ** POINTS_PER_SAMPLE - w ** (reverse_bit_order(a, MAX_SAMPLES_PER_BLOCK * DATA_AVAILABILITY_INVERSE_CODING_RATE) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w = ROOT_OF_UNITY`. They are used to verify block size proofs. They can be computed with a one-time O(N**2/log(N)) calculation using fast-linear-combinations in G2.
+These points are the G2-side KZG10 commitments to `product[a in i...next_power_of_two(i)] (X ** POINTS_PER_SAMPLE - w ** (reverse_bit_order(a, MAX_SAMPLES_PER_BLOCK * DATA_AVAILABILITY_INVERSE_CODING_RATE) * POINTS_PER_SAMPLE))` for each `i` in `[0...MAX_SAMPLES_PER_BLOCK]`, where `w = ROOT_OF_UNITY`. They are used to verify block size proofs. They can be computed with a one-time O(N**2/log(N)) calculation using fast-linear-combinations in G2.
 
 ### Gwei values
 
@@ -166,7 +166,7 @@ The following containers are new in Phase 1.
 
 ```python
 class DataCommitment(Container):
-    # Kate commitment to the data
+    # KZG10 commitment to the data
     point: BLSCommitment
     # Length of the data in samples
     length: uint64
@@ -193,7 +193,7 @@ class PendingShardHeader(Container):
     # Slot and shard that this header is intended for
     slot: Slot
     shard: Shard
-    # Kate commitment to the data
+    # KZG10 commitment to the data
     commitment: BLSCommitment
     # hash_tree_root of the ShardHeader (stored so that attestations
     # can be checked against it)
