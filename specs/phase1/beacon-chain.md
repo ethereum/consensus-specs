@@ -148,8 +148,8 @@ class BeaconState(phase0.BeaconState):
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # New fields
-    current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
     previous_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
+    current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
     grandparent_epoch_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
