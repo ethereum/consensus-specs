@@ -190,12 +190,10 @@ class PendingShardHeader(Container):
     slot: Slot
     shard: Shard
     # KZG10 commitment to the data
-    commitment: BLSCommitment
+    commitment: DataCommitment
     # hash_tree_root of the ShardHeader (stored so that attestations
     # can be checked against it)
     root: Root
-    # Length of the data in samples
-    length: uint64
     # Who voted for the header
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Has this header been confirmed?
