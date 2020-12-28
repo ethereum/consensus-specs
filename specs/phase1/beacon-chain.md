@@ -347,7 +347,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     """
     epoch = compute_epoch_at_slot(slot)
     committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, 
+    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot))
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER // HYSTERESIS_QUOTIENT
 
     return compute_proposer_index(state, committee, seed,
