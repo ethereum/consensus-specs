@@ -114,6 +114,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `DOMAIN_SHARD_HEADER` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
 
 ## Updated containers
 
@@ -424,12 +425,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     phase0.process_attestation(state, attestation)
-    update_pending_votes(
-        state=state,
-        attestation: Attestation,
-        root=,
-        aggregation_bits=attestation.aggregation_bits
-    )
+    update_pending_votes(state, attestation)
 ```
 
 #### `update_pending_votes`
@@ -447,7 +443,7 @@ def update_pending_votes(state: BeaconState,
         if header.root == attestation.data.shard_header_root:
             pending_header = header
     assert pending_header is not None
-    assert pending_header.slot == attestation.data.slot + 1
+    assert pending_header.slot == attestation.data.slot
     assert pending_header.shard == compute_shard_from_committee_index(
         state,
         attestation.data.index,
@@ -466,9 +462,9 @@ def update_pending_votes(state: BeaconState,
     ]
     if True not in [c.confirmed for c in all_candidates]:
         # Requirement 2: >= 2/3 of balance attesting
-        participants = get_attesting_indices(state, attestationg.data, pending_commitment.votes)
+        participants = get_attesting_indices(state, attestation.data, pending_commitment.votes)
         participants_balance = get_total_balance(state, participants)
-        full_committee = get_beacon_committee(state, attestationg.data.slot, attestationg.data.shard)
+        full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         full_committee_balance = get_total_balance(state, full_committee)
         if participants_balance * 3 > full_committee_balance * 2:
             pending_header.confirmed = True
@@ -478,7 +474,7 @@ def update_pending_votes(state: BeaconState,
 
 ```python
 def process_shard_header(state: BeaconState,
-                         signed_header: Signed[ShardDataHeader]) -> None:
+                         signed_header: Signed[ShardHeader]) -> None:
     header = signed_header.message
     header_root = hash_tree_root(header)
     # Verify signature
@@ -499,6 +495,7 @@ def process_shard_header(state: BeaconState,
     if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
         pending_headers = state.current_epoch_pending_shard_headers
     else:
+        assert compute_epoch_at_slot(header.slot) == get_previous_epoch(state):
         pending_headers = state.previous_epoch_pending_shard_headers
         
     # Check that this header is not yet in the pending list
@@ -561,7 +558,7 @@ def process_epoch(state: BeaconState) -> None:
 
 def process_pending_headers(state: BeaconState):
     for slot in range(SLOTS_PER_EPOCH):
-        for shard in range(SHARD_COUNT):
+        for shard in range(get_active_shard_count(state)):
             # Pending headers for this (slot, shard) combo
             candidates = [
                 c for c in state.previous_epoch_pending_shard_headers if
@@ -601,7 +598,7 @@ def process_pending_headers(state: BeaconState):
 ```python
 def charge_confirmed_header_fees(state: BeaconState) -> None:
     new_gasprice = state.shard_gasprice
-    adjustment_quotient = get_active_shard_count(state) * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
+    adjustment_quotient = get_active_shard_count(state, get_current_epoch(state)) * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     for slot in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
             confirmed_candidates = [
