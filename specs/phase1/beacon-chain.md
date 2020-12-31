@@ -234,14 +234,6 @@ def compute_previous_slot(slot: Slot) -> Slot:
         return Slot(0)
 ```
 
-#### `compute_shard_from_committee_index`
-
-```python
-def compute_shard_from_committee_index(state: BeaconState, index: CommitteeIndex, slot: Slot) -> Shard:
-    active_shards = get_active_shard_count(state)
-    return Shard((index + get_start_shard(state, slot)) % active_shards)
-```
-
 #### `compute_updated_gasprice`
 
 ```python
@@ -377,6 +369,22 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     return Shard(shard)
 ```
 
+#### `compute_shard_from_committee_index`
+
+```python
+def compute_shard_from_committee_index(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Shard:
+    active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
+    return Shard((index + get_start_shard(state, slot)) % active_shards)
+```
+
+#### `compute_committee_index_from_shard`
+
+```python
+def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Shard) -> CommitteeIndex:
+    active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
+    return CommitteeIndex((active_shards + shard - get_start_shard(state, slot)) % active_shards)    
+```
+
 
 ### Block processing
 
@@ -446,8 +454,8 @@ def update_pending_votes(state: BeaconState,
     assert pending_header.slot == attestation.data.slot
     assert pending_header.shard == compute_shard_from_committee_index(
         state,
+        attestation.data.slot,
         attestation.data.index,
-        attestation.data.slot
     )
     pending_header.votes = bitwise_or(
         pending_header.votes,
@@ -502,7 +510,8 @@ def process_shard_header(state: BeaconState,
     for pending_header in pending_headers:
         assert header_root != pending_header.root
     # Include it in the pending list
-    committee_length = len(get_beacon_committee(state, header.slot, header.shard))
+    index = compute_committee_index_from_shard(state, header.slot, header.shard)
+    committee_length = len(get_beacon_committee(state, header.slot, index))
     pending_headers.append(PendingShardHeader(
         slot=header.slot,
         shard=header.shard,
@@ -626,7 +635,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
 def reset_pending_headers(state: BeaconState):
     state.previous_epoch_pending_shard_headers = state.current_epoch_pending_shard_headers
     shards = [
-        compute_shard_from_committee_index(state, index, slot)
+        compute_shard_from_committee_index(state, slot, index)
         for i in range()
         state,
         attestation.data.index,
@@ -637,7 +646,7 @@ def reset_pending_headers(state: BeaconState):
     # (default to vote for if no shard header available)
     for slot in range(SLOTS_IN_EPOCH):
         for index in range(get_committee_count_per_slot(get_current_epoch(state))):
-            shard = compute_shard_from_committee_index(state, index, slot)
+            shard = compute_shard_from_committee_index(state, slot, index)
             committee_length = len(get_beacon_committee(
                 state,
                 header.slot,
