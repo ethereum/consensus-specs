@@ -575,6 +575,10 @@ Although serving these is not directly incentivised, it is little work:
 1. Buffer any message you see on the backbone vertical subnets, for a buffer of up to two weeks.
 2. Serve the samples on request. An individual sample is just expected to be `~ 0.5 KB`, and does not require any pre-processing to serve.
 
+A validator SHOULD make a `DASQuery` request to random peers, until failing more than the configured failure-rate.
+
+TODO: detailed failure-mode spec. Stop after trying e.g. 3 peers for any sample in a configured time window (after the gossip period).
+
 Pulling samples directly from nodes with a custody responsibility, without revealing their identity to the network, is an open problem.
 
 

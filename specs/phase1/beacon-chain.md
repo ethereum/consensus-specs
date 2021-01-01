@@ -145,7 +145,10 @@ class AttestationData(Container):
 
 ```python
 class BeaconBlock(phase0.BeaconBlock):
+<<<<<<< HEAD
     # insert phase 0 fields
+=======
+>>>>>>> 3c19069e (more DAS spec work: DAS function signatures, gossip details)
     shard_headers: List[SignedShardHeader, MAX_SHARD_HEADERS]
 ```
 
@@ -190,6 +193,8 @@ class ShardHeader(Container):
     # Proof that the degree < commitment.length
     degree_proof: BLSKateProof
 ```
+
+TODO: add shard-proposer-index to shard headers, similar to optimization done with beacon-blocks.
 
 ### `SignedShardHeader`
 

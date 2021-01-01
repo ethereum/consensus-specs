@@ -30,6 +30,33 @@ class DASSample(Container):
     data: Vector[BLSPoint, POINTS_PER_SAMPLE]
 ```
 
+### ShardBlob
+
+The blob of data, effectively a block. Network-only.
+
+```python
+class ShardBlob(Container):
+    # Slot and shard that this blob is intended for
+    slot: Slot
+    shard: Shard
+    # The actual data
+    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
+```
+
+Note that the hash-tree-root of the `ShardBlob` does not match the `ShardHeader`, 
+since the blob deals with full data, whereas the header includes the Kate commitment instead.
+
+### SignedShardBlob
+
+Network-only.
+
+```python
+class ShardBlob(Container):
+    message: ShardBlob
+    signature: BLSSignature
+```
+
+
 ## Helper functions
 
 ### Data extension

@@ -85,6 +85,12 @@ sufficient to avoid any significant amount of nodes from being 100% predictable.
 As soon as a sample is missing after the expected propagation time window,
 nodes can divert to the pull-model, or ultimately flag it as unavailable data.
 
+Note that the vertical subnets are shared between the different shards,
+and a simple hash function `(shard, slot, sample_index) -> subnet_index` defines which samples go where.
+This is to evenly distribute samples to subnets, even when one shard has more activity than the other.
+
+TODO: define `(shard, slot, sample_index) -> subnet_index` hash function.
+
 #### Slow rotation: Backbone
 
 To allow for subscriptions to rotate quickly and randomly, a backbone is formed to help onboard peers into other topics.
@@ -113,12 +119,61 @@ If the node does not already have connected peers on the topic it needs to sampl
 
 ### Topics and messages
 
-#### Horizontal subnets
+Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
+| Name                             | Message Type              |
+|----------------------------------|---------------------------|
+| `shard_blob_{shard}`             | `SignedShardBlob`         |
+| `shard_header_{shard}`           | `SignedShardHeader`       |
+| `das_sample_{subnet_index}`      | `DASSample`               |
 
+TODO: separate phase 1 network spec.
 
+#### Horizontal subnets: `shard_blob_{shard}`
 
-#### Vertical subnets
+Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}` subnets.
 
+If participating in DAS, upon receiving a `blob` for the first time, with a `slot` not older than `MAX_RESAMPLE_TIME`,
+a subscriber of a `shard_blob_{shard}` SHOULD reconstruct the samples and publish them to vertical subnets.
+1. Extend the data: `extended_data = extend_data(blob.data)`
+2. Create samples with proofs: `samples = sample_data(blob.slot, blob.shard, extended_data)`
+3. Fanout-publish the samples to the vertical subnets of its peers (not all vertical subnets may be reached).
+
+The [DAS validator spec](./validator.md#data-availability-sampling) outlines when and where to participate in DAS on horizontal subnets.
+
+The following validations MUST pass before forwarding the `blob` on the horizontal subnet or creating samples for it.
+- _[REJECT]_ `blob.message.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
+- _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. validate that `blob.message.slot <= current_slot`
+  (a client MAY queue future blobs for processing at the appropriate slot).
+- _[IGNORE]_ The blob is the first blob with valid signature received for the proposer for the `(slot, shard)`: `blob.message.slot`.
+- _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
+- _[REJECT]_ The `blob.message.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
+- _[REJECT]_ The proposer signature, `blob.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot
+
+TODO: define a blob header (note: hash-tree-root instead of commitment data) and make double blob proposals slashable?
+
+#### Vertical subnets: `das_sample_{subnet_index}`
+
+Shard blob samples can be verified with just a 48 byte Kate proof, against the commitment specific to that `(shard, slot)` key.
+
+The following validations MUST pass before forwarding the `sample` on the vertical subnet.
+- _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
+   If not known, the client MAY queue the sample, if it passes formatting conditions.
+- _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
+- _[REJECT]_ `sample.shard` must be within valid range: `0 <= sample.shard < get_active_shard_count(state, compute_epoch_at_slot(sample.slot))`.
+- _[REJECT]_ `sample.index` must be within valid range: `0 <= sample.index < sample_count`, where:
+    - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
+    - `points_count` is the length as claimed along with the commitment, which must be smaller than `MAX_SAMPLES_PER_BLOCK`.
+- _[IGNORE]_ The `sample` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. validate that `sample.slot <= current_slot`. A client MAY queue future samples for processing at the appropriate slot, if it passed formatting conditions.
+- _[IGNORE]_ This is the first received sample with the (`sample.shard`, `sample.slot`, `sample.index`) key tuple.
+- _[REJECT]_ As already limited by the SSZ list-limit, it is important the sample data is well-formatted and not too large.
+- _[REJECT]_ The `sample.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
+- _[REJECT]_ The `sample.proof` MUST be valid: `verify_sample(sample, sample_count, commitment)`
+
+Upon receiving a valid sample, it SHOULD be retained for a buffer period, if the local node is part of the backbone that covers this sample.
+This is to serve other peers that may have missed it.
 
 
 ## DAS in the Req-Resp domain: Pull
