@@ -140,7 +140,7 @@ class AttestationData(Container):
 
 ```python
 class BeaconBlock(phase0.BeaconBlock):
-    shard_headers: List[Signed[ShardHeader], MAX_SHARD_HEADERS]
+    shard_headers: List[SignedShardHeader, MAX_SHARD_HEADERS]
 ```
 
 ### `BeaconState`
@@ -183,6 +183,16 @@ class ShardHeader(Container):
     commitment: DataCommitment
     # Proof that the degree < commitment.length
     degree_proof: BLSKateProof
+```
+
+TODO: add shard-proposer-index to shard headers, similar to optimization done with beacon-blocks.
+
+### `SignedShardHeader`
+
+```python
+class SignedShardHeader(Container):
+    message: ShardHeader
+    signature: BLSSignature
 ```
 
 ### `PendingShardHeader`
@@ -483,7 +493,7 @@ def update_pending_votes(state: BeaconState,
 
 ```python
 def process_shard_header(state: BeaconState,
-                         signed_header: Signed[ShardHeader]) -> None:
+                         signed_header: SignedShardHeader) -> None:
     header = signed_header.message
     header_root = hash_tree_root(header)
     # Verify signature
