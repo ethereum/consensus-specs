@@ -66,7 +66,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `Shard` | `uint64` | A shard number |
 | `BLSCommitment` | `bytes48` | A G1 curve point |
-| `BLSKateProof` | `bytes48` | A G1 curve point |
 
 ## Configuration
 
@@ -185,7 +184,7 @@ class ShardHeader(Container):
     # The actual data commitment
     commitment: DataCommitment
     # Proof that the degree < commitment.length
-    degree_proof: BLSKateProof
+    degree_proof: BLSCommitment
 ```
 
 TODO: add shard-proposer-index to shard headers, similar to optimization done with beacon-blocks.

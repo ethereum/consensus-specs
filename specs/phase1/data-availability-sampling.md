@@ -52,7 +52,7 @@ class DASSample(Container):
     slot: Slot
     shard: Shard
     index: SampleIndex
-    proof: BLSKateProof
+    proof: BLSCommitment
     data: Vector[BLSPoint, POINTS_PER_SAMPLE]
 ```
 
@@ -70,7 +70,7 @@ class ShardBlob(Container):
 ```
 
 Note that the hash-tree-root of the `ShardBlob` does not match the `ShardHeader`, 
-since the blob deals with full data, whereas the header includes the Kate commitment instead.
+since the blob deals with full data, whereas the header includes the KZG commitment instead.
 
 ### SignedShardBlob
 
@@ -156,21 +156,21 @@ def unextend_data(extended_data: Sequence[Point]) -> Sequence[Point]:
 ```
 
 ```python
-def check_multi_kate_proof(commitment: BLSCommitment, proof: BLSKateProof, x: Point, ys: Sequence[Point]) -> bool:
+def check_multi_kzg_proof(commitment: BLSCommitment, proof: BLSCommitment, x: Point, ys: Sequence[Point]) -> bool:
     """
     Run a KZG multi-proof check to verify that for the subgroup starting at x,
     the proof indeed complements the ys to match the commitment.
     """
-    ...  # Omitted for now, refer to Kate implementation resources.
+    ...  # Omitted for now, refer to KZG implementation resources.
 ```
 
 ```python
-def construct_proofs(extended_data_as_poly: Sequence[Point]) -> Sequence[BLSKateProof]:
+def construct_proofs(extended_data_as_poly: Sequence[Point]) -> Sequence[BLSCommitment]:
     """
     Constructs proofs for samples of extended data (in polynomial form, 2nd half being zeroes).
     Use the FK20 multi-proof approach to construct proofs for a chunk length of POINTS_PER_SAMPLE.
     """
-    ... # Omitted for now, refer to Kate implementation resources.
+    ... # Omitted for now, refer to KZG implementation resources.
 ```
 
 ```python
@@ -207,7 +207,7 @@ def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommit
     sample_root_of_unity = ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK  # change point-level to sample-level domain
     x = sample_root_of_unity**domain_pos
     ys = reverse_bit_order_list(sample.data)
-    assert check_multi_kate_proof(commitment, sample.proof, x, ys)
+    assert check_multi_kzg_proof(commitment, sample.proof, x, ys)
 ```
 
 ```python
