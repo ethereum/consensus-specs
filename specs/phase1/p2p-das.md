@@ -181,7 +181,8 @@ TODO: make double blob proposals slashable?
 
 #### Vertical subnets: `das_sample_{subnet_index}`
 
-Shard blob samples can be verified with just a 48 byte Kate proof, against the commitment specific to that `(shard, slot)` key.
+Shard blob samples can be verified with just a 48 byte KZG proof (commitment quotient polynomial), 
+against the commitment to blob polynomial, specific to that `(shard, slot)` key.
 
 The following validations MUST pass before forwarding the `sample` on the vertical subnet.
 - _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
