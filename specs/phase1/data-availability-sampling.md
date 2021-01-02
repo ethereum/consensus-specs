@@ -17,6 +17,15 @@ We define the following Python custom types for type hinting and readability:
 | `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 
 
+## Configuration
+
+### Misc
+
+| Name | Value | Notes |
+| - | - | - |
+| `MAX_RESAMPLE_TIME` | `TODO` (= TODO) | Time window to sample a shard blob and put it on vertical subnets |
+
+
 ## New containers
 
 ### DASSample
@@ -51,13 +60,36 @@ since the blob deals with full data, whereas the header includes the Kate commit
 Network-only.
 
 ```python
-class ShardBlob(Container):
-    message: ShardBlob
+class SignedShardBlob(Container):
+    blob: ShardBlob
+    # The signature, the message is the commitment on the blob
     signature: BLSSignature
 ```
 
 
 ## Helper functions
+
+### Reverse bit ordering
+
+#### `reverse_bit_order`
+
+```python
+def reverse_bit_order(n: int, order: int):
+    """
+    Reverse the bit order of an integer n
+    """
+    assert is_power_of_two(order)
+    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
+```
+
+#### `reverse_bit_order_list`
+
+```python
+def reverse_bit_order_list(elements: Sequence[int]) -> Sequence[int]:
+    order = len(elements)
+    assert is_power_of_two(order)
+    return [elements[reverse_bit_order(i, order)] for i in range(order)]
+```
 
 ### Data extension
 
@@ -67,7 +99,10 @@ Implementations:
 
 ```python
 def das_fft_extension(data: Sequence[Point]) -> Sequence[Point]:
-    """Given some even-index values of an IFFT input, compute the odd-index inputs, such that the second output half is all zeroes."""
+    """
+    Given some even-index values of an IFFT input, compute the odd-index inputs,
+    such that the second output half of the IFFT is all zeroes.
+    """
     poly = inverse_fft(data)
     return fft(poly + [0]*len(poly))[1::2]
 ```
@@ -81,8 +116,8 @@ Implementations:
 - [Old approach in Go](https://github.com/protolambda/go-kate/blob/master/recovery.go)
 
 ```python
-def recover_data(data: Sequence[Optional[Point]]) -> Sequence[Point]:
-    """Given an a subset of half or more of the values (missing values are None), recover the None values."""
+def recover_data(data: Sequence[Optional[Sequence[Point]]]) -> Sequence[Point]:
+    """Given an a subset of half or more of subgroup-aligned ranges of values, recover the None values."""
     ...
 ```
 
@@ -90,43 +125,61 @@ def recover_data(data: Sequence[Optional[Point]]) -> Sequence[Point]:
 
 ```python
 def extend_data(data: Sequence[Point]) -> Sequence[Point]:
-    # To force adjacent data into the same proofs, reverse-bit-order the whole list.
-    evens = [data[reverse_bit_order(i, len(data))] for i in range(len(data))]
-    # last step of reverse-bit-order: mix in the extended data.
-    # When undoing the reverse bit order: 1st half matches original data, and 2nd half matches the extension.
-    odds = das_fft_extension(data)
-    return [evens[i//2] if i % 2 == 0 else odds[i//2] for i in range(len(data)*2)]
+    """
+    The input data gets reverse-bit-ordered, such that the first half of the final output matches the original data.
+    We calculated the odd-index values with the DAS FFT extension, reverse-bit-order to put them in the second half.
+    """
+    rev_bit_odds = reverse_bit_order_list(das_fft_extension(reverse_bit_order_list(data)))
+    return data + rev_bit_odds
 ```
 
 ```python
 def unextend_data(extended_data: Sequence[Point]) -> Sequence[Point]:
-    return [extended_data[reverse_bit_order(i, len(extended_data))] for i in range(len(extended_data)//2)]
+    return extended_data[:len(extended_data)//2]
 ```
 
 ```python
 def check_multi_kate_proof(commitment: BLSCommitment, proof: BLSKateProof, x: Point, ys: Sequence[Point]) -> bool:
-    ...
+    """
+    Run a KZG multi-proof check to verify that for the subgroup starting at x,
+    the proof indeed complements the ys to match the commitment.
+    """
+    ...  # Omitted for now, refer to Kate implementation resources.
 ```
 
 ```python
 def construct_proofs(extended_data_as_poly: Sequence[Point]) -> Sequence[BLSKateProof]:
-    """Constructs proofs for samples of extended data (in polynomial form, 2nd half being zeroes)"""
-    ... # TODO Use FK20 multi-proof code to construct proofs for a chunk length of POINTS_PER_SAMPLE.
+    """
+    Constructs proofs for samples of extended data (in polynomial form, 2nd half being zeroes).
+    Use the FK20 multi-proof approach to construct proofs for a chunk length of POINTS_PER_SAMPLE.
+    """
+    ... # Omitted for now, refer to Kate implementation resources.
+```
+
+```python
+def commit_to_data(data_as_poly: Sequence[Point]) -> Sequence[BLSCommitment]:
+    """Commit to a polynomial by """
 ```
 
 ```python
 def sample_data(slot: Slot, shard: Shard, extended_data: Sequence[Point]) -> Sequence[DASSample]:
-    # TODO: padding of last sample (if not a multiple of POINTS_PER_SAMPLE)
     sample_count = len(extended_data) // POINTS_PER_SAMPLE
     assert sample_count <= MAX_SAMPLES_PER_BLOCK
-    proofs = construct_proofs(ifft(extended_data))
+    # get polynomial form of full extended data, second half will be all zeroes.
+    poly = ifft(reverse_bit_order_list(extended_data))
+    assert all(v == 0 for v in poly[len(poly)//2:])
+    proofs = construct_proofs(poly)
     return [
         DASSample(
             slot=slot,
             shard=shard,
+            # The proof applies to `x = w ** (reverse_bit_order(i, sample_count) * POINTS_PER_SAMPLE)`
             index=i,
-            proof=proofs[reverse_bit_order(i, sample_count)],  # TODO: proof order depends on API of construct_proofs
-            data=reverse_bit_order_list(extended_data[i*POINTS_PER_SAMPLE:(i+1)*POINTS_PER_SAMPLE])  # TODO: can reorder here, or defer
+            # The computed proofs match the reverse_bit_order_list(extended_data), undo that to get the right proof.
+            proof=proofs[reverse_bit_order(i, sample_count)],
+            # note: we leave the sample data as-is so it matches the original nicely.
+            # The proof applies to `ys = reverse_bit_order_list(sample.data)`
+            data=extended_data[i*POINTS_PER_SAMPLE:(i+1)*POINTS_PER_SAMPLE]
         ) for i in range(sample_count)
     ]
 ```
@@ -136,15 +189,13 @@ def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommit
     domain_pos = reverse_bit_order(sample.index, sample_count)
     sample_root_of_unity = ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK  # change point-level to sample-level domain
     x = sample_root_of_unity**domain_pos
-    assert check_multi_kate_proof(commitment, sample.proof, x, sample.data)
+    ys = reverse_bit_order_list(sample.data)
+    assert check_multi_kate_proof(commitment, sample.proof, x, ys)
 ```
 
 ```python
 def reconstruct_extended_data(samples: Sequence[Optional[DASSample]]) -> Sequence[Point]:
-    extended_data = [None] * (len(samples) * POINTS_PER_SAMPLE)
-    for sample in samples:
-        offset = sample.index * POINTS_PER_SAMPLE
-        for i, p in enumerate(sample.data):
-            extended_data[offset+i] = p
-    return recover_data(extended_data)
+    # Instead of recovering with a point-by-point approach, recover the samples by recovering missing subgroups.
+    subgroups = [None if sample is None else reverse_bit_order_list(sample.data) for sample in samples]
+    return recover_data(subgroups)
 ```
