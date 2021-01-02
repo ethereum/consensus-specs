@@ -28,7 +28,6 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
     - [`next_power_of_two`](#next_power_of_two)
-    - [`reverse_bit_order`](#reverse_bit_order)
     - [`compute_previous_slot`](#compute_previous_slot)
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
