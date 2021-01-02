@@ -174,7 +174,7 @@ def construct_proofs(extended_data_as_poly: Sequence[Point]) -> Sequence[BLSKate
 ```
 
 ```python
-def commit_to_data(data_as_poly: Sequence[Point]) -> Sequence[BLSCommitment]:
+def commit_to_data(data_as_poly: Sequence[Point]) -> BLSCommitment:
     """Commit to a polynomial by """
 ```
 
