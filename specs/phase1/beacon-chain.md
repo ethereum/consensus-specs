@@ -232,17 +232,6 @@ def next_power_of_two(x):
     return 2 ** ((x - 1).bit_length())
 ```
 
-#### `reverse_bit_order`
-
-```python
-def reverse_bit_order(n, order):
-    """
-    Reverse the bit order of an integer n
-    """
-    assert is_power_of_two(order)
-    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
-```
-
 #### `compute_previous_slot`
 
 ```python
