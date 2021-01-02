@@ -5,6 +5,23 @@
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Custom types](#custom-types)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+- [New containers](#new-containers)
+  - [DASSample](#dassample)
+  - [ShardBlob](#shardblob)
+  - [SignedShardBlob](#signedshardblob)
+- [Helper functions](#helper-functions)
+  - [Reverse bit ordering](#reverse-bit-ordering)
+    - [`reverse_bit_order`](#reverse_bit_order)
+    - [`reverse_bit_order_list`](#reverse_bit_order_list)
+  - [Data extension](#data-extension)
+  - [Data recovery](#data-recovery)
+- [DAS functions](#das-functions)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Custom types

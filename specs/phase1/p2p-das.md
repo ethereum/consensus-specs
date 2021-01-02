@@ -1,3 +1,28 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Ethereum 2.0 Phase 1 -- Network specification for Data Availability Sampling](#ethereum-20-phase-1----network-specification-for-data-availability-sampling)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [DAS Subnets](#das-subnets)
+    - [Horizontal subnets](#horizontal-subnets)
+      - [Publishing](#publishing)
+      - [Horizontal propagation](#horizontal-propagation)
+      - [Horizontal to vertical](#horizontal-to-vertical)
+    - [Vertical subnets](#vertical-subnets)
+      - [Slow rotation: Backbone](#slow-rotation-backbone)
+      - [Quick Rotation: Sampling](#quick-rotation-sampling)
+  - [DAS in the Gossip domain: Push](#das-in-the-gossip-domain-push)
+    - [Topics and messages](#topics-and-messages)
+      - [Horizontal subnets: `shard_blob_{shard}`](#horizontal-subnets-shard_blob_shard)
+      - [Vertical subnets: `das_sample_{subnet_index}`](#vertical-subnets-das_sample_subnet_index)
+  - [DAS in the Req-Resp domain: Pull](#das-in-the-req-resp-domain-pull)
+    - [Messages](#messages)
+      - [DASQuery](#dasquery)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Ethereum 2.0 Phase 1 -- Network specification for Data Availability Sampling 
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
