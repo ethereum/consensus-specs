@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Data Availability Sampling
+# Ethereum 2.0 Phase 1 -- Data Availability Sampling - Internals
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
