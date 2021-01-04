@@ -51,6 +51,13 @@
     - [Broadcast aggregate](#broadcast-aggregate-1)
       - [`LightAggregateAndProof`](#lightaggregateandproof)
       - [`SignedLightAggregateAndProof`](#signedlightaggregateandproof)
+- [Data Availability Sampling](#data-availability-sampling)
+  - [Gossip subscriptions to maintain](#gossip-subscriptions-to-maintain)
+    - [Slow rotation: Backbone](#slow-rotation-backbone)
+    - [Quick rotation: Sampling](#quick-rotation-sampling)
+  - [DAS during network instability](#das-during-network-instability)
+    - [Waiting on missing samples](#waiting-on-missing-samples)
+    - [Pulling missing samples](#pulling-missing-samples)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Custody slashing](#custody-slashing)
 
