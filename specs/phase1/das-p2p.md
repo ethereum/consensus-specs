@@ -117,9 +117,11 @@ To allow for subscriptions to rotate quickly and randomly, a backbone is formed 
 
 This backbone is based on a pure function of the *node* identity and time:
 - Nodes can be found *without additional discovery overhead*:
-  peers on a vertical topic can be found by searching the local peerstore for identities that hash to the desired topic(s). 
+  peers on a vertical topic can be found by searching the local peerstore for identities that hash to the desired topic(s),
+  assuming the peerstore already has a large enough variety of peers.
 - Nodes can be held accountable for contributing to the backbone:
   peers that particpate in DAS but are not active on the appropriate backbone topics can be scored down.
+  *Note: This is experimental, DAS should be light enough for all participants to run, but scoring needs to undergo testing*
 
 A node should anticipate backbone topics to subscribe to based their own identity.
 These subscriptions rotate slowly, and with different offsets per node identity to avoid sudden network-wide rotations.
