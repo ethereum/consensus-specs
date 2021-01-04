@@ -46,13 +46,13 @@ This is a lot of work, and ideally happens at a low latency.
 
 To achieve quick querying, the query model is changed to *push* the samples to listeners instead, using GossipSub.
 The listeners then randomly rotate their subscriptions to keep queries unpredictable.
-Except for a small subset of subscriptions, which will function as a backbone to keep topics more stable.
+Except for a small subset of subscriptions, which will function as a backbone to keep topics more stable and allow for efficient peer discovery.
 
 Publishing can utilize the fan-out functionality in GossipSub, and is easier to split between nodes:
 nodes on the horizontal networks can help by producing the same samples and fan-out publishing to their own peers.
 
 This push model also helps to obfuscate the original source of a message:
-the listeners will not have to make individual queries to some identified source.
+the listeners do not have to make individual queries to some identified source.
 
 The push model does not aim to serve "historical" queries (anything older than the most recent).
 Historical queries are still required for the unhappy case, where messages are not pushed quick enough,
@@ -80,7 +80,7 @@ a regular proposer cannot reach every vertical subnet.
 
 #### Publishing
 
-To publish their work, proposers already put the shard block as a whole on a shard-block subnet.
+To publish their work, proposers propagate the shard block as a whole on a shard-block subnet.
 
 The proposer can fan-out their work more aggressively, by using the fan-out functionality of GossipSub:
 it may publish to all its peers on the subnet, instead of just those in its mesh.
@@ -138,7 +138,7 @@ Backbone subscription work is outlined in the [DAS validator spec](./validator.m
 #### Quick Rotation: Sampling
 
 A node MUST maintain `k` random subscriptions to topics, and rotate these according to the [DAS validator spec](./validator.md#data-availability-sampling).
-If the node does not already have connected peers on the topic it needs to sample, it can search its peerstore for peers in the topic backbone.
+If the node does not already have connected peers on the topic it needs to sample, it can search its peerstore, and if necessary in the DHT, for peers in the topic backbone.
 
 ## DAS in the Gossip domain: Push
 
@@ -175,7 +175,7 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
 - _[REJECT]_ The `blob.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
 - _[REJECT]_ The proposer signature, `signed_blob.signature`, is valid with respect to the `proposer_index` pubkey, signed over the SSZ output of `commit_to_data(blob.data)`.
-- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot
+- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot.
 
 TODO: make double blob proposals slashable?
 
