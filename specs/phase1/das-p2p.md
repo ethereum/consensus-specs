@@ -1,6 +1,11 @@
+# Ethereum 2.0 Phase 1 -- Data Availability Sampling - Network specification
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
 
 - [Ethereum 2.0 Phase 1 -- Network specification for Data Availability Sampling](#ethereum-20-phase-1----network-specification-for-data-availability-sampling)
   - [Table of contents](#table-of-contents)
@@ -23,19 +28,10 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# Ethereum 2.0 Phase 1 -- Network specification for Data Availability Sampling 
-
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
-## Table of contents
-
-<!-- TOC -->
-
-<!-- /TOC -->
 
 ## Introduction
 
-For an introduction about DAS itself, see [the DAS section in the Phase 1 validator spec](./validator.md#data-availability-sampling).
+For an introduction about DAS itself, see [the DAS participation spec](./das-participation.md#data-availability-sampling).
 This is not a pre-requisite for the network layer, but will give you valuable context. 
 
 For sampling, all nodes need to query for `k` random samples each slot.
@@ -133,11 +129,11 @@ These subscriptions rotate slowly, and with different offsets per node identity 
 # TODO hash function: (node, time)->subnets
 ```
 
-Backbone subscription work is outlined in the [DAS validator spec](./validator.md#data-availability-sampling)
+Backbone subscription work is outlined in the [DAS participation spec](./das-participation.md#slow-rotation-backbone)
 
 #### Quick Rotation: Sampling
 
-A node MUST maintain `k` random subscriptions to topics, and rotate these according to the [DAS validator spec](./validator.md#data-availability-sampling).
+A node MUST maintain `k` random subscriptions to topics, and rotate these according to the [DAS participation spec](./das-participation.md#quick-rotation-sampling).
 If the node does not already have connected peers on the topic it needs to sample, it can search its peerstore, and if necessary in the DHT, for peers in the topic backbone.
 
 ## DAS in the Gossip domain: Push
@@ -164,7 +160,7 @@ Take `blob = signed_blob.blob`:
 2. Create samples with proofs: `samples = sample_data(blob.slot, blob.shard, extended_data)`
 3. Fanout-publish the samples to the vertical subnets of its peers (not all vertical subnets may be reached).
 
-The [DAS validator spec](./validator.md#data-availability-sampling) outlines when and where to participate in DAS on horizontal subnets.
+The [DAS participation spec](./das-participation.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
 
 The following validations MUST pass before forwarding the `signed_blob` (with inner `blob`) on the horizontal subnet or creating samples for it.
 - _[REJECT]_ `blob.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
