@@ -142,15 +142,13 @@ If the node does not already have connected peers on the topic it needs to sampl
 Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
-| `shard_blob_{shard}`             | `SignedShardBlob`         |
-| `shard_header_{shard}`           | `SignedShardHeader`       |
 | `das_sample_{subnet_index}`      | `DASSample`               |
 
-TODO: separate phase 1 network spec.
+Also see the [Phase1 general networking spec](./p2p-phase1.md) for important topics such as that of the shard-blobs and shard-headers.
 
 #### Horizontal subnets: `shard_blob_{shard}`
 
-Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}` subnets.
+Extending the regular `shard_blob_{shard}` as [defined in the Phase1 networking specification](./p2p-phase1.md#shard-blobs-shard_blob_shard)
 
 If participating in DAS, upon receiving a `signed_blob` for the first time, with a `slot` not older than `MAX_RESAMPLE_TIME`,
 a subscriber of a `shard_blob_{shard}` SHOULD reconstruct the samples and publish them to vertical subnets.
@@ -161,18 +159,6 @@ Take `blob = signed_blob.blob`:
 
 The [DAS participation spec](./das-participation.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
 
-The following validations MUST pass before forwarding the `signed_blob` (with inner `blob`) on the horizontal subnet or creating samples for it.
-- _[REJECT]_ `blob.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
-- _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `blob.slot <= current_slot`
-  (a client MAY queue future blobs for processing at the appropriate slot).
-- _[IGNORE]_ The blob is the first blob with valid signature received for the proposer for the `(slot, shard)` combination.
-- _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
-- _[REJECT]_ The `blob.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
-- _[REJECT]_ The proposer signature, `signed_blob.signature`, is valid with respect to the `proposer_index` pubkey, signed over the SSZ output of `commit_to_data(blob.data)`.
-- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot.
-
-TODO: make double blob proposals slashable?
 
 #### Vertical subnets: `das_sample_{subnet_index}`
 
