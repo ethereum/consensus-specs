@@ -8,7 +8,17 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-TODO
+
+- [Data Availability Sampling](#data-availability-sampling)
+- [GossipSub](#gossipsub)
+  - [Horizontal subnets](#horizontal-subnets)
+  - [Vertical subnets](#vertical-subnets)
+    - [Slow rotation: Backbone](#slow-rotation-backbone)
+    - [Quick rotation: Sampling](#quick-rotation-sampling)
+  - [DAS during network instability](#das-during-network-instability)
+    - [Stage 0: Waiting on missing samples](#stage-0-waiting-on-missing-samples)
+    - [Stage 1: Pulling missing samples from known peers](#stage-1-pulling-missing-samples-from-known-peers)
+    - [Stage 2: Pulling missing data from validators with custody.](#stage-2-pulling-missing-data-from-validators-with-custody)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
