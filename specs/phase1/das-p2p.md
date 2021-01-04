@@ -166,7 +166,7 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
 - _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `blob.slot <= current_slot`
   (a client MAY queue future blobs for processing at the appropriate slot).
-- _[IGNORE]_ The blob is the first blob with valid signature received for the proposer for the `(slot, shard)`: `blob.slot`.
+- _[IGNORE]_ The blob is the first blob with valid signature received for the proposer for the `(slot, shard)` combination.
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
 - _[REJECT]_ The `blob.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
 - _[REJECT]_ The proposer signature, `signed_blob.signature`, is valid with respect to the `proposer_index` pubkey, signed over the SSZ output of `commit_to_data(blob.data)`.
