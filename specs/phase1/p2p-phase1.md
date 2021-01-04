@@ -7,7 +7,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [DAS in the Gossip domain: Push](#das-in-the-gossip-domain-push)
   - [Topics and messages](#topics-and-messages)
@@ -21,7 +20,7 @@
 With Phase 1, shard data is introduced, which requires various new additions and adjustments to the groundwork that Phase 0 implements.
 The specification of these changes continues in the same format, and assumes Phase0 as pre-requisite. 
 The Phase 0 adjustments and additions for Shards are outlined in this document.
-See the [Data Availability Sampling network specification](./das-p2p.md) for Phase 1 networking specifc to Data availability.  
+See the [Data Availability Sampling network specification](./das-p2p.md) for Phase 1 networking specific to Data availability.  
 
 
 ## DAS in the Gossip domain: Push
