@@ -34,3 +34,26 @@ def test_invalid_sync_committee_bits(spec, state):
     yield 'blocks', [block]
     expect_assertion_error(lambda: spec.process_sync_committee(state, block.body))
     yield 'post', None
+
+
+@with_all_phases_except([PHASE0, PHASE1])
+@spec_state_test
+def test_invalid_sync_committee_signature(spec, state):
+    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    random_participant = random.choice(committee)
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    # Exclude one signature even though the block claims the entire committee participated.
+    block.body.sync_committee_bits = [True] * len(committee)
+    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        block.slot - 1,
+        [index for index in committee if index != random_participant],
+    )
+
+    yield 'blocks', [block]
+    expect_assertion_error(lambda: spec.process_sync_committee(state, block.body))
+    yield 'post', None
