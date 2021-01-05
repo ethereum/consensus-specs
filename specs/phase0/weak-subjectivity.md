@@ -42,7 +42,7 @@ This document uses data structures, constants, functions, and terminology from
 
 ## Weak Subjectivity Checkpoint
 
-Any `Checkpoint` can used be a Weak Subjectivity Checkpoint.
+Any `Checkpoint` can be used as a Weak Subjectivity Checkpoint.
 These Weak Subjectivity Checkpoints are distributed by providers,
 downloaded by users and/or distributed as a part of clients, and used as input while syncing a client.
 
