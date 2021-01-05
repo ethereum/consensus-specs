@@ -43,6 +43,7 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
     epoch = get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
+        genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
@@ -67,14 +68,15 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
         slashings=pre.slashings,
         # Attestations
         # previous_epoch_attestations is cleared on upgrade. 
-        previous_epoch_attestations=List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH](),
+        previous_epoch_participation=List[Bitvector[PARTICIPATION_FLAGS_LENGTH], VALIDATOR_REGISTRY_LIMIT](),
         # empty in pre state, since the upgrade is performed just after an epoch boundary.
-        current_epoch_attestations=List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH](),
+        current_epoch_participation=List[Bitvector[PARTICIPATION_FLAGS_LENGTH], VALIDATOR_REGISTRY_LIMIT](),
         # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
+        balance_denominator=GWEI_PER_ETH,
     )
     # Fill in sync committees
     post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
