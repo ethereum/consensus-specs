@@ -34,6 +34,7 @@
       - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
   - [Block processing](#block-processing)
     - [New `process_attestation`](#new-process_attestation)
+    - [New `process_deposit`](#new-process_deposit)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [New `process_justification_and_finalization`](#new-process_justification_and_finalization)
@@ -368,6 +369,51 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
 
+
+#### New `process_deposit`
+
+*Note*: The function `process_deposit` is modified to initialize `previous_epoch_participation` and `current_epoch_participation`.
+
+```python
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+    # Verify the Merkle branch
+    assert is_valid_merkle_branch(
+        leaf=hash_tree_root(deposit.data),
+        branch=deposit.proof,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
+        index=state.eth1_deposit_index,
+        root=state.eth1_data.deposit_root,
+    )
+
+    # Deposits must be processed in order
+    state.eth1_deposit_index += 1
+
+    pubkey = deposit.data.pubkey
+    amount = deposit.data.amount
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        deposit_message = DepositMessage(
+            pubkey=deposit.data.pubkey,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
+            amount=deposit.data.amount,
+        )
+        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+        signing_root = compute_signing_root(deposit_message, domain)
+        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
+            return
+
+        # Add validator and balance entries
+        state.validators.append(get_validator_from_deposit(state, deposit))
+        state.balances.append(amount)
+        state.previous_epoch_participation.append(Bitvector[PARTICIPATION_FLAGS_LENGTH]())
+        state.current_epoch_participation.append(Bitvector[PARTICIPATION_FLAGS_LENGTH]())
+    else:
+        # Increase balance by deposit amount
+        index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        increase_balance(state, index, amount)
+```
+
 #### Sync committee processing
 
 ```python
@@ -502,4 +548,4 @@ def process_final_updates(state: BeaconState) -> None:
         state.historical_roots.append(hash_tree_root(historical_batch))
     # Rotate current/previous epoch participation flags
     state.previous_epoch_participation = state.current_epoch_participation
-    state.current_epoch_participation = []
+    state.current_epoch_participation = [Bitvector[PARTICIPATION_FLAGS_LENGTH]() for _ in range(len(state.validators))]
