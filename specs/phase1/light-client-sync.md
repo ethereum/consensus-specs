@@ -24,7 +24,10 @@
 
 ## Introduction
 
-Ethereum 2.0 is designed to be light client friendly. This allows low-resource clients such as mobile phones to access Ethereum 2.0 with reasonable safety and liveness. It also facilitates the development of "bridges" to external blockchains. This document suggests a minimal light client design for the beacon chain.
+Ethereum 2.0 is designed to be light client friendly.
+This allows low-resource clients such as mobile phones to access Ethereum 2.0 with reasonable safety and liveness.
+It also facilitates the development of "bridges" to external blockchains.
+This document suggests a minimal light client design for the beacon chain.
 
 ## Custom types
 
