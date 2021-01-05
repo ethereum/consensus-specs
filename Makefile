@@ -82,19 +82,19 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3.8 -m venv venv; . venv/bin/activate; pip3 install .[lint]; pip3 install -e .[test]
+	python3 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.lightclient_patch.spec -cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.lightclient_patch.spec -cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.lightclient_patch.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.lightclient_patch.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p tests/core/pyspec/test-reports/eth2spec; . venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
@@ -133,11 +133,11 @@ test_deposit_contract:
 	dapp test -v --fuzz-runs 5
 
 install_deposit_contract_web3_tester:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt
+	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; python3 -m pip install -r requirements.txt
 
 test_deposit_contract_web3_tests:
 	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
-	python -m pytest .
+	python3 -m pytest .
 
 # Runs a generator, identified by param 1
 define run_generator
