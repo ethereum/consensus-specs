@@ -30,6 +30,7 @@
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
     - [`get_base_reward`](#get_base_reward)
+    - [`get_base_reward_per_eth`](#get_base_reward_per_eth)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
     - [`get_flag_deltas`](#get_flag_deltas)
     - [New `get_inactivity_penalty_deltas`](#new-get_inactivity_penalty_deltas)
