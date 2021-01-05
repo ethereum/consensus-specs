@@ -25,7 +25,7 @@
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
     - [`get_base_reward`](#get_base_reward)
-      - [`get_base_reward_per_eth`](#get_base_reward_per_eth)
+    - [`get_base_reward_per_eth`](#get_base_reward_per_eth)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
@@ -187,13 +187,11 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return get_base_reward_per_eth(state) * state.validators[index].effective_balance // GWEI_PER_ETH
 ```
 
-##### `get_base_reward_per_eth`
+#### `get_base_reward_per_eth`
 
 ```python
 def get_base_reward_per_eth(state: BeaconState) -> Gwei:
     total_balance = get_total_active_balance(state)
-    total_balance = get_total_active_balance(state)
-    effective_balance = state.validators[index].effective_balance
     return Gwei(GWEI_PER_ETH * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
 ```
 
@@ -308,7 +306,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     if is_in_inactivity_leak(state):
         reward_numerator_sum = sum(numerator for (_, numerator) in FLAGS_AND_NUMERATORS)
-        matching_target_indices = get_unslashed_participating_indices(
+        matching_target_attesting_indices = get_unslashed_participating_indices(
             state, TIMELY_TARGET_FLAG, get_previous_epoch(state)
         )
         for index in get_eligible_validator_indices(state):
