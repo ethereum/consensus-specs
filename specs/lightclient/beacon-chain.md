@@ -8,9 +8,12 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+  - [Participation flags](#participation-flags)
+  - [Participation rewards](#participation-rewards)
+  - [Misc](#misc)
 - [Configuration](#configuration)
   - [Constants](#constants-1)
-  - [Misc](#misc)
+  - [Misc](#misc-1)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
 - [Containers](#containers)
@@ -21,14 +24,21 @@
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
+    - [`get_base_reward`](#get_base_reward)
+      - [`get_base_reward_per_eth`](#get_base_reward_per_eth)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
+    - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
+    - [`get_flag_deltas`](#get_flag_deltas)
+      - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
   - [Block processing](#block-processing)
+    - [New `process_attestation`](#new-process_attestation)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
-    - [Components of attestation deltas](#components-of-attestation-deltas)
+    - [New `process_justification_and_finalization`](#new-process_justification_and_finalization)
+    - [New `process_rewards_and_penalties`](#new-process_rewards_and_penalties)
     - [Final updates](#final-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -77,6 +87,7 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | Name | Value |
 | - | - |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `GWEI_PER_ETH` | `10**9` |
 
 ### Misc
 
@@ -184,6 +195,7 @@ def get_base_reward_per_eth(state: BeaconState) -> Gwei:
     total_balance = get_total_active_balance(state)
     effective_balance = state.validators[index].effective_balance
     return Gwei(GWEI_PER_ETH * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
+```
 
 #### `eth2_fast_aggregate_verify`
 
@@ -250,7 +262,8 @@ def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: 
         epoch_participation = state.current_epoch_participation
     else:
         epoch_participation = state.previous_epoch_participation
-    participating_indices = [index in get_active_validator_indices(state, epoch) if epoch_participation[index][flag]]
+    participating_indices = [index for index in get_active_validator_indices(state, epoch)
+                             if epoch_participation[index][flag]]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
@@ -263,7 +276,6 @@ def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
     """
     rewards = [Gwei(0)] * len(state.validators)
-    penalties = [Gwei(0)] * len(state.validators)
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag, get_previous_epoch(state))
     increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
     unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // increment
@@ -279,7 +291,7 @@ def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple
                     (base_reward * unslashed_participating_increments // active_increments + base_reward)
                     * numerator // REWARD_DENOMINATOR
                 )
-     return rewards, get_base_reward_per_eth(state) * numerator // REWARD_DENOMINATOR
+    return rewards, get_base_reward_per_eth(state) * numerator // REWARD_DENOMINATOR
 ```
 
 ##### `get_inactivity_penalty_deltas`
@@ -296,12 +308,14 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     if is_in_inactivity_leak(state):
         reward_numerator_sum = sum(numerator for (_, numerator) in FLAGS_AND_NUMERATORS)
-        matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG, get_previous_epoch(state))
+        matching_target_indices = get_unslashed_participating_indices(
+            state, TIMELY_TARGET_FLAG, get_previous_epoch(state)
+        )
         for index in get_eligible_validator_indices(state):
             if index in matching_target_attesting_indices: 
                 effective_balance = state.validators[index].effective_balance
                 rewards[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
-     return rewards, Gwei(GWEI_PER_ETH * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT) 
+    return rewards, Gwei(GWEI_PER_ETH * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
 ```
 
 ### Block processing
@@ -484,7 +498,7 @@ def process_final_updates(state: BeaconState) -> None:
         ):
             validator.effective_balance = (state.balances[index] // state.balance_denominator) * GWEI_PER_ETH
     if state.balance_denominator >= 2 * GWEI_PER_ETH:
-        state.balances = [x//2 for x in state.balances]
+        state.balances = [x // 2 for x in state.balances]
         state.balance_denominator //= 2
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
