@@ -12,7 +12,6 @@
   - [Participation rewards](#participation-rewards)
   - [Misc](#misc)
 - [Configuration](#configuration)
-  - [Constants](#constants-1)
   - [Misc](#misc-1)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
@@ -79,15 +78,10 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | - | - |
 | `PARTICIPATION_FLAGS_LENGTH` | `8` |
 | `FLAGS_AND_NUMERATORS` | `((TIMELY_HEAD_FLAG, TIMELY_HEAD_NUMERATOR), (TIMELY_SOURCE_FLAG, TIMELY_SOURCE_NUMERATOR), (TIMELY_TARGET_FLAG, TIMELY_TARGET_NUMERATOR))` |
-
-## Configuration
-
-### Constants
-
-| Name | Value |
-| - | - |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 | `GWEI_PER_ETH` | `10**9` |
+
+## Configuration
 
 ### Misc
 
