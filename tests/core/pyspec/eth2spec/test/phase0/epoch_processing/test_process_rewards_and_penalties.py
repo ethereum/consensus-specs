@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     LIGHTCLIENT_PATCH,
     spec_state_test, spec_test,
     with_all_phases, single_phase,
-    with_phases, PHASE0,
+    with_phases, PHASE0, PHASE1,
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
@@ -66,7 +66,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
@@ -159,7 +159,8 @@ def run_with_participation(spec, state, participation_fn):
         return att_participants
 
     attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
-    proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
+    if spec.fork != LIGHTCLIENT_PATCH:
+        proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
 
     pre_state = state.copy()
 
@@ -173,8 +174,8 @@ def run_with_participation(spec, state, participation_fn):
 
     for index in range(len(pre_state.validators)):
         if spec.is_in_inactivity_leak(state):
-            # Proposers can still make money during a leak
-            if index in proposer_indices and index in participated:
+            # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
+            if spec.fork != LIGHTCLIENT_PATCH and index in proposer_indices and index in participated:
                 assert state.balances[index] > pre_state.balances[index]
             elif index in attesting_indices:
                 if spec.fork == LIGHTCLIENT_PATCH and index in sync_committee_indices:
@@ -428,7 +429,8 @@ def test_attestations_some_slashed(spec, state):
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    assert len(state.previous_epoch_attestations) == len(attestations)
+    if spec.fork != LIGHTCLIENT_PATCH:
+        assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = state.copy()
 

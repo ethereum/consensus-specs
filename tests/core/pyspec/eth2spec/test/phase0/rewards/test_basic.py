@@ -1,4 +1,4 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.context import PHASE0, PHASE1, with_all_phases, with_phases, spec_state_test
 import eth2spec.test.helpers.rewards as rewards_helpers
 
 
@@ -32,7 +32,7 @@ def test_full_but_partial_participation(spec, state):
     yield from rewards_helpers.run_test_full_but_partial_participation(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_one_attestation_one_correct(spec, state):
     yield from rewards_helpers.run_test_one_attestation_one_correct(spec, state)
@@ -75,7 +75,7 @@ def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
 #
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_half_correct_target_incorrect_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
@@ -86,7 +86,7 @@ def test_full_half_correct_target_incorrect_head(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_correct_target_incorrect_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
@@ -97,7 +97,7 @@ def test_full_correct_target_incorrect_head(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_half_incorrect_target_incorrect_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
@@ -108,7 +108,7 @@ def test_full_half_incorrect_target_incorrect_head(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_half_incorrect_target_correct_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
@@ -119,31 +119,31 @@ def test_full_half_incorrect_target_correct_head(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_delay_one_slot(spec, state):
     yield from rewards_helpers.run_test_full_delay_one_slot(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_delay_max_slots(spec, state):
     yield from rewards_helpers.run_test_full_delay_max_slots(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_mixed_delay(spec, state):
     yield from rewards_helpers.run_test_full_mixed_delay(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_proposer_not_in_attestations(spec, state):
     yield from rewards_helpers.run_test_proposer_not_in_attestations(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_duplicate_attestations_at_later_slots(spec, state):
     yield from rewards_helpers.run_test_duplicate_attestations_at_later_slots(spec, state)

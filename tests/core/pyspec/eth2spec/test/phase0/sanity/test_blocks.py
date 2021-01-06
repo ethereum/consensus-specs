@@ -27,7 +27,7 @@ from eth2spec.test.helpers.multi_operations import (
 )
 
 from eth2spec.test.context import (
-    PHASE0, PHASE1, MINIMAL,
+    PHASE0, PHASE1, LIGHTCLIENT_PATCH, MINIMAL,
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
@@ -780,15 +780,19 @@ def test_attestation(spec, state):
         spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
     )
 
+    if spec.fork != LIGHTCLIENT_PATCH:
+        pre_current_attestations_len = len(state.current_epoch_attestations)
+
     # Add to state via block transition
-    pre_current_attestations_len = len(state.current_epoch_attestations)
     attestation_block.body.attestations.append(attestation)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
-    assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
-
-    # Epoch transition should move to previous_epoch_attestations
-    pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
+    if spec.fork != LIGHTCLIENT_PATCH:
+        assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
+        # Epoch transition should move to previous_epoch_attestations
+        pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
+    else:
+        pre_current_epoch_participation_root = spec.hash_tree_root(state.current_epoch_participation)
 
     epoch_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_epoch_block = state_transition_and_sign_block(spec, state, epoch_block)
@@ -796,8 +800,13 @@ def test_attestation(spec, state):
     yield 'blocks', [signed_attestation_block, signed_epoch_block]
     yield 'post', state
 
-    assert len(state.current_epoch_attestations) == 0
-    assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
+    if spec.fork != LIGHTCLIENT_PATCH:
+        assert len(state.current_epoch_attestations) == 0
+        assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
+    else:
+        for index in range(len(state.validators)):
+            assert state.current_epoch_participation[index] == spec.Bitvector[spec.PARTICIPATION_FLAGS_LENGTH]()
+        assert spec.hash_tree_root(state.previous_epoch_participation) == pre_current_epoch_participation_root
 
 
 # In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,

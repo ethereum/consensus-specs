@@ -323,7 +323,8 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
         next_slot(spec, state)
 
     assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
-    assert len(state.previous_epoch_attestations) == len(attestations)
+    if spec.fork != LIGHTCLIENT_PATCH:
+        assert len(state.previous_epoch_attestations) == len(attestations)
 
     return attestations
 
