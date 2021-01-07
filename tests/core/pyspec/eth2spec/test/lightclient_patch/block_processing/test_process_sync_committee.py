@@ -1,6 +1,7 @@
 import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+    transition_unsigned_block,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -110,3 +111,42 @@ def test_sync_committee_rewards(spec, state):
             )
 
         assert state.balances[index] == pre_balances[index] + expected_reward
+
+@with_all_phases_except([PHASE0, PHASE1])
+@spec_state_test
+def test_invalid_signature_past_block(spec, state):
+    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+
+    yield 'pre', state
+
+    blocks = []
+    for _ in range(2):
+        # NOTE: need to transition twice to move beyond the degenerate case at genesis
+        block = build_empty_block_for_next_slot(spec, state)
+        # Valid sync committee signature here...
+        block.body.sync_committee_bits = [True] * len(committee)
+        block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee,
+        )
+
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        blocks.append(signed_block)
+
+    invalid_block = build_empty_block_for_next_slot(spec, state)
+    # Invalid signature from a slot other than the previous
+    invalid_block.body.sync_committee_bits = [True] * len(committee)
+    invalid_block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        invalid_block.slot - 2,
+        committee,
+    )
+    blocks.append(invalid_block)
+
+    expect_assertion_error(lambda: transition_unsigned_block(spec, state, invalid_block))
+
+    yield 'blocks', blocks
+    yield 'post', None
