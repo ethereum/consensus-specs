@@ -31,7 +31,7 @@ def test_invalid_sync_committee_bits(spec, state):
         spec,
         state,
         block.slot - 1,
-        committee,
+        committee,  #  full committee signs
     )
 
     yield 'blocks', [block]
