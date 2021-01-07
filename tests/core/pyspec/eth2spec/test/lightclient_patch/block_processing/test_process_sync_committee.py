@@ -5,7 +5,7 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth2spec.test.lightclient_patch.helpers import (
+from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
 from eth2spec.test.context import (

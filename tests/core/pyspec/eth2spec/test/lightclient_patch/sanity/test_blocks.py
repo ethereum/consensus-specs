@@ -6,7 +6,7 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth2spec.test.lightclient_patch.helpers import (
+from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
 from eth2spec.test.context import (
