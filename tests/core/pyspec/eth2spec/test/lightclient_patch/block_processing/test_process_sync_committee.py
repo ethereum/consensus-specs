@@ -18,7 +18,7 @@ from eth2spec.test.context import (
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_invalid_sync_committee_bits(spec, state):
+def test_invalid_signature_missing_participant(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
     random_participant = random.choice(committee)
 
@@ -31,7 +31,7 @@ def test_invalid_sync_committee_bits(spec, state):
         spec,
         state,
         block.slot - 1,
-        committee,  #  full committee signs
+        committee,  # full committee signs
     )
 
     yield 'blocks', [block]
@@ -41,7 +41,7 @@ def test_invalid_sync_committee_bits(spec, state):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_invalid_sync_committee_signature(spec, state):
+def test_invalid_signature_extra_participant(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
     random_participant = random.choice(committee)
 
