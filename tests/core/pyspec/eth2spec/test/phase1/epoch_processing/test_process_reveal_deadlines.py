@@ -10,7 +10,7 @@ from eth2spec.test.context import (
     with_configs,
     spec_state_test,
 )
-from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.phase1.block_processing.test_process_custody_key_reveal import run_custody_key_reveal_processing
 
 
