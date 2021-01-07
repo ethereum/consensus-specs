@@ -5,6 +5,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
+    transition_to,
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
@@ -112,6 +113,7 @@ def test_sync_committee_rewards(spec, state):
 
         assert state.balances[index] == pre_balances[index] + expected_reward
 
+
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
 def test_invalid_signature_past_block(spec, state):
@@ -150,3 +152,68 @@ def test_invalid_signature_past_block(spec, state):
 
     yield 'blocks', blocks
     yield 'post', None
+
+
+@with_all_phases_except([PHASE0, PHASE1])
+@spec_state_test
+def test_invalid_signature_previous_committee(spec, state):
+    # NOTE: the `state` provided is at genesis and the process to select
+    # sync committees currently returns the same committee for the first and second
+    # periods at genesis.
+    # To get a distinct committee so we can generate an "old" signature, we need to advance
+    # 2 EPOCHS_PER_SYNC_COMMITTEE_PERIOD periods.
+    current_epoch = spec.get_current_epoch(state)
+    previous_committee = state.next_sync_committee
+
+    epoch_in_future_sync_commitee_period = current_epoch + 2 * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    slot_in_future_sync_committee_period = epoch_in_future_sync_commitee_period * spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, slot_in_future_sync_committee_period)
+
+    pubkeys = [validator.pubkey for validator in state.validators]
+    committee = [pubkeys.index(pubkey) for pubkey in previous_committee.pubkeys]
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.sync_committee_bits = [True] * len(committee)
+    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        block.slot - 1,
+        committee,
+    )
+
+    yield 'blocks', [block]
+    expect_assertion_error(lambda: spec.process_sync_committee(state, block.body))
+    yield 'post', None
+
+
+@with_all_phases_except([PHASE0, PHASE1])
+@spec_state_test
+def test_valid_signature_next_committee(spec, state):
+    current_epoch = spec.get_current_epoch(state)
+    next_committee = state.next_sync_committee
+    epoch_in_next_sync_committee_period = current_epoch + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    slot_in_next_sync_committee_period = epoch_in_next_sync_committee_period * spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, slot_in_next_sync_committee_period)
+
+    assert state.current_sync_committee == next_committee
+
+    pubkeys = [validator.pubkey for validator in state.validators]
+    committee = [pubkeys.index(pubkey) for pubkey in next_committee.pubkeys]
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.sync_committee_bits = [True] * len(committee)
+    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        block.slot - 1,
+        committee,
+    )
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
