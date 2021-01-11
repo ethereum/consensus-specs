@@ -541,7 +541,7 @@ def process_shard_header(state: BeaconState,
     ))
 ```
 
-The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values), the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 - l)`, where `MAX_DEGREE` the the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`. The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
+The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values), the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 - l)`, where `MAX_DEGREE` is the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`. The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
 
 ### Shard transition processing
 
