@@ -32,7 +32,7 @@
     - [`get_base_reward`](#get_base_reward)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
     - [`get_flag_deltas`](#get_flag_deltas)
-      - [`get_inactivity_penalty_deltas`](#get_inactivity_penalty_deltas)
+    - [New `get_inactivity_penalty_deltas`](#new-get_inactivity_penalty_deltas)
   - [Block processing](#block-processing)
     - [New `process_attestation`](#new-process_attestation)
     - [New `process_deposit`](#new-process_deposit)
@@ -300,7 +300,7 @@ def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple
     return rewards, penalties
 ```
 
-##### `get_inactivity_penalty_deltas`
+#### New `get_inactivity_penalty_deltas`
 
 *Note*: The function `get_inactivity_penalty_deltas` is modified in the selection of matching target indices and the removal of `BASE_REWARDS_PER_EPOCH`.
 
