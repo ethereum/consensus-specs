@@ -27,7 +27,7 @@ from eth2spec.test.helpers.multi_operations import (
 )
 
 from eth2spec.test.context import (
-    PHASE0, PHASE1, LIGHTCLIENT_PATCH, MINIMAL,
+    PHASE0, PHASE1, MINIMAL,
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
@@ -35,6 +35,7 @@ from eth2spec.test.context import (
     with_configs,
     with_custom_state,
     large_validator_set,
+    is_post_lightclient_patch,
 )
 
 
@@ -780,14 +781,14 @@ def test_attestation(spec, state):
         spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
     )
 
-    if spec.fork != LIGHTCLIENT_PATCH:
+    if not is_post_lightclient_patch(spec):
         pre_current_attestations_len = len(state.current_epoch_attestations)
 
     # Add to state via block transition
     attestation_block.body.attestations.append(attestation)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
-    if spec.fork != LIGHTCLIENT_PATCH:
+    if not is_post_lightclient_patch(spec):
         assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
         # Epoch transition should move to previous_epoch_attestations
         pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
@@ -800,7 +801,7 @@ def test_attestation(spec, state):
     yield 'blocks', [signed_attestation_block, signed_epoch_block]
     yield 'post', state
 
-    if spec.fork != LIGHTCLIENT_PATCH:
+    if not is_post_lightclient_patch(spec):
         assert len(state.current_epoch_attestations) == 0
         assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
     else:
