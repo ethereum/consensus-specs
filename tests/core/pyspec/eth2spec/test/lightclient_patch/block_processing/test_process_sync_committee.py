@@ -190,27 +190,40 @@ def test_invalid_signature_previous_committee(spec, state):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_valid_signature_next_committee(spec, state):
+def test_valid_signature_future_committee(spec, state):
+    # NOTE: the `state` provided is at genesis and the process to select
+    # sync committees currently returns the same committee for the first and second
+    # periods at genesis.
+    # To get a distinct committee so we can generate an "old" signature, we need to advance
+    # 2 EPOCHS_PER_SYNC_COMMITTEE_PERIOD periods.
     current_epoch = spec.get_current_epoch(state)
-    next_committee = state.next_sync_committee
-    epoch_in_next_sync_committee_period = current_epoch + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    slot_in_next_sync_committee_period = epoch_in_next_sync_committee_period * spec.SLOTS_PER_EPOCH
-    transition_to(spec, state, slot_in_next_sync_committee_period)
+    old_current_sync_committee = state.current_sync_committee
+    old_next_sync_committee = state.next_sync_committee
 
-    assert state.current_sync_committee == next_committee
+    epoch_in_future_sync_committee_period = current_epoch + 2 * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    slot_in_future_sync_committee_period = epoch_in_future_sync_committee_period * spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, slot_in_future_sync_committee_period)
+
+    sync_committee = state.current_sync_committee
+
+    expected_sync_committee = spec.get_sync_committee(state, epoch_in_future_sync_committee_period)
+
+    assert sync_committee == expected_sync_committee
+    assert sync_committee != old_current_sync_committee
+    assert sync_committee != old_next_sync_committee
 
     pubkeys = [validator.pubkey for validator in state.validators]
-    committee = [pubkeys.index(pubkey) for pubkey in next_committee.pubkeys]
+    committee_indices = [pubkeys.index(pubkey) for pubkey in sync_committee.pubkeys]
 
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * len(committee)
+    block.body.sync_committee_bits = [True] * len(committee_indices)
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
         block.slot - 1,
-        committee,
+        committee_indices,
     )
 
     signed_block = state_transition_and_sign_block(spec, state, block)
