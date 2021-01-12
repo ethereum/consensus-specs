@@ -19,7 +19,7 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
-from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from random import Random
 
 
