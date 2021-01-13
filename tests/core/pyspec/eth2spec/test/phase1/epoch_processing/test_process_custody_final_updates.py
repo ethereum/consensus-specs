@@ -17,7 +17,7 @@ from eth2spec.test.context import (
     spec_state_test,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
-from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 from eth2spec.test.phase1.block_processing.test_process_chunk_challenge import (
     run_chunk_challenge_processing,

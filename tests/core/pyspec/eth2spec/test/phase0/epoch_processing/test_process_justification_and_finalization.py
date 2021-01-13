@@ -1,6 +1,6 @@
 from eth2spec.test.context import is_post_lightclient_patch, spec_state_test, with_all_phases
-from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import (
-    run_epoch_processing_with
+from eth2spec.test.helpers.epoch_processing import (
+    run_epoch_processing_with,
 )
 from eth2spec.test.helpers.state import transition_to
 

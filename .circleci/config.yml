@@ -35,13 +35,13 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v22-pyspec
+          venv_name: v24-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v22-pyspec
+          venv_name: v24-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
           venv_path: ./venv
   restore_deposit_contract_tester_cached_venv:

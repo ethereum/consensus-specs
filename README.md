@@ -28,7 +28,7 @@ Core specifications for Eth2 clients be found in [specs](specs/). These are divi
 
 ### Sharding
 
-The sharding spec is still actively in R&D; see the most recent available pull request [here](https://github.com/ethereum/eth2.0-specs/pull/2146), and some technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/r1XzqYIOv).
+The sharding spec is still actively in R&D; see the most recent available pull request [here](https://github.com/ethereum/eth2.0-specs/pull/2146) and some technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
 
 ### Merge
 
