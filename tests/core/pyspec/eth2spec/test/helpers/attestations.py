@@ -2,7 +2,7 @@ from lru import LRU
 
 from typing import List
 
-from eth2spec.test.context import expect_assertion_error, PHASE1, LIGHTCLIENT_PATCH
+from eth2spec.test.context import expect_assertion_error, PHASE1, is_post_lightclient_patch
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
@@ -30,7 +30,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
         yield 'post', None
         return
 
-    if spec.fork != LIGHTCLIENT_PATCH:
+    if not is_post_lightclient_patch(spec):
         current_epoch_count = len(state.current_epoch_attestations)
         previous_epoch_count = len(state.previous_epoch_attestations)
 
@@ -38,7 +38,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     spec.process_attestation(state, attestation)
 
     # Make sure the attestation has been processed
-    if spec.fork != LIGHTCLIENT_PATCH:
+    if not is_post_lightclient_patch(spec):
         if attestation.data.target.epoch == spec.get_current_epoch(state):
             assert len(state.current_epoch_attestations) == current_epoch_count + 1
         else:
@@ -323,7 +323,8 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
         next_slot(spec, state)
 
     assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
-    assert len(state.previous_epoch_attestations) == len(attestations)
+    if not is_post_lightclient_patch(spec):
+        assert len(state.previous_epoch_attestations) == len(attestations)
 
     return attestations
 
