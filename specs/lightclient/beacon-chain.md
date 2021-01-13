@@ -50,6 +50,7 @@ This is a standalone beacon chain patch adding light client support via sync com
 
 | Name | Value |
 | - | - |
+| `G1_POINT_AT_INFINITY` | `BLSPubkey(b'\xc0' + b'\x00' * 47)` |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ### Misc
@@ -138,12 +139,19 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
     i = 0
     sync_committee_indices: List[ValidatorIndex] = []
-    while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
+    if len(active_validator_indices) < SYNC_COMMITTEE_SIZE:
+        committee_size = len(active_validator_indices)
+    else:
+        committee_size = SYNC_COMMITTEE_SIZE
+    while len(sync_committee_indices) < committee_size:
         shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
         candidate_index = active_validator_indices[shuffled_index]
         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
+        if (
+            effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte
+            and candidate_index not in sync_committee_indices
+        ):
             sync_committee_indices.append(candidate_index)
         i += 1
     return sync_committee_indices
@@ -163,6 +171,11 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
         bls.AggregatePKs(pubkeys[i:i + SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE])
         for i in range(0, len(pubkeys), SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE)
     ]
+    # Pad G1_POINT_AT_INFINITY to the BLSPubkey Vectors
+    if len(pubkeys) < SYNC_COMMITTEE_SIZE:
+        pubkeys += [G1_POINT_AT_INFINITY] * (SYNC_COMMITTEE_SIZE - len(pubkeys))
+        aggregates_length = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE
+        aggregates += [G1_POINT_AT_INFINITY] * (aggregates_length - len(aggregates))
     return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=aggregates)
 ```
 

@@ -31,3 +31,9 @@ def compute_aggregate_sync_committee_signature(spec, state, slot, participants):
             )
         )
     return bls.Aggregate(signatures)
+
+
+def get_padded_sync_committee_bits(spec, sync_committee_bits):
+    if len(sync_committee_bits) < spec.SYNC_COMMITTEE_SIZE:
+        return sync_committee_bits + [False] * (spec.SYNC_COMMITTEE_SIZE - len(sync_committee_bits))
+    return sync_committee_bits

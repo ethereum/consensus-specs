@@ -9,6 +9,7 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
+    get_padded_sync_committee_bits,
 )
 from eth2spec.test.context import (
     PHASE0, PHASE1,
@@ -28,7 +29,9 @@ def test_invalid_signature_missing_participant(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one participant whose signature was included.
-    block.body.sync_committee_bits = [index != random_participant for index in committee]
+    block.body.sync_committee_bits = get_padded_sync_committee_bits(
+        spec, [index != random_participant for index in committee]
+    )
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
@@ -51,7 +54,7 @@ def test_invalid_signature_extra_participant(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one signature even though the block claims the entire committee participated.
-    block.body.sync_committee_bits = [True] * len(committee)
+    block.body.sync_committee_bits = get_padded_sync_committee_bits(spec, [True] * len(committee))
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
@@ -83,7 +86,7 @@ def test_sync_committee_rewards(spec, state):
     pre_balances = state.balances.copy()
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * committee_size
+    block.body.sync_committee_bits = get_padded_sync_committee_bits(spec, [True] * committee_size)
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
@@ -126,7 +129,7 @@ def test_invalid_signature_past_block(spec, state):
         # NOTE: need to transition twice to move beyond the degenerate case at genesis
         block = build_empty_block_for_next_slot(spec, state)
         # Valid sync committee signature here...
-        block.body.sync_committee_bits = [True] * len(committee)
+        block.body.sync_committee_bits = get_padded_sync_committee_bits(spec, [True] * len(committee))
         block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
             spec,
             state,
@@ -139,7 +142,7 @@ def test_invalid_signature_past_block(spec, state):
 
     invalid_block = build_empty_block_for_next_slot(spec, state)
     # Invalid signature from a slot other than the previous
-    invalid_block.body.sync_committee_bits = [True] * len(committee)
+    invalid_block.body.sync_committee_bits = get_padded_sync_committee_bits(spec, [True] * len(committee))
     invalid_block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
@@ -175,7 +178,7 @@ def test_invalid_signature_previous_committee(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * len(committee)
+    block.body.sync_committee_bits = get_padded_sync_committee_bits(spec, [True] * len(committee))
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
@@ -218,7 +221,7 @@ def test_valid_signature_future_committee(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * len(committee_indices)
+    block.body.sync_committee_bits = get_padded_sync_committee_bits(spec, [True] * len(committee_indices))
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,

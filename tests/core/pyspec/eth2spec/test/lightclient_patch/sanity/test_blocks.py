@@ -8,6 +8,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
+    get_padded_sync_committee_bits,
 )
 from eth2spec.test.context import (
     PHASE0, PHASE1,
@@ -23,7 +24,9 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [index in participants for index in committee]
+    block.body.sync_committee_bits = get_padded_sync_committee_bits(
+        spec, [index in participants for index in committee]
+    )
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
