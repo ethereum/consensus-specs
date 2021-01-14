@@ -753,6 +753,11 @@ Clients MUST keep a record of signed blocks seen on the epoch range
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 
+Synced clients unable to reply to Block requests within the
+`MIN_EPOCHS_FOR_BLOCK_REQUESTS` epoch range MAY get descored or disconnected at any time.
+Note, due to this it is risky behaviour to begin participating as a full node at the head if having
+not yet backfilled on this range.
+
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
 MUST backfill the local block database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS`
 to be compliant with `BlocksByRange` requests. To safely perform such a
