@@ -419,7 +419,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
   (via both gossip and non-gossip sources)
-  (a client MAY queue aggregates for processing once block is retrieved).
+  (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(attestation.data.target.epoch)) == attestation.data.target.root`
