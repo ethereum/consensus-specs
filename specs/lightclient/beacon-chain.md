@@ -81,6 +81,8 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | - | - |
 | `PARTICIPATION_FLAGS_LENGTH` | `8` |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `PROPORTIONAL_REWARD_DENOMINATOR` | `uint64(2**30)` (= 1,073,741,824) |
+| `BALANCE_ADJUSTMENT_THRESHOLD` | `uint(2**25)` (= 33,554,432) |
 
 ## Configuration
 
@@ -139,7 +141,7 @@ class BeaconState(Container):
     eth1_deposit_index: uint64
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    total_proportional_rewards: List[uint64, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
@@ -155,6 +157,8 @@ class BeaconState(Container):
     # Light client sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
+    # Penalty factor for all balances
+    total_proportional_penalty: uint64
 ```
 
 ### New containers
@@ -244,13 +248,12 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
 
 #### `get_base_reward`
 
-*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH`.
+*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH`, and by changing it to give a delta to the proportional reward/penalty accumulator.
 
 ```python
-def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+def get_base_reward(state: BeaconState) -> Gwei:
     total_balance = get_total_active_balance(state)
-    effective_balance = state.validators[index].effective_balance
-    return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance))
+    return Gwei(PROPORTIONAL_REWARD_DENOMINATOR * BASE_REWARD_FACTOR // integer_squareroot(total_balance)) 
 ```
 
 #### `get_unslashed_participating_indices`
@@ -272,32 +275,30 @@ def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: 
 #### `get_flag_deltas`
 
 ```python
-def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple[Sequence[Gwei], Gwei]: 
     """
     Computes the rewards and penalties associated with a particular duty, by scanning through the participation
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
     """
     rewards = [Gwei(0)] * len(state.validators)
-    penalties = [Gwei(0)] * len(state.validators)
 
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag, get_previous_epoch(state))
-    increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
-    unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // increment
-    active_increments = get_total_active_balance(state) // increment
+    # Expressing in terms of ETH to avoid overflows in multiplication
+    unslashed_participating_eth = get_total_balance(state, unslashed_participating_indices) // GWEI_PER_ETH
+    active_eth = get_total_active_balance(state) // GWEI_PER_ETH
+    base_reward = get_base_reward(state)
     for index in get_eligible_validator_indices(state):
-        base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
             if is_in_inactivity_leak(state):
                 # Optimal participatition is fully rewarded to cancel the inactivity penalty
                 rewards[index] = base_reward * numerator // REWARD_DENOMINATOR
             else:
                 rewards[index] = (
-                    (base_reward * numerator * unslashed_participating_increments)
-                    // (active_increments * REWARD_DENOMINATOR)
+                    (base_reward * unslashed_participating_eth // active_eth + base_reward)
+                    // (active_eth * REWARD_DENOMINATOR)
                 )
-        else:
-            penalties[index] = base_reward * numerator // REWARD_DENOMINATOR
-    return rewards, penalties
+    penalty = get_base_reward(state) * numerator // REWARD_DENOMINATOR
+    return rewards, penalty
 ```
 
 #### New `get_inactivity_penalty_deltas`
@@ -305,27 +306,25 @@ def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple
 *Note*: The function `get_inactivity_penalty_deltas` is modified in the selection of matching target indices and the removal of `BASE_REWARDS_PER_EPOCH`.
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Gwei]:
     """
     Compute the penalties associated with the inactivity leak, by scanning through the participation
     flags to determine who participated and who did not, applying the leak penalty globally and applying
     compensatory rewards to participants.
     """
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
     if is_in_inactivity_leak(state):
-        reward_numerator_sum = sum(numerator for (_, numerator) in get_flags_and_numerators())
         matching_target_attesting_indices = get_unslashed_participating_indices(
             state, TIMELY_TARGET_FLAG, get_previous_epoch(state)
         )
+        penalty = Gwei(GWEI_PER_ETH * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
         for index in get_eligible_validator_indices(state):
-            # If validator is performing optimally this cancels all attestation rewards for a neutral balance
-            penalties[index] += Gwei(get_base_reward(state, index) * reward_numerator_sum // REWARD_DENOMINATOR)
-            if index not in matching_target_attesting_indices: 
-                effective_balance = state.validators[index].effective_balance
-                penalties[index] += Gwei(effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT)
+            if index in matching_target_attesting_indices:
+                rewards[index] += penalty
+    else:
+        penalty = 0
 
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    return rewards, penalties
+    return rewards, penalty
 ```
 
 ### Block processing
@@ -527,10 +526,10 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
     flag_deltas = [get_flag_deltas(state, flag, numerator) for (flag, numerator) in get_flags_and_numerators()]
     deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
-    for (rewards, penalties) in deltas:
+    for (rewards, penalty) in deltas:
+        state.total_proportional_penalty += penalty
         for index in range(len(state.validators)):
-            increase_balance(state, ValidatorIndex(index), rewards[index])
-            decrease_balance(state, ValidatorIndex(index), penalties[index])
+            state.total_proportional_rewards[index] += rewards[index]
 ```
 
 #### Final updates
@@ -550,15 +549,35 @@ def process_final_updates(state: BeaconState) -> None:
         state.next_sync_committee = get_sync_committee(state, next_epoch + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        HYSTERESIS_INCREMENT = uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
-        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
-        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
-        if (
-            balance + DOWNWARD_THRESHOLD < validator.effective_balance
-            or validator.effective_balance + UPWARD_THRESHOLD < balance
-        ):
-            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+        if get_current_epoch(state) == HF1_EPOCH:
+            # `balances` renamed to `total_proportional_rewards`
+            validator.effective_balance = state.total_proportional_rewards[index]
+        if get_current_epoch(state) == validator.activation_epoch:
+            state.total_proportional_rewards[index] = state.total_proportional_penalty
+        # Update the effective balance if (rewards-penalties) are at least BALANCE_ADJUSTMENT_THRESHOLD apart,
+        # or upon exit (and again upon withdrawability if slashed, as slashed validators are supposed to suffer
+        # offline penalties until withdrawal time)
+        threshold = (
+            0 if get_current_epoch(state) == validator.activation_epoch else
+            0 if get_current_epoch(state) == validator.exit_epoch else
+            0 if get_current_epoch(state) == validator.withdrawable_epoch and validator.slashed else
+            BALANCE_ADJUSTMENT_THRESHOLD
+        )
+        if state.total_proportional_rewards[index] > state.total_proportional_penalty + threshold and validator.effective_balance < MAX_EFFECTIVE_BALANCE:
+            delta1 = state.total_proportional_rewards[index] - state.total_proportional_penalty
+            delta2 = (MAX_EFFECTIVE_BALANCE - validator.effective_balance) * PROPORTIONAL_REWARD_DENOMINATOR // validator.effective_balance
+            if delta1 < delta2 or threshold == 0:
+                # Case 1: new balance still below maximum, or final update
+                validator.effective_balance += (validator.effective_balance * delta1) // PROPORTIONAL_REWARD_DENOMINATOR
+                state.total_proportional_rewards[index] = state.total_proportional_penalty
+            else:
+                # Case 2: new balance above maximum, so we just keep accumulating inside proportional rewards
+                validator.effective_balance = MAX_EFFECTIVE_BALANCE
+                state.total_proportional_rewards[index] -= delta2
+        elif state.total_proportional_penalty > state.total_proportional_rewards[index] + threshold:
+            delta = min(PROPORTIONAL_REWARD_DENOMINATOR, state.total_proportional_penalty - state.total_proportional_rewards[index])
+            validator.effective_balance -= (validator.effective_balance * delta) // PROPORTIONAL_REWARD_DENOMINATOR
+            state.total_proportional_rewards[index] = state.total_proportional_penalty           
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
     # Set randao mix
