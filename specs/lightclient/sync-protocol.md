@@ -185,10 +185,12 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
     store.valid_updates.append(update)
 
     if (
-        sum(update.sync_committee_bits) * 3 >= len(update.sync_committee_bits) * 2
-        and update.header != update.finality_header
+        sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2
+        and update.finality_header != BeaconBlockHeader()
     ):
-        # Apply update if 2/3 quorum is reached and we have a finality proof
+        # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
+        # Note that (2) means that the current light client design needs finality.
+        # It may be changed to re-organizable light client design. See the on-going issue eth2.0-specs#2182.
         apply_light_client_update(store, update)
         store.valid_updates = []
     elif current_slot > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
