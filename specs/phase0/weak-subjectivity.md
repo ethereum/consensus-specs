@@ -59,38 +59,70 @@ a safety margin of at least `1/3 - SAFETY_DECAY/100`.
 
 ### Calculating the Weak Subjectivity Period
 
-*Note*: `compute_weak_subjectivity_period()` is planned to be updated when a more accurate calculation is made.
+A detailed analysis of the calculation of the weak subjectivity period is made in [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf). The expressions in the report use fractions, whereas we only use uint64 arithmetic in eth2.0-specs. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
 
 ```python
-def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
-    weak_subjectivity_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    validator_count = len(get_active_validator_indices(state, get_current_epoch(state)))
-    if validator_count >= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT:
-        weak_subjectivity_period += SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
-    else:
-        weak_subjectivity_period += SAFETY_DECAY * validator_count // (2 * 100 * MIN_PER_EPOCH_CHURN_LIMIT)
-    return weak_subjectivity_period
-```
+def get_active_validator_count(state: BeaconState) -> uint64:
+    active_validator_count = len(get_active_validator_indices(state, get_current_epoch(state)))
+    return active_validator_count
 
-*Details about the calculation*:
-- `100` appears in the denominator to get the actual percentage ratio from `SAFETY_DECAY`
-- For more information about other terms in this equation, refer to
-  [Weak Subjectivity in Eth2.0](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
+def compute_avg_active_validator_balance(state: BeaconState) -> Gwei:
+    total_active_balance = get_total_active_balance(state)
+    active_validator_count = get_active_validator_count(state)
+    avg_active_validator_balance = total_active_balance // active_validator_count
+    return avg_active_validator_balance//10**9
+
+def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
+    ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    N = get_active_validator_count(state)
+    t = compute_avg_active_validator_balance(state)
+    T = MAX_EFFECTIVE_BALANCE//10**9
+    delta = get_validator_churn_limit(state)
+    Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
+    D = SAFETY_DECAY
+
+    case = (
+      T*(200+3*D) < t*(200+12*D)
+    )
+
+    if case == 1:
+      arg1 = (
+        N*(t*(200+12*D) - T*(200+3*D)) // (600*delta*(2*t+T))
+      )
+      arg2 = (
+        N*(200+3*D) // (600*Delta)
+      )
+      ws_period += max(arg1, arg2)
+    else:
+      ws_period += (
+         3*N*D*t // (200*Delta*(T-t))
+      )
+    
+    return ws_period
+```
 
 A brief reference for what these values look like in practice:
 
-| `validator_count` | `weak_subjectivity_period` |
-| ----  | ---- |
-| 1024  | 268 |
-| 2048  | 281 |
-| 4096  | 307 |
-| 8192  | 358 |
-| 16384 | 460 |
-| 32768 | 665 |
-| 65536 | 1075 |
-| 131072  | 1894 |
-| 262144  | 3532 |
-| 524288  | 3532 |
+| SAFETY_DECAY | validator_count | average_active_validator_balance | weak_subjectivity_period |
+| ---- | ---- | ---- | ---- |
+| 10 | 8192 | 28 | 318 |
+| 10 | 8192 | 32 | 358 |
+| 10 | 16384 | 28 | 380 |
+| 10 | 16384 | 32 | 460 |
+| 10 | 32768 | 28 | 504 |
+| 10 | 32768 | 32 | 665 |
+| 20 | 8192 | 28 | 411 |
+| 20 | 8192 | 32 | 460 |
+| 20 | 16384 | 28 | 566 |
+| 20 | 16384 | 32 | 665 |
+| 20 | 32768 | 28 | 876 |
+| 20 | 32768 | 32 | 1075 |
+| 33 | 8192 | 28 | 532 |
+| 33 | 8192 | 32 | 593 |
+| 33 | 16384 | 28 | 808 |
+| 33 | 16384 | 32 | 931 |
+| 33 | 32768 | 28 | 1360 |
+| 33 | 32768 | 32 | 1607 |
 
 ## Weak Subjectivity Sync
 
@@ -101,17 +133,21 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
 1. Input a Weak Subjectivity Checkpoint as a CLI parameter in `block_root:epoch_number` format,
   where `block_root` (an "0x" prefixed 32-byte hex string) and `epoch_number` (an integer) represent a valid `Checkpoint`.
   Example of the format:
-```
+
+```python
 0x8584188b86a9296932785cc2827b925f9deebacce6d72ad8d53171fa046b43d9:9544
 ```
-2.  - *IF* `epoch_number > store.finalized_checkpoint.epoch`,
-      then *ASSERT* during block sync that block with root `block_root` is in the sync path at epoch `epoch_number`.
-      Emit descriptive critical error if this assert fails, then exit client process.
+
+2. Check the weak subjectivity requirements:
+    - *IF* `epoch_number > store.finalized_checkpoint.epoch`,
+          then *ASSERT* during block sync that block with root `block_root` is in the sync path at epoch `epoch_number`.
+          Emit descriptive critical error if this assert fails, then exit client process.
     - *IF* `epoch_number <= store.finalized_checkpoint.epoch`,
-      then *ASSERT* that the block in the canonical chain at epoch `epoch_number` has root `block_root`.
-      Emit descriptive critical error if this assert fails, then exit client process.
+          then *ASSERT* that the block in the canonical chain at epoch `epoch_number` has root `block_root`.
+          Emit descriptive critical error if this assert fails, then exit client process.
 
 ### Checking for Stale Weak Subjectivity Checkpoint
+
 Clients may choose to validate that the input Weak Subjectivity Checkpoint is not stale at the time of startup.
 To support this mechanism, the client needs to take the state at the Weak Subjectivity Checkpoint as
 a CLI parameter input (or fetch the state associated with the input Weak Subjectivity Checkpoint from some source).
@@ -130,4 +166,5 @@ def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_c
 ```
 
 ## Distributing Weak Subjectivity Checkpoints
+
 This section will be updated soon.
