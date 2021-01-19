@@ -134,7 +134,7 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
   where `block_root` (an "0x" prefixed 32-byte hex string) and `epoch_number` (an integer) represent a valid `Checkpoint`.
   Example of the format:
 
-```python
+```
 0x8584188b86a9296932785cc2827b925f9deebacce6d72ad8d53171fa046b43d9:9544
 ```
 
