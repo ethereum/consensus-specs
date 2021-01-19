@@ -20,7 +20,7 @@
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
 - [Light client state updates](#light-client-state-updates)
-    - [`is_valid_light_client_update`](#is_valid_light_client_update)
+    - [`validate_light_client_update`](#validate_light_client_update)
     - [`apply_light_client_update`](#apply_light_client_update)
     - [`process_light_client_update`](#process_light_client_update)
 
@@ -112,10 +112,10 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
 
 A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock.
 
-#### `is_valid_light_client_update`
+#### `validate_light_client_update`
 
 ```python
-def is_valid_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate) -> bool:
+def validate_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate) -> None:
     # Verify update slot is larger than snapshot slot
     assert update.header.slot > snapshot.header.slot
 
@@ -160,8 +160,6 @@ def is_valid_light_client_update(snapshot: LightClientSnapshot, update: LightCli
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version)
     signing_root = compute_signing_root(signed_header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
-
-    return True
 ```
 
 #### `apply_light_client_update`
@@ -180,8 +178,7 @@ def apply_light_client_update(snapshot: LightClientSnapshot, update: LightClient
 
 ```python
 def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot) -> None:
-    # Validate update
-    assert is_valid_light_client_update(store.snapshot, update)
+    validate_light_client_update(store.snapshot, update)
     store.valid_updates.append(update)
 
     if (
