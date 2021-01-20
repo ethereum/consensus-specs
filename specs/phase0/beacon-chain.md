@@ -1570,8 +1570,7 @@ def process_slashings(state: BeaconState) -> None:
 #### Eth1 data votes updates
 ```python
 def process_eth1_data_votes_updates(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    next_epoch = Epoch(current_epoch + 1)
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     # Reset eth1 data votes
     if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
