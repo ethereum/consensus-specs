@@ -560,3 +560,4 @@ def get_custody_secret(state: BeaconState,
 ```
 
 Note that the valid custody secret is always the one for the **attestation target epoch**, not to be confused with the epoch in which the shard block was generated. While they are the same most of the time, getting this wrong at custody epoch boundaries would result in a custody slashing.
+Validating  services
