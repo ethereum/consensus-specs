@@ -8,7 +8,9 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Custom Types](#custom-types)
 - [Constants](#constants)
+- [Configuration](#configuration)
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
@@ -34,10 +36,22 @@ For more information about weak subjectivity and why it is required, please refe
 This document uses data structures, constants, functions, and terminology from
 [Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Beacon Chain Fork Choice](./fork-choice.md).
 
+## Custom Types
+
+| Name | SSZ Equivalent | Description |
+|---|---|---|
+| `Ether` | `uint64` | an amount in Ether |
+
 ## Constants
 
-| Name           | Value        |
-|----------------|--------------|
+| Name | Value |
+|---|---|
+| `ETH_TO_GWEI` | `uint64(10**9)` |
+
+## Configuration
+
+| Name | Value |
+|---|---|
 | `SAFETY_DECAY` | `uint64(10)` |
 
 ## Weak Subjectivity Checkpoint
@@ -66,11 +80,12 @@ def get_active_validator_count(state: BeaconState) -> uint64:
     active_validator_count = len(get_active_validator_indices(state, get_current_epoch(state)))
     return active_validator_count
 
-def compute_avg_active_validator_balance(state: BeaconState) -> Gwei:
+def compute_avg_active_validator_balance(state: BeaconState) -> Ether:
     total_active_balance = get_total_active_balance(state)
     active_validator_count = get_active_validator_count(state)
-    avg_active_validator_balance = total_active_balance // active_validator_count
-    return avg_active_validator_balance//10**9
+    avg_active_validator_balance_gwei = total_active_balance // active_validator_count
+    avg_active_validator_balance_eth = avg_active_validator_balance_gwei // ETH_TO_GWEI
+    return avg_active_validator_balance_eth
 
 def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
@@ -103,7 +118,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
 
 A brief reference for what these values look like in practice:
 
-| SAFETY_DECAY | validator_count | average_active_validator_balance | weak_subjectivity_period |
+| Safety Decay | Validator Count | Average Active Validator Balance | Weak Subjectivity Period |
 | ---- | ---- | ---- | ---- |
 | 10 | 8192 | 28 | 318 |
 | 10 | 8192 | 32 | 358 |
