@@ -103,7 +103,6 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
-    # Note that the committee members MAY still be duplicate even with enough active validator count probabilistically.
     assert active_validator_count >= spec.SYNC_COMMITTEE_SIZE
     assert committee_size == len(set(committee))
 
@@ -152,8 +151,6 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
-    # With mainnet config, where active validators are less than SYNC_COMMITTEE_SIZE,
-    # the committee members SHOULD be duplicate.
     assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
     assert committee_size > len(set(committee))
 
