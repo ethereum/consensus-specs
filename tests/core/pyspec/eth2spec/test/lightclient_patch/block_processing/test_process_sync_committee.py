@@ -1,3 +1,4 @@
+from collections import Counter
 import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -154,12 +155,7 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    duplicate_count = {}
-    for i, x in enumerate(committee):
-        if i != committee.index(x):
-            if x not in duplicate_count:
-                duplicate_count[x] = 1
-            duplicate_count[x] += 1
+    multiplicities = Counter(committee)
 
     for index in range(len(state.validators)):
         expected_reward = 0
@@ -175,10 +171,7 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
                 active_validator_count,
                 committee_size,
             )
-            if index not in duplicate_count:
-                expected_reward += reward
-            else:
-                expected_reward += reward * duplicate_count[index]
+            expected_reward += reward * multiplicities[index]
 
         assert state.balances[index] == pre_balances[index] + expected_reward
 
@@ -224,6 +217,7 @@ def test_invalid_signature_past_block(spec, state):
 
 
 @with_all_phases_except([PHASE0, PHASE1])
+@with_configs([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
 def test_invalid_signature_previous_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
@@ -232,26 +226,27 @@ def test_invalid_signature_previous_committee(spec, state):
     # To get a distinct committee so we can generate an "old" signature, we need to advance
     # 2 EPOCHS_PER_SYNC_COMMITTEE_PERIOD periods.
     current_epoch = spec.get_current_epoch(state)
+    old_sync_committee = state.next_sync_committee
 
     epoch_in_future_sync_commitee_period = current_epoch + 2 * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     slot_in_future_sync_committee_period = epoch_in_future_sync_commitee_period * spec.SLOTS_PER_EPOCH
     transition_to(spec, state, slot_in_future_sync_committee_period)
 
-    # Create incorrect_committee for generating invalid signature.
-    pubkeys = [validator.pubkey for validator in state.validators]
-    correct_committee = [pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
-    incorrect_committee = [(correct_committee[0] + 1) % len(pubkeys)] + correct_committee[1:]
-    assert correct_committee != incorrect_committee
-
     yield 'pre', state
 
+    # Use the previous sync committee to produce the signature.
+    pubkeys = [validator.pubkey for validator in state.validators]
+    # Ensure that the pubkey sets are different.
+    assert set(old_sync_committee.pubkeys) != set(state.current_sync_committee.pubkeys)
+    committee = [pubkeys.index(pubkey) for pubkey in old_sync_committee.pubkeys]
+
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * len(incorrect_committee)
+    block.body.sync_committee_bits = [True] * len(committee)
     block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
         block.slot - 1,
-        incorrect_committee,
+        committee,
     )
 
     yield 'blocks', [block]
