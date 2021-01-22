@@ -14,9 +14,13 @@
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
+    - [`get_active_validator_count`](#get_active_validator_count)
+    - [`compute_avg_active_validator_balance`](#compute_avg_active_validator_balance)
+    - [`compute_weak_subjectivity_period`](#compute_weak_subjectivity_period)
 - [Weak Subjectivity Sync](#weak-subjectivity-sync)
   - [Weak Subjectivity Sync Procedure](#weak-subjectivity-sync-procedure)
   - [Checking for Stale Weak Subjectivity Checkpoint](#checking-for-stale-weak-subjectivity-checkpoint)
+    - [`is_within_weak_subjectivity_period`](#is_within_weak_subjectivity_period)
 - [Distributing Weak Subjectivity Checkpoints](#distributing-weak-subjectivity-checkpoints)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -75,43 +79,53 @@ a safety margin of at least `1/3 - SAFETY_DECAY/100`.
 
 A detailed analysis of the calculation of the weak subjectivity period is made in [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf). The expressions in the report use fractions, whereas we only use uint64 arithmetic in eth2.0-specs. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
 
+#### `get_active_validator_count`
+
 ```python
 def get_active_validator_count(state: BeaconState) -> uint64:
     active_validator_count = len(get_active_validator_indices(state, get_current_epoch(state)))
     return active_validator_count
+```
 
+#### `compute_avg_active_validator_balance`
+
+```python
 def compute_avg_active_validator_balance(state: BeaconState) -> Ether:
     total_active_balance = get_total_active_balance(state)
     active_validator_count = get_active_validator_count(state)
     avg_active_validator_balance_gwei = total_active_balance // active_validator_count
     avg_active_validator_balance_eth = avg_active_validator_balance_gwei // ETH_TO_GWEI
     return avg_active_validator_balance_eth
+```
 
+#### `compute_weak_subjectivity_period`
+
+```python
 def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     N = get_active_validator_count(state)
     t = compute_avg_active_validator_balance(state)
-    T = MAX_EFFECTIVE_BALANCE//10**9
+    T = MAX_EFFECTIVE_BALANCE // 10**9
     delta = get_validator_churn_limit(state)
     Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
     D = SAFETY_DECAY
 
     case = (
-      T*(200+3*D) < t*(200+12*D)
+        T * (200 + 3 * D) < t * (200 + 12 * D)
     )
 
     if case == 1:
-      arg1 = (
-        N*(t*(200+12*D) - T*(200+3*D)) // (600*delta*(2*t+T))
-      )
-      arg2 = (
-        N*(200+3*D) // (600*Delta)
-      )
-      ws_period += max(arg1, arg2)
+        arg1 = (
+            N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
+        )
+        arg2 = (
+            N * (200 + 3 * D) // (600 * Delta)
+        )
+        ws_period += max(arg1, arg2)
     else:
-      ws_period += (
-         3*N*D*t // (200*Delta*(T-t))
-      )
+        ws_period += (
+            3 * N * D * t // (200 * Delta * (T - t))
+        )
     
     return ws_period
 ```
@@ -167,6 +181,8 @@ Clients may choose to validate that the input Weak Subjectivity Checkpoint is no
 To support this mechanism, the client needs to take the state at the Weak Subjectivity Checkpoint as
 a CLI parameter input (or fetch the state associated with the input Weak Subjectivity Checkpoint from some source).
 The check can be implemented in the following way:
+
+#### `is_within_weak_subjectivity_period`
 
 ```python
 def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint) -> bool:
