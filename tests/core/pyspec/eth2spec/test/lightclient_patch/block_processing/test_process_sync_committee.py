@@ -19,6 +19,27 @@ from eth2spec.test.context import (
     with_configs,
     spec_state_test,
 )
+from eth2spec.utils.hash_function import hash
+
+
+def get_committee_indices(spec, state, duplicates=False):
+    '''
+    This utility function allows the caller to ensure there are or are not
+    duplicate validator indices in the returned committee based on
+    the boolean ``duplicates``.
+    '''
+    state = state.copy()
+    current_epoch = spec.get_current_epoch(state)
+    randao_index = current_epoch % spec.EPOCHS_PER_HISTORICAL_VECTOR
+    while True:
+        committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+        if duplicates:
+            if len(committee) != len(set(committee)):
+                return committee
+        else:
+            if len(committee) == len(set(committee)):
+                return committee
+        state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
 
 
 @with_all_phases_except([PHASE0, PHASE1])
@@ -78,12 +99,11 @@ def compute_sync_committee_participant_reward(spec, state, participant_index, ac
 @with_configs([MINIMAL], reason="to create nonduplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_nonduplicate_committee(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee = get_committee_indices(spec, state, duplicates=False)
     committee_size = len(committee)
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
-    # Note that the committee members MAY still be duplicate even with enough active validator count probabilistically.
     assert active_validator_count >= spec.SYNC_COMMITTEE_SIZE
     assert committee_size == len(set(committee))
 
@@ -127,13 +147,11 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
 @with_configs([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee = get_committee_indices(spec, state, duplicates=True)
     committee_size = len(committee)
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
-    # With mainnet config, where active validators are less than SYNC_COMMITTEE_SIZE,
-    # the committee members SHOULD be duplicate.
     assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
     assert committee_size > len(set(committee))
 
