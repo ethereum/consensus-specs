@@ -69,8 +69,17 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 ```python
 @dataclass(eq=True, frozen=True)
 class LatestMessage(object):
-    epoch: Epoch
+    slot: Slot
     root: Root
+```
+
+#### `BlockSlotNode`
+
+```python
+class BlockSlotNode(Container):
+    block_root: Root
+    slot: Slot
+    parent_node: Root
 ```
 
 #### `Store`
@@ -83,6 +92,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
+    block_slot_tree: List[BlockSlotNode, 10**6] # TODO: length of list / use set
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -99,8 +109,14 @@ This should be the genesis state for a full client.
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
     assert anchor_block.state_root == hash_tree_root(anchor_state)
-    anchor_root = hash_tree_root(anchor_block)
+    # TODO: Does the above assert guarantee anchor_block.slot == compute_start_slot_at_epoch(anchor_epoch) ?
     anchor_epoch = get_current_epoch(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
+    anchor_node = BlockSlotNode(
+            block_root=anchor_root, 
+            slot=anchor_block.slot, 
+            parent_node=Root()
+        )
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
@@ -109,6 +125,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
+        block_slot_tree=[anchor_node],
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
@@ -305,11 +322,11 @@ def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
 
 ```python
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
-    target = attestation.data.target
+    attestation_slot = attestation.data.slot
     beacon_block_root = attestation.data.beacon_block_root
     for i in attesting_indices:
-        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
-            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
+        if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
+            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=beacon_block_root)
 ```
 
 
@@ -404,4 +421,69 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Update latest messages for attesting indices
     update_latest_messages(store, indexed_attestation.attesting_indices, attestation)
+
+    lmd_block = store.blocks[attestation.data.beacon_block_root]
+    add_block_slot_node(store, lmd_block, attestation.data.slot)
+```
+
+#### `add_block_slot_node`
+
+```python
+def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> BlockSlotNode:
+    """
+    Adds a ``BlockSlotNode`` corresponding to ``block`` at slot ``node_slot`` in ``store.block_slot_tree``. Returns the highest slot node added to ``store.block_slot_tree`` in this function call.
+
+    Algorithm:
+        1. Check if the parent block's node exists at slot ``block.slot - 1``. Add the node if it doesn't exist. 
+        2. Check if this block's node exists at slot ``block.slot``. Add the node if it doesn't exist. 
+        3. If ``node_slot > block.slot``, add virtual block nodes from slot ``block.slot + 1`` till ``node_slot``.
+    """
+    assert block.slot <= node_slot
+
+    # Check if parent block's node exists at block.slot-1
+    parent_block_root = block.parent_root
+    parent_node_root = Root()
+    # Check for parent block's node only if current block is not genesis/anchor block
+    # TODO: Skip anchor block's parent block node check
+    if parent_block_root != Root():
+        parent_block = store.blocks[parent_block_root]
+        parent_block_node_slot = block.slot - 1
+        parent_node = None
+        for node in store.block_slot_tree:
+            if node.block_root == parent_block_root and node.slot == parent_block_node_slot:
+                parent_node = node
+                break
+        if parent_node is None:
+            parent_node = add_block_slot_node(store, parent_block, parent_block_node_slot)
+            parent_node_root = hash_tree_root(parent_node)
+    
+    # Check if this block's node exists at block.slot
+    block_root = hash_tree_root(block)
+    block_node = None
+    for node in store.block_slot_tree:
+        if node.block_root == block_root and node.slot == block.slot:
+            block_node = node
+            break
+    if block_node is None:
+        block_node = BlockSlotNode(
+            block_root=block_root, 
+            slot=block.slot, 
+            parent_node=parent_node_root, 
+        )
+        store.block_slot_tree.append(block_node)
+    if node_slot == block.slot:
+        return block_node
+    
+    # Check virtual block's nodes at block.slot+1 till slot
+    parent_node = block_node
+    for virtual_block_node_slot in range(block.slot+1, node_slot+1):
+        virtual_block_node = BlockSlotNode(
+            block_root=block_root, 
+            slot=virtual_block_node_slot, 
+            parent_node=hash_tree_root(parent_node), 
+        )
+        if virtual_block_node not in store.block_slot_tree:
+            store.block_slot_tree.append(virtual_block_node)
+        parent_node = virtual_block_node
+    return virtual_block_node
 ```
