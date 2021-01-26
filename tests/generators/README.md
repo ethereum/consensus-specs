@@ -184,7 +184,7 @@ def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typin
 
 if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
-        create_provider('final_updates', test_process_final_updates, 'minimal'),
+        create_provider('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
         ...
     ])
 
