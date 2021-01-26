@@ -76,11 +76,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     assert anchor_block.state_root == hash_tree_root(anchor_state)
     anchor_root = hash_tree_root(anchor_block)
     anchor_epoch = get_current_epoch(anchor_state)
-    anchor_node = BlockSlotNode(
-            block_root=anchor_root, 
-            slot=anchor_block.slot, 
-            parent_node=Root()
-        )
+    anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_block.slot, parent_node=Root())
     anchor_node_hash = hash_tree_root(anchor_node)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)

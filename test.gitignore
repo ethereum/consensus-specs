@@ -17,4 +17,4 @@ make install_test
 # Test
 . venv/bin/activate
 cd ./tests/core/pyspec
-python -m pytest --disable-bls eth2spec/test/phase0/unittests/fork_choice/test_on_attestation.py
+python -m pytest --disable-bls eth2spec/test/phase0/unittests/fork_choice/test_get_head.py::test_filtered_block_tree
