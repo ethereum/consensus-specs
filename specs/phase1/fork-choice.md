@@ -37,8 +37,8 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
-    block_slot_tree: List[BlockSlotNode, 10**6] # TODO: length of list / use set
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_slot_tree: Dict[Root, BlockSlotNode] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
@@ -81,6 +81,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
             slot=anchor_block.slot, 
             parent_node=Root()
         )
+    anchor_node_hash = hash_tree_root(anchor_node)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
@@ -89,8 +90,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
-        block_slot_tree=[anchor_node],
         blocks={anchor_root: copy(anchor_block)},
+        block_slot_tree={anchor_node_hash: copy(anchor_node)},
         block_states={anchor_root: anchor_state.copy()},
         checkpoint_states={justified_checkpoint: anchor_state.copy()},
         shard_stores={
@@ -111,7 +112,8 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
     shard = attestation.data.shard
     for i in attesting_indices:
         if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
-            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=beacon_block_root)
+            node_root = get_node_root(store, beacon_block_root, attestation_slot)
+            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_root)
             shard_latest_message = ShardLatestMessage(epoch=target.epoch, root=attestation.data.shard_head_root)
             store.shard_stores[shard].latest_messages[i] = shard_latest_message
 ```
