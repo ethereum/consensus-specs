@@ -14,8 +14,6 @@
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
-    - [`get_active_validator_count`](#get_active_validator_count)
-    - [`compute_avg_active_validator_balance`](#compute_avg_active_validator_balance)
     - [`compute_weak_subjectivity_period`](#compute_weak_subjectivity_period)
 - [Weak Subjectivity Sync](#weak-subjectivity-sync)
   - [Weak Subjectivity Sync Procedure](#weak-subjectivity-sync-procedure)
@@ -77,44 +75,33 @@ a safety margin of at least `1/3 - SAFETY_DECAY/100`.
 
 ### Calculating the Weak Subjectivity Period
 
-A detailed analysis of the calculation of the weak subjectivity period is made in [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf). The expressions in the report use fractions, whereas we only use uint64 arithmetic in eth2.0-specs. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
+A detailed analysis of the calculation of the weak subjectivity period is made in [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf).
 
-#### `get_active_validator_count`
+*Note*: The expressions in the report use fractions, whereas eth2.0-specs uses only `uint64` arithmetic. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
 
-```python
-def get_active_validator_count(state: BeaconState) -> uint64:
-    active_validator_count = len(get_active_validator_indices(state, get_current_epoch(state)))
-    return active_validator_count
-```
-
-#### `compute_avg_active_validator_balance`
-
-```python
-def compute_avg_active_validator_balance(state: BeaconState) -> Ether:
-    total_active_balance = get_total_active_balance(state)
-    active_validator_count = get_active_validator_count(state)
-    avg_active_validator_balance_gwei = total_active_balance // active_validator_count
-    avg_active_validator_balance_eth = avg_active_validator_balance_gwei // ETH_TO_GWEI
-    return avg_active_validator_balance_eth
-```
+*Note*: The calculations here use `Ether` instead of `Gwei`, because the large magitude of balances in `Gwei` can cause an overflow while computing using `uint64` arithmetic operations. Using `Ether` reduces the magintude of the multiplicative factors by an order of `ETH_TO_GWEI` (`= 10**9`) and avoid the scope for overflows in `uint64`.
 
 #### `compute_weak_subjectivity_period`
 
 ```python
 def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
+    """
+    Returns the weak subjectivity period for the current ``state``. 
+    This computation takes into account the effect of:
+        - validator set churn (bounded by ``get_validator_churn_limit()`` per epoch), and 
+        - validator balance top-ups (bounded by ``MAX_DEPOSITS * SLOTS_PER_EPOCH`` per epoch).
+    A detailed calculation can be found at:
+    https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf
+    """
     ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    N = get_active_validator_count(state)
-    t = compute_avg_active_validator_balance(state)
-    T = MAX_EFFECTIVE_BALANCE // 10**9
+    N = len(get_active_validator_indices(state, get_current_epoch(state)))
+    t = get_total_active_balance(state) // N // ETH_TO_GWEI
+    T = MAX_EFFECTIVE_BALANCE // ETH_TO_GWEI
     delta = get_validator_churn_limit(state)
     Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
     D = SAFETY_DECAY
 
-    case = (
-        T * (200 + 3 * D) < t * (200 + 12 * D)
-    )
-
-    if case == 1:
+    if T * (200 + 3 * D) < t * (200 + 12 * D):
         arg1 = (
             N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
         )
@@ -130,28 +117,22 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     return ws_period
 ```
 
-A brief reference for what these values look like in practice:
+A brief reference for what these values look like in practice ([reference script](https://gist.github.com/adiasg/3aceab409b36aa9a9d9156c1baa3c248)):
 
-| Safety Decay | Validator Count | Average Active Validator Balance | Weak Subjectivity Period |
+| Safety Decay | Avg. Val. Balance (ETH) | Val. Count | Weak Sub. Period (Epochs) |
 | ---- | ---- | ---- | ---- |
-| 10 | 8192 | 28 | 318 |
-| 10 | 8192 | 32 | 358 |
-| 10 | 16384 | 28 | 380 |
-| 10 | 16384 | 32 | 460 |
-| 10 | 32768 | 28 | 504 |
-| 10 | 32768 | 32 | 665 |
-| 20 | 8192 | 28 | 411 |
-| 20 | 8192 | 32 | 460 |
-| 20 | 16384 | 28 | 566 |
-| 20 | 16384 | 32 | 665 |
-| 20 | 32768 | 28 | 876 |
-| 20 | 32768 | 32 | 1075 |
-| 33 | 8192 | 28 | 532 |
-| 33 | 8192 | 32 | 593 |
-| 33 | 16384 | 28 | 808 |
-| 33 | 16384 | 32 | 931 |
-| 33 | 32768 | 28 | 1360 |
-| 33 | 32768 | 32 | 1607 |
+| 10 | 28 | 32768 | 504 |
+| 10 | 28 | 65536 | 752 |
+| 10 | 28 | 131072 | 1248 |
+| 10 | 28 | 262144 | 2241 |
+| 10 | 28 | 524288 | 2241 |
+| 10 | 28 | 1048576 | 2241 |
+| 10 | 32 | 32768 | 665 |
+| 10 | 32 | 65536 | 1075 |
+| 10 | 32 | 131072 | 1894 |
+| 10 | 32 | 262144 | 3532 |
+| 10 | 32 | 524288 | 3532 |
+| 10 | 32 | 1048576 | 3532 |
 
 ## Weak Subjectivity Sync
 
