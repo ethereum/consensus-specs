@@ -5,8 +5,8 @@ from eth2spec.test.helpers.epoch_processing import (
 from eth2spec.test.helpers.state import transition_to
 
 
-def run_process_eth1_data_votes_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_eth1_data_votes_updates')
+def run_process_eth1_data_reset(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_eth1_data_reset')
 
 
 @with_all_phases
@@ -22,7 +22,7 @@ def test_eth1_vote_no_reset(spec, state):
                           deposit_count=state.eth1_deposit_index,
                           block_hash=b'\xbb' * 32))
 
-    yield from run_process_eth1_data_votes_updates(spec, state)
+    yield from run_process_eth1_data_reset(spec, state)
 
     assert len(state.eth1_data_votes) == spec.SLOTS_PER_EPOCH
 
@@ -38,6 +38,6 @@ def test_eth1_vote_reset(spec, state):
                           deposit_count=state.eth1_deposit_index,
                           block_hash=b'\xbb' * 32))
 
-    yield from run_process_eth1_data_votes_updates(spec, state)
+    yield from run_process_eth1_data_reset(spec, state)
 
     assert len(state.eth1_data_votes) == 0

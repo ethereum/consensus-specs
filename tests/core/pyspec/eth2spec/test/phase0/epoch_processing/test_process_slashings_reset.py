@@ -4,8 +4,8 @@ from eth2spec.test.helpers.epoch_processing import (
 )
 
 
-def run_process_slashings_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_slashings_updates')
+def run_process_slashings_reset(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_slashings_reset')
 
 
 @with_all_phases
@@ -15,6 +15,6 @@ def test_flush_slashings(spec, state):
     state.slashings[next_epoch % spec.EPOCHS_PER_SLASHINGS_VECTOR] = 100
     assert state.slashings[next_epoch % spec.EPOCHS_PER_SLASHINGS_VECTOR] != 0
 
-    yield from run_process_slashings_updates(spec, state)
+    yield from run_process_slashings_reset(spec, state)
 
     assert state.slashings[next_epoch % spec.EPOCHS_PER_SLASHINGS_VECTOR] == 0

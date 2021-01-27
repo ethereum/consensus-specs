@@ -37,11 +37,11 @@ if __name__ == "__main__":
         'rewards_and_penalties',
         'registry_updates',
         'slashings',
-        'eth1_data_votes_updates',
-        'effective_balances_updates',
-        'slashings_updates',
-        'randao_mixes_updates',
-        'historical_roots_updates',
+        'eth1_data_reset',
+        'effective_balance_updates',
+        'slashings_reset',
+        'randao_mixes_reset',
+        'historical_roots_update',
         'participation_record_updates',
     ]}
     phase_1_mods = {**{key: 'eth2spec.test.phase1.epoch_processing.test_process_' + key for key in [

@@ -1057,11 +1057,11 @@ def process_epoch(state: BeaconState) -> None:
     process_reveal_deadlines(state)  # Phase 1
     process_challenge_deadlines(state)  # Phase 1
     process_slashings(state)
-    process_eth1_data_votes_updates(state)
-    process_effective_balances_updates(state)
-    process_slashings_updates(state)
-    process_randao_mixes_updates(state)
-    process_historical_roots_updates(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_roots_update(state)
     process_participation_record_updates(state)
     process_phase_1_final_updates(state)  # Phase 1
 ```

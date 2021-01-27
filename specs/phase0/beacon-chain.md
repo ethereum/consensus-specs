@@ -1255,11 +1255,11 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_slashings(state)
-    process_eth1_data_votes_updates(state)
-    process_effective_balances_updates(state)
-    process_slashings_updates(state)
-    process_randao_mixes_updates(state)
-    process_historical_roots_updates(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_roots_update(state)
     process_participation_record_updates(state)
 ```
 
@@ -1569,7 +1569,7 @@ def process_slashings(state: BeaconState) -> None:
 
 #### Eth1 data votes updates
 ```python
-def process_eth1_data_votes_updates(state: BeaconState) -> None:
+def process_eth1_data_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     # Reset eth1 data votes
     if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
@@ -1579,7 +1579,7 @@ def process_eth1_data_votes_updates(state: BeaconState) -> None:
 #### Effective balances updates
 
 ```python
-def process_effective_balances_updates(state: BeaconState) -> None:
+def process_effective_balance_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
@@ -1596,7 +1596,7 @@ def process_effective_balances_updates(state: BeaconState) -> None:
 #### Slashings balances updates
 
 ```python
-def process_slashings_updates(state: BeaconState) -> None:
+def process_slashings_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
@@ -1605,7 +1605,7 @@ def process_slashings_updates(state: BeaconState) -> None:
 #### Randao mixes updates
 
 ```python
-def process_randao_mixes_updates(state: BeaconState) -> None:
+def process_randao_mixes_reset(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = Epoch(current_epoch + 1)
     # Set randao mix
@@ -1614,7 +1614,7 @@ def process_randao_mixes_updates(state: BeaconState) -> None:
 
 #### Historical roots updates
 ```python
-def process_historical_roots_updates(state: BeaconState) -> None:
+def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:

@@ -4,8 +4,8 @@ from eth2spec.test.helpers.epoch_processing import (
 )
 
 
-def run_process_historical_roots_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_historical_roots_updates')
+def run_process_historical_roots_update(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_historical_roots_update')
 
 
 @with_all_phases
@@ -15,6 +15,6 @@ def test_historical_root_accumulator(spec, state):
     state.slot = spec.SLOTS_PER_HISTORICAL_ROOT - 1
     history_len = len(state.historical_roots)
 
-    yield from run_process_historical_roots_updates(spec, state)
+    yield from run_process_historical_roots_update(spec, state)
 
     assert len(state.historical_roots) == history_len + 1

@@ -43,11 +43,11 @@ Sub-transitions:
 - `rewards_and_penalties`
 - `registry_updates`
 - `slashings`
-- `eth1_data_votes_updates`
-- `effective_balances_updates`
-- `slashings_updates`
-- `randao_mixes_updates`
-- `historical_roots_updates`
+- `eth1_data_reset`
+- `effective_balance_updates`
+- `slashings_reset`
+- `randao_mixes_reset`
+- `historical_roots_update`
 - `participation_record_updates`
 
 The resulting state should match the expected `post` state.
