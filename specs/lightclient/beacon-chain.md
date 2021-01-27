@@ -90,12 +90,14 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | - | - | 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1024) |
 | `SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE` | `uint64(2**6)` (= 64) |
+| `LEAK_SCORE_BIAS` | 4 |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+| `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` | `Epoch(2**5)` (= 32) | epochs | ~3.4 hours |
 
 ### Domain types
 
@@ -155,6 +157,11 @@ class BeaconState(Container):
     # Light client sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
+    # How many inactivity leak epochs have there been in the previous penalty period?
+    leak_epoch_counter: uint64
+    # Increases when the validator misses epochs in an inactivity leak, decreases when the validator
+    # is online in an inactivity leak, inactivity leak penalties are proportional to this value
+    leak_score: List[uint64, VALIDATOR_REGISTRY_LIMIT]
 ```
 
 ### New containers
@@ -269,16 +276,15 @@ def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: 
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
-#### `get_flag_deltas`
+#### `get_flag_rewards`
 
 ```python
-def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_rewards(state: BeaconState, flag: uint8, numerator: uint64) -> Sequence[Gwei]:
     """
     Computes the rewards and penalties associated with a particular duty, by scanning through the participation
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
     """
     rewards = [Gwei(0)] * len(state.validators)
-    penalties = [Gwei(0)] * len(state.validators)
 
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag, get_previous_epoch(state))
     increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
@@ -287,17 +293,16 @@ def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
+            penalty_canceling_reward = base_reward * numerator // REWARD_DENOMINATOR
+            extra_reward = (
+                (base_reward * numerator * unslashed_participating_increments)
+                // (active_increments * REWARD_DENOMINATOR)
+            )
             if is_in_inactivity_leak(state):
-                # Optimal participatition is fully rewarded to cancel the inactivity penalty
-                rewards[index] = base_reward * numerator // REWARD_DENOMINATOR
+                rewards[index] = penalty_canceling_reward
             else:
-                rewards[index] = (
-                    (base_reward * numerator * unslashed_participating_increments)
-                    // (active_increments * REWARD_DENOMINATOR)
-                )
-        else:
-            penalties[index] = base_reward * numerator // REWARD_DENOMINATOR
-    return rewards, penalties
+                rewards[index] = penalty_canceling_reward + extra_reward
+    return rewards
 ```
 
 #### New `get_inactivity_penalty_deltas`
@@ -516,22 +521,129 @@ def process_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
-#### New `process_rewards_and_penalties`
+#### New `process_rewards`
 
 *Note*: The function `process_rewards_and_penalties` is modified to use participation flag deltas.
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
+    process_rewards(state)
+    process_penalties(state)
+
+def process_rewards(state: BeaconState) -> None:
     # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
-    flag_deltas = [get_flag_deltas(state, flag, numerator) for (flag, numerator) in get_flags_and_numerators()]
-    deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
-    for (rewards, penalties) in deltas:
+    flag_rewards = [get_flag_rewards(state, flag, numerator) for (flag, numerator) in get_flags_and_numerators()]
+    for rewards in flag_rewards:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
-            decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
+
+```python
+def process_penalties(state: BeaconState) -> None:
+    # These validators participated in FFG and are exempt from the leak
+    matching_target_attesting_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG, get_previous_epoch(state)
+    )
+    
+    # A validator's leak_score updates as follows:
+    # (i)  If there was an inactivity leak in a given epoch, anyone who participated in that epoch
+    #      has their score decrease by 1, anyone who did not has their score increase by LEAK_SCORE_BIAS
+    # (ii) If there was not an inactivity leak in a given epoch, anyone who participated in that epoch
+    #      has their score decrease by 1
+    # The code below implements this, though amortizing the "increase if absent" component until the end
+    # of the ACTIVATION_EXIT_PERIOD
+    
+    if is_in_inactivity_leak(state):
+        leak_score_decrease = LEAK_SCORE_BIAS + 1
+        state.leak_epoch_counter += 1
+    else:
+        leak_score_decrease = 1
+    for index in get_eligible_validator_indices(state):
+        if index in matching_target_attesting_indices:
+            if state.leak_score[index] < leak_score_decrease:
+                state.leak_score[index] = 0
+            else:
+                state.leak_score[index] -= leak_score_decrease
+    # Penalty processing
+    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 0:
+        attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
+        for index in get_eligible_validator_indices(state):
+            # "Regular" penalty
+            accumulated_penalty = get_base_reward(state, index) * sum(attestation_numerators) // REWARD_DENOMINATOR
+            decrease_balance(state, ValidatorIndex(index), accumulated_penalty)
+            # Inactivity-leak-specific penalty
+            if state.leak_score[index] >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS
+                leak_penalty = state.leak_score[index] * EPOCHS_PER_ACTIVATION_EXIT_PERIOD // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
+                decrease_balance(state, ValidatorIndex(index), leak_penalty)
+            state.leak_score[index] += LEAK_SCORE_BIAS * state.leak_epoch_counter
+        state.leak_epoch_counter = 0
+```
+
+#### New `compute_activation_exit_epoch`
+
+```python
+def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
+    """
+    Return the epoch during which validator activations and exits initiated in ``epoch`` take effect.
+    """
+    next_period_start = epoch - (epoch % EPOCHS_PER_ACTIVATION_EXIT_PERIOD) + EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+    if next_period_start >= epoch + 1 + MAX_SEED_LOOKAHEAD:
+        return Epoch(next_period_start)
+    else:
+        return Epoch(next_period_start + EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
+```
+
+#### New `process_registry_updates`
+
+```python
+def process_registry_updates(state: BeaconState) -> None:
+    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 0:
+        # Process activation eligibility and ejections
+        for index, validator in enumerate(state.validators):
+            if is_eligible_for_activation_queue(validator):
+                validator.activation_eligibility_epoch = get_current_epoch(state) + EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+
+            if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
+                initiate_validator_exit(state, ValidatorIndex(index))
+ 
+        # Queue validators eligible for activation and not yet dequeued for activation
+        activation_queue = sorted([
+            index for index, validator in enumerate(state.validators)
+            if is_eligible_for_activation(state, validator)
+            # Order by the sequence of activation_eligibility_epoch setting and then index
+        ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+        # Dequeued validators for activation up to churn limit
+        for index in activation_queue[:get_validator_churn_limit(state) * EPOCHS_PER_ACTIVATION_EXIT_PERIOD]:
+            validator = state.validators[index]
+            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+```
+
+#### New `initiate_validator_exit`
+
+```python
+def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
+    """
+    Initiate the exit of the validator with index ``index``.
+    """
+    # Return if validator already initiated exit
+    validator = state.validators[index]
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+
+    # Compute exit queue epoch
+    exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
+    exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
+    exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
+    if exit_queue_churn >= get_validator_churn_limit(state) * EPOCHS_PER_ACTIVATION_EXIT_PERIOD:
+        exit_queue_epoch += Epoch(EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
+
+    # Set validator exit epoch and withdrawable epoch
+    validator.exit_epoch = exit_queue_epoch
+    validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+```
+
 
 #### Final updates
 
