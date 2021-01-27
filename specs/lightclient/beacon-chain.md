@@ -29,7 +29,7 @@
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Components of attestation deltas](#components-of-attestation-deltas)
-    - [Final updates](#final-updates)
+    - [Sync committee updates](#sync-committee-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -209,6 +209,22 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ### Epoch processing
 
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_roots_update(state)
+    process_participation_record_updates(state)
+    # Light client patch
+    process_sync_committee_updates(state)
+```
+
 #### Components of attestation deltas
 
 *Note*: The function `get_inactivity_penalty_deltas` is modified with `BASE_REWARDS_PER_EPOCH` replaced by `BASE_REWARDS_PER_EPOCH - 1`.
@@ -235,14 +251,10 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     return rewards, penalties
 ```
 
-#### Final updates
-
-*Note*: The function `process_final_updates` is modified to handle sync committee updates.
+#### Sync committee updates
 
 ```python
-def process_final_updates(state: BeaconState) -> None:
-    # FIXME: unfold the full `process_final_updates` to avoid side effects.
-    phase0.process_final_updates(state)
+def process_sync_committee_updates(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + Epoch(1)
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
         state.current_sync_committee = state.next_sync_committee
