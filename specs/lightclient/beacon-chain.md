@@ -571,11 +571,11 @@ def process_penalties(state: BeaconState) -> None:
         attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
         for index in get_eligible_validator_indices(state):
             # "Regular" penalty
-            accumulated_penalty = get_base_reward(state, index) * sum(attestation_numerators) // REWARD_DENOMINATOR
-            decrease_balance(state, ValidatorIndex(index), accumulated_penalty)
+            penalty_per_epoch = get_base_reward(state, index) * sum(attestation_numerators) // REWARD_DENOMINATOR
+            decrease_balance(state, ValidatorIndex(index), penalty_per_epoch * EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
             # Inactivity-leak-specific penalty
             if state.leak_score[index] >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS
-                leak_penalty = state.leak_score[index] * EPOCHS_PER_ACTIVATION_EXIT_PERIOD // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
+                leak_penalty = state.leak_score[index] * state.leak_epoch_counter // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
                 decrease_balance(state, ValidatorIndex(index), leak_penalty)
             state.leak_score[index] += LEAK_SCORE_BIAS * state.leak_epoch_counter
         state.leak_epoch_counter = 0
