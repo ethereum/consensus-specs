@@ -478,6 +478,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
+    # Add new (block, slot)-node to the tree in the store
+    add_block_slot_node(store, block, block.slot)
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
