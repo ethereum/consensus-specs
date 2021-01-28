@@ -393,7 +393,6 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
     assert block.slot <= node_slot
 
     # Check if parent block's node exists at block.slot-1
-    parent_block_node_key = Root()
     # Check for parent block's node only if current block is not genesis/anchor block
     # FIXME: This only checks for the genesis block. Instead, allow for arbitrary anchor block.
     if block.parent_root != Root():
@@ -404,6 +403,8 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
             parent_block = store.blocks[block.parent_root]
             store.block_slot_tree[parent_block_node_key] = add_block_slot_node(
                 store, parent_block, parent_block_node_slot)
+    else:
+        parent_block_node_key = Root()
     
     # Check if this block's node exists at block.slot
     block_root = hash_tree_root(block)
