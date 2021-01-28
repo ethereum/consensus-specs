@@ -108,8 +108,8 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
     shard = attestation.data.shard
     for i in attesting_indices:
         if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
-            node_root = get_block_slot_key(beacon_block_root, attestation_slot)
-            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_root)
+            node_key = get_block_slot_key(beacon_block_root, attestation_slot)
+            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_key)
             shard_latest_message = ShardLatestMessage(epoch=target.epoch, root=attestation.data.shard_head_root)
             store.shard_stores[shard].latest_messages[i] = shard_latest_message
 ```

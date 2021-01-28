@@ -373,8 +373,8 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
     beacon_block_root = attestation.data.beacon_block_root
     for i in attesting_indices:
         if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
-            node_root = get_block_slot_key(beacon_block_root, attestation_slot)
-            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_root)
+            node_key = get_block_slot_key(beacon_block_root, attestation_slot)
+            store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_key)
 ```
 
 #### `add_block_slot_node`

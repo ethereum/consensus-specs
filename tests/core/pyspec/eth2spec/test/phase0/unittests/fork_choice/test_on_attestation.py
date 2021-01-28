@@ -19,18 +19,18 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 
     sample_index = indexed_attestation.attesting_indices[0]
     if spec.fork == PHASE0:
-        latest_message_node_root = spec.get_block_slot_key(
+        latest_message_node_key = spec.get_block_slot_key(
             attestation.data.beacon_block_root, attestation.data.slot)
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
-            root=latest_message_node_root,
+            root=latest_message_node_key,
         )
     else:
-        latest_message_node_root = spec.get_block_slot_key(
+        latest_message_node_key = spec.get_block_slot_key(
             attestation.data.beacon_block_root, attestation.data.slot)
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
-            root=latest_message_node_root,
+            root=latest_message_node_key,
         )
         shard_latest_message = spec.ShardLatestMessage(
             epoch=attestation.data.target.epoch,
