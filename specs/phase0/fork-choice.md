@@ -5,20 +5,23 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
+    - [`BlockSlotNode`](#blockslotnode)
+    - [`BlockSlotKey`](#blockslotkey)
+    - [`get_block_slot_key`](#get_block_slot_key)
     - [`Store`](#store)
     - [`get_forkchoice_store`](#get_forkchoice_store)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
+    - [`get_ancestor_node`](#get_ancestor_node)
     - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
-    - [`filter_block_tree`](#filter_block_tree)
+    - [`filter_block_slot_tree`](#filter_block_slot_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
@@ -26,6 +29,7 @@
       - [`validate_on_attestation`](#validate_on_attestation)
       - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
       - [`update_latest_messages`](#update_latest_messages)
+    - [`add_block_slot_node`](#add_block_slot_node)
   - [Handlers](#handlers)
     - [`on_tick`](#on_tick)
     - [`on_block`](#on_block)
@@ -82,6 +86,21 @@ class BlockSlotNode(Container):
     parent_node: Root
 ```
 
+#### `BlockSlotKey`
+
+```python
+class BlockSlotKey(Container):
+    block_root: Root
+    slot: Slot
+```
+
+#### `get_block_slot_key`
+
+```python
+def get_block_slot_key(block_root: Root, slot: Slot) -> Root:
+    return hash_tree_root(BlockSlotKey(block_root=block_root, slot=slot))
+```
+
 #### `Store`
 
 ```python
@@ -109,11 +128,12 @@ This should be the genesis state for a full client.
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
     assert anchor_block.state_root == hash_tree_root(anchor_state)
-    # TODO: Does the above assert guarantee anchor_block.slot == compute_start_slot_at_epoch(anchor_epoch) ?
+    # TODO: `anchor_block` should be corresponding to an epoch boundary block. 
+    # Take `anchor_slot` input to account for skip-blocks
     anchor_epoch = get_current_epoch(anchor_state)
     anchor_root = hash_tree_root(anchor_block)
     anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_block.slot, parent_node=Root())
-    anchor_node_hash = hash_tree_root(anchor_node)
+    anchor_node_key = get_block_slot_key(anchor_root, anchor_block.slot)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
@@ -123,7 +143,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         blocks={anchor_root: copy(anchor_block)},
-        block_slot_tree={anchor_node_hash: copy(anchor_node)},
+        block_slot_tree={anchor_node_key: copy(anchor_node)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
     )
@@ -164,55 +184,54 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
         return root
 ```
 
-#### `get_ancestor_node_root`
+#### `get_ancestor_node`
 
 ```python
-def get_ancestor_node_root(store: Store, node_root: Root, slot: Slot) -> Root:
+def get_ancestor_node(store: Store, node_key: Root, slot: Slot) -> Root:
     assert slot >= 0
-    assert node_root in store.block_slot_tree.keys()
-    node = store.block_slot_tree[node_root]
+    assert node_key in store.block_slot_tree.keys()
+    node = store.block_slot_tree[node_key]
     assert node.slot >= slot
     if node.slot == slot:
-        return hash_tree_root(node)
-    return get_ancestor_node_root(store, node.parent_node, slot)
+        return get_block_slot_key(node.block_root, node.slot)
+    return get_ancestor_node(store, node.parent_node, slot)
 ```
 
 #### `get_latest_attesting_balance`
 
 ```python
-def get_latest_attesting_balance(store: Store, node_root: Root) -> Gwei:
+def get_latest_attesting_balance(store: Store, node_key: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
-    node = store.block_slot_tree[node_root]
+    node = store.block_slot_tree[node_key]
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
-            and get_ancestor_node_root(store, store.latest_messages[i].root, node.slot) == node_root)
+            and get_ancestor_node(store, store.latest_messages[i].root, node.slot) == node_key)
     ))
 ```
 
 #### `filter_block_slot_tree`
 
 ```python
-def filter_block_slot_tree(store: Store, node_root: Root, nodes: Dict[Root, BlockSlotNode]) -> bool:
-    node = store.block_slot_tree[node_root]
+def filter_block_slot_tree(store: Store, node_key: Root, nodes: Dict[Root, BlockSlotNode]) -> bool:
+    node = store.block_slot_tree[node_key]
     children = [
         root for root in store.block_slot_tree.keys()
-        if store.block_slot_tree[root].parent_node == node_root
+        if store.block_slot_tree[root].parent_node == node_key
     ]
 
     # If any children branches contain expected finalized/justified checkpoints,
     # add to filtered block-tree and signal viability to parent.
     if any(children):
-        filter_block_slot_tree_result = [filter_block_slot_tree(store, child, nodes) for child in children]
+        filter_block_slot_tree_result = [filter_block_slot_tree(store, child_key, nodes) for child_key in children]
         if any(filter_block_slot_tree_result):
-            nodes[node_root] = node
+            nodes[node_key] = node
             return True
         return False
 
-    # If leaf block, check finalized/justified checkpoints as matching latest.
-    block_root = node.block_root
-    head_state = store.block_states[block_root]
+    # If leaf node, check finalized/justified checkpoints as matching latest.
+    head_state = store.block_states[node.block_root]
 
     correct_justified = (
         store.justified_checkpoint.epoch == GENESIS_EPOCH
@@ -224,27 +243,11 @@ def filter_block_slot_tree(store: Store, node_root: Root, nodes: Dict[Root, Bloc
     )
     # If expected finalized/justified, add to viable block-tree and signal viability to parent.
     if correct_justified and correct_finalized:
-        nodes[node_root] = node
+        nodes[node_key] = node
         return True
 
     # Otherwise, branch not viable
     return False
-```
-
-#### `get_node_root`
-
-```python
-def get_node_root(store: Store, block_root: Root, slot: Slot) -> Root:
-    """
-    Returns ``Root`` of the ``BlockSlotNode`` corresponding to the given ``block_root`` 
-    and ``slot`` from ``store.block_slot_tree``. 
-    Returns empty ``Root`` if no such ``BlockSlotNode`` exists in ``store.block_slot_tree``.
-    """
-    for node_root in store.block_slot_tree.keys():
-        node = store.block_slot_tree[node_root]
-        if node.block_root == block_root and node.slot == slot:
-            return node_root
-    assert False  # TODO: Better way to write this assert
 ```
 
 #### `get_filtered_block_tree`
@@ -257,9 +260,9 @@ def get_filtered_block_slot_tree(store: Store) -> Dict[Root, BlockSlotNode]:
     """
     base_block_root = store.justified_checkpoint.root
     base_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
-    base_node_root = get_node_root(store, base_block_root, base_slot)
+    base_node_key = get_block_slot_key(base_block_root, base_slot)
     nodes: Dict[Root, BlockSlotNode] = {}
-    filter_block_slot_tree(store, base_node_root, nodes)
+    filter_block_slot_tree(store, base_node_key, nodes)
     return nodes
 ```
 
@@ -272,16 +275,16 @@ def get_head(store: Store) -> Root:
     # Execute the LMD-GHOST fork choice
     base_block_root = store.justified_checkpoint.root
     base_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
-    head_node_root = get_node_root(store, base_block_root, base_slot)
+    head_node_key = get_block_slot_key(base_block_root, base_slot)
     while True:
         children = [
             root for root in nodes.keys()
-            if nodes[root].parent_node == head_node_root
+            if nodes[root].parent_node == head_node_key
         ]
         if len(children) == 0:
-            return store.block_slot_tree[head_node_root].block_root
+            return store.block_slot_tree[head_node_key].block_root
         # Sort by latest attesting balance with ties broken lexicographically
-        head_node_root = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
+        head_node_key = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
 ```
 
 #### `should_update_justified_checkpoint`
@@ -299,17 +302,17 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
         return True
 
     justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
-    new_justified_checkpoint_node_root = get_node_root(
-        store=store,
+    new_justified_checkpoint_node_key = get_block_slot_key(
         block_root=new_justified_checkpoint.root,
         slot=compute_start_slot_at_epoch(new_justified_checkpoint.epoch)
     )
-    new_justified_checkpoint_ancestor_node_root = get_ancestor_node_root(
+    new_justified_checkpoint_ancestor_node_key = get_ancestor_node(
         store=store,
-        node_root=new_justified_checkpoint_node_root,
+        node_key=new_justified_checkpoint_node_key,
         slot=justified_slot
     )
-    if not new_justified_checkpoint_ancestor_node_root == store.justified_checkpoint.root:
+    new_justified_checkpoint_ancestor_node = store.block_slot_tree[new_justified_checkpoint_ancestor_node_key]
+    if not new_justified_checkpoint_ancestor_node.block_root == store.justified_checkpoint.root:
         return False
 
     return True
@@ -347,7 +350,7 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     # Delay consideration in the fork choice until their slot is in the past.
     assert get_current_slot(store) >= attestation.data.slot + 1
 
-    # FIXME: Add new block_slot_tree checks
+    # TODO: Add new block_slot_tree checks
 ```
 
 ##### `store_target_checkpoint_state`
@@ -370,7 +373,7 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
     beacon_block_root = attestation.data.beacon_block_root
     for i in attesting_indices:
         if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
-            node_root = get_node_root(store, beacon_block_root, attestation_slot)
+            node_root = get_block_slot_key(beacon_block_root, attestation_slot)
             store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_root)
 ```
 
@@ -379,8 +382,8 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 ```python
 def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> BlockSlotNode:
     """
-    Adds a ``BlockSlotNode`` corresponding to ``block`` at slot ``node_slot`` in ``store.block_slot_tree``. 
-    Returns the highest slot node added to ``store.block_slot_tree`` during this function call.
+    Adds a ``BlockSlotNode`` corresponding to ``block`` at slot ``node_slot`` in ``store.block_slot_tree`` 
+    and returns the same.
 
     Algorithm:
         1. Check if the parent block's node exists at slot ``block.slot - 1``. Add the node if it doesn't exist. 
@@ -390,33 +393,27 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
     assert block.slot <= node_slot
 
     # Check if parent block's node exists at block.slot-1
-    parent_block_node_root = Root()
-    parent_block_root = block.parent_root
+    parent_block_node_key = Root()
     # Check for parent block's node only if current block is not genesis/anchor block
-    # TODO: Skip anchor block's parent block node check
-    if parent_block_root != Root():
-        parent_block = store.blocks[parent_block_root]
+    # FIXME: This only checks for the genesis block. Instead, allow for arbitrary anchor block.
+    if block.parent_root != Root():
         parent_block_node_slot = Slot(block.slot - 1)
-        parent_node = None
-        for node_root in store.block_slot_tree.keys():
-            node = store.block_slot_tree[node_root]
-            if node.block_root == parent_block_root and node.slot == parent_block_node_slot:
-                parent_node = node
-                parent_block_node_root = hash_tree_root(parent_node)
-                break
-        if parent_node is None:
-            parent_node = add_block_slot_node(store, parent_block, parent_block_node_slot)
-            parent_block_node_root = hash_tree_root(parent_node)
+        parent_block_node_key = get_block_slot_key(block.parent_root, parent_block_node_slot)
+        # Add the parent block's node if it doesn't exist
+        if parent_block_node_key not in store.block_slot_tree.keys():
+            parent_block = store.blocks[block.parent_root]
+            store.block_slot_tree[parent_block_node_key] = add_block_slot_node(
+                store, parent_block, parent_block_node_slot)
     
     # Check if this block's node exists at block.slot
     block_root = hash_tree_root(block)
     block_node = BlockSlotNode(
         block_root=block_root, 
         slot=block.slot, 
-        parent_node=parent_block_node_root, 
+        parent_node=parent_block_node_key, 
     )
-    block_node_root = hash_tree_root(block_node)
-    store.block_slot_tree[block_node_root] = block_node
+    block_node_key = get_block_slot_key(block_root, block.slot)
+    store.block_slot_tree[block_node_key] = block_node
     if node_slot == block.slot:
         return block_node
     
@@ -426,10 +423,10 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
         virtual_block_node = BlockSlotNode(
             block_root=block_root, 
             slot=virtual_block_node_slot, 
-            parent_node=hash_tree_root(parent_node), 
+            parent_node=get_block_slot_key(parent_node.block_root, parent_node.slot), 
         )
-        virtual_block_node_root = hash_tree_root(virtual_block_node)
-        store.block_slot_tree[virtual_block_node_root] = virtual_block_node
+        virtual_block_node_key = get_block_slot_key(virtual_block_node.block_root, virtual_block_node.slot)
+        store.block_slot_tree[virtual_block_node_key] = virtual_block_node
         parent_node = virtual_block_node
     return virtual_block_node
 ```
@@ -506,7 +503,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
             if ancestor_at_finalized_slot != store.finalized_checkpoint.root:
                 store.justified_checkpoint = state.current_justified_checkpoint
     
-    # FIXME: Add new block_slot_tree checks
+    # TODO: Add new block_slot_tree checks
 ```
 
 #### `on_attestation`
@@ -533,11 +530,11 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # LMD vote must be consistent with FFG vote target in the (block, slot)-tree
     target = attestation.data.target
     target_slot = compute_start_slot_at_epoch(target.epoch)
-    ffg_node_root = get_node_root(store, target.root, target_slot)
+    ffg_node_key = get_block_slot_key(target.root, target_slot)
     lmd_block_root = attestation.data.beacon_block_root
     lmd_slot = attestation.data.slot
-    lmd_node_root = get_node_root(store, lmd_block_root, lmd_slot)
-    assert ffg_node_root == get_ancestor_node_root(store, lmd_node_root, target_slot)
+    lmd_node_key = get_block_slot_key(lmd_block_root, lmd_slot)
+    assert ffg_node_key == get_ancestor_node(store, lmd_node_key, target_slot)
 
     # Update latest messages for attesting indices
     update_latest_messages(store, indexed_attestation.attesting_indices, attestation)

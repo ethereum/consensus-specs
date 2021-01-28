@@ -77,7 +77,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_root = hash_tree_root(anchor_block)
     anchor_epoch = get_current_epoch(anchor_state)
     anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_block.slot, parent_node=Root())
-    anchor_node_hash = hash_tree_root(anchor_node)
+    anchor_node_key = get_block_slot_key(anchor_root, anchor_block.slot)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
@@ -87,7 +87,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         blocks={anchor_root: copy(anchor_block)},
-        block_slot_tree={anchor_node_hash: copy(anchor_node)},
+        block_slot_tree={anchor_node_key: copy(anchor_node)},
         block_states={anchor_root: anchor_state.copy()},
         checkpoint_states={justified_checkpoint: anchor_state.copy()},
         shard_stores={
@@ -108,7 +108,7 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
     shard = attestation.data.shard
     for i in attesting_indices:
         if i not in store.latest_messages or attestation_slot > store.latest_messages[i].slot:
-            node_root = get_node_root(store, beacon_block_root, attestation_slot)
+            node_root = get_block_slot_key(beacon_block_root, attestation_slot)
             store.latest_messages[i] = LatestMessage(slot=attestation_slot, root=node_root)
             shard_latest_message = ShardLatestMessage(epoch=target.epoch, root=attestation.data.shard_head_root)
             store.shard_stores[shard].latest_messages[i] = shard_latest_message
