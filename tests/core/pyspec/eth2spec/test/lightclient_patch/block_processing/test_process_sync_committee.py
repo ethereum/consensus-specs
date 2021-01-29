@@ -1,3 +1,4 @@
+from collections import Counter
 import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -12,10 +13,33 @@ from eth2spec.test.helpers.sync_committee import (
 )
 from eth2spec.test.context import (
     PHASE0, PHASE1,
+    MAINNET, MINIMAL,
     expect_assertion_error,
     with_all_phases_except,
+    with_configs,
     spec_state_test,
 )
+from eth2spec.utils.hash_function import hash
+
+
+def get_committee_indices(spec, state, duplicates=False):
+    '''
+    This utility function allows the caller to ensure there are or are not
+    duplicate validator indices in the returned committee based on
+    the boolean ``duplicates``.
+    '''
+    state = state.copy()
+    current_epoch = spec.get_current_epoch(state)
+    randao_index = current_epoch % spec.EPOCHS_PER_HISTORICAL_VECTOR
+    while True:
+        committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+        if duplicates:
+            if len(committee) != len(set(committee)):
+                return committee
+        else:
+            if len(committee) == len(set(committee)):
+                return committee
+        state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
 
 
 @with_all_phases_except([PHASE0, PHASE1])
@@ -72,11 +96,16 @@ def compute_sync_committee_participant_reward(spec, state, participant_index, ac
 
 
 @with_all_phases_except([PHASE0, PHASE1])
+@with_configs([MINIMAL], reason="to create nonduplicate committee")
 @spec_state_test
-def test_sync_committee_rewards(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+def test_sync_committee_rewards_nonduplicate_committee(spec, state):
+    committee = get_committee_indices(spec, state, duplicates=False)
     committee_size = len(committee)
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count >= spec.SYNC_COMMITTEE_SIZE
+    assert committee_size == len(set(committee))
 
     yield 'pre', state
 
@@ -110,6 +139,57 @@ def test_sync_committee_rewards(spec, state):
                 active_validator_count,
                 committee_size
             )
+
+        assert state.balances[index] == pre_balances[index] + expected_reward
+
+
+@with_all_phases_except([PHASE0, PHASE1])
+@with_configs([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee(spec, state):
+    committee = get_committee_indices(spec, state, duplicates=True)
+    committee_size = len(committee)
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee))
+
+    yield 'pre', state
+
+    pre_balances = state.balances.copy()
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.sync_committee_bits = [True] * committee_size
+    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        block.slot - 1,
+        committee,
+    )
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    multiplicities = Counter(committee)
+
+    for index in range(len(state.validators)):
+        expected_reward = 0
+
+        if index == block.proposer_index:
+            expected_reward += sum([spec.get_proposer_reward(state, index) for index in committee])
+
+        if index in committee:
+            reward = compute_sync_committee_participant_reward(
+                spec,
+                state,
+                index,
+                active_validator_count,
+                committee_size,
+            )
+            expected_reward += reward * multiplicities[index]
 
         assert state.balances[index] == pre_balances[index] + expected_reward
 
@@ -155,6 +235,7 @@ def test_invalid_signature_past_block(spec, state):
 
 
 @with_all_phases_except([PHASE0, PHASE1])
+@with_configs([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
 def test_invalid_signature_previous_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
@@ -163,16 +244,19 @@ def test_invalid_signature_previous_committee(spec, state):
     # To get a distinct committee so we can generate an "old" signature, we need to advance
     # 2 EPOCHS_PER_SYNC_COMMITTEE_PERIOD periods.
     current_epoch = spec.get_current_epoch(state)
-    previous_committee = state.next_sync_committee
+    old_sync_committee = state.next_sync_committee
 
     epoch_in_future_sync_commitee_period = current_epoch + 2 * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     slot_in_future_sync_committee_period = epoch_in_future_sync_commitee_period * spec.SLOTS_PER_EPOCH
     transition_to(spec, state, slot_in_future_sync_committee_period)
 
-    pubkeys = [validator.pubkey for validator in state.validators]
-    committee = [pubkeys.index(pubkey) for pubkey in previous_committee.pubkeys]
-
     yield 'pre', state
+
+    # Use the previous sync committee to produce the signature.
+    pubkeys = [validator.pubkey for validator in state.validators]
+    # Ensure that the pubkey sets are different.
+    assert set(old_sync_committee.pubkeys) != set(state.current_sync_committee.pubkeys)
+    committee = [pubkeys.index(pubkey) for pubkey in old_sync_committee.pubkeys]
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_committee_bits = [True] * len(committee)

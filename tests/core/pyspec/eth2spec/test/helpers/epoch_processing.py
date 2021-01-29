@@ -1,13 +1,22 @@
 
 process_calls = [
+    # PHASE0
     'process_justification_and_finalization',
     'process_rewards_and_penalties',
     'process_registry_updates',
     'process_reveal_deadlines',
     'process_challenge_deadlines',
     'process_slashings',
-    'process_final_updates',
-    'after_process_final_updates',
+    'process_eth1_data_reset',
+    'process_effective_balance_updates',
+    'process_slashings_reset',
+    'process_randao_mixes_reset',
+    'process_historical_roots_update',
+    'process_participation_record_updates',
+    # LIGHTCLIENT_PATCH
+    'process_sync_committee_updates',
+    # PHASE1
+    'process_phase_1_final_updates',
 ]
 
 

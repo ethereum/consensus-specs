@@ -33,16 +33,21 @@ def create_provider(fork_name: str, handler_name: str,
 
 if __name__ == "__main__":
     phase_0_mods = {key: 'eth2spec.test.phase0.epoch_processing.test_process_' + key for key in [
-        'final_updates',
         'justification_and_finalization',
-        'registry_updates',
         'rewards_and_penalties',
+        'registry_updates',
         'slashings',
+        'eth1_data_reset',
+        'effective_balance_updates',
+        'slashings_reset',
+        'randao_mixes_reset',
+        'historical_roots_update',
+        'participation_record_updates',
     ]}
     phase_1_mods = {**{key: 'eth2spec.test.phase1.epoch_processing.test_process_' + key for key in [
+        'reveal_deadlines',
         'challenge_deadlines',
         'custody_final_updates',
-        'reveal_deadlines',
     ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against phase 1 spec)
 
     gen_runner.run_generator(f"epoch_processing", [
