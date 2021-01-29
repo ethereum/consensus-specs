@@ -473,8 +473,8 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)
-    process_rewards_and_penalties(state)
+    process_justification_and_finalization(state)  # [Updated in HF1]
+    process_rewards_and_penalties(state)  # [Updated in HF1]
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
