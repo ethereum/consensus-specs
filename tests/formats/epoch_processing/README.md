@@ -37,10 +37,17 @@ The provided pre-state is already transitioned to just before the specific sub-t
 
 Sub-transitions:
 
+Sub-transitions:
+
 - `justification_and_finalization`
-- `rewards_and_penalties` (limited to `minimal` config)
+- `rewards_and_penalties`
 - `registry_updates`
 - `slashings`
-- `final_updates`
+- `eth1_data_reset`
+- `effective_balance_updates`
+- `slashings_reset`
+- `randao_mixes_reset`
+- `historical_roots_update`
+- `participation_record_updates`
 
 The resulting state should match the expected `post` state.

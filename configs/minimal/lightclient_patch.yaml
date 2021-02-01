@@ -5,15 +5,15 @@ CONFIG_NAME: "minimal"
 # Misc
 # ---------------------------------------------------------------
 # [customized]
-SYNC_COMMITTEE_SIZE: 64
+SYNC_COMMITTEE_SIZE: 32
 # [customized]
 SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE: 16
 
 
 # Time parameters
 # ---------------------------------------------------------------
-# 2**8 (= 256)
-EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+# [customized]
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
 
 
 # Signature domains

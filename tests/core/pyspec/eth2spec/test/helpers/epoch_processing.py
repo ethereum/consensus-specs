@@ -1,14 +1,29 @@
 
-process_calls = [
-    'process_justification_and_finalization',
-    'process_rewards_and_penalties',
-    'process_registry_updates',
-    'process_reveal_deadlines',
-    'process_challenge_deadlines',
-    'process_slashings',
-    'process_final_updates',
-    'after_process_final_updates',
-]
+from eth2spec.test.context import is_post_lightclient_patch
+
+
+def get_process_calls(spec):
+    return [
+        # PHASE0
+        'process_justification_and_finalization',
+        'process_rewards_and_penalties',
+        'process_registry_updates',
+        'process_reveal_deadlines',
+        'process_challenge_deadlines',
+        'process_slashings',
+        'process_eth1_data_reset',
+        'process_effective_balance_updates',
+        'process_slashings_reset',
+        'process_randao_mixes_reset',
+        'process_historical_roots_update',
+        # HF1 replaced `process_participation_record_updates` with `process_participation_flag_updates`
+        'process_participation_flag_updates' if is_post_lightclient_patch(spec) else (
+            'process_participation_record_updates'
+        ),
+        'process_sync_committee_updates',
+        # PHASE1
+        'process_phase_1_final_updates',
+    ]
 
 
 def run_epoch_processing_to(spec, state, process_name: str):
@@ -25,7 +40,7 @@ def run_epoch_processing_to(spec, state, process_name: str):
     spec.process_slot(state)
 
     # process components of epoch transition before final-updates
-    for name in process_calls:
+    for name in get_process_calls(spec):
         if name == process_name:
             break
         # only run when present. Later phases introduce more to the epoch-processing.
