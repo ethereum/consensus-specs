@@ -16,9 +16,8 @@ def get_process_calls(spec):
         'process_slashings_reset',
         'process_randao_mixes_reset',
         'process_historical_roots_update',
-        # LIGHTCLIENT_PATCH replaced `process_participation_record_updates` with
-        # `process_epoch_participation_updates`
-        'process_epoch_participation_updates' if is_post_lightclient_patch(spec) else (
+        # HF1 replaced `process_participation_record_updates` with `process_participation_flag_updates`
+        'process_participation_flag_updates' if is_post_lightclient_patch(spec) else (
             'process_participation_record_updates'
         ),
         'process_sync_committee_updates',

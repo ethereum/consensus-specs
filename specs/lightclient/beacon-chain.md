@@ -483,8 +483,8 @@ def process_epoch(state: BeaconState) -> None:
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
     # [Added in HF1]
-    process_sync_committee_updates(state)
     process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
     # [Removed in HF1] -- process_participation_record_updates(state)
 ```
 
