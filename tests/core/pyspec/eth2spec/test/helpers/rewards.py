@@ -6,7 +6,7 @@ from eth2spec.test.context import is_post_lightclient_patch
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
-from eth2spec.utils.ssz.ssz_typing import Container, uint64, List, Bitvector
+from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
 
 class Deltas(Container):
@@ -314,7 +314,7 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     else:
         for index in range(len(state.validators)):
             if rng.choice([True, False]):
-                state.previous_epoch_participation[index] = Bitvector[spec.PARTICIPATION_FLAGS_LENGTH]()
+                state.previous_epoch_participation[index] = spec.ValidatorFlags(0)
 
     yield from run_deltas(spec, state)
 
@@ -328,7 +328,7 @@ def run_test_partial(spec, state, fraction_filled):
         state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
     else:
         for index in range(int(len(state.validators) * fraction_filled)):
-            state.previous_epoch_participation[index] = Bitvector[spec.PARTICIPATION_FLAGS_LENGTH]()
+            state.previous_epoch_participation[index] = spec.ValidatorFlags(0)
 
     yield from run_deltas(spec, state)
 
@@ -394,7 +394,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     else:
         index = 0
         state.validators[index].effective_balance = 1
-        state.previous_epoch_participation[index] = Bitvector[spec.PARTICIPATION_FLAGS_LENGTH]()
+        state.previous_epoch_participation[index] = spec.ValidatorFlags(0)
 
     yield from run_deltas(spec, state)
 
@@ -519,16 +519,25 @@ def run_test_full_random(spec, state, rng=Random(8020)):
         for index in range(len(state.validators)):
             # ~1/3 have bad head or bad target or not timely enough
             is_timely_correct_head = rng.randint(0, 2) != 0
-            state.previous_epoch_participation[index][spec.TIMELY_HEAD_FLAG] = is_timely_correct_head
+            flags = state.previous_epoch_participation[index]
+
+            def set_flag(f, v):
+                nonlocal flags
+                if v:
+                    flags |= f
+                else:
+                    flags &= 0xff ^ f
+
+            set_flag(spec.TIMELY_HEAD_FLAG, is_timely_correct_head)
             if is_timely_correct_head:
                 # If timely head, then must be timely target
-                state.previous_epoch_participation[index][spec.TIMELY_TARGET_FLAG] = True
+                set_flag(spec.TIMELY_TARGET_FLAG, True)
                 # If timely head, then must be timely source
-                state.previous_epoch_participation[index][spec.TIMELY_SOURCE_FLAG] = True
+                set_flag(spec.TIMELY_SOURCE_FLAG, True)
             else:
                 # ~50% of remaining have bad target or not timely enough
-                state.previous_epoch_participation[index][spec.TIMELY_TARGET_FLAG] = rng.choice([True, False])
+                set_flag(spec.TIMELY_TARGET_FLAG, rng.choice([True, False]))
                 # ~50% of remaining have bad source or not timely enough
-                state.previous_epoch_participation[index][spec.TIMELY_SOURCE_FLAG] = rng.choice([True, False])
-
+                set_flag(spec.TIMELY_SOURCE_FLAG, rng.choice([True, False]))
+            state.previous_epoch_participation[index] = flags
     yield from run_deltas(spec, state)

@@ -78,10 +78,10 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
             else:
                 for i, index in enumerate(committee):
                     if aggregation_bits[i]:
-                        epoch_participation[index][spec.TIMELY_HEAD_FLAG] = True
-                        epoch_participation[index][spec.TIMELY_SOURCE_FLAG] = True
+                        epoch_participation[index] |= spec.TIMELY_HEAD_FLAG
+                        epoch_participation[index] |= spec.TIMELY_SOURCE_FLAG
                         if not messed_up_target:
-                            epoch_participation[index][spec.TIMELY_TARGET_FLAG] = True
+                            epoch_participation[index] |= spec.TIMELY_TARGET_FLAG
 
 
 def get_checkpoints(spec, epoch):

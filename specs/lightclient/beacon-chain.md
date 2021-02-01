@@ -55,15 +55,26 @@ This is a patch implementing the first hard fork to the beacon chain, tentativel
   and [TODO] reducing the cost of processing chains that have very little or zero participation for a long span of epochs
 * Fork choice rule changes to address weaknesses recently discovered in the existing fork choice
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `ValidatorFlags` | `uint8` | Bitflags to track validator actions with |
+
 ## Constants
 
-### Participation flags
+### Validator action flags
+
+This is formatted as an enum, with values `2**i` that can be combined as bit-flags.
+The `0` value is reserved as default. Remaining bits in `ValidatorFlags` may be used in future hardforks.
+
+**Note**: unlike Phase0, a `TIMELY_TARGET_FLAG` does not imply a `TIMELY_SOURCE_FLAG`.
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_FLAG` | `0` |
-| `TIMELY_SOURCE_FLAG` | `1` |
-| `TIMELY_TARGET_FLAG` | `2` |
+| `TIMELY_HEAD_FLAG`   | `ValidatorFlags(2**0)` (= 1) |
+| `TIMELY_SOURCE_FLAG` | `ValidatorFlags(2**1)` (= 2) |
+| `TIMELY_TARGET_FLAG` | `ValidatorFlags(2**2)` (= 4) |
 
 ### Participation rewards
 
@@ -80,7 +91,6 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 
 | Name | Value |
 | - | - |
-| `PARTICIPATION_FLAGS_LENGTH` | `8` |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Configuration
@@ -146,8 +156,8 @@ class BeaconState(Container):
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Participation
-    previous_epoch_participation: List[Bitvector[PARTICIPATION_FLAGS_LENGTH], VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[Bitvector[PARTICIPATION_FLAGS_LENGTH], VALIDATOR_REGISTRY_LIMIT]
+    previous_epoch_participation: List[ValidatorFlags, VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[ValidatorFlags, VALIDATOR_REGISTRY_LIMIT]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
@@ -197,7 +207,15 @@ def get_flags_and_numerators() -> Sequence[Tuple[int, int]]:
     )
 ```
 
+```python
+def add_flags(flags: ValidatorFlags, add: ValidatorFlags) -> ValidatorFlags:
+    return flags | add
+```
 
+```python
+def has_flags(flags: ValidatorFlags, has: ValidatorFlags) -> bool:
+    return flags & has == has
+```
 
 ### Beacon state accessors
 
@@ -257,7 +275,10 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 #### `get_unslashed_participating_indices`
 
 ```python
-def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: Epoch) -> Set[ValidatorIndex]:
+def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlags, epoch: Epoch) -> Set[ValidatorIndex]:
+    """
+    Retrieves the active validator indices of the given epoch, who are not slashed, and have all of the given flags. 
+    """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
         epoch_participation = state.current_epoch_participation
@@ -265,7 +286,7 @@ def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: 
         epoch_participation = state.previous_epoch_participation
     participating_indices = [
         index for index in get_active_validator_indices(state, epoch)
-        if epoch_participation[index][flag]
+        if has_flags(epoch_participation[index], flags)
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
@@ -273,7 +294,9 @@ def get_unslashed_participating_indices(state: BeaconState, flag: uint8, epoch: 
 #### `get_flag_deltas`
 
 ```python
-def get_flag_deltas(state: BeaconState, flag: uint8, numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_deltas(state: BeaconState,
+                    flag: ValidatorFlags,
+                    numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Computes the rewards and penalties associated with a particular duty, by scanning through the participation
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
@@ -385,8 +408,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
         for flag, numerator in get_flags_and_numerators():
-            if flag in participation_flags and not epoch_participation[index][flag]:
-                epoch_participation[index][flag] = True
+            if flag in participation_flags and not has_flags(epoch_participation[index], flag):
+                epoch_participation[index] = add_flags(epoch_participation[index], flag)
                 proposer_reward_numerator += get_base_reward(state, index) * numerator
 
     # Reward proposer
@@ -432,8 +455,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         state.validators.append(get_validator_from_deposit(state, deposit))
         state.balances.append(amount)
         # [Added in hf-1] Initialize empty participation flags for new validator
-        state.previous_epoch_participation.append(Bitvector[PARTICIPATION_FLAGS_LENGTH]())
-        state.current_epoch_participation.append(Bitvector[PARTICIPATION_FLAGS_LENGTH]())
+        state.previous_epoch_participation.append(ValidatorFlags(0))
+        state.current_epoch_participation.append(ValidatorFlags(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -572,5 +595,5 @@ def process_participation_flag_updates(state: BeaconState) -> None:
     Call to ``process_participation_flag_updates`` added to ``process_epoch`` in HF1
     """
     state.previous_epoch_participation = state.current_epoch_participation
-    state.current_epoch_participation = [Bitvector[PARTICIPATION_FLAGS_LENGTH]() for _ in range(len(state.validators))]
+    state.current_epoch_participation = [ValidatorFlags(0) for _ in range(len(state.validators))]
 ```
