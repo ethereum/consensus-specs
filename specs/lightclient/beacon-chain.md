@@ -200,7 +200,7 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
 #### `flags_and_numerators`
 
 ```python
-def get_flags_and_numerators() -> Sequence[Tuple[int, int]]:
+def get_flags_and_numerators() -> Sequence[Tuple[ValidatorFlags, int]]:
     return (
         (TIMELY_HEAD_FLAG, TIMELY_HEAD_NUMERATOR),
         (TIMELY_SOURCE_FLAG, TIMELY_SOURCE_NUMERATOR),
