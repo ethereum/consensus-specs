@@ -517,11 +517,18 @@ def run_test_full_random(spec, state, rng=Random(8020)):
             pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
     else:
         for index in range(len(state.validators)):
-            # ~1/3 have bad target
-            state.previous_epoch_participation[index][spec.TIMELY_TARGET_FLAG] = rng.randint(0, 2) != 0
-            # ~1/3 have bad head
-            state.previous_epoch_participation[index][spec.TIMELY_HEAD_FLAG] = rng.randint(0, 2) != 0
-            # ~50% participation
-            state.previous_epoch_participation[index][spec.TIMELY_SOURCE_FLAG] = rng.choice([True, False])
+            # ~1/3 have bad head or bad target or not timely enough
+            is_timely_correct_head = rng.randint(0, 2) != 0
+            state.previous_epoch_participation[index][spec.TIMELY_HEAD_FLAG] = is_timely_correct_head
+            if is_timely_correct_head:
+                # If timely head, then must be timely target
+                state.previous_epoch_participation[index][spec.TIMELY_TARGET_FLAG] = True
+                # If timely head, then must be timely source
+                state.previous_epoch_participation[index][spec.TIMELY_SOURCE_FLAG] = True
+            else:
+                # ~50% of remaining have bad target or not timely enough
+                state.previous_epoch_participation[index][spec.TIMELY_TARGET_FLAG] = rng.choice([True, False])
+                # ~50% of remaining have bad source or not timely enough
+                state.previous_epoch_participation[index][spec.TIMELY_SOURCE_FLAG] = rng.choice([True, False])
 
     yield from run_deltas(spec, state)
