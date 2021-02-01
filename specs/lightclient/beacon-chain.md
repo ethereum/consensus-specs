@@ -7,8 +7,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Participation flags](#participation-flags)
+  - [Validator action flags](#validator-action-flags)
   - [Participation rewards](#participation-rewards)
   - [Misc](#misc)
 - [Configuration](#configuration)
