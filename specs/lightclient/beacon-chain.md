@@ -69,7 +69,8 @@ This is a patch implementing the first hard fork to the beacon chain, tentativel
 This is formatted as an enum, with values `2**i` that can be combined as bit-flags.
 The `0` value is reserved as default. Remaining bits in `ValidatorFlags` may be used in future hardforks.
 
-**Note**: unlike Phase0, a `TIMELY_TARGET_FLAG` does not imply a `TIMELY_SOURCE_FLAG`.
+**Note**: Unlike Phase0, a `TIMELY_TARGET_FLAG` does not necessarily imply a `TIMELY_SOURCE_FLAG`
+due to the varying slot delay requirements of each.
 
 | Name | Value |
 | - | - |
@@ -278,7 +279,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlags, epoch: Epoch) -> Set[ValidatorIndex]:
     """
-    Retrieves the active validator indices of the given epoch, who are not slashed, and have all of the given flags. 
+    Retrieve the active validator indices of the given epoch, which are not slashed, and have all of the given flags. 
     """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
@@ -299,7 +300,7 @@ def get_flag_deltas(state: BeaconState,
                     flag: ValidatorFlags,
                     numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
-    Computes the rewards and penalties associated with a particular duty, by scanning through the participation
+    Compute the rewards and penalties associated with a particular duty, by scanning through the participation
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
     """
     rewards = [Gwei(0)] * len(state.validators)
