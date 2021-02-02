@@ -62,6 +62,7 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
         # Registry
         validators=pre.validators,
         balances=pre.balances,
+        leak_score=[0 for _ in range(len(pre.validators))],
         # Randomness
         randao_mixes=pre.randao_mixes,
         # Slashings

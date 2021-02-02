@@ -34,20 +34,33 @@ def run_deltas(spec, state):
       - source deltas ('source_deltas')
       - target deltas ('target_deltas')
       - head deltas ('head_deltas')
-      - inclusion delay deltas ('inclusion_delay_deltas')
-      - inactivity penalty deltas ('inactivity_penalty_deltas')
+      - if is_post_lightclient_patch(spec)
+          - regular penalty deltas ('regular_penalty_deltas')
+          - leak penalty deltas ('leak_penalty_deltas')
+      - else
+          - inclusion delay deltas ('inclusion_delay_deltas')
+          - inactivity penalty deltas ('inactivity_penalty_deltas')
     """
     yield 'pre', state
 
     if is_post_lightclient_patch(spec):
         def get_source_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_SOURCE_FLAG, spec.TIMELY_SOURCE_NUMERATOR)
+            return (
+                spec.get_flag_rewards(state, spec.TIMELY_SOURCE_FLAG, spec.TIMELY_SOURCE_NUMERATOR),
+                [0] * len(state.validators)
+            )
 
         def get_head_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_HEAD_FLAG, spec.TIMELY_HEAD_NUMERATOR)
+            return (
+                spec.get_flag_rewards(state, spec.TIMELY_HEAD_FLAG, spec.TIMELY_HEAD_NUMERATOR),
+                [0] * len(state.validators)
+            )
 
         def get_target_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_TARGET_FLAG, spec.TIMELY_TARGET_NUMERATOR)
+            return (
+                spec.get_flag_rewards(state, spec.TIMELY_TARGET_FLAG, spec.TIMELY_TARGET_NUMERATOR),
+                [0] * len(state.validators)
+            )
 
     yield from run_attestation_component_deltas(
         spec,
@@ -70,8 +83,12 @@ def run_deltas(spec, state):
         spec.get_matching_head_attestations,
         'head_deltas',
     )
-    yield from run_get_inclusion_delay_deltas(spec, state)
-    yield from run_get_inactivity_penalty_deltas(spec, state)
+    if is_post_lightclient_patch(spec):
+        yield from run_get_regular_penalties(spec, state)
+        yield from run_get_leak_penalties(spec, state)
+    else:
+        yield from run_get_inclusion_delay_deltas(spec, state)
+        yield from run_get_inactivity_penalty_deltas(spec, state)
 
 
 def deltas_name_to_flag(spec, deltas_name):
@@ -122,6 +139,34 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                 assert penalties[index] > 0
             else:
                 assert penalties[index] == 0
+
+
+def run_get_regular_penalties(spec, state):
+    """
+    Run ``get_regular_penalties``, yielding:
+      - penalty deltas (`[0...], penalties`)
+    """
+    penalties = spec.get_regular_penalties(state)
+    rewards = [0] * len(state.validators)
+
+    yield 'penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
+
+    if spec.get_current_epoch(state) % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+        assert penalties == rewards
+
+
+def run_get_leak_penalties(spec, state):
+    """
+    Run ``get_leak_penalties``, yielding:
+      - penalty deltas (`[0...], penalties`)
+    """
+    penalties = spec.get_leak_penalties(state)
+    rewards = [0] * len(state.validators)
+
+    yield 'penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
+
+    if spec.get_current_epoch(state) % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+        assert penalties == rewards
 
 
 def run_get_inclusion_delay_deltas(spec, state):
@@ -178,18 +223,18 @@ def run_get_inactivity_penalty_deltas(spec, state):
     Run ``get_inactivity_penalty_deltas``, yielding:
       - inactivity penalty deltas ('inactivity_penalty_deltas')
     """
+    if is_post_lightclient_patch(spec):
+        # No inclusion_delay_deltas
+        yield 'inclusion_delay_deltas', Deltas(rewards=[0] * len(state.validators),
+                                               penalties=[0] * len(state.validators))
+        return
+
     rewards, penalties = spec.get_inactivity_penalty_deltas(state)
 
     yield 'inactivity_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    if not is_post_lightclient_patch(spec):
-        matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
-        matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
-    else:
-        matching_attesting_indices = spec.get_unslashed_participating_indices(
-            state, spec.TIMELY_TARGET_FLAG, spec.get_previous_epoch(state)
-        )
-        reward_numerator_sum = sum(numerator for (_, numerator) in spec.get_flags_and_numerators())
+    matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
+    matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
 
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
@@ -200,12 +245,9 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
         if spec.is_in_inactivity_leak(state):
             # Compute base_penalty
-            if not is_post_lightclient_patch(spec):
-                cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
-                base_reward = spec.get_base_reward(state, index)
-                base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
-            else:
-                base_penalty = spec.get_base_reward(state, index) * reward_numerator_sum // spec.REWARD_DENOMINATOR
+            cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
+            base_reward = spec.get_base_reward(state, index)
+            base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0

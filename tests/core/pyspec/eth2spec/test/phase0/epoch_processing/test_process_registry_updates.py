@@ -1,6 +1,11 @@
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch, next_slots
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import (
+    spec_state_test, with_all_phases,
+    spec_test, with_custom_state, single_phase,
+    large_validator_set,
+    is_post_lightclient_patch,
+)
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
@@ -116,7 +121,10 @@ def test_activation_queue_sorting(spec, state):
 @spec_state_test
 def test_activation_queue_efficiency(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
-    mock_activations = churn_limit * 2
+    if is_post_lightclient_patch(spec):
+        mock_activations = churn_limit * spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD * 2
+    else:
+        mock_activations = churn_limit * 2
 
     epoch = spec.get_current_epoch(state)
     for i in range(mock_activations):
@@ -125,6 +133,14 @@ def test_activation_queue_efficiency(spec, state):
 
     # move state forward and finalize to allow for activations
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
+    if is_post_lightclient_patch(spec):
+        current_epoch = spec.get_current_epoch(state)
+        if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+            epochs_until_period = (
+                spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+                - (current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
+            )
+            next_slots(spec, state, spec.SLOTS_PER_EPOCH * epochs_until_period)
 
     state.finalized_checkpoint.epoch = epoch + 1
 
@@ -166,12 +182,20 @@ def test_ejection(spec, state):
 
 
 @with_all_phases
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@single_phase
 def test_ejection_past_churn_limit(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
 
-    # try to eject more than per-epoch churn limit
-    mock_ejections = churn_limit * 3
+    if is_post_lightclient_patch(spec):
+        # try to eject more than per-period churn limit
+        epochs_per_queue_increment = spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+        mock_ejections = churn_limit * epochs_per_queue_increment * 3
+    else:
+        # try to eject more than per-epoch churn limit
+        epochs_per_queue_increment = 1
+        mock_ejections = churn_limit * 3
 
     for i in range(mock_ejections):
         state.validators[i].effective_balance = spec.EJECTION_BALANCE
@@ -186,10 +210,10 @@ def test_ejection_past_churn_limit(spec, state):
             assert state.validators[i].exit_epoch == expected_ejection_epoch
         # second thirdgets delayed by 1 epoch
         elif mock_ejections // 3 <= i < mock_ejections * 2 // 3:
-            assert state.validators[i].exit_epoch == expected_ejection_epoch + 1
+            assert state.validators[i].exit_epoch == expected_ejection_epoch + 1 * epochs_per_queue_increment
         # second thirdgets delayed by 2 epochs
         else:
-            assert state.validators[i].exit_epoch == expected_ejection_epoch + 2
+            assert state.validators[i].exit_epoch == expected_ejection_epoch + 2 * epochs_per_queue_increment
 
 
 @with_all_phases
