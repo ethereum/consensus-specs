@@ -79,7 +79,7 @@ A detailed analysis of the calculation of the weak subjectivity period is made i
 
 *Note*: The expressions in the report use fractions, whereas eth2.0-specs uses only `uint64` arithmetic. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
 
-*Note*: The calculations here use `Ether` instead of `Gwei`, because the large magitude of balances in `Gwei` can cause an overflow while computing using `uint64` arithmetic operations. Using `Ether` reduces the magintude of the multiplicative factors by an order of `ETH_TO_GWEI` (`= 10**9`) and avoid the scope for overflows in `uint64`.
+*Note*: The calculations here use `Ether` instead of `Gwei`, because the large magnitude of balances in `Gwei` can cause an overflow while computing using `uint64` arithmetic operations. Using `Ether` reduces the magnitude of the multiplicative factors by an order of `ETH_TO_GWEI` (`= 10**9`) and avoid the scope for overflows in `uint64`.
 
 #### `compute_weak_subjectivity_period`
 
