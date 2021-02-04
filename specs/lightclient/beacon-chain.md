@@ -210,12 +210,12 @@ def get_flags_and_numerators() -> Sequence[Tuple[ValidatorFlag, int]]:
 ```
 
 ```python
-def add_flags(flags: ValidatorFlag, add: ValidatorFlag) -> ValidatorFlag:
+def add_validator_flags(flags: ValidatorFlag, add: ValidatorFlag) -> ValidatorFlag:
     return flags | add
 ```
 
 ```python
-def has_flags(flags: ValidatorFlag, has: ValidatorFlag) -> bool:
+def has_validator_flags(flags: ValidatorFlag, has: ValidatorFlag) -> bool:
     return flags & has == has
 ```
 
@@ -288,7 +288,7 @@ def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlag
         epoch_participation = state.previous_epoch_participation
     participating_indices = [
         index for index in get_active_validator_indices(state, epoch)
-        if has_flags(epoch_participation[index], flags)
+        if has_validator_flags(epoch_participation[index], flags)
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
@@ -410,8 +410,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
         for flag, numerator in get_flags_and_numerators():
-            if flag in participation_flags and not has_flags(epoch_participation[index], flag):
-                epoch_participation[index] = add_flags(epoch_participation[index], flag)
+            if flag in participation_flags and not has_validator_flags(epoch_participation[index], flag):
+                epoch_participation[index] = add_validator_flags(epoch_participation[index], flag)
                 proposer_reward_numerator += get_base_reward(state, index) * numerator
 
     # Reward proposer
