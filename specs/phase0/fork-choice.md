@@ -278,13 +278,13 @@ def get_head(store: Store) -> Root:
     head_node_key = get_block_slot_key(base_block_root, base_slot)
     while True:
         children = [
-            root for root in nodes.keys()
-            if nodes[root].parent_node == head_node_key
+            key for key in nodes.keys()
+            if nodes[key].parent_node == head_node_key
         ]
         if len(children) == 0:
             return store.block_slot_tree[head_node_key].block_root
         # Sort by latest attesting balance with ties broken lexicographically
-        head_node_key = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
+        head_node_key = max(children, key=lambda key: (get_latest_attesting_balance(store, key), nodes[key].block_root))
 ```
 
 #### `should_update_justified_checkpoint`
