@@ -390,3 +390,11 @@ def only_full_crosslink(fn):
             return None
         return fn(*args, spec=spec, state=state, **kw)
     return wrapper
+
+
+def is_post_lightclient_patch(spec):
+    if spec.fork in [PHASE0, PHASE1]:
+        # TODO: PHASE1 fork is temporarily parallel to LIGHTCLIENT_PATCH.
+        # Will make PHASE1 fork inherit LIGHTCLIENT_PATCH later.
+        return False
+    return True

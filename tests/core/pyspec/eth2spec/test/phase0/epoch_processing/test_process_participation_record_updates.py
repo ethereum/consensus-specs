@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import PHASE0, spec_state_test, with_phases
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with
 )
@@ -8,7 +8,7 @@ def run_process_participation_record_updates(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_participation_record_updates')
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 def test_updated_participation_record(spec, state):
     state.previous_epoch_attestations = [spec.PendingAttestation(proposer_index=100)]
