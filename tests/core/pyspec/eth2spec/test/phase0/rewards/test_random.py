@@ -30,6 +30,12 @@ def test_full_random_2(spec, state):
 
 
 @with_all_phases
+@spec_state_test
+def test_full_random_3(spec, state):
+    yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(4040))
+
+
+@with_all_phases
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
 @single_phase
