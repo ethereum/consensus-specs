@@ -33,6 +33,8 @@
     - [`get_base_reward`](#get_base_reward)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
     - [`get_flag_rewards`](#get_flag_rewards)
+    - [`get_regular_penalties`](#get_regular_penalties)
+    - [`get_leak_penalties`](#get_leak_penalties)
   - [Block processing](#block-processing)
     - [New `process_attestation`](#new-process_attestation)
     - [New `process_deposit`](#new-process_deposit)
