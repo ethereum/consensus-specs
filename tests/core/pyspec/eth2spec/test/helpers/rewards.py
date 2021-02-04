@@ -314,7 +314,7 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     else:
         for index in range(len(state.validators)):
             if rng.choice([True, False]):
-                state.previous_epoch_participation[index] = spec.ValidatorFlags(0)
+                state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
 
     yield from run_deltas(spec, state)
 
@@ -328,7 +328,7 @@ def run_test_partial(spec, state, fraction_filled):
         state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
     else:
         for index in range(int(len(state.validators) * fraction_filled)):
-            state.previous_epoch_participation[index] = spec.ValidatorFlags(0)
+            state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
 
     yield from run_deltas(spec, state)
 
@@ -394,7 +394,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     else:
         index = 0
         state.validators[index].effective_balance = 1
-        state.previous_epoch_participation[index] = spec.ValidatorFlags(0)
+        state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
 
     yield from run_deltas(spec, state)
 
