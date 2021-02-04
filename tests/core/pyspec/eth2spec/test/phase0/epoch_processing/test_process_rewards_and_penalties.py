@@ -171,8 +171,11 @@ def run_with_participation(spec, state, participation_fn):
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) == len(participated)
 
+    current_epoch = spec.get_current_epoch(state)
     for index in range(len(pre_state.validators)):
-        if spec.is_in_inactivity_leak(state):
+        if is_post_lightclient_patch(spec) and current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+            assert state.balances[index] == pre_state.balances[index]
+        elif spec.is_in_inactivity_leak(state):
             # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
             if not is_post_lightclient_patch(spec) and index in proposer_indices and index in participated:
                 assert state.balances[index] > pre_state.balances[index]

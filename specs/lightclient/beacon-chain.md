@@ -384,7 +384,7 @@ def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
                 state.leak_score[index] * state.leak_epoch_counter
                 // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
             )
-            penalties = leak_penalty
+            penalties[index] = leak_penalty
     return penalties
 ```
 

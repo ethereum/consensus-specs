@@ -135,10 +135,10 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             assert penalties[index] == 0
         else:
             assert rewards[index] == 0
-            if enough_for_reward:
-                assert penalties[index] > 0
-            else:
+            if not enough_for_reward or is_post_lightclient_patch(spec):
                 assert penalties[index] == 0
+            else:
+                assert penalties[index] > 0
 
 
 def run_get_regular_penalties(spec, state):
