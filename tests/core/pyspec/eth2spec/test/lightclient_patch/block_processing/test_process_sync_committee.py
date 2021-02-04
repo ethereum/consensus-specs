@@ -18,6 +18,7 @@ from eth2spec.test.context import (
     with_all_phases_except,
     with_configs,
     spec_state_test,
+    always_bls,
 )
 from eth2spec.utils.hash_function import hash
 
@@ -196,6 +197,7 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
+@always_bls
 def test_invalid_signature_past_block(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
 
@@ -237,6 +239,7 @@ def test_invalid_signature_past_block(spec, state):
 @with_all_phases_except([PHASE0, PHASE1])
 @with_configs([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
+@always_bls
 def test_invalid_signature_previous_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
     # sync committees currently returns the same committee for the first and second

@@ -44,11 +44,8 @@ def run_attestation_processing(spec, state, attestation, valid=True):
         else:
             assert len(state.previous_epoch_attestations) == previous_epoch_count + 1
     else:
-        for index in spec.get_attesting_indices(state, attestation.data, attestation.aggregation_bits):
-            if attestation.data.target.epoch == spec.get_current_epoch(state):
-                assert state.current_epoch_participation[index][spec.TIMELY_TARGET_FLAG]
-            else:
-                assert state.previous_epoch_participation[index][spec.TIMELY_TARGET_FLAG]
+        # After accounting reform, there are cases when processing an attestation does not result in any flag updates
+        pass
 
     # yield post-state
     yield 'post', state
