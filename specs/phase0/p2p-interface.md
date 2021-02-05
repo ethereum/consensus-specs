@@ -101,7 +101,7 @@ It consists of four main sections:
   - [Compression/Encoding](#compressionencoding)
     - [Why are we using SSZ for encoding?](#why-are-we-using-ssz-for-encoding)
     - [Why are we compressing, and at which layers?](#why-are-we-compressing-and-at-which-layers)
-    - [Why are we using Snappy for compression?](#why-are-using-snappy-for-compression)
+    - [Why are we using Snappy for compression?](#why-are-we-using-snappy-for-compression)
     - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
     - [What are SSZ type size bounds?](#what-are-ssz-type-size-bounds)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
