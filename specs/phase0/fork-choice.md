@@ -188,13 +188,14 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 
 ```python
 def get_ancestor_node(store: Store, node_key: Root, slot: Slot) -> Root:
-    assert slot >= 0
-    assert node_key in store.block_slot_tree.keys()
     node = store.block_slot_tree[node_key]
-    assert node.slot >= slot
-    if node.slot == slot:
+    if node.slot > slot:
+        return get_ancestor_node(store, node.parent_node, slot)
+    elif node.slot == slot:
         return get_block_slot_key(node.block_root, node.slot)
-    return get_ancestor_node(store, node.parent_node, slot)
+    else:
+        # node is older than queried slot, thus a skip slot. Return most recent node prior to slot
+        return get_block_slot_key(node.block_root, node.slot)
 ```
 
 #### `get_latest_attesting_balance`
