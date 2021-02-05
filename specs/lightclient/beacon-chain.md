@@ -314,7 +314,7 @@ def get_flag_deltas(state: BeaconState,
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
             if is_in_inactivity_leak(state):
-                # Optimal participatition is fully rewarded to cancel the inactivity penalty
+                # Optimal participation is fully rewarded to cancel the inactivity penalty
                 rewards[index] = base_reward * numerator // REWARD_DENOMINATOR
             else:
                 rewards[index] = (
