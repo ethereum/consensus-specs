@@ -11,6 +11,7 @@ from eth2spec.test.helpers.state import get_balance, transition_to
 from eth2spec.test.context import (
     PHASE0,
     MINIMAL,
+    LIGHTCLIENT_PATCH,
     with_all_phases_except,
     spec_state_test,
     expect_assertion_error,
@@ -112,7 +113,7 @@ def run_standard_custody_slashing_test(spec,
     yield from run_custody_slashing_processing(spec, state, slashing, valid=valid, correct=correct)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -120,7 +121,7 @@ def test_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -128,7 +129,7 @@ def test_incorrect_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, correct=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -136,7 +137,7 @@ def test_multiple_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -144,7 +145,7 @@ def test_many_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")

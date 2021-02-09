@@ -1,6 +1,6 @@
-from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import (
-    run_epoch_processing_with
+from eth2spec.test.context import is_post_lightclient_patch, spec_state_test, with_all_phases
+from eth2spec.test.helpers.epoch_processing import (
+    run_epoch_processing_with,
 )
 from eth2spec.test.helpers.state import transition_to
 
@@ -16,12 +16,20 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     previous_epoch = spec.get_previous_epoch(state)
     current_epoch = spec.get_current_epoch(state)
 
-    if current_epoch == epoch:
-        attestations = state.current_epoch_attestations
-    elif previous_epoch == epoch:
-        attestations = state.previous_epoch_attestations
+    if not is_post_lightclient_patch(spec):
+        if current_epoch == epoch:
+            attestations = state.current_epoch_attestations
+        elif previous_epoch == epoch:
+            attestations = state.previous_epoch_attestations
+        else:
+            raise Exception(f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}")
     else:
-        raise Exception(f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}")
+        if current_epoch == epoch:
+            epoch_participation = state.current_epoch_participation
+        elif previous_epoch == epoch:
+            epoch_participation = state.previous_epoch_participation
+        else:
+            raise Exception(f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}")
 
     total_balance = spec.get_total_active_balance(state)
     remaining_balance = int(total_balance * 2 // 3)  # can become negative
@@ -52,19 +60,28 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
                 for i in range(max(len(committee) // 5, 1)):
                     aggregation_bits[i] = 0
 
-            attestations.append(spec.PendingAttestation(
-                aggregation_bits=aggregation_bits,
-                data=spec.AttestationData(
-                    slot=slot,
-                    beacon_block_root=b'\xff' * 32,  # irrelevant to testing
-                    source=source,
-                    target=target,
-                    index=index,
-                ),
-                inclusion_delay=1,
-            ))
-            if messed_up_target:
-                attestations[len(attestations) - 1].data.target.root = b'\x99' * 32
+            # Update state
+            if not is_post_lightclient_patch(spec):
+                attestations.append(spec.PendingAttestation(
+                    aggregation_bits=aggregation_bits,
+                    data=spec.AttestationData(
+                        slot=slot,
+                        beacon_block_root=b'\xff' * 32,  # irrelevant to testing
+                        source=source,
+                        target=target,
+                        index=index,
+                    ),
+                    inclusion_delay=1,
+                ))
+                if messed_up_target:
+                    attestations[len(attestations) - 1].data.target.root = b'\x99' * 32
+            else:
+                for i, index in enumerate(committee):
+                    if aggregation_bits[i]:
+                        epoch_participation[index] |= spec.TIMELY_HEAD_FLAG
+                        epoch_participation[index] |= spec.TIMELY_SOURCE_FLAG
+                        if not messed_up_target:
+                            epoch_participation[index] |= spec.TIMELY_TARGET_FLAG
 
 
 def get_checkpoints(spec, epoch):

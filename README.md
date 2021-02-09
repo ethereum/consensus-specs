@@ -11,29 +11,28 @@ This repository hosts the current Eth2 specifications. Discussions about design 
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
 
-
 Core specifications for Eth2 clients be found in [specs](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
+
 * [The Beacon Chain](specs/phase0/beacon-chain.md)
 * [Beacon Chain Fork Choice](specs/phase0/fork-choice.md)
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
 * [P2P Networking](specs/phase0/p2p-interface.md)
 
-### Phase 1
-* [From Phase 0 to Phase 1](specs/phase1/phase1-fork.md)
-* [The Beacon Chain for Shards](specs/phase1/beacon-chain.md)
-* [Custody Game](specs/phase1/custody-game.md)
-* [Shard Transition and Fraud Proofs](specs/phase1/shard-transition.md)
-* [Light client syncing protocol](specs/phase1/light-client-sync.md)
-* [Beacon Chain Fork Choice for Shards](specs/phase1/fork-choice.md)
+### Light clients
 
-### Phase 2
+* [Beacon chain changes](specs/lightclient/beacon-chain.md)
+* [Light client sync protocol](specs/lightclient/sync-protocol.md)
 
-Phase 2 is still actively in R&D and does not yet have any formal specifications.
+### Sharding
 
-See the [Eth2 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
+The sharding spec is still actively in R&D; see the most recent available pull request [here](https://github.com/ethereum/eth2.0-specs/pull/2146) and some technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
+
+### Merge
+
+The merge is still actively in R&D; see an [ethresear.ch](https://ethresear.ch) post describing the proposed basic mechanism [here](https://ethresear.ch/t/the-eth1-eth2-transition/6265) and the section of [ethereum.org](https://ethereum.org) describing the merge at a high level [here](https://ethereum.org/en/eth2/docking/).
 
 ### Accompanying documents can be found in [specs](specs) and include:
 

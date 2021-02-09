@@ -8,7 +8,6 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
@@ -328,7 +327,9 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
-    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state.eth1_data
+    # Non-substantive casting for linter
+    state_eth1_data: Eth1Data = state.eth1_data
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data
 
     return max(
         valid_votes,

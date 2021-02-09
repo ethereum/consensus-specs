@@ -2,6 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.test.context import is_post_lightclient_patch
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
@@ -37,29 +38,50 @@ def run_deltas(spec, state):
       - inactivity penalty deltas ('inactivity_penalty_deltas')
     """
     yield 'pre', state
+
+    if is_post_lightclient_patch(spec):
+        def get_source_deltas(state):
+            return spec.get_flag_deltas(state, spec.TIMELY_SOURCE_FLAG, spec.TIMELY_SOURCE_NUMERATOR)
+
+        def get_head_deltas(state):
+            return spec.get_flag_deltas(state, spec.TIMELY_HEAD_FLAG, spec.TIMELY_HEAD_NUMERATOR)
+
+        def get_target_deltas(state):
+            return spec.get_flag_deltas(state, spec.TIMELY_TARGET_FLAG, spec.TIMELY_TARGET_NUMERATOR)
+
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_source_deltas,
+        spec.get_source_deltas if not is_post_lightclient_patch(spec) else get_source_deltas,
         spec.get_matching_source_attestations,
         'source_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_target_deltas,
+        spec.get_target_deltas if not is_post_lightclient_patch(spec) else get_target_deltas,
         spec.get_matching_target_attestations,
         'target_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_head_deltas,
+        spec.get_head_deltas if not is_post_lightclient_patch(spec) else get_head_deltas,
         spec.get_matching_head_attestations,
         'head_deltas',
     )
     yield from run_get_inclusion_delay_deltas(spec, state)
     yield from run_get_inactivity_penalty_deltas(spec, state)
+
+
+def deltas_name_to_flag(spec, deltas_name):
+    if 'source' in deltas_name:
+        return spec.TIMELY_SOURCE_FLAG
+    elif 'head' in deltas_name:
+        return spec.TIMELY_HEAD_FLAG
+    elif 'target' in deltas_name:
+        return spec.TIMELY_TARGET_FLAG
+    raise ValueError("Wrong deltas_name %s" % deltas_name)
 
 
 def run_attestation_component_deltas(spec, state, component_delta_fn, matching_att_fn, deltas_name):
@@ -71,8 +93,14 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
 
     yield deltas_name, Deltas(rewards=rewards, penalties=penalties)
 
-    matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
-    matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+    if not is_post_lightclient_patch(spec):
+        matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
+        matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+    else:
+        matching_indices = spec.get_unslashed_participating_indices(
+            state, deltas_name_to_flag(spec, deltas_name), spec.get_previous_epoch(state)
+        )
+
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
         if index not in eligible_indices:
@@ -101,6 +129,12 @@ def run_get_inclusion_delay_deltas(spec, state):
     Run ``get_inclusion_delay_deltas``, yielding:
       - inclusion delay deltas ('inclusion_delay_deltas')
     """
+    if is_post_lightclient_patch(spec):
+        # No inclusion_delay_deltas
+        yield 'inclusion_delay_deltas', Deltas(rewards=[0] * len(state.validators),
+                                               penalties=[0] * len(state.validators))
+        return
+
     rewards, penalties = spec.get_inclusion_delay_deltas(state)
 
     yield 'inclusion_delay_deltas', Deltas(rewards=rewards, penalties=penalties)
@@ -148,8 +182,14 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
     yield 'inactivity_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
-    matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+    if not is_post_lightclient_patch(spec):
+        matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
+        matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+    else:
+        matching_attesting_indices = spec.get_unslashed_participating_indices(
+            state, spec.TIMELY_TARGET_FLAG, spec.get_previous_epoch(state)
+        )
+        reward_numerator_sum = sum(numerator for (_, numerator) in spec.get_flags_and_numerators())
 
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
@@ -159,8 +199,14 @@ def run_get_inactivity_penalty_deltas(spec, state):
             continue
 
         if spec.is_in_inactivity_leak(state):
-            base_reward = spec.get_base_reward(state, index)
-            base_penalty = spec.BASE_REWARDS_PER_EPOCH * base_reward - spec.get_proposer_reward(state, index)
+            # Compute base_penalty
+            if not is_post_lightclient_patch(spec):
+                cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
+                base_reward = spec.get_base_reward(state, index)
+                base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
+            else:
+                base_penalty = spec.get_base_reward(state, index) * reward_numerator_sum // spec.REWARD_DENOMINATOR
+
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices:
@@ -262,8 +308,13 @@ def run_test_full_all_correct(spec, state):
 def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     cached_prepare_state_with_attestations(spec, state)
 
-    for a in state.previous_epoch_attestations:
-        a.aggregation_bits = [rng.choice([True, False]) for _ in a.aggregation_bits]
+    if not is_post_lightclient_patch(spec):
+        for a in state.previous_epoch_attestations:
+            a.aggregation_bits = [rng.choice([True, False]) for _ in a.aggregation_bits]
+    else:
+        for index in range(len(state.validators)):
+            if rng.choice([True, False]):
+                state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
 
     yield from run_deltas(spec, state)
 
@@ -272,8 +323,12 @@ def run_test_partial(spec, state, fraction_filled):
     cached_prepare_state_with_attestations(spec, state)
 
     # Remove portion of attestations
-    num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
-    state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
+    if not is_post_lightclient_patch(spec):
+        num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
+        state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
+    else:
+        for index in range(int(len(state.validators) * fraction_filled)):
+            state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
 
     yield from run_deltas(spec, state)
 
@@ -328,13 +383,18 @@ def run_test_some_very_low_effective_balances_that_attested(spec, state):
 def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     cached_prepare_state_with_attestations(spec, state)
 
-    # Remove attestation
-    attestation = state.previous_epoch_attestations[0]
-    state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
-    # Set removed indices effective balance to very low amount
-    indices = spec.get_unslashed_attesting_indices(state, [attestation])
-    for i, index in enumerate(indices):
-        state.validators[index].effective_balance = i
+    if not is_post_lightclient_patch(spec):
+        # Remove attestation
+        attestation = state.previous_epoch_attestations[0]
+        state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
+        # Set removed indices effective balance to very low amount
+        indices = spec.get_unslashed_attesting_indices(state, [attestation])
+        for i, index in enumerate(indices):
+            state.validators[index].effective_balance = i
+    else:
+        index = 0
+        state.validators[index].effective_balance = 1
+        state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
 
     yield from run_deltas(spec, state)
 
@@ -442,16 +502,42 @@ def run_test_full_random(spec, state, rng=Random(8020)):
 
     cached_prepare_state_with_attestations(spec, state)
 
-    for pending_attestation in state.previous_epoch_attestations:
-        # ~1/3 have bad target
-        if rng.randint(0, 2) == 0:
-            pending_attestation.data.target.root = b'\x55' * 32
-        # ~1/3 have bad head
-        if rng.randint(0, 2) == 0:
-            pending_attestation.data.beacon_block_root = b'\x66' * 32
-        # ~50% participation
-        pending_attestation.aggregation_bits = [rng.choice([True, False]) for _ in pending_attestation.aggregation_bits]
-        # Random inclusion delay
-        pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+    if not is_post_lightclient_patch(spec):
+        for pending_attestation in state.previous_epoch_attestations:
+            # ~1/3 have bad target
+            if rng.randint(0, 2) == 0:
+                pending_attestation.data.target.root = b'\x55' * 32
+            # ~1/3 have bad head
+            if rng.randint(0, 2) == 0:
+                pending_attestation.data.beacon_block_root = b'\x66' * 32
+            # ~50% participation
+            pending_attestation.aggregation_bits = [rng.choice([True, False])
+                                                    for _ in pending_attestation.aggregation_bits]
+            # Random inclusion delay
+            pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
+    else:
+        for index in range(len(state.validators)):
+            # ~1/3 have bad head or bad target or not timely enough
+            is_timely_correct_head = rng.randint(0, 2) != 0
+            flags = state.previous_epoch_participation[index]
 
+            def set_flag(f, v):
+                nonlocal flags
+                if v:
+                    flags |= f
+                else:
+                    flags &= 0xff ^ f
+
+            set_flag(spec.TIMELY_HEAD_FLAG, is_timely_correct_head)
+            if is_timely_correct_head:
+                # If timely head, then must be timely target
+                set_flag(spec.TIMELY_TARGET_FLAG, True)
+                # If timely head, then must be timely source
+                set_flag(spec.TIMELY_SOURCE_FLAG, True)
+            else:
+                # ~50% of remaining have bad target or not timely enough
+                set_flag(spec.TIMELY_TARGET_FLAG, rng.choice([True, False]))
+                # ~50% of remaining have bad source or not timely enough
+                set_flag(spec.TIMELY_SOURCE_FLAG, rng.choice([True, False]))
+            state.previous_epoch_participation[index] = flags
     yield from run_deltas(spec, state)

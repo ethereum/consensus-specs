@@ -1,0 +1,21 @@
+# Minimal preset - lightclient patch
+
+CONFIG_NAME: "minimal"
+
+# Misc
+# ---------------------------------------------------------------
+# [customized]
+SYNC_COMMITTEE_SIZE: 32
+# [customized]
+SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE: 16
+
+
+# Time parameters
+# ---------------------------------------------------------------
+# [customized]
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
+
+
+# Signature domains
+# ---------------------------------------------------------------
+DOMAIN_SYNC_COMMITTEE: 0x07000000

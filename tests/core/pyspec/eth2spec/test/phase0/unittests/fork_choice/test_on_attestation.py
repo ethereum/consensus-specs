@@ -1,4 +1,4 @@
-from eth2spec.test.context import PHASE0, with_all_phases, spec_state_test
+from eth2spec.test.context import PHASE0, PHASE1, LIGHTCLIENT_PATCH, with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch, next_slot
@@ -18,14 +18,14 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     spec.on_attestation(store, attestation)
 
     sample_index = indexed_attestation.attesting_indices[0]
-    if spec.fork == PHASE0:
+    if spec.fork in (PHASE0, LIGHTCLIENT_PATCH):
         latest_message_node_key = spec.get_block_slot_key(
             attestation.data.beacon_block_root, attestation.data.slot)
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
             root=latest_message_node_key,
         )
-    else:
+    elif spec.fork == PHASE1:
         latest_message_node_key = spec.get_block_slot_key(
             attestation.data.beacon_block_root, attestation.data.slot)
         latest_message = spec.LatestMessage(
