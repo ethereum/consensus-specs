@@ -173,3 +173,36 @@ def test_filtered_block_tree(spec, state):
 
     # ensure that get_head still returns the head from the previous branch
     assert spec.get_head(store) == expected_head_root
+
+
+@with_all_phases
+@spec_state_test
+def test_block_slot_tree_basic(spec, state):
+    # Initialization
+    store = get_genesis_forkchoice_store(spec, state)
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
+
+    # Receive first block
+    block_1 = build_empty_block_for_next_slot(spec, state)
+    signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
+    add_block_to_store(spec, store, signed_block_1)
+
+    # Store state to produce alternate chain later
+    empty_block_2_state = state.copy()
+    next_epoch(spec, empty_block_2_state)
+
+    # Receive second block
+    block_2 = build_empty_block_for_next_slot(spec, state)
+    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
+    add_block_to_store(spec, store, signed_block_2)
+
+    # Ensure that get_head returns highest available block
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+
+    # Produce attestation for alternate chain with empty block at block_2.slot
+    empty_block_2_attestation = get_valid_attestation(spec, empty_block_2_state, block_2.slot, signed=True)
+    add_attestation_to_store(spec, store, empty_block_2_attestation)
+
+    # block_1 should be the winner in the (block, slot) fork choice
+    assert spec.get_head(store) == spec.hash_tree_root(block_1)
