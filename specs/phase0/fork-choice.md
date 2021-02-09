@@ -396,7 +396,7 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
     # Check if parent block's node exists at block.slot-1
     # Check for parent block's node only if current block is not genesis/anchor block
     # FIXME: This only checks for the genesis block. Instead, allow for arbitrary anchor block.
-    if block.parent_root != Root():
+    if block.slot > 0:
         parent_block_node_slot = Slot(block.slot - 1)
         parent_block_node_key = get_block_slot_key(block.parent_root, parent_block_node_slot)
         # Add the parent block's node if it doesn't exist
@@ -477,10 +477,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state_transition(state, signed_block, True)
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
+    # Add new (block, slot)-node to the store
+    add_block_slot_node(store, block, block.slot)
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
-    # Add new (block, slot)-node to the tree in the store
-    add_block_slot_node(store, block, block.slot)
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
