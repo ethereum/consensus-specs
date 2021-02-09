@@ -313,6 +313,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   (via both gossip and non-gossip sources)
   (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
+- _[REJECT]_ The block is from a higher slot than its parent.
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` -- i.e.
   `get_ancestor(store, block.parent_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
