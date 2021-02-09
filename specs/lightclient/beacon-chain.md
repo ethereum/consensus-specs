@@ -352,7 +352,10 @@ def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
     attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
     for index in get_eligible_validator_indices(state):
         # "Regular" penalty
-        penalty_per_epoch = get_base_reward(state, index) * sum(attestation_numerators) // REWARD_DENOMINATOR
+        penalty_per_epoch = sum(
+            get_base_reward(state, index) * numerator // REWARD_DENOMINATOR
+            for numerator in attestation_numerators
+        )
         penalty_per_period = Gwei(penalty_per_epoch * EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
         penalties[index] = penalty_per_period
     return penalties

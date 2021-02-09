@@ -173,26 +173,33 @@ def run_with_participation(spec, state, participation_fn):
 
     current_epoch = spec.get_current_epoch(state)
     for index in range(len(pre_state.validators)):
-        if is_post_lightclient_patch(spec) and current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
-            assert state.balances[index] == pre_state.balances[index]
-        elif spec.is_in_inactivity_leak(state):
-            # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
-            if not is_post_lightclient_patch(spec) and index in proposer_indices and index in participated:
-                assert state.balances[index] > pre_state.balances[index]
-            elif index in attesting_indices:
-                if is_post_lightclient_patch(spec) and index in sync_committee_indices:
-                    # The sync committee reward has not been canceled, so the sync committee participants still earn it
-                    assert state.balances[index] >= pre_state.balances[index]
+        if is_post_lightclient_patch(spec):
+            if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+                if index in participated:
+                    # Can only receive rewards on non-boundary epoch so positive participanting
+                    assert state.balances[index] > pre_state.balances[index]
                 else:
+                    # Can only receive rewards on non-boundary epoch so neutral if not participanting
+                    assert state.balances[index] == pre_state.balances[index]
+            elif spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD > 1:
+                # Penalties always outweight rewards on a period boundary (unless period length == 1)
+                assert state.balances[index] < pre_state.balances[index]
+        # Pre lightclient patch
+        else:
+            if spec.is_in_inactivity_leak(state):
+                # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
+                if index in proposer_indices and index in participated:
+                    assert state.balances[index] > pre_state.balances[index]
+                elif index in attesting_indices:
                     # If not proposer but participated optimally, should have exactly neutral balance
                     assert state.balances[index] == pre_state.balances[index]
+                else:
+                    assert state.balances[index] < pre_state.balances[index]
             else:
-                assert state.balances[index] < pre_state.balances[index]
-        else:
-            if index in participated:
-                assert state.balances[index] > pre_state.balances[index]
-            else:
-                assert state.balances[index] < pre_state.balances[index]
+                if index in participated:
+                    assert state.balances[index] > pre_state.balances[index]
+                else:
+                    assert state.balances[index] < pre_state.balances[index]
 
 
 @with_all_phases
