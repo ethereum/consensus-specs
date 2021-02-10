@@ -27,6 +27,45 @@ def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
 
 
+def validate_resulting_balances(spec, pre_state, post_state, attestations):
+    attesting_indices = spec.get_unslashed_attesting_indices(post_state, attestations)
+    current_epoch = spec.get_current_epoch(post_state)
+
+    for index in range(len(pre_state.validators)):
+        if not spec.is_active_validator(pre_state.validators[index], current_epoch):
+            assert post_state.balances[index] == pre_state.balances[index]
+        elif not is_post_lightclient_patch(spec):
+            proposer_indices = [a.proposer_index for a in post_state.previous_epoch_attestations]
+            if spec.is_in_inactivity_leak(post_state):
+                # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
+                if index in proposer_indices and index in attesting_indices:
+                    assert post_state.balances[index] > pre_state.balances[index]
+                elif index in attesting_indices:
+                    # If not proposer but participated optimally, should have exactly neutral balance
+                    assert post_state.balances[index] == pre_state.balances[index]
+                else:
+                    assert post_state.balances[index] < pre_state.balances[index]
+            else:
+                if index in attesting_indices:
+                    assert post_state.balances[index] > pre_state.balances[index]
+                else:
+                    assert post_state.balances[index] < pre_state.balances[index]
+        else:
+            if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+                if index in attesting_indices:
+                    # Can only receive rewards on non-boundary epoch so positive participanting
+                    assert post_state.balances[index] > pre_state.balances[index]
+                else:
+                    # Can only receive rewards on non-boundary epoch so neutral if not participanting
+                    assert post_state.balances[index] == pre_state.balances[index]
+            elif spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD > 2:
+                # Penalties always outweigh rewards on a period boundary if period > 2
+                assert post_state.balances[index] < pre_state.balances[index]
+            elif spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 2:
+                # Penalties either equal or outweigh rewards on period boundary == 2
+                assert post_state.balances[index] <= pre_state.balances[index]
+
+
 @with_all_phases
 @spec_state_test
 def test_genesis_epoch_no_attestations_no_penalties(spec, state):
@@ -100,19 +139,11 @@ def test_full_attestations_misc_balances(spec, state):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) > 0
-    assert len(attesting_indices) != len(pre_state.validators)
-    assert any(v.effective_balance != spec.MAX_EFFECTIVE_BALANCE for v in state.validators)
-    for index in range(len(pre_state.validators)):
-        if index in attesting_indices:
-            assert state.balances[index] > pre_state.balances[index]
-        elif spec.is_active_validator(pre_state.validators[index], spec.compute_epoch_at_slot(state.slot)):
-            assert state.balances[index] < pre_state.balances[index]
-        else:
-            assert state.balances[index] == pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, attestations)
+
     # Check if base rewards are consistent with effective balance.
     brs = {}
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     for index in attesting_indices:
         br = spec.get_base_reward(state, index)
         if br in brs:
@@ -146,8 +177,7 @@ def test_no_attestations_all_penalties(spec, state):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    for index in range(len(pre_state.validators)):
-        assert state.balances[index] < pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, [])
 
 
 def run_with_participation(spec, state, participation_fn):
@@ -161,45 +191,12 @@ def run_with_participation(spec, state, participation_fn):
     attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
     pre_state = state.copy()
 
-    if not is_post_lightclient_patch(spec):
-        proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
-    else:
-        sync_committee_indices = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
-
     yield from run_process_rewards_and_penalties(spec, state)
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) == len(participated)
 
-    current_epoch = spec.get_current_epoch(state)
-    for index in range(len(pre_state.validators)):
-        if is_post_lightclient_patch(spec):
-            if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
-                if index in participated:
-                    # Can only receive rewards on non-boundary epoch so positive participanting
-                    assert state.balances[index] > pre_state.balances[index]
-                else:
-                    # Can only receive rewards on non-boundary epoch so neutral if not participanting
-                    assert state.balances[index] == pre_state.balances[index]
-            elif spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD > 1:
-                # Penalties always outweight rewards on a period boundary (unless period length == 1)
-                assert state.balances[index] < pre_state.balances[index]
-        # Pre lightclient patch
-        else:
-            if spec.is_in_inactivity_leak(state):
-                # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
-                if index in proposer_indices and index in participated:
-                    assert state.balances[index] > pre_state.balances[index]
-                elif index in attesting_indices:
-                    # If not proposer but participated optimally, should have exactly neutral balance
-                    assert state.balances[index] == pre_state.balances[index]
-                else:
-                    assert state.balances[index] < pre_state.balances[index]
-            else:
-                if index in participated:
-                    assert state.balances[index] > pre_state.balances[index]
-                else:
-                    assert state.balances[index] < pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, attestations)
 
 
 @with_all_phases
@@ -294,7 +291,6 @@ def test_duplicate_attestation(spec, state):
     yield from run_process_rewards_and_penalties(spec, dup_state)
 
     for index in participants:
-        assert state.balances[index] < single_state.balances[index]
         assert single_state.balances[index] == dup_state.balances[index]
 
 
@@ -448,10 +444,4 @@ def test_attestations_some_slashed(spec, state):
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) > 0
     assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
-    for index in range(len(pre_state.validators)):
-        if index in attesting_indices:
-            # non-slashed attester should gain reward
-            assert state.balances[index] > pre_state.balances[index]
-        else:
-            # Slashed non-proposer attester should have penalty
-            assert state.balances[index] < pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, attestations)

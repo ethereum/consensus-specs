@@ -1,11 +1,5 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_with, run_epoch_processing_to
-)
-
-
-def run_process_effective_balance_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_effective_balance_updates')
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
 
 
 @with_all_phases
@@ -44,7 +38,9 @@ def test_effective_balance_hysteresis(spec, state):
         state.validators[i].effective_balance = pre_eff
         state.balances[i] = bal
 
-    yield from run_process_effective_balance_updates(spec, state)
+    yield 'pre', state
+    spec.process_effective_balance_updates(state)
+    yield 'post', state
 
     for i, (_, _, post_eff, name) in enumerate(cases):
         assert state.validators[i].effective_balance == post_eff, name

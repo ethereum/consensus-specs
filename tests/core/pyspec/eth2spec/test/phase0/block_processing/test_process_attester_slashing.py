@@ -31,15 +31,20 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
 
     proposer_index = spec.get_beacon_proposer_index(state)
     pre_proposer_balance = get_balance(state, proposer_index)
-    pre_slashings = {slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices}
+    pre_slashing_balances = {slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices}
+    pre_slashing_effectives = {
+        slashed_index: state.validators[slashed_index].effective_balance
+        for slashed_index in slashed_indices
+    }
+
     pre_withdrawalable_epochs = {
         slashed_index: state.validators[slashed_index].withdrawable_epoch
         for slashed_index in slashed_indices
     }
 
     total_proposer_rewards = sum(
-        balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
-        for balance in pre_slashings.values()
+        effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
+        for effective_balance in pre_slashing_effectives.values()
     )
 
     # Process slashing
@@ -60,7 +65,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
             assert slashed_validator.withdrawable_epoch == expected_withdrawable_epoch
         else:
             assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-        assert get_balance(state, slashed_index) < pre_slashings[slashed_index]
+        assert get_balance(state, slashed_index) < pre_slashing_balances[slashed_index]
 
     if proposer_index not in slashed_indices:
         # gained whistleblower reward
@@ -70,7 +75,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         expected_balance = (
             pre_proposer_balance
             + total_proposer_rewards
-            - pre_slashings[proposer_index] // spec.MIN_SLASHING_PENALTY_QUOTIENT
+            - pre_slashing_effectives[proposer_index] // spec.MIN_SLASHING_PENALTY_QUOTIENT
         )
 
         assert get_balance(state, proposer_index) == expected_balance

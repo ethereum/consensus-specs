@@ -82,12 +82,35 @@ def test_activation_queue_no_activation_no_finality(spec, state):
     assert state.validators[index].activation_epoch == spec.FAR_FUTURE_EPOCH
 
 
+def get_per_period_churn_limit(spec, state):
+    if not is_post_lightclient_patch(spec):
+        return spec.get_validator_churn_limit(state)
+    else:
+        return spec.get_validator_churn_limit(state) * spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+
+
+def transition_state_and_finalize_to_process_queue(spec, state):
+    # move state forward and finalize to allow for activations
+    start_epoch = spec.get_current_epoch(state)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
+    if is_post_lightclient_patch(spec):
+        current_epoch = spec.get_current_epoch(state)
+        if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+            epochs_until_period = (
+                spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+                - (current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
+            )
+            next_slots(spec, state, spec.SLOTS_PER_EPOCH * epochs_until_period)
+
+    state.finalized_checkpoint.epoch = start_epoch + 1
+
+
 @with_all_phases
 @spec_state_test
 def test_activation_queue_sorting(spec, state):
-    churn_limit = spec.get_validator_churn_limit(state)
+    churn_limit = get_per_period_churn_limit(spec, state)
 
-    # try to activate more than the per-epoch churn linmit
+    # try to activate more than the per period churn limit
     mock_activations = churn_limit * 2
 
     epoch = spec.get_current_epoch(state)
@@ -98,9 +121,7 @@ def test_activation_queue_sorting(spec, state):
     # give the last priority over the others
     state.validators[mock_activations - 1].activation_eligibility_epoch = epoch
 
-    # move state forward and finalize to allow for activations
-    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
-    state.finalized_checkpoint.epoch = epoch + 1
+    transition_state_and_finalize_to_process_queue(spec, state)
 
     yield from run_process_registry_updates(spec, state)
 
@@ -120,29 +141,15 @@ def test_activation_queue_sorting(spec, state):
 @with_all_phases
 @spec_state_test
 def test_activation_queue_efficiency(spec, state):
-    churn_limit = spec.get_validator_churn_limit(state)
-    if is_post_lightclient_patch(spec):
-        mock_activations = churn_limit * spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD * 2
-    else:
-        mock_activations = churn_limit * 2
+    churn_limit = get_per_period_churn_limit(spec, state)
+    mock_activations = churn_limit * 2
 
     epoch = spec.get_current_epoch(state)
     for i in range(mock_activations):
         mock_deposit(spec, state, i)
         state.validators[i].activation_eligibility_epoch = epoch + 1
 
-    # move state forward and finalize to allow for activations
-    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
-    if is_post_lightclient_patch(spec):
-        current_epoch = spec.get_current_epoch(state)
-        if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
-            epochs_until_period = (
-                spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
-                - (current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
-            )
-            next_slots(spec, state, spec.SLOTS_PER_EPOCH * epochs_until_period)
-
-    state.finalized_checkpoint.epoch = epoch + 1
+    transition_state_and_finalize_to_process_queue(spec, state)
 
     # Run first registry update. Do not yield test vectors
     for _ in run_process_registry_updates(spec, state):

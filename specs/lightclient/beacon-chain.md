@@ -643,6 +643,10 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
+    # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     process_rewards(state)
     process_penalties(state)
 ```
@@ -651,9 +655,6 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
 ```python
 def process_rewards(state: BeaconState) -> None:
-    # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
-    if get_current_epoch(state) == GENESIS_EPOCH:
-        return
     flag_rewards = [get_flag_rewards(state, flag, numerator) for (flag, numerator) in get_flags_and_numerators()]
     for rewards in flag_rewards:
         for index in range(len(state.validators)):
