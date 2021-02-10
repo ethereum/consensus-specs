@@ -348,8 +348,6 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
     assert get_current_slot(store) >= attestation.data.slot + 1
-
-    # TODO: Add new block_slot_tree checks
 ```
 
 ##### `store_target_checkpoint_state`
@@ -467,7 +465,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    # FIXME: Check against ancestor in (block, slot)-tree
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
 
     # Check the block is valid and compute the post-state
@@ -500,12 +497,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
             # Update justified if store justified is not in chain with finalized checkpoint
             finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-            # FIXME: Check against ancestor in (block, slot)-tree
             ancestor_at_finalized_slot = get_ancestor(store, store.justified_checkpoint.root, finalized_slot)
             if ancestor_at_finalized_slot != store.finalized_checkpoint.root:
                 store.justified_checkpoint = state.current_justified_checkpoint
-    
-    # TODO: Add new block_slot_tree checks
 ```
 
 #### `on_attestation`
