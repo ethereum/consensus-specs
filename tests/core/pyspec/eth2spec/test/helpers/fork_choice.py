@@ -34,4 +34,4 @@ def get_genesis_forkchoice_store(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     # The genesis block must be a Phase 0 `BeaconBlock`
     genesis_block = phase0_spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
-    return spec.get_forkchoice_store(genesis_state, genesis_block)
+    return spec.get_forkchoice_store(genesis_state, genesis_block, genesis_block.slot)

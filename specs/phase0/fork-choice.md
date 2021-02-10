@@ -44,7 +44,7 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block, genesis_block.slot)` and update `store` by running:
 
 - `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
 - `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
@@ -126,14 +126,12 @@ This should be the genesis state for a full client.
 *Note* With regards to fork choice, block headers are interchangeable with blocks. The spec is likely to move to headers for reduced overhead in test vectors and better encapsulation. Full implementations store blocks as part of their database and will often use full blocks when dealing with production fork choice.
 
 ```python
-def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock, anchor_slot: Slot) -> Store:
     assert anchor_block.state_root == hash_tree_root(anchor_state)
-    # TODO: `anchor_block` should be corresponding to an epoch boundary block. 
-    # Take `anchor_slot` input to account for skip-blocks
-    anchor_epoch = get_current_epoch(anchor_state)
     anchor_root = hash_tree_root(anchor_block)
-    anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_block.slot, parent_node=Root())
-    anchor_node_key = get_block_slot_key(anchor_root, anchor_block.slot)
+    anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_slot, parent_node=Root())
+    anchor_node_key = get_block_slot_key(anchor_root, anchor_slot)
+    anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(

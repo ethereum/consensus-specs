@@ -166,7 +166,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     transition_unsigned_block(spec, state, block)
     block.state_root = state.hash_tree_root()
-    store = spec.get_forkchoice_store(state, block)
+    store = spec.get_forkchoice_store(state, block, block.slot)
     store.finalized_checkpoint = spec.Checkpoint(
         epoch=store.finalized_checkpoint.epoch + 2,
         root=store.finalized_checkpoint.root
