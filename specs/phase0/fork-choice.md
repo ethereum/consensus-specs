@@ -175,10 +175,8 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     block = store.blocks[root]
     if block.slot > slot:
         return get_ancestor(store, block.parent_root, slot)
-    elif block.slot == slot:
-        return root
     else:
-        # root is older than queried slot, thus a skip slot. Return most recent root prior to slot
+        # Return highest block's root with slot less than or equal to the queried slot
         return root
 ```
 
@@ -189,10 +187,8 @@ def get_ancestor_node(store: Store, node_key: Root, slot: Slot) -> Root:
     node = store.block_slot_tree[node_key]
     if node.slot > slot:
         return get_ancestor_node(store, node.parent_node, slot)
-    elif node.slot == slot:
-        return get_block_slot_key(node.block_root, node.slot)
     else:
-        # node is older than queried slot, thus a skip slot. Return most recent node prior to slot
+        # Return highest node's key with slot less than or equal to the queried slot
         return get_block_slot_key(node.block_root, node.slot)
 ```
 
