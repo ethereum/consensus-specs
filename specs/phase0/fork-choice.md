@@ -389,7 +389,7 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
     # Check for parent block's node only if current block is not genesis/anchor block
     # NOTE: This only checks if ``block`` is the genesis block. Arbitrary anchor block capability
     # is not implemented yet.
-    if block.slot > 0:
+    if block.slot > GENESIS_SLOT:
         parent_block_node_slot = Slot(block.slot - 1)
         parent_block_node_key = get_block_slot_key(block.parent_root, parent_block_node_slot)
         # Add the parent block's node if it doesn't exist
