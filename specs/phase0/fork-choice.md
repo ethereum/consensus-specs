@@ -379,51 +379,39 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
     and returns the same.
 
     Algorithm:
-        1. Check if the parent block's node exists at slot ``block.slot - 1``. Add the node if it doesn't exist. 
-        2. Check if this block's node exists at slot ``block.slot``. Add the node if it doesn't exist. 
-        3. If ``node_slot > block.slot``, add virtual block nodes from slot ``block.slot + 1`` till ``node_slot``.
+        1. Check if the parent block's node exists at slot ``block.slot - 1``. 
+           If not found, recursively call ``add_block_slot_node()`` for parent block's node.
+        2. Add this block's node from ``block.slot`` till ``node_slot``. 
     """
     assert block.slot <= node_slot
 
-    # Check if parent block's node exists at block.slot-1
+    # Check if parent block's node exists at ``block.slot-1``
     # Check for parent block's node only if current block is not genesis/anchor block
     # NOTE: This only checks if ``block`` is the genesis block. Arbitrary anchor block capability
     # is not implemented yet.
     if block.slot > GENESIS_SLOT:
         parent_block_node_slot = Slot(block.slot - 1)
-        parent_block_node_key = get_block_slot_key(block.parent_root, parent_block_node_slot)
+        parent_node_key = get_block_slot_key(block.parent_root, parent_block_node_slot)
         # Add the parent block's node if it doesn't exist
-        if parent_block_node_key not in store.block_slot_tree.keys():
+        if parent_node_key not in store.block_slot_tree.keys():
             parent_block = store.blocks[block.parent_root]
-            store.block_slot_tree[parent_block_node_key] = add_block_slot_node(
+            store.block_slot_tree[parent_node_key] = add_block_slot_node(
                 store, parent_block, parent_block_node_slot)
     else:
-        parent_block_node_key = Root()
+        parent_node_key = Root()
     
-    # Check if this block's node exists at block.slot
+    # Add this block's nodes from ``block.slot`` till ``slot``
     block_root = hash_tree_root(block)
-    block_node = BlockSlotNode(
-        block_root=block_root, 
-        slot=block.slot, 
-        parent_node=parent_block_node_key, 
-    )
-    block_node_key = get_block_slot_key(block_root, block.slot)
-    store.block_slot_tree[block_node_key] = block_node
-    if node_slot == block.slot:
-        return block_node
-    
-    # Check virtual block's nodes at block.slot+1 till slot
-    parent_node = block_node
-    for virtual_block_node_slot in range(block.slot + 1, node_slot + 1):
-        virtual_block_node = BlockSlotNode(
+    for block_node_slot in range(block.slot, node_slot + 1):
+        block_node = BlockSlotNode(
             block_root=block_root, 
-            slot=virtual_block_node_slot, 
-            parent_node=get_block_slot_key(parent_node.block_root, parent_node.slot), 
+            slot=Slot(block_node_slot), 
+            parent_node=parent_node_key, 
         )
-        virtual_block_node_key = get_block_slot_key(virtual_block_node.block_root, virtual_block_node.slot)
-        store.block_slot_tree[virtual_block_node_key] = virtual_block_node
-        parent_node = virtual_block_node
-    return virtual_block_node
+        block_node_key = get_block_slot_key(block_root, Slot(block_node_slot))
+        store.block_slot_tree[block_node_key] = block_node
+        parent_node_key = block_node_key
+    return block_node
 ```
 
 ### Handlers
