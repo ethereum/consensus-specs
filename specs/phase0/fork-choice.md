@@ -172,11 +172,11 @@ def compute_slots_since_epoch_start(slot: Slot) -> int:
 
 ```python
 def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
+    # Return highest block's root with slot less than or equal to the queried slot
     block = store.blocks[root]
     if block.slot > slot:
         return get_ancestor(store, block.parent_root, slot)
     else:
-        # Return highest block's root with slot less than or equal to the queried slot
         return root
 ```
 
@@ -184,11 +184,11 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 
 ```python
 def get_ancestor_node(store: Store, node_key: Root, slot: Slot) -> Root:
+    # Return highest node's key with slot less than or equal to the queried slot
     node = store.block_slot_tree[node_key]
     if node.slot > slot:
         return get_ancestor_node(store, node.parent_node, slot)
     else:
-        # Return highest node's key with slot less than or equal to the queried slot
         return get_block_slot_key(node.block_root, node.slot)
 ```
 
