@@ -23,7 +23,7 @@ def slash_validators(spec, state, indices, out_epochs):
     ] = total_slashed_balance
 
 
-def get_slashing_multipler(spec):
+def get_slashing_multiplier(spec):
     if is_post_lightclient_patch(spec):
         return spec.HF1_PROPORTIONAL_SLASHING_MULTIPLIER
     else:
@@ -35,7 +35,7 @@ def get_slashing_multipler(spec):
 def test_max_penalties(spec, state):
     # Slashed count to ensure that enough validators are slashed to induce maximum penalties
     slashed_count = min(
-        (len(state.validators) // get_slashing_multipler(spec)) + 1,
+        (len(state.validators) // get_slashing_multiplier(spec)) + 1,
         # Can't slash more than validator count!
         len(state.validators)
     )
@@ -47,7 +47,7 @@ def test_max_penalties(spec, state):
     total_balance = spec.get_total_active_balance(state)
     total_penalties = sum(state.slashings)
 
-    assert total_balance // get_slashing_multipler(spec) <= total_penalties
+    assert total_balance // get_slashing_multiplier(spec) <= total_penalties
 
     yield from run_process_slashings(spec, state)
 
@@ -104,7 +104,7 @@ def test_minimal_penalty(spec, state):
 
     expected_penalty = (
         state.validators[0].effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT
-        * (get_slashing_multipler(spec) * total_penalties)
+        * (get_slashing_multiplier(spec) * total_penalties)
         // total_balance
         * spec.EFFECTIVE_BALANCE_INCREMENT
     )
@@ -128,7 +128,7 @@ def test_scaled_penalties(spec, state):
     state.slashings[5] = base + (incr * 6)
     state.slashings[spec.EPOCHS_PER_SLASHINGS_VECTOR - 1] = base + (incr * 7)
 
-    slashed_count = len(state.validators) // (get_slashing_multipler(spec) + 1)
+    slashed_count = len(state.validators) // (get_slashing_multiplier(spec) + 1)
 
     assert slashed_count > 10
 
@@ -166,7 +166,7 @@ def test_scaled_penalties(spec, state):
         v = state.validators[i]
         expected_penalty = (
             v.effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT
-            * (get_slashing_multipler(spec) * total_penalties)
+            * (get_slashing_multiplier(spec) * total_penalties)
             // (total_balance)
             * spec.EFFECTIVE_BALANCE_INCREMENT
         )
