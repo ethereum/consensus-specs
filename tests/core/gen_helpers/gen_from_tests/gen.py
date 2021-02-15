@@ -1,11 +1,17 @@
+from importlib import reload, import_module
 from inspect import getmembers, isfunction
-from typing import Any, Iterable, Dict
+from typing import Any, Callable, Dict, Iterable
 
-from gen_base.gen_typing import TestCase
+from eth2spec.config import config_util
+from eth2spec.utils import bls
+
+from eth2spec.test.context import ALL_CONFIGS, TESTGEN_FORKS, SpecForkName, ConfigName
+from gen_base import gen_runner
+from gen_base.gen_typing import TestCase, TestProvider
 
 
 def generate_from_tests(runner_name: str, handler_name: str, src: Any,
-                        fork_name: str, bls_active: bool = True) -> Iterable[TestCase]:
+                        fork_name: SpecForkName, bls_active: bool = True) -> Iterable[TestCase]:
     """
     Generate a list of test cases by running tests from the given src in generator-mode.
     :param runner_name: to categorize the test in general as.
@@ -40,7 +46,10 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
         )
 
 
-def get_provider(create_provider_fn, config_name, fork_name, all_mods):
+def get_provider(create_provider_fn: Callable[[SpecForkName, str, str, ConfigName], TestProvider],
+                 config_name: ConfigName,
+                 fork_name: SpecForkName,
+                 all_mods: Dict[str, Dict[str, str]]) -> Iterable[TestProvider]:
     for key, mod_name in all_mods[fork_name].items():
         yield create_provider_fn(
             fork_name=fork_name,
@@ -48,3 +57,39 @@ def get_provider(create_provider_fn, config_name, fork_name, all_mods):
             tests_src_mod_name=mod_name,
             config_name=config_name,
     )
+
+
+def get_create_provider_fn(runner_name: str, config_name: ConfigName, specs: Iterable[Any]
+    ) -> Callable[[SpecForkName, str, str, ConfigName], TestProvider]:
+    def prepare_fn(configs_path: str) -> str:
+        config_util.prepare_config(configs_path, config_name)
+        for spec in specs:
+            reload(spec)
+        bls.use_milagro()
+        return config_name
+
+    def create_provider(fork_name: SpecForkName, handler_name: str,
+                        tests_src_mod_name: str, config_name: ConfigName) -> TestProvider:
+        def cases_fn() -> Iterable[TestCase]:
+            tests_src = import_module(tests_src_mod_name)
+            return generate_from_tests(
+                runner_name=runner_name,
+                handler_name=handler_name,
+                src=tests_src,
+                fork_name=fork_name,
+            )
+
+        return TestProvider(prepare=prepare_fn, make_cases=cases_fn)
+    return create_provider
+
+
+def run_state_test_generators(runner_name: str, specs: Iterable[Any], all_mods: Dict[str, Dict[str, str]]) -> None:
+    for config_name in ALL_CONFIGS:
+        for fork_name in TESTGEN_FORKS:
+            if fork_name in all_mods:
+                gen_runner.run_generator(runner_name, get_provider(
+                    create_provider_fn=get_create_provider_fn(runner_name, config_name, specs),
+                    config_name=config_name,
+                    fork_name=fork_name,
+                    all_mods=all_mods,
+                ))
