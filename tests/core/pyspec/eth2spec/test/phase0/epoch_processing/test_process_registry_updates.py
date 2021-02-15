@@ -84,6 +84,7 @@ def test_activation_queue_no_activation_no_finality(spec, state):
 
 def get_per_period_churn_limit(spec, state):
     if not is_post_lightclient_patch(spec):
+        # No concept of the activation-exit period in phase 0. Simply return the churn limit.
         return spec.get_validator_churn_limit(state)
     else:
         return spec.get_validator_churn_limit(state) * spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD

@@ -149,7 +149,7 @@ def run_get_regular_penalties(spec, state):
     penalties = spec.get_regular_penalties(state)
     rewards = [0] * len(state.validators)
 
-    yield 'penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
+    yield 'regular_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
     if not spec.is_activation_exit_period_boundary(state):
         assert penalties == rewards
@@ -163,10 +163,11 @@ def run_get_leak_penalties(spec, state):
     penalties = spec.get_leak_penalties(state)
     rewards = [0] * len(state.validators)
 
-    yield 'penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
+    yield 'leak_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
     if not spec.is_activation_exit_period_boundary(state):
         assert penalties == rewards
+        assert not any(rewards)
 
 
 def run_get_inclusion_delay_deltas(spec, state):

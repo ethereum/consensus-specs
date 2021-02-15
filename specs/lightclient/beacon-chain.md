@@ -25,6 +25,7 @@
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+    - [`is_activation_exit_period_boundary`](#is_activation_exit_period_boundary)
   - [Misc](#misc-2)
     - [`flags_and_numerators`](#flags_and_numerators)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -319,7 +320,7 @@ def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlag
 ```python
 def get_flag_rewards(state: BeaconState, flag: ValidatorFlag, numerator: uint64) -> Sequence[Gwei]:
     """
-    Computes the rewards associated with a particular duty, by scanning through the participation
+    Compute the rewards associated with a particular duty, by scanning through the participation.
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
     """
     rewards = [Gwei(0)] * len(state.validators)
@@ -348,7 +349,7 @@ def get_flag_rewards(state: BeaconState, flag: ValidatorFlag, numerator: uint64)
 ```python
 def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
     """
-    Computes the regular epoch penalties for each validator
+    Compute the regular epoch penalties for each validator.
     """
     penalties = [Gwei(0)] * len(state.validators)
 
@@ -358,7 +359,8 @@ def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
 
     attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
     for index in get_eligible_validator_indices(state):
-        # "Regular" penalty
+        # "Regular" penalty is applied to each eligible validator. If the validator participates in the attestation
+        # correctly, this penalty will be canceled.
         penalty_per_epoch = sum(
             get_base_reward(state, index) * numerator // REWARD_DENOMINATOR
             for numerator in attestation_numerators
@@ -373,7 +375,7 @@ def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
 ```python
 def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
     """
-    Computes inactivity leak penalties for each validator
+    Compute inactivity leak penalties for each validator.
     """
     penalties = [Gwei(0)] * len(state.validators)
 
@@ -385,7 +387,7 @@ def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
         # Inactivity-leak-specific penalty
         if state.leak_score[index] >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS:
             # Goal: an offline validator loses (~n^2/2) / INACTIVITY_PENALTY_QUOTIENT after n leak *epochs*
-            # `leak_score` roughly represents n * LEAK_SCORE_BIAS
+            # `leak_score` roughly represents n * LEAK_SCORE_BIAS at the n'th epoch.
             # In the *period* containing the n'th epoch, we hence
             # `leak_score * leak_epochs_in_period // LEAK_SCORE_BIAS`.
             # This corresponds to leaking leak_score / LEAK_SCORE_BIAS, or n, per epoch.
