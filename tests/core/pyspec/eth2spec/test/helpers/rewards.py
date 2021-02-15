@@ -151,7 +151,7 @@ def run_get_regular_penalties(spec, state):
 
     yield 'penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    if spec.get_current_epoch(state) % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not spec.is_activation_exit_period_boundary(state):
         assert penalties == rewards
 
 
@@ -165,7 +165,7 @@ def run_get_leak_penalties(spec, state):
 
     yield 'penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    if spec.get_current_epoch(state) % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not spec.is_activation_exit_period_boundary(state):
         assert penalties == rewards
 
 

@@ -51,7 +51,7 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
                 else:
                     assert post_state.balances[index] < pre_state.balances[index]
         else:
-            if current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+            if not spec.is_activation_exit_period_boundary(post_state):
                 if index in attesting_indices:
                     # Can only receive rewards on non-boundary epoch so positive participanting
                     assert post_state.balances[index] > pre_state.balances[index]

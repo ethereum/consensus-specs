@@ -210,6 +210,13 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
     return bls.FastAggregateVerify(pubkeys, message, signature)
 ```
 
+#### `is_activation_exit_period_boundary`
+
+```python
+def is_activation_exit_period_boundary(state: BeaconState) -> bool:
+    return get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 0
+```
+
 ### Misc
 
 #### `flags_and_numerators`
@@ -346,7 +353,7 @@ def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
     penalties = [Gwei(0)] * len(state.validators)
 
     # Only give penalties on period boundaries
-    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not is_activation_exit_period_boundary(state):
         return penalties
 
     attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
@@ -371,7 +378,7 @@ def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
     penalties = [Gwei(0)] * len(state.validators)
 
     # Only give penalties on period boundaries
-    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not is_activation_exit_period_boundary(state):
         return penalties
 
     for index in get_eligible_validator_indices(state):
@@ -688,12 +695,16 @@ def process_penalties(state: BeaconState) -> None:
             else:
                 state.leak_score[index] -= leak_score_decrease
 
+    if not is_activation_exit_period_boundary(state):
+        return
+
     # Penalty processing
     regular_penalties = get_regular_penalties(state)
     leak_penalties = get_leak_penalties(state)
     for index in get_eligible_validator_indices(state):
         decrease_balance(state, ValidatorIndex(index), regular_penalties[index] + leak_penalties[index])
         state.leak_score[index] += LEAK_SCORE_BIAS * state.leak_epoch_counter
+
     state.leak_epoch_counter = 0
 ```
 
@@ -701,7 +712,7 @@ def process_penalties(state: BeaconState) -> None:
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
-    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not is_activation_exit_period_boundary(state):
         return
 
     # Process activation eligibility and ejections
