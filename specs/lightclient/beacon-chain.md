@@ -54,11 +54,12 @@
 ## Introduction
 
 This is a patch implementing the first hard fork to the beacon chain, tentatively named HF1 pending a permanent name.
-It has three main features:
+It has four main features:
 
 * Light client support via sync committees
 * Incentive accounting reforms, reducing spec complexity
   and [TODO] reducing the cost of processing chains that have very little or zero participation for a long span of epochs
+* Update penalty configuration values, moving them toward their planned maximally punitive configuration
 * Fork choice rule changes to address weaknesses recently discovered in the existing fork choice
 
 ## Custom types
