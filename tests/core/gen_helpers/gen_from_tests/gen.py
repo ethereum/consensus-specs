@@ -1,5 +1,5 @@
 from inspect import getmembers, isfunction
-from typing import Any, Iterable
+from typing import Any, Iterable, Dict
 
 from gen_base.gen_typing import TestCase
 
@@ -38,3 +38,13 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
             # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
             case_fn=lambda: tfn(generator_mode=True, phase=fork_name, bls_active=bls_active)
         )
+
+
+def get_provider(create_provider_fn, config_name, fork_name, all_mods):
+    for key, mod_name in all_mods[fork_name].items():
+        yield create_provider_fn(
+            fork_name=fork_name,
+            handler_name=key,
+            tests_src_mod_name=mod_name,
+            config_name=config_name,
+    )

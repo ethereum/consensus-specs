@@ -1,12 +1,13 @@
 from typing import Iterable
 
 from gen_base import gen_runner, gen_typing
-from gen_from_tests.gen import generate_from_tests
+from gen_from_tests.gen import generate_from_tests, get_provider
 from importlib import reload, import_module
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.lightclient_patch import spec as spec_lightclient_patch
 from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.test.context import PHASE0, PHASE1
+from eth2spec.test.context import PHASE0, PHASE1, LIGHTCLIENT_PATCH, TESTGEN_FORKS, ALL_CONFIGS
 from eth2spec.utils import bls
 
 
@@ -15,6 +16,7 @@ def create_provider(fork_name: str, handler_name: str,
     def prepare_fn(configs_path: str) -> str:
         config_util.prepare_config(configs_path, config_name)
         reload(spec_phase0)
+        reload(spec_lightclient_patch)
         reload(spec_phase1)
         bls.use_milagro()
         return config_name
@@ -37,18 +39,20 @@ if __name__ == "__main__":
         'leak',
         'random',
     ]}
-    # No additional phase 1 specific rewards tests, yet.
+    # No additional lightclient_patch or phase 1 specific rewards tests, yet.
+    lightclient_patch_mods = phase_0_mods
     phase_1_mods = phase_0_mods
 
-    gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods.items()
-    ])
-    gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods.items()
-    ])
-    gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods.items()
-    ])
-    gen_runner.run_generator(f"rewards", [
-        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods.items()
-    ])
+    all_mods = {
+        PHASE0: phase_0_mods,
+        LIGHTCLIENT_PATCH: lightclient_patch_mods,
+        PHASE1: phase_1_mods,
+    }
+
+    for config_name in ALL_CONFIGS:
+        for fork_name in TESTGEN_FORKS:
+            if fork_name in all_mods:
+                gen_runner.run_generator(f"rewards", get_provider(
+                    create_provider_fn=create_provider, config_name=config_name,
+                    fork_name=fork_name, all_mods=all_mods,
+                ))
