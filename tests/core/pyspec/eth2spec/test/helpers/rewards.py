@@ -268,6 +268,16 @@ def transition_state_to_leak(spec, state, epochs=None):
     for _ in range(epochs):
         next_epoch(spec, state)
 
+    # Leak penalties are only applied at activation/exit period boundaries after HF1.
+    # So transition to this period boundary to make the test interesting.
+    if is_post_lightclient_patch(spec) and not spec.is_activation_exit_period_boundary(state):
+        epochs_until_boundary = (
+            spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+            - spec.get_current_epoch(state) % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+        )
+        for _ in range(epochs_until_boundary):
+            next_epoch(spec, state)
+
 
 _cache_dict = LRU(size=10)
 

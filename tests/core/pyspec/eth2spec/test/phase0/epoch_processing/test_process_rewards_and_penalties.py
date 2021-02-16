@@ -59,10 +59,15 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
                     # Can only receive rewards on non-boundary epoch so neutral if not participanting
                     assert post_state.balances[index] == pre_state.balances[index]
             elif spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD > 2:
-                # Penalties always outweigh rewards on a period boundary if period > 2
+                # Penalties always outweigh rewards on a period boundary epoch if period > 2
+                # because `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` base_reward penalties are given but only
+                # maximally 2 base_reward rewards can be given (remember, each epoch has one base_reward
+                # for performance and one base_reward that is later canceled out by penalties at boundaries)
                 assert post_state.balances[index] < pre_state.balances[index]
             elif spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 2:
                 # Penalties either equal or outweigh rewards on period boundary == 2
+                # because EPOCHS_PER_ACTIVATION_EXIT_PERIOD (2) base_reward penalties are given to cancel
+                # out the period and up to 2 base_reward rewards are given for that particular epoch.
                 assert post_state.balances[index] <= pre_state.balances[index]
 
 
