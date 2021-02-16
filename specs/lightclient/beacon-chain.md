@@ -118,7 +118,7 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` | `Epoch(2**5)` (= 32) | epochs | ~3.4 hours |
+| `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` | `Epoch(2**6)` (= 64) | epochs | ~6.8 hours |
 
 ### Domain types
 

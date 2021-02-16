@@ -14,6 +14,8 @@ SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE: 64
 # ---------------------------------------------------------------
 # 2**8 (= 256)
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+# 2**6 (= 64)
+EPOCHS_PER_ACTIVATION_EXIT_PERIOD: 64
 
 
 # Signature domains
