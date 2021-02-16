@@ -2,9 +2,11 @@ import random
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     next_epoch,
+    next_epoch_via_block,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+    build_empty_block,
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
@@ -73,3 +75,28 @@ def test_half_sync_committee_committee_genesis(spec, state):
 @spec_state_test
 def test_empty_sync_committee_committee_genesis(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
+
+
+@with_all_phases_except([PHASE0, PHASE1])
+@spec_state_test
+def test_leak_epoch_counter(spec, state):
+    for _ in range(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2):
+        next_epoch_via_block(spec, state)
+
+    assert spec.is_in_inactivity_leak(state)
+
+    if spec.is_activation_exit_period_boundary(state):
+        next_epoch_via_block(spec, state)
+
+    previous_leak_epoch_counter = state.leak_epoch_counter
+
+    yield 'pre', state
+
+    # Block transition to next epoch
+    block = build_empty_block(spec, state, slot=state.slot + spec.SLOTS_PER_EPOCH)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert state.leak_epoch_counter == previous_leak_epoch_counter + 1

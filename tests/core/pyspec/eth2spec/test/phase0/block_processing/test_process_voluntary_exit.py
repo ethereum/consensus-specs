@@ -1,4 +1,7 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import (
+    spec_state_test, expect_assertion_error, always_bls, with_all_phases,
+    is_post_lightclient_patch,
+)
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import sign_voluntary_exit
 
@@ -76,8 +79,11 @@ def test_success_exit_queue(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
 
-    # exit `MAX_EXITS_PER_EPOCH`
-    initial_indices = spec.get_active_validator_indices(state, current_epoch)[:spec.get_validator_churn_limit(state)]
+    churn = spec.get_validator_churn_limit(state)
+    if is_post_lightclient_patch(spec):
+        churn = churn * spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
+
+    initial_indices = spec.get_active_validator_indices(state, current_epoch)[:churn]
 
     # Prepare a bunch of exits, based on the current state
     exit_queue = []
@@ -106,9 +112,10 @@ def test_success_exit_queue(spec, state):
     #  when processing an additional exit, it results in an exit in a later epoch
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
+    queue_increment = spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD if is_post_lightclient_patch(spec) else 1
     assert (
         state.validators[validator_index].exit_epoch ==
-        state.validators[initial_indices[0]].exit_epoch + 1
+        state.validators[initial_indices[0]].exit_epoch + queue_increment
     )
 
 

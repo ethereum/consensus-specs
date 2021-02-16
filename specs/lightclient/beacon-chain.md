@@ -25,6 +25,7 @@
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+    - [`is_activation_exit_period_boundary`](#is_activation_exit_period_boundary)
   - [Misc](#misc-2)
     - [`flags_and_numerators`](#flags_and_numerators)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -33,6 +34,8 @@
     - [`get_base_reward`](#get_base_reward)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
     - [`get_flag_rewards`](#get_flag_rewards)
+    - [`get_regular_penalties`](#get_regular_penalties)
+    - [`get_leak_penalties`](#get_leak_penalties)
   - [Block processing](#block-processing)
     - [New `process_attestation`](#new-process_attestation)
     - [New `process_deposit`](#new-process_deposit)
@@ -208,6 +211,13 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
     return bls.FastAggregateVerify(pubkeys, message, signature)
 ```
 
+#### `is_activation_exit_period_boundary`
+
+```python
+def is_activation_exit_period_boundary(state: BeaconState) -> bool:
+    return get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 0
+```
+
 ### Misc
 
 #### `flags_and_numerators`
@@ -310,7 +320,7 @@ def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlag
 ```python
 def get_flag_rewards(state: BeaconState, flag: ValidatorFlag, numerator: uint64) -> Sequence[Gwei]:
     """
-    Compute the rewards and penalties associated with a particular duty, by scanning through the participation
+    Compute the rewards associated with a particular duty, by scanning through the participation.
     flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
     """
     rewards = [Gwei(0)] * len(state.validators)
@@ -332,6 +342,62 @@ def get_flag_rewards(state: BeaconState, flag: ValidatorFlag, numerator: uint64)
             else:
                 rewards[index] = penalty_canceling_reward + extra_reward
     return rewards
+```
+
+#### `get_regular_penalties`
+
+```python
+def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
+    """
+    Compute the regular epoch penalties for each validator.
+    """
+    penalties = [Gwei(0)] * len(state.validators)
+
+    # Only give penalties on period boundaries
+    if not is_activation_exit_period_boundary(state):
+        return penalties
+
+    attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
+    for index in get_eligible_validator_indices(state):
+        # "Regular" penalty is applied to each eligible validator. If the validator participates in the attestation
+        # correctly, this penalty will be canceled.
+        penalty_per_epoch = sum(
+            get_base_reward(state, index) * numerator // REWARD_DENOMINATOR
+            for numerator in attestation_numerators
+        )
+        penalty_per_period = Gwei(penalty_per_epoch * EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
+        penalties[index] = penalty_per_period
+    return penalties
+```
+
+#### `get_leak_penalties`
+
+```python
+def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
+    """
+    Compute inactivity leak penalties for each validator.
+    """
+    penalties = [Gwei(0)] * len(state.validators)
+
+    # Only give penalties on period boundaries
+    if not is_activation_exit_period_boundary(state):
+        return penalties
+
+    for index in get_eligible_validator_indices(state):
+        # Inactivity-leak-specific penalty
+        if state.leak_score[index] >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS:
+            # Goal: an offline validator loses (~n^2/2) / INACTIVITY_PENALTY_QUOTIENT after n leak *epochs*
+            # `leak_score` roughly represents n * LEAK_SCORE_BIAS at the n'th epoch.
+            # In the *period* containing the n'th epoch, we hence
+            # `leak_score * leak_epochs_in_period // LEAK_SCORE_BIAS`.
+            # This corresponds to leaking leak_score / LEAK_SCORE_BIAS, or n, per epoch.
+            # sum[1...n] n ~= n^2/2, as desired
+            leak_penalty = (
+                state.leak_score[index] * state.leak_epoch_counter
+                // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
+            )
+            penalties[index] = leak_penalty
+    return penalties
 ```
 
 ### Block processing
@@ -436,6 +502,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Add validator and balance entries
         state.validators.append(get_validator_from_deposit(state, deposit))
         state.balances.append(amount)
+        state.leak_score.append(0)
         # [Added in hf-1] Initialize empty participation flags for new validator
         state.previous_epoch_participation.append(ValidatorFlag(0))
         state.current_epoch_participation.append(ValidatorFlag(0))
@@ -585,6 +652,10 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
+    # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     process_rewards(state)
     process_penalties(state)
 ```
@@ -593,9 +664,6 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
 ```python
 def process_rewards(state: BeaconState) -> None:
-    # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
-    if get_current_epoch(state) == GENESIS_EPOCH:
-        return
     flag_rewards = [get_flag_rewards(state, flag, numerator) for (flag, numerator) in get_flags_and_numerators()]
     for rewards in flag_rewards:
         for index in range(len(state.validators)):
@@ -629,30 +697,16 @@ def process_penalties(state: BeaconState) -> None:
             else:
                 state.leak_score[index] -= leak_score_decrease
 
-    # Penalty processing
-    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not is_activation_exit_period_boundary(state):
         return
 
-    attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
+    # Penalty processing
+    regular_penalties = get_regular_penalties(state)
+    leak_penalties = get_leak_penalties(state)
     for index in get_eligible_validator_indices(state):
-        # "Regular" penalty
-        penalty_per_epoch = get_base_reward(state, index) * sum(attestation_numerators) // REWARD_DENOMINATOR
-        penalty_per_period = Gwei(penalty_per_epoch * EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
-        decrease_balance(state, ValidatorIndex(index), penalty_per_period)
-        # Inactivity-leak-specific penalty
-        if state.leak_score[index] >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS:
-            # Goal: an offline validator loses (~n^2/2) / INACTIVITY_PENALTY_QUOTIENT after n leak *epochs*
-            # `leak_score` roughly represents n * LEAK_SCORE_BIAS
-            # In the *period* containing the n'th epoch, we hence
-            # `leak_score * leak_epochs_in_period // LEAK_SCORE_BIAS`.
-            # This corresponds to leaking leak_score / LEAK_SCORE_BIAS, or n, per epoch.
-            # sum[1...n] n ~= n^2/2, as desired
-            leak_penalty = (
-                state.leak_score[index] * state.leak_epoch_counter
-                // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
-            )
-            decrease_balance(state, ValidatorIndex(index), leak_penalty)
+        decrease_balance(state, ValidatorIndex(index), regular_penalties[index] + leak_penalties[index])
         state.leak_score[index] += LEAK_SCORE_BIAS * state.leak_epoch_counter
+
     state.leak_epoch_counter = 0
 ```
 
@@ -660,7 +714,7 @@ def process_penalties(state: BeaconState) -> None:
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
-    if get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD != 0:
+    if not is_activation_exit_period_boundary(state):
         return
 
     # Process activation eligibility and ejections
