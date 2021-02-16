@@ -683,6 +683,7 @@ def process_penalties(state: BeaconState) -> None:
     # of the ACTIVATION_EXIT_PERIOD
     
     if is_in_inactivity_leak(state):
+        # If participated during leak, score decreases by 1 after end of period leak score increase
         leak_score_decrease = LEAK_SCORE_BIAS + 1
         state.leak_epoch_counter += 1
     else:
