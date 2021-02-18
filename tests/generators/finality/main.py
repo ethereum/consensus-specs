@@ -1,4 +1,4 @@
-from gen_from_tests.gen import run_state_test_generators
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.lightclient_patch import spec as spec_lightclient_patch
 from eth2spec.phase1 import spec as spec_phase1

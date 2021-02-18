@@ -3,7 +3,7 @@ from typing import Iterable
 from importlib import reload
 from inspect import getmembers, isclass
 
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 from eth2spec.debug import random_value, encode
 from eth2spec.config import config_util

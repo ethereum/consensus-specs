@@ -4,10 +4,10 @@ from typing import Any, Callable, Dict, Iterable
 
 from eth2spec.config import config_util
 from eth2spec.utils import bls
-
 from eth2spec.test.context import ALL_CONFIGS, TESTGEN_FORKS, SpecForkName, ConfigName
-from gen_base import gen_runner
-from gen_base.gen_typing import TestCase, TestProvider
+
+from eth2spec.gen_helpers.gen_base import gen_runner
+from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 
 
 def generate_from_tests(runner_name: str, handler_name: str, src: Any,
@@ -56,11 +56,12 @@ def get_provider(create_provider_fn: Callable[[SpecForkName, str, str, ConfigNam
             handler_name=key,
             tests_src_mod_name=mod_name,
             config_name=config_name,
-    )
+        )
 
 
-def get_create_provider_fn(runner_name: str, config_name: ConfigName, specs: Iterable[Any]
-    ) -> Callable[[SpecForkName, str, str, ConfigName], TestProvider]:
+def get_create_provider_fn(
+        runner_name: str, config_name: ConfigName, specs: Iterable[Any]
+) -> Callable[[SpecForkName, str, str, ConfigName], TestProvider]:
     def prepare_fn(configs_path: str) -> str:
         config_util.prepare_config(configs_path, config_name)
         for spec in specs:

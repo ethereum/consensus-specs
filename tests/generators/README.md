@@ -103,7 +103,7 @@ Write a `main.py` file. The shuffling test generator is a good minimal starting 
 ```python
 from eth2spec.phase0 import spec as spec
 from eth_utils import to_tuple
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from preset_loader import loader
 from typing import Iterable
 
