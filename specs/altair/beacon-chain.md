@@ -129,6 +129,8 @@ This patch updates a few configuration values to move penalty parameters toward 
 | Name | Value |
 | - | - |
 | `DOMAIN_SYNC_COMMITTEE` | `DomainType('0x07000000')` |
+| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
+| `DOMAIN_CONTRIBUTION_AND_PROOF` | `DomainType('0x09000000')` |
 
 ## Containers
 
