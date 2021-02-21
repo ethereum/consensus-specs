@@ -1,7 +1,8 @@
 import argparse
+import os
 from pathlib import Path
 import sys
-from typing import Iterable, AnyStr, Any, Callable
+from typing import Iterable, AnyStr, Any, Callable, Dict, Optional
 import traceback
 
 from ruamel.yaml import (
@@ -9,9 +10,11 @@ from ruamel.yaml import (
 )
 
 from gen_base.gen_typing import TestProvider
+from gen_base.gen_typing import SSZLookup
 
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
+from eth2spec.utils.hash_function import hash as sha256
 
 
 # Flag that the runner does NOT run test via pytest
@@ -42,7 +45,7 @@ def validate_configs_dir(path_str):
     return path
 
 
-def run_generator(generator_name, test_providers: Iterable[TestProvider]):
+def run_generator(generator_name, test_providers: Iterable[TestProvider], pre_state_path_lookup: SSZLookup):
     """
     Implementation for a general test generator.
     :param generator_name: The name of the generator. (lowercase snake_case)
@@ -119,8 +122,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
         print(f"generating tests with config '{config_name}' ...")
         for test_case in tprov.make_cases():
-            case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
-                       / Path(test_case.runner_name) / Path(test_case.handler_name) \
+            runner_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
+                       / Path(test_case.runner_name)
+            case_dir = runner_dir / Path(test_case.handler_name) \
                        / Path(test_case.suite_name) / Path(test_case.case_name)
 
             if case_dir.exists():
@@ -144,14 +148,33 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 meta = dict()
 
                 try:
-                    for (name, out_kind, data) in test_case.case_fn():
+                    for (name, out_kind, data, root) in test_case.case_fn():
                         written_part = True
+                        output_path = None
+                        is_duplicate = False
+
                         if out_kind == "meta":
                             meta[name] = data
                         if out_kind == "data":
-                            output_part("data", name, dump_yaml_fn(data, name, file_mode, yaml))
+                            if name == 'pre':
+                                file_name = 'pre_' + root
+                                output_path, is_duplicate = set_pre_state_reference(
+                                    runner_dir, 'yaml', file_name, pre_state_path_lookup
+                                )
+                                if 'pre' not in meta:
+                                    meta['pre'] = file_name
+                            if not is_duplicate and not output_file_exists(output_path):
+                                output_part(out_kind, name, dump_yaml_fn(data, name, file_mode, yaml, output_path))
                         if out_kind == "ssz":
-                            output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
+                            if name == 'pre':
+                                file_name = 'pre_' + root
+                                output_path, is_duplicate = set_pre_state_reference(
+                                    runner_dir, 'ssz', file_name, pre_state_path_lookup
+                                )
+                                if 'pre' not in meta:
+                                    meta['pre'] = file_name
+                            if not is_duplicate and not output_file_exists(output_path):
+                                output_part(out_kind, name, dump_ssz_fn(data, name, file_mode, output_path))
                 except SkippedTest as e:
                     print(e)
                     continue
@@ -159,28 +182,42 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 # Once all meta data is collected (if any), write it to a meta data file.
                 if len(meta) != 0:
                     written_part = True
-                    output_part("data", "meta", dump_yaml_fn(meta, "meta", file_mode, yaml))
+                    output_part("data", "meta", dump_yaml_fn(meta, "meta", file_mode, yaml, None))
 
                 if not written_part:
                     print(f"test case {case_dir} did not produce any test case parts")
-
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
                 traceback.print_exc()
     print(f"completed {generator_name}")
 
 
-def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
-    def dump(case_path: Path):
-        out_path = case_path / Path(name + '.yaml')
+def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML, output_path: Any):
+    def dump(case_dir: Path):
+        out_path = case_dir / Path(name + '.yaml') if output_path is None else output_path
         with out_path.open(file_mode) as f:
             yaml_encoder.dump(data, f)
     return dump
 
 
-def dump_ssz_fn(data: AnyStr, name: str, file_mode: str):
-    def dump(case_path: Path):
-        out_path = case_path / Path(name + '.ssz')
+def dump_ssz_fn(data: AnyStr, name: str, file_mode: str, output_path: Any):
+    def dump(case_dir: Path):
+        out_path = case_dir / Path(name + '.ssz') if output_path is None else output_path
         with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
             f.write(data)
     return dump
+
+
+def set_pre_state_reference(runner_dir, file_type, file_name, pre_state_path_lookup):
+    key = str(file_name + '.' + file_type)
+    output_path = runner_dir / Path(key)
+    if key in pre_state_path_lookup:
+        pre_state_path_lookup[key][1] += 1
+        is_duplicate = True
+    else:
+        pre_state_path_lookup[key] = [output_path, 1]
+        is_duplicate = False
+    return output_path, is_duplicate
+
+def output_file_exists(output_path):
+    return output_path is not None and os.path.exists(output_path)

@@ -1,3 +1,4 @@
+import json
 from typing import Iterable
 
 from gen_base import gen_runner, gen_typing
@@ -8,6 +9,8 @@ from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.test.context import PHASE0, PHASE1
 from eth2spec.utils import bls
+
+pre_state_path_lookup: gen_typing.SSZLookup = {}
 
 
 def create_provider(fork_name: str, handler_name: str,
@@ -43,13 +46,20 @@ if __name__ == "__main__":
 
     gen_runner.run_generator(f"sanity", [
         create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods.items()
-    ])
+    ], pre_state_path_lookup)
     gen_runner.run_generator(f"sanity", [
         create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods.items()
-    ])
+    ], pre_state_path_lookup)
     gen_runner.run_generator(f"sanity", [
         create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods.items()
-    ])
+    ], pre_state_path_lookup)
     gen_runner.run_generator(f"sanity", [
         create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods.items()
-    ])
+    ], pre_state_path_lookup)
+
+    # FIXME: this record dict is for debugging and computing the improvement.
+    # will remove it.
+    for key, value in pre_state_path_lookup.items():
+        value[0] = str(value[0])
+    with open('hash_count.json', 'w') as f:
+        f.write(json.dumps(pre_state_path_lookup))  # use `json.loads` to do the reverse
