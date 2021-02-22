@@ -19,7 +19,7 @@
     - [`get_current_slot`](#get_current_slot)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
-    - [`get_ancestor_node`](#get_ancestor_node)
+    - [`get_ancestor_node_key`](#get_ancestor_node_key)
     - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
     - [`filter_block_slot_tree`](#filter_block_slot_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
@@ -182,16 +182,16 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
         return root
 ```
 
-#### `get_ancestor_node`
+#### `get_ancestor_node_key`
 
 ```python
-def get_ancestor_node(store: Store, node_key: Root, slot: Slot) -> Root:
+def get_ancestor_node_key(store: Store, node_key: Root, slot: Slot) -> Root:
     """
     Return highest node's key with slot less than or equal to the queried slot.
     """
     node = store.block_slot_tree[node_key]
     if node.slot > slot:
-        return get_ancestor_node(store, node.parent_node, slot)
+        return get_ancestor_node_key(store, node.parent_node, slot)
     else:
         return get_node_key(node.block_root, node.slot)
 ```
@@ -206,7 +206,7 @@ def get_latest_attesting_balance(store: Store, node_key: Root) -> Gwei:
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
-            and get_ancestor_node(store, store.latest_messages[i].root, node.slot) == node_key)
+            and get_ancestor_node_key(store, store.latest_messages[i].root, node.slot) == node_key)
     ))
 ```
 
@@ -305,7 +305,7 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
         block_root=new_justified_checkpoint.root,
         slot=compute_start_slot_at_epoch(new_justified_checkpoint.epoch)
     )
-    new_justified_checkpoint_ancestor_node_key = get_ancestor_node(
+    new_justified_checkpoint_ancestor_node_key = get_ancestor_node_key(
         store=store,
         node_key=new_justified_checkpoint_node_key,
         slot=justified_slot
@@ -519,7 +519,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     lmd_block_root = attestation.data.beacon_block_root
     lmd_slot = attestation.data.slot
     lmd_node_key = get_node_key(lmd_block_root, lmd_slot)
-    assert ffg_node_key == get_ancestor_node(store, lmd_node_key, target_slot)
+    assert ffg_node_key == get_ancestor_node_key(store, lmd_node_key, target_slot)
 
     # Update latest messages for attesting indices
     update_latest_messages(store, indexed_attestation.attesting_indices, attestation)
