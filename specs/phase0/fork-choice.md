@@ -83,7 +83,7 @@ class LatestMessage(object):
 class BlockSlotNode(Container):
     block_root: Root
     slot: Slot
-    parent_node: Root
+    parent_node_key: Root
 ```
 
 #### `BlockSlotKey`
@@ -129,7 +129,7 @@ This should be the genesis state for a full client.
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock, anchor_slot: Slot) -> Store:
     assert anchor_block.state_root == hash_tree_root(anchor_state)
     anchor_root = hash_tree_root(anchor_block)
-    anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_slot, parent_node=Root())
+    anchor_node = BlockSlotNode(block_root=anchor_root, slot=anchor_slot, parent_node_key=Root())
     anchor_node_key = get_node_key(anchor_root, anchor_slot)
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
@@ -191,7 +191,7 @@ def get_ancestor_node_key(store: Store, node_key: Root, slot: Slot) -> Root:
     """
     node = store.block_slot_tree[node_key]
     if node.slot > slot:
-        return get_ancestor_node_key(store, node.parent_node, slot)
+        return get_ancestor_node_key(store, node.parent_node_key, slot)
     else:
         return get_node_key(node.block_root, node.slot)
 ```
@@ -217,7 +217,7 @@ def filter_block_slot_tree(store: Store, node_key: Root, nodes: Dict[Root, Block
     node = store.block_slot_tree[node_key]
     children = [
         root for root in store.block_slot_tree.keys()
-        if store.block_slot_tree[root].parent_node == node_key
+        if store.block_slot_tree[root].parent_node_key == node_key
     ]
 
     # If any children branches contain expected finalized/justified checkpoints,
@@ -278,7 +278,7 @@ def get_head(store: Store) -> Root:
     while True:
         children = [
             key for key in nodes.keys()
-            if nodes[key].parent_node == head_node_key
+            if nodes[key].parent_node_key == head_node_key
         ]
         if len(children) == 0:
             return store.block_slot_tree[head_node_key].block_root
@@ -410,7 +410,7 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
         block_node = BlockSlotNode(
             block_root=block_root, 
             slot=Slot(block_node_slot), 
-            parent_node=parent_node_key, 
+            parent_node_key=parent_node_key, 
         )
         block_node_key = get_node_key(block_root, Slot(block_node_slot))
         store.block_slot_tree[block_node_key] = block_node
