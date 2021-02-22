@@ -141,7 +141,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock, a
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         blocks={anchor_root: copy(anchor_block)},
-        block_slot_tree={anchor_node_key: copy(anchor_node)},
+        block_slot_tree={anchor_node_key: anchor_node.copy()},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
     )
@@ -172,7 +172,9 @@ def compute_slots_since_epoch_start(slot: Slot) -> int:
 
 ```python
 def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
-    # Return highest block's root with slot less than or equal to the queried slot
+    """
+    Return highest block's root with slot less than or equal to the queried slot.
+    """
     block = store.blocks[root]
     if block.slot > slot:
         return get_ancestor(store, block.parent_root, slot)
@@ -184,7 +186,9 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 
 ```python
 def get_ancestor_node(store: Store, node_key: Root, slot: Slot) -> Root:
-    # Return highest node's key with slot less than or equal to the queried slot
+    """
+    Return highest node's key with slot less than or equal to the queried slot.
+    """
     node = store.block_slot_tree[node_key]
     if node.slot > slot:
         return get_ancestor_node(store, node.parent_node, slot)
@@ -393,7 +397,7 @@ def add_block_slot_node(store: Store, block: BeaconBlock, node_slot: Slot) -> Bl
         parent_block_node_slot = Slot(block.slot - 1)
         parent_node_key = get_node_key(block.parent_root, parent_block_node_slot)
         # Add the parent block's node if it doesn't exist
-        if parent_node_key not in store.block_slot_tree.keys():
+        if parent_node_key not in store.block_slot_tree:
             parent_block = store.blocks[block.parent_root]
             store.block_slot_tree[parent_node_key] = add_block_slot_node(
                 store, parent_block, parent_block_node_slot)
