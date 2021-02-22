@@ -85,6 +85,9 @@ def get_create_provider_fn(
 
 
 def run_state_test_generators(runner_name: str, specs: Iterable[Any], all_mods: Dict[str, Dict[str, str]]) -> None:
+    """
+    Generate all available state tests of `TESTGEN_FORKS` forks of `ALL_CONFIGS` configs of the given runner.
+    """
     for config_name in ALL_CONFIGS:
         for fork_name in TESTGEN_FORKS:
             if fork_name in all_mods:
