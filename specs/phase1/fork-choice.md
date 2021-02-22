@@ -86,7 +86,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock, a
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         blocks={anchor_root: copy(anchor_block)},
-        block_slot_tree={anchor_node_key: copy(anchor_node)},
+        block_slot_tree={anchor_node_key: anchor_node},
         block_states={anchor_root: anchor_state.copy()},
         checkpoint_states={justified_checkpoint: anchor_state.copy()},
         shard_stores={

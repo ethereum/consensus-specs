@@ -11,7 +11,7 @@
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`BlockSlotNode`](#blockslotnode)
-    - [`BlockSlotKey`](#blockslotkey)
+    - [`BlockRootAndSlot`](#blockrootandslot)
     - [`get_node_key`](#get_node_key)
     - [`Store`](#store)
     - [`get_forkchoice_store`](#get_forkchoice_store)
@@ -80,16 +80,17 @@ class LatestMessage(object):
 #### `BlockSlotNode`
 
 ```python
-class BlockSlotNode(Container):
+@dataclass(eq=True, frozen=True)
+class BlockSlotNode(object):
     block_root: Root
     slot: Slot
     parent_node_key: Root
 ```
 
-#### `BlockSlotKey`
+#### `BlockRootAndSlot`
 
 ```python
-class BlockSlotKey(Container):
+class BlockRootAndSlot(Container):
     block_root: Root
     slot: Slot
 ```
@@ -98,7 +99,7 @@ class BlockSlotKey(Container):
 
 ```python
 def get_node_key(block_root: Root, slot: Slot) -> Root:
-    return hash_tree_root(BlockSlotKey(block_root=block_root, slot=slot))
+    return hash_tree_root(BlockRootAndSlot(block_root=block_root, slot=slot))
 ```
 
 #### `Store`
@@ -141,7 +142,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock, a
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         blocks={anchor_root: copy(anchor_block)},
-        block_slot_tree={anchor_node_key: anchor_node.copy()},
+        block_slot_tree={anchor_node_key: anchor_node},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
     )
