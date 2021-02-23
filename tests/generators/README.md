@@ -55,10 +55,10 @@ The `-j N` flag makes the generators run in parallel, with `N` being the amount 
 
 ### Running a single generator
 
-The makefile auto-detects generators in the `tests/generators` directory and provides a tests-gen target for each generator. See example:
+The makefile auto-detects generators in the `tests/generators` directory and provides a tests-gen target (gen_<generator_name>) for each generator. See example:
 
 ```bash
-make ./eth2.0-spec-tests/tests/shuffling/
+make gen_ssz_static
 ```
 
 ## Developing a generator
