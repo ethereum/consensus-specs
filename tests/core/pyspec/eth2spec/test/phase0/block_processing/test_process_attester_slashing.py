@@ -4,6 +4,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
     get_indexed_attestation_participants, get_attestation_2_data, get_attestation_1_data
+from eth2spec.test.helpers.proposer_slashings import get_min_slashing_penalty_quotient
 from eth2spec.test.helpers.state import (
     get_balance,
     next_epoch_via_block,
@@ -70,7 +71,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         expected_balance = (
             pre_proposer_balance
             + total_proposer_rewards
-            - pre_slashings[proposer_index] // spec.MIN_SLASHING_PENALTY_QUOTIENT
+            - pre_slashings[proposer_index] // get_min_slashing_penalty_quotient(spec)
         )
 
         assert get_balance(state, proposer_index) == expected_balance
