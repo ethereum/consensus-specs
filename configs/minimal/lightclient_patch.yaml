@@ -7,7 +7,7 @@ CONFIG_NAME: "minimal"
 # [customized]
 SYNC_COMMITTEE_SIZE: 32
 # [customized]
-SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE: 16
+SYNC_SUBCOMMITTEE_SIZE: 16
 
 
 # Time parameters

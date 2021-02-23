@@ -1,101 +1,45 @@
-# Ethereum 2.0 HF1
+# Ethereum 2.0--Hard Fork 1 (HF1)
 
 ## Table of contents
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [Introduction](#introduction)
-- [Custom types](#custom-types)
-- [Constants](#constants)
-  - [Validator action flags](#validator-action-flags)
-  - [Participation rewards](#participation-rewards)
-  - [Misc](#misc)
-- [Configuration](#configuration)
-  - [Misc](#misc-1)
-  - [Time parameters](#time-parameters)
-  - [Domain types](#domain-types)
-- [Containers](#containers)
-  - [Extended containers](#extended-containers)
-    - [`BeaconBlockBody`](#beaconblockbody)
-    - [`BeaconState`](#beaconstate)
-  - [New containers](#new-containers)
-    - [`SyncCommittee`](#synccommittee)
-- [Helper functions](#helper-functions)
-  - [`Predicates`](#predicates)
-    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
-    - [`is_activation_exit_period_boundary`](#is_activation_exit_period_boundary)
-  - [Misc](#misc-2)
-    - [`flags_and_numerators`](#flags_and_numerators)
-  - [Beacon state accessors](#beacon-state-accessors)
-    - [`get_sync_committee_indices`](#get_sync_committee_indices)
-    - [`get_sync_committee`](#get_sync_committee)
-    - [`get_base_reward`](#get_base_reward)
-    - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
-    - [`get_flag_rewards`](#get_flag_rewards)
-    - [`get_regular_penalties`](#get_regular_penalties)
-    - [`get_leak_penalties`](#get_leak_penalties)
-  - [Block processing](#block-processing)
-    - [New `process_attestation`](#new-process_attestation)
-    - [New `process_deposit`](#new-process_deposit)
-    - [Sync committee processing](#sync-committee-processing)
-  - [Modified helpers](#modified-helpers)
-    - [New `compute_activation_exit_epoch`](#new-compute_activation_exit_epoch)
-    - [New `initiate_validator_exit`](#new-initiate_validator_exit)
-  - [Epoch processing](#epoch-processing)
-    - [New `process_justification_and_finalization`](#new-process_justification_and_finalization)
-    - [New `process_rewards_and_penalties`](#new-process_rewards_and_penalties)
-      - [`process_rewards`](#process_rewards)
-      - [`process_penalties`](#process_penalties)
-    - [New `process_registry_updates`](#new-process_registry_updates)
-    - [Sync committee updates](#sync-committee-updates)
-    - [Participation flags updates](#participation-flags-updates)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+[TODO: generate with doctoc]
 
 ## Introduction
 
-This is a patch implementing the first hard fork to the beacon chain, tentatively named HF1 pending a permanent name. It has three main features:
+This document specifies the beacon chain changes in the first Eth2 hard fork, tentatively named Hard Fork 1 (HF1). The FH1 highlights are:
 
-* Light client support via sync committees
-* Incentive accounting reforms, reducing spec complexity
-  and [TODO] reducing the cost of processing chains that have very little or zero participation for a long span of epochs
-* Fork choice rule changes to address weaknesses recently discovered in the existing fork choice
+* sync committees to support light clients
+* incentive accounting reforms to reduce spec complexity
+* fork choice rule fixes to mitigate attacks
 
 ## Custom types
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ValidatorFlag` | `uint8` | Bitflags to track validator actions with |
+| `ParticipationFlags` | `uint8` | a succint representation of 8 boolean participation flags |
 
 ## Constants
 
-### Validator action flags
-
-This is formatted as an enum, with values `2**i` that can be combined as bit-flags.
-The `0` value is reserved as default. Remaining bits in `ValidatorFlag` may be used in future hardforks.
-
-**Note**: Unlike Phase0, a `TIMELY_TARGET_FLAG` does not necessarily imply a `TIMELY_SOURCE_FLAG`
-due to the varying slot delay requirements of each.
+### Participation flag masks
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_FLAG`   | `ValidatorFlag(2**0)` (= 1) |
-| `TIMELY_SOURCE_FLAG` | `ValidatorFlag(2**1)` (= 2) |
-| `TIMELY_TARGET_FLAG` | `ValidatorFlag(2**2)` (= 4) |
+| `TIMELY_HEAD_FLAG_MASK` | `ParticipationFlags(2**0)` (= 1) |
+| `TIMELY_SOURCE_FLAG_MASK` | `ParticipationFlags(2**1)` (= 2) |
+| `TIMELY_TARGET_FLAG_MASK` | `ParticipationFlags(2**2)` (= 4) |
 
-### Participation rewards
+**Note**: Unused participation flag mask positions may be used in future hard forks.
+
+### Participation flag fractions
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_NUMERATOR` | `12` |
-| `TIMELY_SOURCE_NUMERATOR` | `12` |
-| `TIMELY_TARGET_NUMERATOR` | `32` |
-| `REWARD_DENOMINATOR` | `64` |
+| `TIMELY_HEAD_FLAG_NUMERATOR` | `12` |
+| `TIMELY_SOURCE_FLAG_NUMERATOR` | `12` |
+| `TIMELY_TARGET_FLAG_NUMERATOR` | `32` |
+| `FLAG_DENOMINATOR` | `64` |
 
-The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewards and other future micro-rewards.
+**Note**: The participatition flag fractions add up to 7/8. The remaining 1/8 is for proposer incentives and other future micro-incentives.
 
 ### Misc
 
@@ -108,17 +52,19 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 ### Misc
 
 | Name | Value |
-| - | - | 
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1024) |
-| `SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE` | `uint64(2**6)` (= 64) |
-| `LEAK_SCORE_BIAS` | 4 |
+| - | - |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
+| `SYNC_SUBCOMMITTEE_SIZE` | `uint64(2**6)` (= 64) |
+| `LEAK_SCORE_BIAS` | `uint64(2**2)` (= 4) |
+| `LEAK_PENALTY_QUOTIENT` | `uint64(2**28)` (= 268,435,456) |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
-| `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` | `Epoch(2**6)` (= 64) | epochs | ~6.8 hours |
+| `EPOCHS_TO_LEAK_PENALTIES` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
 
 ### Domain types
 
@@ -128,18 +74,15 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 
 ## Containers
 
-### Extended containers
-
-*Note*: Extended SSZ containers inherit all fields from the parent in the original
-order and append any additional fields to the end.
+### Modified containers
 
 #### `BeaconBlockBody`
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
     # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
-    sync_committee_signature: BLSSignature
+    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]  # [New in HF1]
+    sync_committee_signature: BLSSignature  # [New in HF1]
 ```
 
 #### `BeaconState`
@@ -168,21 +111,19 @@ class BeaconState(Container):
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Participation
-    previous_epoch_participation: List[ValidatorFlag, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ValidatorFlag, VALIDATOR_REGISTRY_LIMIT]
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    # Light client sync committees
-    current_sync_committee: SyncCommittee
-    next_sync_committee: SyncCommittee
-    # How many inactivity leak epochs have there been in the previous penalty period?
-    leak_epoch_counter: uint64
-    # Increases when the validator misses epochs in an inactivity leak, decreases when the validator
-    # is online in an inactivity leak, inactivity leak penalties are proportional to this value
-    leak_score: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # Leak
+    leak_epochs_counter: Epoch  # [New in HF1]
+    leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
+    # Sync
+    current_sync_committee: SyncCommittee  # [New in HF1]
+    next_sync_committee: SyncCommittee  # [New in HF1]
 ```
 
 ### New containers
@@ -192,7 +133,7 @@ class BeaconState(Container):
 ```python
 class SyncCommittee(Container):
     pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
-    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE]
+    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_SUBCOMMITTEE_SIZE]
 ```
 
 ## Helper functions
@@ -211,33 +152,40 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
     return bls.FastAggregateVerify(pubkeys, message, signature)
 ```
 
-#### `is_activation_exit_period_boundary`
+#### `is_activation_exit_epoch`
 
 ```python
-def is_activation_exit_period_boundary(state: BeaconState) -> bool:
+def is_activation_exit_epoch(state: BeaconState) -> bool:
     return get_current_epoch(state) % EPOCHS_PER_ACTIVATION_EXIT_PERIOD == 0
+```
+
+#### `is_leak_active`
+
+```python
+def is_leak_active(state: BeaconState) -> bool:
+    return get_finality_delay(state) > EPOCHS_TO_LEAK_PENALTIES
 ```
 
 ### Misc
 
-#### `flags_and_numerators`
+#### `get_flag_masks_and_numerators`
 
 ```python
-def get_flags_and_numerators() -> Sequence[Tuple[ValidatorFlag, int]]:
+def get_flag_masks_and_numerators() -> Sequence[Tuple[ParticipationFlags, int]]:
     return (
-        (TIMELY_HEAD_FLAG, TIMELY_HEAD_NUMERATOR),
-        (TIMELY_SOURCE_FLAG, TIMELY_SOURCE_NUMERATOR),
-        (TIMELY_TARGET_FLAG, TIMELY_TARGET_NUMERATOR)
+        (TIMELY_HEAD_FLAG_MASK, TIMELY_HEAD_FLAG_NUMERATOR),
+        (TIMELY_SOURCE_FLAG_MASK, TIMELY_SOURCE_FLAG_NUMERATOR),
+        (TIMELY_TARGET_FLAG_MASK, TIMELY_TARGET_FLAG_NUMERATOR),
     )
 ```
 
 ```python
-def add_validator_flags(flags: ValidatorFlag, add: ValidatorFlag) -> ValidatorFlag:
+def add_validator_flags(flags: ParticipationFlags, add: ParticipationFlags) -> ParticipationFlags:
     return flags | add
 ```
 
 ```python
-def has_validator_flags(flags: ValidatorFlag, has: ValidatorFlag) -> bool:
+def has_validator_flags(flags: ParticipationFlags, has: ParticipationFlags) -> bool:
     return flags & has == has
 ```
 
@@ -276,13 +224,10 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     Return the sync committee for a given state and epoch.
     """
     indices = get_sync_committee_indices(state, epoch)
-    validators = [state.validators[index] for index in indices]
-    pubkeys = [validator.pubkey for validator in validators]
-    aggregates = [
-        bls.AggregatePKs(pubkeys[i:i + SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE])
-        for i in range(0, len(pubkeys), SYNC_COMMITTEE_PUBKEY_AGGREGATES_SIZE)
-    ]
-    return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=aggregates)
+    pubkeys = [state.validators[index].pubkey for index in indices]
+    subcommitees = [pubkeys[i:i + SYNC_SUBCOMMITTEE_SIZE] for i in range(0, len(pubkeys), SYNC_SUBCOMMITTEE_SIZE)]
+    pubkey_aggregates = [bls.AggregatePKs(subcommitee) for subcommitee in subcommitees]
+    return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=pubkey_aggregates)
 ```
 
 #### `get_base_reward`
@@ -299,9 +244,11 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 #### `get_unslashed_participating_indices`
 
 ```python
-def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlag, epoch: Epoch) -> Set[ValidatorIndex]:
+def get_unslashed_participating_indices(state: BeaconState,
+                                        flags: ParticipationFlags,
+                                        epoch: Epoch) -> Set[ValidatorIndex]:
     """
-    Retrieve the active validator indices of the given epoch, which are not slashed, and have all of the given flags. 
+    Retrieve the active validator indices of the given epoch, which are not slashed, and have all of the given flags.
     """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
@@ -315,58 +262,36 @@ def get_unslashed_participating_indices(state: BeaconState, flags: ValidatorFlag
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
-#### `get_flag_rewards`
+#### `get_mask_rewards`
 
 ```python
-def get_flag_rewards(state: BeaconState, flag: ValidatorFlag, numerator: uint64) -> Sequence[Gwei]:
-    """
-    Compute the rewards associated with a particular duty, by scanning through the participation.
-    flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
-    """
+def get_mask_rewards(state: BeaconState, mask: ParticipationFlags, numerator: uint64) -> Sequence[Gwei]:
     rewards = [Gwei(0)] * len(state.validators)
-
-    unslashed_participating_indices = get_unslashed_participating_indices(state, flag, get_previous_epoch(state))
+    unslashed_participating_indices = get_unslashed_participating_indices(state, mask, get_previous_epoch(state))
     increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
     unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // increment
     active_increments = get_total_active_balance(state) // increment
-    for index in get_eligible_validator_indices(state):
+    for index in unslashed_participating_indices:
         base_reward = get_base_reward(state, index)
-        if index in unslashed_participating_indices:
-            penalty_canceling_reward = base_reward * numerator // REWARD_DENOMINATOR
-            extra_reward = (
-                (base_reward * numerator * unslashed_participating_increments)
-                // (active_increments * REWARD_DENOMINATOR)
-            )
-            if is_in_inactivity_leak(state):
-                rewards[index] = penalty_canceling_reward
-            else:
-                rewards[index] = penalty_canceling_reward + extra_reward
+        # Cancel equivalent mask penalty
+        rewards[index] += Gwei(base_reward * numerator // FLAG_DENOMINATOR)
+        if not is_leak_active(state):
+            reward_numerator = base_reward * numerator * unslashed_participating_increments
+            rewards[index] += Gwei(reward_numerator // (active_increments * FLAG_DENOMINATOR))
     return rewards
 ```
 
-#### `get_regular_penalties`
+#### `get_flag_penalties`
 
 ```python
-def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
-    """
-    Compute the regular epoch penalties for each validator.
-    """
+def get_flag_penalties(state: BeaconState) -> Sequence[Gwei]:
     penalties = [Gwei(0)] * len(state.validators)
-
-    # Only give penalties on period boundaries
-    if not is_activation_exit_period_boundary(state):
-        return penalties
-
-    attestation_numerators = (TIMELY_HEAD_NUMERATOR, TIMELY_SOURCE_NUMERATOR, TIMELY_TARGET_NUMERATOR)
+    flag_numerators = [numerator for _, numerator in get_flag_masks_and_numerators()]
     for index in get_eligible_validator_indices(state):
-        # "Regular" penalty is applied to each eligible validator. If the validator participates in the attestation
-        # correctly, this penalty will be canceled.
-        penalty_per_epoch = sum(
-            get_base_reward(state, index) * numerator // REWARD_DENOMINATOR
-            for numerator in attestation_numerators
-        )
-        penalty_per_period = Gwei(penalty_per_epoch * EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
-        penalties[index] = penalty_per_period
+        base_reward = get_base_reward(state, index)
+        mask_penalty_per_epoch = sum(base_reward * numerator // FLAG_DENOMINATOR for numerator in flag_numerators)
+        # Cancel equivalent mask reward
+        penalties[index] += Gwei(mask_penalty_per_epoch * EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
     return penalties
 ```
 
@@ -374,29 +299,11 @@ def get_regular_penalties(state: BeaconState) -> Sequence[Gwei]:
 
 ```python
 def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
-    """
-    Compute inactivity leak penalties for each validator.
-    """
     penalties = [Gwei(0)] * len(state.validators)
-
-    # Only give penalties on period boundaries
-    if not is_activation_exit_period_boundary(state):
-        return penalties
-
     for index in get_eligible_validator_indices(state):
-        # Inactivity-leak-specific penalty
-        if state.leak_score[index] >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS:
-            # Goal: an offline validator loses (~n^2/2) / INACTIVITY_PENALTY_QUOTIENT after n leak *epochs*
-            # `leak_score` roughly represents n * LEAK_SCORE_BIAS at the n'th epoch.
-            # In the *period* containing the n'th epoch, we hence
-            # `leak_score * leak_epochs_in_period // LEAK_SCORE_BIAS`.
-            # This corresponds to leaking leak_score / LEAK_SCORE_BIAS, or n, per epoch.
-            # sum[1...n] n ~= n^2/2, as desired
-            leak_penalty = (
-                state.leak_score[index] * state.leak_epoch_counter
-                // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
-            )
-            penalties[index] = leak_penalty
+        leak_score = state.leak_scores[index]
+        if leak_score >= EPOCHS_PER_ACTIVATION_EXIT_PERIOD * LEAK_SCORE_BIAS:
+            penalties[index] += Gwei(leak_score * state.leak_epochs_counter // LEAK_PENALTY_QUOTIENT)
     return penalties
 ```
 
@@ -407,12 +314,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)
-    # Light client support
-    process_sync_committee(state, block.body)
+    process_operations(state, block.body)  # [Modified in HF1]
+    process_sync_committee(state, block.body)  # [New in HF1]
 ```
 
-#### New `process_attestation`
+#### Modified `process_attestation`
 
 *Note*: The function `process_attestation` is modified to do incentive accounting with epoch participation flags.
 
@@ -445,30 +351,29 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Participation flags
     participation_flags = []
-    if is_matching_head and is_matching_target and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
-        participation_flags.append(TIMELY_HEAD_FLAG)
+    if is_matching_head and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flags.append(TIMELY_HEAD_FLAG_MASK)
     if is_matching_source and state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
-        participation_flags.append(TIMELY_SOURCE_FLAG)
+        participation_flags.append(TIMELY_SOURCE_FLAG_MASK)
     if is_matching_target and state.slot <= data.slot + SLOTS_PER_EPOCH:
-        participation_flags.append(TIMELY_TARGET_FLAG)
+        participation_flags.append(TIMELY_TARGET_FLAG_MASK)
 
     # Update epoch participation flags
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
-        for flag, numerator in get_flags_and_numerators():
-            if flag in participation_flags and not has_validator_flags(epoch_participation[index], flag):
-                epoch_participation[index] = add_validator_flags(epoch_participation[index], flag)
+        for flag_mask, numerator in get_flag_masks_and_numerators():
+            if flag_mask in participation_flags and not has_validator_flags(epoch_participation[index], flag_mask):
+                epoch_participation[index] = add_validator_flags(epoch_participation[index], flag_mask)
                 proposer_reward_numerator += get_base_reward(state, index) * numerator
 
     # Reward proposer
-    proposer_reward = Gwei(proposer_reward_numerator // (REWARD_DENOMINATOR * PROPOSER_REWARD_QUOTIENT))
+    proposer_reward = Gwei(proposer_reward_numerator // (FLAG_DENOMINATOR * PROPOSER_REWARD_QUOTIENT))
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
+#### Modified `process_deposit`
 
-#### New `process_deposit`
-
-*Note*: The function `process_deposit` is modified to initialize `previous_epoch_participation` and `current_epoch_participation`.
+*Note*: The function `process_deposit` is modified to initialize `leak_scores`, `previous_epoch_participation`, `current_epoch_participation`.
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
@@ -496,16 +401,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
-            return
-
-        # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(state, deposit))
-        state.balances.append(amount)
-        state.leak_score.append(0)
-        # [Added in hf-1] Initialize empty participation flags for new validator
-        state.previous_epoch_participation.append(ValidatorFlag(0))
-        state.current_epoch_participation.append(ValidatorFlag(0))
+        # Initialize validator if the deposit signature is valid
+        if bls.Verify(pubkey, signing_root, deposit.data.signature):
+            state.validators.append(get_validator_from_deposit(state, deposit))
+            state.balances.append(amount)
+            state.leak_scores.append(0)
+            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -527,37 +429,35 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
     assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, body.sync_committee_signature)
 
     # Reward sync committee participants
-    total_proposer_reward = Gwei(0)
+    proposer_rewards = Gwei(0)
     active_validator_count = uint64(len(get_active_validator_indices(state, get_current_epoch(state))))
     for participant_index in participant_indices:
-        base_reward = get_base_reward(state, participant_index)
         proposer_reward = get_proposer_reward(state, participant_index)
+        proposer_rewards += proposer_reward
+        base_reward = get_base_reward(state, participant_index)
         max_participant_reward = base_reward - proposer_reward
-        reward = Gwei(max_participant_reward * active_validator_count // len(committee_indices) // SLOTS_PER_EPOCH)
+        reward = Gwei(max_participant_reward * active_validator_count // (len(committee_indices) * SLOTS_PER_EPOCH))
         increase_balance(state, participant_index, reward)
-        total_proposer_reward += proposer_reward
 
     # Reward beacon proposer
-    increase_balance(state, get_beacon_proposer_index(state), total_proposer_reward)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_rewards)
 ```
 
 ### Modified helpers
 
-#### New `compute_activation_exit_epoch`
+#### Modified `compute_activation_exit_epoch`
 
 ```python
 def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
     Return the epoch during which validator activations and exits initiated in ``epoch`` take effect.
     """
-    next_period_start = epoch - (epoch % EPOCHS_PER_ACTIVATION_EXIT_PERIOD) + EPOCHS_PER_ACTIVATION_EXIT_PERIOD
-    if next_period_start >= epoch + 1 + MAX_SEED_LOOKAHEAD:
-        return Epoch(next_period_start)
-    else:
-        return Epoch(next_period_start + EPOCHS_PER_ACTIVATION_EXIT_PERIOD)
+    def round_up(x: uint64, step: uint64) -> uint64:
+        return x if x % step == 0 else x - (x % step) + step
+    return Epoch(round_up(epoch + 1 + MAX_SEED_LOOKAHEAD, EPOCHS_PER_ACTIVATION_EXIT_PERIOD))
 ```
 
-#### New `initiate_validator_exit`
+#### Modified `initiate_validator_exit`
 
 ```python
 def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
@@ -585,22 +485,21 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)  # [Updated in HF1]
-    process_rewards_and_penalties(state)  # [Updated in HF1]
-    process_registry_updates(state)
+    process_justification_and_finalization(state)  # [Modified in HF1]
+    process_leak_updates(state)  # [New in HF1]
+    process_rewards_and_penalties(state)  # [Modified in HF1]
+    process_registry_updates(state)  # [Modified in HF1]
     process_slashings(state)
     process_eth1_data_reset(state)
-    process_effective_balance_updates(state)
+    process_effective_balance_updates(state)  # [Modified in HF1]
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
-    # [Removed in HF1] -- process_participation_record_updates(state)
-    # [Added in HF1]
-    process_participation_flag_updates(state)
-    process_sync_committee_updates(state)
+    process_participation_flag_updates(state)  # [New in HF1]
+    process_sync_committee_updates(state)  # [New in HF1]
 ```
 
-#### New `process_justification_and_finalization`
+#### Justification and finalization
 
 *Note*: The function `process_justification_and_finalization` is modified with `matching_target_attestations` replaced by `matching_target_indices`.
 
@@ -619,12 +518,12 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     state.previous_justified_checkpoint = state.current_justified_checkpoint
     state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
     state.justification_bits[0] = 0b0
-    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG, previous_epoch)
+    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_MASK, previous_epoch)
     if get_total_balance(state, matching_target_indices) * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
                                                         root=get_block_root(state, previous_epoch))
         state.justification_bits[1] = 0b1
-    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG, current_epoch)
+    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_MASK, current_epoch)
     if get_total_balance(state, matching_target_indices) * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_checkpoint = Checkpoint(epoch=current_epoch,
                                                         root=get_block_root(state, current_epoch))
@@ -646,9 +545,39 @@ def process_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
-#### New `process_rewards_and_penalties`
+#### Leak updates
 
-*Note*: The function `process_rewards_and_penalties` is modified to use participation flag deltas, and is broken up into the rewards and penalties-focused parts, which now work very differently.
+*Note*: The function `process_leak_updates` is new.
+
+```python
+def process_leak_updates(state: BeaconState) -> None:
+    # In a given epoch the leak score of a validator:
+    #    (a) decreases by 1 if the validator participates
+    #    (b) increases by LEAK_SCORE_BIAS if is_leak_active(state) and the validator does not participate
+    # For efficiency rule (b) increases are batched at activation-exit epochs using the leak epochs counter.
+
+    # Decrease leak score per rule (a)
+    decrease_amount = 1
+    if is_leak_active(state):
+        decrease_amount += LEAK_SCORE_BIAS  # Cancel corresponding increase at activation-exit epochs
+    for index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_MASK, get_previous_epoch(state)):
+        if state.leak_scores[index] < decrease_amount:
+            state.leak_scores[index] = 0
+        else:
+            state.leak_scores[index] -= decrease_amount
+
+    # Increase leak score per rule (b)
+    if is_leak_active(state):
+        state.leak_epochs_counter += Epoch(1)
+    if is_activation_exit_epoch(state):
+        for index in get_eligible_validator_indices(state):
+            state.leak_scores[index] += LEAK_SCORE_BIAS * state.leak_epochs_counter
+        state.leak_epochs_counter = Epoch(0)
+```
+
+#### Rewards and penalties
+
+*Note*: The function `process_rewards_and_penalties` is modified to support the incentive reforms.
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
@@ -656,66 +585,26 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    process_rewards(state)
-    process_penalties(state)
-```
-
-##### `process_rewards`
-
-```python
-def process_rewards(state: BeaconState) -> None:
-    flag_rewards = [get_flag_rewards(state, flag, numerator) for (flag, numerator) in get_flags_and_numerators()]
-    for rewards in flag_rewards:
+    # Process flag rewards across every flag mask
+    for rewards in [get_mask_rewards(state, mask, numerator) for (mask, numerator) in get_flag_masks_and_numerators()]:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
+
+    # Process flag penalties and leak penalties at activation-exit epochs
+    if is_activation_exit_epoch(state):
+        flag_penalties = get_flag_penalties(state)
+        leak_penalties = get_leak_penalties(state)
+        for index in range(len(state.validators)):
+            decrease_balance(state, ValidatorIndex(index), flag_penalties[index] + leak_penalties[index])
 ```
 
-##### `process_penalties`
+#### Registry updates
 
-```python
-def process_penalties(state: BeaconState) -> None:
-    # A validator's leak_score updates as follows:
-    # (i)  If there was an inactivity leak in a given epoch, anyone who participated in that epoch
-    #      has their score decrease by 1, anyone who did not has their score increase by LEAK_SCORE_BIAS
-    # (ii) If there was not an inactivity leak in a given epoch, anyone who participated in that epoch
-    #      has their score decrease by 1
-    # The code below implements this, though amortizing the "increase if absent" component until the end
-    # of the ACTIVATION_EXIT_PERIOD
-    
-    if is_in_inactivity_leak(state):
-        # If participated during leak, score decreases by 1 after end of period leak score increase
-        leak_score_decrease = LEAK_SCORE_BIAS + 1
-        state.leak_epoch_counter += 1
-    else:
-        leak_score_decrease = 1
-    matching_target_attesting_indices = get_unslashed_participating_indices(
-        state, TIMELY_TARGET_FLAG, get_previous_epoch(state)
-    )
-    for index in get_eligible_validator_indices(state):
-        if index in matching_target_attesting_indices:
-            if state.leak_score[index] < leak_score_decrease:
-                state.leak_score[index] = 0
-            else:
-                state.leak_score[index] -= leak_score_decrease
-
-    if not is_activation_exit_period_boundary(state):
-        return
-
-    # Penalty processing
-    regular_penalties = get_regular_penalties(state)
-    leak_penalties = get_leak_penalties(state)
-    for index in get_eligible_validator_indices(state):
-        decrease_balance(state, ValidatorIndex(index), regular_penalties[index] + leak_penalties[index])
-        state.leak_score[index] += LEAK_SCORE_BIAS * state.leak_epoch_counter
-
-    state.leak_epoch_counter = 0
-```
-
-#### New `process_registry_updates`
+*Note*: The function `process_registry_updates` is modified for processing every `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` epochs.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
-    if not is_activation_exit_period_boundary(state):
+    if not is_activation_exit_epoch(state):
         return
 
     # Process activation eligibility and ejections
@@ -738,26 +627,46 @@ def process_registry_updates(state: BeaconState) -> None:
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
-#### Sync committee updates
+#### Effective balances updates
+
+*Note*: The function `process_effective_balance_updates` is modified for processing every `EPOCHS_PER_ACTIVATION_EXIT_PERIOD` epochs.
 
 ```python
-def process_sync_committee_updates(state: BeaconState) -> None:
-    """
-    Call to ``proces_sync_committee_updates`` added to ``process_epoch`` in HF1
-    """
-    next_epoch = get_current_epoch(state) + Epoch(1)
-    if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
-        state.current_sync_committee = state.next_sync_committee
-        state.next_sync_committee = get_sync_committee(state, next_epoch + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+def process_effective_balance_updates(state: BeaconState) -> None:
+    if not is_activation_exit_epoch(state):
+        return
+
+    # Update effective balances with hysteresis
+    for index, validator in enumerate(state.validators):
+        balance = state.balances[index]
+        HYSTERESIS_INCREMENT = uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
+        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
+        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
+        if (
+            balance + DOWNWARD_THRESHOLD < validator.effective_balance
+            or validator.effective_balance + UPWARD_THRESHOLD < balance
+        ):
+            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
 ```
 
 #### Participation flags updates
 
+*Note*: The function `process_participation_flag_updates` is new.
+
 ```python
 def process_participation_flag_updates(state: BeaconState) -> None:
-    """
-    Call to ``process_participation_flag_updates`` added to ``process_epoch`` in HF1
-    """
     state.previous_epoch_participation = state.current_epoch_participation
-    state.current_epoch_participation = [ValidatorFlag(0) for _ in range(len(state.validators))]
+    state.current_epoch_participation = [ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
+```
+
+#### Sync committee updates
+
+*Note*: The function `process_sync_committee_updates` is new.
+
+```python
+def process_sync_committee_updates(state: BeaconState) -> None:
+    next_epoch = get_current_epoch(state) + Epoch(1)
+    if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
+        state.current_sync_committee = state.next_sync_committee
+        state.next_sync_committee = get_sync_committee(state, next_epoch + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 ```

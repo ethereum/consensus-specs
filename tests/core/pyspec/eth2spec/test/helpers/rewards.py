@@ -35,7 +35,7 @@ def run_deltas(spec, state):
       - target deltas ('target_deltas')
       - head deltas ('head_deltas')
       - if is_post_lightclient_patch(spec)
-          - regular penalty deltas ('regular_penalty_deltas')
+          - flag penalty deltas ('flag_penalty_deltas')
           - leak penalty deltas ('leak_penalty_deltas')
       - else
           - inclusion delay deltas ('inclusion_delay_deltas')
@@ -46,19 +46,19 @@ def run_deltas(spec, state):
     if is_post_lightclient_patch(spec):
         def get_source_deltas(state):
             return (
-                spec.get_flag_rewards(state, spec.TIMELY_SOURCE_FLAG, spec.TIMELY_SOURCE_NUMERATOR),
+                spec.get_mask_rewards(state, spec.TIMELY_SOURCE_FLAG_MASK, spec.TIMELY_SOURCE_FLAG_NUMERATOR),
                 [0] * len(state.validators)
             )
 
         def get_head_deltas(state):
             return (
-                spec.get_flag_rewards(state, spec.TIMELY_HEAD_FLAG, spec.TIMELY_HEAD_NUMERATOR),
+                spec.get_mask_rewards(state, spec.TIMELY_HEAD_FLAG_MASK, spec.TIMELY_HEAD_FLAG_NUMERATOR),
                 [0] * len(state.validators)
             )
 
         def get_target_deltas(state):
             return (
-                spec.get_flag_rewards(state, spec.TIMELY_TARGET_FLAG, spec.TIMELY_TARGET_NUMERATOR),
+                spec.get_mask_rewards(state, spec.TIMELY_TARGET_FLAG_MASK, spec.TIMELY_TARGET_FLAG_NUMERATOR),
                 [0] * len(state.validators)
             )
 
@@ -84,7 +84,7 @@ def run_deltas(spec, state):
         'head_deltas',
     )
     if is_post_lightclient_patch(spec):
-        yield from run_get_regular_penalties(spec, state)
+        yield from run_get_flag_penalties(spec, state)
         yield from run_get_leak_penalties(spec, state)
     else:
         yield from run_get_inclusion_delay_deltas(spec, state)
@@ -93,11 +93,11 @@ def run_deltas(spec, state):
 
 def deltas_name_to_flag(spec, deltas_name):
     if 'source' in deltas_name:
-        return spec.TIMELY_SOURCE_FLAG
+        return spec.TIMELY_SOURCE_FLAG_MASK
     elif 'head' in deltas_name:
-        return spec.TIMELY_HEAD_FLAG
+        return spec.TIMELY_HEAD_FLAG_MASK
     elif 'target' in deltas_name:
-        return spec.TIMELY_TARGET_FLAG
+        return spec.TIMELY_TARGET_FLAG_MASK
     raise ValueError("Wrong deltas_name %s" % deltas_name)
 
 
@@ -141,18 +141,21 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                 assert penalties[index] > 0
 
 
-def run_get_regular_penalties(spec, state):
+def run_get_flag_penalties(spec, state):
     """
-    Run ``get_regular_penalties``, yielding:
+    Run ``get_flag_penalties``, yielding:
       - penalty deltas (`[0...], penalties`)
     """
-    penalties = spec.get_regular_penalties(state)
+    penalties = [0] * len(state.validators)
     rewards = [0] * len(state.validators)
 
-    yield 'regular_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
-
-    if not spec.is_activation_exit_period_boundary(state):
+    if spec.is_activation_exit_epoch(state):
+        spec.get_flag_penalties(state)
+    else:
         assert penalties == rewards
+        assert not any(rewards)
+
+    yield 'flag_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
 
 def run_get_leak_penalties(spec, state):
@@ -160,14 +163,16 @@ def run_get_leak_penalties(spec, state):
     Run ``get_leak_penalties``, yielding:
       - penalty deltas (`[0...], penalties`)
     """
-    penalties = spec.get_leak_penalties(state)
+    penalties = [0] * len(state.validators)
     rewards = [0] * len(state.validators)
 
-    yield 'leak_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
-
-    if not spec.is_activation_exit_period_boundary(state):
+    if spec.is_activation_exit_epoch(state):
+        spec.get_leak_penalties(state)
+    else:
         assert penalties == rewards
         assert not any(rewards)
+
+    yield 'leak_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
 
 def run_get_inclusion_delay_deltas(spec, state):
@@ -244,7 +249,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
             assert penalties[index] == 0
             continue
 
-        if spec.is_in_inactivity_leak(state):
+        if spec.is_leak_active(state):
             # Compute base_penalty
             cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
             base_reward = spec.get_base_reward(state, index)
@@ -262,15 +267,15 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
 def transition_state_to_leak(spec, state, epochs=None):
     if epochs is None:
-        epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
-    assert epochs >= spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
+        epochs = spec.EPOCHS_TO_LEAK_PENALTIES
+    assert epochs >= spec.EPOCHS_TO_LEAK_PENALTIES
 
     for _ in range(epochs):
         next_epoch(spec, state)
 
     # Leak penalties are only applied at activation/exit period boundaries after HF1.
     # So transition to this period boundary to make the test interesting.
-    if is_post_lightclient_patch(spec) and not spec.is_activation_exit_period_boundary(state):
+    if is_post_lightclient_patch(spec) and not spec.is_activation_exit_epoch(state):
         epochs_until_boundary = (
             spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
             - spec.get_current_epoch(state) % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
@@ -289,7 +294,7 @@ def leaking(epochs=None):
             # If the pre-state is not already known in the LRU, then take it,
             # transition it to leak, and put it in the LRU.
             # The input state is likely already cached, so the hash-tree-root does not affect speed.
-            key = (state.hash_tree_root(), spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY, spec.SLOTS_PER_EPOCH, epochs)
+            key = (state.hash_tree_root(), spec.EPOCHS_TO_LEAK_PENALTIES, spec.SLOTS_PER_EPOCH, epochs)
             global _cache_dict
             if key not in _cache_dict:
                 transition_state_to_leak(spec, state, epochs=epochs)
@@ -367,7 +372,7 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     else:
         for index in range(len(state.validators)):
             if rng.choice([True, False]):
-                state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
+                state.previous_epoch_participation[index] = spec.ParticipationFlags(0)
 
     yield from run_deltas(spec, state)
 
@@ -381,7 +386,7 @@ def run_test_partial(spec, state, fraction_filled):
         state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
     else:
         for index in range(int(len(state.validators) * fraction_filled)):
-            state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
+            state.previous_epoch_participation[index] = spec.ParticipationFlags(0)
 
     yield from run_deltas(spec, state)
 
@@ -447,7 +452,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     else:
         index = 0
         state.validators[index].effective_balance = 1
-        state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
+        state.previous_epoch_participation[index] = spec.ParticipationFlags(0)
 
     yield from run_deltas(spec, state)
 
@@ -581,16 +586,16 @@ def run_test_full_random(spec, state, rng=Random(8020)):
                 else:
                     flags &= 0xff ^ f
 
-            set_flag(spec.TIMELY_HEAD_FLAG, is_timely_correct_head)
+            set_flag(spec.TIMELY_HEAD_FLAG_MASK, is_timely_correct_head)
             if is_timely_correct_head:
                 # If timely head, then must be timely target
-                set_flag(spec.TIMELY_TARGET_FLAG, True)
+                set_flag(spec.TIMELY_TARGET_FLAG_MASK, True)
                 # If timely head, then must be timely source
-                set_flag(spec.TIMELY_SOURCE_FLAG, True)
+                set_flag(spec.TIMELY_SOURCE_FLAG_MASK, True)
             else:
                 # ~50% of remaining have bad target or not timely enough
-                set_flag(spec.TIMELY_TARGET_FLAG, rng.choice([True, False]))
+                set_flag(spec.TIMELY_TARGET_FLAG_MASK, rng.choice([True, False]))
                 # ~50% of remaining have bad source or not timely enough
-                set_flag(spec.TIMELY_SOURCE_FLAG, rng.choice([True, False]))
+                set_flag(spec.TIMELY_SOURCE_FLAG_MASK, rng.choice([True, False]))
             state.previous_epoch_participation[index] = flags
     yield from run_deltas(spec, state)

@@ -36,7 +36,7 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
             assert post_state.balances[index] == pre_state.balances[index]
         elif not is_post_lightclient_patch(spec):
             proposer_indices = [a.proposer_index for a in post_state.previous_epoch_attestations]
-            if spec.is_in_inactivity_leak(post_state):
+            if spec.is_leak_active(post_state):
                 # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
                 if index in proposer_indices and index in attesting_indices:
                     assert post_state.balances[index] > pre_state.balances[index]
@@ -51,7 +51,7 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
                 else:
                     assert post_state.balances[index] < pre_state.balances[index]
         else:
-            if not spec.is_activation_exit_period_boundary(post_state):
+            if not spec.is_activation_exit_epoch(post_state):
                 if index in attesting_indices:
                     # Can only receive rewards on non-boundary epoch so positive participanting
                     assert post_state.balances[index] > pre_state.balances[index]

@@ -227,7 +227,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
+| `EPOCHS_TO_LEAK_PENALTIES` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
@@ -1375,8 +1375,8 @@ def get_finality_delay(state: BeaconState) -> uint64:
 
 
 ```python
-def is_in_inactivity_leak(state: BeaconState) -> bool:
-    return get_finality_delay(state) > MIN_EPOCHS_TO_INACTIVITY_PENALTY
+def is_leak_active(state: BeaconState) -> bool:
+    return get_finality_delay(state) > EPOCHS_TO_LEAK_PENALTIES
 ```
 
 
@@ -1404,7 +1404,7 @@ def get_attestation_component_deltas(state: BeaconState,
     for index in get_eligible_validator_indices(state):
         if index in unslashed_attesting_indices:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balance totals to avoid uint64 overflow
-            if is_in_inactivity_leak(state):
+            if is_leak_active(state):
                 # Since full base reward will be canceled out by inactivity penalty deltas,
                 # optimal participation receives full base reward compensation here.
                 rewards[index] += get_base_reward(state, index)
@@ -1472,7 +1472,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     Return inactivity reward/penalty deltas for each validator.
     """
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-    if is_in_inactivity_leak(state):
+    if is_leak_active(state):
         matching_target_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in get_eligible_validator_indices(state):

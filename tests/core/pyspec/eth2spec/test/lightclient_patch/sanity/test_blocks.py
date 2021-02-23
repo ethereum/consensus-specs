@@ -79,16 +79,16 @@ def test_empty_sync_committee_committee_genesis(spec, state):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_leak_epoch_counter(spec, state):
-    for _ in range(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2):
+def test_leak_epochs_counter(spec, state):
+    for _ in range(spec.EPOCHS_TO_LEAK_PENALTIES + 2):
         next_epoch_via_block(spec, state)
 
-    assert spec.is_in_inactivity_leak(state)
+    assert spec.is_leak_active(state)
 
-    if spec.is_activation_exit_period_boundary(state):
+    if spec.is_activation_exit_epoch(state):
         next_epoch_via_block(spec, state)
 
-    previous_leak_epoch_counter = state.leak_epoch_counter
+    previous_leak_epochs_counter = state.leak_epochs_counter
 
     yield 'pre', state
 
@@ -99,4 +99,4 @@ def test_leak_epoch_counter(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    assert state.leak_epoch_counter == previous_leak_epoch_counter + 1
+    assert state.leak_epochs_counter == previous_leak_epochs_counter + 1

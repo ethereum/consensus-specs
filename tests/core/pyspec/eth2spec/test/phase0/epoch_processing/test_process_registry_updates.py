@@ -96,7 +96,7 @@ def transition_state_and_finalize_to_process_queue(spec, state):
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 3)
     if is_post_lightclient_patch(spec):
         current_epoch = spec.get_current_epoch(state)
-        if not spec.is_activation_exit_period_boundary(state):
+        if not spec.is_activation_exit_epoch(state):
             epochs_until_period = (
                 spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD
                 - (current_epoch % spec.EPOCHS_PER_ACTIVATION_EXIT_PERIOD)

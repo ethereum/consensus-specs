@@ -42,6 +42,7 @@ After `process_slots` of Phase 0 finishes, if `state.slot == LIGHTCLIENT_PATCH_F
 def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
     epoch = get_current_epoch(pre)
     post = BeaconState(
+        # Versioning
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
@@ -62,19 +63,20 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
         # Registry
         validators=pre.validators,
         balances=pre.balances,
-        leak_score=[0 for _ in range(len(pre.validators))],
         # Randomness
         randao_mixes=pre.randao_mixes,
         # Slashings
         slashings=pre.slashings,
-        # Attestations
-        previous_epoch_participation=[ValidatorFlag(0) for _ in range(len(pre.validators))],
-        current_epoch_participation=[ValidatorFlag(0) for _ in range(len(pre.validators))],
+        # Participation
+        previous_epoch_participation=[ParticipationFlags(0) for _ in range(len(pre.validators))],
+        current_epoch_participation=[ParticipationFlags(0) for _ in range(len(pre.validators))],
         # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
+        # Leak
+        leak_scores=[0 for _ in range(len(pre.validators))],
     )
     # Fill in sync committees
     post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))

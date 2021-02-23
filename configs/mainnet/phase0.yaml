@@ -78,7 +78,7 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 
 # Time parameters
 # ---------------------------------------------------------------
-# 604800 seconds (7 days)
+# 604,800 seconds (7 days)
 GENESIS_DELAY: 604800
 # 12 seconds
 SECONDS_PER_SLOT: 12
@@ -99,7 +99,7 @@ MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 # 2**8 (= 256) epochs ~27 hours
 SHARD_COMMITTEE_PERIOD: 256
 # 2**2 (= 4) epochs 25.6 minutes
-MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
+EPOCHS_TO_LEAK_PENALTIES: 4
 
 
 # State vector lengths
@@ -122,8 +122,8 @@ BASE_REWARD_FACTOR: 64
 WHISTLEBLOWER_REWARD_QUOTIENT: 512
 # 2**3 (= 8)
 PROPOSER_REWARD_QUOTIENT: 8
-# 2**26 (= 67,108,864)
-INACTIVITY_PENALTY_QUOTIENT: 67108864
+# 2**28 (= 268,435,456)
+LEAK_PENALTY_QUOTIENT: 268435456
 # 2**7 (= 128) (lower safety margin at Phase 0 genesis)
 MIN_SLASHING_PENALTY_QUOTIENT: 128
 # 1 (lower safety margin at Phase 0 genesis)
