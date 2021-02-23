@@ -10,7 +10,7 @@ from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.lightclient_patch import spec as spec_lightclient_patch
-from eth2spec.test.context import PHASE0, PHASE1, LIGHTCLIENT_PATCH, TESTGEN_FORKS, MINIMAL, MAINNET
+from eth2spec.test.context import PHASE1, LIGHTCLIENT_PATCH, TESTGEN_FORKS, MINIMAL, MAINNET
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
