@@ -68,8 +68,8 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
         # Slashings
         slashings=pre.slashings,
         # Participation
-        previous_epoch_participation=[ParticipationFlags(0) for _ in range(len(pre.validators))],
-        current_epoch_participation=[ParticipationFlags(0) for _ in range(len(pre.validators))],
+        previous_epoch_participation=[Bitvector[8]() for _ in range(len(pre.validators))],
+        current_epoch_participation=[Bitvector[8]() for _ in range(len(pre.validators))],
         # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,

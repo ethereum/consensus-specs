@@ -806,7 +806,7 @@ def test_attestation(spec, state):
         assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
     else:
         for index in range(len(state.validators)):
-            assert state.current_epoch_participation[index] == 0
+            assert state.current_epoch_participation[index] == spec.Bitvector[8]()
         assert spec.hash_tree_root(state.previous_epoch_participation) == pre_current_epoch_participation_root
 
 
