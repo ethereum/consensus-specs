@@ -36,7 +36,7 @@ Prerequisites:
 
 ### Cleaning
 
-This removes the existing virtual environments (`/test_generators/<generator>/venv`) and generated tests (`/yaml_tests/`).
+This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../eth2.0-spec-tests/tests`).
 
 ```bash
 make clean 
@@ -47,7 +47,7 @@ make clean
 This runs all of the generators.
 
 ```bash
-make -j 4 gen_yaml_tests
+make -j 4 generate_tests
 ```
 
 The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
@@ -55,10 +55,10 @@ The `-j N` flag makes the generators run in parallel, with `N` being the amount 
 
 ### Running a single generator
 
-The makefile auto-detects generators in the `test_generators` directory and provides a tests-gen target for each generator. See example:
+The makefile auto-detects generators in the `tests/generators` directory and provides a tests-gen target (gen_<generator_name>) for each generator. See example:
 
 ```bash
-make ./eth2.0-spec-tests/tests/shuffling/
+make gen_ssz_static
 ```
 
 ## Developing a generator
@@ -210,7 +210,7 @@ Recommendations:
 
 To add a new test generator that builds `New Tests`:
 
-1. Create a new directory `new_tests` within the `test_generators` directory.
+1. Create a new directory `new_tests` within the `tests/generators` directory.
  Note that `new_tests` is also the name of the directory in which the tests will appear in the tests repository later.
 2. Your generator is assumed to have a `requirements.txt` file,
  with any dependencies it may need. Leave it empty if your generator has none.
