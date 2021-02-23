@@ -2,7 +2,57 @@
 
 ## Table of contents
 
-[TODO: generate with doctoc]
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+  - [Participation flag masks](#participation-flag-masks)
+  - [Participation flag fractions](#participation-flag-fractions)
+  - [Misc](#misc)
+- [Configuration](#configuration)
+  - [Misc](#misc-1)
+  - [Time parameters](#time-parameters)
+  - [Domain types](#domain-types)
+- [Containers](#containers)
+  - [Modified containers](#modified-containers)
+    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`BeaconState`](#beaconstate)
+  - [New containers](#new-containers)
+    - [`SyncCommittee`](#synccommittee)
+- [Helper functions](#helper-functions)
+  - [`Predicates`](#predicates)
+    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+    - [`is_activation_exit_epoch`](#is_activation_exit_epoch)
+    - [`is_leak_active`](#is_leak_active)
+  - [Misc](#misc-2)
+    - [`get_flag_masks_and_numerators`](#get_flag_masks_and_numerators)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_sync_committee_indices`](#get_sync_committee_indices)
+    - [`get_sync_committee`](#get_sync_committee)
+    - [`get_base_reward`](#get_base_reward)
+    - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
+    - [`get_mask_rewards`](#get_mask_rewards)
+    - [`get_flag_penalties`](#get_flag_penalties)
+    - [`get_leak_penalties`](#get_leak_penalties)
+  - [Block processing](#block-processing)
+    - [Modified `process_attestation`](#modified-process_attestation)
+    - [Modified `process_deposit`](#modified-process_deposit)
+    - [Sync committee processing](#sync-committee-processing)
+  - [Modified helpers](#modified-helpers)
+    - [Modified `compute_activation_exit_epoch`](#modified-compute_activation_exit_epoch)
+    - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
+  - [Epoch processing](#epoch-processing)
+    - [Justification and finalization](#justification-and-finalization)
+    - [Leak updates](#leak-updates)
+    - [Rewards and penalties](#rewards-and-penalties)
+    - [Registry updates](#registry-updates)
+    - [Effective balances updates](#effective-balances-updates)
+    - [Participation flags updates](#participation-flags-updates)
+    - [Sync committee updates](#sync-committee-updates)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
 
@@ -16,7 +66,7 @@ This document specifies the beacon chain changes in the first Eth2 hard fork, te
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `uint8` | a succint representation of 8 boolean participation flags |
+| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
 
 ## Constants
 
