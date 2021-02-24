@@ -5,7 +5,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Notation](#notation)
 - [Custom types](#custom-types)
@@ -14,6 +13,7 @@
   - [Misc](#misc)
   - [Gwei values](#gwei-values)
   - [Initial values](#initial-values)
+  - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Time parameters](#time-parameters)
   - [State list lengths](#state-list-lengths)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -210,7 +210,13 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
+
+### Withdrawal prefixes
+
+| Name | Value |
+| - | - |
 | `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
+| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
 ### Time parameters
 
