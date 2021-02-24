@@ -132,10 +132,10 @@ The `withdrawal_credentials` field must be such that:
 * `withdrawal_credentials[1:12] == b'\x00' * 11`
 * `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
-After the merge of eth1 into eth2,
+After the merge of the current Ethereum application layer (Eth1) into the Beacon Chain (Eth2),
 withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH)
 triggered by a user transaction that will set the gas price and gas limit as well pay fees.
-As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers
+As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers,
 the future withdrawal protocol is agnostic to all other implementation details.
 
 ### Submit deposit
