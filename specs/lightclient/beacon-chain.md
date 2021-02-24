@@ -29,6 +29,8 @@
     - [`is_leak_active`](#is_leak_active)
   - [Misc](#misc-2)
     - [`get_flag_indices_and_numerators`](#get_flag_indices_and_numerators)
+    - [`add_flag`](#add_flag)
+    - [`has_flag`](#has_flag)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_sync_committee_indices`](#get_sync_committee_indices)
     - [`get_sync_committee`](#get_sync_committee)
@@ -51,14 +53,8 @@
     - [Leak updates](#leak-updates)
     - [Rewards and penalties](#rewards-and-penalties)
     - [Registry updates](#registry-updates)
+    - [Slashings](#slashings)
     - [Effective balances updates](#effective-balances-updates)
-    - [New `process_justification_and_finalization`](#new-process_justification_and_finalization)
-    - [New `process_rewards_and_penalties`](#new-process_rewards_and_penalties)
-      - [`process_rewards`](#process_rewards)
-      - [`process_penalties`](#process_penalties)
-    - [New `process_registry_updates`](#new-process_registry_updates)
-    - [New `process_slashings`](#new-process_slashings)
-    - [Sync committee updates](#sync-committee-updates)
     - [Participation flags updates](#participation-flags-updates)
     - [Sync committee updates](#sync-committee-updates)
 
@@ -77,7 +73,7 @@ This document specifies the beacon chain changes in the first Eth2 hard fork, te
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `Bitvector[8]` | a vector of participation flags |
+| `ParticipationFlags` | `uint8` | a succint representation of 8 boolean participation flags |
 
 ## Constants
 
@@ -182,8 +178,8 @@ class BeaconState(Container):
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Participation
-    previous_epoch_participation: List[Bitvector[8], VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
-    current_epoch_participation: List[Bitvector[8], VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
@@ -250,6 +246,22 @@ def get_flag_indices_and_numerators() -> Sequence[Tuple[int, int]]:
     )
 ```
 
+#### `add_flag`
+
+```python
+def add_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
+    flag = ParticipationFlags(2**flag_index)
+    return flags | flag
+```
+
+#### `has_flag`
+
+```python
+def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
+    flag = ParticipationFlags(2**flag_index)
+    return flags & flag == flag
+```
+
 ### Beacon state accessors
 
 #### `get_sync_committee_indices`
@@ -314,12 +326,9 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
         epoch_participation = state.current_epoch_participation
     else:
         epoch_participation = state.previous_epoch_participation
-
-    unslashed_participating_indices = set()
-    for index, validator in enumerate(state.validators):
-        if is_active_validator(validator, epoch) and not validator.slashed and epoch_participation[index][flag_index]:
-            unslashed_participating_indices.add(ValidatorIndex(index))
-    return unslashed_participating_indices
+    active_validator_indices = get_active_validator_indices(state, epoch)
+    participating_indices = [i for i in active_validator_indices if has_flag(epoch_participation[i], flag_index)]
+    return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
 #### `get_flag_index_rewards`
@@ -441,21 +450,21 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Verify signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
-    # Participation flags
-    participation_flags = []
-    if is_matching_head and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
-        participation_flags.append(TIMELY_HEAD_FLAG_INDEX)
+    # Participation flag indices
+    participation_flag_indices = []
+    if is_matching_head and is_matching_target and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
     if is_matching_source and state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
-        participation_flags.append(TIMELY_SOURCE_FLAG_INDEX)
+        participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
     if is_matching_target and state.slot <= data.slot + SLOTS_PER_EPOCH:
-        participation_flags.append(TIMELY_TARGET_FLAG_INDEX)
+        participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
 
     # Update epoch participation flags
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
         for flag_index, flag_numerator in get_flag_indices_and_numerators():
-            if not epoch_participation[index][flag_index]:
-                epoch_participation[index][flag_index] = 0b1
+            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
+                add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * flag_numerator
 
     # Reward proposer
@@ -498,8 +507,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             state.validators.append(get_validator_from_deposit(state, deposit))
             state.balances.append(amount)
             state.leak_scores.append(0)
-            state.previous_epoch_participation.append(Bitvector[8]())
-            state.current_epoch_participation.append(Bitvector[8]())
+            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -720,10 +729,9 @@ def process_registry_updates(state: BeaconState) -> None:
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
-#### New `process_slashings`
+#### Slashings
 
-*Note*: The function `process_slashings` is modified
-with the substitution of `PROPORTIONAL_SLASHING_MULTIPLIER` with `HF1_PROPORTIONAL_SLASHING_MULTIPLIER`.
+*Note*: The function `process_slashings` is modified to use `HF1_PROPORTIONAL_SLASHING_MULTIPLIER`.
 
 ```python
 def process_slashings(state: BeaconState) -> None:
@@ -767,7 +775,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 ```python
 def process_participation_flag_updates(state: BeaconState) -> None:
     state.previous_epoch_participation = state.current_epoch_participation
-    state.current_epoch_participation = [Bitvector[8]() for _ in range(len(state.validators))]
+    state.current_epoch_participation = [ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
 ```
 
 #### Sync committee updates
