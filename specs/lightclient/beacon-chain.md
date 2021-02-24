@@ -464,7 +464,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
         for flag_index, flag_numerator in get_flag_indices_and_numerators():
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
-                add_flag(epoch_participation[index], flag_index)
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * flag_numerator
 
     # Reward proposer
