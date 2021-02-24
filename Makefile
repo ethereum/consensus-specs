@@ -64,13 +64,13 @@ clean: partial_clean
 
 # The pyspec is rebuilt to enforce the /specs being part of eth2specs source distribution. It could be forgotten otherwise.
 dist_build: pyspec
-	python3 setup.py sdist bdist_wheel
+	python3.8 setup.py sdist bdist_wheel
 
 dist_check:
-	python3 -m twine check dist/*
+	python3.8 -m twine check dist/*
 
 dist_upload:
-	python3 -m twine upload dist/*
+	python3.8 -m twine upload dist/*
 
 
 # "make generate_tests" to run all generators
@@ -82,7 +82,7 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]
+	python3.8 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
@@ -133,7 +133,7 @@ test_deposit_contract:
 	dapp test -v --fuzz-runs 5
 
 install_deposit_contract_web3_tester:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; python3 -m pip install -r requirements.txt
+	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3.8 -m venv venv; . venv/bin/activate; python3 -m pip install -r requirements.txt
 
 test_deposit_contract_web3_tests:
 	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
@@ -153,7 +153,7 @@ define run_generator
 	echo "generator $(1) started"; \
 	mkdir -p $(TEST_VECTOR_DIR); \
 	cd $(GENERATOR_DIR)/$(1); \
-	if ! test -d venv; then python3 -m venv venv; fi; \
+	if ! test -d venv; then python3.8 -m venv venv; fi; \
 	. venv/bin/activate; \
 	pip3 install -r requirements.txt; \
 	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR) -c $(CURRENT_DIR)/$(CONFIGS_DIR); \
