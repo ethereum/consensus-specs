@@ -562,13 +562,12 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
-
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
         "eth2spec": "tests/core/pyspec/eth2spec",
         "configs": "configs",
-        "specs": "specs"
+        "specs": "specs",
     },
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],
     py_modules=["eth2spec"],

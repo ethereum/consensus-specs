@@ -1,43 +1,23 @@
-from typing import Iterable
-from importlib import reload
-
-from gen_base import gen_runner, gen_typing
-from gen_from_tests.gen import generate_from_tests
-
-from eth2spec.test.context import PHASE0, PHASE1
-from eth2spec.test.phase0.finality import test_finality
-from eth2spec.config import config_util
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.lightclient_patch import spec as spec_lightclient_patch
 from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.utils import bls
+from eth2spec.test.context import PHASE0, PHASE1, LIGHTCLIENT_PATCH
 
 
-def create_provider(fork_name: str, handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
-
-    def prepare_fn(configs_path: str) -> str:
-        config_util.prepare_config(configs_path, config_name)
-        reload(spec_phase0)
-        reload(spec_phase1)
-        bls.use_milagro()
-        return config_name
-
-    def cases_fn() -> Iterable[gen_typing.TestCase]:
-        return generate_from_tests(
-            runner_name='finality',
-            handler_name=handler_name,
-            src=tests_src,
-            fork_name=fork_name,
-        )
-
-    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
+specs = (spec_phase0, spec_lightclient_patch, spec_phase1)
 
 
 if __name__ == "__main__":
-    # No additional phase 1 specific rewards tests, yet.
-    key = 'finality'
-    gen_runner.run_generator("finality", [
-        create_provider(PHASE0, 'finality', test_finality, 'minimal'),
-        create_provider(PHASE0, 'finality', test_finality, 'mainnet'),
-        create_provider(PHASE1, 'finality', test_finality, 'minimal'),
-        create_provider(PHASE1, 'finality', test_finality, 'mainnet'),
-    ])
+    phase_0_mods = {'finality': 'eth2spec.test.phase0.finality.test_finality'}
+    # No additional lightclient_patch or phase 1 specific finality tests, yet.
+    lightclient_patch_mods = phase_0_mods
+    phase_1_mods = phase_0_mods
+
+    all_mods = {
+        PHASE0: phase_0_mods,
+        LIGHTCLIENT_PATCH: lightclient_patch_mods,
+        PHASE1: phase_1_mods,
+    }
+
+    run_state_test_generators(runner_name="finality", specs=specs, all_mods=all_mods)

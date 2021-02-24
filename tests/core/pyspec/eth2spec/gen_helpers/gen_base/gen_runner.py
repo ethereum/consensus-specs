@@ -8,10 +8,10 @@ from ruamel.yaml import (
     YAML,
 )
 
-from gen_base.gen_typing import TestProvider
-
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
+
+from .gen_typing import TestProvider
 
 
 # Flag that the runner does NOT run test via pytest
@@ -119,10 +119,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
         print(f"generating tests with config '{config_name}' ...")
         for test_case in tprov.make_cases():
-            case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
-                       / Path(test_case.runner_name) / Path(test_case.handler_name) \
-                       / Path(test_case.suite_name) / Path(test_case.case_name)
-
+            case_dir = (
+                Path(output_dir) / Path(config_name) / Path(test_case.fork_name)
+                / Path(test_case.runner_name) / Path(test_case.handler_name)
+                / Path(test_case.suite_name) / Path(test_case.case_name)
+            )
             if case_dir.exists():
                 if not args.force:
                     print(f'Skipping already existing test: {case_dir}')

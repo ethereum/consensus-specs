@@ -36,7 +36,7 @@ Prerequisites:
 
 ### Cleaning
 
-This removes the existing virtual environments (`/test_generators/<generator>/venv`) and generated tests (`/yaml_tests/`).
+This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../eth2.0-spec-tests/tests`).
 
 ```bash
 make clean 
@@ -47,7 +47,7 @@ make clean
 This runs all of the generators.
 
 ```bash
-make -j 4 gen_yaml_tests
+make -j 4 generate_tests
 ```
 
 The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
@@ -55,10 +55,10 @@ The `-j N` flag makes the generators run in parallel, with `N` being the amount 
 
 ### Running a single generator
 
-The makefile auto-detects generators in the `test_generators` directory and provides a tests-gen target for each generator. See example:
+The makefile auto-detects generators in the `tests/generators` directory and provides a tests-gen target (gen_<generator_name>) for each generator. See example:
 
 ```bash
-make ./eth2.0-spec-tests/tests/shuffling/
+make gen_ssz_static
 ```
 
 ## Developing a generator
@@ -78,9 +78,8 @@ It's recommended to extend the base-generator.
 
 Create a `requirements.txt` in the root of your generator directory:
 ```
-../../core/gen_helpers
-../../core/config_helpers
-../../core/pyspec
+pytest>=4.4
+../../../
 ```
 
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself in order to prevent code duplication and outdated tests.
@@ -103,7 +102,7 @@ Write a `main.py` file. The shuffling test generator is a good minimal starting 
 ```python
 from eth2spec.phase0 import spec as spec
 from eth_utils import to_tuple
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from preset_loader import loader
 from typing import Iterable
 
@@ -163,35 +162,40 @@ To extend this, one could decide to parametrize the `shuffling_test_cases` funct
 Another example, to generate tests from pytests:
 
 ```python
-def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
+from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.lightclient_patch import spec as spec_lightclient_patch
+from eth2spec.phase1 import spec as spec_phase1
+from eth2spec.test.context import PHASE0, PHASE1, LIGHTCLIENT_PATCH
 
-    def prepare_fn(configs_path: str) -> str:
-        presets = loader.load_presets(configs_path, config_name)
-        spec_phase0.apply_constants_preset(presets)
-        spec_phase1.apply_constants_preset(presets)
-        return config_name
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 
-    def cases_fn() -> Iterable[gen_typing.TestCase]:
-        return generate_from_tests(
-            runner_name='epoch_processing',
-            handler_name=handler_name,
-            src=tests_src,
-            fork_name='phase0'
-        )
 
-    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
+specs = (spec_phase0, spec_lightclient_patch, spec_phase1)
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("epoch_processing", [
-        create_provider('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
-        ...
-    ])
+    phase_0_mods = {key: 'eth2spec.test.phase0.sanity.test_' + key for key in [
+        'blocks',
+        'slots',
+    ]}
+    lightclient_patch_mods = {**{key: 'eth2spec.test.lightclient_patch.sanity.test_' + key for key in [
+        'blocks',
+    ]}, **phase_0_mods}  # also run the previous phase 0 tests
+    phase_1_mods = {**{key: 'eth2spec.test.phase1.sanity.test_' + key for key in [
+        'blocks',  # more phase 1 specific block tests
+        'shard_blocks',
+    ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against phase 1 spec)
 
+    all_mods = {
+        PHASE0: phase_0_mods,
+        LIGHTCLIENT_PATCH: lightclient_patch_mods,
+        PHASE1: phase_1_mods,
+    }
+
+    run_state_test_generators(runner_name="sanity", specs=specs, all_mods=all_mods)
 ```
 
-Here multiple phases load the configuration, and the stream of test cases is derived from a pytest file using the `generate_from_tests` utility.
-
+Here multiple phases load the configuration, and the stream of test cases is derived from a pytest file using the `eth2spec.gen_helpers.gen_from_tests.gen.run_state_test_generators` utility. Note that this helper generates all available tests of `TESTGEN_FORKS` forks of `ALL_CONFIGS` configs of the given runner.
 
 Recommendations:
 - You can have more than just one test provider.
@@ -200,14 +204,13 @@ Recommendations:
 - Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary. 
 - You may be able to write your test case provider in a way where it does not make assumptions on constants.
   If so, you can generate test cases with different configurations for the same scenario (see example). 
-- See [`tests/core/gen_helpers/README.md`](../core/gen_helpers/README.md) for command line options for generators.
-
+- See [`tests/core/gen_helpers/README.md`](../core/pyspec/eth2spec/gen_helpers/README.md) for command line options for generators.
 
 ## How to add a new test generator
 
 To add a new test generator that builds `New Tests`:
 
-1. Create a new directory `new_tests` within the `test_generators` directory.
+1. Create a new directory `new_tests` within the `tests/generators` directory.
  Note that `new_tests` is also the name of the directory in which the tests will appear in the tests repository later.
 2. Your generator is assumed to have a `requirements.txt` file,
  with any dependencies it may need. Leave it empty if your generator has none.
@@ -216,8 +219,8 @@ To add a new test generator that builds `New Tests`:
 4. Your generator is called with `-o some/file/path/for_testing/can/be_anything -c some/other/path/to_configs/`.
  The base generator helps you handle this; you only have to define test case providers.
 5. Finally, add any linting or testing commands to the
- [circleci config file](../.circleci/config.yml) if desired to increase code quality.
- Or add it to the [`Makefile`](../Makefile), if it can be run locally. 
+ [circleci config file](../../.circleci/config.yml) if desired to increase code quality.
+ Or add it to the [`Makefile`](../../Makefile), if it can be run locally.
 
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
