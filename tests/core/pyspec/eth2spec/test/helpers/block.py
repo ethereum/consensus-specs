@@ -1,3 +1,4 @@
+from eth2spec.test.context import is_post_lightclient_patch
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -89,6 +90,10 @@ def build_empty_block(spec, state, slot=None):
     empty_block.proposer_index = spec.get_beacon_proposer_index(state)
     empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     empty_block.parent_root = parent_block_root
+
+    if is_post_lightclient_patch(spec):
+        empty_block.body.sync_committee_signature = spec.G2_POINT_AT_INFINITY
+
     apply_randao_reveal(spec, state, empty_block)
     return empty_block
 

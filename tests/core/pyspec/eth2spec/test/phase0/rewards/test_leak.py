@@ -1,4 +1,4 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.context import PHASE0, PHASE1, with_all_phases, with_phases, spec_state_test
 from eth2spec.test.helpers.rewards import leaking
 import eth2spec.test.helpers.rewards as rewards_helpers
 
@@ -38,7 +38,7 @@ def test_full_but_partial_participation_leak(spec, state):
     yield from rewards_helpers.run_test_full_but_partial_participation(spec, state)
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 @leaking()
 def test_one_attestation_one_correct_leak(spec, state):
@@ -87,7 +87,7 @@ def test_some_very_low_effective_balances_that_did_not_attest_leak(spec, state):
 #
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 @leaking()
 def test_full_half_correct_target_incorrect_head_leak(spec, state):
@@ -99,7 +99,7 @@ def test_full_half_correct_target_incorrect_head_leak(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 @leaking()
 def test_full_correct_target_incorrect_head_leak(spec, state):
@@ -111,7 +111,7 @@ def test_full_correct_target_incorrect_head_leak(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 @leaking()
 def test_full_half_incorrect_target_incorrect_head_leak(spec, state):
@@ -123,7 +123,7 @@ def test_full_half_incorrect_target_incorrect_head_leak(spec, state):
     )
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 @leaking()
 def test_full_half_incorrect_target_correct_head_leak(spec, state):

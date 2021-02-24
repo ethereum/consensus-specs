@@ -2,6 +2,7 @@ from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
 from eth2spec.test.helpers.state import next_epoch_via_block, get_balance
 from eth2spec.test.context import (
     PHASE0,
+    LIGHTCLIENT_PATCH,
     with_all_phases_except,
     spec_state_test,
     expect_assertion_error,
@@ -41,7 +42,7 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
     yield 'post', state
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 def test_success(spec, state):
@@ -50,7 +51,7 @@ def test_success(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @never_bls
 def test_reveal_from_current_epoch(spec, state):
@@ -59,7 +60,7 @@ def test_reveal_from_current_epoch(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @never_bls
 def test_reveal_from_past_epoch(spec, state):
@@ -69,7 +70,7 @@ def test_reveal_from_past_epoch(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 def test_reveal_with_custody_padding(spec, state):
@@ -81,7 +82,7 @@ def test_reveal_with_custody_padding(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, True)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 def test_reveal_with_custody_padding_minus_one(spec, state):
@@ -93,7 +94,7 @@ def test_reveal_with_custody_padding_minus_one(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, True)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @never_bls
 def test_double_reveal(spec, state):
@@ -114,7 +115,7 @@ def test_double_reveal(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal2, False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @never_bls
 def test_revealer_is_slashed(spec, state):
@@ -124,7 +125,7 @@ def test_revealer_is_slashed(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @never_bls
 def test_far_future_epoch(spec, state):

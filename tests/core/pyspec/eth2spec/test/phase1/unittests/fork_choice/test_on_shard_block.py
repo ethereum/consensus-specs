@@ -1,6 +1,13 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
-from eth2spec.test.context import PHASE0, spec_state_test, with_all_phases_except, never_bls, only_full_crosslink
+from eth2spec.test.context import (
+    PHASE0,
+    LIGHTCLIENT_PATCH,
+    spec_state_test,
+    with_all_phases_except,
+    never_bls,
+    only_full_crosslink,
+)
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.shard_block import (
     build_shard_block,
@@ -145,7 +152,7 @@ def create_and_apply_beacon_and_shard_blocks(spec, state, store, shard, shard_bl
     return has_shard_committee
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @never_bls  # Set to never_bls for testing `check_pending_shard_blocks`
 def test_basic(spec, state):
@@ -206,7 +213,7 @@ def create_simple_fork(spec, state, store, shard):
     return head_block, forking_block
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_shard_simple_fork(spec, state):
@@ -231,7 +238,7 @@ def test_shard_simple_fork(spec, state):
     assert spec.get_shard_head(store, shard) == forking_block.message.hash_tree_root()
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_shard_latest_messages_for_different_shards(spec, state):

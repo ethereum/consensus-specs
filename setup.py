@@ -52,8 +52,9 @@ def get_spec(file_name: str) -> SpecObject:
         else:
             # Handle function definitions & ssz_objects
             if pulling_from is not None:
-                if len(line) > 18 and line[:6] == 'class ' and line[-12:] == '(Container):':
-                    name = line[6:-12]
+                if len(line) > 18 and line[:6] == 'class ' and (line[-12:] == '(Container):' or '(phase' in line):
+                    end = -12 if line[-12:] == '(Container):' else line.find('(')
+                    name = line[6:end]
                     # Check consistency with markdown header
                     assert name == current_name
                     block_type = CodeBlockType.SSZ
@@ -156,6 +157,40 @@ SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
 '''
+LIGHTCLIENT_IMPORT = '''from eth2spec.phase0 import spec as phase0
+from eth2spec.config.config_util import apply_constants_config
+from typing import (
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
+)
+
+from dataclasses import (
+    dataclass,
+    field,
+)
+
+from lru import LRU
+
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
+from eth2spec.utils.ssz.ssz_typing import (
+    View, boolean, Container, List, Vector, uint8, uint32, uint64,
+    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+)
+from eth2spec.utils import bls
+
+from eth2spec.utils.hash_function import hash
+
+# Whenever lightclient is loaded, make sure we have the latest phase0
+from importlib import reload
+reload(phase0)
+
+
+SSZVariableName = str
+GeneralizedIndex = NewType('GeneralizedIndex', int)
+SSZObject = TypeVar('SSZObject', bound=View)
+
+CONFIG_NAME = 'mainnet'
+'''
+
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: int) -> uint64:
     if x < 1:
@@ -351,6 +386,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
+    'lightclient_patch': LIGHTCLIENT_IMPORT,
 }
 
 
@@ -417,6 +453,16 @@ class PySpecCommand(Command):
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
+            elif self.spec_fork == "lightclient_patch":
+                self.md_doc_paths = """
+                    specs/phase0/beacon-chain.md
+                    specs/phase0/fork-choice.md
+                    specs/phase0/validator.md
+                    specs/phase0/weak-subjectivity.md
+                    specs/lightclient/beacon-chain.md
+                    specs/lightclient/lightclient-fork.md
+                """
+                # TODO: add specs/lightclient/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
@@ -516,13 +562,12 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
-                 
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
         "eth2spec": "tests/core/pyspec/eth2spec",
         "configs": "configs",
-        "specs": "specs"
+        "specs": "specs",
     },
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],
     py_modules=["eth2spec"],
@@ -536,10 +581,10 @@ setup(
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
-        "py_ecc==5.0.0",
-        "milagro_bls_binding==1.5.0",
+        "py_ecc==5.1.0",
+        "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.17",
+        "remerkleable==0.1.18",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6"
     ]

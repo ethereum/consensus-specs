@@ -20,7 +20,7 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phase1/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phase1/*.md) $(wildcard $(SPEC_DIR)/lightclient/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
@@ -49,6 +49,7 @@ partial_clean:
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_DIR)/phase0
 	rm -rf $(PY_SPEC_DIR)/phase1
+	rm -rf $(PY_SPEC_DIR)/lightclient
 	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
 	rm -rf $(PY_SPEC_DIR)/.coverage
 	rm -rf $(PY_SPEC_DIR)/test-reports
@@ -81,19 +82,19 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3.8 -m venv venv; . venv/bin/activate; pip3 install .[lint]; pip3 install -e .[test]
+	python3 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.lightclient_patch.spec -cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.lightclient_patch.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p tests/core/pyspec/test-reports/eth2spec; . venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
@@ -112,7 +113,7 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1 -p eth2spec.lightclient_patch
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
@@ -132,11 +133,11 @@ test_deposit_contract:
 	dapp test -v --fuzz-runs 5
 
 install_deposit_contract_web3_tester:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt
+	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; python3 -m pip install -r requirements.txt
 
 test_deposit_contract_web3_tests:
 	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
-	python -m pytest .
+	python3 -m pytest .
 
 # Runs a generator, identified by param 1
 define run_generator

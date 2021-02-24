@@ -17,6 +17,7 @@ eth2.0-spec-tests/
 # Dynamically built from Markdown spec
 tests/core/pyspec/eth2spec/phase0/
 tests/core/pyspec/eth2spec/phase1/
+tests/core/pyspec/eth2spec/lightclient_patch/
 
 # coverage reports
 .htmlcov

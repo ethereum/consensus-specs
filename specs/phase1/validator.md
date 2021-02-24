@@ -67,7 +67,7 @@ A validator is an entity that participates in the consensus of the Ethereum 2.0 
 
 This document is an extension of the [Phase 0 -- Validator](../phase0/validator.md). All behaviors and definitions defined in the Phase 0 doc carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the [Phase 1 -- The Beacon Chain](./beacon-chain.md) and [Phase 1 -- Custody Game](./custody-game.md) docs are requisite for this document and used throughout. Please see the Phase 1 docs before continuing and use as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the [Phase 1 -- The Beacon Chain](./beacon-chain.md) and [Phase 1 -- Custody Game](./custody-game.md) docs are requisite for this document and used throughout. Please see the Phase 1 docs before continuing and use them as a reference throughout.
 
 ## Constants
 
@@ -352,7 +352,7 @@ Aggregation selection and the core of this duty are largely unchanged from Phase
 
 Note the timing of when to broadcast aggregates is altered in Phase 1+.
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) three-fourths of the way through the `slot`-that is, `SECONDS_PER_SLOT * 3 / 4` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) three-fourths of the way through the `slot` -- that is, `SECONDS_PER_SLOT * 3 / 4` seconds after the start of `slot`.
 
 ##### `AggregateAndProof`
 

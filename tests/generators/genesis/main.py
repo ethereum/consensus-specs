@@ -3,8 +3,8 @@ from typing import Iterable
 from eth2spec.test.context import PHASE0
 from eth2spec.test.phase0.genesis import test_initialization, test_validity
 
-from gen_base import gen_runner, gen_typing
-from gen_from_tests.gen import generate_from_tests
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
 from eth2spec.phase0 import spec as spec
 from importlib import reload
 from eth2spec.config import config_util
