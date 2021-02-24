@@ -1,5 +1,5 @@
 from typing import Iterable
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 import ssz_basic_vector
 import ssz_bitlist
 import ssz_bitvector

@@ -37,6 +37,10 @@ ALL_PHASES = (PHASE0, PHASE1, LIGHTCLIENT_PATCH)
 MAINNET = ConfigName('mainnet')
 MINIMAL = ConfigName('minimal')
 
+ALL_CONFIGS = (MINIMAL, MAINNET)
+
+# The forks that output to the test vectors.
+TESTGEN_FORKS = (PHASE0, LIGHTCLIENT_PATCH)
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.

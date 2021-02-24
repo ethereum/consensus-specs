@@ -13,6 +13,7 @@
   - [Participation rewards](#participation-rewards)
   - [Misc](#misc)
 - [Configuration](#configuration)
+  - [Updated penalty values](#updated-penalty-values)
   - [Misc](#misc-1)
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
@@ -36,6 +37,8 @@
     - [`get_flag_rewards`](#get_flag_rewards)
     - [`get_regular_penalties`](#get_regular_penalties)
     - [`get_leak_penalties`](#get_leak_penalties)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [New `slash_validator`](#new-slash_validator)
   - [Block processing](#block-processing)
     - [New `process_attestation`](#new-process_attestation)
     - [New `process_deposit`](#new-process_deposit)
@@ -49,6 +52,7 @@
       - [`process_rewards`](#process_rewards)
       - [`process_penalties`](#process_penalties)
     - [New `process_registry_updates`](#new-process_registry_updates)
+    - [New `process_slashings`](#new-process_slashings)
     - [Sync committee updates](#sync-committee-updates)
     - [Participation flags updates](#participation-flags-updates)
 
@@ -57,11 +61,13 @@
 
 ## Introduction
 
-This is a patch implementing the first hard fork to the beacon chain, tentatively named HF1 pending a permanent name. It has three main features:
+This is a patch implementing the first hard fork to the beacon chain, tentatively named HF1 pending a permanent name.
+It has four main features:
 
 * Light client support via sync committees
 * Incentive accounting reforms, reducing spec complexity
   and [TODO] reducing the cost of processing chains that have very little or zero participation for a long span of epochs
+* Update penalty configuration values, moving them toward their planned maximally punitive configuration
 * Fork choice rule changes to address weaknesses recently discovered in the existing fork choice
 
 ## Custom types
@@ -104,6 +110,18 @@ The reward fractions add up to 7/8, leaving the remaining 1/8 for proposer rewar
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Configuration
+
+### Updated penalty values
+
+This patch updates a few configuration values to move penalty constants toward their final, maxmium security values.
+
+*Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
+
+| Name | Value |
+| - | - |
+| `HF1_INACTIVITY_PENALTY_QUOTIENT` | `uint64(3 * 2**24)` (= 50,331,648) |
+| `HF1_MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**6)` (=64) |
+| `HF1_PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(2)` |
 
 ### Misc
 
@@ -394,10 +412,42 @@ def get_leak_penalties(state: BeaconState) -> Sequence[Gwei]:
             # sum[1...n] n ~= n^2/2, as desired
             leak_penalty = (
                 state.leak_score[index] * state.leak_epoch_counter
-                // LEAK_SCORE_BIAS // INACTIVITY_PENALTY_QUOTIENT
+                // LEAK_SCORE_BIAS // HF1_INACTIVITY_PENALTY_QUOTIENT
             )
             penalties[index] = leak_penalty
     return penalties
+```
+
+### Beacon state mutators
+
+#### New `slash_validator`
+
+*Note*: The function `slash_validator` is modified
+with the substitution of `MIN_SLASHING_PENALTY_QUOTIENT` with `HF1_MIN_SLASHING_PENALTY_QUOTIENT`.
+
+```python
+def slash_validator(state: BeaconState,
+                    slashed_index: ValidatorIndex,
+                    whistleblower_index: ValidatorIndex=None) -> None:
+    """
+    Slash the validator with index ``slashed_index``.
+    """
+    epoch = get_current_epoch(state)
+    initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
+    validator.slashed = True
+    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    decrease_balance(state, slashed_index, validator.effective_balance // HF1_MIN_SLASHING_PENALTY_QUOTIENT)
+
+    # Apply proposer and whistleblower rewards
+    proposer_index = get_beacon_proposer_index(state)
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    proposer_reward = Gwei(whistleblower_reward // PROPOSER_REWARD_QUOTIENT)
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
 
 ### Block processing
@@ -736,6 +786,24 @@ def process_registry_updates(state: BeaconState) -> None:
     for index in activation_queue[:get_validator_churn_limit(state) * EPOCHS_PER_ACTIVATION_EXIT_PERIOD]:
         validator = state.validators[index]
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+```
+
+#### New `process_slashings`
+
+*Note*: The function `process_slashings` is modified
+with the substitution of `PROPORTIONAL_SLASHING_MULTIPLIER` with `HF1_PROPORTIONAL_SLASHING_MULTIPLIER`.
+
+```python
+def process_slashings(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
+    total_balance = get_total_active_balance(state)
+    adjusted_total_slashing_balance = min(sum(state.slashings) * HF1_PROPORTIONAL_SLASHING_MULTIPLIER, total_balance)
+    for index, validator in enumerate(state.validators):
+        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
+            penalty_numerator = validator.effective_balance // increment * adjusted_total_slashing_balance
+            penalty = penalty_numerator // total_balance * increment
+            decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
 #### Sync committee updates

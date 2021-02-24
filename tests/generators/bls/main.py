@@ -13,7 +13,7 @@ import milagro_bls_binding as milagro_bls
 
 from eth2spec.utils import bls
 from eth2spec.test.context import PHASE0
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 
 def to_bytes(i):
