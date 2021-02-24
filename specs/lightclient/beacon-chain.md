@@ -73,7 +73,7 @@ This document specifies the beacon chain changes in the first Eth2 hard fork, te
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `uint8` | a succint representation of 8 boolean participation flags |
+| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
 
 ## Constants
 
