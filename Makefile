@@ -82,7 +82,7 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]
+	python3 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]; python3 -m pip install setuptools
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \

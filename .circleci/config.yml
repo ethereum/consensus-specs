@@ -35,13 +35,13 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v24-pyspec
+          venv_name: v25-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v24-pyspec
+          venv_name: v25-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}
           venv_path: ./venv
   restore_deposit_contract_tester_cached_venv:
@@ -60,7 +60,7 @@ commands:
 jobs:
   checkout_specs:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       # Restore git repo at point close to target branch/revision, to speed up checkout
@@ -80,7 +80,7 @@ jobs:
             - ~/specs-repo
   install_pyspec_test:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -92,7 +92,7 @@ jobs:
       - save_pyspec_cached_venv
   test:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -114,7 +114,7 @@ jobs:
           command: sudo npm install -g doctoc@2 && make check_toc
   codespell:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - checkout
@@ -123,7 +123,7 @@ jobs:
           command: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
   lint:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -179,7 +179,7 @@ jobs:
             - /nix
   install_deposit_contract_web3_tester:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -191,7 +191,7 @@ jobs:
       - save_deposit_contract_tester_cached_venv
   test_deposit_contract_web3_tests:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
