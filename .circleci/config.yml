@@ -162,7 +162,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: nix-store-test-v2
+          key: nix-store-test-v3
       - attach_workspace:
           at: /tmp/
       - run:
@@ -174,7 +174,7 @@ jobs:
             cp -r /tmp/solidity_deposit_contract/deposit_contract.json ./solidity_deposit_contract/deposit_contract.json
             nix-shell --command 'make test_deposit_contract' ./solidity_deposit_contract/shell.nix
       - save_cache:
-          key: nix-store-test-v2
+          key: nix-store-test-v3
           paths:
             - /nix
   install_deposit_contract_web3_tester:
@@ -217,16 +217,16 @@ workflows:
           requires:
             - test
       # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests. 
-      # - install_deposit_contract_web3_tester:
-      #     requires:
-      #       - checkout_specs
-      # - test_deposit_contract_web3_tests:
-      #     requires:
-      #       - install_deposit_contract_web3_tester
+      - install_deposit_contract_web3_tester:
+          requires:
+            - checkout_specs
+      - test_deposit_contract_web3_tests:
+          requires:
+            - install_deposit_contract_web3_tester
   build_and_test_deposit_contract:
     jobs:
       - build_deposit_contract
       # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests.
-      # - test_deposit_contract:
-      #     requires:
-      #       - build_deposit_contract
+      - test_deposit_contract:
+          requires:
+            - build_deposit_contract
