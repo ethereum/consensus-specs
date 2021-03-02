@@ -564,7 +564,7 @@ def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)  # [Modified in HF1]
     process_rewards_and_penalties(state)  # [Modified in HF1]
     process_registry_updates(state)
-    process_slashings(state)
+    process_slashings(state)  # [Modified in HF1]
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
