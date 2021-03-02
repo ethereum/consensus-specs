@@ -1,11 +1,11 @@
 let dapptools = builtins.fetchGit {
     url = "https://github.com/dapphub/dapptools.git";
-    rev = "11dcefe1f03b0acafe76b4d7d54821ef6bd63131";
+    rev = "bbc2b483f94908bd0380de967361d3b21fb3d392";
   };
     nixpkgs = builtins.fetchGit {
       url = "https://github.com/nixos/nixpkgs";
-      ref = "release-19.03";
-      rev = "f1707d8875276cfa110139435a7e8998b4c2a4fd";
+      ref = "release-20.03";
+      rev = "5272327b81ed355bbed5659b8d303cf2979b6953";
   };
   pkgs-for-dapp = import nixpkgs {
     overlays = [

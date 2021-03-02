@@ -162,7 +162,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: nix-store-test-v3
+          key: nix-store-test-v4
       - attach_workspace:
           at: /tmp/
       - run:
@@ -174,7 +174,7 @@ jobs:
             cp -r /tmp/solidity_deposit_contract/deposit_contract.json ./solidity_deposit_contract/deposit_contract.json
             nix-shell --command 'make test_deposit_contract' ./solidity_deposit_contract/shell.nix
       - save_cache:
-          key: nix-store-test-v3
+          key: nix-store-test-v4
           paths:
             - /nix
   install_deposit_contract_web3_tester:
