@@ -73,7 +73,7 @@ This document specifies the beacon chain changes in the first Eth2 hard fork, te
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
+| `ParticipationFlags` | `uint8` | A succinct representation of 8 boolean participation flags |
 
 ## Constants
 
@@ -146,7 +146,16 @@ This patch updates a few configuration values to move penalty constants toward t
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]  # [New in HF1]
     sync_committee_signature: BLSSignature  # [New in HF1]
@@ -590,7 +599,7 @@ def process_epoch(state: BeaconState) -> None:
     process_leak_updates(state)  # [New in HF1]
     process_rewards_and_penalties(state)  # [Modified in HF1]
     process_registry_updates(state)  # [Modified in HF1]
-    process_slashings(state)
+    process_slashings(state)  # [Modified in HF1]
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)  # [Modified in HF1]
     process_slashings_reset(state)
@@ -679,6 +688,7 @@ def process_leak_updates(state: BeaconState) -> None:
 #### Rewards and penalties
 
 *Note*: The function `process_rewards_and_penalties` is modified to support the incentive reforms.
+
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
