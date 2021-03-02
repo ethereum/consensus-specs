@@ -41,13 +41,13 @@ def run_deltas(spec, state):
 
     if is_post_lightclient_patch(spec):
         def get_source_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_SOURCE_FLAG, spec.TIMELY_SOURCE_NUMERATOR)
+            return spec.get_flag_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_FLAG_NUMERATOR)
 
         def get_head_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_HEAD_FLAG, spec.TIMELY_HEAD_NUMERATOR)
+            return spec.get_flag_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX, spec.TIMELY_HEAD_FLAG_NUMERATOR)
 
         def get_target_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_TARGET_FLAG, spec.TIMELY_TARGET_NUMERATOR)
+            return spec.get_flag_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX, spec.TIMELY_TARGET_FLAG_NUMERATOR)
 
     yield from run_attestation_component_deltas(
         spec,
@@ -74,13 +74,13 @@ def run_deltas(spec, state):
     yield from run_get_inactivity_penalty_deltas(spec, state)
 
 
-def deltas_name_to_flag(spec, deltas_name):
+def deltas_name_to_flag_index(spec, deltas_name):
     if 'source' in deltas_name:
-        return spec.TIMELY_SOURCE_FLAG
+        return spec.TIMELY_SOURCE_FLAG_INDEX
     elif 'head' in deltas_name:
-        return spec.TIMELY_HEAD_FLAG
+        return spec.TIMELY_HEAD_FLAG_INDEX
     elif 'target' in deltas_name:
-        return spec.TIMELY_TARGET_FLAG
+        return spec.TIMELY_TARGET_FLAG_INDEX
     raise ValueError("Wrong deltas_name %s" % deltas_name)
 
 
@@ -98,7 +98,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
         matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
     else:
         matching_indices = spec.get_unslashed_participating_indices(
-            state, deltas_name_to_flag(spec, deltas_name), spec.get_previous_epoch(state)
+            state, deltas_name_to_flag_index(spec, deltas_name), spec.get_previous_epoch(state)
         )
 
     eligible_indices = spec.get_eligible_validator_indices(state)
@@ -187,9 +187,9 @@ def run_get_inactivity_penalty_deltas(spec, state):
         matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
     else:
         matching_attesting_indices = spec.get_unslashed_participating_indices(
-            state, spec.TIMELY_TARGET_FLAG, spec.get_previous_epoch(state)
+            state, spec.TIMELY_TARGET_FLAG_INDEX, spec.get_previous_epoch(state)
         )
-        reward_numerator_sum = sum(numerator for (_, numerator) in spec.get_flags_and_numerators())
+        reward_numerator_sum = sum(numerator for (_, numerator) in spec.get_flag_indices_and_numerators())
 
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
@@ -205,7 +205,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
                 base_reward = spec.get_base_reward(state, index)
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
             else:
-                base_penalty = spec.get_base_reward(state, index) * reward_numerator_sum // spec.REWARD_DENOMINATOR
+                base_penalty = spec.get_base_reward(state, index) * reward_numerator_sum // spec.FLAG_DENOMINATOR
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
@@ -314,7 +314,7 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     else:
         for index in range(len(state.validators)):
             if rng.choice([True, False]):
-                state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
+                state.previous_epoch_participation[index] = spec.ParticipationFlags(0b0000_0000)
 
     yield from run_deltas(spec, state)
 
@@ -328,7 +328,7 @@ def run_test_partial(spec, state, fraction_filled):
         state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
     else:
         for index in range(int(len(state.validators) * fraction_filled)):
-            state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
+            state.previous_epoch_participation[index] = spec.ParticipationFlags(0b0000_0000)
 
     yield from run_deltas(spec, state)
 
@@ -394,7 +394,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     else:
         index = 0
         state.validators[index].effective_balance = 1
-        state.previous_epoch_participation[index] = spec.ValidatorFlag(0)
+        state.previous_epoch_participation[index] = spec.ParticipationFlags(0b0000_0000)
 
     yield from run_deltas(spec, state)
 
@@ -521,23 +521,24 @@ def run_test_full_random(spec, state, rng=Random(8020)):
             is_timely_correct_head = rng.randint(0, 2) != 0
             flags = state.previous_epoch_participation[index]
 
-            def set_flag(f, v):
+            def set_flag(index, value):
                 nonlocal flags
-                if v:
-                    flags |= f
+                flag = spec.ParticipationFlags(2**index)
+                if value:
+                    flags |= flag
                 else:
-                    flags &= 0xff ^ f
+                    flags &= 0xff ^ flag
 
-            set_flag(spec.TIMELY_HEAD_FLAG, is_timely_correct_head)
+            set_flag(spec.TIMELY_HEAD_FLAG_INDEX, is_timely_correct_head)
             if is_timely_correct_head:
                 # If timely head, then must be timely target
-                set_flag(spec.TIMELY_TARGET_FLAG, True)
+                set_flag(spec.TIMELY_TARGET_FLAG_INDEX, True)
                 # If timely head, then must be timely source
-                set_flag(spec.TIMELY_SOURCE_FLAG, True)
+                set_flag(spec.TIMELY_SOURCE_FLAG_INDEX, True)
             else:
                 # ~50% of remaining have bad target or not timely enough
-                set_flag(spec.TIMELY_TARGET_FLAG, rng.choice([True, False]))
+                set_flag(spec.TIMELY_TARGET_FLAG_INDEX, rng.choice([True, False]))
                 # ~50% of remaining have bad source or not timely enough
-                set_flag(spec.TIMELY_SOURCE_FLAG, rng.choice([True, False]))
+                set_flag(spec.TIMELY_SOURCE_FLAG_INDEX, rng.choice([True, False]))
             state.previous_epoch_participation[index] = flags
     yield from run_deltas(spec, state)
