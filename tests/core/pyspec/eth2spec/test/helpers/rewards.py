@@ -150,7 +150,7 @@ def run_get_flag_penalties(spec, state):
     rewards = [0] * len(state.validators)
 
     if spec.is_activation_exit_epoch(state):
-        spec.get_flag_penalties(state)
+        penalties = spec.get_flag_penalties(state)
     else:
         assert penalties == rewards
         assert not any(rewards)
@@ -167,7 +167,7 @@ def run_get_leak_penalties(spec, state):
     rewards = [0] * len(state.validators)
 
     if spec.is_activation_exit_epoch(state):
-        spec.get_leak_penalties(state)
+        penalties = spec.get_leak_penalties(state)
     else:
         assert penalties == rewards
         assert not any(rewards)

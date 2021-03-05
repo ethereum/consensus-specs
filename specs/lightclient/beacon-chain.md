@@ -62,7 +62,7 @@
 
 ## Introduction
 
-This document specifies the beacon chain changes in the first Eth2 hard fork, tentatively named Hard Fork 1 (HF1). The FH1 highlights are:
+This document specifies the beacon chain changes in the first Eth2 hard fork, tentatively named Hard Fork 1 (HF1). The HF1 highlights are:
 
 * sync committees to support light clients
 * incentive accounting reforms to reduce spec complexity
@@ -195,7 +195,7 @@ class BeaconState(Container):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # Leak
-    leak_epochs_counter: Epoch  # [New in HF1]
+    leak_epochs_counter: uint64  # [New in HF1]
     leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
     # Sync
     current_sync_committee: SyncCommittee  # [New in HF1]
@@ -678,11 +678,11 @@ def process_leak_updates(state: BeaconState) -> None:
 
     # Increase leak score per rule (b)
     if is_leak_active(state):
-        state.leak_epochs_counter += Epoch(1)
+        state.leak_epochs_counter += uint64(1)
     if is_activation_exit_epoch(state):
         for index in get_eligible_validator_indices(state):
             state.leak_scores[index] += LEAK_SCORE_BIAS * state.leak_epochs_counter
-        state.leak_epochs_counter = Epoch(0)
+        state.leak_epochs_counter = uint64(0)
 ```
 
 #### Rewards and penalties
