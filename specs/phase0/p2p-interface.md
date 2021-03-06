@@ -292,7 +292,7 @@ If one or more validations fail while processing the items in order, return eith
 There are two primary global topics used to propagate beacon blocks (`beacon_block`)
 and aggregate attestations (`beacon_aggregate_and_proof`) to all nodes on the network.
 
-There are three additional global topics are used to propagate lower frequency validator messages
+There are three additional global topics that are used to propagate lower frequency validator messages
 (`voluntary_exit`, `proposer_slashing`, and `attester_slashing`).
 
 ##### `beacon_block`
