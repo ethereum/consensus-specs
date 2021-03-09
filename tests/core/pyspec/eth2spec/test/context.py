@@ -70,7 +70,7 @@ class SpecForks(TypedDict, total=False):
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
-                   spec: Spec, phases: SpecForks):
+                   spec: Spec, phases: SpecForks, is_fork_test: bool):
 
     p0 = phases[PHASE0]
     balances = balances_fn(p0)
@@ -82,7 +82,7 @@ def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Ca
         # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
         # Decide based on performance/consistency results later.
         state = phases[PHASE1].upgrade_to_phase1(state)
-    elif spec.fork == LIGHTCLIENT_PATCH:  # not generalizing this just yet, unclear final spec fork/patch order.
+    elif spec.fork == LIGHTCLIENT_PATCH and not fork_test:  # do not upgrade if spec ttttest
         state = phases[LIGHTCLIENT_PATCH].upgrade_to_lightclient_patch(state)
 
     return state
@@ -98,10 +98,11 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state
             # genesis fork version separates configs during test-generation runtime.
-            key = (spec.fork, spec.GENESIS_FORK_VERSION, spec.__file__, balances_fn, threshold_fn)
+            is_fork_test = kw.pop('fork_test') if 'fork_test' in kw else False
+            key = (spec.fork, spec.GENESIS_FORK_VERSION, spec.__file__, balances_fn, threshold_fn, is_fork_test)
             global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
-                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
+                state = _prepare_state(balances_fn, threshold_fn, spec, phases, is_fork_test)
                 _custom_state_cache_dict[key] = state.get_backing()
 
             # Take an entry out of the LRU.
@@ -284,6 +285,15 @@ def bls_switch(fn):
         if res is not None:
             yield from res
         bls.bls_active = old_state
+    return entry
+
+
+def fork_test(fn):
+    """
+    """
+    def entry(*args, **kw):
+        # override fork test setting
+        kw['fork_test'] = True
     return entry
 
 
