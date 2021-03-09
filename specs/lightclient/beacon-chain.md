@@ -41,10 +41,11 @@
     - [New `slash_validator`](#new-slash_validator)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
-    - [New `process_deposit`](#new-process_deposit)
+    - [Modified `process_deposit`](#modified-process_deposit)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
+    - [Leak scores](#leak-scores)
     - [Rewards and penalties](#rewards-and-penalties)
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
@@ -183,8 +184,8 @@ class BeaconState(Container):
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Participation
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
@@ -193,8 +194,8 @@ class BeaconState(Container):
     # Light client sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # is online in an inactivity leak, inactivity leak penalties are proportional to this value
-    leak_score: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # Leak
+    leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
 ```
 
 ### New containers
@@ -287,13 +288,10 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     Return the sync committee for a given state and epoch.
     """
     indices = get_sync_committee_indices(state, epoch)
-    validators = [state.validators[index] for index in indices]
-    pubkeys = [validator.pubkey for validator in validators]
-    aggregates = [
-        bls.AggregatePKs(pubkeys[i:i + SYNC_SUBCOMMITTEE_SIZE])
-        for i in range(0, len(pubkeys), SYNC_SUBCOMMITTEE_SIZE)
-    ]
-    return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=aggregates)
+    pubkeys = [state.validators[index].pubkey for index in indices]
+    subcommitees = [pubkeys[i:i + SYNC_SUBCOMMITTEE_SIZE] for i in range(0, len(pubkeys), SYNC_SUBCOMMITTEE_SIZE)]
+    pubkey_aggregates = [bls.AggregatePKs(subcommitee) for subcommitee in subcommitees]
+    return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=pubkey_aggregates)
 ```
 
 #### `get_base_reward`
@@ -382,10 +380,10 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     for index in get_eligible_validator_indices(state):
         # If validator is performing optimally this cancels all attestation rewards for a neutral balance
         penalties[index] += Gwei(get_base_reward(state, index) * reward_numerator_sum // FLAG_DENOMINATOR)
-        if index not in matching_target_attesting_indices and state.leak_score[index] >= LEAK_SCORE_BIAS: 
+        if index not in matching_target_attesting_indices and state.leak_scores[index] >= LEAK_SCORE_BIAS:
             effective_balance = state.validators[index].effective_balance
             leak_penalty = Gwei(
-                effective_balance * state.leak_score[index] // LEAK_SCORE_BIAS // HF1_INACTIVITY_PENALTY_QUOTIENT
+                effective_balance * state.leak_scores[index] // LEAK_SCORE_BIAS // HF1_INACTIVITY_PENALTY_QUOTIENT
             )
             penalties[index] += leak_penalty
 
@@ -489,9 +487,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```
 
 
-#### New `process_deposit`
+#### Modified `process_deposit`
 
-*Note*: The function `process_deposit` is modified to initialize `previous_epoch_participation` and `current_epoch_participation`.
+*Note*: The function `process_deposit` is modified to initialize `leak_scores`, `previous_epoch_participation`, `current_epoch_participation`.
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
@@ -527,7 +525,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         state.balances.append(amount)
         state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))  # New in HF1
         state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))  # New in HF1
-        state.leak_score.append(0)  # New in HF1
+        state.leak_scores.append(0)  # New in HF1
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -568,7 +566,7 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)  # [Modified in HF1]
-    process_leak_score_updates(state)  # [New in HF1]
+    process_leak_updates(state)  # [New in HF1]
     process_rewards_and_penalties(state)  # [Modified in HF1]
     process_registry_updates(state)
     process_slashings(state)  # [Modified in HF1]
@@ -629,17 +627,19 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 #### Leak scores
 
+*Note*: The function `process_leak_updates` is new.
+
 ```python
-def process_leak_score_updates(state: BeaconState) -> None:
+def process_leak_updates(state: BeaconState) -> None:
     matching_target_attesting_indices = get_unslashed_participating_indices(
         state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
     )
     for index in get_eligible_validator_indices(state):
         if index in matching_target_attesting_indices:
-            if state.leak_score[index] > 0:
-                state.leak_score[index] -= 1
+            if state.leak_scores[index] > 0:
+                state.leak_scores[index] -= 1
         elif is_in_inactivity_leak(state):
-            state.leak_score[index] += LEAK_SCORE_BIAS
+            state.leak_scores[index] += LEAK_SCORE_BIAS
 ```
 
 #### Rewards and penalties
