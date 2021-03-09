@@ -95,9 +95,8 @@ def test_fork_many_next_epoch(spec, phases, state):
 
 @fork_test
 @with_phases(([PHASE0]))
-@spec_test
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
-@with_state
+@spec_test
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
 def test_fork_random_low_balances(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
@@ -106,7 +105,7 @@ def test_fork_random_low_balances(spec, phases, state):
 @fork_test
 @with_phases(([PHASE0]))
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
-@with_state
+@spec_test
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
 def test_fork_random_misc_balances(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
@@ -115,7 +114,7 @@ def test_fork_random_misc_balances(spec, phases, state):
 @fork_test
 @with_phases(([PHASE0]))
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
-@with_state
+@spec_test
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
 def test_fork_random_large_validator_set(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
