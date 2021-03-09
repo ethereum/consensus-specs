@@ -3,7 +3,7 @@
 The aim of the fork tests is to ensure that a pre-fork state can be transformed
  into a valid post-fork state, utilizing the `upgrade` function found in the relevant `fork.md` spec.
 
-There is only one handler: `core`. Each fork (after genesis) is handled with the same format,
+There is only one handler: `fork`. Each fork (after genesis) is handled with the same format,
  and the particular fork boundary being tested is noted in `meta.yaml`.
 
 ## Test case format

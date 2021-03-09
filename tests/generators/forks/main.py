@@ -11,7 +11,7 @@ from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
 
 
-def create_provider(tests_src, config_name: str) -> gen_typing.TestProvider:
+def create_provider(tests_src, config_name: str, phase: str, fork_name: str) -> gen_typing.TestProvider:
 
     def prepare_fn(configs_path: str) -> str:
         config_util.prepare_config(configs_path, config_name)
@@ -24,8 +24,9 @@ def create_provider(tests_src, config_name: str) -> gen_typing.TestProvider:
             runner_name='fork',
             handler_name='fork',
             src=tests_src,
-            fork_name=LIGHTCLIENT_PATCH,
-            phase=PHASE0,
+            fork_name=fork_name,
+            phase=phase,
+
         )
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
@@ -33,6 +34,6 @@ def create_provider(tests_src, config_name: str) -> gen_typing.TestProvider:
 
 if __name__ == "__main__":
     gen_runner.run_generator("forks", [
-        create_provider(test_altair_forks, MINIMAL),
-        create_provider(test_altair_forks, MAINNET),
+        create_provider(test_altair_forks, MINIMAL, PHASE0, LIGHTCLIENT_PATCH),
+        create_provider(test_altair_forks, MAINNET, PHASE0, LIGHTCLIENT_PATCH),
     ])
