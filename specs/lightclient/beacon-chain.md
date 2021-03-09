@@ -118,6 +118,7 @@ This patch updates a few configuration values to move penalty constants toward t
 | - | - | 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
 | `SYNC_SUBCOMMITTEE_SIZE` | `uint64(2**6)` (= 64) |
+| `LEAK_SCORE_BIAS` | 4 |
 
 ### Time parameters
 
@@ -192,6 +193,8 @@ class BeaconState(Container):
     # Light client sync committees
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
+    # is online in an inactivity leak, inactivity leak penalties are proportional to this value
+    leak_score: List[uint64, VALIDATOR_REGISTRY_LIMIT]
 ```
 
 ### New containers
@@ -366,23 +369,26 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     flags to determine who participated and who did not, applying the leak penalty globally and applying
     compensatory rewards to participants.
     """
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
-    if is_in_inactivity_leak(state):
-        reward_numerator_sum = sum(numerator for (_, numerator) in get_flag_indices_and_numerators())
-        matching_target_attesting_indices = get_unslashed_participating_indices(
-            state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
-        )
-        for index in get_eligible_validator_indices(state):
-            # If validator is performing optimally this cancels all attestation rewards for a neutral balance
-            penalties[index] += Gwei(get_base_reward(state, index) * reward_numerator_sum // FLAG_DENOMINATOR)
-            if index not in matching_target_attesting_indices: 
-                effective_balance = state.validators[index].effective_balance
-                penalties[index] += Gwei(
-                    effective_balance * get_finality_delay(state)
-                    // HF1_INACTIVITY_PENALTY_QUOTIENT
-                )
-
     rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+
+    if not is_in_inactivity_leak(state):
+        return rewards, penalties
+
+    reward_numerator_sum = sum(numerator for (_, numerator) in get_flag_indices_and_numerators())
+    matching_target_attesting_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
+    )
+    for index in get_eligible_validator_indices(state):
+        # If validator is performing optimally this cancels all attestation rewards for a neutral balance
+        penalties[index] += Gwei(get_base_reward(state, index) * reward_numerator_sum // FLAG_DENOMINATOR)
+        if index not in matching_target_attesting_indices and state.leak_score[index] >= LEAK_SCORE_BIAS: 
+            effective_balance = state.validators[index].effective_balance
+            leak_penalty = Gwei(
+                effective_balance * state.leak_score[index] // LEAK_SCORE_BIAS // HF1_INACTIVITY_PENALTY_QUOTIENT
+            )
+            penalties[index] += leak_penalty
+
     return rewards, penalties
 ```
 
@@ -519,9 +525,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Add validator and balance entries
         state.validators.append(get_validator_from_deposit(state, deposit))
         state.balances.append(amount)
-        # [Added in hf-1] Initialize empty participation flags for new validator
-        state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-        state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
+        state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))  # New in HF1
+        state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))  # New in HF1
+        state.leak_score.append(0)  # New in HF1
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -562,6 +568,7 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)  # [Modified in HF1]
+    process_leak_score_updates(state)  # [New in HF1]
     process_rewards_and_penalties(state)  # [Modified in HF1]
     process_registry_updates(state)
     process_slashings(state)  # [Modified in HF1]
@@ -618,6 +625,21 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
     if all(bits[0:2]) and old_current_justified_checkpoint.epoch + 1 == current_epoch:
         state.finalized_checkpoint = old_current_justified_checkpoint
+```
+
+#### Leak scores
+
+```python
+def process_leak_score_updates(state: BeaconState) -> None:
+    matching_target_attesting_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
+    )
+    for index in get_eligible_validator_indices(state):
+        if index in matching_target_attesting_indices:
+            if state.leak_score[index] > 0:
+                state.leak_score[index] -= 1
+        elif is_in_inactivity_leak(state):
+            state.leak_score[index] += LEAK_SCORE_BIAS
 ```
 
 #### Rewards and penalties
