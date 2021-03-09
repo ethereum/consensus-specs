@@ -18,7 +18,7 @@
   - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
 - [Containers](#containers)
-  - [Extended containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
@@ -135,10 +135,7 @@ This patch updates a few configuration values to move penalty constants toward t
 
 ## Containers
 
-### Extended containers
-
-*Note*: Extended SSZ containers inherit all fields from the parent in the original
-order and append any additional fields to the end.
+### Modified containers
 
 #### `BeaconBlockBody`
 
@@ -195,7 +192,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Leak
-    leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
 ```
 
 ### New containers
