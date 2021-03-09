@@ -1,6 +1,6 @@
 from importlib import reload, import_module
 from inspect import getmembers, isfunction
-from typing import Any, Callable, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, Optional
 
 from eth2spec.config import config_util
 from eth2spec.utils import bls
@@ -11,7 +11,7 @@ from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 
 
 def generate_from_tests(runner_name: str, handler_name: str, src: Any,
-                        fork_name: SpecForkName, bls_active: bool = True) -> Iterable[TestCase]:
+                        fork_name: SpecForkName, bls_active: bool = True, phase: Optional[str]=None) -> Iterable[TestCase]:
     """
     Generate a list of test cases by running tests from the given src in generator-mode.
     :param runner_name: to categorize the test in general as.
@@ -20,12 +20,17 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
     :param fork_name: to run tests against particular phase and/or fork.
            (if multiple forks are applicable, indicate the last fork)
     :param bls_active: optional, to override BLS switch preference. Defaults to True.
+    :param phase: optional, specific phase name
     :return: an iterable of test cases.
     """
     fn_names = [
         name for (name, _) in getmembers(src, isfunction)
         if name.startswith('test_')
     ]
+
+    if phase is None:
+        phase = fork_name
+
     print("generating test vectors from tests source: %s" % src.__name__)
     for name in fn_names:
         tfn = getattr(src, name)
@@ -42,7 +47,7 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
             suite_name='pyspec_tests',
             case_name=case_name,
             # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
-            case_fn=lambda: tfn(generator_mode=True, phase=fork_name, bls_active=bls_active)
+            case_fn=lambda: tfn(generator_mode=True, phase=phase, bls_active=bls_active)
         )
 
 
