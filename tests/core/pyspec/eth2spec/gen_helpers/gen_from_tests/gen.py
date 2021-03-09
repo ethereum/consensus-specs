@@ -11,7 +11,8 @@ from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 
 
 def generate_from_tests(runner_name: str, handler_name: str, src: Any,
-                        fork_name: SpecForkName, bls_active: bool = True, phase: Optional[str]=None) -> Iterable[TestCase]:
+                        fork_name: SpecForkName, bls_active: bool = True,
+                        phase: Optional[str]=None) -> Iterable[TestCase]:
     """
     Generate a list of test cases by running tests from the given src in generator-mode.
     :param runner_name: to categorize the test in general as.
