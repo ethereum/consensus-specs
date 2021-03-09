@@ -34,4 +34,5 @@ def create_provider(tests_src, config_name: str) -> gen_typing.TestProvider:
 if __name__ == "__main__":
     gen_runner.run_generator("forks", [
         create_provider(test_altair_forks, MINIMAL),
+        create_provider(test_altair_forks, MAINNET),
     ])
