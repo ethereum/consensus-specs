@@ -1,12 +1,9 @@
 # Ethereum 2.0 Phase 0 -- Deposit Contract
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -43,7 +40,7 @@ These configurations are updated for releases and may be out of sync during `dev
 | - | - |
 | `DEPOSIT_CHAIN_ID` | `1` |
 | `DEPOSIT_NETWORK_ID` | `1` |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
+| `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
 
 ## Ethereum 1.0 deposit contract
 
@@ -61,12 +58,13 @@ The amount of ETH (rounded down to the closest Gwei) sent to the deposit contrac
 
 #### Withdrawal credentials
 
-One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawing validator balance (e.g. to another validator, or to shards). The first byte of `withdrawal_credentials` is a version number. As of now, the only expected format is as follows:
+One of the `DepositData` fields is `withdrawal_credentials` which constrains validator withdrawals.
+The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes.
+The withdrawal prefixes currently supported are `BLS_WITHDRAWAL_PREFIX` and `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+Read more in the [validator guide](./validator.md#withdrawal-credentials).
 
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-* `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
-
-The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
+*Note*: The deposit contract does not validate the `withdrawal_credentials` field.
+Support for new withdrawal prefixes can be added without modifying the deposit contract.
 
 #### `DepositEvent` log
 

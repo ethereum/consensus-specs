@@ -1,2 +1,2 @@
-../../core/gen_helpers
+pytest>=4.4
 ../../../

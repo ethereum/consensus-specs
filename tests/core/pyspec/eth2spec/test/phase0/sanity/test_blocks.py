@@ -1,3 +1,4 @@
+from random import Random
 from eth2spec.utils import bls
 
 from eth2spec.test.helpers.state import (
@@ -9,7 +10,7 @@ from eth2spec.test.helpers.block import (
     sign_block,
     transition_unsigned_block,
 )
-from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
     get_valid_attester_slashing,
@@ -18,7 +19,12 @@ from eth2spec.test.helpers.attester_slashings import (
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
+from eth2spec.test.helpers.multi_operations import (
+    run_slash_and_exit,
+    run_test_full_random_operations,
+)
 
 from eth2spec.test.context import (
     PHASE0, PHASE1, MINIMAL,
@@ -29,6 +35,7 @@ from eth2spec.test.context import (
     with_configs,
     with_custom_state,
     large_validator_set,
+    is_post_lightclient_patch,
 )
 
 
@@ -774,15 +781,19 @@ def test_attestation(spec, state):
         spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
     )
 
+    if not is_post_lightclient_patch(spec):
+        pre_current_attestations_len = len(state.current_epoch_attestations)
+
     # Add to state via block transition
-    pre_current_attestations_len = len(state.current_epoch_attestations)
     attestation_block.body.attestations.append(attestation)
     signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
-    assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
-
-    # Epoch transition should move to previous_epoch_attestations
-    pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
+    if not is_post_lightclient_patch(spec):
+        assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
+        # Epoch transition should move to previous_epoch_attestations
+        pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
+    else:
+        pre_current_epoch_participation_root = spec.hash_tree_root(state.current_epoch_participation)
 
     epoch_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_epoch_block = state_transition_and_sign_block(spec, state, epoch_block)
@@ -790,22 +801,13 @@ def test_attestation(spec, state):
     yield 'blocks', [signed_attestation_block, signed_epoch_block]
     yield 'post', state
 
-    assert len(state.current_epoch_attestations) == 0
-    assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
-
-
-def prepare_signed_exits(spec, state, indices):
-    domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
-
-    def create_signed_exit(index):
-        exit = spec.VoluntaryExit(
-            epoch=spec.get_current_epoch(state),
-            validator_index=index,
-        )
-        signing_root = spec.compute_signing_root(exit, domain)
-        return spec.SignedVoluntaryExit(message=exit, signature=bls.Sign(privkeys[index], signing_root))
-
-    return [create_signed_exit(index) for index in indices]
+    if not is_post_lightclient_patch(spec):
+        assert len(state.current_epoch_attestations) == 0
+        assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
+    else:
+        for index in range(len(state.validators)):
+            assert state.current_epoch_participation[index] == spec.ParticipationFlags(0b0000_0000)
+        assert spec.hash_tree_root(state.previous_epoch_participation) == pre_current_epoch_participation_root
 
 
 # In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
@@ -893,6 +895,23 @@ def test_multiple_different_validator_exits_same_block(spec, state):
 
     for index in validator_indices:
         assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+
+@with_all_phases
+@spec_state_test
+@disable_process_reveal_deadlines
+def test_slash_and_exit_same_index(spec, state):
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    yield from run_slash_and_exit(spec, state, validator_index, validator_index, valid=False)
+
+
+@with_all_phases
+@spec_state_test
+@disable_process_reveal_deadlines
+def test_slash_and_exit_diff_index(spec, state):
+    slash_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    exit_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-2]
+    yield from run_slash_and_exit(spec, state, slash_index, exit_index)
 
 
 @with_all_phases
@@ -1013,3 +1032,27 @@ def test_eth1_data_votes_no_consensus(spec, state):
 
     yield 'blocks', blocks
     yield 'post', state
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_0(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2020))
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_1(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2021))
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_2(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2022))
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_full_random_operations_3(spec, state):
+    yield from run_test_full_random_operations(spec, state, rng=Random(2023))

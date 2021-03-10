@@ -96,6 +96,49 @@ def test_new_deposit_over_max(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_new_deposit_eth1_withdrawal_credentials(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
+    )
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(
+        spec, state,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    withdrawal_credentials = (
+        b'\xFF'  # Non specified withdrawal credentials version
+        + b'\x02' * 31  # Garabage bytes
+    )
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(
+        spec, state,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
 @always_bls
 def test_invalid_sig_other_version(spec, state):
     validator_index = len(state.validators)

@@ -14,7 +14,6 @@ It consists of four main sections:
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
@@ -102,7 +101,7 @@ It consists of four main sections:
   - [Compression/Encoding](#compressionencoding)
     - [Why are we using SSZ for encoding?](#why-are-we-using-ssz-for-encoding)
     - [Why are we compressing, and at which layers?](#why-are-we-compressing-and-at-which-layers)
-    - [Why are using Snappy for compression?](#why-are-using-snappy-for-compression)
+    - [Why are we using Snappy for compression?](#why-are-we-using-snappy-for-compression)
     - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
     - [What are SSZ type size bounds?](#what-are-ssz-type-size-bounds)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
@@ -213,8 +212,8 @@ including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsu
 
 The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md#parameters) will be used:
 
-- `D` (topic stable mesh target count): 6
-- `D_low` (topic stable mesh low watermark): 5
+- `D` (topic stable mesh target count): 8
+- `D_low` (topic stable mesh low watermark): 6
 - `D_high` (topic stable mesh high watermark): 12
 - `D_lazy` (gossip target): 6
 - `heartbeat_interval` (frequency of heartbeat, seconds): 0.7
@@ -293,7 +292,7 @@ If one or more validations fail while processing the items in order, return eith
 There are two primary global topics used to propagate beacon blocks (`beacon_block`)
 and aggregate attestations (`beacon_aggregate_and_proof`) to all nodes on the network.
 
-There are three additional global topics are used to propagate lower frequency validator messages
+There are three additional global topics that are used to propagate lower frequency validator messages
 (`voluntary_exit`, `proposer_slashing`, and `attester_slashing`).
 
 ##### `beacon_block`
@@ -314,6 +313,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   (via both gossip and non-gossip sources)
   (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
+- _[REJECT]_ The block is from a higher slot than its parent.
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` -- i.e.
   `get_ancestor(store, block.parent_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
@@ -333,6 +333,8 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
+- _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
+  compute_epoch_at_slot(aggregate.data.slot)`
 - _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
@@ -418,7 +420,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
   (via both gossip and non-gossip sources)
-  (a client MAY queue aggregates for processing once block is retrieved).
+  (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(attestation.data.target.epoch)) == attestation.data.target.root`
@@ -936,7 +938,7 @@ where the fields of `ENRForkID` are defined as
 * `next_fork_epoch` is the epoch at which the next fork is planned and the `current_fork_version` will be updated.
   If no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
-*Note*: `fork_digest` is composed of values that are not not known until the genesis block/state are available.
+*Note*: `fork_digest` is composed of values that are not known until the genesis block/state are available.
 Due to this, clients SHOULD NOT form ENRs and begin peer discovery until genesis values are known.
 One notable exception to this rule is the distribution of bootnode ENRs prior to genesis.
 In this case, bootnode ENRs SHOULD be initially distributed with `eth2` field set as
@@ -1217,14 +1219,12 @@ For minimum and maximum allowable slot broadcast times,
 Although messages can at times be eagerly gossiped to the network,
 the node's fork choice prevents integration of these messages into the actual consensus until the _actual local start_ of the designated slot.
 
-The value of this constant is currently a placeholder and will be tuned based on data observed in testnets.
-
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel.
 The exact grouping will be dependent on more involved network tests.
 This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet).
-The value is currently set to to be equal `MAX_COMMITTEES_PER_SLOT` if/until network tests indicate otherwise.
+The value is currently set to be equal to `MAX_COMMITTEES_PER_SLOT` if/until network tests indicate otherwise.
 
 ### Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?
 
@@ -1370,7 +1370,7 @@ Thus, it may happen that we need to transmit an empty list - there are several w
 
 Semantically, it is not an error that a block is missing during a slot making option 2 unnatural.
 
-Option 1 allows allows the responder to signal "no block", but this information may be wrong - for example in the case of a malicious node.
+Option 1 allows the responder to signal "no block", but this information may be wrong - for example in the case of a malicious node.
 
 Under option 0, there is no way for a client to distinguish between a slot without a block and an incomplete response,
 but given that it already must contain logic to handle the uncertainty of a malicious peer, option 0 was chosen.
@@ -1496,7 +1496,7 @@ This looks different depending on the interaction layer:
   implementers are encouraged to encapsulate the encoding and compression logic behind
   MessageReader and MessageWriter components/strategies that can be layered on top of the raw byte streams.
 
-### Why are using Snappy for compression?
+### Why are we using Snappy for compression?
 
 Snappy is used in Ethereum 1.0. It is well maintained by Google, has good benchmarks,
 and can calculate the size of the uncompressed object without inflating it in memory.

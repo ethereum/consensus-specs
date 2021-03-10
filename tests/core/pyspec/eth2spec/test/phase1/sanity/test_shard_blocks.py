@@ -1,5 +1,6 @@
 from eth2spec.test.context import (
     PHASE0,
+    LIGHTCLIENT_PATCH,
     always_bls,
     expect_assertion_error,
     spec_state_test,
@@ -43,7 +44,7 @@ def run_shard_blocks(spec, shard_state, signed_shard_block, beacon_parent_state,
         shard_state.latest_block_root == pre_shard_state.latest_block_root
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink
@@ -63,7 +64,7 @@ def test_valid_shard_block(spec, state):
 #
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_invalid_shard_parent_root(spec, state):
@@ -79,7 +80,7 @@ def test_invalid_shard_parent_root(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state, valid=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_invalid_beacon_parent_root(spec, state):
@@ -94,7 +95,7 @@ def test_invalid_beacon_parent_root(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state, valid=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_invalid_slot(spec, state):
@@ -110,7 +111,7 @@ def test_invalid_slot(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state, valid=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @only_full_crosslink
 def test_invalid_proposer_index(spec, state):
@@ -130,7 +131,7 @@ def test_invalid_proposer_index(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state, valid=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink
@@ -151,7 +152,7 @@ def test_out_of_bound_offset(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state, valid=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink
@@ -170,7 +171,7 @@ def test_invalid_offset(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state, valid=False)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink
@@ -189,7 +190,7 @@ def test_empty_block_body(spec, state):
 #
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink
@@ -208,7 +209,7 @@ def test_invalid_signature(spec, state):
 #
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink
@@ -225,7 +226,7 @@ def test_max_offset(spec, state):
     yield from run_shard_blocks(spec, shard_state, signed_shard_block, beacon_state)
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 @always_bls
 @only_full_crosslink

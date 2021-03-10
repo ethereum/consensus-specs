@@ -1,6 +1,14 @@
+from eth2spec.test.context import is_post_lightclient_patch
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import get_balance
+
+
+def get_min_slashing_penalty_quotient(spec):
+    if is_post_lightclient_patch(spec):
+        return spec.HF1_MIN_SLASHING_PENALTY_QUOTIENT
+    else:
+        return spec.MIN_SLASHING_PENALTY_QUOTIENT
 
 
 def check_proposer_slashing_effect(spec, pre_state, state, slashed_index):
@@ -10,7 +18,7 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index):
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
     proposer_index = spec.get_beacon_proposer_index(state)
-    slash_penalty = state.validators[slashed_index].effective_balance // spec.MIN_SLASHING_PENALTY_QUOTIENT
+    slash_penalty = state.validators[slashed_index].effective_balance // get_min_slashing_penalty_quotient(spec)
     whistleblower_reward = state.validators[slashed_index].effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
     if proposer_index != slashed_index:
         # slashed validator lost initial slash penalty

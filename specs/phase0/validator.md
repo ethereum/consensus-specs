@@ -1,13 +1,12 @@
 # Ethereum 2.0 Phase 0 -- Honest Validator
 
-**Notice**: This document is a work-in-progress for researchers and implementers. This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
+This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
 
 ## Table of contents
 
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
@@ -16,7 +15,9 @@
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [BLS public key](#bls-public-key)
-    - [BLS withdrawal key](#bls-withdrawal-key)
+    - [Withdrawal credentials](#withdrawal-credentials)
+      - [`BLS_WITHDRAWAL_PREFIX`](#bls_withdrawal_prefix)
+      - [`ETH1_ADDRESS_WITHDRAWAL_PREFIX`](#eth1_address_withdrawal_prefix)
   - [Submit deposit](#submit-deposit)
   - [Process deposit](#process-deposit)
   - [Validator index](#validator-index)
@@ -65,6 +66,7 @@
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
   - [Attester slashing](#attester-slashing)
+- [Protection best practices](#protection-best-practices)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -100,14 +102,41 @@ A validator must initialize many parameters locally before submitting a deposit 
 
 Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BLS12-381 curve](https://z.cash/blog/new-snark-curve). A private key, `privkey`, must be securely generated along with the resultant `pubkey`. This `privkey` must be "hot", that is, constantly available to sign data throughout the lifetime of the validator.
 
-#### BLS withdrawal key
+#### Withdrawal credentials
 
-A secondary withdrawal private key, `withdrawal_privkey`, must also be securely generated along with the resultant `withdrawal_pubkey`. This `withdrawal_privkey` does not have to be available for signing during the normal lifetime of a validator and can live in "cold storage".
+The `withdrawal_credentials` field constrains validator withdrawals.
+The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes.
 
-The validator constructs their `withdrawal_credentials` via the following:
+The following withdrawal prefixes are currently supported.
 
-* Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`.
-* Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
+##### `BLS_WITHDRAWAL_PREFIX`
+
+Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
+`(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals.
+The `withdrawal_credentials` field must be such that:
+
+* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
+* `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+
+*Note*: The `bls_withdrawal_privkey` is not required for validating and can be kept in cold storage.
+
+##### `ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+
+Withdrawal credentials with the Eth1 address withdrawal prefix specify
+a 20-byte Eth1 address `eth1_withdrawal_address` as the recipient for all withdrawals.
+The `eth1_withdrawal_address` can be the address of either an externally owned account or of a contract.
+
+The `withdrawal_credentials` field must be such that:
+
+* `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+* `withdrawal_credentials[1:12] == b'\x00' * 11`
+* `withdrawal_credentials[12:] == eth1_withdrawal_address`
+
+After the merge of the current Ethereum application layer (Eth1) into the Beacon Chain (Eth2),
+withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH)
+triggered by a user transaction that will set the gas price and gas limit as well pay fees.
+As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers,
+the future withdrawal protocol is agnostic to all other implementation details.
 
 ### Submit deposit
 
@@ -289,7 +318,7 @@ class Eth1Block(Container):
 
 Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
 
-An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state)` where:
+An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state, eth1_chain)` where:
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
@@ -327,7 +356,9 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
-    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state.eth1_data
+    # Non-substantive casting for linter
+    state_eth1_data: Eth1Data = state.eth1_data
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data
 
     return max(
         valid_votes,
@@ -358,6 +389,10 @@ The `proof` for each deposit must be constructed against the deposit root contai
 
 Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](./beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](./beacon-chain.md#voluntary-exits).
 
+*Note*: If a slashing for a validator is included in the same block as a
+voluntary exit, the voluntary exit will fail and cause the block to be invalid
+due to the slashing being processed first. Implementers must take heed of this
+operation interaction when packing blocks.
 
 #### Packaging into a `SignedBeaconBlock`
 
@@ -372,7 +407,7 @@ It is useful to be able to run a state transition function (working on a copy of
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
     temp_state: BeaconState = state.copy()
     signed_block = SignedBeaconBlock(message=block)
-    temp_state = state_transition(temp_state, signed_block, validate_result=False)
+    state_transition(temp_state, signed_block, validate_result=False)
     return hash_tree_root(temp_state)
 ```
 
@@ -604,3 +639,13 @@ Specifically, when signing an `Attestation`, a validator should perform the foll
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
+
+## Protection best practices
+
+A validator client should be considered standalone and should consider the beacon node as untrusted. This means that the validator client should protect:
+
+1) Private keys -- private keys should be protected from being exported accidentally or by an attacker.
+2) Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
+3) Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
+4) Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity leak and potential ejection due to low balance. 
+A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.

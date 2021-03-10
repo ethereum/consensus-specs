@@ -13,7 +13,7 @@ import milagro_bls_binding as milagro_bls
 
 from eth2spec.utils import bls
 from eth2spec.test.context import PHASE0
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 
 def to_bytes(i):
@@ -270,7 +270,7 @@ def case04_fast_aggregate_verify():
     yield f'fast_aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
-            'messages': encode_hex(SAMPLE_MESSAGE),
+            'message': encode_hex(SAMPLE_MESSAGE),
             'signature': encode_hex(aggregate_signature),
         },
         'output': False,

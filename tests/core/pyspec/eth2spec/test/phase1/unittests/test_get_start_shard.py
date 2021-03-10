@@ -1,12 +1,13 @@
 from eth2spec.test.context import (
     PHASE0,
+    LIGHTCLIENT_PATCH,
     with_all_phases_except,
     spec_state_test,
 )
 from eth2spec.test.helpers.state import next_epoch
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 def test_get_committee_count_delta(spec, state):
     assert spec.get_committee_count_delta(state, 0, 0) == 0
@@ -23,7 +24,7 @@ def test_get_committee_count_delta(spec, state):
     )
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 def test_get_start_shard_current_epoch_start(spec, state):
     assert state.current_epoch_start_shard == 0
@@ -39,7 +40,7 @@ def test_get_start_shard_current_epoch_start(spec, state):
     assert start_shard == state.current_epoch_start_shard
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 def test_get_start_shard_next_slot(spec, state):
     next_epoch(spec, state)
@@ -57,7 +58,7 @@ def test_get_start_shard_next_slot(spec, state):
     assert start_shard == expected_start_shard
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 def test_get_start_shard_previous_slot(spec, state):
     next_epoch(spec, state)
@@ -76,7 +77,7 @@ def test_get_start_shard_previous_slot(spec, state):
     assert start_shard == expected_start_shard
 
 
-@with_all_phases_except([PHASE0])
+@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
 @spec_state_test
 def test_get_start_shard_far_past_epoch(spec, state):
     initial_epoch = spec.get_current_epoch(state)
