@@ -189,8 +189,8 @@ class BeaconState(Container):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # Light client sync committees
-    current_sync_committee: SyncCommittee
-    next_sync_committee: SyncCommittee
+    current_sync_committee: SyncCommittee  # [New in HF1]
+    next_sync_committee: SyncCommittee  # [New in HF1]
     # Leak
     leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in HF1]
 ```
