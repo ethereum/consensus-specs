@@ -134,10 +134,10 @@ Cases are split up too. This enables diffing of parts of the test case, tracking
 
 These files allow for custom formats for some parts of the test. E.g. something encoded in SSZ.
 Or to avoid large files, the SSZ can be compressed with Snappy.
-E.g. `pre.ssz_snappy_snappy`, `deposit.ssz_snappy_snappy`, `post.ssz_snappy_snappy`.
+E.g. `pre.ssz_snappy`, `deposit.ssz_snappy`, `post.ssz_snappy`.
 
-Diffing a `pre.ssz_snappy_snappy` and `post.ssz_snappy_snappy` provides all the information for testing, when decompressed and decoded.
-Then the difference between pre and post can be compared to anything that changes the pre state, e.g. `deposit.ssz_snappy_snappy`
+Diffing a `pre.ssz_snappy` and `post.ssz_snappy` provides all the information for testing, when decompressed and decoded.
+Then the difference between pre and post can be compared to anything that changes the pre state, e.g. `deposit.ssz_snappy`
 
 YAML is generally used for test metadata, and for tests that do not use SSZ: e.g. shuffling and BLS tests.
 In this case, there is no point in adding special SSZ types. And the size and efficiency of YAML is acceptable.
@@ -147,8 +147,8 @@ In this case, there is no point in adding special SSZ types. And the size and ef
 Between all types of tests, a few formats are common:
 
 - **`.yaml`**: A YAML file containing structured data to describe settings or test contents.
-- **`.ssz_snappy`**: A file containing raw SSZ-encoded data. Previously widely used in tests, but replaced with compressed variant.
-- **`.ssz_snappy_snappy`**: Like `.ssz_snappy`, but compressed with Snappy block compression.
+- **`.ssz`**: A file containing raw SSZ-encoded data. Previously widely used in tests, but replaced with compressed variant.
+- **`.ssz_snappy`**: Like `.ssz`, but compressed with Snappy block compression.
   Snappy block compression is already applied to SSZ in Eth2 gossip, available in client implementations, and thus chosen as compression method.
 
 
