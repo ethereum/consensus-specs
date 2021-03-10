@@ -27,7 +27,7 @@ python setup.py pyspec --spec-fork=phase0 --md-doc-paths="specs/phase0/beacon-ch
 
 After installing, you can install the optional dependencies for testing and linting.
 With makefile: `make install_test`.
-Or manually: run `pip install .[testing]` and `pip install .[linting]`.
+Or manually: run `pip install .[test]` and `pip install .[lint]`.
 
 These tests are not intended for client-consumption.
 These tests are testing the spec itself, to verify consistency and provide feedback on modifications of the spec.

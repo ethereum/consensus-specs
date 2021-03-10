@@ -2,7 +2,7 @@ from eth_utils import to_tuple
 from typing import Iterable
 from importlib import reload
 
-from gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec
