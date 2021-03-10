@@ -17,10 +17,10 @@ HF1_FORK_TEST_META_TAGS = {
 }
 
 
-def run_fork_test(spec, pre_state):
+def run_fork_test(post_spec, pre_state):
     yield 'pre', pre_state
 
-    post_state = spec.upgrade_to_lightclient_patch(pre_state)
+    post_state = post_spec.upgrade_to_lightclient_patch(pre_state)
 
     # Stable fields
     stable_fields = [
@@ -47,8 +47,8 @@ def run_fork_test(spec, pre_state):
         assert getattr(pre_state, field) != getattr(post_state, field)
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
-    assert post_state.fork.current_version == spec.LIGHTCLIENT_PATCH_FORK_VERSION
-    assert post_state.fork.epoch == spec.get_current_epoch(post_state)
+    assert post_state.fork.current_version == post_spec.LIGHTCLIENT_PATCH_FORK_VERSION
+    assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
     yield 'post', post_state
 

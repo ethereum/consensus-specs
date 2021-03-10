@@ -18,10 +18,10 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
     :param runner_name: to categorize the test in general as.
     :param handler_name: to categorize the test specialization as.
     :param src: to retrieve tests from (discovered using inspect.getmembers).
-    :param fork_name: to run tests against particular phase and/or fork.
+    :param fork_name: the folder name for these tests.
            (if multiple forks are applicable, indicate the last fork)
     :param bls_active: optional, to override BLS switch preference. Defaults to True.
-    :param phase: optional, specific phase name
+    :param phase: optional, to run tests against a particular spec version. Default to `fork_name` value.
     :return: an iterable of test cases.
     """
     fn_names = [

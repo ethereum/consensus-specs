@@ -26,7 +26,6 @@ def create_provider(tests_src, config_name: str, phase: str, fork_name: str) -> 
             src=tests_src,
             fork_name=fork_name,
             phase=phase,
-
         )
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
