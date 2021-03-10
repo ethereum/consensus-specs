@@ -53,7 +53,7 @@ def run_fork_test(post_spec, pre_state):
     yield 'post', post_state
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @spec_test
 @with_state
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
@@ -61,7 +61,7 @@ def test_fork_base_state(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @spec_test
 @with_state
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
@@ -70,7 +70,7 @@ def test_fork_next_epoch(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @spec_test
 @with_state
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
@@ -79,7 +79,7 @@ def test_fork_next_epoch_with_block(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @spec_test
 @with_state
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
@@ -89,7 +89,7 @@ def test_fork_many_next_epoch(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
@@ -97,7 +97,7 @@ def test_fork_random_low_balances(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)
@@ -105,7 +105,7 @@ def test_fork_random_misc_balances(spec, phases, state):
     yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
 
 
-@with_phases(([PHASE0]))
+@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(HF1_FORK_TEST_META_TAGS)

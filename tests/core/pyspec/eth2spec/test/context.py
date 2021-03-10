@@ -340,7 +340,7 @@ def with_phases(phases, other_phases=None):
 
             available_phases = set(run_phases)
             if other_phases is not None:
-                available_phases += set(other_phases)
+                available_phases |= set(other_phases)
 
             # TODO: test state is dependent on phase0 but is immediately transitioned to phase1.
             #  A new state-creation helper for phase 1 may be in place, and then phase1+ tests can run without phase0
@@ -348,9 +348,12 @@ def with_phases(phases, other_phases=None):
 
             # Populate all phases for multi-phase tests
             phase_dir = {}
-            phase_dir[PHASE0] = spec_phase0
-            phase_dir[PHASE1] = spec_phase1
-            phase_dir[LIGHTCLIENT_PATCH] = spec_lightclient_patch
+            if PHASE0 in available_phases:
+                phase_dir[PHASE0] = spec_phase0
+            if PHASE1 in available_phases:
+                phase_dir[PHASE1] = spec_phase1
+            if LIGHTCLIENT_PATCH in available_phases:
+                phase_dir[LIGHTCLIENT_PATCH] = spec_lightclient_patch
 
             # return is ignored whenever multiple phases are ran. If
             if PHASE0 in run_phases:
