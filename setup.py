@@ -449,7 +449,7 @@ class PySpecCommand(Command):
                     specs/phase1/beacon-chain.md
                     specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
-                    specs/phase1/phase1-fork.md
+                    specs/phase1/fork.md
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
@@ -460,7 +460,7 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/lightclient/beacon-chain.md
-                    specs/lightclient/lightclient-fork.md
+                    specs/lightclient/fork.md
                 """
                 # TODO: add specs/lightclient/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
