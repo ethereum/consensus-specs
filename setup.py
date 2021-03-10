@@ -581,7 +581,7 @@ setup(
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
-        "py_ecc==5.1.0",
+        "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
         "remerkleable==0.1.18",
