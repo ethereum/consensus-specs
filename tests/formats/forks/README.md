@@ -22,7 +22,7 @@ Key of valid `fork` strings that might be found in `meta.yaml`
 
 | String ID | Pre-fork | Post-fork | Function |
 | - | - | - | - |
-| `altair` | Phase 0 | Altair | `upgrade_to_lightclient_patch` |
+| `altair` | Phase 0 | Altair | `upgrade_to_altair` |
 
 ### `pre.ssz_snappy`
 

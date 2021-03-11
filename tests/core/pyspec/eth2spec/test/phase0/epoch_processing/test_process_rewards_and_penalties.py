@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
-    is_post_lightclient_patch,
+    is_post_altair,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -161,7 +161,7 @@ def run_with_participation(spec, state, participation_fn):
     attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
     pre_state = state.copy()
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
     else:
         sync_committee_indices = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
@@ -173,11 +173,11 @@ def run_with_participation(spec, state, participation_fn):
 
     for index in range(len(pre_state.validators)):
         if spec.is_in_inactivity_leak(state):
-            # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
-            if not is_post_lightclient_patch(spec) and index in proposer_indices and index in participated:
+            # Proposers can still make money during a leak before ALTAIR
+            if not is_post_altair(spec) and index in proposer_indices and index in participated:
                 assert state.balances[index] > pre_state.balances[index]
             elif index in attesting_indices:
-                if is_post_lightclient_patch(spec) and index in sync_committee_indices:
+                if is_post_altair(spec) and index in sync_committee_indices:
                     # The sync committee reward has not been canceled, so the sync committee participants still earn it
                     assert state.balances[index] >= pre_state.balances[index]
                 else:
@@ -428,7 +428,7 @@ def test_attestations_some_slashed(spec, state):
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = state.copy()

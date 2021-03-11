@@ -1,12 +1,12 @@
-from eth2spec.test.context import is_post_lightclient_patch
+from eth2spec.test.context import is_post_altair
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import get_balance
 
 
 def get_min_slashing_penalty_quotient(spec):
-    if is_post_lightclient_patch(spec):
-        return spec.HF1_MIN_SLASHING_PENALTY_QUOTIENT
+    if is_post_altair(spec):
+        return spec.ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT
     else:
         return spec.MIN_SLASHING_PENALTY_QUOTIENT
 

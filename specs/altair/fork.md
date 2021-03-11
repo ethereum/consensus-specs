@@ -25,21 +25,21 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `LIGHTCLIENT_PATCH_FORK_VERSION` | `Version('0x01000000')` |
-| `LIGHTCLIENT_PATCH_FORK_SLOT` | `Slot(0)` **TBD** |
+| `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
+| `ALTAIR_FORK_SLOT` | `Slot(0)` **TBD** |
 
 ## Fork to Light-client patch
 
 ### Fork trigger
 
-TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `LIGHTCLIENT_PATCH_FORK_SLOT`, where `LIGHTCLIENT_PATCH_FORK_SLOT % SLOTS_PER_EPOCH == 0`.
+TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `ALTAIR_FORK_SLOT`, where `ALTAIR_FORK_SLOT % SLOTS_PER_EPOCH == 0`.
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot == LIGHTCLIENT_PATCH_FORK_SLOT`, an irregular state change is made to upgrade to light-client patch.
+After `process_slots` of Phase 0 finishes, if `state.slot == ALTAIR_FORK_SLOT`, an irregular state change is made to upgrade to light-client patch.
 
 ```python
-def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
+def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -47,7 +47,7 @@ def upgrade_to_lightclient_patch(pre: phase0.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=LIGHTCLIENT_PATCH_FORK_VERSION,
+            current_version=ALTAIR_FORK_VERSION,
             epoch=epoch,
         ),
         # History

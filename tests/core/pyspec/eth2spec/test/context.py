@@ -2,7 +2,7 @@ import pytest
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.lightclient_patch import spec as spec_lightclient_patch
+from eth2spec.altair import spec as spec_altair
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
@@ -20,7 +20,7 @@ from importlib import reload
 def reload_specs():
     reload(spec_phase0)
     reload(spec_phase1)
-    reload(spec_lightclient_patch)
+    reload(spec_altair)
 
 
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
@@ -30,9 +30,9 @@ ConfigName = NewType("ConfigName", str)
 
 PHASE0 = SpecForkName('phase0')
 PHASE1 = SpecForkName('phase1')
-LIGHTCLIENT_PATCH = SpecForkName('lightclient_patch')
+ALTAIR = SpecForkName('altair')
 
-ALL_PHASES = (PHASE0, PHASE1, LIGHTCLIENT_PATCH)
+ALL_PHASES = (PHASE0, PHASE1, ALTAIR)
 
 MAINNET = ConfigName('mainnet')
 MINIMAL = ConfigName('minimal')
@@ -40,7 +40,7 @@ MINIMAL = ConfigName('minimal')
 ALL_CONFIGS = (MINIMAL, MAINNET)
 
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (PHASE0, LIGHTCLIENT_PATCH)
+TESTGEN_FORKS = (PHASE0, ALTAIR)
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -66,7 +66,7 @@ class SpecLightclient(Spec):
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     PHASE1: SpecPhase1
-    LIGHTCLIENT_PATCH: SpecLightclient
+    ALTAIR: SpecLightclient
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -82,8 +82,8 @@ def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Ca
         # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
         # Decide based on performance/consistency results later.
         state = phases[PHASE1].upgrade_to_phase1(state)
-    elif spec.fork == LIGHTCLIENT_PATCH:
-        state = phases[LIGHTCLIENT_PATCH].upgrade_to_lightclient_patch(state)
+    elif spec.fork == ALTAIR:
+        state = phases[ALTAIR].upgrade_to_altair(state)
 
     return state
 
@@ -352,16 +352,16 @@ def with_phases(phases, other_phases=None):
                 phase_dir[PHASE0] = spec_phase0
             if PHASE1 in available_phases:
                 phase_dir[PHASE1] = spec_phase1
-            if LIGHTCLIENT_PATCH in available_phases:
-                phase_dir[LIGHTCLIENT_PATCH] = spec_lightclient_patch
+            if ALTAIR in available_phases:
+                phase_dir[ALTAIR] = spec_altair
 
             # return is ignored whenever multiple phases are ran. If
             if PHASE0 in run_phases:
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if PHASE1 in run_phases:
                 ret = fn(spec=spec_phase1, phases=phase_dir, *args, **kw)
-            if LIGHTCLIENT_PATCH in run_phases:
-                ret = fn(spec=spec_lightclient_patch, phases=phase_dir, *args, **kw)
+            if ALTAIR in run_phases:
+                ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
             return ret
         return wrapper
     return decorator
@@ -397,9 +397,9 @@ def only_full_crosslink(fn):
     return wrapper
 
 
-def is_post_lightclient_patch(spec):
+def is_post_altair(spec):
     if spec.fork in [PHASE0, PHASE1]:
-        # TODO: PHASE1 fork is temporarily parallel to LIGHTCLIENT_PATCH.
-        # Will make PHASE1 fork inherit LIGHTCLIENT_PATCH later.
+        # TODO: PHASE1 fork is temporarily parallel to ALTAIR.
+        # Will make PHASE1 fork inherit ALTAIR later.
         return False
     return True

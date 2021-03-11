@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    PHASE0, LIGHTCLIENT_PATCH,
+    PHASE0, ALTAIR,
     with_phases,
     with_custom_state,
     spec_test, with_state,
@@ -12,7 +12,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-HF1_FORK_TEST_META_TAGS = {
+ALTAIR_FORK_TEST_META_TAGS = {
     'fork': 'altair',
 }
 
@@ -20,7 +20,7 @@ HF1_FORK_TEST_META_TAGS = {
 def run_fork_test(post_spec, pre_state):
     yield 'pre', pre_state
 
-    post_state = post_spec.upgrade_to_lightclient_patch(pre_state)
+    post_state = post_spec.upgrade_to_altair(pre_state)
 
     # Stable fields
     stable_fields = [
@@ -47,67 +47,67 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) != getattr(post_state, field)
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
-    assert post_state.fork.current_version == post_spec.LIGHTCLIENT_PATCH_FORK_VERSION
+    assert post_state.fork.current_version == post_spec.ALTAIR_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
     yield 'post', post_state
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
 @with_state
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_base_state(spec, phases, state):
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
 @with_state
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_next_epoch(spec, phases, state):
     next_epoch(spec, state)
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
 @with_state
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_next_epoch_with_block(spec, phases, state):
     next_epoch_via_block(spec, state)
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
 @with_state
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_many_next_epoch(spec, phases, state):
     for _ in range(3):
         next_epoch(spec, state)
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_random_low_balances(spec, phases, state):
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_random_misc_balances(spec, phases, state):
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
 
 
-@with_phases(phases=[PHASE0], other_phases=[LIGHTCLIENT_PATCH])
+@with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
-@with_meta_tags(HF1_FORK_TEST_META_TAGS)
+@with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_fork_random_large_validator_set(spec, phases, state):
-    yield from run_fork_test(phases[LIGHTCLIENT_PATCH], state)
+    yield from run_fork_test(phases[ALTAIR], state)
