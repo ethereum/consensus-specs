@@ -1,12 +1,12 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
-    LIGHTCLIENT_PATCH,
+    ALTAIR,
 )
 from eth2spec.test.helpers.merkle import build_proof
 
 
-@with_phases([LIGHTCLIENT_PATCH])
+@with_phases([ALTAIR])
 @spec_state_test
 def test_next_sync_committee_tree(spec, state):
     state.next_sync_committee: object = spec.SyncCommittee(
@@ -22,7 +22,7 @@ def test_next_sync_committee_tree(spec, state):
     )
 
 
-@with_phases([LIGHTCLIENT_PATCH])
+@with_phases([ALTAIR])
 @spec_state_test
 def test_finality_root_tree(spec, state):
     finality_branch = build_proof(state.get_backing(), spec.FINALIZED_ROOT_INDEX)

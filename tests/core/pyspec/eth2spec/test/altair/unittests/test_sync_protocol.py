@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    LIGHTCLIENT_PATCH,
+    ALTAIR,
     MINIMAL,
     spec_state_test,
     with_configs,
@@ -20,7 +20,7 @@ from eth2spec.test.helpers.sync_committee import (
 from eth2spec.test.helpers.merkle import build_proof
 
 
-@with_phases([LIGHTCLIENT_PATCH])
+@with_phases([ALTAIR])
 @spec_state_test
 def test_process_light_client_update_not_updated(spec, state):
     pre_snapshot = spec.LightClientSnapshot(
@@ -78,7 +78,7 @@ def test_process_light_client_update_not_updated(spec, state):
     assert store.snapshot == pre_snapshot
 
 
-@with_phases([LIGHTCLIENT_PATCH])
+@with_phases([ALTAIR])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
@@ -143,7 +143,7 @@ def test_process_light_client_update_timeout(spec, state):
     assert store.snapshot.header == update.header
 
 
-@with_phases([LIGHTCLIENT_PATCH])
+@with_phases([ALTAIR])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
