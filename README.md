@@ -21,10 +21,11 @@ Core specifications for Eth2 clients be found in [specs](specs/). These are divi
 * [Honest Validator](specs/phase0/validator.md)
 * [P2P Networking](specs/phase0/p2p-interface.md)
 
-### Light clients
+### Altair
 
-* [Beacon chain changes](specs/lightclient/beacon-chain.md)
-* [Light client sync protocol](specs/lightclient/sync-protocol.md)
+* [Beacon chain changes](specs/altair/beacon-chain.md)
+* [Altair fork](specs/altair/fork.md)
+* [Light client sync protocol](specs/altair/sync-protocol.md)
 
 ### Sharding
 

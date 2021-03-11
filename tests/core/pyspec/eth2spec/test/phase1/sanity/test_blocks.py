@@ -2,7 +2,7 @@ from typing import Dict, Sequence
 
 from eth2spec.test.context import (
     PHASE0,
-    LIGHTCLIENT_PATCH,
+    ALTAIR,
     MINIMAL,
     with_all_phases_except,
     spec_state_test,
@@ -100,7 +100,7 @@ def run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, comm
                 assert post_shard_state.gasprice > pre_gasprice
 
 
-@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
+@with_all_phases_except([PHASE0, ALTAIR])
 @spec_state_test
 @only_full_crosslink
 def test_process_beacon_block_with_normal_shard_transition(spec, state):
@@ -114,7 +114,7 @@ def test_process_beacon_block_with_normal_shard_transition(spec, state):
     yield from run_beacon_block_with_shard_blocks(spec, state, target_len_offset_slot, committee_index, shard)
 
 
-@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
+@with_all_phases_except([PHASE0, ALTAIR])
 @spec_state_test
 @only_full_crosslink
 def test_process_beacon_block_with_empty_proposal_transition(spec, state):
@@ -133,7 +133,7 @@ def test_process_beacon_block_with_empty_proposal_transition(spec, state):
 #
 
 
-@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
+@with_all_phases_except([PHASE0, ALTAIR])
 @spec_state_test
 @only_full_crosslink
 def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
@@ -167,7 +167,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     yield from run_beacon_block(spec, state, block)
 
 
-@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
+@with_all_phases_except([PHASE0, ALTAIR])
 @spec_state_test
 @with_configs([MINIMAL])
 def test_custody_key_reveal(spec, state):
@@ -181,7 +181,7 @@ def test_custody_key_reveal(spec, state):
     yield from run_beacon_block(spec, state, block)
 
 
-@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
+@with_all_phases_except([PHASE0, ALTAIR])
 @spec_state_test
 def test_early_derived_secret_reveal(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -192,7 +192,7 @@ def test_early_derived_secret_reveal(spec, state):
     yield from run_beacon_block(spec, state, block)
 
 
-@with_all_phases_except([PHASE0, LIGHTCLIENT_PATCH])
+@with_all_phases_except([PHASE0, ALTAIR])
 @spec_state_test
 @only_full_crosslink
 def test_custody_slashing(spec, state):

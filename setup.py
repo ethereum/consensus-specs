@@ -179,7 +179,7 @@ from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
-# Whenever lightclient is loaded, make sure we have the latest phase0
+# Whenever altair is loaded, make sure we have the latest phase0
 from importlib import reload
 reload(phase0)
 
@@ -386,7 +386,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
-    'lightclient_patch': LIGHTCLIENT_IMPORT,
+    'altair': LIGHTCLIENT_IMPORT,
 }
 
 
@@ -453,16 +453,16 @@ class PySpecCommand(Command):
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
-            elif self.spec_fork == "lightclient_patch":
+            elif self.spec_fork == "altair":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
-                    specs/lightclient/beacon-chain.md
-                    specs/lightclient/fork.md
+                    specs/altair/beacon-chain.md
+                    specs/altair/fork.md
                 """
-                # TODO: add specs/lightclient/sync-protocol.md back when the GeneralizedIndex helpers are included.
+                # TODO: add specs/altair/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 

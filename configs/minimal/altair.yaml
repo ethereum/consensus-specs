@@ -1,15 +1,15 @@
-# Minimal preset - lightclient patch
+# Minimal preset - Altair
 
 CONFIG_NAME: "minimal"
 
 # Updated penalty values
 # ---------------------------------------------------------------
 # 3 * 2**24) (= 50,331,648)
-HF1_INACTIVITY_PENALTY_QUOTIENT: 50331648
+ALTAIR_INACTIVITY_PENALTY_QUOTIENT: 50331648
 # 2**6 (= 64)
-HF1_MIN_SLASHING_PENALTY_QUOTIENT: 64
+ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT: 64
 # 2
-HF1_PROPORTIONAL_SLASHING_MULTIPLIER: 2
+ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER: 2
 
 
 # Misc

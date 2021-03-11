@@ -1,4 +1,4 @@
-# Ethereum 2.0 HF1
+# Ethereum 2.0 Altair
 
 ## Table of contents
 
@@ -55,7 +55,7 @@
 
 ## Introduction
 
-This is a patch implementing the first hard fork to the beacon chain, tentatively named HF1 pending a permanent name.
+Altair is a patch implementing the first hard fork to the beacon chain.
 It has four main features:
 
 * Light client support via sync committees
@@ -108,9 +108,9 @@ This patch updates a few configuration values to move penalty constants toward t
 
 | Name | Value |
 | - | - |
-| `HF1_INACTIVITY_PENALTY_QUOTIENT` | `uint64(3 * 2**24)` (= 50,331,648) |
-| `HF1_MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**6)` (=64) |
-| `HF1_PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(2)` |
+| `ALTAIR_INACTIVITY_PENALTY_QUOTIENT` | `uint64(3 * 2**24)` (= 50,331,648) |
+| `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**6)` (=64) |
+| `ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(2)` |
 
 ### Misc
 
@@ -152,8 +152,8 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]  # [New in HF1]
-    sync_committee_signature: BLSSignature  # [New in HF1]
+    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]  # [New in Altair]
+    sync_committee_signature: BLSSignature  # [New in Altair]
 ```
 
 #### `BeaconState`
@@ -379,7 +379,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += Gwei(
                     effective_balance * get_finality_delay(state)
-                    // HF1_INACTIVITY_PENALTY_QUOTIENT
+                    // ALTAIR_INACTIVITY_PENALTY_QUOTIENT
                 )
 
     rewards = [Gwei(0) for _ in range(len(state.validators))]
@@ -391,7 +391,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 #### New `slash_validator`
 
 *Note*: The function `slash_validator` is modified
-with the substitution of `MIN_SLASHING_PENALTY_QUOTIENT` with `HF1_MIN_SLASHING_PENALTY_QUOTIENT`.
+with the substitution of `MIN_SLASHING_PENALTY_QUOTIENT` with `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT`.
 
 ```python
 def slash_validator(state: BeaconState,
@@ -406,7 +406,7 @@ def slash_validator(state: BeaconState,
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    decrease_balance(state, slashed_index, validator.effective_balance // HF1_MIN_SLASHING_PENALTY_QUOTIENT)
+    decrease_balance(state, slashed_index, validator.effective_balance // ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT)
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
@@ -425,8 +425,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in HF1]
-    process_sync_committee(state, block.body)  # [New in HF1]
+    process_operations(state, block.body)  # [Modified in Altair]
+    process_sync_committee(state, block.body)  # [New in Altair]
 ```
 
 #### Modified `process_attestation`
@@ -561,17 +561,17 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)  # [Modified in HF1]
-    process_rewards_and_penalties(state)  # [Modified in HF1]
+    process_justification_and_finalization(state)  # [Modified in Altair]
+    process_rewards_and_penalties(state)  # [Modified in Altair]
     process_registry_updates(state)
-    process_slashings(state)  # [Modified in HF1]
+    process_slashings(state)  # [Modified in Altair]
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
-    process_participation_flag_updates(state)  # [New in HF1]
-    process_sync_committee_updates(state)  # [New in HF1]
+    process_participation_flag_updates(state)  # [New in Altair]
+    process_sync_committee_updates(state)  # [New in Altair]
 ```
 
 #### Justification and finalization
@@ -642,13 +642,13 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
 #### Slashings
 
-*Note*: The function `process_slashings` is modified to use `HF1_PROPORTIONAL_SLASHING_MULTIPLIER`.
+*Note*: The function `process_slashings` is modified to use `ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER`.
 
 ```python
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
-    adjusted_total_slashing_balance = min(sum(state.slashings) * HF1_PROPORTIONAL_SLASHING_MULTIPLIER, total_balance)
+    adjusted_total_slashing_balance = min(sum(state.slashings) * ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER, total_balance)
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
