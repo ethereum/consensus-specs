@@ -79,7 +79,7 @@ It's recommended to extend the base-generator.
 Create a `requirements.txt` in the root of your generator directory:
 ```
 pytest>=4.4
-../../../
+../../../[generator]
 ```
 
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself in order to prevent code duplication and outdated tests.

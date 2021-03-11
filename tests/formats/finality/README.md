@@ -14,11 +14,11 @@ bls_setting: int       -- see general test-format spec.
 blocks_count: int      -- the number of blocks processed in this test.
 ```
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the block transitions.
+A SSZ-snappy encoded `BeaconState`, the state before running the block transitions.
 
-Also available as `pre.ssz`.
+Also available as `pre.ssz_snappy`.
 
 
 ### `blocks_<index>.yaml`
@@ -28,13 +28,11 @@ A series of files, with `<index>` in range `[0, blocks_count)`. Blocks need to b
 
 Each file is a YAML-encoded `SignedBeaconBlock`.
 
-Each block is also available as `blocks_<index>.ssz`
+Each block is also available as `blocks_<index>.ssz_snappy`
 
-### `post.yaml`
+### `post.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state after applying the block transitions.
-
-Also available as `post.ssz`.
+A SSZ-snappy encoded `BeaconState`, the state after applying the block transitions.
 
 
 ## Condition
