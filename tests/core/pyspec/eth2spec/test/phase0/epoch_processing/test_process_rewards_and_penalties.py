@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
-    is_post_lightclient_patch,
+    is_post_altair,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -34,7 +34,7 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
     for index in range(len(pre_state.validators)):
         if not spec.is_active_validator(pre_state.validators[index], current_epoch):
             assert post_state.balances[index] == pre_state.balances[index]
-        elif not is_post_lightclient_patch(spec):
+        elif not is_post_altair(spec):
             proposer_indices = [a.proposer_index for a in post_state.previous_epoch_attestations]
             if spec.is_in_inactivity_leak(post_state):
                 # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
@@ -432,7 +432,7 @@ def test_attestations_some_slashed(spec, state):
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = state.copy()

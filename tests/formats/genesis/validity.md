@@ -4,11 +4,10 @@ Tests if a genesis state is valid, i.e. if it counts as trigger to launch.
 
 ## Test case format
 
-### `genesis.yaml`
+### `genesis.ssz_snappy`
 
-A `BeaconState`, the state to validate as genesis candidate.
+A SSZ-snappy encoded `BeaconState`, the state to validate as genesis candidate.
 
-Also available as `genesis.ssz`. 
 
 ### `is_valid.yaml`
 

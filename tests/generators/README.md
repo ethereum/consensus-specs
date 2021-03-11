@@ -79,7 +79,7 @@ It's recommended to extend the base-generator.
 Create a `requirements.txt` in the root of your generator directory:
 ```
 pytest>=4.4
-../../../
+../../../[generator]
 ```
 
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself in order to prevent code duplication and outdated tests.
@@ -163,14 +163,14 @@ Another example, to generate tests from pytests:
 
 ```python
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.lightclient_patch import spec as spec_lightclient_patch
+from eth2spec.altair import spec as spec_altair
 from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.test.context import PHASE0, PHASE1, LIGHTCLIENT_PATCH
+from eth2spec.test.context import PHASE0, PHASE1, ALTAIR
 
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 
 
-specs = (spec_phase0, spec_lightclient_patch, spec_phase1)
+specs = (spec_phase0, spec_altair, spec_phase1)
 
 
 if __name__ == "__main__":
@@ -178,7 +178,7 @@ if __name__ == "__main__":
         'blocks',
         'slots',
     ]}
-    lightclient_patch_mods = {**{key: 'eth2spec.test.lightclient_patch.sanity.test_' + key for key in [
+    altair_mods = {**{key: 'eth2spec.test.altair.sanity.test_' + key for key in [
         'blocks',
     ]}, **phase_0_mods}  # also run the previous phase 0 tests
     phase_1_mods = {**{key: 'eth2spec.test.phase1.sanity.test_' + key for key in [
@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
     all_mods = {
         PHASE0: phase_0_mods,
-        LIGHTCLIENT_PATCH: lightclient_patch_mods,
+        ALTAIR: altair_mods,
         PHASE1: phase_1_mods,
     }
 

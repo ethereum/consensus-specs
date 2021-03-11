@@ -1,5 +1,5 @@
 
-from eth2spec.test.context import is_post_lightclient_patch
+from eth2spec.test.context import is_post_altair
 
 
 def get_process_calls(spec):
@@ -16,8 +16,8 @@ def get_process_calls(spec):
         'process_slashings_reset',
         'process_randao_mixes_reset',
         'process_historical_roots_update',
-        # HF1 replaced `process_participation_record_updates` with `process_participation_flag_updates`
-        'process_participation_flag_updates' if is_post_lightclient_patch(spec) else (
+        # Altair replaced `process_participation_record_updates` with `process_participation_flag_updates`
+        'process_participation_flag_updates' if is_post_altair(spec) else (
             'process_participation_record_updates'
         ),
         'process_sync_committee_updates',
