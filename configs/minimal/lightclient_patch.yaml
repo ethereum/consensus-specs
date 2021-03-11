@@ -29,3 +29,9 @@ EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
 # Signature domains
 # ---------------------------------------------------------------
 DOMAIN_SYNC_COMMITTEE: 0x07000000
+
+
+# Sync protocol
+# ---------------------------------------------------------------
+# [customized]
+LIGHT_CLIENT_UPDATE_TIMEOUT: 32
