@@ -115,7 +115,8 @@ A light client maintains its state in a `store` object of type `LightClientStore
 #### `validate_light_client_update`
 
 ```python
-def validate_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate) -> None:
+def validate_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate,
+                                 genesis_validators_root: Root) -> None:
     # Verify update slot is larger than snapshot slot
     assert update.header.slot > snapshot.header.slot
 
@@ -157,7 +158,7 @@ def validate_light_client_update(snapshot: LightClientSnapshot, update: LightCli
 
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version)
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
     signing_root = compute_signing_root(signed_header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
 ```
@@ -177,8 +178,9 @@ def apply_light_client_update(snapshot: LightClientSnapshot, update: LightClient
 #### `process_light_client_update`
 
 ```python
-def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot) -> None:
-    validate_light_client_update(store.snapshot, update)
+def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot,
+                                genesis_validators_root: Root) -> None:
+    validate_light_client_update(store.snapshot, update, genesis_validators_root)
     store.valid_updates.append(update)
 
     if (
