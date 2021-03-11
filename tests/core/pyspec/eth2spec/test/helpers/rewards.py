@@ -2,7 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.test.context import is_post_lightclient_patch
+from eth2spec.test.context import is_post_altair
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
@@ -39,7 +39,7 @@ def run_deltas(spec, state):
     """
     yield 'pre', state
 
-    if is_post_lightclient_patch(spec):
+    if is_post_altair(spec):
         def get_source_deltas(state):
             return spec.get_flag_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_FLAG_NUMERATOR)
 
@@ -52,21 +52,21 @@ def run_deltas(spec, state):
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_source_deltas if not is_post_lightclient_patch(spec) else get_source_deltas,
+        spec.get_source_deltas if not is_post_altair(spec) else get_source_deltas,
         spec.get_matching_source_attestations,
         'source_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_target_deltas if not is_post_lightclient_patch(spec) else get_target_deltas,
+        spec.get_target_deltas if not is_post_altair(spec) else get_target_deltas,
         spec.get_matching_target_attestations,
         'target_deltas',
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
-        spec.get_head_deltas if not is_post_lightclient_patch(spec) else get_head_deltas,
+        spec.get_head_deltas if not is_post_altair(spec) else get_head_deltas,
         spec.get_matching_head_attestations,
         'head_deltas',
     )
@@ -93,7 +93,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
 
     yield deltas_name, Deltas(rewards=rewards, penalties=penalties)
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
         matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
     else:
@@ -129,7 +129,7 @@ def run_get_inclusion_delay_deltas(spec, state):
     Run ``get_inclusion_delay_deltas``, yielding:
       - inclusion delay deltas ('inclusion_delay_deltas')
     """
-    if is_post_lightclient_patch(spec):
+    if is_post_altair(spec):
         # No inclusion_delay_deltas
         yield 'inclusion_delay_deltas', Deltas(rewards=[0] * len(state.validators),
                                                penalties=[0] * len(state.validators))
@@ -182,7 +182,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
     yield 'inactivity_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
         matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
     else:
@@ -200,7 +200,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
         if spec.is_in_inactivity_leak(state):
             # Compute base_penalty
-            if not is_post_lightclient_patch(spec):
+            if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
                 base_reward = spec.get_base_reward(state, index)
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
@@ -308,7 +308,7 @@ def run_test_full_all_correct(spec, state):
 def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     cached_prepare_state_with_attestations(spec, state)
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         for a in state.previous_epoch_attestations:
             a.aggregation_bits = [rng.choice([True, False]) for _ in a.aggregation_bits]
     else:
@@ -323,7 +323,7 @@ def run_test_partial(spec, state, fraction_filled):
     cached_prepare_state_with_attestations(spec, state)
 
     # Remove portion of attestations
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
         state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
     else:
@@ -383,7 +383,7 @@ def run_test_some_very_low_effective_balances_that_attested(spec, state):
 def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     cached_prepare_state_with_attestations(spec, state)
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         # Remove attestation
         attestation = state.previous_epoch_attestations[0]
         state.previous_epoch_attestations = state.previous_epoch_attestations[1:]
@@ -502,7 +502,7 @@ def run_test_full_random(spec, state, rng=Random(8020)):
 
     cached_prepare_state_with_attestations(spec, state)
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         for pending_attestation in state.previous_epoch_attestations:
             # ~1/3 have bad target
             if rng.randint(0, 2) == 0:

@@ -1,4 +1,4 @@
-from eth2spec.test.context import is_post_lightclient_patch, spec_state_test, with_all_phases
+from eth2spec.test.context import is_post_altair, spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
@@ -16,7 +16,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     previous_epoch = spec.get_previous_epoch(state)
     current_epoch = spec.get_current_epoch(state)
 
-    if not is_post_lightclient_patch(spec):
+    if not is_post_altair(spec):
         if current_epoch == epoch:
             attestations = state.current_epoch_attestations
         elif previous_epoch == epoch:
@@ -61,7 +61,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
                     aggregation_bits[i] = 0
 
             # Update state
-            if not is_post_lightclient_patch(spec):
+            if not is_post_altair(spec):
                 attestations.append(spec.PendingAttestation(
                     aggregation_bits=aggregation_bits,
                     data=spec.AttestationData(
