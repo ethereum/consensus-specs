@@ -1,6 +1,8 @@
 from eth2spec.test.context import (
     LIGHTCLIENT_PATCH,
+    MINIMAL,
     spec_state_test,
+    with_configs,
     with_phases,
 )
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
@@ -78,6 +80,7 @@ def test_process_light_client_update_not_updated(spec, state):
 
 @with_phases([LIGHTCLIENT_PATCH])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
     pre_snapshot = spec.LightClientSnapshot(
         header=spec.BeaconBlockHeader(),
@@ -105,12 +108,6 @@ def test_process_light_client_update_timeout(spec, state):
         body_root=signed_block.message.body.hash_tree_root(),
     )
 
-    # Sync committee is updated
-    next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
-    # Finality is unchanged
-    finality_header = spec.BeaconBlockHeader()
-    finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
-
     # Sync committee signing the finalized_block_header
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
     sync_committee_bits = [True] * len(committee)
@@ -121,6 +118,12 @@ def test_process_light_client_update_timeout(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
+
+    # Sync committee is updated
+    next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
+    # Finality is unchanged
+    finality_header = spec.BeaconBlockHeader()
+    finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
     update = spec.LightClientUpdate(
         header=block_header,
@@ -142,6 +145,7 @@ def test_process_light_client_update_timeout(spec, state):
 
 @with_phases([LIGHTCLIENT_PATCH])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
     pre_snapshot = spec.LightClientSnapshot(
         header=spec.BeaconBlockHeader(),
@@ -173,17 +177,6 @@ def test_process_light_client_update_finality_updated(spec, state):
     assert finalized_block_header.hash_tree_root() == state.finalized_checkpoint.root
     finality_branch = build_proof(state.get_backing(), spec.FINALIZED_ROOT_INDEX)
 
-    # Sync committee signing the finalized_block_header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
-    sync_committee_bits = [True] * len(committee)
-    sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        finalized_block_header.slot,
-        committee,
-        block_root=spec.Root(finalized_block_header.hash_tree_root()),
-    )
-
     # Build block header
     block = build_empty_block(spec, state)
     block_header = spec.BeaconBlockHeader(
@@ -194,11 +187,22 @@ def test_process_light_client_update_finality_updated(spec, state):
         body_root=block.body.hash_tree_root(),
     )
 
+    # Sync committee signing the finalized_block_header
+    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    sync_committee_bits = [True] * len(committee)
+    sync_committee_signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        block_header.slot,
+        committee,
+        block_root=spec.Root(block_header.hash_tree_root()),
+    )
+
     update = spec.LightClientUpdate(
         header=finalized_block_header,
         next_sync_committee=state.next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
-        finality_header=block_header,
+        finality_header=block_header,  # block_header is the signed header
         finality_branch=finality_branch,
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
