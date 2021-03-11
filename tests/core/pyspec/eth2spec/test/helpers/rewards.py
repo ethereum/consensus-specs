@@ -34,7 +34,8 @@ def run_deltas(spec, state):
       - source deltas ('source_deltas')
       - target deltas ('target_deltas')
       - head deltas ('head_deltas')
-      - inclusion delay deltas ('inclusion_delay_deltas')
+      - not if is_post_altair(spec)
+          - inclusion delay deltas ('inclusion_delay_deltas')
       - inactivity penalty deltas ('inactivity_penalty_deltas')
     """
     yield 'pre', state
@@ -70,7 +71,8 @@ def run_deltas(spec, state):
         spec.get_matching_head_attestations,
         'head_deltas',
     )
-    yield from run_get_inclusion_delay_deltas(spec, state)
+    if not is_post_altair(spec):
+        yield from run_get_inclusion_delay_deltas(spec, state)
     yield from run_get_inactivity_penalty_deltas(spec, state)
 
 
@@ -219,7 +221,8 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
 def transition_state_to_leak(spec, state, epochs=None):
     if epochs is None:
-        epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
+        # +1 to trigger leak_score transitions
+        epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 1
     assert epochs >= spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
 
     for _ in range(epochs):

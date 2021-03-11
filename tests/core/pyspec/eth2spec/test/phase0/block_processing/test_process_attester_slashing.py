@@ -1,5 +1,9 @@
+import random
+
 from eth2spec.test.context import (
-    spec_state_test, expect_assertion_error, always_bls, with_all_phases
+    spec_state_test, expect_assertion_error, always_bls, with_all_phases,
+    with_custom_state, spec_test, single_phase,
+    low_balances, misc_balances,
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
@@ -32,15 +36,19 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
 
     proposer_index = spec.get_beacon_proposer_index(state)
     pre_proposer_balance = get_balance(state, proposer_index)
-    pre_slashings = {slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices}
+    pre_slashing_balances = {slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices}
+    pre_slashing_effectives = {
+        slashed_index: state.validators[slashed_index].effective_balance
+        for slashed_index in slashed_indices
+    }
     pre_withdrawalable_epochs = {
         slashed_index: state.validators[slashed_index].withdrawable_epoch
         for slashed_index in slashed_indices
     }
 
     total_proposer_rewards = sum(
-        balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
-        for balance in pre_slashings.values()
+        effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
+        for effective_balance in pre_slashing_effectives.values()
     )
 
     # Process slashing
@@ -61,7 +69,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
             assert slashed_validator.withdrawable_epoch == expected_withdrawable_epoch
         else:
             assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-        assert get_balance(state, slashed_index) < pre_slashings[slashed_index]
+        assert get_balance(state, slashed_index) < pre_slashing_balances[slashed_index]
 
     if proposer_index not in slashed_indices:
         # gained whistleblower reward
@@ -71,7 +79,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         expected_balance = (
             pre_proposer_balance
             + total_proposer_rewards
-            - pre_slashings[proposer_index] // get_min_slashing_penalty_quotient(spec)
+            - pre_slashing_effectives[proposer_index] // get_min_slashing_penalty_quotient(spec)
         )
 
         assert get_balance(state, proposer_index) == expected_balance
@@ -114,6 +122,41 @@ def test_success_already_exited_recent(spec, state):
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing)
+
+
+@with_all_phases
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@spec_test
+@single_phase
+def test_success_low_balances(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing)
+
+
+@with_all_phases
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@spec_test
+@single_phase
+def test_success_misc_balances(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing)
+
+
+@with_all_phases
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@spec_test
+@single_phase
+def test_success_with_effective_balance_disparity(spec, state):
+    # Jitter balances to be different from effective balances
+    for i in range(len(state.balances)):
+        pre = int(state.balances[i])
+        state.balances[i] += random.randrange(max(pre - 5000, 0), pre + 5000)
+
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing)
 
