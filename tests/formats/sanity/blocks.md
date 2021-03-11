@@ -14,27 +14,21 @@ blocks_count: int              -- the number of blocks processed in this test.
 ```
 
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the block transitions.
-
-Also available as `pre.ssz`.
+A SSZ-snappy encoded `BeaconState`, the state before running the block transitions.
 
 
-### `blocks_<index>.yaml`
+### `blocks_<index>.ssz_snappy`
 
 A series of files, with `<index>` in range `[0, blocks_count)`. Blocks need to be processed in order,
  following the main transition function (i.e. process slot and epoch transitions in between blocks as normal)
 
-Each file is a YAML-encoded `SignedBeaconBlock`.
+Each file is a SSZ-snappy encoded `SignedBeaconBlock`.
 
-Each block is also available as `blocks_<index>.ssz`
+### `post.ssz_snappy`
 
-### `post.yaml`
-
-A YAML-encoded `BeaconState`, the state after applying the block transitions.
-
-Also available as `post.ssz`.
+A SSZ-snappy encoded `BeaconState`, the state after applying the block transitions.
 
 
 ## Condition

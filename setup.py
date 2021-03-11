@@ -169,7 +169,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
 '''
-LIGHTCLIENT_IMPORT = '''from eth2spec.phase0 import spec as phase0
+ALTAIR_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
     Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, Union
@@ -192,7 +192,7 @@ from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
-# Whenever lightclient is loaded, make sure we have the latest phase0
+# Whenever altair is loaded, make sure we have the latest phase0
 from importlib import reload
 reload(phase0)
 
@@ -296,7 +296,7 @@ get_start_shard = cache_this(
     _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
 
 
-LIGHTCLIENT_PATCH_SUNDRY_FUNCTIONS = '''
+ALTAIR_SUNDRY_FUNCTIONS = '''
 
 def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
     ssz_path = Path(ssz_class)
@@ -308,7 +308,7 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
 
 # The constants that depend on SSZ objects
 # Will verify the value at the end of the spec
-LIGHTCLIENT_PATCH_HARDCODED_SSZ_DEP_CONSTANTS = {
+ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
     'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
     'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
 }
@@ -342,11 +342,11 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
     )
 
-    if fork == 'lightclient_patch':
-        lightclient_patch_ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, LIGHTCLIENT_PATCH_HARDCODED_SSZ_DEP_CONSTANTS[x]), LIGHTCLIENT_PATCH_HARDCODED_SSZ_DEP_CONSTANTS))
+    if fork == 'altair':
+        altair_ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
         spec += (
-            LIGHTCLIENT_PATCH_SUNDRY_FUNCTIONS
-            + '\n\n' + lightclient_patch_ssz_dep_constants
+            ALTAIR_SUNDRY_FUNCTIONS
+            + '\n\n' + altair_ssz_dep_constants
         )
 
     spec += (
@@ -360,9 +360,9 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
     if fork == 'phase1':
         spec += '\n' + PHASE1_SUNDRY_FUNCTIONS
 
-    if fork == 'lightclient_patch':
-        lightclient_patch_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), LIGHTCLIENT_PATCH_HARDCODED_SSZ_DEP_CONSTANTS))
-        spec += '\n\n' + lightclient_patch_ssz_dep_constants_verification
+    if fork == 'altair':
+        altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
+        spec += '\n\n' + altair_ssz_dep_constants_verification
 
     spec += '\n'
     return spec
@@ -447,7 +447,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
-    'lightclient_patch': LIGHTCLIENT_IMPORT,
+    'altair': ALTAIR_IMPORTS,
 }
 
 
@@ -514,16 +514,17 @@ class PySpecCommand(Command):
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
-            elif self.spec_fork == "lightclient_patch":
+            elif self.spec_fork == "altair":
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
-                    specs/lightclient/beacon-chain.md
-                    specs/lightclient/fork.md
-                    specs/lightclient/sync-protocol.md
+                    specs/altair/beacon-chain.md
+                    specs/altair/fork.md
+                    specs/altair/sync-protocol.md
                 """
+                # TODO: add specs/altair/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
@@ -637,6 +638,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==3.7.7", "mypy==0.750"],
+        "generator": ["python-snappy==0.5.4"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
@@ -647,6 +649,6 @@ setup(
         "dataclasses==0.6",
         "remerkleable==0.1.18",
         "ruamel.yaml==0.16.5",
-        "lru-dict==1.1.6"
+        "lru-dict==1.1.6",
     ]
 )

@@ -12,23 +12,17 @@ description: string    -- Optional description of test case, purely for debuggin
 bls_setting: int       -- see general test-format spec.
 ```
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before applying the operation.
+A SSZ-snappy encoded `BeaconState`, the state before applying the operation.
 
-Also available as `pre.ssz`.
+### `<input-name>.ssz_snappy`
 
-### `<input-name>.yaml`
+A SSZ-snappy encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
-A YAML-encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
+### `post.ssz_snappy`
 
-Also available as `<input-name>.ssz`.
-
-### `post.yaml`
-
-A YAML-encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
-
-Also available as `post.ssz`.
+A SSZ-snappy encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
 
 
 ## Condition

@@ -22,19 +22,15 @@ Key of valid `fork` strings that might be found in `meta.yaml`
 
 | String ID | Pre-fork | Post-fork | Function |
 | - | - | - | - |
-| `altair` | Phase 0 | Altair | `upgrade_to_lightclient_patch` |
+| `altair` | Phase 0 | Altair | `upgrade_to_altair` |
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the fork transition.
+A SSZ-snappy encoded `BeaconState`, the state before running the fork transition.
 
-Also available as `pre.ssz`.
+### `post.ssz_snappy`
 
-### `post.yaml`
-
-A YAML-encoded `BeaconState`, the state after applying the fork transition.
-
-Also available as `post.ssz`.
+A SSZ-snappy encoded `BeaconState`, the state after applying the fork transition.
 
 *Note*: This type is the `BeaconState` after the fork and is *not* the same type as `pre`.
 
