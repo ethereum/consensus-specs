@@ -519,9 +519,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Add validator and balance entries
         state.validators.append(get_validator_from_deposit(state, deposit))
         state.balances.append(amount)
-        # [Added in hf-1] Initialize empty participation flags for new validator
-        state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-        state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
+        state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))  # [New in Altair]
+        state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))  # [New in Altair]
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
