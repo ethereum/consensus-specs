@@ -37,6 +37,10 @@ ALL_PHASES = (PHASE0, PHASE1, LIGHTCLIENT_PATCH)
 MAINNET = ConfigName('mainnet')
 MINIMAL = ConfigName('minimal')
 
+ALL_CONFIGS = (MINIMAL, MAINNET)
+
+# The forks that output to the test vectors.
+TESTGEN_FORKS = (PHASE0, LIGHTCLIENT_PATCH)
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -78,7 +82,7 @@ def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Ca
         # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
         # Decide based on performance/consistency results later.
         state = phases[PHASE1].upgrade_to_phase1(state)
-    elif spec.fork == LIGHTCLIENT_PATCH:  # not generalizing this just yet, unclear final spec fork/patch order.
+    elif spec.fork == LIGHTCLIENT_PATCH:
         state = phases[LIGHTCLIENT_PATCH].upgrade_to_lightclient_patch(state)
 
     return state
@@ -336,12 +340,13 @@ def with_phases(phases, other_phases=None):
 
             available_phases = set(run_phases)
             if other_phases is not None:
-                available_phases += set(other_phases)
+                available_phases |= set(other_phases)
 
             # TODO: test state is dependent on phase0 but is immediately transitioned to phase1.
             #  A new state-creation helper for phase 1 may be in place, and then phase1+ tests can run without phase0
             available_phases.add(PHASE0)
 
+            # Populate all phases for multi-phase tests
             phase_dir = {}
             if PHASE0 in available_phases:
                 phase_dir[PHASE0] = spec_phase0

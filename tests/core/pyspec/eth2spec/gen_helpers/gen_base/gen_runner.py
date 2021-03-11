@@ -8,10 +8,12 @@ from ruamel.yaml import (
     YAML,
 )
 
-from gen_base.gen_typing import TestProvider
+from snappy import compress
 
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
+
+from .gen_typing import TestProvider
 
 
 # Flag that the runner does NOT run test via pytest
@@ -119,10 +121,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
         print(f"generating tests with config '{config_name}' ...")
         for test_case in tprov.make_cases():
-            case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
-                       / Path(test_case.runner_name) / Path(test_case.handler_name) \
-                       / Path(test_case.suite_name) / Path(test_case.case_name)
-
+            case_dir = (
+                Path(output_dir) / Path(config_name) / Path(test_case.fork_name)
+                / Path(test_case.runner_name) / Path(test_case.handler_name)
+                / Path(test_case.suite_name) / Path(test_case.case_name)
+            )
             if case_dir.exists():
                 if not args.force:
                     print(f'Skipping already existing test: {case_dir}')
@@ -180,7 +183,8 @@ def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
 
 def dump_ssz_fn(data: AnyStr, name: str, file_mode: str):
     def dump(case_path: Path):
-        out_path = case_path / Path(name + '.ssz')
+        out_path = case_path / Path(name + '.ssz_snappy')
+        compressed = compress(data)
         with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
-            f.write(data)
+            f.write(compressed)
     return dump

@@ -449,7 +449,7 @@ class PySpecCommand(Command):
                     specs/phase1/beacon-chain.md
                     specs/phase1/shard-transition.md
                     specs/phase1/fork-choice.md
-                    specs/phase1/phase1-fork.md
+                    specs/phase1/fork.md
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
@@ -460,7 +460,7 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/lightclient/beacon-chain.md
-                    specs/lightclient/lightclient-fork.md
+                    specs/lightclient/fork.md
                 """
                 # TODO: add specs/lightclient/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
@@ -562,13 +562,12 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
-                 
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
         "eth2spec": "tests/core/pyspec/eth2spec",
         "configs": "configs",
-        "specs": "specs"
+        "specs": "specs",
     },
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],
     py_modules=["eth2spec"],
@@ -577,16 +576,17 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==3.7.7", "mypy==0.750"],
+        "generator": ["python-snappy==0.5.4"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
-        "py_ecc==5.1.0",
-        "milagro_bls_binding==1.6.2",
+        "py_ecc==5.2.0",
+        "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
         "remerkleable==0.1.18",
         "ruamel.yaml==0.16.5",
-        "lru-dict==1.1.6"
+        "lru-dict==1.1.6",
     ]
 )

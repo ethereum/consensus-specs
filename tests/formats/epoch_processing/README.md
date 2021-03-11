@@ -15,18 +15,13 @@ description: string    -- Optional description of test case, purely for debuggin
 bls_setting: int       -- see general test-format spec.
 ```
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the epoch sub-transition.
+A SSZ-snappy encoded `BeaconState`, the state before running the epoch sub-transition.
 
-Also available as `pre.ssz`.
+### `post.ssz_snappy`
 
-
-### `post.yaml`
-
-A YAML-encoded `BeaconState`, the state after applying the epoch sub-transition.
-
-Also available as `post.ssz`.
+A SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-transition.
 
 ## Condition
 
