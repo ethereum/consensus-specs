@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Honest Validator
+# Ethereum 2.0 The Merge
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -41,7 +41,7 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### Eth1 data
 
-The `block.body.eth1_data` field is for block proposers to publish recent Eth1 data. This recent data contains deposit root (as calculated by the get_deposit_root() method of the deposit contract) and deposit count after processing of the parent block. The fork choice verifies Eth1 data of a block, then `state.eth1_data` updates immediately allowing new deposits to be processed. Each deposit in `block.body.deposits` must verify against `state.eth1_data.deposit_root`.
+The `block.body.eth1_data` field is for block proposers to publish recent Eth1 data. This recent data contains deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after processing of the parent block. The fork choice verifies Eth1 data of a block, then `state.eth1_data` updates immediately allowing new deposits to be processed. Each deposit in `block.body.deposits` must verify against `state.eth1_data.deposit_root`.
 
 ###### `get_eth1_data`
 
@@ -57,7 +57,7 @@ Set `block.body.eth1_data = get_eth1_data(state)`.
 ###### `produce_application_payload`
 
 Let `produce_application_payload(parent_hash: Bytes32, beacon_chain_data: BeaconChainData) -> ApplicationPayload` be the function that produces new instance of application payload.
-
+The body of this function is implementation dependant.
 
 * Let `randao_reveal` be `block.body.randao_reveal` of the block that is being produced
 * Set `block.body.application_payload = get_application_payload(state, randao_reveal)` where:
@@ -74,4 +74,3 @@ def get_application_payload(state: BeaconState, randao_reveal: BLSSignature) -> 
     
     return produce_application_payload(application_parent_hash, beacon_chain_data)
 ```
-

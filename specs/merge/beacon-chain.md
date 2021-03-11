@@ -66,13 +66,13 @@ order and append any additional fields to the end.
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
-    application_payload: ApplicationPayload  # User execution payload
+    application_payload: ApplicationPayload  # [Added] application payload
 ```
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than the removal of `eth1_data_votes` and addition of `application_state_root`. 
-The latter stores the root hash of ethereum application state.
+*Note*: `BeaconState` fields remain unchanged other than the removal of `eth1_data_votes` and addition of `application_state_root` and `application_block_hash`. 
+
 
 ```python
 class BeaconState(Container):
@@ -88,11 +88,11 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
-    # [removed] eth1_data_votes
+    # [Removed] eth1_data_votes
     eth1_deposit_index: uint64
-    # [new] Hash of the root of application state
+    # [Added] hash of the root of application state
     application_state_root: Bytes32
-    # [new] Hash of recent application block
+    # [Added] hash of recent application block
     application_block_hash: Bytes32
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
@@ -179,7 +179,7 @@ def get_recent_beacon_block_roots(state: BeaconState, qty: uint64) -> Sequence[B
 
 ```python
 def get_evm_beacon_block_roots(state: BeaconState) -> Sequence[Bytes32]:
-    num_block_roots = min(BLOCK_ROOTS_FOR_EVM_SIZE, SLOTS_PER_HISTORICAL_ROOT)
+    num_block_roots = min(EVM_BLOCK_ROOTS_SIZE, SLOTS_PER_HISTORICAL_ROOT)
     return get_recent_beacon_block_roots(state, num_block_roots)
 ```
 
@@ -229,7 +229,7 @@ The body of the function is implementation dependant.
 Let `application_state_transition(application_state: ApplicationState, beacon_chain_data: BeaconChainData, application_payload: ApplicationPayload) -> None` be the transition function of ethereum application state. 
 The body of the function is implementation dependant.
 
-*Note*: `application_state_transition` must throw `AssertionError` if either transition itself or post-transition verifications has failed.
+*Note*: `application_state_transition` must throw `AssertionError` if either the transition itself or one of the post-transition verifications has failed.
 
 ##### `process_application_payload`
 
