@@ -576,6 +576,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==3.7.7", "mypy==0.750"],
+        "generator": ["python-snappy==0.5.4"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
@@ -587,6 +588,5 @@ setup(
         "remerkleable==0.1.18",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6",
-        "python-snappy==0.5.4",
     ]
 )
