@@ -14,9 +14,9 @@
   - [Misc](#misc)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
-    - [`LightClientSnapshot`](#lightclientsnapshot)
-    - [`LightClientUpdate`](#lightclientupdate)
-    - [`LightClientStore`](#lightclientstore)
+  - [`LightClientSnapshot`](#lightclientsnapshot)
+  - [`LightClientUpdate`](#lightclientupdate)
+  - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
 - [Light client state updates](#light-client-state-updates)
@@ -61,7 +61,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 ## Containers
 
-#### `LightClientSnapshot`
+### `LightClientSnapshot`
 
 ```python
 class LightClientSnapshot(Container):
@@ -72,7 +72,7 @@ class LightClientSnapshot(Container):
     next_sync_committee: SyncCommittee
 ```
 
-#### `LightClientUpdate`
+### `LightClientUpdate`
 
 ```python
 class LightClientUpdate(Container):
@@ -91,7 +91,7 @@ class LightClientUpdate(Container):
     fork_version: Version
 ```
 
-#### `LightClientStore`
+### `LightClientStore`
 
 ```python
 class LightClientStore(Container):
@@ -188,10 +188,11 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
         # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
         # Note that (2) means that the current light client design needs finality.
         # It may be changed to re-organizable light client design. See the on-going issue eth2.0-specs#2182.
-        apply_light_client_update(store, update)
+        apply_light_client_update(store.snapshot, update)
         store.valid_updates = []
     elif current_slot > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
         # Forced best update when the update timeout has elapsed
-        apply_light_client_update(store, max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)))
+        apply_light_client_update(store.snapshot,
+                                  max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)))
         store.valid_updates = []
 ```
