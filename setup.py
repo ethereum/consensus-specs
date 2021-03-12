@@ -10,6 +10,12 @@ from typing import Dict, NamedTuple, List
 FUNCTION_REGEX = r'^def [\w_]*'
 
 
+# Definitions in context.py
+PHASE0 = 'phase0'
+ALTAIR = 'altair'
+PHASE1 = 'phase1'
+
+
 class SpecObject(NamedTuple):
     functions: Dict[str, str]
     custom_types: Dict[str, str]
@@ -302,8 +308,7 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
-    return GeneralizedIndex(ssz_path.gindex())
-'''
+    return GeneralizedIndex(ssz_path.gindex())'''
 
 
 # The constants that depend on SSZ objects
@@ -312,6 +317,18 @@ ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
     'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
     'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
 }
+
+
+def is_phase0(fork):
+    return fork == PHASE0
+
+
+def is_altair(fork):
+    return fork == ALTAIR
+
+
+def is_phase1(fork):
+    return fork == PHASE1
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_class_objects: Dict[str, str]) -> str:
@@ -335,34 +352,32 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             spec_object.constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, spec_object.constants[x]), spec_object.constants))
     ordered_class_objects_spec = '\n\n'.join(ordered_class_objects.values())
+
+    if is_altair(fork):
+        altair_ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
+
     spec = (
             imports
             + '\n\n' + f"fork = \'{fork}\'\n"
             + '\n\n' + new_type_definitions
             + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
-    )
-
-    if fork == 'altair':
-        altair_ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
-        spec += (
-            ALTAIR_SUNDRY_FUNCTIONS
-            + '\n\n' + altair_ssz_dep_constants
-        )
-
-    spec += (
-            '\n\n' + constants_spec
+            # The constants that some SSZ containers require. Need to be defined before `constants_spec`
+            + ('\n\n' + altair_ssz_dep_constants if is_altair(fork) else '')
+            + '\n\n' + constants_spec
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ordered_class_objects_spec
             + '\n\n' + functions_spec
+            # Functions to make pyspec work
             + '\n' + PHASE0_SUNDRY_FUNCTIONS
+            + ('\n' + ALTAIR_SUNDRY_FUNCTIONS if is_altair(fork) else '')
+            + ('\n' + PHASE1_SUNDRY_FUNCTIONS if is_phase1(fork) else '')
     )
 
-    if fork == 'phase1':
-        spec += '\n' + PHASE1_SUNDRY_FUNCTIONS
-
-    if fork == 'altair':
+    # Since some contants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
+    # as same as the spec definition.
+    if is_altair(fork):
         altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
-        spec += '\n\n' + altair_ssz_dep_constants_verification
+        spec += '\n\n\n' + altair_ssz_dep_constants_verification
 
     spec += '\n'
     return spec
@@ -484,7 +499,7 @@ class PySpecCommand(Command):
     def initialize_options(self):
         """Set default values for options."""
         # Each user option must be listed here with their default value.
-        self.spec_fork = 'phase0'
+        self.spec_fork = PHASE0
         self.md_doc_paths = ''
         self.out_dir = 'pyspec_output'
 
@@ -493,14 +508,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork == "phase0":
+            if is_phase0(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            elif self.spec_fork == "phase1":
+            elif is_phase1(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
@@ -514,7 +529,7 @@ class PySpecCommand(Command):
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
-            elif self.spec_fork == "altair":
+            elif is_altair(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
