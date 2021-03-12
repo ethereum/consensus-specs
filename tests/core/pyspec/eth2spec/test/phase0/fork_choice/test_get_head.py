@@ -1,14 +1,22 @@
 from eth_utils import encode_hex
 
-from eth2spec.test.context import MINIMAL, with_all_phases, with_configs, spec_state_test
+from eth2spec.test.context import (
+    MINIMAL,
+    is_post_altair,
+    spec_state_test,
+    with_all_phases,
+    with_configs,
+)
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.fork_choice import (
-    add_attestation_to_store,
-    add_block_to_store, get_anchor_root,
+    tick_and_run_on_attestation,
+    tick_and_run_on_block,
+    get_anchor_root,
     get_genesis_forkchoice_store_and_block,
-    get_attestation_file_name,
-    get_block_file_name,
+    get_formatted_head_output,
+    on_tick_and_append_step,
+    run_on_block,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -17,7 +25,6 @@ from eth2spec.test.helpers.state import (
 
 
 @with_all_phases
-@with_configs([MINIMAL])
 @spec_state_test
 def test_genesis(spec, state):
     test_steps = []
@@ -27,19 +34,21 @@ def test_genesis(spec, state):
     yield 'anchor_block', anchor_block
 
     anchor_root = get_anchor_root(spec, state)
-    head = spec.get_head(store)
-    assert head == anchor_root
+    assert spec.get_head(store) == anchor_root
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'genesis_time': int(store.genesis_time),
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
     yield 'steps', test_steps
 
+    if is_post_altair(spec):
+        yield 'description', 'meta', f"Although it's not phase 0, we may use {spec.fork} spec to start testnets."
+
 
 @with_all_phases
-@with_configs([MINIMAL])
 @spec_state_test
 def test_chain_no_attestations(spec, state):
     test_steps = []
@@ -49,31 +58,27 @@ def test_chain_no_attestations(spec, state):
     yield 'anchor_block', anchor_block
 
     anchor_root = get_anchor_root(spec, state)
-    head = spec.get_head(store)
-    assert head == anchor_root
+    assert spec.get_head(store) == anchor_root
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block_1 = build_empty_block_for_next_slot(spec, state)
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
-    add_block_to_store(spec, store, signed_block_1, test_steps)
-    yield get_block_file_name(signed_block_1), signed_block_1
+    yield from tick_and_run_on_block(spec, store, signed_block_1, test_steps)
 
     # On receiving a block of next epoch
     block_2 = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
-    add_block_to_store(spec, store, signed_block_2, test_steps)
-    yield get_block_file_name(signed_block_2), signed_block_2
+    yield from tick_and_run_on_block(spec, store, signed_block_2, test_steps)
 
-    head = spec.get_head(store)
-    assert head == spec.hash_tree_root(block_2)
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
@@ -81,7 +86,6 @@ def test_chain_no_attestations(spec, state):
 
 
 @with_all_phases
-@with_configs([MINIMAL])
 @spec_state_test
 def test_split_tie_breaker_no_attestations(spec, state):
     test_steps = []
@@ -92,11 +96,10 @@ def test_split_tie_breaker_no_attestations(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    head = spec.get_head(store)
-    assert head == anchor_root
+    assert spec.get_head(store) == anchor_root
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
@@ -104,23 +107,20 @@ def test_split_tie_breaker_no_attestations(spec, state):
     block_1_state = genesis_state.copy()
     block_1 = build_empty_block_for_next_slot(spec, block_1_state)
     signed_block_1 = state_transition_and_sign_block(spec, block_1_state, block_1)
-    add_block_to_store(spec, store, signed_block_1, test_steps)
-    yield get_block_file_name(signed_block_1), signed_block_1
+    yield from tick_and_run_on_block(spec, store, signed_block_1, test_steps)
 
     # additional block at slot 1
     block_2_state = genesis_state.copy()
     block_2 = build_empty_block_for_next_slot(spec, block_2_state)
     block_2.body.graffiti = b'\x42' * 32
     signed_block_2 = state_transition_and_sign_block(spec, block_2_state, block_2)
-    add_block_to_store(spec, store, signed_block_2, test_steps)
-    yield get_block_file_name(signed_block_2), signed_block_2
+    yield from tick_and_run_on_block(spec, store, signed_block_2, test_steps)
 
     highest_root = max(spec.hash_tree_root(block_1), spec.hash_tree_root(block_2))
-    head = spec.get_head(store)
-    assert head == highest_root
+    assert spec.get_head(store) == highest_root
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
@@ -138,11 +138,10 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    head = spec.get_head(store)
-    assert head == anchor_root
+    assert spec.get_head(store) == anchor_root
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
@@ -151,25 +150,22 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     for _ in range(3):
         long_block = build_empty_block_for_next_slot(spec, long_state)
         signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
-        add_block_to_store(spec, store, signed_long_block, test_steps)
-        yield get_block_file_name(signed_long_block), signed_long_block
+        yield from tick_and_run_on_block(spec, store, signed_long_block, test_steps)
 
     # build short tree
     short_state = genesis_state.copy()
     short_block = build_empty_block_for_next_slot(spec, short_state)
     short_block.body.graffiti = b'\x42' * 32
     signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
-    add_block_to_store(spec, store, signed_short_block, test_steps)
-    yield get_block_file_name(signed_short_block), signed_short_block
+    yield from tick_and_run_on_block(spec, store, signed_short_block, test_steps)
 
     short_attestation = get_valid_attestation(spec, short_state, short_block.slot, signed=True)
-    add_attestation_to_store(spec, store, short_attestation, test_steps)
+    yield from tick_and_run_on_attestation(spec, store, short_attestation, test_steps)
 
-    head = spec.get_head(store)
-    assert head == spec.hash_tree_root(short_block)
+    assert spec.get_head(store) == spec.hash_tree_root(short_block)
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store),
         }
     })
 
@@ -178,59 +174,44 @@ def test_shorter_chain_but_heavier_weight(spec, state):
 
 @with_all_phases
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_filtered_block_tree(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
-
     anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
+    test_steps.append({
+        'checks': {
+            'head': get_formatted_head_output(spec, store),
+        }
+    })
 
     # transition state past initial couple of epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
-
-    head = spec.get_head(store)
-    assert head == anchor_root
-    test_steps.append({
-        'checks': {
-            'head': encode_hex(head)
-        }
-    })
-
     # fill in attestations for entire epoch, justifying the recent epoch
     prev_state, signed_blocks, state = next_epoch_with_attestations(spec, state, True, False)
-    attestations = [
-        attestation for signed_block in signed_blocks
-        for attestation in signed_block.message.body.attestations
-    ]
     assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
     current_time = state.slot * spec.SECONDS_PER_SLOT + store.genesis_time
-    spec.on_tick(store, current_time)
+    on_tick_and_append_step(spec, store, current_time, test_steps)
     for signed_block in signed_blocks:
-        spec.on_block(store, signed_block)
-        test_steps.append({'block': get_block_file_name(signed_block)})
-        yield get_block_file_name(signed_block), signed_block
-
-    for attestation in attestations:
-        spec.on_attestation(store, attestation)
-        test_steps.append({'attestation': get_attestation_file_name(attestation)})
-        yield get_attestation_file_name(attestation), attestation
+        yield from run_on_block(spec, store, signed_block, test_steps)
 
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
     # the last block in the branch should be the head
     expected_head_root = spec.hash_tree_root(signed_blocks[-1].message)
-    head = spec.get_head(store)
-    assert head == expected_head_root
+    assert spec.get_head(store) == expected_head_root
 
     test_steps.append({
         'checks': {
+            'head': get_formatted_head_output(spec, store),
             'justified_checkpoint_root': encode_hex(store.justified_checkpoint.hash_tree_root()),
-            'head': encode_hex(head),
         }
     })
 
@@ -263,25 +244,19 @@ def test_filtered_block_tree(spec, state):
 
     # tick time forward to be able to include up to the latest attestation
     current_time = (attestations[-1].data.slot + 1) * spec.SECONDS_PER_SLOT + store.genesis_time
-    spec.on_tick(store, current_time)
-    test_steps.append({'tick': int(current_time)})
+    on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # include rogue block and associated attestations in the store
-    spec.on_block(store, signed_rogue_block)
-    test_steps.append({'block': get_block_file_name(signed_rogue_block)})
-    yield get_block_file_name(signed_rogue_block), signed_rogue_block
+    yield from run_on_block(spec, store, signed_rogue_block, test_steps)
 
     for attestation in attestations:
-        spec.on_attestation(store, attestation)
-        test_steps.append({'attestation': get_attestation_file_name(attestation)})
-        yield get_attestation_file_name(attestation), attestation
+        yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
 
     # ensure that get_head still returns the head from the previous branch
-    head = spec.get_head(store)
-    assert head == expected_head_root
+    assert spec.get_head(store) == expected_head_root
     test_steps.append({
         'checks': {
-            'head': encode_hex(head)
+            'head': get_formatted_head_output(spec, store)
         }
     })
 
