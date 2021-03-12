@@ -373,7 +373,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             + ('\n' + PHASE1_SUNDRY_FUNCTIONS if is_phase1(fork) else '')
     )
 
-    # Since some contants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
+    # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
     # as same as the spec definition.
     if is_altair(fork):
         altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
