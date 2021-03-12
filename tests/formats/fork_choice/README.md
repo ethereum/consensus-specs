@@ -13,11 +13,11 @@ bls_setting: int       -- see general test-format spec.
 
 ### `anchor_state.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
+An SSZ-snappy encoded `BeaconState`, the state to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
 
 ### `anchor_block.ssz_snappy`
 
-A YAML-encoded `BeaconBlock`, the block to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
+An SSZ-snappy encoded `BeaconBlock`, the block to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
 
 ### `steps.yaml`
 
@@ -85,17 +85,17 @@ For example:
 
 `<32-byte-root>` is the hash tree root of the given attestation.
 
-Each file is a YAML-encoded `Attestation`.
+Each file is an SSZ-snappy encoded `Attestation`.
 
 ### `block_<32-byte-root>.ssz_snappy`
 
 `<32-byte-root>` is the hash tree root of the given block.
 
-Each file is a YAML-encoded `SignedBeaconBlock`.
+Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
 
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to initialize the local store object by with `get_forkchoice_store(anchor_state, anchor_block)` helper.
-2. Go through `steps.yaml`
-    - For each execution, look up the corresponding ssz_snappy file. Execute the corresponding helper function on your store.
-    - For each `checks` step, the assertions must be satisfied.
+2. Iterate sequentially through `steps.yaml`
+    - For each execution, look up the corresponding ssz_snappy file. Execute the corresponding helper function on the current store.
+    - For each `checks` step, the assertions on the current store must be satisfied.
