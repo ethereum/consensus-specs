@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.merkle import build_proof
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, ByteList
-from remerkleable.tree import gindex_bit_iter
 
 BYTES_PER_CHUNK = 32
 
@@ -114,26 +114,6 @@ def custody_chunkify(spec, x):
     chunks = [bytes(x[i:i + spec.BYTES_PER_CUSTODY_CHUNK]) for i in range(0, len(x), spec.BYTES_PER_CUSTODY_CHUNK)]
     chunks[-1] = chunks[-1].ljust(spec.BYTES_PER_CUSTODY_CHUNK, b"\0")
     return [ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](c) for c in chunks]
-
-
-def build_proof(anchor, leaf_index):
-    if leaf_index <= 1:
-        return []  # Nothing to prove / invalid index
-    node = anchor
-    proof = []
-    # Walk down, top to bottom to the leaf
-    bit_iter, _ = gindex_bit_iter(leaf_index)
-    for bit in bit_iter:
-        # Always take the opposite hand for the proof.
-        # 1 = right as leaf, thus get left
-        if bit:
-            proof.append(node.get_left().merkle_root())
-            node = node.get_right()
-        else:
-            proof.append(node.get_right().merkle_root())
-            node = node.get_left()
-
-    return list(reversed(proof))
 
 
 def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_index,

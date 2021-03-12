@@ -10,10 +10,17 @@ from typing import Dict, NamedTuple, List
 FUNCTION_REGEX = r'^def [\w_]*'
 
 
+# Definitions in context.py
+PHASE0 = 'phase0'
+ALTAIR = 'altair'
+PHASE1 = 'phase1'
+
+
 class SpecObject(NamedTuple):
     functions: Dict[str, str]
     custom_types: Dict[str, str]
     constants: Dict[str, str]
+    ssz_dep_constants: Dict[str, str]  # the constants that depend on ssz_objects
     ssz_objects: Dict[str, str]
     dataclasses: Dict[str, str]
 
@@ -35,6 +42,7 @@ def get_spec(file_name: str) -> SpecObject:
     current_name = None  # most recent section title
     functions: Dict[str, str] = {}
     constants: Dict[str, str] = {}
+    ssz_dep_constants: Dict[str, str] = {}
     ssz_objects: Dict[str, str] = {}
     dataclasses: Dict[str, str] = {}
     function_matcher = re.compile(FUNCTION_REGEX)
@@ -88,10 +96,20 @@ def get_spec(file_name: str) -> SpecObject:
                         if c not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789':
                             is_constant_def = False
                     if is_constant_def:
-                        constants[row[0]] = row[1].replace('**TBD**', '2**32')
+                        if row[1].startswith('get_generalized_index'):
+                            ssz_dep_constants[row[0]] = row[1]
+                        else:
+                            constants[row[0]] = row[1].replace('**TBD**', '2**32')
                     elif row[1].startswith('uint') or row[1].startswith('Bytes'):
                         custom_types[row[0]] = row[1]
-    return SpecObject(functions, custom_types, constants, ssz_objects, dataclasses)
+    return SpecObject(
+        functions=functions,
+        custom_types=custom_types,
+        constants=constants,
+        ssz_dep_constants=ssz_dep_constants,
+        ssz_objects=ssz_objects,
+        dataclasses=dataclasses,
+    )
 
 
 CONFIG_LOADER = '''
@@ -157,10 +175,10 @@ SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
 '''
-LIGHTCLIENT_IMPORT = '''from eth2spec.phase0 import spec as phase0
+ALTAIR_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, Union
 )
 
 from dataclasses import (
@@ -174,6 +192,7 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    Path,
 )
 from eth2spec.utils import bls
 
@@ -196,6 +215,12 @@ def ceillog2(x: int) -> uint64:
     if x < 1:
         raise ValueError(f"ceillog2 accepts only positive values, x={x}")
     return uint64((x - 1).bit_length())
+
+
+def floorlog2(x: int) -> uint64:
+    if x < 1:
+        raise ValueError(f"floorlog2 accepts only positive values, x={x}")
+    return uint64(x.bit_length() - 1)
 '''
 PHASE0_SUNDRY_FUNCTIONS = '''
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
@@ -277,6 +302,35 @@ get_start_shard = cache_this(
     _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
 
 
+ALTAIR_SUNDRY_FUNCTIONS = '''
+
+def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
+    ssz_path = Path(ssz_class)
+    for item in path:
+        ssz_path = ssz_path / item
+    return GeneralizedIndex(ssz_path.gindex())'''
+
+
+# The constants that depend on SSZ objects
+# Will verify the value at the end of the spec
+ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
+    'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
+    'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
+}
+
+
+def is_phase0(fork):
+    return fork == PHASE0
+
+
+def is_altair(fork):
+    return fork == ALTAIR
+
+
+def is_phase1(fork):
+    return fork == PHASE1
+
+
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_class_objects: Dict[str, str]) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -290,7 +344,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
         )
     )
     for k in list(spec_object.functions):
-        if "ceillog2" in k:
+        if "ceillog2" in k or "floorlog2" in k:
             del spec_object.functions[k]
     functions_spec = '\n\n'.join(spec_object.functions.values())
     for k in list(spec_object.constants.keys()):
@@ -298,19 +352,33 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             spec_object.constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, spec_object.constants[x]), spec_object.constants))
     ordered_class_objects_spec = '\n\n'.join(ordered_class_objects.values())
+
+    if is_altair(fork):
+        altair_ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
+
     spec = (
             imports
             + '\n\n' + f"fork = \'{fork}\'\n"
             + '\n\n' + new_type_definitions
             + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
+            # The constants that some SSZ containers require. Need to be defined before `constants_spec`
+            + ('\n\n' + altair_ssz_dep_constants if is_altair(fork) else '')
             + '\n\n' + constants_spec
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ordered_class_objects_spec
             + '\n\n' + functions_spec
+            # Functions to make pyspec work
             + '\n' + PHASE0_SUNDRY_FUNCTIONS
+            + ('\n' + ALTAIR_SUNDRY_FUNCTIONS if is_altair(fork) else '')
+            + ('\n' + PHASE1_SUNDRY_FUNCTIONS if is_phase1(fork) else '')
     )
-    if fork == 'phase1':
-        spec += '\n' + PHASE1_SUNDRY_FUNCTIONS
+
+    # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
+    # as same as the spec definition.
+    if is_altair(fork):
+        altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
+        spec += '\n\n\n' + altair_ssz_dep_constants_verification
+
     spec += '\n'
     return spec
 
@@ -332,7 +400,7 @@ ignored_dependencies = [
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
-    'Dict', 'dict', 'field',
+    'Dict', 'dict', 'field', 'ceillog2', 'floorlog2',
 ]
 
 
@@ -373,20 +441,28 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     """
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
-    functions0, custom_types0, constants0, ssz_objects0, dataclasses0 = spec0
-    functions1, custom_types1, constants1, ssz_objects1, dataclasses1 = spec1
+    functions0, custom_types0, constants0, ssz_dep_constants0, ssz_objects0, dataclasses0 = spec0
+    functions1, custom_types1, constants1, ssz_dep_constants1, ssz_objects1, dataclasses1 = spec1
     functions = combine_functions(functions0, functions1)
     custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
+    ssz_dep_constants = combine_constants(ssz_dep_constants0, ssz_dep_constants1)
     ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
     dataclasses = combine_functions(dataclasses0, dataclasses1)
-    return SpecObject(functions, custom_types, constants, ssz_objects, dataclasses)
+    return SpecObject(
+        functions=functions,
+        custom_types=custom_types,
+        constants=constants,
+        ssz_dep_constants=ssz_dep_constants,
+        ssz_objects=ssz_objects,
+        dataclasses=dataclasses,
+    )
 
 
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
     'phase1': PHASE1_IMPORTS,
-    'altair': LIGHTCLIENT_IMPORT,
+    'altair': ALTAIR_IMPORTS,
 }
 
 
@@ -423,7 +499,7 @@ class PySpecCommand(Command):
     def initialize_options(self):
         """Set default values for options."""
         # Each user option must be listed here with their default value.
-        self.spec_fork = 'phase0'
+        self.spec_fork = PHASE0
         self.md_doc_paths = ''
         self.out_dir = 'pyspec_output'
 
@@ -432,14 +508,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork == "phase0":
+            if is_phase0(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            elif self.spec_fork == "phase1":
+            elif is_phase1(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
@@ -453,7 +529,7 @@ class PySpecCommand(Command):
                     specs/phase1/shard-fork-choice.md
                     specs/phase1/validator.md
                 """
-            elif self.spec_fork == "altair":
+            elif is_altair(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
@@ -461,6 +537,7 @@ class PySpecCommand(Command):
                     specs/phase0/weak-subjectivity.md
                     specs/altair/beacon-chain.md
                     specs/altair/fork.md
+                    specs/altair/sync-protocol.md
                 """
                 # TODO: add specs/altair/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
