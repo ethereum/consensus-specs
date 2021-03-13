@@ -6,7 +6,7 @@ Tests the initialization of a genesis state based on Eth1 data.
 
 ### `eth1_block_hash.ssz_snappy`
 
-A SSZ-snappy encoded root of the Eth1 block.
+An SSZ-snappy encoded root of the Eth1 block.
 
 ### `eth1_timestamp.yaml`
 
@@ -27,7 +27,7 @@ Each file is a SSZ-snappy encoded `Deposit` object.
 
 ###  `state.ssz_snappy`
 
-The expected genesis state. A SSZ-snappy encoded `BeaconState` object.
+The expected genesis state. An SSZ-snappy encoded `BeaconState` object.
 
 
 ## Processing

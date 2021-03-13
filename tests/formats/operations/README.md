@@ -14,15 +14,15 @@ bls_setting: int       -- see general test-format spec.
 
 ### `pre.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state before applying the operation.
+An SSZ-snappy encoded `BeaconState`, the state before applying the operation.
 
 ### `<input-name>.ssz_snappy`
 
-A SSZ-snappy encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
+An SSZ-snappy encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
 ### `post.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
+An SSZ-snappy encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
 
 
 ## Condition

@@ -17,11 +17,11 @@ bls_setting: int       -- see general test-format spec.
 
 ### `pre.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state before running the epoch sub-transition.
+An SSZ-snappy encoded `BeaconState`, the state before running the epoch sub-transition.
 
 ### `post.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-transition.
+An SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-transition.
 
 ## Condition
 

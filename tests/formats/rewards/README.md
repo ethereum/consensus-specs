@@ -25,27 +25,27 @@ _Note_: No signature verification happens within rewards sub-functions. These
 
 ### `pre.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state before running the rewards sub-function.
+An SSZ-snappy encoded `BeaconState`, the state before running the rewards sub-function.
 
 ### `source_deltas.ssz_snappy`
 
-A SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_source_deltas` function
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_source_deltas` function
 
 ### `target_deltas.ssz_snappy`
 
-A SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_target_deltas` function
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_target_deltas` function
 
 ### `head_deltas.ssz_snappy`
 
-A SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_head_deltas` function
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_head_deltas` function
 
 ### `inclusion_delay_deltas.ssz_snappy`
 
-A SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inclusion_delay_deltas` function
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inclusion_delay_deltas` function
 
 ### `inactivity_penalty_deltas.ssz_snappy`
 
-A SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inactivity_penalty_deltas` function
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inactivity_penalty_deltas` function
 
 ## Condition
 

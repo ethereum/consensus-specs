@@ -26,11 +26,11 @@ Key of valid `fork` strings that might be found in `meta.yaml`
 
 ### `pre.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state before running the fork transition.
+An SSZ-snappy encoded `BeaconState`, the state before running the fork transition.
 
 ### `post.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state after applying the fork transition.
+An SSZ-snappy encoded `BeaconState`, the state after applying the fork transition.
 
 *Note*: This type is the `BeaconState` after the fork and is *not* the same type as `pre`.
 

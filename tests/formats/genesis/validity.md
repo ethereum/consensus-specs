@@ -6,7 +6,7 @@ Tests if a genesis state is valid, i.e. if it counts as trigger to launch.
 
 ### `genesis.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state to validate as genesis candidate.
+An SSZ-snappy encoded `BeaconState`, the state to validate as genesis candidate.
 
 
 ### `is_valid.yaml`
