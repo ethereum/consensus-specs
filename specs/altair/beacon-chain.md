@@ -22,6 +22,7 @@
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
+    - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
@@ -146,9 +147,8 @@ class BeaconBlockBody(Container):
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]  # [New in Altair]
-    sync_committee_signature: BLSSignature  # [New in Altair]
+    # [New in Altair]
+    sync_aggregate: SyncAggregate
 ```
 
 #### `BeaconState`
@@ -192,6 +192,14 @@ class BeaconState(Container):
 ```
 
 ### New containers
+
+#### `SyncAggregate`
+
+```python
+class SyncAggregate(Container):
+    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+    sync_committee_signature: BLSSignature
+```
 
 #### `SyncCommittee`
 
@@ -409,7 +417,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Altair]
-    process_sync_committee(state, block.body)  # [New in Altair]
+    process_sync_committee(state, block.body.sync_aggregate)  # [New in Altair]
 ```
 
 #### Modified `process_attestation`
@@ -511,16 +519,16 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 #### Sync committee processing
 
 ```python
-def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     previous_slot = Slot(max(int(state.slot), 1) - 1)
     committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
-    participant_indices = [index for index, bit in zip(committee_indices, body.sync_committee_bits) if bit]
+    participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, body.sync_committee_bits) if bit]
+    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, aggregate.sync_committee_bits) if bit]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, body.sync_committee_signature)
+    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, aggregate.sync_committee_signature)
 
     # Reward sync committee participants
     proposer_rewards = Gwei(0)
