@@ -234,7 +234,7 @@ def transition_state_to_leak(spec, state, epochs=None):
 _cache_dict = LRU(size=10)
 
 
-def inactivity_penalty_active(epochs=None):
+def leaking(epochs=None):
 
     def deco(fn):
         def entry(*args, spec, state, **kw):
