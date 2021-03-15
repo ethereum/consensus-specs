@@ -1,10 +1,10 @@
 from eth2spec.test.context import (
-    PHASE0, ALTAIR, MINIMAL,
+    MINIMAL,
     is_post_altair,
     single_phase,
     spec_test,
     with_configs,
-    with_phases,
+    with_all_phases,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
@@ -16,7 +16,7 @@ def get_post_altair_description(spec):
     return f"Although it's not phase 0, we may use {spec.fork} spec to start testnets."
 
 
-@with_phases(([PHASE0, ALTAIR]))
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -53,7 +53,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -98,7 +98,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -148,7 +148,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -176,7 +176,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")

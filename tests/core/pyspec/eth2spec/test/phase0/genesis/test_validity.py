@@ -1,10 +1,10 @@
 from eth2spec.test.context import (
-    PHASE0, ALTAIR, MINIMAL,
+    MINIMAL,
     is_post_altair,
     spec_test,
     single_phase,
     with_configs,
-    with_phases,
+    with_all_phases,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
@@ -41,7 +41,7 @@ def run_is_valid_genesis_state(spec, state, valid=True):
     assert is_valid == valid
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -54,7 +54,7 @@ def test_is_valid_genesis_state_true(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -68,7 +68,7 @@ def test_is_valid_genesis_state_false_invalid_timestamp(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=False)
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -82,7 +82,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
@@ -105,7 +105,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_all_phases
 @spec_test
 @single_phase
 @with_configs([MINIMAL], reason="too slow")
