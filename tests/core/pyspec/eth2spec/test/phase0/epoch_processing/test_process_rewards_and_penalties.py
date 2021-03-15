@@ -17,7 +17,7 @@ from eth2spec.test.helpers.attestations import (
     sign_attestation,
     prepare_state_with_attestations,
 )
-from eth2spec.test.helpers.rewards import leaking
+from eth2spec.test.helpers.rewards import inactivity_penalty_active
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from random import Random
@@ -205,7 +205,7 @@ def test_almost_empty_attestations(spec, state):
 
 @with_all_phases
 @spec_state_test
-@leaking()
+@inactivity_penalty_active()
 def test_almost_empty_attestations_with_leak(spec, state):
     rng = Random(1234)
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, 1))
@@ -220,7 +220,7 @@ def test_random_fill_attestations(spec, state):
 
 @with_all_phases
 @spec_state_test
-@leaking()
+@inactivity_penalty_active()
 def test_random_fill_attestations_with_leak(spec, state):
     rng = Random(4567)
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) // 3))
@@ -235,7 +235,7 @@ def test_almost_full_attestations(spec, state):
 
 @with_all_phases
 @spec_state_test
-@leaking()
+@inactivity_penalty_active()
 def test_almost_full_attestations_with_leak(spec, state):
     rng = Random(8901)
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(comm, len(comm) - 1))
@@ -249,7 +249,7 @@ def test_full_attestation_participation(spec, state):
 
 @with_all_phases
 @spec_state_test
-@leaking()
+@inactivity_penalty_active()
 def test_full_attestation_participation_with_leak(spec, state):
     yield from run_with_participation(spec, state, lambda slot, comm_index, comm: comm)
 

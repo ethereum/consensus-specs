@@ -35,17 +35,17 @@
     - [`get_sync_committee`](#get_sync_committee)
     - [`get_base_reward`](#get_base_reward)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
-    - [`get_flag_deltas`](#get_flag_deltas)
-    - [New `get_inactivity_penalty_deltas`](#new-get_inactivity_penalty_deltas)
+    - [`get_flag_index_deltas`](#get_flag_index_deltas)
+    - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [New `slash_validator`](#new-slash_validator)
+    - [Modified `slash_validator`](#modified-slash_validator)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
     - [Modified `process_deposit`](#modified-process_deposit)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
-    - [Leak scores](#leak-scores)
+    - [Inactivity scores](#inactivity-scores)
     - [Rewards and penalties](#rewards-and-penalties)
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
@@ -56,20 +56,17 @@
 
 ## Introduction
 
-Altair is a patch implementing the first hard fork to the beacon chain.
-It has four main features:
+Altair is the first beacon chain hard fork. Its main features are:
 
-* Light client support via sync committees
-* Incentive accounting reforms, reducing spec complexity
-  and [TODO] reducing the cost of processing chains that have very little or zero participation for a long span of epochs
-* Update penalty configuration values, moving them toward their planned maximally punitive configuration
-* Fork choice rule changes to address weaknesses recently discovered in the existing fork choice
+* sync committees to support light clients
+* incentive accounting reforms to reduce spec complexity
+* penalty parameter updates to move them to their planned maximally punitive configuration
 
 ## Custom types
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `uint8` | A succinct representation of 8 boolean participation flags |
+| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
 
 ## Constants
 
@@ -90,8 +87,7 @@ It has four main features:
 | `TIMELY_TARGET_FLAG_NUMERATOR` | `32` |
 | `FLAG_DENOMINATOR` | `64` |
 
-**Note**: The participatition flag fractions add up to 7/8.
-The remaining 1/8 is for proposer incentives and other future micro-incentives.
+**Note**: The sum of the participatition flag fractions (7/8) plus the proposer reward fraction (1/8) equals 1.
 
 ### Misc
 
@@ -103,23 +99,23 @@ The remaining 1/8 is for proposer incentives and other future micro-incentives.
 
 ### Updated penalty values
 
-This patch updates a few configuration values to move penalty constants toward their final, maxmium security values.
+This patch updates a few configuration values to move penalty parameters toward their final, maxmium security values.
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
 | Name | Value |
 | - | - |
 | `ALTAIR_INACTIVITY_PENALTY_QUOTIENT` | `uint64(3 * 2**24)` (= 50,331,648) |
-| `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**6)` (=64) |
+| `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**6)` (= 64) |
 | `ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(2)` |
 
 ### Misc
 
 | Name | Value |
-| - | - | 
+| - | - |
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
 | `SYNC_SUBCOMMITTEE_SIZE` | `uint64(2**6)` (= 64) |
-| `LEAK_SCORE_BIAS` | 4 |
+| `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
 
 ### Time parameters
 
@@ -181,18 +177,18 @@ class BeaconState(Container):
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Participation
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in Altair]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [New in Altair]
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [Modified in Altair]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [Modofied in Altair]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    # Light client sync committees
+    # Inactivity
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in Altair]
+    # Sync
     current_sync_committee: SyncCommittee  # [New in Altair]
     next_sync_committee: SyncCommittee  # [New in Altair]
-    # Leak
-    leak_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in Altair]
 ```
 
 ### New containers
@@ -307,7 +303,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epoch: Epoch) -> Set[ValidatorIndex]:
     """
-    Retrieve the active and unslashed validator indices for the given epoch and flag index.
+    Return the active and unslashed validator indices for the given epoch and flag index.
     """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
@@ -319,19 +315,17 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
-#### `get_flag_deltas`
+#### `get_flag_index_deltas`
 
 ```python
-def get_flag_deltas(state: BeaconState,
-                    flag_index: int,
-                    numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_index_deltas(state: BeaconState,
+                          flag_index: int,
+                          numerator: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
-    Compute the rewards and penalties associated with a particular duty, by scanning through the participation
-    flags to determine who participated and who did not and assigning them the appropriate rewards and penalties.
+    Return the deltas for a given flag index by scanning through the participation flags.
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, get_previous_epoch(state))
     increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
     unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // increment
@@ -340,19 +334,17 @@ def get_flag_deltas(state: BeaconState,
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
             if is_in_inactivity_leak(state):
-                # Optimal participation is fully rewarded to cancel the inactivity penalty
-                rewards[index] = base_reward * numerator // FLAG_DENOMINATOR
+                # This flag reward cancels the inactivity penalty corresponding to the flag index
+                rewards[index] += Gwei(base_reward * numerator // FLAG_DENOMINATOR)
             else:
-                rewards[index] = (
-                    (base_reward * numerator * unslashed_participating_increments)
-                    // (active_increments * FLAG_DENOMINATOR)
-                )
+                reward_numerator = base_reward * numerator * unslashed_participating_increments
+                rewards[index] += Gwei(reward_numerator // (active_increments * FLAG_DENOMINATOR))
         else:
-            penalties[index] = base_reward * numerator // FLAG_DENOMINATOR
+            penalties[index] += Gwei(base_reward * numerator // FLAG_DENOMINATOR)
     return rewards, penalties
 ```
 
-#### New `get_inactivity_penalty_deltas`
+#### Modified `get_inactivity_penalty_deltas`
 
 *Note*: The function `get_inactivity_penalty_deltas` is modified in the selection of matching target indices
 and the removal of `BASE_REWARDS_PER_EPOCH`.
@@ -360,39 +352,29 @@ and the removal of `BASE_REWARDS_PER_EPOCH`.
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
-    Compute the penalties associated with the inactivity leak, by scanning through the participation
-    flags to determine who participated and who did not, applying the leak penalty globally and applying
-    compensatory rewards to participants.
+    Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-
-    if not is_in_inactivity_leak(state):
-        return rewards, penalties
-
-    reward_numerator_sum = sum(numerator for (_, numerator) in get_flag_indices_and_numerators())
-    matching_target_attesting_indices = get_unslashed_participating_indices(
-        state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
-    )
-    for index in get_eligible_validator_indices(state):
-        # If validator is performing optimally this cancels all attestation rewards for a neutral balance
-        penalties[index] += Gwei(get_base_reward(state, index) * reward_numerator_sum // FLAG_DENOMINATOR)
-        if index not in matching_target_attesting_indices and state.leak_scores[index] >= LEAK_SCORE_BIAS:
-            effective_balance = state.validators[index].effective_balance
-            leak_penalty = Gwei(
-                effective_balance * state.leak_scores[index] // LEAK_SCORE_BIAS // ALTAIR_INACTIVITY_PENALTY_QUOTIENT
-            )
-            penalties[index] += leak_penalty
-
+    if is_in_inactivity_leak(state):
+        previous_epoch = get_previous_epoch(state)
+        matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
+        for index in get_eligible_validator_indices(state):
+            for (_, numerator) in get_flag_indices_and_numerators():
+                # This inactivity penalty cancels the flag reward corresponding to the flag index
+                penalties[index] += Gwei(get_base_reward(state, index) * numerator // FLAG_DENOMINATOR)
+            if index not in matching_target_indices:
+                penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+                penalty_denominator = INACTIVITY_SCORE_BIAS * ALTAIR_INACTIVITY_PENALTY_QUOTIENT
+                penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
 
 ### Beacon state mutators
 
-#### New `slash_validator`
+#### Modified `slash_validator`
 
-*Note*: The function `slash_validator` is modified
-with the substitution of `MIN_SLASHING_PENALTY_QUOTIENT` with `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT`.
+*Note*: The function `slash_validator` is modified to use `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT`.
 
 ```python
 def slash_validator(state: BeaconState,
@@ -483,10 +465,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
-
 #### Modified `process_deposit`
 
-*Note*: The function `process_deposit` is modified to initialize `leak_scores`, `previous_epoch_participation`, `current_epoch_participation`.
+*Note*: The function `process_deposit` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, `current_epoch_participation`.
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
@@ -504,7 +485,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
     pubkey = deposit.data.pubkey
     amount = deposit.data.amount
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
@@ -514,15 +495,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
-            return
-
-        # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(state, deposit))
-        state.balances.append(amount)
-        state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))  # [New in Altair]
-        state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))  # [New in Altair]
-        state.leak_scores.append(0)  # [New in Altair]
+        # Initialize validator if the deposit signature is valid
+        if bls.Verify(pubkey, signing_root, deposit.data.signature):
+            state.validators.append(get_validator_from_deposit(state, deposit))
+            state.balances.append(amount)
+            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.inactivity_scores.append(0)
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -563,7 +542,7 @@ def process_sync_committee(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)  # [Modified in Altair]
-    process_leak_updates(state)  # [New in Altair]
+    process_inactivity_updates(state)  # [New in Altair]
     process_rewards_and_penalties(state)  # [Modified in Altair]
     process_registry_updates(state)
     process_slashings(state)  # [Modified in Altair]
@@ -622,36 +601,32 @@ def process_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
-#### Leak scores
+#### Inactivity scores
 
-*Note*: The function `process_leak_updates` is new.
+*Note*: The function `process_inactivity_updates` is new.
 
 ```python
-def process_leak_updates(state: BeaconState) -> None:
-    matching_target_attesting_indices = get_unslashed_participating_indices(
-        state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
-    )
+def process_inactivity_updates(state: BeaconState) -> None:
     for index in get_eligible_validator_indices(state):
-        if index in matching_target_attesting_indices:
-            if state.leak_scores[index] > 0:
-                state.leak_scores[index] -= 1
+        if index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)):
+            if state.inactivity_scores[index] > 0:
+                state.inactivity_scores[index] -= 1
         elif is_in_inactivity_leak(state):
-            state.leak_scores[index] += LEAK_SCORE_BIAS
+            state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
 ```
 
 #### Rewards and penalties
 
-*Note*: The function `process_rewards_and_penalties` is modified to support the incentive reforms.
+*Note*: The function `process_rewards_and_penalties` is modified to support the incentive accounting reforms.
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
     # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
-    flag_deltas = [
-        get_flag_deltas(state, flag_index, flag_numerator)
-        for (flag_index, flag_numerator) in get_flag_indices_and_numerators()
-    ]
+
+    flag_indices_and_numerators = get_flag_indices_and_numerators()
+    flag_deltas = [get_flag_index_deltas(state, index, numerator) for (index, numerator) in flag_indices_and_numerators]
     deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
     for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):

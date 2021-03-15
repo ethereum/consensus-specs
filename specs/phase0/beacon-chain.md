@@ -257,7 +257,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**26)` (= 67,108,864) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (=128) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (= 128) |
 | `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)` |
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
