@@ -1,4 +1,11 @@
-from eth2spec.test.context import PHASE0, ALTAIR, spec_test, with_phases, single_phase, is_post_altair
+from eth2spec.test.context import (
+    PHASE0, ALTAIR, MINIMAL,
+    is_post_altair,
+    single_phase,
+    spec_test,
+    with_configs,
+    with_phases,
+)
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
     prepare_random_genesis_deposits,
@@ -12,6 +19,7 @@ def get_post_altair_description(spec):
 @with_phases(([PHASE0, ALTAIR]))
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_from_eth1(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -48,6 +56,7 @@ def test_initialize_beacon_state_from_eth1(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_some_small_balances(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -92,6 +101,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_one_topup_activation(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -141,6 +151,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_random_invalid_genesis(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -168,6 +179,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_random_valid_genesis(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)

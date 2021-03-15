@@ -1,4 +1,11 @@
-from eth2spec.test.context import PHASE0, ALTAIR, spec_test, with_phases, single_phase, is_post_altair
+from eth2spec.test.context import (
+    PHASE0, ALTAIR, MINIMAL,
+    is_post_altair,
+    spec_test,
+    single_phase,
+    with_configs,
+    with_phases,
+)
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
 )
@@ -37,6 +44,7 @@ def run_is_valid_genesis_state(spec, state, valid=True):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_true(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -49,6 +57,7 @@ def test_is_valid_genesis_state_true(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_false_invalid_timestamp(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -62,6 +71,7 @@ def test_is_valid_genesis_state_false_invalid_timestamp(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_true_more_balance(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -75,6 +85,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_true_one_more_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -97,6 +108,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
 @with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
+@with_configs([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_false_not_enough_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
