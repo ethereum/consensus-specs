@@ -42,13 +42,13 @@ def run_deltas(spec, state):
 
     if is_post_altair(spec):
         def get_source_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_FLAG_NUMERATOR)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_FLAG_NUMERATOR)
 
         def get_head_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX, spec.TIMELY_HEAD_FLAG_NUMERATOR)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX, spec.TIMELY_HEAD_FLAG_NUMERATOR)
 
         def get_target_deltas(state):
-            return spec.get_flag_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX, spec.TIMELY_TARGET_FLAG_NUMERATOR)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX, spec.TIMELY_TARGET_FLAG_NUMERATOR)
 
     yield from run_attestation_component_deltas(
         spec,
@@ -191,7 +191,6 @@ def run_get_inactivity_penalty_deltas(spec, state):
         matching_attesting_indices = spec.get_unslashed_participating_indices(
             state, spec.TIMELY_TARGET_FLAG_INDEX, spec.get_previous_epoch(state)
         )
-        reward_numerator_sum = sum(numerator for (_, numerator) in spec.get_flag_indices_and_numerators())
 
     eligible_indices = spec.get_eligible_validator_indices(state)
     for index in range(len(state.validators)):
@@ -202,12 +201,15 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
         if spec.is_in_inactivity_leak(state):
             # Compute base_penalty
+            base_reward = spec.get_base_reward(state, index)
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
-                base_reward = spec.get_base_reward(state, index)
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
             else:
-                base_penalty = spec.get_base_reward(state, index) * reward_numerator_sum // spec.FLAG_DENOMINATOR
+                base_penalty = sum(
+                    base_reward * numerator // spec.FLAG_DENOMINATOR
+                    for (_, numerator) in spec.get_flag_indices_and_numerators()
+                )
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
@@ -221,7 +223,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
 def transition_state_to_leak(spec, state, epochs=None):
     if epochs is None:
-        # +1 to trigger leak_score transitions
+        # +1 to trigger inactivity_score transitions
         epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 1
     assert epochs >= spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
 

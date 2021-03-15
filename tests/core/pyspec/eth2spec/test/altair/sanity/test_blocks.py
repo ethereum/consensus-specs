@@ -79,12 +79,12 @@ def test_empty_sync_committee_committee_genesis(spec, state):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
-def test_leak_scores(spec, state):
+def test_inactivity_scores(spec, state):
     for _ in range(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2):
         next_epoch_via_block(spec, state)
 
     assert spec.is_in_inactivity_leak(state)
-    previous_leak_scores = state.leak_scores.copy()
+    previous_inactivity_scores = state.inactivity_scores.copy()
 
     yield 'pre', state
 
@@ -95,5 +95,5 @@ def test_leak_scores(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    for pre, post in zip(previous_leak_scores, state.leak_scores):
-        assert post == pre + spec.LEAK_SCORE_BIAS
+    for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
+        assert post == pre + spec.INACTIVITY_SCORE_BIAS
