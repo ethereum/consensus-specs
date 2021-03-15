@@ -6,7 +6,7 @@ from eth2spec.test.helpers.state import get_balance
 
 def get_min_slashing_penalty_quotient(spec):
     if is_post_altair(spec):
-        return spec.ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT
+        return spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR
     else:
         return spec.MIN_SLASHING_PENALTY_QUOTIENT
 
