@@ -201,12 +201,15 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
         if spec.is_in_inactivity_leak(state):
             # Compute base_penalty
+            base_reward = spec.get_base_reward(state, index)
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
-                base_reward = spec.get_base_reward(state, index)
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
             else:
-                base_penalty = sum(spec.get_base_reward(state, index) * numerator // spec.FLAG_DENOMINATOR for (_, numerator) in spec.get_flag_indices_and_numerators())
+                base_penalty = sum(
+                    base_reward * numerator // spec.FLAG_DENOMINATOR
+                    for (_, numerator) in spec.get_flag_indices_and_numerators()
+                )
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
