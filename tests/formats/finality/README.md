@@ -16,7 +16,7 @@ blocks_count: int      -- the number of blocks processed in this test.
 
 ### `pre.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state before running the block transitions.
+An SSZ-snappy encoded `BeaconState`, the state before running the block transitions.
 
 Also available as `pre.ssz_snappy`.
 
@@ -32,7 +32,7 @@ Each block is also available as `blocks_<index>.ssz_snappy`
 
 ### `post.ssz_snappy`
 
-A SSZ-snappy encoded `BeaconState`, the state after applying the block transitions.
+An SSZ-snappy encoded `BeaconState`, the state after applying the block transitions.
 
 
 ## Condition
