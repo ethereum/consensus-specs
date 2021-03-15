@@ -105,9 +105,9 @@ This patch updates a few configuration values to move penalty parameters toward 
 
 | Name | Value |
 | - | - |
-| `ALTAIR_INACTIVITY_PENALTY_QUOTIENT` | `uint64(3 * 2**24)` (= 50,331,648) |
-| `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**6)` (= 64) |
-| `ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(2)` |
+| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR` | `uint64(3 * 2**24)` (= 50,331,648) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR` | `uint64(2**6)` (= 64) |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)` |
 
 ### Misc
 
@@ -365,7 +365,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 penalties[index] += Gwei(get_base_reward(state, index) * numerator // FLAG_DENOMINATOR)
             if index not in matching_target_indices:
                 penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-                penalty_denominator = INACTIVITY_SCORE_BIAS * ALTAIR_INACTIVITY_PENALTY_QUOTIENT
+                penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
                 penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
@@ -374,7 +374,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 #### Modified `slash_validator`
 
-*Note*: The function `slash_validator` is modified to use `ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT`.
+*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`.
 
 ```python
 def slash_validator(state: BeaconState,
@@ -389,7 +389,7 @@ def slash_validator(state: BeaconState,
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    decrease_balance(state, slashed_index, validator.effective_balance // ALTAIR_MIN_SLASHING_PENALTY_QUOTIENT)
+    decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR)
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
@@ -636,13 +636,13 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
 #### Slashings
 
-*Note*: The function `process_slashings` is modified to use `ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER`.
+*Note*: The function `process_slashings` is modified to use `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR`.
 
 ```python
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
-    adjusted_total_slashing_balance = min(sum(state.slashings) * ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER, total_balance)
+    adjusted_total_slashing_balance = min(sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance)
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow

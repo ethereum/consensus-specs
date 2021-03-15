@@ -25,7 +25,7 @@ def slash_validators(spec, state, indices, out_epochs):
 
 def get_slashing_multiplier(spec):
     if is_post_altair(spec):
-        return spec.ALTAIR_PROPORTIONAL_SLASHING_MULTIPLIER
+        return spec.PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR
     else:
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER
 
