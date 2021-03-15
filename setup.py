@@ -315,7 +315,7 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
 # Will verify the value at the end of the spec
 ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
     'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
-    'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
+    'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
 }
 
 
