@@ -58,7 +58,7 @@ class SpecPhase1(Spec):
     ...
 
 
-class SpecLightclient(Spec):
+class SpecAltair(Spec):
     ...
 
 
@@ -66,7 +66,7 @@ class SpecLightclient(Spec):
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     PHASE1: SpecPhase1
-    ALTAIR: SpecLightclient
+    ALTAIR: SpecAltair
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
