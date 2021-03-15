@@ -1,14 +1,21 @@
-from eth2spec.test.context import PHASE0, spec_test, with_phases, single_phase
+from eth2spec.test.context import PHASE0, ALTAIR, spec_test, with_phases, single_phase, is_post_altair
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
     prepare_random_genesis_deposits,
 )
 
 
-@with_phases(([PHASE0]))
+def get_post_altair_description(spec):
+    return f"Although it's not phase 0, we may use {spec.fork} spec to start testnets."
+
+
+@with_phases(([PHASE0, ALTAIR]))
 @spec_test
 @single_phase
 def test_initialize_beacon_state_from_eth1(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, deposit_root, _ = prepare_full_genesis_deposits(
         spec,
@@ -38,10 +45,13 @@ def test_initialize_beacon_state_from_eth1(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_initialize_beacon_state_some_small_balances(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec, spec.MAX_EFFECTIVE_BALANCE,
@@ -79,10 +89,13 @@ def test_initialize_beacon_state_some_small_balances(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_initialize_beacon_state_one_topup_activation(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     # Submit all but one deposit as MAX_EFFECTIVE_BALANCE
     main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
@@ -125,10 +138,13 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_initialize_beacon_state_random_invalid_genesis(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     # Make a bunch of random deposits
     deposits, _, deposit_data_list = prepare_random_genesis_deposits(
         spec,
@@ -149,10 +165,13 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
     yield 'state', state
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_initialize_beacon_state_random_valid_genesis(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     # Make a bunch of random deposits
     random_deposits, _, deposit_data_list = prepare_random_genesis_deposits(
         spec,

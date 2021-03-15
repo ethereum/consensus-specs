@@ -1,7 +1,11 @@
-from eth2spec.test.context import PHASE0, spec_test, with_phases, single_phase
+from eth2spec.test.context import PHASE0, ALTAIR, spec_test, with_phases, single_phase, is_post_altair
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
 )
+
+
+def get_post_altair_description(spec):
+    return f"Although it's not phase 0, we may use {spec.fork} spec to start testnets."
 
 
 def create_valid_beacon_state(spec):
@@ -30,39 +34,51 @@ def run_is_valid_genesis_state(spec, state, valid=True):
     assert is_valid == valid
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_true(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     state = create_valid_beacon_state(spec)
 
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_false_invalid_timestamp(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     state = create_valid_beacon_state(spec)
     state.genesis_time = spec.MIN_GENESIS_TIME - 1
 
     yield from run_is_valid_genesis_state(spec, state, valid=False)
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_true_more_balance(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     state = create_valid_beacon_state(spec)
     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE + 1
 
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_true_one_more_validator(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
@@ -78,10 +94,13 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
     yield from run_is_valid_genesis_state(spec, state, valid=True)
 
 
-@with_phases([PHASE0])
+@with_phases([PHASE0, ALTAIR])
 @spec_test
 @single_phase
 def test_is_valid_genesis_state_false_not_enough_validator(spec):
+    if is_post_altair(spec):
+        yield 'description', 'meta', get_post_altair_description(spec)
+
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
