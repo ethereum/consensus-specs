@@ -539,7 +539,6 @@ class PySpecCommand(Command):
                     specs/altair/fork.md
                     specs/altair/sync-protocol.md
                 """
-                # TODO: add specs/altair/sync-protocol.md back when the GeneralizedIndex helpers are included.
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 

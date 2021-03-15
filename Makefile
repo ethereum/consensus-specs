@@ -86,7 +86,7 @@ install_test:
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.altair.spec -cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov=eth2spec.altair.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
