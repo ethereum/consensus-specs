@@ -1,4 +1,4 @@
-# Ethereum 2.0 Light Client Support -- From Phase 0 to Light Client Patch
+# Ethereum 2.0 Altair fork
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document describes the process of moving from Phase 0 to Phase 1 of Ethereum 2.0.
+This document describes the process of the first upgrade of Ethereum 2.0: the Altair hard fork, introducing light client support and other improvements.
 
 ## Configuration
 
@@ -36,7 +36,7 @@ TBD. Social consensus, along with state conditions such as epoch boundary, final
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot == ALTAIR_FORK_SLOT`, an irregular state change is made to upgrade to light-client patch.
+After `process_slots` of Phase 0 finishes, if `state.slot == ALTAIR_FORK_SLOT`, an irregular state change is made to upgrade to Altair.
 
 ```python
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
