@@ -4,6 +4,14 @@ Tests if a genesis state is valid, i.e. if it counts as trigger to launch.
 
 ## Test case format
 
+### `meta.yaml`
+
+A yaml file to help read the deposit count:
+
+```yaml
+description: string    -- Optional. Description of test case, purely for debugging purposes.
+```
+
 ### `genesis.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconState`, the state to validate as genesis candidate.
