@@ -9,7 +9,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to Light-client patch](#fork-to-light-client-patch)
+- [Fork to Altair](#fork-to-altair)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -28,7 +28,7 @@ Warning: this configuration is not definitive.
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
 | `ALTAIR_FORK_SLOT` | `Slot(0)` **TBD** |
 
-## Fork to Light-client patch
+## Fork to Altair
 
 ### Fork trigger
 

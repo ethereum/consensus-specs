@@ -1,7 +1,9 @@
 from eth2spec.test.context import (
     PHASE0, PHASE1,
-    with_all_phases_except,
+    MINIMAL,
     spec_state_test,
+    with_all_phases_except,
+    with_configs,
 )
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.epoch_processing import (
@@ -11,6 +13,7 @@ from eth2spec.test.helpers.epoch_processing import (
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
+@with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress(spec, state):
     current_epoch = spec.get_current_epoch(state)
     # NOTE: if not in the genesis epoch, period math below needs to be
