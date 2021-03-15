@@ -87,7 +87,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 | `TIMELY_TARGET_FLAG_NUMERATOR` | `32` |
 | `FLAG_DENOMINATOR` | `64` |
 
-**Note**: The sum of the participatition flag fractions (7/8) plus the proposer reward fraction (1/8) equals 1.
+*Note*: The sum of the participatition flag fractions (7/8) plus the proposer reward fraction (1/8) equals 1.
 
 ### Misc
 
