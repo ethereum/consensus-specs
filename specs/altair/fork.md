@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document describes the process of the first upgrade of Ethereum 2.0: the Altair hardfork, introducing Light Client support.
+This document describes the process of the first upgrade of Ethereum 2.0: the Altair hard fork, introducing light client support and other improvements.
 
 ## Configuration
 
