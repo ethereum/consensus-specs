@@ -92,7 +92,7 @@ def build_empty_block(spec, state, slot=None):
     empty_block.parent_root = parent_block_root
 
     if is_post_altair(spec):
-        empty_block.body.sync_committee_signature = spec.G2_POINT_AT_INFINITY
+        empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
     apply_randao_reveal(spec, state, empty_block)
     return empty_block

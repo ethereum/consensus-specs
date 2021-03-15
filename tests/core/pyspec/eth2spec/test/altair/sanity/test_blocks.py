@@ -25,12 +25,14 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [index in participants for index in committee]
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        participants,
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[index in participants for index in committee],
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            participants,
+        )
     )
     signed_block = state_transition_and_sign_block(spec, state, block)
 

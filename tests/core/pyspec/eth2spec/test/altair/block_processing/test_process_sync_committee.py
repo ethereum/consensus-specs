@@ -2,8 +2,8 @@ from collections import Counter
 import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
-    transition_unsigned_block,
 )
+from eth2spec.test.helpers.block_processing import run_block_processing_to
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
@@ -23,12 +23,29 @@ from eth2spec.test.context import (
 from eth2spec.utils.hash_function import hash
 
 
+def run_sync_committee_processing(spec, state, block, expect_exception=False):
+    """
+    Processes everything up to the sync committee work, then runs the sync committee work in isolation, and
+    produces a pre-state and post-state (None if exception) specifically for sync-committee processing changes.
+    """
+    # process up to the sync committee work
+    call = run_block_processing_to(spec, state, block, 'process_sync_committee')
+    yield 'pre', state
+    yield 'sync_aggregate', block.body.sync_aggregate
+    if expect_exception:
+        expect_assertion_error(lambda: call(state, block))
+        yield 'post', None
+    else:
+        call(state, block)
+        yield 'post', state
+
+
 def get_committee_indices(spec, state, duplicates=False):
-    '''
+    """
     This utility function allows the caller to ensure there are or are not
     duplicate validator indices in the returned committee based on
     the boolean ``duplicates``.
-    '''
+    """
     state = state.copy()
     current_epoch = spec.get_current_epoch(state)
     randao_index = current_epoch % spec.EPOCHS_PER_HISTORICAL_VECTOR
@@ -45,6 +62,7 @@ def get_committee_indices(spec, state, duplicates=False):
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
+@always_bls
 def test_invalid_signature_missing_participant(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
     random_participant = random.choice(committee)
@@ -53,40 +71,38 @@ def test_invalid_signature_missing_participant(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one participant whose signature was included.
-    block.body.sync_committee_bits = [index != random_participant for index in committee]
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        committee,  # full committee signs
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[index != random_participant for index in committee],
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee,  # full committee signs
+        )
     )
-
-    yield 'blocks', [block]
-    expect_assertion_error(lambda: spec.process_sync_committee(state, block.body))
-    yield 'post', None
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
+@always_bls
 def test_invalid_signature_extra_participant(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
     random_participant = random.choice(committee)
 
-    yield 'pre', state
-
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one signature even though the block claims the entire committee participated.
-    block.body.sync_committee_bits = [True] * len(committee)
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        [index for index in committee if index != random_participant],
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * len(committee),
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            [index for index in committee if index != random_participant],
+        )
     )
 
-    yield 'blocks', [block]
-    expect_assertion_error(lambda: spec.process_sync_committee(state, block.body))
-    yield 'post', None
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
 def compute_sync_committee_participant_reward(spec, state, participant_index, active_validator_count, committee_size):
@@ -113,18 +129,17 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     pre_balances = state.balances.copy()
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * committee_size
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        committee,
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * committee_size,
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee,
+        )
     )
 
-    signed_block = state_transition_and_sign_block(spec, state, block)
-
-    yield 'blocks', [signed_block]
-    yield 'post', state
+    yield from run_sync_committee_processing(spec, state, block)
 
     for index in range(len(state.validators)):
         expected_reward = 0
@@ -156,23 +171,18 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
     assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
     assert committee_size > len(set(committee))
 
-    yield 'pre', state
-
     pre_balances = state.balances.copy()
-
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * committee_size
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        committee,
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * committee_size,
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee,
+        )
     )
-
-    signed_block = state_transition_and_sign_block(spec, state, block)
-
-    yield 'blocks', [signed_block]
-    yield 'post', state
+    yield from run_sync_committee_processing(spec, state, block)
 
     multiplicities = Counter(committee)
 
@@ -201,19 +211,19 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
 def test_invalid_signature_past_block(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
 
-    yield 'pre', state
-
     blocks = []
     for _ in range(2):
         # NOTE: need to transition twice to move beyond the degenerate case at genesis
         block = build_empty_block_for_next_slot(spec, state)
         # Valid sync committee signature here...
-        block.body.sync_committee_bits = [True] * len(committee)
-        block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-            spec,
-            state,
-            block.slot - 1,
-            committee,
+        block.body.sync_aggregate = spec.SyncAggregate(
+            sync_committee_bits=[True] * len(committee),
+            sync_committee_signature=compute_aggregate_sync_committee_signature(
+                spec,
+                state,
+                block.slot - 1,
+                committee,
+            )
         )
 
         signed_block = state_transition_and_sign_block(spec, state, block)
@@ -221,19 +231,17 @@ def test_invalid_signature_past_block(spec, state):
 
     invalid_block = build_empty_block_for_next_slot(spec, state)
     # Invalid signature from a slot other than the previous
-    invalid_block.body.sync_committee_bits = [True] * len(committee)
-    invalid_block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        invalid_block.slot - 2,
-        committee,
+    invalid_block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * len(committee),
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            invalid_block.slot - 2,
+            committee,
+        )
     )
-    blocks.append(invalid_block)
 
-    expect_assertion_error(lambda: transition_unsigned_block(spec, state, invalid_block))
-
-    yield 'blocks', blocks
-    yield 'post', None
+    yield from run_sync_committee_processing(spec, state, invalid_block, expect_exception=True)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
@@ -253,8 +261,6 @@ def test_invalid_signature_previous_committee(spec, state):
     slot_in_future_sync_committee_period = epoch_in_future_sync_commitee_period * spec.SLOTS_PER_EPOCH
     transition_to(spec, state, slot_in_future_sync_committee_period)
 
-    yield 'pre', state
-
     # Use the previous sync committee to produce the signature.
     pubkeys = [validator.pubkey for validator in state.validators]
     # Ensure that the pubkey sets are different.
@@ -262,21 +268,22 @@ def test_invalid_signature_previous_committee(spec, state):
     committee = [pubkeys.index(pubkey) for pubkey in old_sync_committee.pubkeys]
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * len(committee)
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        committee,
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * len(committee),
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee,
+        )
     )
 
-    yield 'blocks', [block]
-    expect_assertion_error(lambda: spec.process_sync_committee(state, block.body))
-    yield 'post', None
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
+@always_bls
 def test_valid_signature_future_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
     # sync committees currently returns the same committee for the first and second
@@ -302,18 +309,15 @@ def test_valid_signature_future_committee(spec, state):
     pubkeys = [validator.pubkey for validator in state.validators]
     committee_indices = [pubkeys.index(pubkey) for pubkey in sync_committee.pubkeys]
 
-    yield 'pre', state
-
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_committee_bits = [True] * len(committee_indices)
-    block.body.sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        block.slot - 1,
-        committee_indices,
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * len(committee_indices),
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee_indices,
+        )
     )
 
-    signed_block = state_transition_and_sign_block(spec, state, block)
-
-    yield 'blocks', [signed_block]
-    yield 'post', state
+    yield from run_sync_committee_processing(spec, state, block)
