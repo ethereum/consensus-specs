@@ -27,6 +27,26 @@ def has_enough_for_reward(spec, state, index):
     )
 
 
+def has_enough_for_leak_penalty(spec, state, index):
+    """
+    Check if effective_balance and state of leak is high enough for a leak penalty.
+
+    At very low balances / leak values, it is possible for a validator have a positive effective_balance
+    and be in a leak, but have zero leak penalty.
+    """
+
+    if is_post_altair(spec):
+        return (
+            state.validators[index].effective_balance * state.inactivity_scores[index]
+            > spec.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+        )
+    else:
+        return (
+            state.validators[index].effective_balance * spec.get_finality_delay(state)
+            > spec.INACTIVITY_PENALTY_QUOTIENT
+        )
+
+
 def run_deltas(spec, state):
     """
     Run all deltas functions yielding:
@@ -213,7 +233,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
-            elif index in matching_attesting_indices:
+            elif index in matching_attesting_indices or not has_enough_for_leak_penalty(spec, state, index):
                 assert penalties[index] == base_penalty
             else:
                 assert penalties[index] > base_penalty
