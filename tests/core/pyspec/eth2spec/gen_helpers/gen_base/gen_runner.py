@@ -145,6 +145,8 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
             print(f'Generating test: {case_dir}')
 
+            written_part = False
+
             # Add `INCOMPLETE` tag file to indicate that the test generation has not completed.
             case_dir.mkdir(parents=True, exist_ok=True)
             with incomplete_tag_file.open("w") as f:
@@ -159,7 +161,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     except IOError as e:
                         sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
 
-                written_part = False
                 meta = dict()
 
                 try:
@@ -173,6 +174,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                             output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
                 except SkippedTest as e:
                     print(e)
+                    shutil.rmtree(case_dir)
                     continue
 
                 # Once all meta data is collected (if any), write it to a meta data file.
@@ -182,7 +184,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
                 if not written_part:
                     print(f"test case {case_dir} did not produce any test case parts")
-
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
                 traceback.print_exc()
