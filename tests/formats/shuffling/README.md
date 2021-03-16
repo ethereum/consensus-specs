@@ -14,6 +14,13 @@ For implementers, possible test runners implementing testing can include:
 
 ## Test case format
 
+### `meta.yaml`
+
+```yaml
+release_version: string  -- required, the pyspec release version.
+description: string      -- Optional. Description of test case, purely for debugging purposes.
+```
+
 ### `mapping.yaml`
 
 ```yaml

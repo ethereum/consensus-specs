@@ -13,7 +13,9 @@ There is only one handler: `fork`. Each fork (after genesis) is handled with the
 A yaml file to signify which fork boundary is being tested.
 
 ```yaml
-fork: str    -- Fork being transitioned to
+release_version: string    -- required, the pyspec release version.
+description: string        -- Optional. Description of test case, purely for debugging purposes.
+fork: string               -- Fork being transitioned to
 ```
 
 #### Fork strings

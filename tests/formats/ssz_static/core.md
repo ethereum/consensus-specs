@@ -18,7 +18,13 @@ One can iterate over the handlers, and select the type based on the handler name
 Suites are then the same format, but each specialized in one randomization mode.
 Some randomization modes may only produce a single test case (e.g. the all-zeroes case).
 
-The output parts are: `roots.yaml`, `serialized.ssz_snappy`, `value.yaml`
+The output parts are: `meta.yaml`, `roots.yaml`, `serialized.ssz_snappy`, `value.yaml`
+
+### `meta.yaml`
+
+```yaml
+release_version: string  -- required, the pyspec release version.
+```
 
 ### `roots.yaml`
 

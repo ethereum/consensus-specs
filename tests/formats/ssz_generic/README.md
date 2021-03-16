@@ -42,6 +42,7 @@ The expected roots are encoded into the metadata yaml:
 
 ```yaml
 root: Bytes32             -- Hash-tree-root of the object
+release_version: string   -- required, the pyspec release version.
 ```
 
 The `Bytes32` is encoded as a string, hexadecimal encoding, prefixed with `0x`.

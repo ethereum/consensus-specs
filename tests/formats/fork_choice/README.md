@@ -7,8 +7,9 @@ The aim of the fork choice tests is to provide test coverage of the various comp
 ### `meta.yaml`
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
-bls_setting: int       -- see general test-format spec.
+release_version: string  -- required, the pyspec release version.
+description: string      -- Optional. Description of test case, purely for debugging purposes.
+bls_setting: int         -- see general test-format spec.
 ```
 
 ### `anchor_state.ssz_snappy`

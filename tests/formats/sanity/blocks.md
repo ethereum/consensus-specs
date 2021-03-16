@@ -7,6 +7,7 @@ Sanity tests to cover a series of one or more blocks being processed, aiming to 
 ### `meta.yaml`
 
 ```yaml
+release_version: string        -- required, the pyspec release version.
 description: string            -- Optional. Description of test case, purely for debugging purposes.
 bls_setting: int               -- see general test-format spec.
 reveal_deadlines_setting: int  -- see general test-format spec.

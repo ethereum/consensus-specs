@@ -7,8 +7,9 @@ Sanity tests to cover a series of one or more empty-slot transitions being proce
 ### `meta.yaml`
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
-bls_setting: int       -- see general test-format spec.
+release_version: string  -- required, the pyspec release version.
+description: string      -- Optional. Description of test case, purely for debugging purposes.
+bls_setting: int         -- see general test-format spec.
 ```
 
 

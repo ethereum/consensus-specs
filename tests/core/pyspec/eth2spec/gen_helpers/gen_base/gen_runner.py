@@ -1,4 +1,6 @@
+import shutil
 import argparse
+from importlib.metadata import version
 from pathlib import Path
 import sys
 from typing import Iterable, AnyStr, Any, Callable
@@ -6,12 +8,14 @@ import traceback
 
 from ruamel.yaml import (
     YAML,
+    safe_load,
 )
 
 from snappy import compress
 
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
+
 
 from .gen_typing import TestProvider
 
@@ -102,8 +106,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
 
+    log_file = Path(output_dir) / 'testgen_error_log.txt'
+
     print(f"Generating tests into {output_dir}")
     print(f"Reading configs from {args.configs_path}")
+    print(f'Error log file: {log_file}')
 
     configs = args.config_list
     if configs is None:
@@ -127,11 +134,24 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 / Path(test_case.suite_name) / Path(test_case.case_name)
             )
             if case_dir.exists():
-                if not args.force:
+                # Check if the test vector was generated successfully.
+                meta_file = case_dir / 'meta.yaml'
+                # Check if meta file exists
+                meta_dict = {}
+                if meta_file.exists():
+                    with meta_file.open('r') as f:
+                        meta_dict = safe_load(f.read())
+
+                if 'release_version' in meta_dict and not args.force:
+                    # If release_version is in meta.yaml, the test was generated successfully.
                     print(f'Skipping already existing test: {case_dir}')
                     continue
+
                 print(f'Warning, output directory {case_dir} already exist,'
                       f' old files are not deleted but will be overwritten when a new version is produced')
+
+                # Remove case_dir folder
+                shutil.rmtree(case_dir)
 
             print(f'Generating test: {case_dir}')
             try:
@@ -159,6 +179,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     print(e)
                     continue
 
+                # If the test case was executed successfully, write release version to meta.yaml
+                if written_part > 0:
+                    meta['release_version'] = str(version('eth2spec'))
+
                 # Once all meta data is collected (if any), write it to a meta data file.
                 if len(meta) != 0:
                     written_part = True
@@ -166,10 +190,15 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
                 if not written_part:
                     print(f"test case {case_dir} did not produce any test case parts")
-
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
                 traceback.print_exc()
+                # Write to log file
+                with log_file.open("a+") as f:
+                    f.write(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
+                    traceback.print_exc(file=f)
+                    f.write('\n')
+
     print(f"completed {generator_name}")
 
 

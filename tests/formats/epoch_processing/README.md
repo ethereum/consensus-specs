@@ -10,9 +10,10 @@ Hence, the format is shared between each test-handler. (See test condition docum
 ### `meta.yaml`
 
 ```yaml
-description: string    -- Optional description of test case, purely for debugging purposes.
-                          Tests should use the directory name of the test case as identifier, not the description.
-bls_setting: int       -- see general test-format spec.
+release_version: string    -- required, the pyspec release version.
+description: string        -- Optional description of test case, purely for debugging purposes.
+                              Tests should use the directory name of the test case as identifier, not the description.
+bls_setting: int           -- see general test-format spec.
 ```
 
 ### `pre.ssz_snappy`

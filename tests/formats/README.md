@@ -163,17 +163,19 @@ Common data is documented here:
 Some test-case formats share some common key-value pair patterns, and these are documented here:
 
 ```
-bls_setting: int     -- optional, can have 3 different values:
-                            0: (default, applies if key-value pair is absent). Free to choose either BLS ON or OFF.
-                                 Tests are generated with valid BLS data in this case,
-                                 but there is no change of outcome when running the test if BLS is ON or OFF.
-                            1: known as "BLS required" - if the test validity is strictly dependent on BLS being ON
-                            2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
-reveal_deadlines_setting:   -- optional, can have 2 different values:
-                            0: default, `process_reveal_deadlines` is ON.
-                            1: `process_reveal_deadlines` is OFF.
+release_version: string         -- required, the pyspec release version.
+bls_setting: int                -- optional, can have 3 different values:
+                                    0: (default, applies if key-value pair is absent). Free to choose either BLS ON or OFF.
+                                        Tests are generated with valid BLS data in this case,
+                                        but there is no change of outcome when running the test if BLS is ON or OFF.
+                                    1: known as "BLS required" - if the test validity is strictly dependent on BLS being ON
+                                    2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
+reveal_deadlines_setting: int   -- optional, can have 2 different values:
+                                    0: default, `process_reveal_deadlines` is ON.
+                                    1: `process_reveal_deadlines` is OFF.
+description: string             -- optional description of test case, purely for debugging purposes.
+                                   Tests should use the directory name of the test case as identifier, not the description.
 ```
-
 
 ## Config
 

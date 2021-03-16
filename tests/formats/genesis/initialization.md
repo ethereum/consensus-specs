@@ -17,8 +17,9 @@ An integer. The timestamp of the block, in seconds.
 A yaml file to help read the deposit count:
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
-deposits_count: int    -- Amount of deposits.
+release_version: string  -- required, the pyspec release version.
+description: string      -- Optional. Description of test case, purely for debugging purposes.
+deposits_count: int      -- Amount of deposits.
 ```
 
 ### `deposits_<index>.ssz_snappy`

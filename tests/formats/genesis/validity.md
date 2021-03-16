@@ -9,7 +9,8 @@ Tests if a genesis state is valid, i.e. if it counts as trigger to launch.
 A yaml file to help read the deposit count:
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
+release_version: string  -- required, the pyspec release version.
+description: string      -- Optional. Description of test case, purely for debugging purposes.
 ```
 
 ### `genesis.ssz_snappy`

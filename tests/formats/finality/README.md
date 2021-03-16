@@ -9,9 +9,10 @@ The aim of the tests for the finality rules.
 ### `meta.yaml`
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
-bls_setting: int       -- see general test-format spec.
-blocks_count: int      -- the number of blocks processed in this test.
+release_version: string    -- required, the pyspec release version.
+description: string        -- Optional. Description of test case, purely for debugging purposes.
+bls_setting: int           -- see general test-format spec.
+blocks_count: int          -- the number of blocks processed in this test.
 ```
 
 ### `pre.ssz_snappy`

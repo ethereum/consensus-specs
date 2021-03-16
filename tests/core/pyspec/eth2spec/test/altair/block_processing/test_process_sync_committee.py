@@ -284,6 +284,7 @@ def test_invalid_signature_previous_committee(spec, state):
 @with_all_phases_except([PHASE0, PHASE1])
 @spec_state_test
 @always_bls
+@with_configs([MINIMAL], reason="too slow")
 def test_valid_signature_future_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
     # sync committees currently returns the same committee for the first and second

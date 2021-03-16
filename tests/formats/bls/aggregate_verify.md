@@ -4,7 +4,13 @@ Verify the signature against the given pubkeys and one messages.
 
 ## Test case format
 
-The test data is declared in a `data.yaml` file:
+### `meta.yaml`
+
+```yaml
+release_version: string  -- required, the pyspec release version.
+```
+
+### `data.yaml`
 
 ```yaml
 input:

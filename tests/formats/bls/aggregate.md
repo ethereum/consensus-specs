@@ -4,7 +4,13 @@ A BLS signature aggregation combines a series of signatures into a single signat
 
 ## Test case format
 
-The test data is declared in a `data.yaml` file:
+### `meta.yaml`
+
+```yaml
+release_version: string  -- required, the pyspec release version.
+```
+
+### `data.yaml`
 
 ```yaml
 input: List[BLS Signature] -- list of input BLS signatures
