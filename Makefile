@@ -27,6 +27,7 @@ COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
+GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
 
 export DAPP_SKIP_BUILD:=1
 export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
@@ -35,7 +36,8 @@ export DAPP_JSON:=build/combined.json
 
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
         install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
-        compile_deposit_contract test_compile_deposit_contract check_toc
+        compile_deposit_contract test_compile_deposit_contract check_toc \
+        detect_generator_incomplete detect_generator_error_log
 
 all: $(PY_SPEC_ALL_TARGETS)
 
@@ -171,3 +173,9 @@ $(TEST_VECTOR_DIR)/:
 # (creation of output dir is a dependency)
 gen_%: $(TEST_VECTOR_DIR)
 	$(call run_generator,$*)
+
+detect_generator_incomplete: $(TEST_VECTOR_DIR)
+	find $(TEST_VECTOR_DIR) -name "INCOMPLETE"
+
+detect_generator_error_log: $(TEST_VECTOR_DIR)
+	[ -f $(GENERATOR_ERROR_LOG_FILE) ] && echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists" || echo "[PASSED] error log file does not exist"

@@ -1,3 +1,5 @@
+import os
+import shutil
 import argparse
 from pathlib import Path
 import sys
@@ -102,8 +104,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
 
+    log_file = Path(output_dir) / 'testgen_error_log.txt'
+
     print(f"Generating tests into {output_dir}")
     print(f"Reading configs from {args.configs_path}")
+    print(f'Error log file: {log_file}')
 
     configs = args.config_list
     if configs is None:
@@ -126,14 +131,27 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 / Path(test_case.runner_name) / Path(test_case.handler_name)
                 / Path(test_case.suite_name) / Path(test_case.case_name)
             )
+            incomplete_tag_file = case_dir / "INCOMPLETE"
+
             if case_dir.exists():
-                if not args.force:
+                if not args.force and not incomplete_tag_file.exists():
                     print(f'Skipping already existing test: {case_dir}')
                     continue
-                print(f'Warning, output directory {case_dir} already exist,'
-                      f' old files are not deleted but will be overwritten when a new version is produced')
+                else:
+                    print(f'Warning, output directory {case_dir} already exist,'
+                          f' old files will be deleted and it will generate test vector files with the latest version')
+                    # Clear the existing case_dir folder
+                    shutil.rmtree(case_dir)
 
             print(f'Generating test: {case_dir}')
+
+            written_part = False
+
+            # Add `INCOMPLETE` tag file to indicate that the test generation has not completed.
+            case_dir.mkdir(parents=True, exist_ok=True)
+            with incomplete_tag_file.open("w") as f:
+                f.write("\n")
+
             try:
                 def output_part(out_kind: str, name: str, fn: Callable[[Path, ], None]):
                     # make sure the test case directory is created before any test part is written.
@@ -143,7 +161,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     except IOError as e:
                         sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
 
-                written_part = False
                 meta = dict()
 
                 try:
@@ -157,6 +174,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                             output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
                 except SkippedTest as e:
                     print(e)
+                    shutil.rmtree(case_dir)
                     continue
 
                 # Once all meta data is collected (if any), write it to a meta data file.
@@ -166,10 +184,22 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
                 if not written_part:
                     print(f"test case {case_dir} did not produce any test case parts")
-
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
                 traceback.print_exc()
+                # Write to log file
+                with log_file.open("a+") as f:
+                    f.write(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
+                    traceback.print_exc(file=f)
+                    f.write('\n')
+            else:
+                # If no written_part, the only file was incomplete_tag_file. Clear the existing case_dir folder.
+                if not written_part:
+                    shutil.rmtree(case_dir)
+                else:
+                    # Only remove `INCOMPLETE` tag file
+                    os.remove(incomplete_tag_file)
+
     print(f"completed {generator_name}")
 
 
