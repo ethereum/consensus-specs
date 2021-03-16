@@ -132,7 +132,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 / Path(test_case.runner_name) / Path(test_case.handler_name)
                 / Path(test_case.suite_name) / Path(test_case.case_name)
             )
-            if case_dir.exists():
+            if case_dir.exists() and not args.force:
                 # Check if the test vector was generated successfully.
                 meta_file = case_dir / 'meta.yaml'
                 # Check if meta file exists
@@ -141,7 +141,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     with meta_file.open('r') as f:
                         meta_dict = safe_load(f.read())
 
-                if 'release_version' in meta_dict and not args.force:
+                if 'release_version' in meta_dict and meta_dict['release_version'] == str(version('eth2spec')):
                     # If release_version is in meta.yaml, the test was generated successfully.
                     print(f'Skipping already existing test: {case_dir}')
                     continue
@@ -149,7 +149,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 print(f'Warning, output directory {case_dir} already exist,'
                       f' old files are not deleted but will be overwritten when a new version is produced')
 
-                # Remove case_dir folder
+                # Remove the existing case_dir folder
                 shutil.rmtree(case_dir)
 
             print(f'Generating test: {case_dir}')
