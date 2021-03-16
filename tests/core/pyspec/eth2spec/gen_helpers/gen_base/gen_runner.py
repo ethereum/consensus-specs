@@ -16,7 +16,6 @@ from snappy import compress
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
-
 from .gen_typing import TestProvider
 
 
@@ -180,7 +179,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     continue
 
                 # If the test case was executed successfully, write release version to meta.yaml
-                if written_part > 0:
+                if written_part:
                     meta['release_version'] = str(version('eth2spec'))
 
                 # Once all meta data is collected (if any), write it to a meta data file.
