@@ -1,11 +1,11 @@
 # Ethereum Altair networking specification
 
-This document contains the networking specification for Ethereum 2.0 clients added during the Altair deployment. 
-This document should be viewed as additive to the [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as the "phase 0 document" hereafter. 
-Readers should understand the phase 0 document and use it as a basis to understand the changes outlined in this document.
+This document contains the networking specification for Ethereum 2.0 clients added during the Altair deployment.
+This document should be viewed as additive to the [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as the "Phase 0 document" hereafter.
+Readers should understand the Phase 0 document and use it as a basis to understand the changes outlined in this document.
 
-In particular, Altair introduces changes to the gossip domain and a small change to ENR advertisement in the discovery domain. 
-The phase 0 document should be consulted for specs on the network fundamentals, the existing gossip domain, the req/resp domain and the discovery domain.
+Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery domain. Some Phase 0 features will be deprecated, but not removed immediately.
+
 
 ## Table of contents
 
@@ -23,7 +23,14 @@ The phase 0 document should be consulted for specs on the network fundamentals, 
       - [Sync committee subnets](#sync-committee-subnets)
         - [`sync_committee_{subnet_id}`](#sync_committee_subnet_id)
       - [Sync committees and aggregation](#sync-committees-and-aggregation)
+    - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
+    - [Req-Resp interaction](#req-resp-interaction)
+      - [`ForkDigest`-context](#forkdigest-context)
+    - [Messages](#messages)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [Transitioning from v1 to v2](#transitioning-from-v1-to-v2)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -43,7 +50,7 @@ Validators use an aggregation scheme to balance the processing and networking lo
 
 ### Topics and messages
 
-Topics follow the same specification as in the phase 0 document. 
+Topics follow the same specification as in the Phase 0 document. 
 New topics are added in Altair to support the sync committees and the beacon block topic is updated with the modified type.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 document.
@@ -58,14 +65,18 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 Definitions of these new types can be found in the [Altair validator guide](./validator.md#containers).
 
+Note that the `ForkDigestValue` path segment of the topic separates the old and the new `beacon_block` topics.
+
 #### Global topics
 
 Altair changes the type of the global beacon block topic and adds one global topic to propagate partially aggregated sync committee signatures to all potential proposers of beacon blocks.
 
 ##### `beacon_block`
 
-The existing specification for this topic does not change from the Phase 0 document, but the type of the payload does change to the (modified) `SignedBeaconBlock`. 
-This type changes due to the inclusion of the inner `BeaconBlockBody` that is modified in Altair. 
+The existing specification for this topic does not change from the Phase 0 document,
+but the type of the payload does change to the (modified) `SignedBeaconBlock`. 
+This type changes due to the inclusion of the inner `BeaconBlockBody` that is modified in Altair.
+
 See the [state transition document](./beacon-chain.md#beaconblockbody) for Altair for further details.
 
 ##### `sync_committee_contribution_and_proof`
@@ -114,13 +125,94 @@ Unaggregated signatures (along with metadata) are sent as `SyncCommitteeSignatur
 
 Aggregated sync committee signatures are packaged into (signed) `SyncCommitteeContribution` along with proofs and gossiped to the `sync_committee_contribution_and_proof` topic.
 
+### Transitioning the gossip
+
+With any fork, the fork version, and thus the `ForkDigestValue`, change.
+Message types are unique per topic, and so for a smooth transition a node must temporarily subscribe to both the old and new topics.
+
+The topics that are not removed in a fork are updated with a new `ForkDigestValue`. In advance of the fork, a node SHOULD subscribe to the post-fork variants of the topics.
+
+Subscriptions are expected to be well-received, all updated nodes should subscribe as well.
+Topic-meshes can be grafted quickly as the nodes are already connected and exchanging gossip control messages.
+
+Messages SHOULD NOT be re-broadcast from one fork to the other.
+A node's behavior before the fork and after the fork are as follows:
+Pre-fork:
+- Peers who propagate messages on the post-fork topics MAY be scored negatively proportionally to time till fork,
+  to account for clock discrepancy.
+- Messages can be IGNORED on the post-fork topics, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` margin.
+
+Post-fork:
+- Peers who propagate messages on the pre-fork topics MUST NOT be scored negatively. Lagging IWANT may force them to.
+- Messages on pre and post-fork variants of topics share application-level caches.
+  E.g. an attestation on the both the old and new topic is ignored like any duplicate.
+- Two epochs after the fork, pre-fork topics SHOULD be unsubscribed from. This is well after the configured `seen_ttl`.
+
 ## The Req/Resp domain
 
-* (TODO) specify how to handle different types of blocks on RPC responses.
+### Req-Resp interaction
+
+An additional `<context-bytes>` field is introduced to the `response_chunk` as defined in the Phase 0 document:
+
+```
+response_chunk  ::= <result> | <context-bytes> | <encoding-dependent-header> | <encoded-payload>
+```
+
+All Phase 0 methods are compatible: `<context-bytes>` is empty by default.
+On a non-zero `<result>` with `ErrorMessage` payload, the `<context-bytes>` is also empty.
+
+In Altair and later forks, `<context-bytes>` functions as a short meta-data,
+defined per req-resp method, and can parametrize the payload decoder.
+
+#### `ForkDigest`-context
+
+Starting with Altair, and in future forks, SSZ type definitions may change.
+For this common case, we define the `ForkDigest`-context:
+
+A fixed-width 4 byte `<context-bytes>`, set to the `ForkDigest` matching the chunk:
+ `compute_fork_digest(fork_version, genesis_validators_root)`.
+
+### Messages
+
+#### BeaconBlocksByRange v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
+
+Request and Response remain unchanged. A `ForkDigest`-context is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+| `fork_version`           | Chunk SSZ type             |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+
+#### BeaconBlocksByRoot v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+Request and Response remain unchanged. A `ForkDigest`-context is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+| `fork_version`           | Chunk SSZ type             |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+
+### Transitioning from v1 to v2
+
+In advance of the fork, implementations can opt in to both run the v1 and v2 for a smooth transition.
+This is non-breaking, and is recommended as soon as the fork specification is stable.
+
+The v1 variants will be deprecated, and implementations should use v2 when available 
+(as negotiatied with peers via LibP2P multistream-select).
+
+The v1 method MAY be unregistered at the fork boundary.
+In the event of a request on v1 for an Altair specific payload,
+the responder MUST return the **InvalidRequest** response code.
 
 ## The discovery domain: discv5
 
-The `attnets` key of the ENR is used as defined in the phase 0 document.
+The `attnets` key of the ENR is used as defined in the Phase 0 document.
 
 An additional bitfield is added to the ENR under the key `syncnets` to facilitate sync committee subnet discovery.
 The length of this bitfield is `SYNC_COMMITTEE_SUBNET_COUNT` where each bit corresponds to a distinct `subnet_id` for a specific sync committee subnet. 
