@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Data Availability Sampling - Network specification
+# Ethereum 2.0 Data Availability Sampling Network specification
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -32,7 +32,7 @@
 
 ## Introduction
 
-For an introduction about DAS itself, see [the DAS participation spec](./das-participation.md#data-availability-sampling).
+For an introduction about DAS itself, see [the DAS participation spec](sampling.md#data-availability-sampling).
 This is not a pre-requisite for the network layer, but will give you valuable context. 
 
 For sampling, all nodes need to query for `k` random samples each slot.
@@ -132,11 +132,11 @@ These subscriptions rotate slowly, and with different offsets per node identity 
 # TODO hash function: (node, time)->subnets
 ```
 
-Backbone subscription work is outlined in the [DAS participation spec](./das-participation.md#slow-rotation-backbone)
+Backbone subscription work is outlined in the [DAS participation spec](sampling.md#slow-rotation-backbone)
 
 #### Quick Rotation: Sampling
 
-A node MUST maintain `k` random subscriptions to topics, and rotate these according to the [DAS participation spec](./das-participation.md#quick-rotation-sampling).
+A node MUST maintain `k` random subscriptions to topics, and rotate these according to the [DAS participation spec](sampling.md#quick-rotation-sampling).
 If the node does not already have connected peers on the topic it needs to sample, it can search its peerstore, and if necessary in the DHT, for peers in the topic backbone.
 
 ## DAS in the Gossip domain: Push
@@ -161,7 +161,7 @@ Take `blob = signed_blob.blob`:
 2. Create samples with proofs: `samples = sample_data(blob.slot, blob.shard, extended_data)`
 3. Fanout-publish the samples to the vertical subnets of its peers (not all vertical subnets may be reached).
 
-The [DAS participation spec](./das-participation.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
+The [DAS participation spec](sampling.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
 
 
 #### Vertical subnets: `das_sample_{subnet_index}`

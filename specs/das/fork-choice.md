@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Beacon Chain Fork Choice
+# Ethereum 2.0 Data Availability Sampling Fork Choice
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
