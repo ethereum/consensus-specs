@@ -183,8 +183,8 @@ def get_recent_beacon_block_roots(state: BeaconState, qty: uint64) -> Sequence[B
 
 ```python
 def get_evm_beacon_block_roots(state: BeaconState) -> Sequence[Bytes32]:
-    num_block_roots = min(EVM_BLOCK_ROOTS_SIZE, SLOTS_PER_HISTORICAL_ROOT)
-    return get_recent_beacon_block_roots(state, num_block_roots)
+    # EVM_BLOCK_ROOTS_SIZE must be less or equal to SLOTS_PER_HISTORICAL_ROOT
+    return get_recent_beacon_block_roots(state, EVM_BLOCK_ROOTS_SIZE)
 ```
 
 ### Block processing
