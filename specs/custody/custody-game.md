@@ -4,46 +4,15 @@
 
 ## Table of contents
 
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-- [Constants](#constants)
-  - [Misc](#misc)
-- [Configuration](#configuration)
-  - [Time parameters](#time-parameters)
-  - [Max operations per block](#max-operations-per-block)
-  - [Reward and penalty quotients](#reward-and-penalty-quotients)
-- [Data structures](#data-structures)
-  - [New Beacon Chain operations](#new-beacon-chain-operations)
-    - [`CustodyChunkChallenge`](#custodychunkchallenge)
-    - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
-    - [`CustodyChunkResponse`](#custodychunkresponse)
-    - [`CustodySlashing`](#custodyslashing)
-    - [`SignedCustodySlashing`](#signedcustodyslashing)
-    - [`CustodyKeyReveal`](#custodykeyreveal)
-    - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
-- [Helpers](#helpers)
-  - [`replace_empty_or_append`](#replace_empty_or_append)
-  - [`legendre_bit`](#legendre_bit)
-  - [`get_custody_atoms`](#get_custody_atoms)
-  - [`get_custody_secrets`](#get_custody_secrets)
-  - [`universal_hash_function`](#universal_hash_function)
-  - [`compute_custody_bit`](#compute_custody_bit)
-  - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
-  - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
-- [Per-block processing](#per-block-processing)
-  - [Custody Game Operations](#custody-game-operations)
-    - [Chunk challenges](#chunk-challenges)
-    - [Custody chunk response](#custody-chunk-response)
-    - [Custody key reveals](#custody-key-reveals)
-    - [Early derived secret reveals](#early-derived-secret-reveals)
-    - [Custody Slashings](#custody-slashings)
-- [Per-epoch processing](#per-epoch-processing)
-  - [Handling of reveal deadlines](#handling-of-reveal-deadlines)
-  - [Final updates](#final-updates)
+TODO
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 
 ## Introduction
 
@@ -83,6 +52,14 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16) |
 | `MAX_CUSTODY_SLASHINGS` | `uint64(2**0)` (= 1) |
 
+
+### Size parameters
+
+| Name | Value | Unit |
+| - | - | - |
+| `BYTES_PER_CUSTODY_CHUNK` | `uint64(2**12)` (= 4,096) | bytes |
+| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - |
+
 ### Reward and penalty quotients
 
 | Name | Value |
@@ -91,6 +68,45 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `MINOR_REWARD_QUOTIENT` | `uint64(2**8)` (= 256) |
 
 ## Data structures
+
+### Extended types
+
+#### `Validator`
+
+```python
+class Validator(phase0.Validator):
+    # next_custody_secret_to_reveal is initialised to the custody period
+    # (of the particular validator) in which the validator is activated
+    # = get_custody_period_for_validator(...)
+    next_custody_secret_to_reveal: uint64
+    # TODO: The max_reveal_lateness doesn't really make sense anymore.
+    # So how do we incentivise early custody key reveals now?
+    all_custody_secrets_revealed_epoch: Epoch  # to be initialized to FAR_FUTURE_EPOCH
+```
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(phase0.BeaconBlockBody):
+    # Custody game
+    chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
+    chunk_challenge_responses: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES]
+    custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
+    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
+    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
+```
+
+#### `BeaconState`
+
+```python
+class BeaconState(phase0.BeaconState):
+    # Future derived secrets already exposed; contains the indices of the exposed validator
+    # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
+    exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
+                                    EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS]
+    custody_chunk_challenge_index: uint64
+```
 
 ### New Beacon Chain operations
 

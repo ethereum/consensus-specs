@@ -10,54 +10,11 @@ participating in the Ethereum 2.0 Phase 1 protocol.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-- [Constants](#constants)
-  - [Misc](#misc)
-- [Becoming a validator](#becoming-a-validator)
-- [Beacon chain validator assignments](#beacon-chain-validator-assignments)
-  - [Lookahead](#lookahead)
-- [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Block proposal](#block-proposal)
-    - [Preparing for a `BeaconBlock`](#preparing-for-a-beaconblock)
-    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Custody slashings](#custody-slashings)
-      - [Custody key reveals](#custody-key-reveals)
-      - [Early derived secret reveals](#early-derived-secret-reveals)
-      - [Shard transitions](#shard-transitions)
-      - [Light client fields](#light-client-fields)
-    - [Packaging into a `SignedBeaconBlock`](#packaging-into-a-signedbeaconblock)
-  - [Attesting](#attesting)
-    - [`FullAttestationData`](#fullattestationdata)
-    - [`FullAttestation`](#fullattestation)
-    - [Timing](#timing)
-    - [Attestation data](#attestation-data)
-      - [Shard head root](#shard-head-root)
-      - [Shard transition](#shard-transition)
-    - [Construct attestation](#construct-attestation)
-  - [Attestation Aggregation](#attestation-aggregation)
-    - [Broadcast aggregate](#broadcast-aggregate)
-      - [`AggregateAndProof`](#aggregateandproof)
-      - [`SignedAggregateAndProof`](#signedaggregateandproof)
-  - [Light client committee](#light-client-committee)
-    - [Preparation](#preparation)
-    - [Light client vote](#light-client-vote)
-      - [Light client vote data](#light-client-vote-data)
-        - [`LightClientVoteData`](#lightclientvotedata)
-      - [Construct vote](#construct-vote)
-        - [`LightClientVote`](#lightclientvote)
-      - [Broadcast](#broadcast)
-    - [Light client vote aggregation](#light-client-vote-aggregation)
-    - [Aggregation selection](#aggregation-selection)
-    - [Construct aggregate](#construct-aggregate)
-    - [Broadcast aggregate](#broadcast-aggregate-1)
-      - [`LightAggregateAndProof`](#lightaggregateandproof)
-      - [`SignedLightAggregateAndProof`](#signedlightaggregateandproof)
-- [How to avoid slashing](#how-to-avoid-slashing)
-  - [Custody slashing](#custody-slashing)
+TODO
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
 
 ## Introduction
 
