@@ -226,7 +226,7 @@ class BeaconChainData(Container):
 *Note*: `ApplicationState` class is an abstract class representing ethereum application state.
 
 Let `get_application_state(application_state_root: Bytes32) -> ApplicationState`  be the function that given the root hash returns a copy of ethereum application state. 
-The body of the function is implementation dependant.
+The body of the function is implementation dependent.
 
 ##### `application_state_transition`
 
