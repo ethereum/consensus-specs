@@ -489,7 +489,7 @@ def update_pending_votes(state: BeaconState,
         return
 
     # Requirement 2: >= 2/3 of balance attesting
-    participants = get_attesting_indices(state, attestation.data, pending_commitment.votes)
+    participants = get_attesting_indices(state, attestation.data, pending_header.votes)
     participants_balance = get_total_balance(state, participants)
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     full_committee_balance = get_total_balance(state, full_committee)
