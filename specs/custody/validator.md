@@ -10,7 +10,16 @@ participating in the Ethereum 2.0 Phase 1 protocol.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-TODO
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Becoming a validator](#becoming-a-validator)
+- [Beacon chain validator assignments](#beacon-chain-validator-assignments)
+      - [Custody slashings](#custody-slashings)
+      - [Custody key reveals](#custody-key-reveals)
+      - [Early derived secret reveals](#early-derived-secret-reveals)
+    - [Construct attestation](#construct-attestation)
+- [How to avoid slashing](#how-to-avoid-slashing)
+  - [Custody slashing](#custody-slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->

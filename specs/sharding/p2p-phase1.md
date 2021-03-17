@@ -4,6 +4,7 @@
 
 ## Table of contents
 
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -14,6 +15,8 @@
     - [Shard header: `shard_header`](#shard-header-shard_header)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 
 ## Introduction
 

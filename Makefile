@@ -20,7 +20,11 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/phase1/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) \
+                 $(wildcard $(SPEC_DIR)/merge/*.md) \
+                 $(wildcard $(SPEC_DIR)/custody/*.md) \
+                 $(wildcard $(SPEC_DIR)/das/*.md) \
+                 $(wildcard $(SPEC_DIR)/sharding/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html

@@ -4,7 +4,7 @@
 
 ## Table of contents
 
-
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -20,6 +20,7 @@
     - [Stage 2: Pulling missing data from validators with custody.](#stage-2-pulling-missing-data-from-validators-with-custody)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 
 ## Data Availability Sampling
