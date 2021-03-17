@@ -215,7 +215,7 @@ class BeaconChainData(Container):
     slot: Slot
     randao_mix: Bytes32
     timestamp: uint64
-    recent_block_roots: Sequence[Bytes32]
+    recent_block_roots: Vector[Bytes32, EVM_BLOCK_ROOTS_SIZE]
 ```
 
 ##### `get_application_state`
