@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Network specification
+# Ethereum 2.0 Sharding -- Network specification
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -9,7 +9,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [DAS in the Gossip domain: Push](#das-in-the-gossip-domain-push)
+- [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
     - [Shard blobs: `shard_blob_{shard}`](#shard-blobs-shard_blob_shard)
     - [Shard header: `shard_header`](#shard-header-shard_header)
@@ -23,14 +23,14 @@
 With Phase 1, shard data is introduced, which requires various new additions and adjustments to the groundwork that Phase 0 implements.
 The specification of these changes continues in the same format, and assumes Phase0 as pre-requisite. 
 The Phase 0 adjustments and additions for Shards are outlined in this document.
-See the [Data Availability Sampling network specification](./das-p2p.md) for Phase 1 networking specific to Data availability.  
 
 
-## DAS in the Gossip domain: Push
+## Gossip domain
 
 ### Topics and messages
 
 Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
+
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
 | `shard_blob_{shard}`             | `SignedShardBlob`         |
@@ -41,8 +41,6 @@ The [DAS network specification](./das-p2p.md) defines additional topics.
 #### Shard blobs: `shard_blob_{shard}`
 
 Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}` subnets.
-
-The [DAS networking specification](./das-p2p.md#horizontal-subnets) outlines an extension of the regular behavior on this topic.
 
 The following validations MUST pass before forwarding the `signed_blob` (with inner `blob`) on the horizontal subnet or creating samples for it.
 - _[REJECT]_ `blob.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
