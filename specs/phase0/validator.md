@@ -12,6 +12,10 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Containers](#containers)
+  - [`Eth1Block`](#eth1block)
+  - [`AggregateAndProof`](#aggregateandproof)
+  - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [BLS public key](#bls-public-key)
@@ -33,7 +37,6 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
       - [Eth1 Data](#eth1-data)
-        - [`Eth1Block`](#eth1block)
         - [`get_eth1_data`](#get_eth1_data)
       - [Proposer slashings](#proposer-slashings)
       - [Attester slashings](#attester-slashings)
@@ -60,8 +63,6 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
       - [Aggregation bits](#aggregation-bits-1)
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
-      - [`AggregateAndProof`](#aggregateandproof)
-      - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
@@ -91,6 +92,35 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
+
+## Containers
+
+### `Eth1Block`
+
+```python
+class Eth1Block(Container):
+    timestamp: uint64
+    deposit_root: Root
+    deposit_count: uint64
+    # All other eth1 block fields
+```
+
+### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation
+    selection_proof: BLSSignature
+```
+
+### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof
+    signature: BLSSignature
+```
 
 ## Becoming a validator
 
@@ -302,19 +332,9 @@ If over half of the block proposers in the current Eth1 voting period vote for t
 `eth1_data` then `state.eth1_data` updates immediately allowing new deposits to be processed.
 Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-###### `Eth1Block`
+###### `get_eth1_data`
 
 Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and depost contract data available.
-
-```python
-class Eth1Block(Container):
-    timestamp: uint64
-    deposit_root: Root
-    deposit_count: uint64
-    # All other eth1 block fields
-```
-
-###### `get_eth1_data`
 
 Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
 
@@ -579,23 +599,6 @@ def get_aggregate_and_proof_signature(state: BeaconState,
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     return bls.Sign(privkey, signing_root)
-```
-
-##### `AggregateAndProof`
-
-```python
-class AggregateAndProof(Container):
-    aggregator_index: ValidatorIndex
-    aggregate: Attestation
-    selection_proof: BLSSignature
-```
-
-##### `SignedAggregateAndProof`
-
-```python
-class SignedAggregateAndProof(Container):
-    message: AggregateAndProof
-    signature: BLSSignature
 ```
 
 ## Phase 0 attestation subnet stability
