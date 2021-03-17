@@ -1,5 +1,7 @@
 # Ethereum 2.0 The Merge
 
+**Warning:** This document is based on [Phase 0](../phase0/beacon-chain.md) and considered to be rebased to [Altair](../altair/beacon-chain.md) once the latter is shipped.
+
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
