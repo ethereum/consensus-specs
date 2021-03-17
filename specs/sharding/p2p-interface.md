@@ -9,6 +9,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [New containers](#new-containers)
+  - [ShardBlob](#shardblob)
+  - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
     - [Shard blobs: `shard_blob_{shard}`](#shard-blobs-shard_blob_shard)
@@ -24,6 +27,34 @@ With Phase 1, shard data is introduced, which requires various new additions and
 The specification of these changes continues in the same format, and assumes Phase0 as pre-requisite. 
 The Phase 0 adjustments and additions for Shards are outlined in this document.
 
+## New containers
+
+### ShardBlob
+
+The blob of data, effectively a block. Network-only.
+
+```python
+class ShardBlob(Container):
+    # Slot and shard that this blob is intended for
+    slot: Slot
+    shard: Shard
+    # The actual data
+    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
+```
+
+Note that the hash-tree-root of the `ShardBlob` does not match the `ShardHeader`,
+since the blob deals with full data, whereas the header includes the KZG commitment instead.
+
+### SignedShardBlob
+
+Network-only.
+
+```python
+class SignedShardBlob(Container):
+    blob: ShardBlob
+    # The signature, the message is the commitment on the blob
+    signature: BLSSignature
+```
 
 ## Gossip domain
 

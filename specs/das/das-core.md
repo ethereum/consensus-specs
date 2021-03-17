@@ -13,8 +13,6 @@
   - [Misc](#misc)
 - [New containers](#new-containers)
   - [DASSample](#dassample)
-  - [ShardBlob](#shardblob)
-  - [SignedShardBlob](#signedshardblob)
 - [Helper functions](#helper-functions)
   - [Reverse bit ordering](#reverse-bit-ordering)
     - [`reverse_bit_order`](#reverse_bit_order)
@@ -58,34 +56,6 @@ class DASSample(Container):
     proof: BLSCommitment
     data: Vector[BLSPoint, POINTS_PER_SAMPLE]
 ```
-
-### ShardBlob
-
-The blob of data, effectively a block. Network-only.
-
-```python
-class ShardBlob(Container):
-    # Slot and shard that this blob is intended for
-    slot: Slot
-    shard: Shard
-    # The actual data
-    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
-```
-
-Note that the hash-tree-root of the `ShardBlob` does not match the `ShardHeader`, 
-since the blob deals with full data, whereas the header includes the KZG commitment instead.
-
-### SignedShardBlob
-
-Network-only.
-
-```python
-class SignedShardBlob(Container):
-    blob: ShardBlob
-    # The signature, the message is the commitment on the blob
-    signature: BLSSignature
-```
-
 
 ## Helper functions
 
