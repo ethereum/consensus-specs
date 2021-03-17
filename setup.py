@@ -537,6 +537,7 @@ class PySpecCommand(Command):
                     specs/phase0/weak-subjectivity.md
                     specs/altair/beacon-chain.md
                     specs/altair/fork.md
+                    specs/altair/validator.md
                     specs/altair/light-client-sync.md
                 """
             else:
