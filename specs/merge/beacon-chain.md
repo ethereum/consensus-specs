@@ -66,7 +66,7 @@ order and append any additional fields to the end.
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
-    application_payload: ApplicationPayload  # [Added] application payload
+    application_payload: ApplicationPayload  # [Added in Merge] application payload
 ```
 
 #### `BeaconState`
@@ -88,11 +88,11 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
-    # [Removed] eth1_data_votes
+    # [Removed in Merge] eth1_data_votes
     eth1_deposit_index: uint64
-    # [Added] hash of the root of application state
+    # [Added in Merge] hash of the root of application state
     application_state_root: Bytes32
-    # [Added] hash of recent application block
+    # [Added in Merge] hash of recent application block
     application_block_hash: Bytes32
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
@@ -193,9 +193,9 @@ def get_evm_beacon_block_roots(state: BeaconState) -> Sequence[Bytes32]:
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
-    process_eth1_data(state, block.body)  # [Modified in The Merge]
+    process_eth1_data(state, block.body)  # [Modified in Merge]
     process_operations(state, block.body)
-    process_application_payload(state, block.body)  # [New in The Merge]
+    process_application_payload(state, block.body)  # [New in Merge]
 ```
 
 #### Modified `process_eth1_data`

@@ -69,7 +69,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
-    # [Added] Check that Eth1 data is correct
+    # [Added in Merge] Check that Eth1 data is correct
     assert is_valid_eth1_data(store, block)
 
     # Check the block is valid and compute the post-state
