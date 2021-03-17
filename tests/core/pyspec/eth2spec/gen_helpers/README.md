@@ -4,7 +4,7 @@
 
 A util to quickly write new test suite generators with.
 
-See [Generators documentation](../../generators/README.md) for integration details.
+See [Generators documentation](../../../../generators/README.md) for integration details.
 
 Options:
 
@@ -43,8 +43,8 @@ The yielding pattern is:
 3 value style: `yield <key name> <kind name> <value>`.
 
 Test part output kinds:
-- `ssz`: value is expected to be a `bytes`, and the raw data is written to a `<key name>.ssz` file.
-- `data`: value is expected to be any python object that can be dumped as YAML. Output is written to `<key name>.yaml`
+- `ssz`: value is expected to be a `bytes`, and the raw data is written to a `<key name>.ssz_snappy` file.
+- `data`: value is expected to be any Python object that can be dumped as YAML. Output is written to `<key name>.yaml`
 - `meta`: these key-value pairs are collected into a dict, and then collectively written to a metadata 
           file named `meta.yaml`, if anything is yielded with `meta` empty.
 

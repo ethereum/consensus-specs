@@ -1,10 +1,11 @@
 from eth2spec.test.context import (
     spec_state_test, spec_test,
     with_all_phases, single_phase,
-    with_phases, PHASE0,
+    with_phases, PHASE0, PHASE1,
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
+    is_post_altair,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -18,12 +19,49 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
-from eth2spec.test.phase0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from random import Random
 
 
 def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
+
+
+def validate_resulting_balances(spec, pre_state, post_state, attestations):
+    attesting_indices = spec.get_unslashed_attesting_indices(post_state, attestations)
+    current_epoch = spec.get_current_epoch(post_state)
+
+    for index in range(len(pre_state.validators)):
+        if not spec.is_active_validator(pre_state.validators[index], current_epoch):
+            assert post_state.balances[index] == pre_state.balances[index]
+        elif not is_post_altair(spec):
+            proposer_indices = [a.proposer_index for a in post_state.previous_epoch_attestations]
+            if spec.is_in_inactivity_leak(post_state):
+                # Proposers can still make money during a leak before LIGHTCLIENT_PATCH
+                if index in proposer_indices and index in attesting_indices:
+                    assert post_state.balances[index] > pre_state.balances[index]
+                elif index in attesting_indices:
+                    # If not proposer but participated optimally, should have exactly neutral balance
+                    assert post_state.balances[index] == pre_state.balances[index]
+                else:
+                    assert post_state.balances[index] < pre_state.balances[index]
+            else:
+                if index in attesting_indices:
+                    assert post_state.balances[index] > pre_state.balances[index]
+                else:
+                    assert post_state.balances[index] < pre_state.balances[index]
+        else:
+            if spec.is_in_inactivity_leak(post_state):
+                if index in attesting_indices:
+                    # If not proposer but participated optimally, should have exactly neutral balance
+                    assert post_state.balances[index] == pre_state.balances[index]
+                else:
+                    assert post_state.balances[index] < pre_state.balances[index]
+            else:
+                if index in attesting_indices:
+                    assert post_state.balances[index] > pre_state.balances[index]
+                else:
+                    assert post_state.balances[index] < pre_state.balances[index]
 
 
 @with_all_phases
@@ -65,7 +103,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_all_phases
+@with_phases([PHASE0, PHASE1])
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
@@ -99,19 +137,10 @@ def test_full_attestations_misc_balances(spec, state):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) > 0
-    assert len(attesting_indices) != len(pre_state.validators)
-    assert any(v.effective_balance != spec.MAX_EFFECTIVE_BALANCE for v in state.validators)
-    for index in range(len(pre_state.validators)):
-        if index in attesting_indices:
-            assert state.balances[index] > pre_state.balances[index]
-        elif spec.is_active_validator(pre_state.validators[index], spec.compute_epoch_at_slot(state.slot)):
-            assert state.balances[index] < pre_state.balances[index]
-        else:
-            assert state.balances[index] == pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, attestations)
     # Check if base rewards are consistent with effective balance.
     brs = {}
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     for index in attesting_indices:
         br = spec.get_base_reward(state, index)
         if br in brs:
@@ -145,8 +174,7 @@ def test_no_attestations_all_penalties(spec, state):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    for index in range(len(pre_state.validators)):
-        assert state.balances[index] < pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, [])
 
 
 def run_with_participation(spec, state, participation_fn):
@@ -158,8 +186,6 @@ def run_with_participation(spec, state, participation_fn):
         return att_participants
 
     attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
-    proposer_indices = [a.proposer_index for a in state.previous_epoch_attestations]
-
     pre_state = state.copy()
 
     yield from run_process_rewards_and_penalties(spec, state)
@@ -167,21 +193,7 @@ def run_with_participation(spec, state, participation_fn):
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) == len(participated)
 
-    for index in range(len(pre_state.validators)):
-        if spec.is_in_inactivity_leak(state):
-            # Proposers can still make money during a leak
-            if index in proposer_indices and index in participated:
-                assert state.balances[index] > pre_state.balances[index]
-            # If not proposer but participated optimally, should have exactly neutral balance
-            elif index in attesting_indices:
-                assert state.balances[index] == pre_state.balances[index]
-            else:
-                assert state.balances[index] < pre_state.balances[index]
-        else:
-            if index in participated:
-                assert state.balances[index] > pre_state.balances[index]
-            else:
-                assert state.balances[index] < pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, attestations)
 
 
 @with_all_phases
@@ -420,7 +432,8 @@ def test_attestations_some_slashed(spec, state):
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    assert len(state.previous_epoch_attestations) == len(attestations)
+    if not is_post_altair(spec):
+        assert len(state.previous_epoch_attestations) == len(attestations)
 
     pre_state = state.copy()
 
@@ -429,10 +442,4 @@ def test_attestations_some_slashed(spec, state):
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) > 0
     assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
-    for index in range(len(pre_state.validators)):
-        if index in attesting_indices:
-            # non-slashed attester should gain reward
-            assert state.balances[index] > pre_state.balances[index]
-        else:
-            # Slashed non-proposer attester should have penalty
-            assert state.balances[index] < pre_state.balances[index]
+    validate_resulting_balances(spec, pre_state, state, attestations)

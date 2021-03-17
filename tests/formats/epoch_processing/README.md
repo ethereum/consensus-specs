@@ -15,18 +15,13 @@ description: string    -- Optional description of test case, purely for debuggin
 bls_setting: int       -- see general test-format spec.
 ```
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the epoch sub-transition.
+An SSZ-snappy encoded `BeaconState`, the state before running the epoch sub-transition.
 
-Also available as `pre.ssz`.
+### `post.ssz_snappy`
 
-
-### `post.yaml`
-
-A YAML-encoded `BeaconState`, the state after applying the epoch sub-transition.
-
-Also available as `post.ssz`.
+An SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-transition.
 
 ## Condition
 
@@ -37,10 +32,17 @@ The provided pre-state is already transitioned to just before the specific sub-t
 
 Sub-transitions:
 
+Sub-transitions:
+
 - `justification_and_finalization`
-- `rewards_and_penalties` (limited to `minimal` config)
+- `rewards_and_penalties`
 - `registry_updates`
 - `slashings`
-- `final_updates`
+- `eth1_data_reset`
+- `effective_balance_updates`
+- `slashings_reset`
+- `randao_mixes_reset`
+- `historical_roots_update`
+- `participation_record_updates`
 
 The resulting state should match the expected `post` state.

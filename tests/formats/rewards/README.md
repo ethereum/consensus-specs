@@ -23,41 +23,29 @@ description: string    -- Optional description of test case, purely for debuggin
 _Note_: No signature verification happens within rewards sub-functions. These
  tests can safely be run with or without BLS enabled.
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the rewards sub-function.
+An SSZ-snappy encoded `BeaconState`, the state before running the rewards sub-function.
 
-Also available as `pre.ssz`.
+### `source_deltas.ssz_snappy`
 
-### `source_deltas.yaml`
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_source_deltas` function
 
-A YAML-encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_source_deltas` function
+### `target_deltas.ssz_snappy`
 
-Also available as `source_deltas.ssz`.
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_target_deltas` function
 
-### `target_deltas.yaml`
+### `head_deltas.ssz_snappy`
 
-A YAML-encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_target_deltas` function
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_head_deltas` function
 
-Also available as `target_deltas.ssz`.
+### `inclusion_delay_deltas.ssz_snappy`
 
-### `head_deltas.yaml`
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inclusion_delay_deltas` function
 
-A YAML-encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_head_deltas` function
+### `inactivity_penalty_deltas.ssz_snappy`
 
-Also available as `head_deltas.ssz`.
-
-### `inclusion_delay_deltas.yaml`
-
-A YAML-encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inclusion_delay_deltas` function
-
-Also available as `inclusion_delay_deltas.ssz`.
-
-### `inactivity_penalty_deltas.yaml`
-
-A YAML-encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inactivity_penalty_deltas` function
-
-Also available as `inactivity_penalty_deltas.ssz`.
+An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned by the rewards the `get_inactivity_penalty_deltas` function
 
 ## Condition
 

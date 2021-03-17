@@ -1,0 +1,50 @@
+# Minimal preset - Altair
+
+CONFIG_NAME: "minimal"
+
+# Updated penalty values
+# ---------------------------------------------------------------
+# 3 * 2**24 (= 50,331,648)
+INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648
+# 2**6 (= 64)
+MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
+# 2
+PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
+
+
+# Misc
+# ---------------------------------------------------------------
+# [customized]
+SYNC_COMMITTEE_SIZE: 32
+# [customized]
+SYNC_SUBCOMMITTEE_SIZE: 16
+# 2**2 (= 4)
+INACTIVITY_SCORE_BIAS: 4
+
+
+# Time parameters
+# ---------------------------------------------------------------
+# [customized]
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
+
+
+# Signature domains
+# ---------------------------------------------------------------
+DOMAIN_SYNC_COMMITTEE: 0x07000000
+
+
+# Fork
+# ---------------------------------------------------------------
+ALTAIR_FORK_VERSION: 0x01000000
+# [customized]
+ALTAIR_FORK_SLOT: 0
+
+
+# Sync protocol
+# ---------------------------------------------------------------
+# 1
+MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
+# [customized]
+MAX_VALID_LIGHT_CLIENT_UPDATES: 32
+# [customized]
+LIGHT_CLIENT_UPDATE_TIMEOUT: 32

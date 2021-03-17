@@ -58,7 +58,7 @@
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
-    - [BLS Signatures](#bls-signatures)
+    - [BLS signatures](#bls-signatures)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
     - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
@@ -114,7 +114,12 @@
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
     - [Registry updates](#registry-updates)
     - [Slashings](#slashings)
-    - [Final updates](#final-updates)
+    - [Eth1 data votes updates](#eth1-data-votes-updates)
+    - [Effective balances updates](#effective-balances-updates)
+    - [Slashings balances updates](#slashings-balances-updates)
+    - [Randao mixes updates](#randao-mixes-updates)
+    - [Historical roots updates](#historical-roots-updates)
+    - [Participation records rotation](#participation-records-rotation)
   - [Block processing](#block-processing)
     - [Block header](#block-header)
     - [RANDAO](#randao)
@@ -252,12 +257,12 @@ The following values are (non-configurable) constants used throughout the specif
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**26)` (= 67,108,864) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (=128) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (= 128) |
 | `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)` |
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
 
-- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stablizes, this value will be upgraded to `3` to provide the maximal minimum accoutable safety margin.
+- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stablizes, this value will be upgraded to `3` to provide the maximal minimum accountable safety margin.
 
 ### Max operations per block
 
@@ -607,17 +612,17 @@ def bytes_to_uint64(data: bytes) -> uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../../ssz/simple-serialize.md#merkleization).
 
-#### BLS Signatures
+#### BLS signatures
 
-Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification draft-irtf-cfrg-bls-signature-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04). Specifically, eth2 uses the `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` ciphersuite which implements the following interfaces:
+The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` defines the following functions:
 
-- `def Sign(SK: int, message: Bytes) -> BLSSignature`
-- `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
+- `def Sign(privkey: int, message: Bytes) -> BLSSignature`
+- `def Verify(pubkey: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def FastAggregateVerify(PKs: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
-- `def AggregateVerify(PKs: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
+- `def FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
+- `def AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
 
-Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
+The above functions are accessed through the `bls` module, e.g. `bls.Verify`.
 
 ### Predicates
 
@@ -1257,7 +1262,12 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_slashings(state)
-    process_final_updates(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_roots_update(state)
+    process_participation_record_updates(state)
 ```
 
 #### Helper functions
@@ -1564,15 +1574,19 @@ def process_slashings(state: BeaconState) -> None:
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
-#### Final updates
-
+#### Eth1 data votes updates
 ```python
-def process_final_updates(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    next_epoch = Epoch(current_epoch + 1)
+def process_eth1_data_reset(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     # Reset eth1 data votes
     if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
+```
+
+#### Effective balances updates
+
+```python
+def process_effective_balance_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
@@ -1584,14 +1598,41 @@ def process_final_updates(state: BeaconState) -> None:
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+```
+
+#### Slashings balances updates
+
+```python
+def process_slashings_reset(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
+```
+
+#### Randao mixes updates
+
+```python
+def process_randao_mixes_reset(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
+    next_epoch = Epoch(current_epoch + 1)
     # Set randao mix
     state.randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
+```
+
+#### Historical roots updates
+```python
+def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
+```
+
+#### Participation records rotation
+
+```python
+def process_participation_record_updates(state: BeaconState) -> None:
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
