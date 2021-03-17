@@ -173,7 +173,10 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 ```python
 def get_recent_beacon_block_roots(state: BeaconState, qty: uint64) -> Sequence[Bytes32]:
-    return [get_block_root_at_slot(state.slot - i) if GENESIS_SLOT + i < state.slot else Bytes32() for i in reversed(range(1, qty + 1))]
+    return [
+        get_block_root_at_slot(state.slot - i) if GENESIS_SLOT + i < state.slot else Bytes32()
+        for i in reversed(range(1, qty + 1))
+    ]
 ```
 
 #### `get_evm_beacon_block_roots`
