@@ -19,7 +19,7 @@
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [`AttestationData`](#attestationdata)
-  - [`BeaconBlock`](#beaconblock)
+  - [`BeaconBlockBody`](#beaconblockbody)
   - [`BeaconState`](#beaconstate)
 - [New containers](#new-containers)
   - [`DataCommitment`](#datacommitment)
