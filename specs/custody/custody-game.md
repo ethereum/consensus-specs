@@ -57,7 +57,8 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [Phase 0](../phase0/beacon-chain.md) specification.
+This document details the beacon chain additions and changes of Ethereum 2.0 to support the shard data custody game,
+building upon the [Sharding](../sharding/beacon-chain.md) specification.
 
 ## Constants
 
@@ -115,7 +116,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 #### `Validator`
 
 ```python
-class Validator(phase0.Validator):
+class Validator(sharding.Validator):
     # next_custody_secret_to_reveal is initialised to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
@@ -128,7 +129,7 @@ class Validator(phase0.Validator):
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
+class BeaconBlockBody(sharding.BeaconBlockBody):
     # Custody game
     chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
     chunk_challenge_responses: List[CustodyChunkResponse, MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES]
@@ -140,7 +141,7 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 #### `BeaconState`
 
 ```python
-class BeaconState(phase0.BeaconState):
+class BeaconState(sharding.BeaconState):
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
