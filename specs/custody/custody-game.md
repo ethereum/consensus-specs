@@ -39,6 +39,7 @@
   - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
   - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
 - [Per-block processing](#per-block-processing)
+  - [Block processing](#block-processing)
   - [Custody Game Operations](#custody-game-operations)
     - [Chunk challenges](#chunk-challenges)
     - [Custody chunk response](#custody-chunk-response)
@@ -46,6 +47,7 @@
     - [Early derived secret reveals](#early-derived-secret-reveals)
     - [Custody Slashings](#custody-slashings)
 - [Per-epoch processing](#per-epoch-processing)
+  - [Epoch transition](#epoch-transition)
   - [Handling of reveal deadlines](#handling-of-reveal-deadlines)
   - [Final updates](#final-updates)
 
@@ -348,6 +350,18 @@ def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epo
 
 ## Per-block processing
 
+### Block processing
+
+```python
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_light_client_aggregate(state, block.body)
+    process_operations(state, block.body)
+    process_custody_game_operations(state, block.body)
+```
+
 ### Custody Game Operations
 
 ```python
@@ -604,6 +618,41 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
 ```
 
 ## Per-epoch processing
+
+### Epoch transition
+
+This epoch transition overrides the phase0 epoch transition:
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+
+    # Proof of custody
+    process_reveal_deadlines(state)
+    process_challenge_deadlines(state)
+
+    process_slashings(state)
+
+    # Sharding
+    process_pending_headers(state)
+    charge_confirmed_header_fees(state)
+    reset_pending_headers(state)
+
+    # Final updates
+    # Phase 0
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_roots_update(state)
+    process_participation_record_updates(state)
+    # Proof of custody
+    process_custody_final_updates(state)
+
+    process_shard_epoch_increment(state)
+```
 
 ### Handling of reveal deadlines
 

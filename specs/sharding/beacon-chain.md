@@ -49,7 +49,7 @@
     - [`process_shard_header`](#process_shard_header)
   - [Epoch transition](#epoch-transition)
     - [Pending headers](#pending-headers)
-    - [Custody game updates](#custody-game-updates)
+    - [Shard epoch increment](#shard-epoch-increment)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -125,7 +125,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## Updated containers
 
-The following containers have updated definitions in Phase 1.
+The following containers have updated definitions to support Sharding.
 
 ### `AttestationData`
 
@@ -167,7 +167,8 @@ class BeaconState(phase0.BeaconState):
 
 ## New containers
 
-The following containers are new in Phase 1.
+The shard data itself is network-layer only, and can be found in the [P2P specification](./p2p-interface.md).
+The beacon chain registers just the commitments of the shard data.
 
 ### `DataCommitment`
 
@@ -435,9 +436,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
-
-    # See custody game spec.
-    process_custody_game_operations(state, body)
 ```
 
 ### New Attestation processing
@@ -550,10 +548,6 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
 
-    # Proof of custody
-    process_reveal_deadlines(state)
-    process_challenge_deadlines(state)
-
     process_slashings(state)
 
     # Sharding
@@ -569,10 +563,8 @@ def process_epoch(state: BeaconState) -> None:
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
     process_participation_record_updates(state)
-    # Proof of custody
-    process_custody_final_updates(state)
-    # Update current_epoch_start_shard
-    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
+
+    process_shard_epoch_increment(state)
 ```
 
 #### Pending headers
@@ -682,6 +674,10 @@ def reset_pending_headers(state: BeaconState) -> None:
             ))
 ```
 
-#### Custody game updates
+#### Shard epoch increment
 
-`process_reveal_deadlines`, `process_challenge_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./custody-game.md).
+```python
+def process_shard_epoch_increment(state: BeaconState) -> None:
+    # Update current_epoch_start_shard
+    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
+```
