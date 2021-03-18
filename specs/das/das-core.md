@@ -32,7 +32,6 @@ We define the following Python custom types for type hinting and readability:
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `SampleIndex` | `uint64` | A sample index, corresponding to chunk of extended data |
-| `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 
 
 ## Configuration

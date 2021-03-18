@@ -70,6 +70,7 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `Shard` | `uint64` | A shard number |
 | `BLSCommitment` | `bytes48` | A G1 curve point |
+| `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 
 ## Configuration
 
