@@ -117,7 +117,7 @@ This patch updates a few configuration values to move penalty parameters toward 
 | Name | Value |
 | - | - |
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
-| `SYNC_SUBCOMMITTEE_SIZE` | `uint64(2**6)` (= 64) |
+| `SYNC_PUBKEY_AGGREGATE_SIZE` | `uint64(2**6)` (= 64) |
 | `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
 
 ### Time parameters
@@ -210,7 +210,7 @@ class SyncAggregate(Container):
 ```python
 class SyncCommittee(Container):
     pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
-    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_SUBCOMMITTEE_SIZE]
+    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_PUBKEY_AGGREGATE_SIZE]
 ```
 
 ## Helper functions
@@ -294,7 +294,7 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
-    subcommitees = [pubkeys[i:i + SYNC_SUBCOMMITTEE_SIZE] for i in range(0, len(pubkeys), SYNC_SUBCOMMITTEE_SIZE)]
+    subcommitees = [pubkeys[i:i + SYNC_PUBKEY_AGGREGATE_SIZE] for i in range(0, len(pubkeys), SYNC_PUBKEY_AGGREGATE_SIZE)]
     pubkey_aggregates = [bls.AggregatePKs(subcommitee) for subcommitee in subcommitees]
     return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=pubkey_aggregates)
 ```
