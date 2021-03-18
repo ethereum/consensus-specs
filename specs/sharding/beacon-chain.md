@@ -143,10 +143,10 @@ class AttestationData(Container):
     shard_header_root: Root
 ```
 
-### `BeaconBlock`
+### `BeaconBlockBody`
 
 ```python
-class BeaconBlock(phase0.BeaconBlock):
+class BeaconBlockBody(phase0.BeaconBlockBody):
     # insert phase 0 fields
     shard_headers: List[SignedShardHeader, MAX_SHARD_HEADERS]
 ```
