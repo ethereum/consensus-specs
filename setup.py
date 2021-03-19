@@ -538,7 +538,7 @@ class PySpecCommand(Command):
                     specs/altair/beacon-chain.md
                     specs/altair/fork.md
                     specs/altair/validator.md
-                    specs/altair/sync-protocol.md
+                    specs/altair/light-client/sync-protocol.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
