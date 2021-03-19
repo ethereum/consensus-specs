@@ -294,8 +294,8 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
-    subcommitees = [pubkeys[i:i + SYNC_PUBKEY_AGGREGATE_SIZE] for i in range(0, len(pubkeys), SYNC_PUBKEY_AGGREGATE_SIZE)]
-    pubkey_aggregates = [bls.AggregatePKs(subcommitee) for subcommitee in subcommitees]
+    partition = [pubkeys[i:i + SYNC_PUBKEY_AGGREGATE_SIZE] for i in range(0, len(pubkeys), SYNC_PUBKEY_AGGREGATE_SIZE)]
+    pubkey_aggregates = [bls.AggregatePKs(preaggregate) for preaggregate in partition]
     return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=pubkey_aggregates)
 ```
 
