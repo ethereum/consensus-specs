@@ -1,4 +1,4 @@
-# Minimal Light Client
+# Ethereum Altair Minimal Light Client
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -19,10 +19,17 @@
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
-- [Light client state updates](#light-client-state-updates)
-    - [`validate_light_client_update`](#validate_light_client_update)
-    - [`apply_light_client_update`](#apply_light_client_update)
-    - [`process_light_client_update`](#process_light_client_update)
+  - [`get_light_client_store`](#get_light_client_store)
+  - [`validate_light_client_update`](#validate_light_client_update)
+  - [`apply_light_client_update`](#apply_light_client_update)
+- [Client side handlers](#client-side-handlers)
+  - [`on_light_client_tick`](#on_light_client_tick)
+  - [`on_light_client_update`](#on_light_client_update)
+- [Server side handlers](#server-side-handlers)
+- [Sync protocol](#sync-protocol)
+  - [Initialization](#initialization)
+  - [Minimal light client update](#minimal-light-client-update)
+- [Reorg mechanism](#reorg-mechanism)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -31,7 +38,7 @@
 
 Eth2 is designed to be light client friendly for constrained environments to
 access Eth2 with reasonable safety and liveness.
-Such environments include resource-constrained devices (e.g. phones for trust-minimised wallets)
+Such environments include resource-constrained devices (e.g. phones for trust-minimized wallets)
 and metered VMs (e.g. blockchain VMs for cross-chain bridges).
 
 This document suggests a minimal light client design for the beacon chain that
@@ -85,8 +92,7 @@ class LightClientUpdate(Container):
     finality_header: BeaconBlockHeader
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
-    sync_committee_signature: BLSSignature
+    sync_aggregate: SyncAggregate
     # Fork version for the aggregate signature
     fork_version: Version
 ```
@@ -95,6 +101,9 @@ class LightClientUpdate(Container):
 
 ```python
 class LightClientStore(Container):
+    time: uint64
+    genesis_time: uint64
+    genesis_validators_root: Root
     snapshot: LightClientSnapshot
     valid_updates: List[LightClientUpdate, MAX_VALID_LIGHT_CLIENT_UPDATES]
 ```
@@ -108,21 +117,38 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
 ```
 
-## Light client state updates
-
-A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock.
-
-#### `validate_light_client_update`
+### `get_light_client_store`
 
 ```python
-def validate_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate,
-                                 genesis_validators_root: Root) -> None:
+def get_light_client_store(snapshot: LightClientSnapshot,
+                           genesis_time: uint64, genesis_validators_root: Root) -> LightClientStore:
+    return LightClientStore(
+        time=uint64(genesis_time + SECONDS_PER_SLOT * snapshot.header.slot),
+        genesis_time=genesis_time,
+        genesis_validators_root=genesis_validators_root,
+        snapshot=snapshot,
+        valid_updates=[],
+    )
+```
+
+### `validate_light_client_update`
+
+```python
+def validate_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
+    snapshot = store.snapshot
+
     # Verify update slot is larger than snapshot slot
     assert update.header.slot > snapshot.header.slot
 
+    # Verify time
+    update_time = uint64(store.genesis_time + SECONDS_PER_SLOT * update.header.slot)
+    assert store.time >= update_time
+
     # Verify update does not skip a sync committee period
-    snapshot_period = compute_epoch_at_slot(snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = compute_epoch_at_slot(update.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    snapshot_epoch = compute_epoch_at_slot(snapshot.header.slot)
+    update_epoch = compute_epoch_at_slot(update.header.slot)
+    snapshot_period = compute_sync_committee_period(snapshot_epoch)
+    update_period = compute_sync_committee_period(update_epoch)
     assert update_period in (snapshot_period, snapshot_period + 1)
 
     # Verify update header root is the finalized root of the finality header, if specified
@@ -154,37 +180,51 @@ def validate_light_client_update(snapshot: LightClientSnapshot, update: LightCli
         )
 
     # Verify sync committee has sufficient participants
-    assert sum(update.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    assert sum(update.sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify sync committee aggregate signature
-    participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
+    participant_pubkeys = [pubkey for (bit, pubkey)
+                           in zip(update.sync_aggregate.sync_committee_bits, sync_committee.pubkeys) if bit]
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, store.genesis_validators_root)
     signing_root = compute_signing_root(signed_header, domain)
-    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
+    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_aggregate.sync_committee_signature)
 ```
 
-#### `apply_light_client_update`
+### `apply_light_client_update`
 
 ```python
 def apply_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate) -> None:
-    snapshot_period = compute_epoch_at_slot(snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = compute_epoch_at_slot(update.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    snapshot_epoch = compute_epoch_at_slot(snapshot.header.slot)
+    update_epoch = compute_epoch_at_slot(update.header.slot)
+    snapshot_period = compute_sync_committee_period(snapshot_epoch)
+    update_period = compute_sync_committee_period(update_epoch)
     if update_period == snapshot_period + 1:
         snapshot.current_sync_committee = snapshot.next_sync_committee
         snapshot.next_sync_committee = update.next_sync_committee
     snapshot.header = update.header
 ```
 
-#### `process_light_client_update`
+## Client side handlers
+
+### `on_light_client_tick`
 
 ```python
-def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot,
-                                genesis_validators_root: Root) -> None:
-    validate_light_client_update(store.snapshot, update, genesis_validators_root)
+def on_light_client_tick(store: LightClientStore, time: uint64) -> None:
+    # update store time
+    store.time = time
+```
+
+### `on_light_client_update`
+
+A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `on_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on some local clock.
+
+```python
+def on_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot) -> None:
+    validate_light_client_update(store, update)
     store.valid_updates.append(update)
 
     if (
-        sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2
+        sum(update.sync_aggregate.sync_committee_bits) * 3 > len(update.sync_aggregate.sync_committee_bits) * 2
         and update.finality_header != BeaconBlockHeader()
     ):
         # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
@@ -194,7 +234,45 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
         store.valid_updates = []
     elif current_slot > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
         # Forced best update when the update timeout has elapsed
-        apply_light_client_update(store.snapshot,
-                                  max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)))
+        apply_light_client_update(
+            store.snapshot,
+            max(store.valid_updates, key=lambda update: sum(update.sync_aggregate.sync_committee_bits))
+        )
         store.valid_updates = []
 ```
+
+## Server side handlers
+
+The server sends `LightClientUpdate` to its light client peers periodically.
+
+[TODO]
+
+```python
+def get_light_client_update(state: BeaconState) -> LightClientUpdate:
+    # [TODO]
+    pass
+```
+
+## Sync protocol
+
+### Initialization
+
+1. The client sends `Status` message to the server to exchange the status information.
+2. Instead of sending `BeaconBlocksByRange` in the beacon chain syncing, the client sends `GetLightClientSnapshot` request to the server.
+3. The server responds with the `LightClientSnapshot` object of the finalized beacon chain head.
+4. The client would:
+    1. check if the hash tree root of the given `header` matches the `finalized_root` in the server's `Status` message.
+    2. check if the given response is valid for client to call `get_light_client_store` function to get the initial `store: LightClientStore`.
+    - If it's invalid, disconnect from the server; otherwise, keep syncing.
+
+Note that in this syncing mechanism, the server is trusted.
+
+### Minimal light client update
+
+In this minimal light client design, the light client only follows finality updates.
+
+[TODO]
+
+## Reorg mechanism
+
+[TODO] PR#2182 discussion

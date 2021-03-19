@@ -29,6 +29,9 @@ def test_process_light_client_update_not_updated(spec, state):
         next_sync_committee=state.next_sync_committee,
     )
     store = spec.LightClientStore(
+        time=state.genesis_time,
+        genesis_time=state.genesis_time,
+        genesis_validators_root=state.genesis_validators_root,
         snapshot=pre_snapshot,
         valid_updates=[]
     )
@@ -52,6 +55,10 @@ def test_process_light_client_update_not_updated(spec, state):
         block.slot,
         committee,
     )
+    sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=sync_committee_bits,
+        sync_committee_signature=sync_committee_signature,
+    )
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Ensure that finality checkpoint is genesis
@@ -66,12 +73,12 @@ def test_process_light_client_update_not_updated(spec, state):
         next_sync_committee_branch=next_sync_committee_branch,
         finality_header=finality_header,
         finality_branch=finality_branch,
-        sync_committee_bits=sync_committee_bits,
-        sync_committee_signature=sync_committee_signature,
+        sync_aggregate=sync_aggregate,
         fork_version=state.fork.current_version,
     )
 
-    spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
+    spec.on_light_client_tick(store, store.genesis_time + spec.SECONDS_PER_SLOT * update.header.slot)
+    spec.on_light_client_update(store, update, state.slot)
 
     assert len(store.valid_updates) == 1
     assert store.valid_updates[0] == update
@@ -88,6 +95,9 @@ def test_process_light_client_update_timeout(spec, state):
         next_sync_committee=state.next_sync_committee,
     )
     store = spec.LightClientStore(
+        time=state.genesis_time,
+        genesis_time=state.genesis_time,
+        genesis_validators_root=state.genesis_validators_root,
         snapshot=pre_snapshot,
         valid_updates=[]
     )
@@ -118,6 +128,10 @@ def test_process_light_client_update_timeout(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
+    sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=sync_committee_bits,
+        sync_committee_signature=sync_committee_signature,
+    )
 
     # Sync committee is updated
     next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
@@ -131,12 +145,12 @@ def test_process_light_client_update_timeout(spec, state):
         next_sync_committee_branch=next_sync_committee_branch,
         finality_header=finality_header,
         finality_branch=finality_branch,
-        sync_committee_bits=sync_committee_bits,
-        sync_committee_signature=sync_committee_signature,
+        sync_aggregate=sync_aggregate,
         fork_version=state.fork.current_version,
     )
 
-    spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
+    spec.on_light_client_tick(store, store.genesis_time + spec.SECONDS_PER_SLOT * update.header.slot)
+    spec.on_light_client_update(store, update, state.slot)
 
     # snapshot has been updated
     assert len(store.valid_updates) == 0
@@ -153,8 +167,11 @@ def test_process_light_client_update_finality_updated(spec, state):
         next_sync_committee=state.next_sync_committee,
     )
     store = spec.LightClientStore(
+        time=state.genesis_time,
+        genesis_time=state.genesis_time,
+        genesis_validators_root=state.genesis_validators_root,
         snapshot=pre_snapshot,
-        valid_updates=[]
+        valid_updates=[],
     )
 
     # Change finality
@@ -197,6 +214,10 @@ def test_process_light_client_update_finality_updated(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
+    sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=sync_committee_bits,
+        sync_committee_signature=sync_committee_signature,
+    )
 
     update = spec.LightClientUpdate(
         header=finalized_block_header,
@@ -204,12 +225,12 @@ def test_process_light_client_update_finality_updated(spec, state):
         next_sync_committee_branch=next_sync_committee_branch,
         finality_header=block_header,  # block_header is the signed header
         finality_branch=finality_branch,
-        sync_committee_bits=sync_committee_bits,
-        sync_committee_signature=sync_committee_signature,
+        sync_aggregate=sync_aggregate,
         fork_version=state.fork.current_version,
     )
 
-    spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
+    spec.on_light_client_tick(store, store.genesis_time + spec.SECONDS_PER_SLOT * update.header.slot)
+    spec.on_light_client_update(store, update, state.slot)
 
     # snapshot has been updated
     assert len(store.valid_updates) == 0
