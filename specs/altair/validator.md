@@ -18,6 +18,7 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
   - [`SyncCommitteeContribution`](#synccommitteecontribution)
   - [`ContributionAndProof`](#contributionandproof)
   - [`SignedContributionAndProof`](#signedcontributionandproof)
+  - [`SyncCommitteeSigningData`](#synccommitteesigningdata)
 - [Validator assignments](#validator-assignments)
   - [Sync Committee](#sync-committee)
   - [Lookahead](#lookahead)
@@ -125,6 +126,14 @@ class SignedContributionAndProof(Container):
     signature: BLSSignature
 ```
 
+### `SyncCommitteeSigningData`
+
+```python
+class SyncCommitteeSigningData(Container):
+    slot: Slot
+    subcommittee_index: uint64
+```
+
 ## Validator assignments
 
 A validator determines beacon committee assignments and beacon block proposal duties as defined in the Phase 0 document.
@@ -137,7 +146,9 @@ This function is a predicate indicating the presence or absence of the validator
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+```
 
+```python
 def is_assigned_to_sync_committee(state: BeaconState,
                                   epoch: Epoch,
                                   validator_index: ValidatorIndex) -> bool:
@@ -280,9 +291,10 @@ This function returns multiple subnets if a given validator index is included mu
 ```python
 def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Sequence[uint64]:
     target_pubkey = state.validators[validator_index].pubkey
-    sync_committee_indices = [index for index, pubkey in enumerate(state.current_sync_committee.pubkeys) if pubkey == target_pubkey]
+    sync_committee_indices = [index for index, pubkey in enumerate(state.current_sync_committee.pubkeys)
+                              if pubkey == target_pubkey]
     return [
-        uint64(index // (SYNC_COMMITEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
+        uint64(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
         for index in sync_committee_indices
     ]
 ```
@@ -301,13 +313,8 @@ A validator is selected to aggregate based on the computation in `is_sync_commit
 The signature function takes a `BeaconState` with the relevant sync committees for the queried `slot` (i.e. `state.slot` is within the span covered by the current or next sync committee period), the `subcommittee_index` equal to the `subnet_id`, and the `privkey` is the BLS private key associated with the validator.
 
 ```python
-class SyncCommitteeSigningData(Container):
-    slot: Slot
-    subcommittee_index: uint64
-```
-
-```python
-def get_sync_committee_slot_signature(state: BeaconState, slot: Slot, subcommittee_index: uint64, privkey: int) -> BLSSignature:
+def get_sync_committee_slot_signature(state: BeaconState, slot: Slot,
+                                      subcommittee_index: uint64, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_data = SyncCommitteeSigningData(
         slot=slot,
