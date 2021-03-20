@@ -211,5 +211,6 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
         state.application_block_hash = body.application_payload.block_hash
 
     elif is_transition_block(state, body):
+        assert body.application_payload == ApplicationPayload(block_hash = body.application_payload.block_hash)
         state.application_block_hash = body.application_payload.block_hash
 ```
