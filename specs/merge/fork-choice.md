@@ -9,8 +9,8 @@
 
 - [Introduction](#introduction)
   - [Helpers](#helpers)
-    - [`get_eth1_data`](#get_eth1_data)
-    - [`is_valid_eth1_data`](#is_valid_eth1_data)
+    - [`get_total_difficulty`](#get_total_difficulty)
+    - [`is_valid_transition_block`](#is_valid_transition_block)
   - [Updated fork-choice handlers](#updated-fork-choice-handlers)
     - [`on_block`](#on_block)
 
@@ -21,37 +21,31 @@
 
 This is the modification of the fork choice according to the executable beacon chain proposal.
 
-*Note*: It introduces the following change. `Eth1Data` included in a block must correspond to the application state produced by the parent block. This acts as an additional filter on the block subtree under consideration for the beacon block fork choice.
+*Note*: It introduces the process of transition from the last PoW block to the first PoS block.
 
 ### Helpers
 
-#### `get_eth1_data`
+#### `get_total_difficulty`
 
-Let `get_eth1_data(state: BeaconState) -> Eth1Data` be the function that returns the `Eth1Data` obtained from the beacon state.
+Let `get_total_difficulty(hash: Bytes32) -> uint256` be the function that returns the total difficulty of the PoW block specified by its hash. 
 
-*Note*: This is mostly a function of the state of the beacon chain deposit contract. It can be read from the application state and/or logs. The `block_hash` value of `Eth1Data` must be set to `state.application_block_hash`.
+*Note*: The function returns `0` if the block is either not yet processed or considered invalid. The latter two cases are considered indistinguishable to the current implementation of JSON-RPC.
 
-#### `is_valid_eth1_data`
+#### `is_valid_transition_block`
 
 Used by fork-choice handler, `on_block`
 
 ```python
-def is_valid_eth1_data(store: Store, block: BeaconBlock) -> boolean:
-    parent_state = store.block_states[block.parent_root]
-    expected_eth1_data = get_eth1_data(parent_state)
-    actual_eth1_data = block.body.eth1_data
-    
-    is_correct_root = expected_eth1_data.deposit_root == actual_eth1_data.deposit_root
-    is_correct_count = expected_eth1_data.deposit_count == actual_eth1_data.deposit_count
-    is_correct_block_hash = expected_eth1_data.block_hash == actual_eth1_data.block_hash
-    return is_correct_root and is_correct_count and is_correct_block_hash
+def is_valid_transition_block(block: BeaconBlock) -> boolean:
+    total_difficulty = get_total_difficulty(block.body.application_payload.block_hash)
+    return total_difficulty >= TRANSITION_TOTAL_DIFFICULTY
 ```
 
 ### Updated fork-choice handlers
 
 #### `on_block`
 
-*Note*: The only modification is the addition of the `Eth1Data` validity assumption.
+*Note*: The only modification is the addition of the verification of transition block conditions.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
@@ -69,8 +63,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
-    # [Added in Merge] Check that Eth1 data is correct
-    assert is_valid_eth1_data(store, block)
+    # [Added in Merge] Consider delaying the beacon block processing until PoW block is accepted by the application node
+    if is_transition_block(pre_state, block.body):
+        assert is_valid_transition_block(block)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()

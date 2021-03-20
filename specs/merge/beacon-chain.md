@@ -12,6 +12,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+  - [Transition](#transition)
   - [Execution](#execution)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
@@ -22,15 +23,10 @@
     - [`ApplicationPayload`](#applicationpayload)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [`compute_randao_mix`](#compute_randao_mix)
-    - [`compute_time_at_slot`](#compute_time_at_slot)
-  - [Beacon state accessors](#beacon-state-accessors)
-    - [`get_recent_beacon_block_roots`](#get_recent_beacon_block_roots)
-    - [`get_evm_beacon_block_roots`](#get_evm_beacon_block_roots)
+    - [`is_transition_completed`](#is_transition_completed)
+    - [`is_transition_block`](#is_transition_block)
   - [Block processing](#block-processing)
-    - [Modified `process_eth1_data`](#modified-process_eth1_data)
     - [Application payload processing](#application-payload-processing)
-      - [`BeaconChainData`](#beaconchaindata)
       - [`get_application_state`](#get_application_state)
       - [`application_state_transition`](#application_state_transition)
       - [`process_application_payload`](#process_application_payload)
@@ -45,6 +41,11 @@ It enshrines application execution and validity as a first class citizen at the 
 
 ## Constants
 
+### Transition
+| Name | Value |
+| - | - |
+| `TRANSITION_TOTAL_DIFFICULTY` | _TBD_ |
+
 ### Execution
 
 | Name | Value |
@@ -52,7 +53,6 @@ It enshrines application execution and validity as a first class citizen at the 
 | `MAX_BYTES_PER_TRANSACTION_PAYLOAD` | `2**20` |
 | `MAX_APPLICATION_TRANSACTIONS` | `2**14` |
 | `BYTES_PER_LOGS_BLOOM` | `2**8` |
-| `EVM_BLOCK_ROOTS_SIZE` | `2**8` |
 
 
 ## Containers
@@ -73,7 +73,7 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than the removal of `eth1_data_votes` and addition of `application_state_root` and `application_block_hash`. 
+*Note*: `BeaconState` fields remain unchanged other than addition of `application_state_root` and `application_block_hash`. 
 
 
 ```python
@@ -90,7 +90,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
-    # [Removed in Merge] eth1_data_votes
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # [Added in Merge] hash of the root of application state
     application_state_root: Bytes32
@@ -153,40 +153,18 @@ class ApplicationPayload(Container):
 
 ### Misc
 
-#### `compute_randao_mix`
+#### `is_transition_completed`
 
 ```python
-def compute_randao_mix(state: BeaconState, randao_reveal: BLSSignature) -> Bytes32:
-    epoch = get_current_epoch(state)
-    return xor(get_randao_mix(state, epoch), hash(randao_reveal))
+def is_transition_completed(state: BeaconState) -> Boolean:
+    state.application_block_hash != Bytes32()
 ```
 
-#### `compute_time_at_slot` 
+#### `is_transition_block`
 
 ```python
-def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
-```
-
-### Beacon state accessors
-
-#### `get_recent_beacon_block_roots`
-
-```python
-def get_recent_beacon_block_roots(state: BeaconState, qty: uint64) -> Sequence[Bytes32]:
-    return [
-        get_block_root_at_slot(state.slot - i) if GENESIS_SLOT + i < state.slot else Bytes32()
-        for i in reversed(range(1, qty + 1))
-    ]
-```
-
-#### `get_evm_beacon_block_roots`
-
-```python
-def get_evm_beacon_block_roots(state: BeaconState) -> Sequence[Bytes32]:
-    # EVM_BLOCK_ROOTS_SIZE must be less or equal to SLOTS_PER_HISTORICAL_ROOT
-    return get_recent_beacon_block_roots(state, EVM_BLOCK_ROOTS_SIZE)
+def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
+    return state.application_block_hash == Bytes32() and block.body.application_payload.block_hash != Bytes32()
 ```
 
 ### Block processing
@@ -195,33 +173,12 @@ def get_evm_beacon_block_roots(state: BeaconState) -> Sequence[Bytes32]:
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
-    process_eth1_data(state, block.body)  # [Modified in Merge]
+    process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_application_payload(state, block.body)  # [New in Merge]
 ```
 
-#### Modified `process_eth1_data`
-
-*Note*: The function `process_eth1_data` is modified to update `state.eth1_data` with `eth1_data` of each block.
-
-```python
-def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
-    state.eth1_data = body.eth1_data
-```
-
 #### Application payload processing
-
-##### `BeaconChainData`
-
-*Note*: `BeaconChainData` contains beacon state data that is used by the application state transition function.
-
-```python
-class BeaconChainData(Container):
-    slot: Slot
-    randao_mix: Bytes32
-    timestamp: uint64
-    recent_block_roots: Vector[Bytes32, EVM_BLOCK_ROOTS_SIZE]
-```
 
 ##### `get_application_state`
 
@@ -232,8 +189,8 @@ The body of the function is implementation dependent.
 
 ##### `application_state_transition`
 
-Let `application_state_transition(application_state: ApplicationState, beacon_chain_data: BeaconChainData, application_payload: ApplicationPayload) -> None` be the transition function of ethereum application state. 
-The body of the function is implementation dependant.
+Let `application_state_transition(application_state: ApplicationState, application_payload: ApplicationPayload) -> None` be the transition function of ethereum application state. 
+The body of the function is implementation dependent.
 
 *Note*: `application_state_transition` must throw `AssertionError` if either the transition itself or one of the post-transition verifications has failed.
 
@@ -245,19 +202,14 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
     Note: This function is designed to be able to be run in parallel with 
     the other `process_block` sub-functions
     """
-    
-    # Utilizes `compute_randao_mix` to avoid any assumptions about
-    # the processing of other `process_block` sub-functions
-    beacon_chain_data = BeaconChainData(
-        slot=state.slot,
-        randao_mix=compute_randao_mix(state, body.randao_reveal),
-        timestamp=compute_time_at_slot(state.genesis_time, state.slot),
-        recent_block_roots=get_evm_beacon_block_roots(state) 
-    )
-    
-    application_state = get_application_state(state.application_state_root)
-    application_state_transition(application_state, beacon_chain_data, body.application_payload)
 
-    state.application_state_root = body.application_payload.state_root
-    state.application_block_hash = body.application_payload.block_hash
+    if is_transition_completed(state):
+        application_state = get_application_state(state.application_state_root)
+        application_state_transition(application_state, body.application_payload)
+
+        state.application_state_root = body.application_payload.state_root
+        state.application_block_hash = body.application_payload.block_hash
+
+    elif is_transition_block(state, body):
+        state.application_block_hash = body.application_payload.block_hash
 ```
