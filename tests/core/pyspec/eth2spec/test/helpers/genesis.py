@@ -28,6 +28,11 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             deposit_count=len(validator_balances),
             block_hash=eth1_block_hash,
         ),
+        fork=spec.Fork(
+            previous_version=spec.GENESIS_FORK_VERSION,
+            current_version=spec.GENESIS_FORK_VERSION,
+            epoch=spec.GENESIS_EPOCH,
+        ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
