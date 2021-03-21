@@ -249,6 +249,13 @@ The following values are (non-configurable) constants used throughout the specif
 | `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
 | `VALIDATOR_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | validators |
 
+### Eth1 Merge parameters
+
+| Name | Value |
+| - | - |
+| `TRANSITION_TOTAL_DIFFICULTY` | `uint64(10)` |
+| `ZERO_HASH` | `Bytes32('0x'+'00'*32)` |
+
 ### Rewards and penalties
 
 | Name | Value |
@@ -473,6 +480,7 @@ class VoluntaryExit(Container):
 ```python
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
+    application_block_hash: Bytes32 # Eth1 block hash
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
     # Operations
@@ -511,6 +519,7 @@ class BeaconState(Container):
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
+    previous_application_block_hash: Bytes32
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
@@ -1644,6 +1653,7 @@ def process_participation_record_updates(state: BeaconState) -> None:
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
+    process_eth1_block(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
 ```
@@ -1686,6 +1696,30 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
+```
+
+#### Eth1 block
+
+```python
+def process_eth1_block(state: BeaconState, body: BeaconBlockBody) -> None:
+    # This needs to be implemented after an Eth1 node is available
+    if body.application_block_hash != ZERO_HASH:
+        if state.previous_application_block_hash != ZERO_HASH:
+            assert is_eth1_parent_block(state.previous_application_block_hash, body.application_block_hash)
+        assert is_valid_eth1_block(body.application_block_hash)
+        state.previous_application_block_hash = body.application_block_hash
+```
+
+```python
+def is_eth1_parent_block(parent_block_hash: Bytes32, current_block_hash: Bytes32) -> bool:
+    # Needs to be implemented after Eth1 node is available
+    return True
+```
+
+```python
+def is_valid_eth1_block(eth1_block_hash: Bytes32) -> bool:
+    # Needs to be implemented after Eth1 node is available
+    return True
 ```
 
 #### Eth1 data
