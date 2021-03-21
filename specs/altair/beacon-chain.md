@@ -575,7 +575,7 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Justification and finalization
 
-*Note*: The function `process_justification_and_finalization` is modified with `matching_target_attestations` replaced by `matching_target_indices`.
+*Note*: The function `process_justification_and_finalization` is modified to adapt to the new participation records.
 
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
@@ -583,40 +583,12 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
-    previous_epoch = get_previous_epoch(state)
-    current_epoch = get_current_epoch(state)
-    old_previous_justified_checkpoint = state.previous_justified_checkpoint
-    old_current_justified_checkpoint = state.current_justified_checkpoint
-
-    # Process justifications
-    state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bits[1:] = state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
-    state.justification_bits[0] = 0b0
-    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
-    if get_total_balance(state, matching_target_indices) * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
-                                                        root=get_block_root(state, previous_epoch))
-        state.justification_bits[1] = 0b1
-    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, current_epoch)
-    if get_total_balance(state, matching_target_indices) * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch,
-                                                        root=get_block_root(state, current_epoch))
-        state.justification_bits[0] = 0b1
-
-    # Process finalizations
-    bits = state.justification_bits
-    # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if all(bits[1:4]) and old_previous_justified_checkpoint.epoch + 3 == current_epoch:
-        state.finalized_checkpoint = old_previous_justified_checkpoint
-    # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if all(bits[1:3]) and old_previous_justified_checkpoint.epoch + 2 == current_epoch:
-        state.finalized_checkpoint = old_previous_justified_checkpoint
-    # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if all(bits[0:3]) and old_current_justified_checkpoint.epoch + 2 == current_epoch:
-        state.finalized_checkpoint = old_current_justified_checkpoint
-    # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if all(bits[0:2]) and old_current_justified_checkpoint.epoch + 1 == current_epoch:
-        state.finalized_checkpoint = old_current_justified_checkpoint
+    previous = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state))
+    current = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_current_epoch(state))
+    weigh_justification_and_finalization(
+        state, get_total_active_balance(state),
+        get_total_balance(state, previous),
+        get_total_balance(state, current))
 ```
 
 #### Inactivity scores
