@@ -127,7 +127,7 @@ class ApplicationPayload(Container):
 #### `is_transition_completed`
 
 ```python
-def is_transition_completed(state: BeaconState) -> Boolean:
+def is_transition_completed(state: BeaconState) -> boolean:
     state.application_block_hash != Bytes32()
 ```
 
