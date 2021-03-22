@@ -10,7 +10,7 @@ def test_slots_1(spec, state):
     yield 'pre', state
 
     slots = 1
-    yield 'slots', slots
+    yield 'slots', int(slots)
     spec.process_slots(state, state.slot + slots)
 
     yield 'post', state
@@ -23,7 +23,7 @@ def test_slots_1(spec, state):
 def test_slots_2(spec, state):
     yield 'pre', state
     slots = 2
-    yield 'slots', slots
+    yield 'slots', int(slots)
     spec.process_slots(state, state.slot + slots)
     yield 'post', state
 
@@ -33,7 +33,7 @@ def test_slots_2(spec, state):
 def test_empty_epoch(spec, state):
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH
-    yield 'slots', slots
+    yield 'slots', int(slots)
     spec.process_slots(state, state.slot + slots)
     yield 'post', state
 
@@ -43,7 +43,7 @@ def test_empty_epoch(spec, state):
 def test_double_empty_epoch(spec, state):
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH * 2
-    yield 'slots', slots
+    yield 'slots', int(slots)
     spec.process_slots(state, state.slot + slots)
     yield 'post', state
 
@@ -55,6 +55,6 @@ def test_over_epoch_boundary(spec, state):
         spec.process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH // 2))
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH
-    yield 'slots', slots
+    yield 'slots', int(slots)
     spec.process_slots(state, state.slot + slots)
     yield 'post', state
