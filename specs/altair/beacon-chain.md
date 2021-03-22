@@ -102,7 +102,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 ### Updated penalty values
 
-This patch updates a few configuration values to move penalty parameters toward their final, maxmium security values.
+This patch updates a few configuration values to move penalty parameters toward their final, maximum security values.
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
