@@ -9,7 +9,8 @@
 
 - [Introduction](#introduction)
   - [Helpers](#helpers)
-    - [`get_total_difficulty`](#get_total_difficulty)
+    - [`PowBlock`](#powblock)
+    - [`get_pow_block`](#get_pow_block)
     - [`is_valid_transition_block`](#is_valid_transition_block)
   - [Updated fork-choice handlers](#updated-fork-choice-handlers)
     - [`on_block`](#on_block)
@@ -25,20 +26,29 @@ This is the modification of the fork choice according to the executable beacon c
 
 ### Helpers
 
-#### `get_total_difficulty`
+#### `PowBlock`
 
-Let `get_total_difficulty(hash: Bytes32) -> uint256` be the function that returns the total difficulty of the PoW block specified by its hash. 
+```python
+class PowBlock(Container):
+    is_processed: boolean
+    is_valid: boolean
+    total_difficulty: uint256
+```
 
-*Note*: The function returns `0` if the block is either not yet processed or considered invalid. The latter two cases are considered indistinguishable to the current implementation of JSON-RPC.
+#### `get_pow_block`
+
+Let `get_pow_block(hash: Bytes32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
+
+*Note*: The `eth_getBlockByHash` JSON-RPC method does not distinguish invalid blocks from blocks that hasn't been processed yet. Either extending of existing method or implementing a new one is required.
 
 #### `is_valid_transition_block`
 
 Used by fork-choice handler, `on_block`
 
 ```python
-def is_valid_transition_block(block: BeaconBlock) -> boolean:
-    total_difficulty = get_total_difficulty(block.body.application_payload.block_hash)
-    return total_difficulty >= TRANSITION_TOTAL_DIFFICULTY
+def is_valid_transition_block(block: PowBlock) -> boolean:
+    is_total_difficulty_reached = block.total_difficulty >= TRANSITION_TOTAL_DIFFICULTY
+    return block.is_processed and block.is_valid and is_total_difficulty_reached
 ```
 
 ### Updated fork-choice handlers
@@ -65,7 +75,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     
     # [Added in Merge] Consider delaying the beacon block processing until PoW block is accepted by the application node
     if is_transition_block(pre_state, block.body):
-        assert is_valid_transition_block(block)
+        pow_block = get_pow_block(block.body.application_payload.block_hash)
+        assert is_valid_transition_block(pow_block)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
