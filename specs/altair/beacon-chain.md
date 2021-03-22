@@ -583,12 +583,12 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
-    previous = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state))
-    current = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_current_epoch(state))
-    weigh_justification_and_finalization(
-        state, get_total_active_balance(state),
-        get_total_balance(state, previous),
-        get_total_balance(state, current))
+    previous_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state))
+    current_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_current_epoch(state))
+    total_active_balance = get_total_active_balance(state)
+    previous_target_balance = get_total_balance(state, previous_indices)
+    current_target_balance = get_total_balance(state, current_indices)
+    weigh_justification_and_finalization(state, total_active_balance, previous_target_balance, current_target_balance)
 ```
 
 #### Inactivity scores

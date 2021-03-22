@@ -1320,16 +1320,17 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
-    previous = get_matching_target_attestations(state, get_previous_epoch(state))
-    current = get_matching_target_attestations(state, get_current_epoch(state))
-    weigh_justification_and_finalization(
-        state, get_total_active_balance(state),
-        get_attesting_balance(state, previous),
-        get_attesting_balance(state, current))
+    previous_attestations = get_matching_target_attestations(state, get_previous_epoch(state))
+    current_attestations = get_matching_target_attestations(state, get_current_epoch(state))
+    total_active_balance = get_total_active_balance(state)
+    previous_target_balance = get_attesting_balance(state, previous_attestations)
+    current_target_balance = get_attesting_balance(state, current_attestations)
+    weigh_justification_and_finalization(state, total_active_balance, previous_target_balance, current_target_balance)
 ```
 
 ```python
-def weigh_justification_and_finalization(state: BeaconState, total_active_balance: Gwei,
+def weigh_justification_and_finalization(state: BeaconState,
+                                         total_active_balance: Gwei,
                                          previous_epoch_target_balance: Gwei,
                                          current_epoch_target_balance: Gwei) -> None:
     previous_epoch = get_previous_epoch(state)
