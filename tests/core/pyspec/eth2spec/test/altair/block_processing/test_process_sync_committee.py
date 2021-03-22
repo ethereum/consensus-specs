@@ -68,8 +68,6 @@ def test_invalid_signature_missing_participant(spec, state):
     rng = random.Random(2020)
     random_participant = rng.choice(committee)
 
-    yield 'pre', state
-
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one participant whose signature was included.
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -168,8 +166,6 @@ def validate_sync_committee_rewards(spec, pre_state, post_state, committee, comm
 
 
 def run_successful_sync_committee_test(spec, state, committee, committee_bits):
-    yield 'pre', state
-
     pre_state = state.copy()
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -212,17 +208,6 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
 
 
 @with_all_phases_except([PHASE0, PHASE1])
-@spec_state_test
-@always_bls
-def test_sync_committee_rewards_not_full_participants(spec, state):
-    committee = get_committee_indices(spec, state, duplicates=False)
-    rng = random.Random(1010)
-    committee_bits = [rng.choice([True, False]) for _ in committee]
-
-    yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
-
-
-@with_all_phases_except([PHASE0, PHASE1])
 @with_configs([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee(spec, state):
@@ -234,6 +219,17 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
     # Preconditions of this test case
     assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
     assert committee_size > len(set(committee))
+
+    yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
+
+
+@with_all_phases_except([PHASE0, PHASE1])
+@spec_state_test
+@always_bls
+def test_sync_committee_rewards_not_full_participants(spec, state):
+    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    rng = random.Random(1010)
+    committee_bits = [rng.choice([True, False]) for _ in committee]
 
     yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
 
