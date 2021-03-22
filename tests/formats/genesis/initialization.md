@@ -4,13 +4,13 @@ Tests the initialization of a genesis state based on Eth1 data.
 
 ## Test case format
 
-### `eth1_block_hash.ssz_snappy`
+### `eth1.yaml`
 
-An SSZ-snappy encoded root of the Eth1 block.
+```yaml
+eth1_block_hash: Bytes32  -- A `Bytes32` hex encoded, with prefix 0x. The root of the Eth1 block. E.g. "0x4242424242424242424242424242424242424242424242424242424242424242"
+eth1_timestamp: int       -- An integer. The timestamp of the block, in seconds.
+```
 
-### `eth1_timestamp.yaml`
-
-An integer. The timestamp of the block, in seconds.
 
 ### `meta.yaml`
 
