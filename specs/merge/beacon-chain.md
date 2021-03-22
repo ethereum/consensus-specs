@@ -164,7 +164,7 @@ def is_transition_completed(state: BeaconState) -> Boolean:
 
 ```python
 def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
-    return state.application_block_hash == Bytes32() and block.body.application_payload.block_hash != Bytes32()
+    return state.application_block_hash == Bytes32() and block_body.application_payload.block_hash != Bytes32()
 ```
 
 ### Block processing
