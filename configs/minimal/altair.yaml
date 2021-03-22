@@ -17,7 +17,7 @@ PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 # [customized]
 SYNC_COMMITTEE_SIZE: 32
 # [customized]
-SYNC_SUBCOMMITTEE_SIZE: 16
+SYNC_PUBKEYS_PER_AGGREGATE: 16
 # 2**2 (= 4)
 INACTIVITY_SCORE_BIAS: 4
 
@@ -35,7 +35,8 @@ DOMAIN_SYNC_COMMITTEE: 0x07000000
 
 # Fork
 # ---------------------------------------------------------------
-ALTAIR_FORK_VERSION: 0x01000000
+# Highest byte set to 0x01 to avoid collisions with mainnet versioning
+ALTAIR_FORK_VERSION: 0x01000001
 # [customized]
 ALTAIR_FORK_SLOT: 0
 
