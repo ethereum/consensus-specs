@@ -1675,7 +1675,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
         slot=block.slot,
         proposer_index=block.proposer_index,
         parent_root=block.parent_root,
-        state_root=Bytes32(),  # Overwritten in the next process_slot call
+        state_root=Root(),  # Overwritten in the next process_slot call
         body_root=hash_tree_root(block.body),
     )
 
