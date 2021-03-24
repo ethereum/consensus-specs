@@ -425,13 +425,13 @@ def compute_previous_slot(slot: Slot) -> Slot:
 #### `pack_compact_validator`
 
 ```python
-def pack_compact_validator(index: ValidatorIndex, slashed: boolean, balance_in_increments: uint64) -> uint64:
+def pack_compact_validator(index: ValidatorIndex, slashed: bool, balance_in_increments: uint64) -> uint64:
     """
     Create a compact validator object representing index, slashed status, and compressed balance.
     Takes as input balance-in-increments (// EFFECTIVE_BALANCE_INCREMENT) to preserve symmetry with
     the unpacking function.
     """
-    return (index << 16) + (slashed << 15) + balance_in_increments
+    return (index << 16) + (uint64(slashed) << 15) + balance_in_increments
 ```
 
 #### `unpack_compact_validator`
@@ -457,7 +457,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
     """
     validators = [state.validators[i] for i in committee]
     compact_validators = [
-        pack_compact_validator(i, v.slashed, v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
+        pack_compact_validator(i, bool(v.slashed), v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
         for i, v in zip(committee, validators)
     ]
     pubkeys = [v.pubkey for v in validators]
