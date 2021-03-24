@@ -517,7 +517,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             state.balances.append(amount)
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(0)
+            state.inactivity_scores.append(uint64(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))

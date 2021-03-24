@@ -76,7 +76,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
         # Inactivity
-        inactivity_scores=[0 for _ in range(len(pre.validators))],
+        inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
     # Fill in sync committees
     post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
