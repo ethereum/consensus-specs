@@ -84,11 +84,11 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_WEIGHT` | `12` |
-| `TIMELY_SOURCE_WEIGHT` | `12` |
-| `TIMELY_TARGET_WEIGHT` | `24` |
-| `SYNC_REWARD_WEIGHT` | `8` |
-| `WEIGHT_DENOMINATOR` | `64` |
+| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
+| `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
+| `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
+| `SYNC_REWARD_WEIGHT` | `uint64(8)` |
+| `WEIGHT_DENOMINATOR` | `uint64(64)` |
 
 *Note*: The sum of the weight fractions (7/8) plus the proposer inclusion fraction (1/8) equals 1.
 
@@ -234,7 +234,7 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
 #### `get_flag_indices_and_weights`
 
 ```python
-def get_flag_indices_and_weights() -> Sequence[Tuple[int, int]]:
+def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
     return (
         (TIMELY_HEAD_FLAG_INDEX, TIMELY_HEAD_WEIGHT),
         (TIMELY_SOURCE_FLAG_INDEX, TIMELY_SOURCE_WEIGHT),
@@ -617,7 +617,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
     flag_indices_and_numerators = get_flag_indices_and_weights()
     flag_deltas = [
-        get_flag_index_deltas(state, index, uint64(numerator))
+        get_flag_index_deltas(state, index, numerator)
         for (index, numerator) in flag_indices_and_numerators
     ]
     deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
