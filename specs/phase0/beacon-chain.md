@@ -177,6 +177,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
 | `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
 | `ENDIANNESS` | `'little'` |
+| `ZERO_ROOT` | `Root()` |
 
 ## Configuration
 
@@ -1675,7 +1676,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
         slot=block.slot,
         proposer_index=block.proposer_index,
         parent_root=block.parent_root,
-        state_root=Root(),  # Overwritten in the next process_slot call
+        state_root=ZERO_ROOT,  # Overwritten in the next process_slot call
         body_root=hash_tree_root(block.body),
     )
 
