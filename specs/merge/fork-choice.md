@@ -30,6 +30,7 @@ This is the modification of the fork choice according to the executable beacon c
 
 ```python
 class PowBlock(Container):
+    block_hash: Bytes32
     is_processed: boolean
     is_valid: boolean
     total_difficulty: uint256

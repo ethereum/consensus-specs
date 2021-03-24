@@ -16,7 +16,6 @@
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Application Payload](#application-payload)
-        - [`PowBlock`](#powblock)
         - [`get_pow_chain_head`](#get_pow_chain_head)
         - [`produce_application_payload`](#produce_application_payload)
 
@@ -42,13 +41,6 @@ All validator responsibilities remain unchanged other than those noted below. Na
 #### Constructing the `BeaconBlockBody`
 
 ##### Application Payload
-
-###### `PowBlock`
-```python
-class PowBlock(Container):
-    block_hash: Bytes32
-    total_difficulty: uint256
-```
 
 ###### `get_pow_chain_head`
 
