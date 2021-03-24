@@ -1,6 +1,6 @@
 # Ethereum 2.0 The Merge
 
-**Warning:** This document is based on [Phase 0](../phase0/beacon-chain.md) and considered to be rebased to [Altair](../altair/beacon-chain.md) once the latter is shipped.
+**Warning:** This document is currently based on [Phase 0](../phase0/beacon-chain.md) but will be rebased to [Altair](../altair/beacon-chain.md) once the latter is shipped.
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -36,23 +36,24 @@
 
 ## Introduction
 
-This is a patch implementing executable beacon chain proposal. 
-It enshrines application execution and validity as a first class citizen at the core of the beacon chain.
+This is a patch implementing the executable beacon chain proposal. 
+It enshrines application-layer execution and validity as a first class citizen at the core of the beacon chain.
 
 ## Constants
 
 ### Transition
+
 | Name | Value |
 | - | - |
-| `TRANSITION_TOTAL_DIFFICULTY` | _TBD_ |
+| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
 
 ### Execution
 
 | Name | Value |
 | - | - |
-| `MAX_BYTES_PER_TRANSACTION_PAYLOAD` | `2**20` |
-| `MAX_APPLICATION_TRANSACTIONS` | `2**14` |
-| `BYTES_PER_LOGS_BLOOM` | `2**8` |
+| `MAX_BYTES_PER_TRANSACTION_PAYLOAD` | `uint64(2**20)` (= 1,048,576) |
+| `MAX_APPLICATION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
+| `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 
 
 ## Containers
@@ -73,15 +74,13 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than addition of `application_state_root` and `application_block_hash`. 
-
+*Note*: `BeaconState` fields remain unchanged other than addition of `application_state_root` and `application_block_hash`.
 
 ```python
 class BeaconState(phase0.BeaconState):
-    # [Added in Merge] hash of the root of application state
-    application_state_root: Bytes32
-    # [Added in Merge] hash of recent application block
-    application_block_hash: Bytes32
+    # Application-layer
+    application_state_root: Bytes32 # [New in Merge]
+    application_block_hash: Bytes32 # [New in Merge]
 ```
 
 ### New containers
@@ -128,7 +127,7 @@ class ApplicationPayload(Container):
 
 ```python
 def is_transition_completed(state: BeaconState) -> boolean:
-    state.application_block_hash != Bytes32()
+    return state.application_block_hash != Bytes32()
 ```
 
 #### `is_transition_block`
@@ -170,8 +169,7 @@ The body of the function is implementation dependent.
 ```python
 def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> None:
     """
-    Note: This function is designed to be able to be run in parallel with 
-    the other `process_block` sub-functions
+    Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
 
     if is_transition_completed(state):
@@ -182,7 +180,7 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
         state.application_block_hash = body.application_payload.block_hash
 
     elif is_transition_block(state, body):
-        assert body.application_payload == ApplicationPayload(block_hash = body.application_payload.block_hash)
+        assert body.application_payload == ApplicationPayload(block_hash=body.application_payload.block_hash)
         state.application_block_hash = body.application_payload.block_hash
     
     else:

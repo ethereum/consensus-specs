@@ -1,6 +1,6 @@
 # Ethereum 2.0 The Merge
 
-**Warning:** This document is based on [Phase 0](../phase0/validator.md) and considered to be rebased to [Altair](../altair/validator.md) once the latter is shipped.
+**Warning:** This document is currently based on [Phase 0](../phase0/validator.md) but will be rebased to [Altair](../altair/validator.md) once the latter is shipped.
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -16,7 +16,7 @@
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Application Payload](#application-payload)
-        - [`ApplicaitonBlock`](#applicaitonblock)
+        - [`PowBlock`](#powblock)
         - [`get_pow_chain_head`](#get_pow_chain_head)
         - [`produce_application_payload`](#produce_application_payload)
 
@@ -43,7 +43,7 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### Application Payload
 
-###### `ApplicaitonBlock`
+###### `PowBlock`
 ```python
 class PowBlock(Container):
     block_hash: Bytes32
@@ -59,17 +59,20 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 Let `produce_application_payload(parent_hash: Bytes32) -> ApplicationPayload` be the function that produces new instance of application payload.
 The body of this function is implementation dependent.
 
-* Set `block.body.application_payload = get_application_payload(state, randao_reveal)` where:
+* Set `block.body.application_payload = get_application_payload(state)` where:
 
 ```python
 def get_application_payload(state: BeaconState) -> ApplicationPayload:
-    if is_transition_completed(state):
-      application_parent_hash = state.application_block_hash
-      return produce_application_payload(application_parent_hash)
-    
-    pow_block = get_pow_chain_head()
-    if pow_block.total_difficulty >= TRANSITION_TOTAL_DIFFICULTY:
-      return ApplicationPayload(block_hash = pow_block.block_hash)
-    else:
-      return ApplicationPayload()
+    if not is_transition_completed(state):
+      pow_block = get_pow_chain_head()
+      if pow_block.total_difficulty < TRANSITION_TOTAL_DIFFICULTY:
+        # Pre-merge, empty payload
+        return ApplicationPayload()
+      else:
+        # Signify merge via last PoW block_hash and an otherwise empty payload
+        return ApplicationPayload(block_hash=pow_block.block_hash)
+
+    # Post-merge, normal payload
+    application_parent_hash = state.application_block_hash
+    return produce_application_payload(state.application_block_hash)
 ```
