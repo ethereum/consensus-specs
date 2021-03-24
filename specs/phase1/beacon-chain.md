@@ -807,7 +807,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         data=attestation.data,
         inclusion_delay=state.slot - attestation.data.slot,
         proposer_index=get_beacon_proposer_index(state),
-        crosslink_success=False,  # To be filled in during process_shard_transitions
+        crosslink_success=boolean(False),  # To be filled in during process_shard_transitions
     )
     if attestation.data.target.epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
