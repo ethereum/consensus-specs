@@ -583,7 +583,7 @@ def process_custody_final_updates(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             not_all_secrets_are_revealed = validator.all_custody_secrets_revealed_epoch == FAR_FUTURE_EPOCH
-            if index in validator_indices_in_records or not_all_secrets_are_revealed:
+            if ValidatorIndex(index) in validator_indices_in_records or not_all_secrets_are_revealed:
                 # Delay withdrawable epochs if challenge records are not empty or not all
                 # custody secrets revealed
                 validator.withdrawable_epoch = FAR_FUTURE_EPOCH
