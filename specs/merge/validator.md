@@ -56,13 +56,13 @@ The body of this function is implementation dependent.
 ```python
 def get_application_payload(state: BeaconState) -> ApplicationPayload:
     if not is_transition_completed(state):
-      pow_block = get_pow_chain_head()
-      if pow_block.total_difficulty < TRANSITION_TOTAL_DIFFICULTY:
-        # Pre-merge, empty payload
-        return ApplicationPayload()
-      else:
-        # Signify merge via last PoW block_hash and an otherwise empty payload
-        return ApplicationPayload(block_hash=pow_block.block_hash)
+        pow_block = get_pow_chain_head()
+        if pow_block.total_difficulty < TRANSITION_TOTAL_DIFFICULTY:
+            # Pre-merge, empty payload
+            return ApplicationPayload()
+        else:
+            # Signify merge via last PoW block_hash and an otherwise empty payload
+            return ApplicationPayload(block_hash=pow_block.block_hash)
 
     # Post-merge, normal payload
     application_parent_hash = state.application_block_hash

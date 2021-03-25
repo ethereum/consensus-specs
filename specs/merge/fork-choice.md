@@ -49,7 +49,7 @@ Used by fork-choice handler, `on_block`.
 ```python
 def is_valid_transition_block(block: PowBlock) -> boolean:
     is_total_difficulty_reached = block.total_difficulty >= TRANSITION_TOTAL_DIFFICULTY
-    return block.is_processed and block.is_valid and is_total_difficulty_reached
+    return block.is_valid and is_total_difficulty_reached
 ```
 
 ### Updated fork-choice handlers
@@ -74,9 +74,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
-    # [New in Merge] Consider delaying the beacon block processing until PoW block is accepted by the application node
+    # [New in Merge]
     if is_transition_block(pre_state, block.body):
         pow_block = get_pow_block(block.body.application_payload.block_hash)
+        # Delay consideration of block until PoW block is processed by the PoW node
+        assert pow_block.is_processed
         assert is_valid_transition_block(pow_block)
 
     # Check the block is valid and compute the post-state

@@ -69,7 +69,7 @@ order and append any additional fields to the end.
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
-    application_payload: ApplicationPayload  # [Added in Merge] application payload
+    application_payload: ApplicationPayload  # [New in Merge] application payload
 ```
 
 #### `BeaconState`
@@ -79,8 +79,8 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 ```python
 class BeaconState(phase0.BeaconState):
     # Application-layer
-    application_state_root: Bytes32 # [New in Merge]
-    application_block_hash: Bytes32 # [New in Merge]
+    application_state_root: Bytes32  # [New in Merge]
+    application_block_hash: Bytes32  # [New in Merge]
 ```
 
 ### New containers
@@ -96,7 +96,7 @@ class Transaction(Container):
     gas_limit: uint64
     recipient: Bytes20
     value: uint256
-    input: List[Bytes1, MAX_BYTES_PER_TRANSACTION_PAYLOAD]
+    data: List[byte, MAX_BYTES_PER_TRANSACTION_PAYLOAD]
     v: uint256
     r: uint256
     s: uint256
@@ -115,7 +115,6 @@ class ApplicationPayload(Container):
     gas_used: uint64
     receipt_root: Bytes32
     logs_bloom: Vector[Bytes1, BYTES_PER_LOGS_BLOOM]
-    difficulty: uint64  # Temporary field, will be removed later on
     transactions: List[Transaction, MAX_APPLICATION_TRANSACTIONS]
 ```
 
@@ -178,11 +177,9 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
 
         state.application_state_root = body.application_payload.state_root
         state.application_block_hash = body.application_payload.block_hash
-
     elif is_transition_block(state, body):
         assert body.application_payload == ApplicationPayload(block_hash=body.application_payload.block_hash)
         state.application_block_hash = body.application_payload.block_hash
-    
     else:
         assert body.application_payload == ApplicationPayload()
 ```
