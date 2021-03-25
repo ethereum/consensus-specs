@@ -393,7 +393,7 @@ class ShardTransition(Container):
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
     # The root is of ByteList[MAX_SHARD_BLOCK_SIZE]
-    shard_data_roots: List[Bytes32, MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    shard_data_roots: List[Root, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
@@ -431,7 +431,7 @@ def pack_compact_validator(index: ValidatorIndex, slashed: bool, balance_in_incr
     Takes as input balance-in-increments (// EFFECTIVE_BALANCE_INCREMENT) to preserve symmetry with
     the unpacking function.
     """
-    return (index << 16) + (slashed << 15) + balance_in_increments
+    return (index << 16) + (uint64(slashed) << 15) + balance_in_increments
 ```
 
 #### `unpack_compact_validator`
@@ -457,7 +457,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
     """
     validators = [state.validators[i] for i in committee]
     compact_validators = [
-        pack_compact_validator(i, v.slashed, v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
+        pack_compact_validator(i, bool(v.slashed), v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
         for i, v in zip(committee, validators)
     ]
     pubkeys = [v.pubkey for v in validators]
@@ -807,7 +807,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         data=attestation.data,
         inclusion_delay=state.slot - attestation.data.slot,
         proposer_index=get_beacon_proposer_index(state),
-        crosslink_success=False,  # To be filled in during process_shard_transitions
+        crosslink_success=boolean(False),  # To be filled in during process_shard_transitions
     )
     if attestation.data.target.epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
