@@ -114,7 +114,7 @@ class ApplicationPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     receipt_root: Bytes32
-    logs_bloom: Vector[Bytes1, BYTES_PER_LOGS_BLOOM]
+    logs_bloom: Vector[byte, BYTES_PER_LOGS_BLOOM]
     transactions: List[Transaction, MAX_APPLICATION_TRANSACTIONS]
 ```
 
