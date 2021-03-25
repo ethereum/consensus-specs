@@ -96,7 +96,7 @@ class Transaction(Container):
     gas_limit: uint64
     recipient: Bytes20
     value: uint256
-    data: List[byte, MAX_BYTES_PER_TRANSACTION_PAYLOAD]
+    data: ByteList[MAX_BYTES_PER_TRANSACTION_PAYLOAD]
     v: uint256
     r: uint256
     s: uint256
@@ -114,7 +114,7 @@ class ApplicationPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     receipt_root: Bytes32
-    logs_bloom: Vector[byte, BYTES_PER_LOGS_BLOOM]
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     transactions: List[Transaction, MAX_APPLICATION_TRANSACTIONS]
 ```
 
