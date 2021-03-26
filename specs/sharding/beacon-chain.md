@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
+- [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
   - [Shard block configs](#shard-block-configs)
@@ -72,6 +73,17 @@ We define the following Python custom types for type hinting and readability:
 | `BLSCommitment` | `bytes48` | A G1 curve point |
 | `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 
+## Constants
+
+The following values are (non-configurable) constants used throughout the specification.
+
+| Name | Value | Notes |
+| - | - | - |
+| `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
+| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (=2) | Factor by which samples are extended for data availability encoding |
+| `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
+| `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
+
 ## Configuration
 
 ### Misc
@@ -82,16 +94,12 @@ We define the following Python custom types for type hinting and readability:
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
-| `MAX_SHARD_HEADERS` | `MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD` | |
-| `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
-| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (=2) | Factor by which samples are extended for data availability encoding |
 
 
 ### Shard block configs
 
 | Name | Value | Notes |
 | - | - | - |
-| `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
 | `MAX_SAMPLES_PER_BLOCK` | `uint64(2**11)` (= 2,048) | 248 * 2,048 = 507,904 bytes |
 | `TARGET_SAMPLES_PER_BLOCK` | `uint64(2**10)` (= 1,024) | 248 * 1,024 = 253,952 bytes |
 
@@ -101,7 +109,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - |
 | `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
 | `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
-| `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 | `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` |
 
 ### Gwei values
@@ -148,7 +155,7 @@ class AttestationData(Container):
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
     # insert phase 0 fields
-    shard_headers: List[SignedShardHeader, MAX_SHARD_HEADERS]
+    shard_headers: List[SignedShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
 ```
 
 ### `BeaconState`
@@ -159,8 +166,8 @@ class BeaconState(phase0.BeaconState):
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # New fields
-    previous_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
-    current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARD_HEADERS * SLOTS_PER_EPOCH]
+    previous_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD * SLOTS_PER_EPOCH]
+    current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD * SLOTS_PER_EPOCH]
     grandparent_epoch_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
