@@ -39,6 +39,14 @@
 This is a patch implementing the executable beacon chain proposal. 
 It enshrines application-layer execution and validity as a first class citizen at the core of the beacon chain.
 
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a byte-list containing a single [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
+
 ## Constants
 
 ### Transition
@@ -51,10 +59,9 @@ It enshrines application-layer execution and validity as a first class citizen a
 
 | Name | Value |
 | - | - |
-| `MAX_BYTES_PER_TRANSACTION_PAYLOAD` | `uint64(2**20)` (= 1,048,576) |
+| `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_APPLICATION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
-
 
 ## Containers
 
@@ -85,26 +92,9 @@ class BeaconState(phase0.BeaconState):
 
 ### New containers
 
-#### `Transaction`
-
-Application transaction fields structured as an SSZ object for inclusion in an `ApplicationPayload` contained within a `BeaconBlockBody`.
-
-```python
-class Transaction(Container):
-    nonce: uint64
-    gas_price: uint256
-    gas_limit: uint64
-    recipient: Bytes20
-    value: uint256
-    data: ByteList[MAX_BYTES_PER_TRANSACTION_PAYLOAD]
-    v: uint256
-    r: uint256
-    s: uint256
-```
-
 #### `ApplicationPayload`
 
-The application payload included in a `BeaconBlock`.
+The application payload included in a `BeaconBlockBody`.
 
 ```python
 class ApplicationPayload(Container):
@@ -115,7 +105,7 @@ class ApplicationPayload(Container):
     gas_used: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    transactions: List[Transaction, MAX_APPLICATION_TRANSACTIONS]
+    transactions: List[OpaqueTransaction, MAX_APPLICATION_TRANSACTIONS]
 ```
 
 ## Helper functions
