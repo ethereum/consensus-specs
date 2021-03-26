@@ -87,7 +87,7 @@ class BeaconState(phase0.BeaconState):
 
 #### `Transaction`
 
-Application transaction fields structured as an SSZ object for inclusion in an `ApplicationPayload` contained within a `BeaconBlock`.
+Application transaction fields structured as an SSZ object for inclusion in an `ApplicationPayload` contained within a `BeaconBlockBody`.
 
 ```python
 class Transaction(Container):
