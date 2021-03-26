@@ -84,12 +84,12 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_WEIGHT` | `3` |
-| `TIMELY_SOURCE_WEIGHT` | `3` |
-| `TIMELY_TARGET_WEIGHT` | `6` |
-| `SYNC_REWARD_WEIGHT` | `2` |
-| `NON_PROPOSER_TOTAL` | `14` |
-| `WEIGHT_DENOMINATOR` | `16` |
+| `TIMELY_HEAD_WEIGHT` | `12` |
+| `TIMELY_SOURCE_WEIGHT` | `12` |
+| `TIMELY_TARGET_WEIGHT` | `24` |
+| `SYNC_REWARD_WEIGHT` | `8` |
+| `PROPOSER_WEIGHT` | `8` |
+| `WEIGHT_DENOMINATOR` | `64` |
 
 *Note*: The sum of the weight fractions (7/8) plus the proposer inclusion fraction (1/8) equals 1.
 
@@ -478,7 +478,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
-    proposer_reward = Gwei(proposer_reward_numerator // (NON_PROPOSER_TOTAL * PROPOSER_REWARD_QUOTIENT))
+    reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * PROPOSER_REWARD_QUOTIENT
+    proposer_reward = Gwei(proposer_reward_numerator // reward_denominator)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
@@ -551,7 +552,8 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     for included_index in included_indices:
         effective_balance = state.validators[included_index].effective_balance
         inclusion_reward = Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
-        proposer_reward = Gwei((inclusion_reward * WEIGHT_DENOMINATOR) // (NON_PROPOSER_TOTAL * PROPOSER_REWARD_QUOTIENT))
+        proposer_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * PROPOSER_REWARD_QUOTIENT
+        proposer_reward = Gwei((inclusion_reward * WEIGHT_DENOMINATOR) // proposer_denominator)
         increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
         increase_balance(state, included_index, inclusion_reward)
 ```
