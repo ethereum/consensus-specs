@@ -413,7 +413,7 @@ def slash_validator(state: BeaconState,
     if whistleblower_index is None:
         whistleblower_index = proposer_index
     whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
-    proposer_reward = Gwei(whistleblower_reward // PROPOSER_REWARD_QUOTIENT)
+    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
@@ -478,8 +478,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
-    reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * PROPOSER_REWARD_QUOTIENT
-    proposer_reward = Gwei(proposer_reward_numerator // reward_denominator)
+    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
@@ -552,10 +552,10 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     for included_index in included_indices:
         effective_balance = state.validators[included_index].effective_balance
         inclusion_reward = Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
-        proposer_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * PROPOSER_REWARD_QUOTIENT
-        proposer_reward = Gwei((inclusion_reward * WEIGHT_DENOMINATOR) // proposer_denominator)
-        increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
         increase_balance(state, included_index, inclusion_reward)
+        proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+        proposer_reward = Gwei(inclusion_reward * WEIGHT_DENOMINATOR // proposer_reward_denominator)
+        increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
 ### Epoch processing
