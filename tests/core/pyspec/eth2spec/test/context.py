@@ -29,7 +29,13 @@ ConfigName = NewType("ConfigName", str)
 PHASE0 = SpecForkName('phase0')
 ALTAIR = SpecForkName('altair')
 
-ALL_PHASES = (PHASE0, ALTAIR)  # TODO add merge, sharding, proof_of_custody and das as phases.
+# Experimental phases (not included in default "ALL_PHASES"):
+MERGE = SpecForkName('merge')
+SHARDING = SpecForkName('sharding')
+PROOF_OF_CUSTODY = SpecForkName('proof_of_custody')
+DAS = SpecForkName('das')
+
+ALL_PHASES = (PHASE0, ALTAIR)
 
 MAINNET = ConfigName('mainnet')
 MINIMAL = ConfigName('minimal')
