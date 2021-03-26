@@ -61,7 +61,6 @@ class SpecAltair(Spec):
     ...
 
 
-# add transfer, bridge, etc. as the spec evolves
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     ALTAIR: SpecAltair
@@ -352,6 +351,9 @@ def with_phases(phases, other_phases=None):
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if ALTAIR in run_phases:
                 ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
+
+            # TODO: merge, sharding, proof_of_custody and das are not executable yet.
+            #  Tests that specify these features will not run, and get ignored for these specific phases.
             return ret
         return wrapper
     return decorator
@@ -374,8 +376,8 @@ def with_configs(configs, reason=None):
 
 
 def is_post_altair(spec):
-    if spec.fork in [PHASE0, PHASE1]:
-        # TODO: PHASE1 fork is temporarily parallel to ALTAIR.
-        # Will make PHASE1 fork inherit ALTAIR later.
+    # TODO: everything runs in parallel to Altair.
+    #  After features are rebased on the Altair fork, this can be reduced to just PHASE0.
+    if spec.fork in [PHASE0, MERGE, SHARDING, PROOF_OF_CUSTODY, DAS]:
         return False
     return True
