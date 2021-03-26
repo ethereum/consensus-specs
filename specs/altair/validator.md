@@ -39,7 +39,7 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
         - [Slot](#slot)
         - [Beacon block root](#beacon-block-root)
         - [Subcommittee index](#subcommittee-index)
-        - [Aggregate bits](#aggregate-bits)
+        - [Aggregation bits](#aggregation-bits)
         - [Signature](#signature)
       - [Broadcast sync committee contribution](#broadcast-sync-committee-contribution)
 - [Sync committee subnet stability](#sync-committee-subnet-stability)
@@ -350,7 +350,7 @@ Set `contribution.beacon_block_root = beacon_block_root` from the `beacon_block_
 
 Set `contribution.subcommittee_index` to the index for the subcommittee index corresponding to the subcommittee assigned to this subnet. This index matches the `subnet_id` used to derive the topic name.
 
-###### Aggregate bits
+###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
 An aggregator needs to find the index in the sync committee (as returned by `get_sync_committee_indices`) for a given validator referenced by `sync_committee_signature.validator_index` and map the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is the one set in the `Bitvector`.
