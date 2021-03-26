@@ -137,7 +137,11 @@ def compute_sync_committee_proposer_reward(spec, state, committee, committee_bit
         inclusion_reward = compute_sync_committee_inclusion_reward(
             spec, state, index, committee, committee_bits,
         )
-        proposer_reward_denominator = (spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT) * spec.WEIGHT_DENOMINATOR // spec.PROPOSER_WEIGHT
+        proposer_reward_denominator = (
+            (spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT)
+            * spec.WEIGHT_DENOMINATOR
+            // spec.PROPOSER_WEIGHT
+        )
         proposer_reward += spec.Gwei((inclusion_reward * spec.WEIGHT_DENOMINATOR) // proposer_reward_denominator)
     return proposer_reward
 
