@@ -16,6 +16,8 @@ def get_process_calls(spec):
             lambda state, block: for_ops(state, block.body.proposer_slashings, spec.process_proposer_slashing),
         'process_attester_slashing':
             lambda state, block: for_ops(state, block.body.attester_slashings, spec.process_attester_slashing),
+        'process_shard_header':
+            lambda state, block: for_ops(state, block.body.shard_headers, spec.process_shard_header),
         'process_attestation':
             lambda state, block: for_ops(state, block.body.attestations, spec.process_attestation),
         'process_deposit':
@@ -25,12 +27,12 @@ def get_process_calls(spec):
         # Altair
         'process_sync_committee':
             lambda state, block: spec.process_sync_committee(state, block.body.sync_aggregate),
-        # PHASE1
+        # Merge
+        'process_application_payload':
+            lambda state, block: spec.process_application_payload(state, block.body),
+        # Proof of custody
         'process_custody_game_operations':
             lambda state, block: spec.process_custody_game_operations(state, block.body),
-        'process_shard_transitions':
-            lambda state, block: spec.process_shard_transitions(
-                state, block.body.shard_transitions, block.body.attestations),
     }
 
 

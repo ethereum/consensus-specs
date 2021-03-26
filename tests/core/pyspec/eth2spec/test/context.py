@@ -331,6 +331,10 @@ def with_phases(phases, other_phases=None):
                     return None
                 run_phases = [phase]
 
+            if PHASE0 not in run_phases and ALTAIR not in run_phases:
+                dump_skipping_message("none of the recognized phases are executable, skipping test.")
+                return None
+
             available_phases = set(run_phases)
             if other_phases is not None:
                 available_phases |= set(other_phases)
@@ -346,7 +350,8 @@ def with_phases(phases, other_phases=None):
             if ALTAIR in available_phases:
                 phase_dir[ALTAIR] = spec_altair
 
-            # return is ignored whenever multiple phases are ran. If
+            # return is ignored whenever multiple phases are ran.
+            # This return is for test generators to emit python generators (yielding test vector outputs)
             if PHASE0 in run_phases:
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if ALTAIR in run_phases:

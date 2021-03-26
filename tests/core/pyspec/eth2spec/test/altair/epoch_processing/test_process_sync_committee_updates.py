@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    PHASE0, PHASE1,
+    PHASE0,
     MINIMAL,
     spec_state_test,
     with_all_phases_except,
@@ -11,7 +11,7 @@ from eth2spec.test.helpers.epoch_processing import (
 )
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress(spec, state):

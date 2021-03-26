@@ -9,6 +9,7 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_typing import ByteList
 from eth2spec.test.helpers.state import get_balance, transition_to
 from eth2spec.test.context import (
+    MINIMAL,
     PROOF_OF_CUSTODY,
     with_phases,
     spec_state_test,

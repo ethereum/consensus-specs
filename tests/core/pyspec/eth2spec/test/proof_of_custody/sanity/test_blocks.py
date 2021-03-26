@@ -5,7 +5,6 @@ from eth2spec.test.context import (
     MINIMAL,
     with_phases,
     spec_state_test,
-    only_full_crosslink,
     with_configs,
 )
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
@@ -49,7 +48,6 @@ def run_beacon_block(spec, state, block, valid=True):
 
 @with_phases([PROOF_OF_CUSTODY])
 @spec_state_test
-@only_full_crosslink
 def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     transition_to_valid_shard_slot(spec, state)
 
@@ -108,7 +106,6 @@ def test_early_derived_secret_reveal(spec, state):
 
 @with_phases([PROOF_OF_CUSTODY])
 @spec_state_test
-@only_full_crosslink
 def test_custody_slashing(spec, state):
     transition_to_valid_shard_slot(spec, state)
 

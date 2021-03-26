@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test, spec_test,
     with_all_phases, single_phase,
-    with_phases, PHASE0, PHASE1,
+    with_phases, PHASE0,
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
@@ -103,7 +103,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_phases([PHASE0, PHASE1])
+@with_phases([PHASE0])
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
     attestations = prepare_state_with_attestations(spec, state)

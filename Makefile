@@ -116,10 +116,11 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 codespell:
 	codespell . --skip ./.git -I .codespell-whitelist
 
+# TODO: add future merge, sharding, etc. packages to linting.
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.phase1 -p eth2spec.altair
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
