@@ -266,15 +266,16 @@ If a validator is in the current sync committee (i.e. `is_assigned_to_sync_commi
 This logic is triggered upon the same conditions as when producing an attestation. 
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
 
-`get_sync_committee_signature` assumes `state` is the head state corresponding to processing the block at the current slot as determined by the fork choice (including any empty slots processed with `process_slots`), `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
+`get_sync_committee_signature` assumes `state` is the head state corresponding to processing the block at the current slot as determined by the fork choice (including any empty slots processed with `process_slots`), `block_root` is the root of the head block whose processing results in `state`, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
 def get_sync_committee_signature(state: BeaconState, 
+                                 block_root: Root,
                                  validator_index: ValidatorIndex, 
                                  privkey: int) -> SyncCommitteeSignature:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
-    signing_root = compute_signing_root(get_block_root_at_slot(state, state.slot), domain)
+    signing_root = compute_signing_root(block_root, domain)
     signature = bls.Sign(privkey, signing_root)
 
     return SyncCommitteeSignature(slot=state.slot, validator_index=validator_index, signature=signature)
