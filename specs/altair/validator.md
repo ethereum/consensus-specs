@@ -354,7 +354,7 @@ Set `contribution.subcommittee_index` to the index for the subcommittee index co
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
 An aggregator needs to find the index in the sync committee (as returned by `get_sync_committee_indices`) for a given validator referenced by `sync_committee_signature.validator_index` and map the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is the one set in the `Bitvector`.
-For example, a validator with index `2044` could be at index `15` in the current sync committee. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution. 
+For example, a validator with index `2044` could be at index `135` in the current sync committee. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution. 
 Also note that a validator **could be included multiple times** in a given subcommittee such that multiple bits are set for a single `SyncCommitteeSignature`.
 
 ###### Signature
