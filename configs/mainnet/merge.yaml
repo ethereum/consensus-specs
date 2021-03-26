@@ -1,0 +1,7 @@
+# Mainnet preset - The Merge
+
+# Fork
+# ---------------------------------------------------------------
+MERGE_FORK_VERSION: 0x02000000
+# TBD
+MERGE_FORK_SLOT: 0
