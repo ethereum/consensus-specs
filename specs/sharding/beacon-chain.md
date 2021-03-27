@@ -153,19 +153,18 @@ class AttestationData(Container):
 ### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
-    # insert phase 0 fields
+class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
     shard_headers: List[SignedShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
 ```
 
 ### `BeaconState`
 
 ```python
-class BeaconState(phase0.BeaconState):
-    # Updated fields
+class BeaconState(merge.BeaconState):  # [extends The Merge block body]
+    # [Updated fields]
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # New fields
+    # [New fields]
     previous_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD * SLOTS_PER_EPOCH]
     current_epoch_pending_shard_headers: List[PendingShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD * SLOTS_PER_EPOCH]
     grandparent_epoch_confirmed_commitments: Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], MAX_SHARDS]
@@ -420,8 +419,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_light_client_aggregate(state, block.body)
-    process_operations(state, block.body)
+    process_operations(state, block.body)  # [Modified]
+    process_application_payload(state, block.body)  # [Part of the Merge]
 ```
 
 #### Operations
@@ -548,7 +547,7 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 
 ### Epoch transition
 
-This epoch transition overrides the phase0 epoch transition:
+This epoch transition overrides the Merge epoch transition:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
