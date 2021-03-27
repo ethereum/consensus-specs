@@ -3,14 +3,14 @@ from eth2spec.test.helpers.custody import (
 )
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.context import (
-    PROOF_OF_CUSTODY,
+    CUSTODY_GAME,
     MINIMAL,
     with_phases,
     with_configs,
     spec_state_test,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
-from eth2spec.test.proof_of_custody.block_processing.test_process_custody_key_reveal import (
+from eth2spec.test.custody_game.block_processing.test_process_custody_key_reveal import (
     run_custody_key_reveal_processing,
 )
 
@@ -19,7 +19,7 @@ def run_process_challenge_deadlines(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_challenge_deadlines')
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_validator_slashed_after_reveal_deadline(spec, state):
@@ -39,7 +39,7 @@ def test_validator_slashed_after_reveal_deadline(spec, state):
     assert state.validators[0].slashed == 1
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_validator_not_slashed_after_reveal(spec, state):

@@ -32,7 +32,7 @@ ALTAIR = SpecForkName('altair')
 # Experimental phases (not included in default "ALL_PHASES"):
 MERGE = SpecForkName('merge')
 SHARDING = SpecForkName('sharding')
-PROOF_OF_CUSTODY = SpecForkName('proof_of_custody')
+CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 
 ALL_PHASES = (PHASE0, ALTAIR)
@@ -357,7 +357,7 @@ def with_phases(phases, other_phases=None):
             if ALTAIR in run_phases:
                 ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
 
-            # TODO: merge, sharding, proof_of_custody and das are not executable yet.
+            # TODO: merge, sharding, custody_game and das are not executable yet.
             #  Tests that specify these features will not run, and get ignored for these specific phases.
             return ret
         return wrapper
@@ -383,6 +383,6 @@ def with_configs(configs, reason=None):
 def is_post_altair(spec):
     # TODO: everything runs in parallel to Altair.
     #  After features are rebased on the Altair fork, this can be reduced to just PHASE0.
-    if spec.fork in [PHASE0, MERGE, SHARDING, PROOF_OF_CUSTODY, DAS]:
+    if spec.fork in [PHASE0, MERGE, SHARDING, CUSTODY_GAME, DAS]:
         return False
     return True

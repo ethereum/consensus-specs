@@ -50,9 +50,9 @@ Sharding follows the merge, and is divided into three parts:
 * Sharding base functionality - In early engineering phase
   * [Beacon Chain changes](specs/sharding/beacon-chain.md)
   * [P2P Network changes](specs/sharding/p2p-interface.md)
-* Proof of Custody - Ready, dependent on sharding 
-  * [Custody Game](specs/proof_of_custody/custody-game.md)
-  * [Validator custody work](specs/proof_of_custody/validator.md)
+* Custody Game - Ready, dependent on sharding 
+  * [Custody Game](specs/custody_game/custody-game.md)
+  * [Validator custody work](specs/custody_game/validator.md)
 * Data Availability Sampling - In active R&D
   * Technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
   * [Core types and functions](specs/das/das-core.md)

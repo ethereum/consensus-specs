@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    PROOF_OF_CUSTODY,
+    CUSTODY_GAME,
     with_phases,
     spec_state_test,
     always_bls,
@@ -12,7 +12,7 @@ from eth2spec.test.helpers.attestations import (
 )
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @always_bls
 def test_on_time_success(spec, state):
@@ -23,7 +23,7 @@ def test_on_time_success(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @always_bls
 def test_late_success(spec, state):

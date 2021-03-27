@@ -8,7 +8,7 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
-    PROOF_OF_CUSTODY,
+    CUSTODY_GAME,
     MINIMAL,
     expect_assertion_error,
     disable_process_reveal_deadlines,
@@ -68,7 +68,7 @@ def run_custody_chunk_response_processing(spec, state, custody_response, valid=T
     yield 'post', state
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 @disable_process_reveal_deadlines
@@ -92,7 +92,7 @@ def test_challenge_appended(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -118,7 +118,7 @@ def test_challenge_empty_element_replaced(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -144,7 +144,7 @@ def test_duplicate_challenge(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge, valid=False)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -172,7 +172,7 @@ def test_second_challenge(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge1)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -197,7 +197,7 @@ def test_multiple_epochs_custody(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -222,7 +222,7 @@ def test_many_epochs_custody(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -243,7 +243,7 @@ def test_off_chain_attestation(spec, state):
     yield from run_chunk_challenge_processing(spec, state, challenge)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -275,7 +275,7 @@ def test_custody_response(spec, state):
     yield from run_custody_chunk_response_processing(spec, state, custody_response)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -306,7 +306,7 @@ def test_custody_response_chunk_index_2(spec, state):
     yield from run_custody_chunk_response_processing(spec, state, custody_response)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")
@@ -338,7 +338,7 @@ def test_custody_response_multiple_epochs(spec, state):
     yield from run_custody_chunk_response_processing(spec, state, custody_response)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
 @with_configs([MINIMAL], reason="too slow")

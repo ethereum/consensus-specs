@@ -11,8 +11,8 @@ def get_process_calls(spec):
         'process_justification_and_finalization',
         'process_rewards_and_penalties',
         'process_registry_updates',
-        'process_reveal_deadlines',  # proof of custody
-        'process_challenge_deadlines',  # proof of custody
+        'process_reveal_deadlines',  # custody game
+        'process_challenge_deadlines',  # custody game
         'process_slashings',
         'process_pending_header.',  # sharding
         'charge_confirmed_header_fees',  # sharding

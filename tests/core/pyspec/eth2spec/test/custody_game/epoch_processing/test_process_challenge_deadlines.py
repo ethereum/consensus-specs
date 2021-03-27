@@ -7,7 +7,7 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
-    PROOF_OF_CUSTODY,
+    CUSTODY_GAME,
     MINIMAL,
     spec_state_test,
     with_phases,
@@ -16,7 +16,7 @@ from eth2spec.test.context import (
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
-from eth2spec.test.proof_of_custody.block_processing.test_process_chunk_challenge import (
+from eth2spec.test.custody_game.block_processing.test_process_chunk_challenge import (
     run_chunk_challenge_processing,
 )
 
@@ -25,7 +25,7 @@ def run_process_challenge_deadlines(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_challenge_deadlines')
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @with_configs([MINIMAL], reason="too slow")
 def test_validator_slashed_after_chunk_challenge(spec, state):

@@ -1,5 +1,5 @@
 from eth2spec.test.context import (
-    PROOF_OF_CUSTODY,
+    CUSTODY_GAME,
 )
 from eth2spec.test.helpers.custody import (
     get_valid_chunk_challenge,
@@ -18,11 +18,11 @@ from eth2spec.test.context import (
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
-from eth2spec.test.proof_of_custody.block_processing.test_process_chunk_challenge import (
+from eth2spec.test.custody_game.block_processing.test_process_chunk_challenge import (
     run_chunk_challenge_processing,
     run_custody_chunk_response_processing,
 )
-from eth2spec.test.proof_of_custody.block_processing.test_process_custody_key_reveal import (
+from eth2spec.test.custody_game.block_processing.test_process_custody_key_reveal import (
     run_custody_key_reveal_processing,
 )
 
@@ -31,7 +31,7 @@ def run_process_custody_final_updates(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_custody_final_updates')
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_validator_withdrawal_delay(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -44,7 +44,7 @@ def test_validator_withdrawal_delay(spec, state):
     assert state.validators[0].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -69,7 +69,7 @@ def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
     assert state.validators[0].withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -118,7 +118,7 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
     assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_validator_withdrawal_resume_after_chunk_challenge_response(spec, state):
     transition_to_valid_shard_slot(spec, state)

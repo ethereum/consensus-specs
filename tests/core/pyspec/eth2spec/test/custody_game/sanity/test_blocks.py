@@ -1,7 +1,7 @@
 from typing import Dict, Sequence
 
 from eth2spec.test.context import (
-    PROOF_OF_CUSTODY,
+    CUSTODY_GAME,
     MINIMAL,
     with_phases,
     spec_state_test,
@@ -46,7 +46,7 @@ def run_beacon_block(spec, state, block, valid=True):
 #
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -79,7 +79,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     yield from run_beacon_block(spec, state, block)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 @with_configs([MINIMAL])
 def test_custody_key_reveal(spec, state):
@@ -93,7 +93,7 @@ def test_custody_key_reveal(spec, state):
     yield from run_beacon_block(spec, state, block)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_early_derived_secret_reveal(spec, state):
     transition_to_valid_shard_slot(spec, state)
@@ -104,7 +104,7 @@ def test_early_derived_secret_reveal(spec, state):
     yield from run_beacon_block(spec, state, block)
 
 
-@with_phases([PROOF_OF_CUSTODY])
+@with_phases([CUSTODY_GAME])
 @spec_state_test
 def test_custody_slashing(spec, state):
     transition_to_valid_shard_slot(spec, state)
