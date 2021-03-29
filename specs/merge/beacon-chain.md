@@ -11,6 +11,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Transition](#transition)
   - [Execution](#execution)
@@ -19,7 +20,6 @@
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
-    - [`Transaction`](#transaction)
     - [`ApplicationPayload`](#applicationpayload)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
