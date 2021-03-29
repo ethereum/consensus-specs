@@ -37,7 +37,7 @@ DOMAIN_SYNC_COMMITTEE: 0x07000000
 # ---------------------------------------------------------------
 ALTAIR_FORK_VERSION: 0x01000000
 # TBD
-ALTAIR_FORK_SLOT: 0
+ALTAIR_FORK_SLOT: 18446744073709551615
 
 
 # Sync protocol
