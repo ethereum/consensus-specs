@@ -54,7 +54,6 @@ partial_clean:
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_DIR)/phase0
-	rm -rf $(PY_SPEC_DIR)/phase1
 	rm -rf $(PY_SPEC_DIR)/altair
 	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
 	rm -rf $(PY_SPEC_DIR)/.coverage

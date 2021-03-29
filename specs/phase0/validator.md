@@ -513,7 +513,7 @@ The `subnet_id` for the `attestation` is calculated with:
 def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:
     """
     Compute the correct subnet for an attestation for Phase 0.
-    Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
+    Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
     """
     slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
