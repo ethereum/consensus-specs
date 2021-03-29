@@ -292,8 +292,6 @@ def test_duplicate_attestation(spec, state):
         assert single_state.balances[index] == dup_state.balances[index]
 
 
-# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
-# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_participants_different_attestation_1(spec, state):
@@ -334,8 +332,6 @@ def test_duplicate_participants_different_attestation_1(spec, state):
         assert single_correct_state.balances[index] == dup_state.balances[index]
 
 
-# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
-# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_participants_different_attestation_2(spec, state):
@@ -377,8 +373,6 @@ def test_duplicate_participants_different_attestation_2(spec, state):
         assert single_correct_state.balances[index] == dup_state.balances[index]
 
 
-# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
-# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_participants_different_attestation_3(spec, state):

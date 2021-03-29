@@ -42,9 +42,9 @@ def transition_to_slot_via_block(spec, state, slot):
 
 def transition_to_valid_shard_slot(spec, state):
     """
-    Transition to slot `spec.PHASE_1_FORK_SLOT + 1` and fork at `spec.PHASE_1_FORK_SLOT`.
+    Transition to slot `spec.SHARDING_FORK_SLOT + 1` and fork at `spec.SHARDING_FORK_SLOT`.
     """
-    transition_to(spec, state, spec.PHASE_1_FORK_SLOT)
+    transition_to(spec, state, spec.SHARDING_FORK_SLOT)
     next_slot(spec, state)
 
 
