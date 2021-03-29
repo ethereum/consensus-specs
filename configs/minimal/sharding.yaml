@@ -3,8 +3,8 @@
 # Fork
 # ---------------------------------------------------------------
 SHARDING_FORK_VERSION: 0x03000001
-# TBD
-SHARDING_FORK_SLOT: 0
+# TBD, temporarily max uint64 value: 2**64 - 1
+MERGE_FORK_SLOT: 18446744073709551615
 
 
 # Beacon-chain
