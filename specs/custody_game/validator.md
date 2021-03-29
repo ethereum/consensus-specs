@@ -44,15 +44,15 @@ Beacon chain validator assignments to beacon committees and beacon block proposa
 
 ##### Custody slashings
 
-Up to `MAX_CUSTODY_SLASHINGS`, [`CustodySlashing`](./custody-game.md#custodyslashing) objects can be included in the `block`. The custody slashings must satisfy the verification conditions found in [custody slashings processing](./custody-game.md#custody-slashings). The validator receives a small "whistleblower" reward for each custody slashing included (THIS IS NOT CURRENTLY THE CASE BUT PROBABLY SHOULD BE).
+Up to `MAX_CUSTODY_SLASHINGS`, [`CustodySlashing`](./beacon-chain.md#custodyslashing) objects can be included in the `block`. The custody slashings must satisfy the verification conditions found in [custody slashings processing](beacon-chain.md#custody-slashings). The validator receives a small "whistleblower" reward for each custody slashing included (THIS IS NOT CURRENTLY THE CASE BUT PROBABLY SHOULD BE).
 
 ##### Custody key reveals
 
-Up to `MAX_CUSTODY_KEY_REVEALS`, [`CustodyKeyReveal`](./custody-game.md#custodykeyreveal) objects can be included in the `block`. The custody key reveals must satisfy the verification conditions found in [custody key reveal processing](./custody-game.md#custody-key-reveals). The validator receives a small reward for each custody key reveal included.
+Up to `MAX_CUSTODY_KEY_REVEALS`, [`CustodyKeyReveal`](./beacon-chain.md#custodykeyreveal) objects can be included in the `block`. The custody key reveals must satisfy the verification conditions found in [custody key reveal processing](beacon-chain.md#custody-key-reveals). The validator receives a small reward for each custody key reveal included.
 
 ##### Early derived secret reveals
 
-Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./custody-game.md#earlyderivedsecretreveal) objects can be included in the `block`. The early derived secret reveals must satisfy the verification conditions found in [early derived secret reveal processing](./custody-game.md#custody-key-reveals). The validator receives a small "whistleblower" reward for each early derived secrete reveal included.
+Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./beacon-chain.md#earlyderivedsecretreveal) objects can be included in the `block`. The early derived secret reveals must satisfy the verification conditions found in [early derived secret reveal processing](beacon-chain.md#custody-key-reveals). The validator receives a small "whistleblower" reward for each early derived secrete reveal included.
 
 #### Construct attestation
 

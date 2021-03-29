@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Custody Game
+# Ethereum 2.0 Custody Game -- Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
