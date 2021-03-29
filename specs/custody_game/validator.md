@@ -1,8 +1,8 @@
-# Ethereum 2.0 Phase 1 -- Honest Validator
+# Ethereum 2.0 Custody Game -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
-This is an accompanying document to [Ethereum 2.0 Phase 1](./), which describes the expected actions of a "validator"
-participating in the Ethereum 2.0 Phase 1 protocol.
+This is an accompanying document to the [Ethereum 2.0 Custody Game](./), which describes the expected actions of a "validator"
+participating in the Ethereum 2.0 Custody Game.
 
 ## Table of contents
 
@@ -29,14 +29,14 @@ participating in the Ethereum 2.0 Phase 1 protocol.
 
 ## Prerequisites
 
-This document is an extension of the [Phase 0 -- Validator](../phase0/validator.md). All behaviors and definitions defined in the Phase 0 doc carry over unless explicitly noted or overridden.
+This document is an extension of the [Sharding -- Validator](../sharding/validator.md). All behaviors and definitions defined in the Sharding doc carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the [Phase 1 -- The Beacon Chain](./beacon-chain.md) and [Phase 1 -- Custody Game](./custody-game.md)
-docs are requisite for this document and used throughout. Please see the Phase 1 docs before continuing and use them as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the [Custody Game -- The Beacon Chain](./beacon-chain.md)
+docs are requisite for this document and used throughout. Please see the Custody Game docs before continuing and use them as a reference throughout.
 
 ## Becoming a validator
 
-Becoming a validator in Phase 1 is unchanged from Phase 0. See the [Phase 0 validator guide](../phase0/validator.md#becoming-a-validator) for details.
+Becoming a validator in Custody Game is unchanged from Phase 0. See the [Phase 0 validator guide](../phase0/validator.md#becoming-a-validator) for details.
 
 ## Beacon chain validator assignments
 

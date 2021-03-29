@@ -80,7 +80,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Notes |
 | - | - | - |
 | `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
-| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (=2) | Factor by which samples are extended for data availability encoding |
+| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2) | Factor by which samples are extended for data availability encoding |
 | `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 
@@ -90,11 +90,10 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Notes |
 | - | - | - |
-| `MAX_SHARDS` | `uint64(2**10)` (= 1024) | Theoretical max shard count (used to determine data structure sizes) |
+| `MAX_SHARDS` | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes) |
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
-
 
 ### Shard block configs
 
@@ -147,7 +146,7 @@ class AttestationData(Container):
     source: Checkpoint
     target: Checkpoint
     # Shard header root
-    shard_header_root: Root
+    shard_header_root: Root  # [New in Sharding]
 ```
 
 ### `BeaconBlockBody`
@@ -419,8 +418,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified]
-    process_application_payload(state, block.body)  # [Part of the Merge]
+    process_operations(state, block.body)  # [Modified in Sharding]
+    process_application_payload(state, block.body)  # [New in Merge]
 ```
 
 #### Operations
@@ -559,7 +558,7 @@ def process_epoch(state: BeaconState) -> None:
 
     # Sharding
     process_pending_headers(state)
-    charge_confirmed_header_fees(state)
+    process_confirmed_header_fees(state)
     reset_pending_headers(state)
 
     # Final updates
@@ -577,7 +576,6 @@ def process_epoch(state: BeaconState) -> None:
 #### Pending headers
 
 ```python
-
 def process_pending_headers(state: BeaconState) -> None:
     # Pending header processing applies to the previous epoch.
     # Skip if `GENESIS_EPOCH` because no prior epoch to process.
@@ -668,7 +666,7 @@ def reset_pending_headers(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
     for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_IN_EPOCH):
-        for index in range(get_committee_count_per_slot(next_epoch)
+        for index in range(get_committee_count_per_slot(next_epoch):
             shard = compute_shard_from_committee_index(state, slot, index)
             committee_length = len(get_beacon_committee(state, slot, shard))
             state.current_epoch_pending_shard_headers.append(PendingShardHeader(

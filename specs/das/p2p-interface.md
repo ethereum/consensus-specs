@@ -1,4 +1,4 @@
-# Ethereum 2.0 Data Availability Sampling Network specification
+# Ethereum 2.0 Data Availability Sampling -- Network specification
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -68,7 +68,7 @@ At full operation, the network has one proposer, per shard, per slot.
 
 In the push-model, there are:
 - *Vertical subnets*: Sinks can subscribe to indices of samples: there is a sample to subnet mapping.
-- *Horizontal subnets*: Sources need to distribute samples to all vertical networks: they participate in a fanout layer.
+- *Horizontal subnets*: Sources need to distribute samples to all vertical networks: they participate in a fan-out layer.
 
 ### Horizontal subnets
 
@@ -84,7 +84,7 @@ it may publish to all its peers on the subnet, instead of just those in its mesh
 
 #### Horizontal propagation
 
-Peers on the horizontal subnet are expected to at least perform regular propagation of shard blocks, like how do would participate in any other topic.
+Peers on the horizontal subnet are expected to at least perform regular propagation of shard blocks, like participation in any other topic.
 
 *Although this may be sufficient for testnets, expect parameter changes in the spec here.*
 
@@ -137,7 +137,7 @@ Backbone subscription work is outlined in the [DAS participation spec](sampling.
 #### Quick Rotation: Sampling
 
 A node MUST maintain `k` random subscriptions to topics, and rotate these according to the [DAS participation spec](sampling.md#quick-rotation-sampling).
-If the node does not already have connected peers on the topic it needs to sample, it can search its peerstore, and if necessary in the DHT, for peers in the topic backbone.
+If the node does not already have connected peers on the topic it needs to sample, it can search its peerstore and, if necessary, in the DHT for peers in the topic backbone.
 
 ## DAS in the Gossip domain: Push
 
@@ -148,13 +148,13 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 |----------------------------------|---------------------------|
 | `das_sample_{subnet_index}`      | `DASSample`               |
 
-Also see the [Phase1 general networking spec](./p2p-phase1.md) for important topics such as that of the shard-blobs and shard-headers.
+Also see the [Sharding general networking spec](../sharding/p2p-interface.md) for important topics such as that of the shard-blobs and shard-headers.
 
 #### Horizontal subnets: `shard_blob_{shard}`
 
-Extending the regular `shard_blob_{shard}` as [defined in the Phase1 networking specification](./p2p-phase1.md#shard-blobs-shard_blob_shard)
+Extending the regular `shard_blob_{shard}` as [defined in the Sharding networking specification](../sharding/p2p-interface.md#shard-blobs-shard_blob_shard)
 
-If participating in DAS, upon receiving a `signed_blob` for the first time, with a `slot` not older than `MAX_RESAMPLE_TIME`,
+If participating in DAS, upon receiving a `signed_blob` for the first time with a `slot` not older than `MAX_RESAMPLE_TIME`,
 a subscriber of a `shard_blob_{shard}` SHOULD reconstruct the samples and publish them to vertical subnets.
 Take `blob = signed_blob.blob`:
 1. Extend the data: `extended_data = extend_data(blob.data)`
@@ -171,20 +171,20 @@ against the commitment to blob polynomial, specific to that `(shard, slot)` key.
 
 The following validations MUST pass before forwarding the `sample` on the vertical subnet.
 - _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
-   If not known, the client MAY queue the sample, if it passes formatting conditions.
+   If not known, the client MAY queue the sample if it passes formatting conditions.
 - _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
 - _[REJECT]_ `sample.shard` must be within valid range: `0 <= sample.shard < get_active_shard_count(state, compute_epoch_at_slot(sample.slot))`.
 - _[REJECT]_ `sample.index` must be within valid range: `0 <= sample.index < sample_count`, where:
     - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
     - `points_count` is the length as claimed along with the commitment, which must be smaller than `MAX_SAMPLES_PER_BLOCK`.
 - _[IGNORE]_ The `sample` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `sample.slot <= current_slot`. A client MAY queue future samples for processing at the appropriate slot, if it passed formatting conditions.
+  i.e. validate that `sample.slot <= current_slot`. A client MAY queue future samples for processing at the appropriate slot if it passed formatting conditions.
 - _[IGNORE]_ This is the first received sample with the (`sample.shard`, `sample.slot`, `sample.index`) key tuple.
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the sample data is well-formatted and not too large.
 - _[REJECT]_ The `sample.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
 - _[REJECT]_ The `sample.proof` MUST be valid: `verify_sample(sample, sample_count, commitment)`
 
-Upon receiving a valid sample, it SHOULD be retained for a buffer period, if the local node is part of the backbone that covers this sample.
+Upon receiving a valid sample, it SHOULD be retained for a buffer period if the local node is part of the backbone that covers this sample.
 This is to serve other peers that may have missed it.
 
 
@@ -194,7 +194,7 @@ To pull samples from nodes, in case of network instability when samples are unav
 
 This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../phase0/p2p-interface.md). 
 
-Note that the Phase1 DAS networking uses a different protocol prefix: `/eth2/das/req`
+Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 
 The result codes are extended with:
 -  3: **ResourceUnavailable** -- when the request was valid but cannot be served at this point in time.

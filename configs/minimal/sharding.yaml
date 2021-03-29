@@ -2,7 +2,7 @@
 
 # Fork
 # ---------------------------------------------------------------
-SHARDING_FORK_VERSION: 0x03000000
+SHARDING_FORK_VERSION: 0x03000001
 # TBD
 SHARDING_FORK_SLOT: 0
 
