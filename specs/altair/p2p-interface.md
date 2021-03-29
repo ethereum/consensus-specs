@@ -204,7 +204,7 @@ In advance of the fork, implementations can opt in to both run the v1 and v2 for
 This is non-breaking, and is recommended as soon as the fork specification is stable.
 
 The v1 variants will be deprecated, and implementations should use v2 when available 
-(as negotiatied with peers via LibP2P multistream-select).
+(as negotiated with peers via LibP2P multistream-select).
 
 The v1 method MAY be unregistered at the fork boundary.
 In the event of a request on v1 for an Altair specific payload,
