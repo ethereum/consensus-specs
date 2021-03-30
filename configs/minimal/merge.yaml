@@ -1,0 +1,7 @@
+# Minimal preset - The Merge
+
+# Fork
+# ---------------------------------------------------------------
+MERGE_FORK_VERSION: 0x02000001
+# TBD, temporarily max uint64 value: 2**64 - 1
+MERGE_FORK_SLOT: 18446744073709551615

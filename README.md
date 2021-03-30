@@ -11,7 +11,10 @@ This repository hosts the current Eth2 specifications. Discussions about design 
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
 
-Core specifications for Eth2 clients be found in [specs](specs/). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+Core specifications for Eth2 clients be found in [specs](specs/). These are divided into features.
+Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
+
+The current features are:
 
 ### Phase 0
 
@@ -27,13 +30,35 @@ Core specifications for Eth2 clients be found in [specs](specs/). These are divi
 * [Altair fork](specs/altair/fork.md)
 * [Light client sync protocol](specs/altair/sync-protocol.md)
 
-### Sharding
-
-The sharding spec is still actively in R&D; see the most recent available pull request [here](https://github.com/ethereum/eth2.0-specs/pull/2146) and some technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
-
 ### Merge
 
-The merge is still actively in R&D; see an [ethresear.ch](https://ethresear.ch) post describing the proposed basic mechanism [here](https://ethresear.ch/t/the-eth1-eth2-transition/6265) and the section of [ethereum.org](https://ethereum.org) describing the merge at a high level [here](https://ethereum.org/en/eth2/docking/).
+The merge is still actively in R&D. The specifications outline a general direction for engineering work,
+while the details are in review and may change.
+
+* Background material:
+  * An [ethresear.ch](https://ethresear.ch) post [describing the basic mechanism](https://ethresear.ch/t/the-eth1-eth2-transition/6265)
+  * [ethereum.org](https://ethereum.org) high-level description of the merge [here](https://ethereum.org/en/eth2/docking/)
+* Specifications:
+  * [Beacon Chain changes](specs/merge/beacon-chain.md)
+  * [Fork Choice changes](specs/merge/fork-choice.md)
+  * [Validator additions](specs/merge/validator.md)
+
+### Sharding
+
+Sharding follows the merge, and is divided into three parts:
+
+* Sharding base functionality - In early engineering phase
+  * [Beacon Chain changes](specs/sharding/beacon-chain.md)
+  * [P2P Network changes](specs/sharding/p2p-interface.md)
+* Custody Game - Ready, dependent on sharding 
+  * [Beacon Chain changes](specs/custody_game/beacon-chain.md)
+  * [Validator custody work](specs/custody_game/validator.md)
+* Data Availability Sampling - In active R&D
+  * Technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
+  * [Core types and functions](specs/das/das-core.md)
+  * [P2P Networking](specs/das/p2p-interface.md)
+  * [Fork Choice](specs/das/fork-choice.md)
+  * [Sampling process](specs/das/sampling.md)
 
 ### Accompanying documents can be found in [specs](specs) and include:
 

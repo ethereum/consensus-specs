@@ -3,14 +3,20 @@ from eth2spec.test.context import is_post_altair
 
 
 def get_process_calls(spec):
+    # unrecognized processing functions will be ignored.
+    # This sums up the aggregate of processing functions of all phases.
+    # Note: make sure to explicitly remove/override a processing function in later phases,
+    # or the old function will stick around.
     return [
-        # PHASE0
         'process_justification_and_finalization',
         'process_rewards_and_penalties',
         'process_registry_updates',
-        'process_reveal_deadlines',
-        'process_challenge_deadlines',
+        'process_reveal_deadlines',  # custody game
+        'process_challenge_deadlines',  # custody game
         'process_slashings',
+        'process_pending_header.',  # sharding
+        'charge_confirmed_header_fees',  # sharding
+        'reset_pending_headers',  # sharding
         'process_eth1_data_reset',
         'process_effective_balance_updates',
         'process_slashings_reset',
@@ -21,8 +27,7 @@ def get_process_calls(spec):
             'process_participation_record_updates'
         ),
         'process_sync_committee_updates',
-        # PHASE1
-        'process_phase_1_final_updates',
+        'process_shard_epoch_increment'  # sharding
     ]
 
 

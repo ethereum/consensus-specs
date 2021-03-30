@@ -433,7 +433,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 Attestation broadcasting is grouped into subnets defined by a topic.
 The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`.
 The correct subnet for an attestation can be calculated with `compute_subnet_for_attestation`.
-`beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees in Phase 1.
+`beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees (future Eth2 upgrade).
 The subnets are rotated through with `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)` subnets per slot.
 
 Unaggregated attestations are sent as `Attestation`s to the subnet topic,

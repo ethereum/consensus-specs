@@ -3,7 +3,7 @@
 This directory contains a set of constants presets used for testing, testnets, and mainnet.
 
 A preset file contains all the constants known for its target.
-Later-fork constants can be ignored, e.g. ignore Phase 1 constants as a client that only supports Phase 0 currently.
+Later-fork constants can be ignored, e.g. ignore Sharding constants as a client that only supports Phase 0 currently.
 
 
 ## Forking
