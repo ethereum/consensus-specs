@@ -54,22 +54,15 @@ def test_finality_delay_fix(spec, state):
         attacker_signed_blocks.append(state_transition_and_sign_block(spec, attacker_state, attacker_blocks[i]))
         yield from tick_and_run_on_block(spec, attacker_store, attacker_signed_blocks[i], test_steps)
 
-    print(f"Honest slot: {state.slot}, Attacker slot: {attacker_state.slot}")
-    print(f"Attacker's Head Block: {spec.get_head(attacker_store)}, "
-          f"{attacker_store.blocks[spec.get_head(attacker_store)].slot}")
-    # print(f"Honest Head Block: {spec.get_head(store)}, {store.blocks[spec.get_head(store)].slot}")
-
     # Build attestation from honest node, for an empty slot
     next_slots(spec, state, attack_length + 1)
     spec.on_tick(store, state.slot * spec.SECONDS_PER_SLOT)
     attestation = get_valid_late_attestation(spec, state, slot=attacker_blocks[-1].slot,
                                              index=None, signed=True, shard_transition=None)
     spec.on_attestation(store, attestation)
-    print(f"Before Attack - Honest Head Block: {spec.get_head(store)}, {store.blocks[spec.get_head(store)].slot}")
     honest_head_block_root = spec.get_head(store)
     for signed_attack_block in attacker_signed_blocks:
         spec.on_block(store, signed_attack_block)
-    print(f"After Attack - Honest Head Block: {spec.get_head(store)}, {store.blocks[spec.get_head(store)].slot}")
 
     # Check that the honest node's head block has not changed
     assert spec.get_head(store) == honest_head_block_root

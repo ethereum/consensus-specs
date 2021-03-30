@@ -233,6 +233,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     # Slot is same as justified checkpoint so does not trigger an override in the store
     just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
+    spec.add_block_tree_node(store, just_block, spec.compute_epoch_at_slot(just_block.slot))
 
     # Step time past safe slots
     spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
@@ -248,6 +249,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
             epoch=previously_justified.epoch + i,
             root=just_block.hash_tree_root(),
         )
+        spec.add_block_tree_node(store, just_block, new_justified.epoch)
         if new_justified.epoch > best_justified_checkpoint.epoch:
             best_justified_checkpoint = new_justified
 
@@ -283,6 +285,7 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Slot is same as justified checkpoint so does not trigger an override in the store
     just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
+    spec.add_block_tree_node(store, just_block, spec.compute_epoch_at_slot(just_block.slot))
 
     # Step time past safe slots
     spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
@@ -294,10 +297,12 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
         epoch=store.justified_checkpoint.epoch + 1,
         root=just_block.hash_tree_root(),
     )
+    spec.add_block_tree_node(store, just_block, new_justified.epoch)
     new_finalized = spec.Checkpoint(
         epoch=store.finalized_checkpoint.epoch + 1,
         root=just_block.parent_root,
     )
+    spec.add_block_tree_node(store, just_block, new_finalized.epoch)
     just_fin_state.current_justified_checkpoint = new_justified
     just_fin_state.finalized_checkpoint = new_finalized
 
