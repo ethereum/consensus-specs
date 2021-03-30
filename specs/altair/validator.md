@@ -413,7 +413,7 @@ Subnet assignments are known `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs in advanc
 ENR advertisement is indicated by setting the appropriate bit(s) of the bitfield found under the `syncnets` key in the ENR corresponding to the derived `subnet_id`(s). 
 Any bits modified for the sync committee responsibilities are unset in the ENR after any validators have left the sync committee.
 
-*Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens which implies subnet assignments are not known until then. 
+  *Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens which implies subnet assignments are not known until then.
 Early sync committee members should listen for topic subscriptions from peers and employ discovery via the ENR advertisements near the fork boundary to form initial subnets 
 Some early sync committee rewards may be missed while the initial subnets form.
 

@@ -1298,10 +1298,10 @@ Requests are segregated by protocol ID to:
 6. Parallelise RFCs (or Eth2 EIPs).
   By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently
   without relying on a synchronization point to version the general top-level protocol.
-  1. This has the benefit that clients can explicitly choose which RFCs to deploy
-    without buying into all other RFCs that may be included in that top-level version.
-  2. Affording this level of granularity with a top-level protocol would imply creating as many variants
-    (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
+   1. This has the benefit that clients can explicitly choose which RFCs to deploy
+      without buying into all other RFCs that may be included in that top-level version.
+   2. Affording this level of granularity with a top-level protocol would imply creating as many variants
+      (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
 7. Allow us to simplify the payload of requests.
   Request-id’s and method-ids no longer need to be sent.
   The encoding/request type and version can all be handled by the framework.
