@@ -37,6 +37,7 @@ class Store(object):
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_tree: Dict[Root, BlockTreeNode] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
@@ -74,6 +75,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     assert anchor_block.state_root == hash_tree_root(anchor_state)
     anchor_root = hash_tree_root(anchor_block)
     anchor_epoch = get_current_epoch(anchor_state)
+    anchor_node = BlockTreeNode(block_root=anchor_root, epoch=anchor_epoch, parent_node_id=Root())
+    anchor_node_id = get_node_id(anchor_root, anchor_epoch)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
@@ -83,6 +86,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         blocks={anchor_root: copy(anchor_block)},
+        block_tree={anchor_node_id: anchor_node},
         block_states={anchor_root: anchor_state.copy()},
         checkpoint_states={justified_checkpoint: anchor_state.copy()},
         shard_stores={
