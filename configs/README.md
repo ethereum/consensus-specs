@@ -15,10 +15,9 @@ Over time, the need to sync an older state may be deprecated.
 In this case, the prefix on the new constant may be removed, and the old constant will keep a special name before completely being removed.
 
 A previous iteration of forking made use of "timelines", but this collides with the definitions used in the spec (constants for special forking slots, etc.), and was not integrated sufficiently in any of the spec tools or implementations.
-Instead, the config essentially doubles as fork definition now, e.g. changing the value for `PHASE_1_FORK_SLOT` changes the fork.
+Instead, the config essentially doubles as fork definition now, e.g. changing the value for `ALTAIR_FORK_SLOT` changes the fork.
 
 Another reason to prefer forking through constants is the ability to program a forking moment based on context, instead of being limited to a static slot number.
-
  
 ## Format
 
@@ -32,4 +31,4 @@ Each preset is a key-value mapping.
 
 Presets may contain comments to describe the values.
 
-See [`mainnet_phase0.yaml`](./mainnet_phase0.yaml) for a complete example.
+See [`mainnet/phase0.yaml`](./mainnet/phase0.yaml) for a complete example.

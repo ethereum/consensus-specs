@@ -37,6 +37,7 @@ DOMAIN_CONTRIBUTION_AND_PROOF: 0x09000000
 
 # Fork
 # ---------------------------------------------------------------
+# 0x01000000
 ALTAIR_FORK_VERSION: 0x01000000
 # TBD
 ALTAIR_FORK_SLOT: 0
