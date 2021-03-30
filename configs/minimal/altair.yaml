@@ -37,7 +37,7 @@ DOMAIN_CONTRIBUTION_AND_PROOF: 0x09000000
 
 # Fork
 # ---------------------------------------------------------------
-# Highest byte set to 0x01 to avoid collisions with mainnet versioning
+# [customized] Highest byte set to 0x01 to avoid collisions with mainnet versioning
 ALTAIR_FORK_VERSION: 0x01000001
 # [customized]
 ALTAIR_FORK_SLOT: 0

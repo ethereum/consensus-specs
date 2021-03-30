@@ -39,7 +39,7 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
         - [Slot](#slot)
         - [Beacon block root](#beacon-block-root)
         - [Subcommittee index](#subcommittee-index)
-        - [Aggregate bits](#aggregate-bits)
+        - [Aggregation bits](#aggregation-bits)
         - [Signature](#signature)
       - [Broadcast sync committee contribution](#broadcast-sync-committee-contribution)
 - [Sync committee subnet stability](#sync-committee-subnet-stability)
@@ -266,15 +266,16 @@ If a validator is in the current sync committee (i.e. `is_assigned_to_sync_commi
 This logic is triggered upon the same conditions as when producing an attestation. 
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
 
-`get_sync_committee_signature` assumes `state` is the head state corresponding to processing the block at the current slot as determined by the fork choice (including any empty slots processed with `process_slots`), `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
+`get_sync_committee_signature` assumes `state` is the head state corresponding to processing the block at the current slot as determined by the fork choice (including any empty slots processed with `process_slots`), `block_root` is the root of the head block whose processing results in `state`, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
 def get_sync_committee_signature(state: BeaconState, 
+                                 block_root: Root,
                                  validator_index: ValidatorIndex, 
                                  privkey: int) -> SyncCommitteeSignature:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
-    signing_root = compute_signing_root(get_block_root_at_slot(state, state.slot), domain)
+    signing_root = compute_signing_root(block_root, domain)
     signature = bls.Sign(privkey, signing_root)
 
     return SyncCommitteeSignature(slot=state.slot, validator_index=validator_index, signature=signature)
@@ -350,11 +351,11 @@ Set `contribution.beacon_block_root = beacon_block_root` from the `beacon_block_
 
 Set `contribution.subcommittee_index` to the index for the subcommittee index corresponding to the subcommittee assigned to this subnet. This index matches the `subnet_id` used to derive the topic name.
 
-###### Aggregate bits
+###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
 An aggregator needs to find the index in the sync committee (as returned by `get_sync_committee_indices`) for a given validator referenced by `sync_committee_signature.validator_index` and map the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is the one set in the `Bitvector`.
-For example, a validator with index `2044` could be at index `15` in the current sync committee. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution. 
+For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution. 
 Also note that a validator **could be included multiple times** in a given subcommittee such that multiple bits are set for a single `SyncCommitteeSignature`.
 
 ###### Signature
@@ -412,7 +413,7 @@ Subnet assignments are known `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs in advanc
 ENR advertisement is indicated by setting the appropriate bit(s) of the bitfield found under the `syncnets` key in the ENR corresponding to the derived `subnet_id`(s). 
 Any bits modified for the sync committee responsibilities are unset in the ENR after any validators have left the sync committee.
 
-*Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens which implies subnet assignments are not known until then. 
+  *Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens which implies subnet assignments are not known until then.
 Early sync committee members should listen for topic subscriptions from peers and employ discovery via the ENR advertisements near the fork boundary to form initial subnets 
 Some early sync committee rewards may be missed while the initial subnets form.
 

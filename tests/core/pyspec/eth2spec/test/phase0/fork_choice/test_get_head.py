@@ -211,7 +211,7 @@ def test_filtered_block_tree(spec, state):
     test_steps.append({
         'checks': {
             'head': get_formatted_head_output(spec, store),
-            'justified_checkpoint_root': encode_hex(store.justified_checkpoint.hash_tree_root()),
+            'justified_checkpoint_root': encode_hex(store.justified_checkpoint.root),
         }
     })
 
