@@ -29,6 +29,7 @@ The current features are:
 * [Beacon chain changes](specs/altair/beacon-chain.md)
 * [Altair fork](specs/altair/fork.md)
 * [Light client sync protocol](specs/altair/sync-protocol.md)
+* [Honest Validator guide changes](specs/altair/validator.md)
 
 ### Merge
 
@@ -83,13 +84,11 @@ The following are the broad design goals for Ethereum 2.0:
 * to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
 
-
 ## Useful external resources
 
 * [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 * [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
 * [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-
 
 ## For spec contributors
 
