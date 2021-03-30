@@ -5,7 +5,9 @@
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -26,14 +28,13 @@
     - [DASQuery](#dasquery)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
-
-
 
 ## Introduction
 
 For an introduction about DAS itself, see [the DAS participation spec](sampling.md#data-availability-sampling).
-This is not a pre-requisite for the network layer, but will give you valuable context. 
+This is not a pre-requisite for the network layer, but will give you valuable context.
 
 For sampling, all nodes need to query for `k` random samples each slot.
 
@@ -55,18 +56,20 @@ The push model does not aim to serve "historical" queries (anything older than t
 Historical queries are still required for the unhappy case, where messages are not pushed quick enough,
 and missing samples are not reconstructed by other nodes on the horizontal subnet quick enough.
 
-The main challenge in supporting historical queries is to target the right nodes, 
+The main challenge in supporting historical queries is to target the right nodes,
 without concentrating too many requests on a single node, or breaking the network/consensus identity separation.
 
 ## DAS Subnets
 
 On a high level, the push-model roles are divided into:
-- Sources: create blobs of shard block data, and transformed into many tiny samples. 
+
+- Sources: create blobs of shard block data, and transformed into many tiny samples.
 - Sinks: continuously look for samples
 
 At full operation, the network has one proposer, per shard, per slot.
 
 In the push-model, there are:
+
 - *Vertical subnets*: Sinks can subscribe to indices of samples: there is a sample to subnet mapping.
 - *Horizontal subnets*: Sources need to distribute samples to all vertical networks: they participate in a fan-out layer.
 
@@ -93,15 +96,14 @@ Peers on the horizontal subnet are expected to at least perform regular propagat
 Nodes on this same subnet can replicate the sampling efficiently (including a proof for each sample),
 and distribute it to any vertical networks that are available to them.
 
-Since the messages are content-addressed (instead of origin-stamped), 
-multiple publishers of the same samples on a vertical subnet do not hurt performance, 
+Since the messages are content-addressed (instead of origin-stamped),
+multiple publishers of the same samples on a vertical subnet do not hurt performance,
 but actually improve it by shortcutting regular propagation on the vertical subnet, and thus lowering the latency to a sample.
-
 
 ### Vertical subnets
 
 Vertical subnets propagate the samples to every peer that is interested.
-These interests are randomly sampled and rotate quickly: although not perfect, 
+These interests are randomly sampled and rotate quickly: although not perfect,
 sufficient to avoid any significant amount of nodes from being 100% predictable.
 
 As soon as a sample is missing after the expected propagation time window,
@@ -118,6 +120,7 @@ TODO: define `(shard, slot, sample_index) -> subnet_index` hash function.
 To allow for subscriptions to rotate quickly and randomly, a backbone is formed to help onboard peers into other topics.
 
 This backbone is based on a pure function of the *node* identity and time:
+
 - Nodes can be found *without additional discovery overhead*:
   peers on a vertical topic can be found by searching the local peerstore for identities that hash to the desired topic(s),
   assuming the peerstore already has a large enough variety of peers.
@@ -144,9 +147,10 @@ If the node does not already have connected peers on the topic it needs to sampl
 ### Topics and messages
 
 Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
-| Name                             | Message Type              |
-|----------------------------------|---------------------------|
-| `das_sample_{subnet_index}`      | `DASSample`               |
+
+| Name                        | Message Type |
+| --------------------------- | ------------ |
+| `das_sample_{subnet_index}` | `DASSample`  |
 
 Also see the [Sharding general networking spec](../sharding/p2p-interface.md) for important topics such as that of the shard-blobs and shard-headers.
 
@@ -157,47 +161,48 @@ Extending the regular `shard_blob_{shard}` as [defined in the Sharding networkin
 If participating in DAS, upon receiving a `signed_blob` for the first time with a `slot` not older than `MAX_RESAMPLE_TIME`,
 a subscriber of a `shard_blob_{shard}` SHOULD reconstruct the samples and publish them to vertical subnets.
 Take `blob = signed_blob.blob`:
+
 1. Extend the data: `extended_data = extend_data(blob.data)`
 2. Create samples with proofs: `samples = sample_data(blob.slot, blob.shard, extended_data)`
 3. Fanout-publish the samples to the vertical subnets of its peers (not all vertical subnets may be reached).
 
 The [DAS participation spec](sampling.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
 
-
 #### Vertical subnets: `das_sample_{subnet_index}`
 
-Shard blob samples can be verified with just a 48 byte KZG proof (commitment quotient polynomial), 
+Shard blob samples can be verified with just a 48 byte KZG proof (commitment quotient polynomial),
 against the commitment to blob polynomial, specific to that `(shard, slot)` key.
 
 The following validations MUST pass before forwarding the `sample` on the vertical subnet.
-- _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
-   If not known, the client MAY queue the sample if it passes formatting conditions.
-- _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
-- _[REJECT]_ `sample.shard` must be within valid range: `0 <= sample.shard < get_active_shard_count(state, compute_epoch_at_slot(sample.slot))`.
-- _[REJECT]_ `sample.index` must be within valid range: `0 <= sample.index < sample_count`, where:
-    - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
-    - `points_count` is the length as claimed along with the commitment, which must be smaller than `MAX_SAMPLES_PER_BLOCK`.
-- _[IGNORE]_ The `sample` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+
+- _\[IGNORE\]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
+  If not known, the client MAY queue the sample if it passes formatting conditions.
+- _\[REJECT\]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
+- _\[REJECT\]_ `sample.shard` must be within valid range: `0 <= sample.shard < get_active_shard_count(state, compute_epoch_at_slot(sample.slot))`.
+- _\[REJECT\]_ `sample.index` must be within valid range: `0 <= sample.index < sample_count`, where:
+  - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
+  - `points_count` is the length as claimed along with the commitment, which must be smaller than `MAX_SAMPLES_PER_BLOCK`.
+- _\[IGNORE\]_ The `sample` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `sample.slot <= current_slot`. A client MAY queue future samples for processing at the appropriate slot if it passed formatting conditions.
-- _[IGNORE]_ This is the first received sample with the (`sample.shard`, `sample.slot`, `sample.index`) key tuple.
-- _[REJECT]_ As already limited by the SSZ list-limit, it is important the sample data is well-formatted and not too large.
-- _[REJECT]_ The `sample.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
-- _[REJECT]_ The `sample.proof` MUST be valid: `verify_sample(sample, sample_count, commitment)`
+- _\[IGNORE\]_ This is the first received sample with the (`sample.shard`, `sample.slot`, `sample.index`) key tuple.
+- _\[REJECT\]_ As already limited by the SSZ list-limit, it is important the sample data is well-formatted and not too large.
+- _\[REJECT\]_ The `sample.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
+- _\[REJECT\]_ The `sample.proof` MUST be valid: `verify_sample(sample, sample_count, commitment)`
 
 Upon receiving a valid sample, it SHOULD be retained for a buffer period if the local node is part of the backbone that covers this sample.
 This is to serve other peers that may have missed it.
-
 
 ## DAS in the Req-Resp domain: Pull
 
 To pull samples from nodes, in case of network instability when samples are unavailable, a new query method is added to the Req-Resp domain.
 
-This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../phase0/p2p-interface.md). 
+This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../phase0/p2p-interface.md).
 
 Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 
 The result codes are extended with:
--  3: **ResourceUnavailable** -- when the request was valid but cannot be served at this point in time.
+
+- 3: **ResourceUnavailable** -- when the request was valid but cannot be served at this point in time.
 
 TODO: unify with phase0? Lighthoue already defined this in their response codes enum.
 
@@ -208,6 +213,7 @@ TODO: unify with phase0? Lighthoue already defined this in their response codes 
 **Protocol ID:** `/eth2/das/req/query/1/`
 
 Request Content:
+
 ```
 (
   sample_index: SampleIndex
@@ -215,6 +221,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   DASSample
@@ -222,6 +229,7 @@ Response Content:
 ```
 
 When the sample is:
+
 - Available: respond with a `Success` result code, and the encoded sample.
 - Expected to be available, but not: respond with a `ResourceUnavailable` result code.
 - Not available, but never of interest to the node: respond with an `InvalidRequest` result code.

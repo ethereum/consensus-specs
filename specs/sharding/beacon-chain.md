@@ -1,11 +1,13 @@
-# Ethereum 2.0 Sharding -- Beacon Chain changes 
+# Ethereum 2.0 Sharding -- Beacon Chain changes
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -53,8 +55,8 @@
     - [Shard epoch increment](#shard-epoch-increment)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
 
+<!-- /TOC -->
 
 ## Introduction
 
@@ -62,72 +64,71 @@ This document describes the extensions made to the Phase 0 design of The Beacon 
 based on the ideas [here](https://hackmd.io/G-Iy5jqyT7CXWEz8Ssos8g) and more broadly [here](https://arxiv.org/abs/1809.09044),
 using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
-
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Shard` | `uint64` | A shard number |
-| `BLSCommitment` | `bytes48` | A G1 curve point |
-| `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
+| Name            | SSZ equivalent | Description                                  |
+| --------------- | -------------- | -------------------------------------------- |
+| `Shard`         | `uint64`       | A shard number                               |
+| `BLSCommitment` | `bytes48`      | A G1 curve point                             |
+| `BLSPoint`      | `uint256`      | A number `x` in the range `0 <= x < MODULUS` |
 
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.
 
-| Name | Value | Notes |
-| - | - | - |
-| `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
-| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2) | Factor by which samples are extended for data availability encoding |
-| `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
-| `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
+| Name                                    | Value                                                                                           | Notes                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `PRIMITIVE_ROOT_OF_UNITY`               | `5`                                                                                             | Primitive root of unity of the BLS12_381 (inner) modulus            |
+| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2)                                                                                    | Factor by which samples are extended for data availability encoding |
+| `POINTS_PER_SAMPLE`                     | `uint64(2**3)` (= 8)                                                                            | 31 * 8 = 248 bytes                                                  |
+| `MODULUS`                               | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |                                                                     |
 
 ## Configuration
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
-| `MAX_SHARDS` | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes) |
-| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
-| `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
+| Name                              | Value                     | Notes                                                                     |
+| --------------------------------- | ------------------------- | ------------------------------------------------------------------------- |
+| `MAX_SHARDS`                      | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes)      |
+| `INITIAL_ACTIVE_SHARDS`           | `uint64(2**6)` (= 64)     | Initial shard count                                                       |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8)      | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
+| `MAX_SHARD_HEADERS_PER_SHARD`     | `4`                       |                                                                           |
 
 ### Shard block configs
 
-| Name | Value | Notes |
-| - | - | - |
-| `MAX_SAMPLES_PER_BLOCK` | `uint64(2**11)` (= 2,048) | 248 * 2,048 = 507,904 bytes |
+| Name                       | Value                     | Notes                       |
+| -------------------------- | ------------------------- | --------------------------- |
+| `MAX_SAMPLES_PER_BLOCK`    | `uint64(2**11)` (= 2,048) | 248 * 2,048 = 507,904 bytes |
 | `TARGET_SAMPLES_PER_BLOCK` | `uint64(2**10)` (= 1,024) | 248 * 1,024 = 253,952 bytes |
 
 ### Precomputed size verification points
 
-| Name | Value |
-| - | - |
-| `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
-| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` |
+| Name            | Value                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `G1_SETUP`      | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
+| `G2_SETUP`      | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]`                                              |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)`           |
 
 ### Gwei values
 
-| Name | Value | Unit | Description |
-| - | - | - | - |
-| `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
-| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
+| Name           | Value                           | Unit | Description                                         |
+| -------------- | ------------------------------- | ---- | --------------------------------------------------- |
+| `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |
+| `MIN_GASPRICE` | `Gwei(2**3)` (= 8)              | Gwei | Min gasprice charged for a TARGET-sized shard block |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                     | Value                 |  Unit  | Duration  |
+| ------------------------ | --------------------- | :----: | :-------: |
 | `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
-| `DOMAIN_SHARD_HEADER` | `DomainType('0x80000000')` |
+| Name                     | Value                      |
+| ------------------------ | -------------------------- |
+| `DOMAIN_SHARD_HEADER`    | `DomainType('0x80000000')` |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
 
 ## Updated containers
@@ -409,7 +410,6 @@ def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Sh
     active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
     return CommitteeIndex((active_shards + shard - get_start_shard(state, slot)) % active_shards)    
 ```
-
 
 ### Block processing
 

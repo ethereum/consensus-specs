@@ -43,12 +43,13 @@ The yielding pattern is:
 3 value style: `yield <key name> <kind name> <value>`.
 
 Test part output kinds:
+
 - `ssz`: value is expected to be a `bytes`, and the raw data is written to a `<key name>.ssz_snappy` file.
 - `data`: value is expected to be any Python object that can be dumped as YAML. Output is written to `<key name>.yaml`
-- `meta`: these key-value pairs are collected into a dict, and then collectively written to a metadata 
-          file named `meta.yaml`, if anything is yielded with `meta` empty.
+- `meta`: these key-value pairs are collected into a dict, and then collectively written to a metadata
+  file named `meta.yaml`, if anything is yielded with `meta` empty.
 
 The `vector_test()` decorator can detect pyspec SSZ types, and output them both as `data` and `ssz`, for the test consumer to choose.
 
-Note that the yielded outputs are processed before the test continues. It is safe to yield information that later mutates, 
- as the output will already be encoded to yaml or ssz bytes. This avoids the need to deep-copy the whole object.
+Note that the yielded outputs are processed before the test continues. It is safe to yield information that later mutates,
+as the output will already be encoded to yaml or ssz bytes. This avoids the need to deep-copy the whole object.

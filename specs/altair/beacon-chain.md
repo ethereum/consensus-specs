@@ -3,7 +3,9 @@
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -54,48 +56,49 @@
     - [Sync committee updates](#sync-committee-updates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
 
 Altair is the first beacon chain hard fork. Its main features are:
 
-* sync committees to support light clients
-* incentive accounting reforms to reduce spec complexity
-* penalty parameter updates towards their planned maximally punitive values
+- sync committees to support light clients
+- incentive accounting reforms to reduce spec complexity
+- penalty parameter updates towards their planned maximally punitive values
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
+| Name                 | SSZ equivalent | Description                                                |
+| -------------------- | -------------- | ---------------------------------------------------------- |
+| `ParticipationFlags` | `uint8`        | a succinct representation of 8 boolean participation flags |
 
 ## Constants
 
 ### Participation flag indices
 
-| Name | Value |
-| - | - |
-| `TIMELY_HEAD_FLAG_INDEX` | `0` |
-| `TIMELY_SOURCE_FLAG_INDEX` | `1` |
-| `TIMELY_TARGET_FLAG_INDEX` | `2` |
+| Name                       | Value |
+| -------------------------- | ----- |
+| `TIMELY_HEAD_FLAG_INDEX`   | `0`   |
+| `TIMELY_SOURCE_FLAG_INDEX` | `1`   |
+| `TIMELY_TARGET_FLAG_INDEX` | `2`   |
 
 ### Incentivization weights
 
-| Name | Value |
-| - | - |
-| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
+| Name                   | Value        |
+| ---------------------- | ------------ |
+| `TIMELY_HEAD_WEIGHT`   | `uint64(12)` |
 | `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
 | `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
-| `SYNC_REWARD_WEIGHT` | `uint64(8)` |
-| `WEIGHT_DENOMINATOR` | `uint64(64)` |
+| `SYNC_REWARD_WEIGHT`   | `uint64(8)`  |
+| `WEIGHT_DENOMINATOR`   | `uint64(64)` |
 
 *Note*: The sum of the weight fractions (7/8) plus the proposer inclusion fraction (1/8) equals 1.
 
 ### Misc
 
-| Name | Value |
-| - | - |
+| Name                   | Value                                  |
+| ---------------------- | -------------------------------------- |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Configuration
@@ -106,33 +109,33 @@ This patch updates a few configuration values to move penalty parameters toward 
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
-| Name | Value |
-| - | - |
-| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR` | `uint64(3 * 2**24)` (= 50,331,648) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR` | `uint64(2**6)` (= 64) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)` |
+| Name                                      | Value                              |
+| ----------------------------------------- | ---------------------------------- |
+| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `uint64(3 * 2**24)` (= 50,331,648) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`    | `uint64(2**6)` (= 64)              |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)`                        |
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
-| `SYNC_PUBKEYS_PER_AGGREGATE` | `uint64(2**6)` (= 64) |
-| `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
+| Name                         | Value                     |
+| ---------------------------- | ------------------------- |
+| `SYNC_COMMITTEE_SIZE`        | `uint64(2**10)` (= 1,024) |
+| `SYNC_PUBKEYS_PER_AGGREGATE` | `uint64(2**6)` (= 64)     |
+| `INACTIVITY_SCORE_BIAS`      | `uint64(4)`               |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                               | Value                 |  Unit  | Duration  |
+| ---------------------------------- | --------------------- | :----: | :-------: |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
-| `DOMAIN_SYNC_COMMITTEE` | `DomainType('0x07000000')` |
+| Name                                    | Value                      |
+| --------------------------------------- | -------------------------- |
+| `DOMAIN_SYNC_COMMITTEE`                 | `DomainType('0x07000000')` |
 | `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
-| `DOMAIN_CONTRIBUTION_AND_PROOF` | `DomainType('0x09000000')` |
+| `DOMAIN_CONTRIBUTION_AND_PROOF`         | `DomainType('0x09000000')` |
 
 ## Containers
 

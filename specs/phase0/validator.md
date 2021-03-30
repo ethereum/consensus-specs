@@ -5,7 +5,9 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -70,6 +72,7 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 - [Protection best practices](#protection-best-practices)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
@@ -86,12 +89,12 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 ### Misc
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
-| `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
-| `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
-| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
+| Name                                    | Value          |                               Unit                                | Duration  |
+| --------------------------------------- | -------------- | :---------------------------------------------------------------: | :-------: |
+| `TARGET_AGGREGATORS_PER_COMMITTEE`      | `2**4` (= 16)  |                            validators                             |           |
+| `RANDOM_SUBNETS_PER_VALIDATOR`          | `2**0` (= 1)   |                              subnets                              |           |
+| `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) |                              epochs                               | ~27 hours |
+| `ATTESTATION_SUBNET_COUNT`              | `64`           | The number of attestation subnets used in the gossipsub protocol. |           |
 
 ## Containers
 
@@ -145,8 +148,8 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
 `(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals.
 The `withdrawal_credentials` field must be such that:
 
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-* `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+- `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
+- `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
 
 *Note*: The `bls_withdrawal_privkey` is not required for validating and can be kept in cold storage.
 
@@ -158,9 +161,9 @@ The `eth1_withdrawal_address` can be the address of either an externally owned a
 
 The `withdrawal_credentials` field must be such that:
 
-* `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
-* `withdrawal_credentials[1:12] == b'\x00' * 11`
-* `withdrawal_credentials[12:] == eth1_withdrawal_address`
+- `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+- `withdrawal_credentials[1:12] == b'\x00' * 11`
+- `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
 After the merge of the current Ethereum application layer (Eth1) into the Beacon Chain (Eth2),
 withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH)
@@ -263,12 +266,13 @@ A validator should plan for future assignments by noting their assigned attestat
 slot and joining the committee index attestation subnet related to their committee assignment.
 
 Specifically a validator should:
-* Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
-* Calculate the committees per slot for the next epoch: `committees_per_slot = get_committee_count_per_slot(state, next_epoch)`
-* Calculate the subnet index: `subnet_id = compute_subnet_for_attestation(committees_per_slot, slot, committee_index)`
-* Find peers of the pubsub topic `beacon_attestation_{subnet_id}`.
-    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][subnet_id] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
-    * If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
+
+- Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+- Calculate the committees per slot for the next epoch: `committees_per_slot = get_committee_count_per_slot(state, next_epoch)`
+- Calculate the subnet index: `subnet_id = compute_subnet_for_attestation(committees_per_slot, slot, committee_index)`
+- Find peers of the pubsub topic `beacon_attestation_{subnet_id}`.
+  - If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][subnet_id] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
+  - If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
 
 *Note*: If the validator is _not_ assigned to be an aggregator, the validator only needs sufficient number of peers on the topic to be able to publish messages. The validator does not need to _subscribe_ and listen to all messages on the topic.
 
@@ -459,8 +463,8 @@ First, the validator should construct `attestation_data`, an [`AttestationData`]
 
 ##### General
 
-* Set `attestation_data.slot = slot` where `slot` is the assigned slot.
-* Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
+- Set `attestation_data.slot = slot` where `slot` is the assigned slot.
+- Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
 
 ##### LMD GHOST vote
 
@@ -506,6 +510,7 @@ def get_attestation_signature(state: BeaconState, attestation_data: AttestationD
 Finally, the validator broadcasts `attestation` to the associated attestation subnet, the `beacon_attestation_{subnet_id}` pubsub topic.
 
 The `subnet_id` for the `attestation` is calculated with:
+
 - Let `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`.
 - Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.committee_index)`.
 
@@ -605,9 +610,9 @@ def get_aggregate_and_proof_signature(state: BeaconState,
 
 Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each validator must:
 
-* Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
-* Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
-* Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
+- Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
+- Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
+- Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
 
 *Note*: Short lived beacon committee assignments should not be added in into the ENR `attnets` entry.
 
@@ -647,8 +652,8 @@ If the software crashes at some point within this routine, then when the validat
 
 A validator client should be considered standalone and should consider the beacon node as untrusted. This means that the validator client should protect:
 
-1) Private keys -- private keys should be protected from being exported accidentally or by an attacker.
-2) Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
-3) Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
-4) Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity penalty and potential ejection due to low balance.
-A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.
+1. Private keys -- private keys should be protected from being exported accidentally or by an attacker.
+2. Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
+3. Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
+4. Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity penalty and potential ejection due to low balance.
+   A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.
