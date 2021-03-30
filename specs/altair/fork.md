@@ -5,6 +5,7 @@
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -23,10 +24,10 @@ This document describes the process of the first upgrade of Ethereum 2.0: the Al
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
+| Name                  | Value                   |
+| --------------------- | ----------------------- |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
-| `ALTAIR_FORK_SLOT` | `Slot(0)` **TBD** |
+| `ALTAIR_FORK_SLOT`    | `Slot(0)` **TBD**       |
 
 ## Fork to Altair
 

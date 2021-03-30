@@ -1,8 +1,11 @@
 # SimpleSerialize (SSZ)
 
 ## Table of contents
+
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Constants](#constants)
@@ -27,41 +30,43 @@
 - [Implementations](#implementations)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Constants
 
-| Name | Value | Description |
-|-|-|-|
-| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
-| `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length offset. |
-| `BITS_PER_BYTE` | `8` | Number of bits per byte. |
+| Name                      | Value | Description                                   |
+| ------------------------- | ----- | --------------------------------------------- |
+| `BYTES_PER_CHUNK`         | `32`  | Number of bytes per chunk.                    |
+| `BYTES_PER_LENGTH_OFFSET` | `4`   | Number of bytes per serialized length offset. |
+| `BITS_PER_BYTE`           | `8`   | Number of bits per byte.                      |
 
 ## Typing
+
 ### Basic types
 
-* `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-* `boolean`: `True` or `False`
+- `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+- `boolean`: `True` or `False`
 
 ### Composite types
 
-* **container**: ordered heterogeneous collection of values
-    * python dataclass notation with key-type pairs, e.g.
-    ```python
-    class ContainerExample(Container):
-        foo: uint64
-        bar: boolean
-    ```
-* **vector**: ordered fixed-length homogeneous collection, with `N` values
-    * notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
-* **list**: ordered variable-length homogeneous collection, limited to `N` values
-    * notation `List[type, N]`, e.g. `List[uint64, N]`
-* **bitvector**: ordered fixed-length collection of `boolean` values, with `N` bits
-    * notation `Bitvector[N]`
-* **bitlist**: ordered variable-length collection of `boolean` values, limited to `N` bits
-    * notation `Bitlist[N]`
-* **union**: union type containing one of the given subtypes
-    * notation `Union[type_0, type_1, ...]`, e.g. `union[null, uint64]`
+- **container**: ordered heterogeneous collection of values
+  - python dataclass notation with key-type pairs, e.g.
+  ```python
+  class ContainerExample(Container):
+      foo: uint64
+      bar: boolean
+  ```
+- **vector**: ordered fixed-length homogeneous collection, with `N` values
+  - notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
+- **list**: ordered variable-length homogeneous collection, limited to `N` values
+  - notation `List[type, N]`, e.g. `List[uint64, N]`
+- **bitvector**: ordered fixed-length collection of `boolean` values, with `N` bits
+  - notation `Bitvector[N]`
+- **bitlist**: ordered variable-length collection of `boolean` values, limited to `N` bits
+  - notation `Bitlist[N]`
+- **union**: union type containing one of the given subtypes
+  - notation `Union[type_0, type_1, ...]`, e.g. `union[null, uint64]`
 
 *Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due to their different serialization requirements. Similarly, both `List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally `Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization efficiencies.
 
@@ -73,24 +78,25 @@ We recursively define "variable-size" types to be lists, unions, `Bitlist` and a
 
 For convenience we alias:
 
-* `bit` to `boolean`
-* `byte` to `uint8` (this is a basic type)
-* `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
-* `null`: `{}`
+- `bit` to `boolean`
+- `byte` to `uint8` (this is a basic type)
+- `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
+- `null`: `{}`
 
 ### Default values
+
 Assuming a helper function `default(type)` which returns the default value for `type`, we can recursively define the default value for all types.
 
-| Type | Default Value |
-| ---- | ------------- |
-| `uintN` | `0` |
-| `boolean` | `False` |
-| `Container` | `[default(type) for type in container]` |
-| `Vector[type, N]` | `[default(type)] * N` |
-| `Bitvector[N]` | `[False] * N` |
-| `List[type, N]` | `[]` |
-| `Bitlist[N]` | `[]` |
-| `Union[type_0, type_1, ...]` | `default(type_0)` |
+| Type                         | Default Value                           |
+| ---------------------------- | --------------------------------------- |
+| `uintN`                      | `0`                                     |
+| `boolean`                    | `False`                                 |
+| `Container`                  | `[default(type) for type in container]` |
+| `Vector[type, N]`            | `[default(type)] * N`                   |
+| `Bitvector[N]`               | `[False] * N`                           |
+| `List[type, N]`              | `[]`                                    |
+| `Bitlist[N]`                 | `[]`                                    |
+| `Union[type_0, type_1, ...]` | `default(type_0)`                       |
 
 #### `is_zero`
 
@@ -181,15 +187,15 @@ return serialized_type_index + serialized_bytes
 
 ## Deserialization
 
-Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. 
+Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to.
 
 Deserialization can be implemented using a recursive algorithm. The deserialization of basic objects is easy, and from there we can find a simple recursive algorithm for all fixed-size objects. For variable-size objects we have to do one of the following depending on what kind of object it is:
 
-* Vector/list of a variable-size object: The serialized data will start with offsets of all the serialized objects (`BYTES_PER_LENGTH_OFFSET` bytes each).
-  * Using the first offset, we can compute the length of the list (divide by `BYTES_PER_LENGTH_OFFSET`), as it gives us the total number of bytes in the offset data.
-  * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
-* Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
-* In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
+- Vector/list of a variable-size object: The serialized data will start with offsets of all the serialized objects (`BYTES_PER_LENGTH_OFFSET` bytes each).
+  - Using the first offset, we can compute the length of the list (divide by `BYTES_PER_LENGTH_OFFSET`), as it gives us the total number of bytes in the offset data.
+  - The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
+- Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
+- In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
 
@@ -203,40 +209,40 @@ Efficient algorithms for computing this object can be found in [the implementati
 
 We first define helper functions:
 
-* `size_of(B)`, where `B` is a basic type: the length, in bytes, of the serialized form of the basic type.
-* `chunk_count(type)`: calculate the amount of leafs for merkleization of the type.
-   * all basic types: `1`
-   * `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size, rounding up)
-   * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
-   * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
-   * containers: `len(fields)`
-* `pack(values)`: Given ordered objects of the same basic type:
-   1. Serialize `values` into bytes.
-   2. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
-   3. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
-   4. Return the chunks.
-* `pack_bits(bits)`: Given the bits of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. Then return `pack(bitfield_bytes)`.
-* `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
-* `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
-    * The merkleization depends on the effective input, which must be padded/limited:
-        - if no limit: pad the `chunks` with zeroed chunks to `next_pow_of_two(len(chunks))` (virtually for memory efficiency).
-        - if `limit >= len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
-        - if `limit < len(chunks)`: do not merkleize, input exceeds limit. Raise an error instead.
-    * Then, merkleize the chunks (empty input is padded to 1 zero chunk):
-        - If `1` chunk: the root is the chunk itself.
-        - If `> 1` chunks: merkleize as binary tree.
-* `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
-* `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
+- `size_of(B)`, where `B` is a basic type: the length, in bytes, of the serialized form of the basic type.
+- `chunk_count(type)`: calculate the amount of leafs for merkleization of the type.
+  - all basic types: `1`
+  - `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size, rounding up)
+  - `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
+  - `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
+  - containers: `len(fields)`
+- `pack(values)`: Given ordered objects of the same basic type:
+  1. Serialize `values` into bytes.
+  2. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with zeroes to the next multiple.
+  3. Partition the bytes into `BYTES_PER_CHUNK`-byte chunks.
+  4. Return the chunks.
+- `pack_bits(bits)`: Given the bits of bitlist or bitvector, get `bitfield_bytes` by packing them in bytes and aligning to the start. The length-delimiting bit for bitlists is excluded. Then return `pack(bitfield_bytes)`.
+- `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
+- `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
+  - The merkleization depends on the effective input, which must be padded/limited:
+    - if no limit: pad the `chunks` with zeroed chunks to `next_pow_of_two(len(chunks))` (virtually for memory efficiency).
+    - if `limit >= len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
+    - if `limit < len(chunks)`: do not merkleize, input exceeds limit. Raise an error instead.
+  - Then, merkleize the chunks (empty input is padded to 1 zero chunk):
+    - If `1` chunk: the root is the chunk itself.
+    - If `> 1` chunks: merkleize as binary tree.
+- `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
+- `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
-* `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects.
-* `merkleize(pack_bits(value), limit=chunk_count(type))` if `value` is a bitvector.
-* `mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))` if `value` is a list of basic objects.
-* `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
-* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
-* `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
-* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
+- `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects.
+- `merkleize(pack_bits(value), limit=chunk_count(type))` if `value` is a bitvector.
+- `mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))` if `value` is a list of basic objects.
+- `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
+- `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
+- `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
+- `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
 
 ## Summaries and expansions
 

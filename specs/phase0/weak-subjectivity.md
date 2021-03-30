@@ -3,7 +3,9 @@
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -22,6 +24,7 @@
 - [Distributing Weak Subjectivity Checkpoints](#distributing-weak-subjectivity-checkpoints)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
@@ -40,20 +43,20 @@ This document uses data structures, constants, functions, and terminology from
 
 ## Custom Types
 
-| Name | SSZ Equivalent | Description |
-|---|---|---|
-| `Ether` | `uint64` | an amount in Ether |
+| Name    | SSZ Equivalent | Description        |
+| ------- | -------------- | ------------------ |
+| `Ether` | `uint64`       | an amount in Ether |
 
 ## Constants
 
-| Name | Value |
-|---|---|
+| Name          | Value           |
+| ------------- | --------------- |
 | `ETH_TO_GWEI` | `uint64(10**9)` |
 
 ## Configuration
 
-| Name | Value |
-|---|---|
+| Name           | Value        |
+| -------------- | ------------ |
 | `SAFETY_DECAY` | `uint64(10)` |
 
 ## Weak Subjectivity Checkpoint
@@ -120,19 +123,19 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
 A brief reference for what these values look like in practice ([reference script](https://gist.github.com/adiasg/3aceab409b36aa9a9d9156c1baa3c248)):
 
 | Safety Decay | Avg. Val. Balance (ETH) | Val. Count | Weak Sub. Period (Epochs) |
-| ---- | ---- | ---- | ---- |
-| 10 | 28 | 32768 | 504 |
-| 10 | 28 | 65536 | 752 |
-| 10 | 28 | 131072 | 1248 |
-| 10 | 28 | 262144 | 2241 |
-| 10 | 28 | 524288 | 2241 |
-| 10 | 28 | 1048576 | 2241 |
-| 10 | 32 | 32768 | 665 |
-| 10 | 32 | 65536 | 1075 |
-| 10 | 32 | 131072 | 1894 |
-| 10 | 32 | 262144 | 3532 |
-| 10 | 32 | 524288 | 3532 |
-| 10 | 32 | 1048576 | 3532 |
+| ------------ | ----------------------- | ---------- | ------------------------- |
+| 10           | 28                      | 32768      | 504                       |
+| 10           | 28                      | 65536      | 752                       |
+| 10           | 28                      | 131072     | 1248                      |
+| 10           | 28                      | 262144     | 2241                      |
+| 10           | 28                      | 524288     | 2241                      |
+| 10           | 28                      | 1048576    | 2241                      |
+| 10           | 32                      | 32768      | 665                       |
+| 10           | 32                      | 65536      | 1075                      |
+| 10           | 32                      | 131072     | 1894                      |
+| 10           | 32                      | 262144     | 3532                      |
+| 10           | 32                      | 524288     | 3532                      |
+| 10           | 32                      | 1048576    | 3532                      |
 
 ## Weak Subjectivity Sync
 
@@ -149,12 +152,13 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
    ```
 
 2. Check the weak subjectivity requirements:
-    - *IF* `epoch_number > store.finalized_checkpoint.epoch`,
-          then *ASSERT* during block sync that block with root `block_root` is in the sync path at epoch `epoch_number`.
-          Emit descriptive critical error if this assert fails, then exit client process.
-    - *IF* `epoch_number <= store.finalized_checkpoint.epoch`,
-          then *ASSERT* that the block in the canonical chain at epoch `epoch_number` has root `block_root`.
-          Emit descriptive critical error if this assert fails, then exit client process.
+
+   - *IF* `epoch_number > store.finalized_checkpoint.epoch`,
+     then *ASSERT* during block sync that block with root `block_root` is in the sync path at epoch `epoch_number`.
+     Emit descriptive critical error if this assert fails, then exit client process.
+   - *IF* `epoch_number <= store.finalized_checkpoint.epoch`,
+     then *ASSERT* that the block in the canonical chain at epoch `epoch_number` has root `block_root`.
+     Emit descriptive critical error if this assert fails, then exit client process.
 
 ### Checking for Stale Weak Subjectivity Checkpoint
 

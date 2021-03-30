@@ -1,7 +1,7 @@
 # SSZ, generic tests
 
 This set of test-suites provides general testing for SSZ:
- to decode any container/list/vector/other type from binary data, encode it back, and compute the hash-tree-root.
+to decode any container/list/vector/other type from binary data, encode it back, and compute the hash-tree-root.
 
 This test collection for general-purpose SSZ is experimental.
 The `ssz_static` suite is the required minimal support for SSZ, and should be prioritized.
@@ -9,20 +9,19 @@ The `ssz_static` suite is the required minimal support for SSZ, and should be pr
 The `ssz_generic` tests are split up into different handler, each specialized into a SSZ type:
 
 - Vectors
-    - `basic_vector`
-    - `complex_vector` *not supported yet*
+  - `basic_vector`
+  - `complex_vector` *not supported yet*
 - List
-    - `basic_list` *not supported yet*
-    - `complex_list` *not supported yet*
+  - `basic_list` *not supported yet*
+  - `complex_list` *not supported yet*
 - Bitfields
-    - `bitvector`
-    - `bitlist`
+  - `bitvector`
+  - `bitlist`
 - Basic types
-    - `boolean`
-    - `uints`
+  - `boolean`
+  - `uints`
 - Containers
-    - `containers`
-
+  - `containers`
 
 ## Format
 
@@ -59,7 +58,7 @@ The object, encoded as a YAML structure. Using the same familiar encoding as YAM
 The conditions are the same for each type:
 
 - Encoding: After encoding the given `value` object, the output should match `serialized`.
-- Decoding: After decoding the given `serialized` bytes, it should match the `value` object. 
+- Decoding: After decoding the given `serialized` bytes, it should match the `value` object.
 - Hash-tree-root: the root should match the root declared in the metadata.
 
 ## `invalid`
@@ -74,14 +73,13 @@ The `serialized` data should simply not be decoded without raising an error.
 Note that for some type declarations in the invalid suite, the type itself may technically be invalid.
 This is a valid way of detecting `invalid` data too. E.g. a 0-length basic vector.
 
-
 ## Type declarations
 
 Most types are not as static, and can reasonably be constructed during test runtime from the test case name.
 Formats are listed below.
 
 For each test case, an additional `_{extra...}` may be appended to the name,
- where `{extra...}` contains a human readable indication of the test case contents for debugging purposes.
+where `{extra...}` contains a human readable indication of the test case contents for debugging purposes.
 
 ### `basic_vector`
 
@@ -97,7 +95,6 @@ Data:
 {length}: an unsigned integer
 ```
 
-
 ### `bitlist`
 
 ```
@@ -109,7 +106,6 @@ Data:
 
 {limit}: the list limit, in bits, of the bitlist. Does not include the length-delimiting bit in the serialized form.
 ```
-
 
 ### `bitvector`
 

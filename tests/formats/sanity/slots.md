@@ -11,13 +11,11 @@ description: string    -- Optional. Description of test case, purely for debuggi
 bls_setting: int       -- see general test-format spec.
 ```
 
-
 ### `pre.ssz_snappy`
 
 An SSZ-snappy `BeaconState`, the state before running the transitions.
 
 Also available as `pre.ssz_snappy`.
-
 
 ### `slots.yaml`
 
@@ -28,7 +26,6 @@ An integer. The amount of slots to process (i.e. the difference in slots between
 An SSZ-snappy `BeaconState`, the state after applying the transitions.
 
 Also available as `post.ssz_snappy`.
-
 
 ### Processing
 

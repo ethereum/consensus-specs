@@ -7,7 +7,9 @@
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -32,36 +34,37 @@
       - [`process_application_payload`](#process_application_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
 
-This is a patch implementing the executable beacon chain proposal. 
+This is a patch implementing the executable beacon chain proposal.
 It enshrines application-layer execution and validity as a first class citizen at the core of the beacon chain.
 
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
+| Name                | SSZ equivalent                               | Description                                                                                                                                                                                              |
+| ------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a byte-list containing a single [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
 
 ## Constants
 
 ### Transition
 
-| Name | Value |
-| - | - |
+| Name                          | Value   |
+| ----------------------------- | ------- |
 | `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
 
 ### Execution
 
-| Name | Value |
-| - | - |
+| Name                               | Value                         |
+| ---------------------------------- | ----------------------------- |
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_APPLICATION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
-| `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
+| `MAX_APPLICATION_TRANSACTIONS`     | `uint64(2**14)` (= 16,384)    |
+| `BYTES_PER_LOGS_BLOOM`             | `uint64(2**8)` (= 256)        |
 
 ## Containers
 
@@ -143,12 +146,12 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 *Note*: `ApplicationState` class is an abstract class representing ethereum application state.
 
-Let `get_application_state(application_state_root: Bytes32) -> ApplicationState`  be the function that given the root hash returns a copy of ethereum application state. 
+Let `get_application_state(application_state_root: Bytes32) -> ApplicationState`  be the function that given the root hash returns a copy of ethereum application state.
 The body of the function is implementation dependent.
 
 ##### `application_state_transition`
 
-Let `application_state_transition(application_state: ApplicationState, application_payload: ApplicationPayload) -> None` be the transition function of ethereum application state. 
+Let `application_state_transition(application_state: ApplicationState, application_payload: ApplicationPayload) -> None` be the transition function of ethereum application state.
 The body of the function is implementation dependent.
 
 *Note*: `application_state_transition` must throw `AssertionError` if either the transition itself or one of the post-transition verifications has failed.

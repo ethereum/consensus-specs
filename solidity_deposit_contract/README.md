@@ -14,16 +14,17 @@ In August 2020, version `r2` was released with metadata modifications and relice
 ## Compiling solidity deposit contract
 
 In the `eth2.0-specs` directory run:
+
 ```sh
 make compile_deposit_contract
 ```
 
 The following parameters were used to generate the bytecode for the `DepositContract` available in this repository:
 
-* Contract Name: `DepositContract`
-* Compiler Version: Solidity `v0.6.11+commit.5ef660b1`
-* Optimization Enabled: `Yes` with `5000000` runs
-* Metadata Options: `--metadata-literal` (to verify metadata hash)
+- Contract Name: `DepositContract`
+- Compiler Version: Solidity `v0.6.11+commit.5ef660b1`
+- Optimization Enabled: `Yes` with `5000000` runs
+- Metadata Options: `--metadata-literal` (to verify metadata hash)
 
 ```sh
 solc --optimize --optimize-runs 5000000 --metadata-literal --bin deposit_contract.sol

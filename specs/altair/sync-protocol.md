@@ -5,7 +5,9 @@
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -20,11 +22,12 @@
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
 - [Light client state updates](#light-client-state-updates)
-    - [`validate_light_client_update`](#validate_light_client_update)
-    - [`apply_light_client_update`](#apply_light_client_update)
-    - [`process_light_client_update`](#process_light_client_update)
+  - [`validate_light_client_update`](#validate_light_client_update)
+  - [`apply_light_client_update`](#apply_light_client_update)
+  - [`process_light_client_update`](#process_light_client_update)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
@@ -39,24 +42,24 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 ## Constants
 
-| Name | Value |
-| - | - |
-| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` |
+| Name                        | Value                                                                |
+| --------------------------- | -------------------------------------------------------------------- |
+| `FINALIZED_ROOT_INDEX`      | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
+| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')`          |
 
 ## Configuration
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` |
-| `MAX_VALID_LIGHT_CLIENT_UPDATES` | `uint64(2**64 - 1)` |
+| Name                              | Value               |
+| --------------------------------- | ------------------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                 |
+| `MAX_VALID_LIGHT_CLIENT_UPDATES`  | `uint64(2**64 - 1)` |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                          | Value         | Unit  | Duration  |
+| ----------------------------- | ------------- | :---: | :-------: |
 | `LIGHT_CLIENT_UPDATE_TIMEOUT` | `Slot(2**13)` | slots | ~27 hours |
 
 ## Containers

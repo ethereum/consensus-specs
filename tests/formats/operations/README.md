@@ -24,26 +24,25 @@ An SSZ-snappy encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
 
-
 ## Condition
 
 A handler of the `operations` test-runner should process these cases,
- calling the corresponding processing implementation.
+calling the corresponding processing implementation.
 This excludes the other parts of the block-transition.
 
 Operations:
 
-| *`operation-name`*      | *`operation-object`*  | *`input name`*       | *`processing call`*                                             |
-|-------------------------|-----------------------|----------------------|-----------------------------------------------------------------|
-| `attestation`           | `Attestation`         | `attestation`        | `process_attestation(state, attestation)`                       |
-| `attester_slashing`     | `AttesterSlashing`    | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`           |
-| `block_header`          | `BeaconBlock`         | **`block`**          | `process_block_header(state, block)`                            |
-| `deposit`               | `Deposit`             | `deposit`            | `process_deposit(state, deposit)`                               |
-| `proposer_slashing`     | `ProposerSlashing`    | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`           |
-| `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`                 |
-| `sync_aggregate`        | `SyncAggregate`       | `sync_aggregate`     | `process_sync_committee(state, sync_aggregate)` (new in Altair) |
+| *`operation-name`*  | *`operation-object`*  | *`input name`*      | *`processing call`*                                             |
+| ------------------- | --------------------- | ------------------- | --------------------------------------------------------------- |
+| `attestation`       | `Attestation`         | `attestation`       | `process_attestation(state, attestation)`                       |
+| `attester_slashing` | `AttesterSlashing`    | `attester_slashing` | `process_attester_slashing(state, attester_slashing)`           |
+| `block_header`      | `BeaconBlock`         | **`block`**         | `process_block_header(state, block)`                            |
+| `deposit`           | `Deposit`             | `deposit`           | `process_deposit(state, deposit)`                               |
+| `proposer_slashing` | `ProposerSlashing`    | `proposer_slashing` | `process_proposer_slashing(state, proposer_slashing)`           |
+| `voluntary_exit`    | `SignedVoluntaryExit` | `voluntary_exit`    | `process_voluntary_exit(state, voluntary_exit)`                 |
+| `sync_aggregate`    | `SyncAggregate`       | `sync_aggregate`    | `process_sync_committee(state, sync_aggregate)` (new in Altair) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 
 The resulting state should match the expected `post` state, or if the `post` state is left blank,
- the handler should reject the input operation as invalid.
+the handler should reject the input operation as invalid.

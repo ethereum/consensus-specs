@@ -1,10 +1,10 @@
 # Forks
 
 The aim of the fork tests is to ensure that a pre-fork state can be transformed
- into a valid post-fork state, utilizing the `upgrade` function found in the relevant `fork.md` spec.
+into a valid post-fork state, utilizing the `upgrade` function found in the relevant `fork.md` spec.
 
 There is only one handler: `fork`. Each fork (after genesis) is handled with the same format,
- and the particular fork boundary being tested is noted in `meta.yaml`.
+and the particular fork boundary being tested is noted in `meta.yaml`.
 
 ## Test case format
 
@@ -20,9 +20,9 @@ fork: str    -- Fork being transitioned to
 
 Key of valid `fork` strings that might be found in `meta.yaml`
 
-| String ID | Pre-fork | Post-fork | Function |
-| - | - | - | - |
-| `altair` | Phase 0 | Altair | `upgrade_to_altair` |
+| String ID | Pre-fork | Post-fork | Function            |
+| --------- | -------- | --------- | ------------------- |
+| `altair`  | Phase 0  | Altair    | `upgrade_to_altair` |
 
 ### `pre.ssz_snappy`
 

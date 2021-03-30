@@ -3,8 +3,11 @@
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
+
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -16,6 +19,7 @@
     - [`on_block`](#on_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
@@ -113,4 +117,3 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
             if ancestor_at_finalized_slot != store.finalized_checkpoint.root:
                 store.justified_checkpoint = state.current_justified_checkpoint
 ```
-

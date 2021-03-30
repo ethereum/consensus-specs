@@ -1,0 +1,7 @@
+- repo: https://github.com/executablebooks/mdformat
+  rev: 0.6.2
+  hooks:
+  - id: mdformat
+    args: [--number]
+    additional_dependencies:
+    - mdformat-gfm

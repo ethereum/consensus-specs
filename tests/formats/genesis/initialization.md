@@ -11,7 +11,6 @@ eth1_block_hash: Bytes32  -- A `Bytes32` hex encoded, with prefix 0x. The root o
 eth1_timestamp: int       -- An integer. The timestamp of the block, in seconds.
 ```
 
-
 ### `meta.yaml`
 
 A yaml file to help read the deposit count:
@@ -26,16 +25,15 @@ deposits_count: int    -- Amount of deposits.
 A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need to be processed in order.
 Each file is a SSZ-snappy encoded `Deposit` object.
 
-###  `state.ssz_snappy`
+### `state.ssz_snappy`
 
 The expected genesis state. An SSZ-snappy encoded `BeaconState` object.
-
 
 ## Processing
 
 To process this test, build a genesis state with the provided `eth1_block_hash`, `eth1_timestamp` and `deposits`:
 `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`,
- as described in the Beacon Chain specification.
+as described in the Beacon Chain specification.
 
 ## Condition
 

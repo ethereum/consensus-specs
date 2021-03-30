@@ -25,8 +25,8 @@ An SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-tran
 
 ## Condition
 
-A handler of the `epoch_processing` test-runner should process these cases, 
- calling the corresponding processing implementation (same name, prefixed with `process_`).
+A handler of the `epoch_processing` test-runner should process these cases,
+calling the corresponding processing implementation (same name, prefixed with `process_`).
 This excludes the other parts of the epoch-transition.
 The provided pre-state is already transitioned to just before the specific sub-transition of focus of the handler.
 

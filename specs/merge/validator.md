@@ -7,7 +7,9 @@
 ## Table of contents
 
 <!-- TOC -->
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -20,6 +22,7 @@
         - [`produce_application_payload`](#produce_application_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 <!-- /TOC -->
 
 ## Introduction
@@ -51,7 +54,7 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 Let `produce_application_payload(parent_hash: Bytes32) -> ApplicationPayload` be the function that produces new instance of application payload.
 The body of this function is implementation dependent.
 
-* Set `block.body.application_payload = get_application_payload(state)` where:
+- Set `block.body.application_payload = get_application_payload(state)` where:
 
 ```python
 def get_application_payload(state: BeaconState) -> ApplicationPayload:

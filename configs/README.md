@@ -5,7 +5,6 @@ This directory contains a set of constants presets used for testing, testnets, a
 A preset file contains all the constants known for its target.
 Later-fork constants can be ignored, e.g. ignore Sharding constants as a client that only supports Phase 0 currently.
 
-
 ## Forking
 
 Configs are not replaced, but extended with forks. This is to support syncing from one state to the other over a fork boundary, without hot-swapping a config.
@@ -18,7 +17,7 @@ A previous iteration of forking made use of "timelines", but this collides with 
 Instead, the config essentially doubles as fork definition now, e.g. changing the value for `ALTAIR_FORK_SLOT` changes the fork.
 
 Another reason to prefer forking through constants is the ability to program a forking moment based on context, instead of being limited to a static slot number.
- 
+
 ## Format
 
 Each preset is a key-value mapping.
@@ -26,8 +25,9 @@ Each preset is a key-value mapping.
 **Key**: an `UPPER_SNAKE_CASE` (a.k.a. "macro case") formatted string, name of the constant.
 
 **Value** can be either:
- - an unsigned integer number, can be up to 64 bits (incl.)
- - a hexadecimal string, prefixed with `0x`
+
+- an unsigned integer number, can be up to 64 bits (incl.)
+- a hexadecimal string, prefixed with `0x`
 
 Presets may contain comments to describe the values.
 

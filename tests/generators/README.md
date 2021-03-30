@@ -3,17 +3,17 @@
 This directory contains all the generators for tests, consumed by Eth2 client implementations.
 
 Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs,
- here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
+here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
 
 On releases, test generators are run by the release manager. Test-generation of mainnet tests can take a significant amount of time, and is better left out of a CI setup.
 
-An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.  
+An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.
 
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [How to run generators](#how-to-run-generators)
   - [Cleaning](#cleaning)
@@ -25,11 +25,10 @@ An automated nightly tests release system, with a config filter applied, is bein
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-
-
 ## How to run generators
 
 Prerequisites:
+
 - Python 3 installed
 - PIP 3
 - GNU Make
@@ -52,10 +51,9 @@ make -j 4 generate_tests
 
 The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
 
-
 ### Running a single generator
 
-The makefile auto-detects generators in the `tests/generators` directory and provides a tests-gen target (gen_<generator_name>) for each generator. See example:
+The makefile auto-detects generators in the `tests/generators` directory and provides a tests-gen target (gen\_\<generator_name>) for each generator. See example:
 
 ```bash
 make gen_ssz_static
@@ -77,6 +75,7 @@ Now that you have a virtual environment, write your generator.
 It's recommended to extend the base-generator.
 
 Create a `requirements.txt` in the root of your generator directory:
+
 ```
 pytest>=4.4
 ../../../[generator]
@@ -88,12 +87,13 @@ Applying configurations to the spec is simple and enables you to create test sui
 *Note*: Make sure to run `make pyspec` from the root of the specs repository in order to build the pyspec requirement.
 
 Install all the necessary requirements (re-run when you add more):
+
 ```bash
 pip3 install -r requirements.txt
 ```
 
 Note that you may need `PYTHONPATH` to include the pyspec directory, as with running normal tests,
- to run test generators manually. The makefile handles this for you already.
+to run test generators manually. The makefile handles this for you already.
 
 And write your initial test generator, extending the base generator:
 
@@ -152,6 +152,7 @@ if __name__ == "__main__":
 ```
 
 This generator:
+
 - builds off of `gen_runner.run_generator` to handle configuration / filter / output logic.
 - parametrized the creation of a test-provider to support multiple configs.
 - Iterates through tests cases.
@@ -192,12 +193,13 @@ if __name__ == "__main__":
 Here multiple phases load the configuration, and the stream of test cases is derived from a pytest file using the `eth2spec.gen_helpers.gen_from_tests.gen.run_state_test_generators` utility. Note that this helper generates all available tests of `TESTGEN_FORKS` forks of `ALL_CONFIGS` configs of the given runner.
 
 Recommendations:
+
 - You can have more than just one test provider.
 - Your test provider is free to output any configuration and combination of runner/handler/fork/case name.
 - You can split your test case generators into different Python files/packages; this is good for code organization.
-- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary. 
+- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary.
 - You may be able to write your test case provider in a way where it does not make assumptions on constants.
-  If so, you can generate test cases with different configurations for the same scenario (see example). 
+  If so, you can generate test cases with different configurations for the same scenario (see example).
 - See [`tests/core/gen_helpers/README.md`](../core/pyspec/eth2spec/gen_helpers/README.md) for command line options for generators.
 
 ## How to add a new test generator
@@ -205,21 +207,20 @@ Recommendations:
 To add a new test generator that builds `New Tests`:
 
 1. Create a new directory `new_tests` within the `tests/generators` directory.
- Note that `new_tests` is also the name of the directory in which the tests will appear in the tests repository later.
+   Note that `new_tests` is also the name of the directory in which the tests will appear in the tests repository later.
 2. Your generator is assumed to have a `requirements.txt` file,
- with any dependencies it may need. Leave it empty if your generator has none.
+   with any dependencies it may need. Leave it empty if your generator has none.
 3. Your generator is assumed to have a `main.py` file in its root.
- By adding the base generator to your requirements, you can make a generator really easily. See docs below.
+   By adding the base generator to your requirements, you can make a generator really easily. See docs below.
 4. Your generator is called with `-o some/file/path/for_testing/can/be_anything -c some/other/path/to_configs/`.
- The base generator helps you handle this; you only have to define test case providers.
+   The base generator helps you handle this; you only have to define test case providers.
 5. Finally, add any linting or testing commands to the
- [circleci config file](../../.circleci/config.yml) if desired to increase code quality.
- Or add it to the [`Makefile`](../../Makefile), if it can be run locally.
+   [circleci config file](../../.circleci/config.yml) if desired to increase code quality.
+   Or add it to the [`Makefile`](../../Makefile), if it can be run locally.
 
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
-
 
 ## How to remove a test generator
 
