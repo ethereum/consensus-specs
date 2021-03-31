@@ -390,32 +390,33 @@ def add_block_tree_node(store: Store, block: BeaconBlock, node_epoch: Epoch) -> 
     ``store.block_tree``and returns the same.
 
     Algorithm:
+        0. Recursion base case: If ``block`` is the genesis block and ``node_epoch``
+           is the genesis epoch, then construct and return the genesis node root.
         1. Add parent node:
-            1a. If this block is the genesis block, and trying to add node for the
-                genesis epoch, construct and return the genesis node root.
-            1b. If the epoch of ``block.slot`` is earlier than ``node_epoch``, then
+            1a. If the epoch of ``block.slot`` is earlier than ``node_epoch``, then
                 ensure that parent node exists with this block's root at
                 ``node_epoch - 1``. Set ``parent_node`` to this node.
-            1c. Else (i.e., epoch of ``block.slot`` is same as ``node_epoch``),
+            1b. Else (i.e., epoch of ``block.slot`` is same as ``node_epoch``),
                 ensure that parent node exists with root ``block.parent_root`` at
                 epoch corresponding to ``block.slot - 1``. Set ``parent_node`` to
                 this node.
         2. Add node with this block's root at ``node_epoch`` with parent node set to
-            ``parent_node``. Return this newly added node.
+           ``parent_node``. Return this newly added node.
     """
     
     block_epoch = compute_epoch_at_slot(block.slot)
     assert block_epoch <= node_epoch
 
-    # Step 1a
+    # Step 0
     if block.slot == GENESIS_SLOT and node_epoch == GENESIS_EPOCH:
         return get_node_id(hash_tree_root(block), GENESIS_EPOCH)
-    # Step 1b
+    
+    # Step 1a
     if block_epoch < node_epoch:
         parent_node_id = get_node_id(hash_tree_root(block), Epoch(node_epoch - 1))
         if parent_node_id not in store.block_tree:
             add_block_tree_node(store, block, Epoch(node_epoch - 1))
-    # Step 1c
+    # Step 1b
     else:
         parent_node_epoch = compute_epoch_at_slot(Slot(block.slot - 1))
         parent_node_id = get_node_id(block.parent_root, parent_node_epoch)
@@ -423,7 +424,7 @@ def add_block_tree_node(store: Store, block: BeaconBlock, node_epoch: Epoch) -> 
             parent_block = store.blocks[block.parent_root]
             add_block_tree_node(store, parent_block, parent_node_epoch)
     
-    #  Step 2
+    # Step 2
     current_node = BlockTreeNode(block_root=hash_tree_root(block),
                                  epoch=node_epoch,
                                  parent_node_id=parent_node_id)
