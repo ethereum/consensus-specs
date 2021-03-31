@@ -387,11 +387,11 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 def add_block_tree_node(store: Store, block: BeaconBlock, node_epoch: Epoch) -> Root:
     """
     Adds a ``BlockTreeNode`` corresponding to ``block`` at epoch ``node_epoch`` in
-    ``store.block_tree``and returns the same.
+    ``store.block_tree``and returns its ID.
 
     Algorithm:
-        0. Recursion base case: If ``block`` is the genesis block and ``node_epoch``
-           is the genesis epoch, then construct and return the genesis node root.
+        0. Recursion base case: If node for ``block`` & ``node_epoch`` exists, return
+           its ID
         1. Add parent node:
             1a. If the epoch of ``block.slot`` is earlier than ``node_epoch``, then
                 ensure that parent node exists with this block's root at
@@ -408,27 +408,23 @@ def add_block_tree_node(store: Store, block: BeaconBlock, node_epoch: Epoch) -> 
     assert block_epoch <= node_epoch
 
     # Step 0
-    if block.slot == GENESIS_SLOT and node_epoch == GENESIS_EPOCH:
-        return get_node_id(hash_tree_root(block), GENESIS_EPOCH)
+    current_node_id = get_node_id(hash_tree_root(block), node_epoch)
+    if current_node_id in store.block_tree:
+        return current_node_id
     
     # Step 1a
     if block_epoch < node_epoch:
-        parent_node_id = get_node_id(hash_tree_root(block), Epoch(node_epoch - 1))
-        if parent_node_id not in store.block_tree:
-            add_block_tree_node(store, block, Epoch(node_epoch - 1))
+        parent_node_id = add_block_tree_node(store, block, Epoch(node_epoch - 1))
     # Step 1b
     else:
         parent_node_epoch = compute_epoch_at_slot(Slot(block.slot - 1))
-        parent_node_id = get_node_id(block.parent_root, parent_node_epoch)
-        if parent_node_id not in store.block_tree:
-            parent_block = store.blocks[block.parent_root]
-            add_block_tree_node(store, parent_block, parent_node_epoch)
+        parent_block = store.blocks[block.parent_root]
+        parent_node_id = add_block_tree_node(store, parent_block, parent_node_epoch)
     
     # Step 2
     current_node = BlockTreeNode(block_root=hash_tree_root(block),
                                  epoch=node_epoch,
                                  parent_node_id=parent_node_id)
-    current_node_id = get_node_id(current_node.block_root, current_node.epoch)
     store.block_tree[current_node_id] = current_node
     return current_node_id
 ```
