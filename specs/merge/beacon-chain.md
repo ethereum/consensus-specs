@@ -81,13 +81,14 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than addition of `application_state_root` and `application_block_hash`.
+*Note*: `BeaconState` fields remain unchanged other than addition of application payload fields.
 
 ```python
 class BeaconState(phase0.BeaconState):
     # Application-layer
     application_state_root: Bytes32  # [New in Merge]
     application_block_hash: Bytes32  # [New in Merge]
+    application_block_number: uint64 # [New in Merge]
 ```
 
 ### New containers
@@ -99,8 +100,10 @@ The application payload included in a `BeaconBlockBody`.
 ```python
 class ApplicationPayload(Container):
     block_hash: Bytes32  # Hash of application block
+    parent_hash: Bytes32
     coinbase: Bytes20
     state_root: Bytes32
+    number: uint64
     gas_limit: uint64
     gas_used: uint64
     receipt_root: Bytes32
@@ -161,15 +164,18 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
 
-    if is_transition_completed(state):
-        application_state = get_application_state(state.application_state_root)
-        application_state_transition(application_state, body.application_payload)
-
-        state.application_state_root = body.application_payload.state_root
-        state.application_block_hash = body.application_payload.block_hash
-    elif is_transition_block(state, body):
-        assert body.application_payload == ApplicationPayload(block_hash=body.application_payload.block_hash)
-        state.application_block_hash = body.application_payload.block_hash
-    else:
+    if not is_transition_completed(state):
         assert body.application_payload == ApplicationPayload()
+        return
+
+    if not is_transition_block(state, body):
+        assert body.application_payload.parent_hash == state.application_block_hash
+        assert body.application_payload.number == state.application_block_number + 1
+
+    application_state = get_application_state(state.application_state_root)
+    application_state_transition(application_state, body.application_payload)
+
+    state.application_state_root = body.application_payload.state_root
+    state.application_block_hash = body.application_payload.block_hash
+    state.application_block_number = body.application_payload.number
 ```
