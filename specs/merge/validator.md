@@ -66,5 +66,5 @@ def get_application_payload(state: BeaconState) -> ApplicationPayload:
 
     # Post-merge, normal payload
     application_parent_hash = state.application_block_hash
-    return produce_application_payload(state.application_block_hash)
+    return produce_application_payload(application_parent_hash)
 ```
