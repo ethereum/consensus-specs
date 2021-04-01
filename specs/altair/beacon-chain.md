@@ -545,8 +545,7 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     max_slot_rewards = Gwei(max_epoch_rewards * len(included_indices) // len(committee_indices) // SLOTS_PER_EPOCH)
 
     # Compute the participant and proposer sync rewards
-    committee_effective_balance = sum([state.validators[index].effective_balance for index in included_indices])
-    committee_effective_balance = max(EFFECTIVE_BALANCE_INCREMENT, committee_effective_balance)
+    committee_effective_balance = get_total_balance(state, set(included_indices))
     for included_index in included_indices:
         effective_balance = state.validators[included_index].effective_balance
         inclusion_reward = Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
