@@ -90,7 +90,7 @@ The following validations MUST pass before forwarding the `signed_contribution_a
 - _[REJECT]_ The subcommittee index is in the allowed range, i.e. `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
 - _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index` for the slot `contribution.slot`.
 - _[REJECT]_ The aggregator's validator index is within the current sync committee --
-  i.e. `state.validators[aggregate_and_proof.aggregator_index].pubkey in state.current_sync_committee.pubkeys`.
+  i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in state.current_sync_committee.pubkeys`.
 - _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature of the `contribution.slot` by the validator with index `contribution_and_proof.aggregator_index`.
 - _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(state, contribution.slot, contribution_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator signature, `signed_contribution_and_proof.signature`, is valid.
