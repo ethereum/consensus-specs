@@ -234,6 +234,9 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
 
+    just_block_parent = store.blocks[just_block.parent_root]
+    assert just_block_parent.slot < just_block.slot, f"just_block_parent.slot: {just_block_parent.slot}, just_block.slot: {just_block.slot}"
+
     # Step time past safe slots
     spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
     assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH >= spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
@@ -283,6 +286,9 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Slot is same as justified checkpoint so does not trigger an override in the store
     just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
+
+    just_block_parent = store.blocks[just_block.parent_root]
+    assert just_block_parent.slot < just_block.slot, f"just_block_parent.slot: {just_block_parent.slot}, just_block.slot: {just_block.slot}"
 
     # Step time past safe slots
     spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
