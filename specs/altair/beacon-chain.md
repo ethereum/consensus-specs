@@ -538,18 +538,18 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, aggregate.sync_committee_signature)
 
-    # Compute the participant reward
+    # Compute participant and proposer rewards
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
     max_participant_rewards = Gwei(total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
     participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
+    proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
-    # Compute the sync sync committee participant reward and the block proposer inclusion reward
+    # Apply participant and proposer rewards
     committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
     participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
     for participant_index in participant_indices:
         increase_balance(state, participant_index, participant_reward)
-        proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
         increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
