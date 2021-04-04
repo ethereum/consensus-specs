@@ -273,7 +273,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
 def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Initialization
     store = get_genesis_forkchoice_store(spec, state)
-    time = 0
+    time = 100
     spec.on_tick(store, time)
 
     next_epoch(spec, state)
