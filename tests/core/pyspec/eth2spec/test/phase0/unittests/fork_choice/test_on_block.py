@@ -226,7 +226,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
     last_block_root = hash_tree_root(last_signed_block.message)
 
-    # Mock ficticious justified checkpoint in store
+    # Mock fictitious justified checkpoint in store
     store.justified_checkpoint = spec.Checkpoint(
         epoch=spec.compute_epoch_at_slot(last_signed_block.message.slot),
         root=spec.Root("0x4a55535449464945440000000000000000000000000000000000000000000000")
@@ -281,7 +281,7 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
     last_block_root = hash_tree_root(last_signed_block.message)
 
-    # Mock ficticious justified checkpoint in store
+    # Mock fictitious justified checkpoint in store
     store.justified_checkpoint = spec.Checkpoint(
         epoch=spec.compute_epoch_at_slot(last_signed_block.message.slot),
         root=spec.Root("0x4a55535449464945440000000000000000000000000000000000000000000000")
