@@ -224,14 +224,19 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
     state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
-    next_epoch(spec, state)
-    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
     last_block_root = hash_tree_root(last_signed_block.message)
 
-    # Mock justified block in store
+    # Mock fictitious justified checkpoint in store
+    store.justified_checkpoint = spec.Checkpoint(
+        epoch=spec.compute_epoch_at_slot(last_signed_block.message.slot),
+        root=spec.Root("0x4a55535449464945440000000000000000000000000000000000000000000000")
+    )
+
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+
+    # Create new higher justified checkpoint not in branch of store's justified checkpoint
     just_block = build_empty_block_for_next_slot(spec, state)
-    # Slot is same as justified checkpoint so does not trigger an override in the store
-    just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
     spec.add_block_tree_node(store, just_block, spec.compute_epoch_at_slot(just_block.slot))
 
@@ -276,14 +281,19 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
     state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
-    next_epoch(spec, state)
-    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
     last_block_root = hash_tree_root(last_signed_block.message)
 
-    # Mock justified block in store
+    # Mock fictitious justified checkpoint in store
+    store.justified_checkpoint = spec.Checkpoint(
+        epoch=spec.compute_epoch_at_slot(last_signed_block.message.slot),
+        root=spec.Root("0x4a55535449464945440000000000000000000000000000000000000000000000")
+    )
+
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+
+    # Create new higher justified checkpoint not in branch of store's justified checkpoint
     just_block = build_empty_block_for_next_slot(spec, state)
-    # Slot is same as justified checkpoint so does not trigger an override in the store
-    just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
     spec.add_block_tree_node(store, just_block, spec.compute_epoch_at_slot(just_block.slot))
 
@@ -294,15 +304,17 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Mock justified and finalized update in state
     just_fin_state = store.block_states[last_block_root]
     new_justified = spec.Checkpoint(
-        epoch=store.justified_checkpoint.epoch + 1,
+        epoch=spec.compute_epoch_at_slot(just_block.slot) + 1,
         root=just_block.hash_tree_root(),
     )
     spec.add_block_tree_node(store, just_block, new_justified.epoch)
+    assert new_justified.epoch > store.justified_checkpoint.epoch
     new_finalized = spec.Checkpoint(
-        epoch=store.finalized_checkpoint.epoch + 1,
+        epoch=spec.compute_epoch_at_slot(just_block.slot),
         root=just_block.parent_root,
     )
     spec.add_block_tree_node(store, just_block, new_finalized.epoch)
+    assert new_finalized.epoch > store.finalized_checkpoint.epoch
     just_fin_state.current_justified_checkpoint = new_justified
     just_fin_state.finalized_checkpoint = new_finalized
 
