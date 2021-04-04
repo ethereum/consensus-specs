@@ -24,9 +24,13 @@
   - [`BeaconState`](#beaconstate)
 - [New containers](#new-containers)
   - [`DataCommitment`](#datacommitment)
-  - [`ShardHeader`](#shardheader)
-  - [`SignedShardHeader`](#signedshardheader)
+  - [`ShardBlobBodySummary`](#shardblobbodysummary)
+  - [`ShardBlobHeader`](#shardblobheader)
+  - [`SignedShardBlobHeader`](#signedshardblobheader)
   - [`PendingShardHeader`](#pendingshardheader)
+  - [`ShardBlobReference`](#shardblobreference)
+  - [`SignedShardBlobReference`](#signedshardblobreference)
+  - [`ShardProposerSlashing`](#shardproposerslashing)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-1)
     - [`next_power_of_two`](#next_power_of_two)
@@ -48,6 +52,7 @@
     - [Updated `process_attestation`](#updated-process_attestation)
     - [`update_pending_votes`](#update_pending_votes)
     - [`process_shard_header`](#process_shard_header)
+      - [Shard Proposer slashings](#shard-proposer-slashings)
   - [Epoch transition](#epoch-transition)
     - [Pending headers](#pending-headers)
     - [Shard epoch increment](#shard-epoch-increment)
@@ -94,6 +99,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
+| `MAX_SHARD_PROPOSER_SLASHINGS` | `2**6` (= 64) | Maximum amount of shard proposer slashing operations per block |
 
 ### Shard block configs
 
@@ -127,7 +133,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_HEADER` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
 
 ## Updated containers
@@ -153,7 +159,8 @@ class AttestationData(Container):
 
 ```python
 class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
-    shard_headers: List[SignedShardHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
+    shard_proposer_slashings: List[ShardProposerSlashing, MAX_SHARD_PROPOSER_SLASHINGS]
+    shard_headers: List[SignedShardBlobHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
 ```
 
 ### `BeaconState`
@@ -186,26 +193,35 @@ class DataCommitment(Container):
     length: uint64
 ```
 
-### `ShardHeader`
+### `ShardBlobBodySummary`
 
 ```python
-class ShardHeader(Container):
-    # Slot and shard that this header is intended for
-    slot: Slot
-    shard: Shard
+class ShardBlobBodySummary(Container):
     # The actual data commitment
     commitment: DataCommitment
     # Proof that the degree < commitment.length
     degree_proof: BLSCommitment
+    # Hash-tree-root as summary of the data field
+    data_root: Root
 ```
 
-TODO: add shard-proposer-index to shard headers, similar to optimization done with beacon-blocks.
-
-### `SignedShardHeader`
+### `ShardBlobHeader`
 
 ```python
-class SignedShardHeader(Container):
-    message: ShardHeader
+class ShardBlobHeader(Container):
+    # Slot and shard that this header is intended for
+    slot: Slot
+    shard: Shard
+    body_summary: ShardBlobBodySummary
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+```
+
+### `SignedShardBlobHeader`
+
+```python
+class SignedShardBlobHeader(Container):
+    message: ShardBlobHeader
     signature: BLSSignature
 ```
 
@@ -224,6 +240,35 @@ class PendingShardHeader(Container):
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Has this header been confirmed?
     confirmed: bool
+```
+
+### `ShardBlobReference`
+
+```python
+class ShardBlobReference(Container):
+    # Slot and shard that this header is intended for
+    slot: Slot
+    shard: Shard
+    # Hash-tree-root of commitment data
+    body_root: Root
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+```
+
+### `SignedShardBlobReference`
+
+```python
+class SignedShardBlobHeader(Container):
+    message: ShardBlobReference
+    signature: BLSSignature
+```
+
+### `ShardProposerSlashing`
+
+```python
+class ShardProposerSlashing(Container):
+    signed_header_1: SignedShardBlobReference
+    signed_header_2: SignedShardBlobReference
 ```
 
 ## Helper functions
@@ -435,6 +480,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
+    # New shard proposer slashing processing
+    for_ops(body.shard_proposer_slashings, process_shard_proposer_slashing)
     # Limit is dynamic based on active shard count
     assert len(body.shard_headers) <= MAX_SHARD_HEADERS_PER_SHARD * get_active_shard_count(state, get_current_epoch(state))
     for_ops(body.shard_headers, process_shard_header)
@@ -499,30 +546,36 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def process_shard_header(state: BeaconState,
-                         signed_header: SignedShardHeader) -> None:
+                         signed_header: SignedShardBlobHeader) -> None:
     header = signed_header.message
-    header_root = hash_tree_root(header)
-    assert compute_epoch_at_slot(header.slot) in [get_previous_epoch(state), get_current_epoch(state)]
+    header_epoch = compute_epoch_at_slot(header.slot)
+    # Verify that the header is within the processing time window
+    assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
+    # Verify that the shard is active
+    assert header.shard < get_active_shard_count(state, header_epoch)
 
+    # Verify proposer
+    assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
-    signer_index = get_shard_proposer_index(state, header.slot, header.shard)
     signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER))
     assert bls.Verify(state.validators[signer_index].pubkey, signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
-    if header.commitment.length == 0:
-        assert header.degree_proof == G1_SETUP[0]
+    body_summary = header.body_summary
+    if body_summary.commitment.length == 0:
+        assert body_summary.degree_proof == G1_SETUP[0]
     assert (
-        bls.Pairing(header.degree_proof, G2_SETUP[0])
-        == bls.Pairing(header.commitment.point, G2_SETUP[-header.commitment.length]))
+        bls.Pairing(body_summary.degree_proof, G2_SETUP[0])
+        == bls.Pairing(body_summary.commitment.point, G2_SETUP[-body_summary.commitment.length]))
     )
 
     # Get the correct pending header list
-    if compute_epoch_at_slot(header.slot) == get_current_epoch(state):
+    if header_epoch == get_current_epoch(state):
         pending_headers = state.current_epoch_pending_shard_headers
     else:
         pending_headers = state.previous_epoch_pending_shard_headers
 
+    header_root = hash_tree_root(header)
     # Check that this header is not yet in the pending list
     assert header_root not in [pending_header.root for pending_header in pending_headers]
 
@@ -532,7 +585,7 @@ def process_shard_header(state: BeaconState,
     pending_headers.append(PendingShardHeader(
         slot=header.slot,
         shard=header.shard,
-        commitment=header.commitment,
+        commitment=body_summary.commitment,
         root=header_root,
         votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
         confirmed=False,
@@ -543,6 +596,33 @@ The degree proof works as follows. For a block `B` with length `l` (so `l`  valu
 the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 - l)`,
 where `MAX_DEGREE` is the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`.
 The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
+
+##### Shard Proposer slashings
+
+```python
+def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+
+    # Verify header slots match
+    assert header_1.slot == header_2.slot
+    # Verify header shards match
+    assert header_1.shard == header_2.shard
+    # Verify header proposer indices match
+    assert header_1.proposer_index == header_2.proposer_index
+    # Verify the headers are different (i.e. different body)
+    assert header_1 != header_2
+    # Verify the proposer is slashable
+    proposer = state.validators[header_1.proposer_index]
+    assert is_slashable_validator(proposer, get_current_epoch(state))
+    # Verify signatures
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
+        signing_root = compute_signing_root(signed_header.message, domain)
+        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
+
+    slash_validator(state, header_1.proposer_index)
+```
 
 ### Epoch transition
 
