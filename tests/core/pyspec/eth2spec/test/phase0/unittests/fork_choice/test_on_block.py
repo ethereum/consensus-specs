@@ -307,13 +307,15 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Mock justified and finalized update in state
     just_fin_state = store.block_states[last_block_root]
     new_justified = spec.Checkpoint(
-        epoch=store.justified_checkpoint.epoch + 1,
+        epoch=spec.compute_epoch_at_slot(just_block.slot) + 1,
         root=just_block.hash_tree_root(),
     )
+    assert new_justified.epoch > store.justified_checkpoint.epoch
     new_finalized = spec.Checkpoint(
-        epoch=store.finalized_checkpoint.epoch + 1,
+        epoch=spec.compute_epoch_at_slot(just_block.slot),
         root=just_block.parent_root,
     )
+    assert new_finalized.epoch > store.finalized_checkpoint.epoch
     just_fin_state.current_justified_checkpoint = new_justified
     just_fin_state.finalized_checkpoint = new_finalized
 
