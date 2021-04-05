@@ -78,7 +78,7 @@ def test_process_light_client_update_not_updated(spec, state):
     )
 
     spec.on_light_client_tick(store, store.genesis_time + spec.SECONDS_PER_SLOT * update.header.slot)
-    spec.on_light_client_update(store, update, state.slot)
+    spec.on_light_client_update(store, update)
 
     assert len(store.valid_updates) == 1
     assert store.valid_updates[0] == update
@@ -150,7 +150,7 @@ def test_process_light_client_update_timeout(spec, state):
     )
 
     spec.on_light_client_tick(store, store.genesis_time + spec.SECONDS_PER_SLOT * update.header.slot)
-    spec.on_light_client_update(store, update, state.slot)
+    spec.on_light_client_update(store, update)
 
     # snapshot has been updated
     assert len(store.valid_updates) == 0
@@ -230,7 +230,7 @@ def test_process_light_client_update_finality_updated(spec, state):
     )
 
     spec.on_light_client_tick(store, store.genesis_time + spec.SECONDS_PER_SLOT * update.header.slot)
-    spec.on_light_client_update(store, update, state.slot)
+    spec.on_light_client_update(store, update)
 
     # snapshot has been updated
     assert len(store.valid_updates) == 0

@@ -9,6 +9,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Sync protocol](#sync-protocol)
+  - [Initialization](#initialization)
+  - [Minimal light client update](#minimal-light-client-update)
 - [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
@@ -20,15 +23,14 @@
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
   - [`get_light_client_store`](#get_light_client_store)
+  - [`get_light_client_slots_since_genesis`](#get_light_client_slots_since_genesis)
+  - [`get_light_client_current_slot`](#get_light_client_current_slot)
   - [`validate_light_client_update`](#validate_light_client_update)
   - [`apply_light_client_update`](#apply_light_client_update)
 - [Client side handlers](#client-side-handlers)
   - [`on_light_client_tick`](#on_light_client_tick)
   - [`on_light_client_update`](#on_light_client_update)
 - [Server side handlers](#server-side-handlers)
-- [Sync protocol](#sync-protocol)
-  - [Initialization](#initialization)
-  - [Minimal light client update](#minimal-light-client-update)
 - [Reorg mechanism](#reorg-mechanism)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -42,7 +44,34 @@ Such environments include resource-constrained devices (e.g. phones for trust-mi
 and metered VMs (e.g. blockchain VMs for cross-chain bridges).
 
 This document suggests a minimal light client design for the beacon chain that
-uses sync committees introduced in [this beacon chain extension](./beacon-chain.md).
+uses sync committees introduced in [this beacon chain extension](./../beacon-chain.md).
+
+## Sync protocol
+
+Note that in this syncing mechanism, the server is trusted.
+
+### Initialization
+
+1. The client sends `Status` message to the server to exchange the status information.
+2. Instead of sending `BeaconBlocksByRange` in the beacon chain syncing, the client sends `GetLightClientSnapshot` request to the server.
+3. The server responds with the `LightClientSnapshot` object of the finalized beacon chain head.
+4. The client would:
+    1. check if the hash tree root of the given `header` matches the `finalized_root` in the server's `Status` message.
+    2. check if the given response is valid for client to call `get_light_client_store` function to get the initial `store: LightClientStore`.
+    - If it's invalid, disconnect from the server; otherwise, keep syncing.
+
+### Minimal light client update
+
+In this minimal light client design, the light client only follows finality updates.
+
+#### Server side
+
+- Whenever `state.finalized_checkpoint` is changed, call `get_light_client_update` to generate the `LightClientUpdate` and then send to its light clients.
+
+#### Client side
+
+- `on_light_client_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
+- `on_light_client_update(store, update)` whenever a block `update: LightClientUpdate` is received
 
 ## Constants
 
@@ -131,6 +160,20 @@ def get_light_client_store(snapshot: LightClientSnapshot,
     )
 ```
 
+### `get_light_client_slots_since_genesis`
+
+```python
+def get_light_client_slots_since_genesis(store: LightClientStore) -> int:
+    return (store.time - store.genesis_time) // SECONDS_PER_SLOT
+```
+
+### `get_light_client_current_slot`
+
+```python
+def get_light_client_current_slot(store: LightClientStore) -> Slot:
+    return Slot(GENESIS_SLOT + get_light_client_slots_since_genesis(store))
+```
+
 ### `validate_light_client_update`
 
 ```python
@@ -216,10 +259,10 @@ def on_light_client_tick(store: LightClientStore, time: uint64) -> None:
 
 ### `on_light_client_update`
 
-A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `on_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on some local clock.
+A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `on_light_client_update(store, update)`.
 
 ```python
-def on_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot) -> None:
+def on_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
     validate_light_client_update(store, update)
     store.valid_updates.append(update)
 
@@ -232,7 +275,7 @@ def on_light_client_update(store: LightClientStore, update: LightClientUpdate, c
         # It may be changed to re-organizable light client design. See the on-going issue eth2.0-specs#2182.
         apply_light_client_update(store.snapshot, update)
         store.valid_updates = []
-    elif current_slot > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
+    elif get_light_client_current_slot(store) > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
         # Forced best update when the update timeout has elapsed
         apply_light_client_update(
             store.snapshot,
@@ -243,8 +286,6 @@ def on_light_client_update(store: LightClientStore, update: LightClientUpdate, c
 
 ## Server side handlers
 
-The server sends `LightClientUpdate` to its light client peers periodically.
-
 [TODO]
 
 ```python
@@ -252,26 +293,6 @@ def get_light_client_update(state: BeaconState) -> LightClientUpdate:
     # [TODO]
     pass
 ```
-
-## Sync protocol
-
-### Initialization
-
-1. The client sends `Status` message to the server to exchange the status information.
-2. Instead of sending `BeaconBlocksByRange` in the beacon chain syncing, the client sends `GetLightClientSnapshot` request to the server.
-3. The server responds with the `LightClientSnapshot` object of the finalized beacon chain head.
-4. The client would:
-    1. check if the hash tree root of the given `header` matches the `finalized_root` in the server's `Status` message.
-    2. check if the given response is valid for client to call `get_light_client_store` function to get the initial `store: LightClientStore`.
-    - If it's invalid, disconnect from the server; otherwise, keep syncing.
-
-Note that in this syncing mechanism, the server is trusted.
-
-### Minimal light client update
-
-In this minimal light client design, the light client only follows finality updates.
-
-[TODO]
 
 ## Reorg mechanism
 
