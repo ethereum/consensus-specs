@@ -45,7 +45,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## New containers
 
-### DASSample
+### `DASSample`
 
 ```python
 class DASSample(Container):
