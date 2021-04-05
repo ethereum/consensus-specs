@@ -12,6 +12,8 @@
 - [Sync protocol](#sync-protocol)
   - [Initialization](#initialization)
   - [Minimal light client update](#minimal-light-client-update)
+    - [Server side](#server-side)
+    - [Client side](#client-side)
 - [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
@@ -52,8 +54,8 @@ Note that in this syncing mechanism, the server is trusted.
 
 ### Initialization
 
-1. The client sends `Status` message to the server to exchange the status information.
-2. Instead of sending `BeaconBlocksByRange` in the beacon chain syncing, the client sends `GetLightClientSnapshot` request to the server.
+1. The client sends [`Status` message](./../../phase0/p2p-interface.md#status) to the server to exchange the status information.
+2. Instead of sending [`BeaconBlocksByRange` request](./../../phase0/p2p-interface.md#beaconblocksbyrange) in the beacon chain syncing, the client sends [`GetLightClientSnapshot` request](./p2p-interface.md#getlightclientsnapshot) to the server.
 3. The server responds with the `LightClientSnapshot` object of the finalized beacon chain head.
 4. The client would:
     1. check if the hash tree root of the given `header` matches the `finalized_root` in the server's `Status` message.

@@ -3,7 +3,7 @@
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 This document contains the networking specification for [minimal light client](./sync-protocol.md).
-This document should be viewed as a patch to the [Altair networking specification](../altair/p2p-interface.md).
+This document should be viewed as a patch to the [Altair networking specification](./../p2p-interface.md).
 
 ## Table of contents
 
