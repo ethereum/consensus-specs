@@ -183,6 +183,7 @@ Request and Response remain unchanged. A `ForkDigest`-context is used to select 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 | `fork_version`           | Chunk SSZ type             |
+| ------------------------ | -------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 
@@ -195,6 +196,7 @@ Request and Response remain unchanged. A `ForkDigest`-context is used to select 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 | `fork_version`           | Chunk SSZ type             |
+| ------------------------ | -------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 
