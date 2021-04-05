@@ -92,7 +92,7 @@ The following validations MUST pass before forwarding the `signed_contribution_a
 - _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(state, contribution.slot, contribution_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is within the current sync committee --
   i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in state.current_sync_committee.pubkeys`.
-- _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature of the `contribution.slot` by the validator with index `contribution_and_proof.aggregator_index`.
+- _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature of the `SyncCommitteeSigningData` derived from the `contribution` by the validator with index `contribution_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_contribution_and_proof.signature`, is valid.
 - _[REJECT]_ The aggregate signature is valid for the message `beacon_block_root` and aggregate pubkey derived from the participation info in `aggregation_bits` for the subcommittee specified by the `subcommittee_index`.
 
