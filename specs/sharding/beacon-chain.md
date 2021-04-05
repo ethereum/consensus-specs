@@ -108,7 +108,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
 | `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE, MODULUS)` |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // (MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE), MODULUS)` |
 
 ### Gwei values
 
@@ -514,7 +514,7 @@ def process_shard_header(state: BeaconState,
         assert header.degree_proof == G1_SETUP[0]
     assert (
         bls.Pairing(header.degree_proof, G2_SETUP[0])
-        == bls.Pairing(header.commitment.point, G2_SETUP[-header.commitment.length]))
+        == bls.Pairing(header.commitment.point, G2_SETUP[-header.commitment.length])
     )
 
     # Get the correct pending header list
@@ -618,7 +618,7 @@ def process_pending_headers(state: BeaconState) -> None:
     for slot_index in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
             state.grandparent_epoch_confirmed_commitments[shard][slot_index] = DataCommitment()
-    confirmed_headers = [candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
+    confirmed_headers = [candidate for candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
     for header in confirmed_headers:
         state.grandparent_epoch_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
 ```
@@ -666,7 +666,7 @@ def reset_pending_headers(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
     for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_IN_EPOCH):
-        for index in range(get_committee_count_per_slot(next_epoch):
+        for index in range(get_committee_count_per_slot(next_epoch)):
             shard = compute_shard_from_committee_index(state, slot, index)
             committee_length = len(get_beacon_committee(state, slot, shard))
             state.current_epoch_pending_shard_headers.append(PendingShardHeader(
