@@ -12,7 +12,7 @@ from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
 from eth2spec.test.context import (
-    PHASE0, PHASE1,
+    PHASE0,
     with_all_phases_except,
     spec_state_test,
 )
@@ -40,46 +40,46 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0):
     yield 'post', state
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_full_sync_committee_committee(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_half_sync_committee_committee(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5)
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_empty_sync_committee_committee(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_full_sync_committee_committee_genesis(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_half_sync_committee_committee_genesis(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5)
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_empty_sync_committee_committee_genesis(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
 
 
-@with_all_phases_except([PHASE0, PHASE1])
+@with_all_phases_except([PHASE0])
 @spec_state_test
 def test_inactivity_scores(spec, state):
     for _ in range(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2):

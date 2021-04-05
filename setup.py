@@ -13,7 +13,6 @@ FUNCTION_REGEX = r'^def [\w_]*'
 # Definitions in context.py
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
-PHASE1 = 'phase1'
 
 
 class SpecObject(NamedTuple):
@@ -141,40 +140,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
 '''
-PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
-from eth2spec.config.config_util import apply_constants_config
-from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
-)
-from typing import List as PyList
 
-from dataclasses import (
-    dataclass,
-    field,
-)
-
-from lru import LRU
-
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
-from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64, bit,
-    ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
-)
-from eth2spec.utils import bls
-
-from eth2spec.utils.hash_function import hash
-
-# Whenever phase 1 is loaded, make sure we have the latest phase0
-from importlib import reload
-reload(phase0)
-
-
-SSZVariableName = str
-GeneralizedIndex = NewType('GeneralizedIndex', int)
-SSZObject = TypeVar('SSZObject', bound=View)
-
-CONFIG_NAME = 'mainnet'
-'''
 ALTAIR_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
@@ -294,14 +260,6 @@ get_attesting_indices = cache_this(
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
-PHASE1_SUNDRY_FUNCTIONS = '''
-
-_get_start_shard = get_start_shard
-get_start_shard = cache_this(
-    lambda state, slot: (state.validators.hash_tree_root(), slot),
-    _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
-
-
 ALTAIR_SUNDRY_FUNCTIONS = '''
 
 def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
@@ -325,10 +283,6 @@ def is_phase0(fork):
 
 def is_altair(fork):
     return fork == ALTAIR
-
-
-def is_phase1(fork):
-    return fork == PHASE1
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_class_objects: Dict[str, str]) -> str:
@@ -370,7 +324,6 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             # Functions to make pyspec work
             + '\n' + PHASE0_SUNDRY_FUNCTIONS
             + ('\n' + ALTAIR_SUNDRY_FUNCTIONS if is_altair(fork) else '')
-            + ('\n' + PHASE1_SUNDRY_FUNCTIONS if is_phase1(fork) else '')
     )
 
     # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
@@ -461,7 +414,6 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
-    'phase1': PHASE1_IMPORTS,
     'altair': ALTAIR_IMPORTS,
 }
 
@@ -514,20 +466,6 @@ class PySpecCommand(Command):
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
-                """
-            elif is_phase1(self.spec_fork):
-                self.md_doc_paths = """
-                    specs/phase0/beacon-chain.md
-                    specs/phase0/fork-choice.md
-                    specs/phase0/validator.md
-                    specs/phase0/weak-subjectivity.md
-                    specs/phase1/custody-game.md
-                    specs/phase1/beacon-chain.md
-                    specs/phase1/shard-transition.md
-                    specs/phase1/fork-choice.md
-                    specs/phase1/fork.md
-                    specs/phase1/shard-fork-choice.md
-                    specs/phase1/validator.md
                 """
             elif is_altair(self.spec_fork):
                 self.md_doc_paths = """

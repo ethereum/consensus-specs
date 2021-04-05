@@ -84,11 +84,11 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_WEIGHT` | `12` |
-| `TIMELY_SOURCE_WEIGHT` | `12` |
-| `TIMELY_TARGET_WEIGHT` | `24` |
-| `SYNC_REWARD_WEIGHT` | `8` |
-| `WEIGHT_DENOMINATOR` | `64` |
+| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
+| `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
+| `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
+| `SYNC_REWARD_WEIGHT` | `uint64(8)` |
+| `WEIGHT_DENOMINATOR` | `uint64(64)` |
 
 *Note*: The sum of the weight fractions (7/8) plus the proposer inclusion fraction (1/8) equals 1.
 
@@ -234,7 +234,7 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
 #### `get_flag_indices_and_weights`
 
 ```python
-def get_flag_indices_and_weights() -> Sequence[Tuple[int, int]]:
+def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
     return (
         (TIMELY_HEAD_FLAG_INDEX, TIMELY_HEAD_WEIGHT),
         (TIMELY_SOURCE_FLAG_INDEX, TIMELY_SOURCE_WEIGHT),
@@ -461,7 +461,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Participation flag indices
     participation_flag_indices = []
-    if is_matching_head and is_matching_target and state.slot <= data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
+    if is_matching_head and is_matching_target and state.slot == data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
         participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
     if is_matching_source and state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
         participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
@@ -517,7 +517,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             state.balances.append(amount)
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(0)
+            state.inactivity_scores.append(uint64(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -545,8 +545,7 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     max_slot_rewards = Gwei(max_epoch_rewards * len(included_indices) // len(committee_indices) // SLOTS_PER_EPOCH)
 
     # Compute the participant and proposer sync rewards
-    committee_effective_balance = sum([state.validators[index].effective_balance for index in included_indices])
-    committee_effective_balance = max(EFFECTIVE_BALANCE_INCREMENT, committee_effective_balance)
+    committee_effective_balance = get_total_balance(state, set(included_indices))
     for included_index in included_indices:
         effective_balance = state.validators[included_index].effective_balance
         inclusion_reward = Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
