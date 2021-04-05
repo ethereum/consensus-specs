@@ -33,11 +33,11 @@ Response Content:
 
 ```
 (
-  GetLightClientSnapshot
+  LightClientSnapshot
 )
 ```
 
-The `GetLightClientSnapshot` SSZ container defined in [light client sync protocol](./sync-protocol.md#lightclientsnapshot).
+The `LightClientSnapshot` SSZ container defined in [light client sync protocol](./sync-protocol.md#lightclientsnapshot).
 
 #### LightClientUpdate
 
