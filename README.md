@@ -26,10 +26,12 @@ The current features are:
 
 ### Altair
 
-* [Beacon chain changes](specs/altair/beacon-chain.md)
+* [Beacon Chain changes](specs/altair/beacon-chain.md)
 * [Altair fork](specs/altair/fork.md)
-* [Light client sync protocol](specs/altair/sync-protocol.md)
-* [Honest Validator guide changes](specs/altair/validator.md)
+* [Honest Validator changes](specs/altair/validator.md)
+* [Light Client](specs/altair/light-client/README.md) - In active R&D
+    * [Sync Protocol](specs/altair/light-client/sync-protocol.md)
+    * [P2P Networking](specs/altair/light-client/p2p-interface.md)
 
 ### Merge
 

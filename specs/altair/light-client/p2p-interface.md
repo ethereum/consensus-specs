@@ -11,12 +11,15 @@ This document should be viewed as a patch to the [Altair networking specificatio
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Messages](#messages)
-  - [GetLightClientSnapshot](#getlightclientsnapshot)
-  - [LightClientUpdate](#lightclientupdate)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [GetLightClientSnapshot](#getlightclientsnapshot)
+    - [LightClientUpdate](#lightclientupdate)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## The Req/Resp domain
 
 ### Messages
 
