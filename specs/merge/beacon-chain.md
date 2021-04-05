@@ -145,7 +145,9 @@ def is_transition_completed(state: BeaconState) -> boolean:
 
 ```python
 def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
-    return state.latest_application_block_header.block_hash == Bytes32() and block_body.application_payload.block_hash != Bytes32()
+    is_empty_latest_application_block_header = state.latest_application_block_header.block_hash == Bytes32()
+    is_empty_application_payload_block_hash = block_body.application_payload.block_hash == Bytes32()
+    return is_empty_latest_application_block_header and not is_empty_application_payload_block_hash
 ```
 
 ### Block processing
@@ -182,14 +184,15 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
+    application_payload = body.application_payload
 
     if not is_transition_completed(state):
-        assert body.application_payload == ApplicationPayload()
+        assert application_payload == ApplicationPayload()
         return
 
     if not is_transition_block(state, body):
-        assert body.application_payload.parent_hash == state.latest_application_block_header.block_hash
-        assert body.application_payload.number == state.latest_application_block_header.number + 1
+        assert application_payload.parent_hash == state.latest_application_block_header.block_hash
+        assert application_payload.number == state.latest_application_block_header.number + 1
 
     application_state = get_application_state(state.latest_application_block_header.state_root)
     application_state_transition(application_state, body.application_payload)

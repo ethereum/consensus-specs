@@ -2,6 +2,7 @@ import pytest
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.altair import spec as spec_altair
+from eth2spec.merge import spec as spec_merge
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
@@ -19,6 +20,7 @@ from importlib import reload
 def reload_specs():
     reload(spec_phase0)
     reload(spec_altair)
+    reload(spec_merge)
 
 
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
@@ -61,9 +63,14 @@ class SpecAltair(Spec):
     ...
 
 
+class SpecMerge(Spec):
+    ...
+
+
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     ALTAIR: SpecAltair
+    MERGE: SpecMerge
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
