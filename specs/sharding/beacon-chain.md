@@ -223,7 +223,7 @@ class PendingShardHeader(Container):
     # Who voted for the header
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Has this header been confirmed?
-    confirmed: bool
+    confirmed: boolean
 ```
 
 ## Helper functions
