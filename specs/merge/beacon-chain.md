@@ -21,6 +21,7 @@
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
     - [`ApplicationPayload`](#applicationpayload)
+    - [`ApplicationBlockHeader`](#applicationblockheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`is_transition_completed`](#is_transition_completed)
@@ -81,13 +82,12 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than addition of `application_state_root` and `application_block_hash`.
+*Note*: `BeaconState` fields remain unchanged other than addition of `latest_application_block_header`.
 
 ```python
 class BeaconState(phase0.BeaconState):
     # Application-layer
-    application_state_root: Bytes32  # [New in Merge]
-    application_block_hash: Bytes32  # [New in Merge]
+    latest_application_block_header: ApplicationBlockHeader  # [New in Merge]
 ```
 
 ### New containers
@@ -99,13 +99,35 @@ The application payload included in a `BeaconBlockBody`.
 ```python
 class ApplicationPayload(Container):
     block_hash: Bytes32  # Hash of application block
+    parent_hash: Bytes32
     coinbase: Bytes20
     state_root: Bytes32
+    number: uint64
     gas_limit: uint64
     gas_used: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     transactions: List[OpaqueTransaction, MAX_APPLICATION_TRANSACTIONS]
+```
+
+#### `ApplicationBlockHeader`
+
+The application block header included in a `BeaconState`.
+
+*Note:* Holds application payload data without transaction list.
+
+```python
+class ApplicationBlockHeader(Container):
+    block_hash: Bytes32  # Hash of application block
+    parent_hash: Bytes32
+    coinbase: Bytes20
+    state_root: Bytes32
+    number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    receipt_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    transactions_root: Root
 ```
 
 ## Helper functions
@@ -116,14 +138,14 @@ class ApplicationPayload(Container):
 
 ```python
 def is_transition_completed(state: BeaconState) -> boolean:
-    return state.application_block_hash != Bytes32()
+    return state.latest_application_block_header.block_hash != Bytes32()
 ```
 
 #### `is_transition_block`
 
 ```python
 def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
-    return state.application_block_hash == Bytes32() and block_body.application_payload.block_hash != Bytes32()
+    return state.latest_application_block_header.block_hash == Bytes32() and block_body.application_payload.block_hash != Bytes32()
 ```
 
 ### Block processing
@@ -161,15 +183,27 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
 
-    if is_transition_completed(state):
-        application_state = get_application_state(state.application_state_root)
-        application_state_transition(application_state, body.application_payload)
-
-        state.application_state_root = body.application_payload.state_root
-        state.application_block_hash = body.application_payload.block_hash
-    elif is_transition_block(state, body):
-        assert body.application_payload == ApplicationPayload(block_hash=body.application_payload.block_hash)
-        state.application_block_hash = body.application_payload.block_hash
-    else:
+    if not is_transition_completed(state):
         assert body.application_payload == ApplicationPayload()
+        return
+
+    if not is_transition_block(state, body):
+        assert body.application_payload.parent_hash == state.latest_application_block_header.block_hash
+        assert body.application_payload.number == state.latest_application_block_header.number + 1
+
+    application_state = get_application_state(state.latest_application_block_header.state_root)
+    application_state_transition(application_state, body.application_payload)
+
+    state.latest_application_block_header = ApplicationBlockHeader(
+        block_hash=application_payload.block_hash,
+        parent_hash=application_payload.parent_hash,
+        coinbase=application_payload.coinbase,
+        state_root=application_payload.state_root,
+        number=application_payload.number,
+        gas_limit=application_payload.gas_limit,
+        gas_used=application_payload.gas_used,
+        receipt_root=application_payload.receipt_root,
+        logs_bloom=application_payload.logs_bloom,
+        transactions_root=hash_tree_root(application_payload.transactions),
+    )
 ```
