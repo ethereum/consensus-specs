@@ -120,7 +120,7 @@ The check can be implemented in the following way:
 ```python
 def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint) -> bool:
     # Clients may choose to validate the input state against the input Weak Subjectivity Checkpoint
-    assert hash_tree_root(ws_state.latest_block_header) == ws_checkpoint.root
+    assert ws_state.latest_block_header.state_root == store.block_states[ws_checkpoint.root]
     assert compute_epoch_at_slot(ws_state.slot) == ws_checkpoint.epoch
 
     ws_period = compute_weak_subjectivity_period(ws_state)
