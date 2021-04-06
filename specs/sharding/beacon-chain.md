@@ -203,6 +203,8 @@ class ShardBlobBodySummary(Container):
     degree_proof: BLSCommitment
     # Hash-tree-root as summary of the data field
     data_root: Root
+    # State of the Beacon Chain, right before the slot processing of shard_blob.slot
+    parent_state_root: Root
 ```
 
 ### `ShardBlobHeader`
@@ -320,6 +322,17 @@ def compute_committee_source_epoch(epoch: Epoch, period: uint64) -> Epoch:
 ```
 
 ### Beacon state accessors
+
+#### `get_state_root_at_slot`
+
+```python
+def get_state_root_at_slot(state: BeaconState, slot: Slot) -> Root:
+    """
+    Return the state root at a recent ``slot``.
+    """
+    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
+    return state.state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
+```
 
 #### Updated `get_committee_count_per_slot`
 
@@ -553,7 +566,10 @@ def process_shard_header(state: BeaconState,
     assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
     # Verify that the shard is active
     assert header.shard < get_active_shard_count(state, header_epoch)
-
+    # Verify that the state root matches,
+    # to ensure the header will only be included in this specific beacon-chain sub-tree.
+    assert header.slot > 0
+    assert header.parent_state_root == get_state_root_at_slot(state, header.slot-1)
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature

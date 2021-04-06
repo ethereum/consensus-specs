@@ -41,6 +41,8 @@ class ShardBlobBody(Container):
     degree_proof: BLSCommitment
     # The actual data. Should match the commitment and degree proof.
     data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
+    # State of the Beacon Chain, right before the slot processing of shard_blob.slot
+    parent_state_root: Root
 ```
 
 The user MUST always verify the commitments in the `body` are valid for the `data` in the `body`.
@@ -94,10 +96,10 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
   i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
 - _[IGNORE]_ The blob is the first blob with valid signature received for the `(blob.proposer_index, blob.slot, blob.shard)` combination.
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
-- _[REJECT]_ The `blob.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
+- _[REJECT]_ The `blob.body.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
 - _[REJECT]_ The proposer signature, `signed_blob.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot
-  in the context of the current shuffling (defined by `parent_root`/`slot`).
+  in the context of the current shuffling (defined by `blob.body.parent_state_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the block MAY be queued for later processing while proposers for the blob's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
@@ -116,7 +118,7 @@ The following validations MUST pass before forwarding the `signed_shard_header` 
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The proposer signature, `signed_shard_header.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The header is proposed by the expected `proposer_index` for the block's slot
-  in the context of the current shuffling (defined by `parent_root`/`slot`).
+  in the context of the current shuffling (defined by `header.body_summary.parent_state_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the block MAY be queued for later processing while proposers for the block's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
