@@ -390,7 +390,7 @@ def get_contribution_and_proof(state: BeaconState,
     )
 ```
 
-Then `signed_contribution_and_proof = SignedContributionAndProof(message=contribution_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+Then `signed_contribution_and_proof = SignedContributionAndProof(message=contribution_and_proof, signature=signature)` is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
 def get_contribution_and_proof_signature(state: BeaconState, 
