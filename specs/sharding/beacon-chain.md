@@ -38,6 +38,7 @@
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_state_root_at_slot`](#get_state_root_at_slot)
     - [Updated `get_committee_count_per_slot`](#updated-get_committee_count_per_slot)
     - [`get_active_shard_count`](#get_active_shard_count)
     - [`get_shard_committee`](#get_shard_committee)
@@ -561,6 +562,8 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
 def process_shard_header(state: BeaconState,
                          signed_header: SignedShardBlobHeader) -> None:
     header = signed_header.message
+    # Verify the header is not 0, and not from the future.
+    assert Slot(0) < header.slot <= state.slot
     header_epoch = compute_epoch_at_slot(header.slot)
     # Verify that the header is within the processing time window
     assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
@@ -568,7 +571,6 @@ def process_shard_header(state: BeaconState,
     assert header.shard < get_active_shard_count(state, header_epoch)
     # Verify that the state root matches,
     # to ensure the header will only be included in this specific beacon-chain sub-tree.
-    assert header.slot > 0
     assert header.parent_state_root == get_state_root_at_slot(state, header.slot-1)
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
