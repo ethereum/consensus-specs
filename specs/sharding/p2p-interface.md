@@ -49,7 +49,7 @@ The user MUST always verify the commitments in the `body` are valid for the `dat
 
 ```python
 class ShardBlob(Container):
-    # Slot and shard that this header is intended for
+    # Slot and shard that this blob is intended for
     slot: Slot
     shard: Shard
     body: ShardBlobBody

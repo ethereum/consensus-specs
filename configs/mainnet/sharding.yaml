@@ -18,8 +18,8 @@ MAX_SHARDS: 1024
 INITIAL_ACTIVE_SHARDS: 64
 # 2**3 (= 8)
 GASPRICE_ADJUSTMENT_COEFFICIENT: 8
-# 2**6 (= 64)
-MAX_SHARD_PROPOSER_SLASHINGS: 64
+# 2**4 (= 16)
+MAX_SHARD_PROPOSER_SLASHINGS: 16
 
 # Shard block configs
 # ---------------------------------------------------------------

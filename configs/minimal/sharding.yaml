@@ -19,7 +19,7 @@ INITIAL_ACTIVE_SHARDS: 2
 # 2**3 (= 8)
 GASPRICE_ADJUSTMENT_COEFFICIENT: 8
 # [customized] reduced for testing
-MAX_SHARD_PROPOSER_SLASHINGS: 8
+MAX_SHARD_PROPOSER_SLASHINGS: 4
 
 # Shard block configs
 # ---------------------------------------------------------------

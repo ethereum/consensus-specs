@@ -99,7 +99,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
-| `MAX_SHARD_PROPOSER_SLASHINGS` | `2**6` (= 64) | Maximum amount of shard proposer slashing operations per block |
+| `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 
 ### Shard block configs
 
@@ -246,7 +246,7 @@ class PendingShardHeader(Container):
 
 ```python
 class ShardBlobReference(Container):
-    # Slot and shard that this header is intended for
+    # Slot and shard that this reference is intended for
     slot: Slot
     shard: Shard
     # Hash-tree-root of commitment data
@@ -258,7 +258,7 @@ class ShardBlobReference(Container):
 ### `SignedShardBlobReference`
 
 ```python
-class SignedShardBlobHeader(Container):
+class SignedShardBlobReference(Container):
     message: ShardBlobReference
     signature: BLSSignature
 ```
@@ -267,8 +267,8 @@ class SignedShardBlobHeader(Container):
 
 ```python
 class ShardProposerSlashing(Container):
-    signed_header_1: SignedShardBlobReference
-    signed_header_2: SignedShardBlobReference
+    signed_reference_1: SignedShardBlobReference
+    signed_reference_2: SignedShardBlobReference
 ```
 
 ## Helper functions
@@ -558,7 +558,7 @@ def process_shard_header(state: BeaconState,
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
     signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER))
-    assert bls.Verify(state.validators[signer_index].pubkey, signing_root, signed_header.signature)
+    assert bls.Verify(state.validators[header.proposer_index].pubkey, signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
     body_summary = header.body_summary
@@ -601,27 +601,27 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 
 ```python
 def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
-    header_1 = proposer_slashing.signed_header_1.message
-    header_2 = proposer_slashing.signed_header_2.message
+    reference_1 = proposer_slashing.signed_reference_1.message
+    reference_2 = proposer_slashing.signed_reference_2.message
 
     # Verify header slots match
-    assert header_1.slot == header_2.slot
+    assert reference_1.slot == reference_2.slot
     # Verify header shards match
-    assert header_1.shard == header_2.shard
+    assert reference_1.shard == reference_2.shard
     # Verify header proposer indices match
-    assert header_1.proposer_index == header_2.proposer_index
+    assert reference_1.proposer_index == reference_2.proposer_index
     # Verify the headers are different (i.e. different body)
-    assert header_1 != header_2
+    assert reference_1 != reference_2
     # Verify the proposer is slashable
-    proposer = state.validators[header_1.proposer_index]
+    proposer = state.validators[reference_1.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Verify signatures
-    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+    for signed_header in (proposer_slashing.signed_reference_1, proposer_slashing.signed_reference_2):
         domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, header_1.proposer_index)
+    slash_validator(state, reference_1.proposer_index)
 ```
 
 ### Epoch transition
