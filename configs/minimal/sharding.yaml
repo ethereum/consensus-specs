@@ -18,6 +18,8 @@ MAX_SHARDS: 8
 INITIAL_ACTIVE_SHARDS: 2
 # 2**3 (= 8)
 GASPRICE_ADJUSTMENT_COEFFICIENT: 8
+# [customized] reduced for testing
+MAX_SHARD_PROPOSER_SLASHINGS: 4
 
 # Shard block configs
 # ---------------------------------------------------------------
@@ -41,6 +43,5 @@ SHARD_COMMITTEE_PERIOD: 256
 
 # Signature domains
 # ---------------------------------------------------------------
-DOMAIN_SHARD_PROPOSAL: 0x80000000
+DOMAIN_SHARD_PROPOSER: 0x80000000
 DOMAIN_SHARD_COMMITTEE: 0x81000000
-DOMAIN_LIGHT_CLIENT: 0x82000000
