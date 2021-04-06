@@ -13,10 +13,10 @@
 # Ethereum 2.0 Altair - Beacon chain light client
 
 The beacon chain light client protocol is an extra protocol for light clients and servers to communicate.
-We expect the beacon nodes that fully sync and verify the latest beacon state to serve as the servers
+We expect the beacon nodes that fully sync and verify the latest beacon state to act as servers
 while the light clients only have to download a partial of the beacon state from the servers.
 
-In the current simple design, the light client only sync to the latest finalized beacon chain head
+In the current simple design, light client only sync to the latest finalized beacon chain head
 so there should be no reorganization.
 The reorganizable light client design is still in active R&D.
 
