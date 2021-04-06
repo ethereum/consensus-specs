@@ -127,6 +127,7 @@ class ApplicationBlockHeader(Container):
     gas_used: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    transactions_root: Root
 ```
 
 ## Helper functions
@@ -203,5 +204,6 @@ def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> No
         gas_used=application_payload.gas_used,
         receipt_root=application_payload.receipt_root,
         logs_bloom=application_payload.logs_bloom,
+        transactions_root=hash_tree_root(application_payload.transactions),
     )
 ```
