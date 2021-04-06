@@ -50,8 +50,6 @@ uses sync committees introduced in [this beacon chain extension](./../beacon-cha
 
 ## Sync protocol
 
-Note that in this syncing mechanism, the server is trusted.
-
 ### Initialization
 
 1. The client sends [`Status` message](./../../phase0/p2p-interface.md#status) to the server to exchange the status information.

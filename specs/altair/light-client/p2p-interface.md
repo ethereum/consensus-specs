@@ -15,6 +15,7 @@ This document should be viewed as a patch to the [Altair networking specificatio
   - [Messages](#messages)
     - [GetLightClientSnapshot](#getlightclientsnapshot)
     - [LightClientUpdate](#lightclientupdate)
+- [Server discovery](#server-discovery)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -54,3 +55,7 @@ Request Content:
 No Response Content.
 
 The `LightClientUpdate` SSZ container defined in [light client sync protocol](./sync-protocol.md#lightclientupdate).
+
+## Server discovery
+
+[TODO]
