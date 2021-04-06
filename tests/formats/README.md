@@ -108,8 +108,8 @@ As a top level dir, it is not duplicated, and the used config can be copied righ
 
 ### `<fork or phase name>/`
 
-This would be: "phase0", "transferparty", "phase1", etc. Each introduces new tests, but does not copy tests that do not change. 
-If you like to test phase 1, you run phase 0 tests, with the configuration that includes phase 1 changes. Out of scope for now however.
+This would be: "phase0", "altair", etc. Each introduces new tests, and modifies any tests that change:
+some tests of earlier forks repeat with updated state data.
 
 ### `<test runner name>/`
 
