@@ -220,8 +220,7 @@ Given a collection of the best seen `contributions` (with no repeating `subcommi
 the proposer processes them as follows:
 
 ```python
-def process_sync_committee_contributions(state: BeaconState, 
-                                         block: BeaconBlock, 
+def process_sync_committee_contributions(block: BeaconBlock, 
                                          contributions: Set[SyncCommitteeContribution]) -> None:
     sync_aggregate = SyncAggregate()
     signatures = []
@@ -310,12 +309,12 @@ Each slot some sync committee members in each subcommittee are selected to aggre
 
 ##### Aggregation selection
 
-A validator is selected to aggregate based on the computation in `is_sync_committee_aggregator` where `state` is a `BeaconState` as supplied to `get_sync_committee_slot_signature` and `signature` is the BLS signature returned by `get_sync_committee_slot_signature`. 
+A validator is selected to aggregate based on the computation in `is_sync_committee_aggregator` where `signature` is the BLS signature returned by `get_sync_committee_selection_proof`. 
 The signature function takes a `BeaconState` with the relevant sync committees for the queried `slot` (i.e. `state.slot` is within the span covered by the current or next sync committee period), the `subcommittee_index` equal to the `subnet_id`, and the `privkey` is the BLS private key associated with the validator.
 
 ```python
-def get_sync_committee_slot_signature(state: BeaconState, slot: Slot,
-                                      subcommittee_index: uint64, privkey: int) -> BLSSignature:
+def get_sync_committee_selection_proof(state: BeaconState, slot: Slot,
+                                       subcommittee_index: uint64, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_data = SyncCommitteeSigningData(
         slot=slot,
@@ -326,7 +325,7 @@ def get_sync_committee_slot_signature(state: BeaconState, slot: Slot,
 ```
 
 ```python
-def is_sync_committee_aggregator(state: BeaconState, signature: BLSSignature) -> bool:
+def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
     modulo = max(1, SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT // TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE)
     return bytes_to_uint64(hash(signature)[0:8]) % modulo == 0
 ```
@@ -378,7 +377,7 @@ def get_contribution_and_proof(state: BeaconState,
                                aggregator_index: ValidatorIndex,
                                contribution: SyncCommitteeContribution,
                                privkey: int) -> ContributionAndProof:
-    selection_proof = get_sync_committee_slot_signature(
+    selection_proof = get_sync_committee_selection_proof(
         state,
         contribution.slot,
         contribution.subcommittee_index,
@@ -391,7 +390,7 @@ def get_contribution_and_proof(state: BeaconState,
     )
 ```
 
-Then `signed_contribution_and_proof = SignedContributionAndProof(message=contribution_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+Then `signed_contribution_and_proof = SignedContributionAndProof(message=contribution_and_proof, signature=signature)` is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
 def get_contribution_and_proof_signature(state: BeaconState, 

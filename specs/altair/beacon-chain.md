@@ -88,9 +88,10 @@ Altair is the first beacon chain hard fork. Its main features are:
 | `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
 | `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
 | `SYNC_REWARD_WEIGHT` | `uint64(8)` |
+| `PROPOSER_WEIGHT` | `uint64(8)` |
 | `WEIGHT_DENOMINATOR` | `uint64(64)` |
 
-*Note*: The sum of the weight fractions (7/8) plus the proposer inclusion fraction (1/8) equals 1.
+*Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
 ### Misc
 
@@ -412,7 +413,7 @@ def slash_validator(state: BeaconState,
     if whistleblower_index is None:
         whistleblower_index = proposer_index
     whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
-    proposer_reward = Gwei(whistleblower_reward // PROPOSER_REWARD_QUOTIENT)
+    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
@@ -477,7 +478,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
-    proposer_reward = Gwei(proposer_reward_numerator // (WEIGHT_DENOMINATOR * PROPOSER_REWARD_QUOTIENT))
+    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
@@ -529,29 +531,26 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 ```python
 def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
-    previous_slot = Slot(max(int(state.slot), 1) - 1)
-    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
-    included_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
     committee_pubkeys = state.current_sync_committee.pubkeys
-    included_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, aggregate.sync_committee_bits) if bit]
+    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, aggregate.sync_committee_bits) if bit]
+    previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert eth2_fast_aggregate_verify(included_pubkeys, signing_root, aggregate.sync_committee_signature)
+    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, aggregate.sync_committee_signature)
 
-    # Compute the maximum sync rewards for the slot
+    # Compute participant and proposer rewards
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
-    max_epoch_rewards = Gwei(total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR)
-    max_slot_rewards = Gwei(max_epoch_rewards * len(included_indices) // len(committee_indices) // SLOTS_PER_EPOCH)
+    max_participant_rewards = Gwei(total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
+    participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
+    proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
-    # Compute the participant and proposer sync rewards
-    committee_effective_balance = get_total_balance(state, set(included_indices))
-    for included_index in included_indices:
-        effective_balance = state.validators[included_index].effective_balance
-        inclusion_reward = Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
-        proposer_reward = Gwei(inclusion_reward // PROPOSER_REWARD_QUOTIENT)
+    # Apply participant and proposer rewards
+    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
+    participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
+    for participant_index in participant_indices:
+        increase_balance(state, participant_index, participant_reward)
         increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
-        increase_balance(state, included_index, inclusion_reward - proposer_reward)
 ```
 
 ### Epoch processing

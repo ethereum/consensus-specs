@@ -12,7 +12,7 @@
 - [Configuration](#configuration)
   - [Misc](#misc)
 - [New containers](#new-containers)
-  - [DASSample](#dassample)
+  - [`DASSample`](#dassample)
 - [Helper functions](#helper-functions)
   - [Reverse bit ordering](#reverse-bit-ordering)
     - [`reverse_bit_order`](#reverse_bit_order)
@@ -45,7 +45,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## New containers
 
-### DASSample
+### `DASSample`
 
 ```python
 class DASSample(Container):

@@ -277,6 +277,12 @@ ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
 }
 
 
+ALTAIR_INVAIANT_CHECKS = '''
+assert (
+    TIMELY_HEAD_WEIGHT + TIMELY_SOURCE_WEIGHT + TIMELY_TARGET_WEIGHT + SYNC_REWARD_WEIGHT + PROPOSER_WEIGHT
+) == WEIGHT_DENOMINATOR'''
+
+
 def is_phase0(fork):
     return fork == PHASE0
 
@@ -331,6 +337,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
     if is_altair(fork):
         altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
         spec += '\n\n\n' + altair_ssz_dep_constants_verification
+        spec += '\n' + ALTAIR_INVAIANT_CHECKS
 
     spec += '\n'
     return spec
