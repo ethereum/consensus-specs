@@ -185,11 +185,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
 
     execution_payload = body.execution_payload
 
-    if not is_transition_completed(state):
-        assert execution_payload == ExecutionPayload()
-        return
-
-    if not is_transition_block(state, body):
+    if is_transition_completed(state):
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1
 
