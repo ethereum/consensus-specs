@@ -48,7 +48,7 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 
 ###### `produce_execution_payload`
 
-Let `produce_execution_payload(parent_hash: Hash32) -> ExecutionPayload` be the function that produces new instance of execution payload.
+Let `produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload` be the function that produces new instance of execution payload.
 The body of this function is implementation dependent.
 
 * Set `block.body.execution_payload = get_execution_payload(state)` where:
@@ -66,5 +66,6 @@ def get_execution_payload(state: BeaconState) -> ExecutionPayload:
 
     # Post-merge, normal payload
     execution_parent_hash = state.latest_execution_payload_header.block_hash
-    return produce_execution_payload(execution_parent_hash)
+    timestamp = compute_time_at_slot(state, state.slot)
+    return produce_execution_payload(execution_parent_hash, timestamp)
 ```

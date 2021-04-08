@@ -26,6 +26,7 @@
   - [Misc](#misc)
     - [`is_transition_completed`](#is_transition_completed)
     - [`is_transition_block`](#is_transition_block)
+    - [`compute_time_at_slot`](#compute_time_at_slot)
   - [Block processing](#block-processing)
     - [Execution payload processing](#execution-payload-processing)
       - [`get_execution_state`](#get_execution_state)
@@ -149,6 +150,14 @@ def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> bool
     return not is_transition_completed(state) and block_body.execution_payload != ExecutionPayload()
 ```
 
+#### `compute_time_at_slot`
+
+```python
+def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
+    slots_since_genesis = slot - GENESIS_SLOT
+    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
+```
+
 ### Block processing
 
 ```python
@@ -171,7 +180,7 @@ The body of the function is implementation dependent.
 
 ##### `execution_state_transition`
 
-Let `execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None` be the transition function of Ethereum execution state. 
+Let `execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload, timestamp: uint64) -> None` be the transition function of Ethereum execution state. 
 The body of the function is implementation dependent.
 
 *Note*: `execution_state_transition` must throw `AssertionError` if either the transition itself or one of the pre or post conditions has failed.
@@ -193,8 +202,9 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1
 
+    timestamp = compute_time_at_slot(state, state.slot)
     execution_state = get_execution_state(state.latest_execution_payload_header.state_root)
-    execution_state_transition(execution_state, execution_payload)
+    execution_state_transition(execution_state, body.execution_payload, timestamp)
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,
