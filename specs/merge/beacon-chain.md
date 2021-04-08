@@ -138,14 +138,14 @@ class ExecutionPayloadHeader(Container):
 
 ```python
 def is_transition_completed(state: BeaconState) -> boolean:
-    return state.latest_execution_payload_header.block_hash != Bytes32()
+    return state.latest_execution_payload_header != ExecutionPayloadHeader()
 ```
 
 #### `is_transition_block`
 
 ```python
 def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
-    return state.latest_execution_payload_header.block_hash == Bytes32() and block_body.execution_payload.block_hash != Bytes32()
+    return not is_transition_completed(state) and block_body.execution_payload != ExecutionPayload()
 ```
 
 ### Block processing
@@ -163,14 +163,14 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### `get_execution_state`
 
-*Note*: `ExecutionState` class is an abstract class representing ethereum execution state.
+*Note*: `ExecutionState` class is an abstract class representing Ethereum execution state.
 
-Let `get_execution_state(execution_state_root: Bytes32) -> ExecutionState`  be the function that given the root hash returns a copy of ethereum execution state. 
+Let `get_execution_state(execution_state_root: Bytes32) -> ExecutionState`  be the function that given the root hash returns a copy of Ethereum execution state. 
 The body of the function is implementation dependent.
 
 ##### `execution_state_transition`
 
-Let `execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None` be the transition function of ethereum execution state. 
+Let `execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None` be the transition function of Ethereum execution state. 
 The body of the function is implementation dependent.
 
 *Note*: `execution_state_transition` must throw `AssertionError` if either the transition itself or one of the pre or post conditions has failed.
@@ -183,16 +183,18 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
 
+    execution_payload = body.execution_payload
+
     if not is_transition_completed(state):
-        assert body.execution_payload == ExecutionPayload()
+        assert execution_payload == ExecutionPayload()
         return
 
     if not is_transition_block(state, body):
-        assert body.execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
-        assert body.execution_payload.number == state.latest_execution_payload_header.number + 1
+        assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
+        assert execution_payload.number == state.latest_execution_payload_header.number + 1
 
     execution_state = get_execution_state(state.latest_execution_payload_header.state_root)
-    execution_state_transition(execution_state, body.execution_payload)
+    execution_state_transition(execution_state, execution_payload)
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,
