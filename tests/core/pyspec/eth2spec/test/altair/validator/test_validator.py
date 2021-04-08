@@ -151,5 +151,5 @@ def test_compute_subnets_for_sync_committee(state, spec, phases):
         for index in map(lambda t: t[0], some_sync_committee_members)
     ]
     for validator_index, expected_subnet in zip(validator_indices, expected_subnets):
-        subnet = spec.compute_subnets_for_sync_committee(state, validator_index)
-        assert subnet == [expected_subnet]
+        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        assert subnets == [expected_subnet]
