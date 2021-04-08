@@ -48,7 +48,7 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 
 ###### `produce_execution_payload`
 
-Let `produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload` be the function that produces new instance of execution payload.
+Let `produce_execution_payload(parent_hash: Hash32) -> ExecutionPayload` be the function that produces new instance of execution payload.
 The body of this function is implementation dependent.
 
 * Set `block.body.execution_payload = get_execution_payload(state)` where:

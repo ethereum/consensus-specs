@@ -47,6 +47,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a byte-list containing a single [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
+| `Hash32` | `Bytes32` | a 256-bit hash |
 
 ## Constants
 
@@ -98,8 +99,8 @@ The execution payload included in a `BeaconBlockBody`.
 
 ```python
 class ExecutionPayload(Container):
-    block_hash: Bytes32  # Hash of execution block
-    parent_hash: Bytes32
+    block_hash: Hash32  # Hash of execution block
+    parent_hash: Hash32
     coinbase: Bytes20
     state_root: Bytes32
     number: uint64
@@ -118,8 +119,8 @@ The execution payload header included in a `BeaconState`.
 
 ```python
 class ExecutionPayloadHeader(Container):
-    block_hash: Bytes32  # Hash of execution block
-    parent_hash: Bytes32
+    block_hash: Hash32  # Hash of execution block
+    parent_hash: Hash32
     coinbase: Bytes20
     state_root: Bytes32
     number: uint64
