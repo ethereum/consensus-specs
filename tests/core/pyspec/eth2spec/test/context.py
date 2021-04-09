@@ -75,17 +75,11 @@ class SpecForks(TypedDict, total=False):
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
                    spec: Spec, phases: SpecForks):
-
-    p0 = phases[PHASE0]
-    balances = balances_fn(p0)
-    activation_threshold = threshold_fn(p0)
-
-    state = create_genesis_state(spec=p0, validator_balances=balances,
+    phase = phases[spec.fork]
+    balances = balances_fn(phase)
+    activation_threshold = threshold_fn(phase)
+    state = create_genesis_state(spec=phase, validator_balances=balances,
                                  activation_threshold=activation_threshold)
-    # TODO: upgrade to merge spec, and later sharding.
-    if spec.fork == ALTAIR:
-        state = phases[ALTAIR].upgrade_to_altair(state)
-
     return state
 
 

@@ -20,6 +20,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
     eth1_block_hash = b'\xda' * 32
+    current_version = spec.GENESIS_FORK_VERSION
+    if spec.fork == 'altair':  # TODO: fix `context.py` dependency
+        current_version = spec.ALTAIR_FORK_VERSION
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),
@@ -30,7 +33,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         ),
         fork=spec.Fork(
             previous_version=spec.GENESIS_FORK_VERSION,
-            current_version=spec.GENESIS_FORK_VERSION,
+            current_version=current_version,
             epoch=spec.GENESIS_EPOCH,
         ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
@@ -47,8 +50,19 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
+        if spec.fork != 'phase0':  # TODO: fix `context.py` dependency
+            state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
+            state.inactivity_scores.append(spec.uint64(0))
 
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
+
+    if spec.fork != 'phase0':  # TODO: fix `context.py` dependency
+        # Fill in sync committees
+        state.current_sync_committee = spec.get_sync_committee(state, spec.get_current_epoch(state))
+        state.next_sync_committee = (
+            spec.get_sync_committee(state, spec.get_current_epoch(state) + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+        )
 
     return state
