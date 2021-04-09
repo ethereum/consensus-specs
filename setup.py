@@ -132,11 +132,16 @@ def get_spec(file_name: str) -> SpecObject:
 
 
 class SpecAdjustment(ABC):
+    @property
+    @abstractmethod
+    def fork(self) -> str:
+        raise NotImplementedError()
+
     @classmethod
     @abstractmethod
     def imports(cls) -> str:
         """
-        Import objects from other libaries.
+        Import objects from other libraries.
         """
         raise NotImplementedError()
 
@@ -185,6 +190,8 @@ class SpecAdjustment(ABC):
 # Phase0SpecAdjustment
 #
 class Phase0SpecAdjustment(SpecAdjustment):
+    fork: str = PHASE0
+
     @classmethod
     def imports(cls) -> str:
         return '''from lru import LRU
@@ -208,8 +215,8 @@ from eth2spec.utils.hash_function import hash
 
     @classmethod
     def preparations(cls) -> str:
-        return  '''SSZObject = TypeVar('SSZObject', bound=View)
-
+        return  '''
+SSZObject = TypeVar('SSZObject', bound=View)
 CONFIG_NAME = 'mainnet'
 '''
 
@@ -303,6 +310,8 @@ get_attesting_indices = cache_this(
 # AltairSpecAdjustment
 #
 class AltairSpecAdjustment(Phase0SpecAdjustment):
+    fork: str = ALTAIR
+
     @classmethod
     def imports(cls) -> str:
         return super().imports() + '\n' + '''
@@ -353,6 +362,8 @@ assert (
 # MergeSpecAdjustment
 #
 class MergeSpecAdjustment(Phase0SpecAdjustment):
+    fork: str = MERGE
+
     @classmethod
     def imports(cls):
         return super().imports() + '\n' + '''
@@ -402,25 +413,12 @@ def produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload:
 
 
 spec_adjustments = {
-    PHASE0: Phase0SpecAdjustment,
-    ALTAIR: AltairSpecAdjustment,
-    MERGE: MergeSpecAdjustment,
+    adjustment.fork: adjustment
+    for adjustment in (Phase0SpecAdjustment, AltairSpecAdjustment, MergeSpecAdjustment)
 }
 
 
-def is_phase0(fork):
-    return fork == PHASE0
-
-
-def is_altair(fork):
-    return fork == ALTAIR
-
-
-def is_merge(fork):
-    return fork == MERGE
-
-
-def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, fork: str, ordered_class_objects: Dict[str, str]) -> str:
+def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, ordered_class_objects: Dict[str, str]) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
@@ -456,7 +454,7 @@ def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, fork: s
     spec = (
             adjustment.imports()
             + adjustment.preparations()
-            + '\n\n' + f"fork = \'{fork}\'\n"
+            + '\n\n' + f"fork = \'{adjustment.fork}\'\n"
             # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
             + ('\n\n' + custom_type_dep_constants + '\n' if custom_type_dep_constants != '' else '')
             + '\n\n' + new_type_definitions
@@ -563,7 +561,7 @@ def build_spec(fork: str, source_files: List[str]) -> str:
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
     dependency_order_class_objects(class_objects, spec_object.custom_types)
 
-    return objects_to_spec(spec_object, spec_adjustments[fork], fork, class_objects)
+    return objects_to_spec(spec_object, spec_adjustments[fork], class_objects)
 
 
 class PySpecCommand(Command):
@@ -595,14 +593,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if is_phase0(self.spec_fork):
+            if self.spec_fork == PHASE0:
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            elif is_altair(self.spec_fork):
+            elif self.spec_fork == ALTAIR:
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
@@ -613,7 +611,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/sync-protocol.md
                 """
-            elif is_merge(self.spec_fork):
+            elif self.spec_fork == MERGE:
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
