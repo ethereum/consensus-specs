@@ -298,14 +298,14 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
 
 
 MERGE_SUNDRY_FUNCTIONS = """
-ApplicationState = Any
+ExecutionState = Any
 
 
 def get_pow_block(hash: Bytes32) -> PowBlock:
     pass
 
 
-def get_application_state(application_state_root: Bytes32) -> ApplicationState:
+def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
     pass
 
 
@@ -313,11 +313,11 @@ def get_pow_chain_head() -> PowBlock:
     pass
 
 
-def application_state_transition(application_state: ApplicationState, application_payload: ApplicationPayload) -> None:
+def execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None:
     pass
 
 
-def produce_application_payload(parent_hash: Bytes32) -> ApplicationPayload:
+def produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload:
     pass"""
 
 
