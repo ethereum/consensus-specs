@@ -134,9 +134,17 @@ def get_spec(file_name: str) -> SpecObject:
 class SpecAdjustment(ABC):
     @classmethod
     @abstractmethod
-    def imports_and_predefinitions(cls) -> str:
+    def imports(cls) -> str:
         """
-        Importing functions and defining special types/constants for building pyspec.
+        Import objects from other libaries.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def preparations(cls) -> str:
+        """
+        Define special types/constants for building pyspec or call functions.
         """
         raise NotImplementedError()
 
@@ -178,7 +186,7 @@ class SpecAdjustment(ABC):
 #
 class Phase0SpecAdjustment(SpecAdjustment):
     @classmethod
-    def imports_and_predefinitions(cls) -> str:
+    def imports(cls) -> str:
         return '''from lru import LRU
 from dataclasses import (
     dataclass,
@@ -192,12 +200,15 @@ from eth2spec.config.config_util import apply_constants_config
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
-)
+    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
+from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
+'''
 
-SSZObject = TypeVar('SSZObject', bound=View)
+    @classmethod
+    def preparations(cls) -> str:
+        return  '''SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
 '''
@@ -293,40 +304,25 @@ get_attesting_indices = cache_this(
 #
 class AltairSpecAdjustment(Phase0SpecAdjustment):
     @classmethod
-    def imports_and_predefinitions(cls) -> str:
-        return '''from lru import LRU
-from dataclasses import (
-    dataclass,
-    field,
-)
-from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, Union
-)
-
-
-from eth2spec.config.config_util import apply_constants_config
-from eth2spec.phase0 import spec as phase0
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
-from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
-    Path,
-)
-from eth2spec.utils import bls
-
-from eth2spec.utils.hash_function import hash
-
-# Whenever this spec version is loaded, make sure we have the latest phase0
+    def imports(cls) -> str:
+        return super().imports() + '\n' + '''
+from typing import NewType, Union
 from importlib import reload
-reload(phase0)
 
+from eth2spec.phase0 import spec as phase0
+from eth2spec.utils.ssz.ssz_typing import Path
+'''
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
+# Whenever this spec version is loaded, make sure we have the latest phase0
+reload(phase0)
 
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
-SSZObject = TypeVar('SSZObject', bound=View)
-
-CONFIG_NAME = 'mainnet'
 '''
+
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
@@ -358,35 +354,17 @@ assert (
 #
 class MergeSpecAdjustment(Phase0SpecAdjustment):
     @classmethod
-    def imports_and_predefinitions(cls):
-        return '''from lru import LRU
-from dataclasses import (
-    dataclass,
-    field,
-)
-from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
-)
-
+    def imports(cls):
+        return super().imports() + '\n' + '''
 from eth2spec.phase0 import spec as phase0
-from eth2spec.config.config_util import apply_constants_config
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
-from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
-    Bytes1, Bytes4, Bytes20, Bytes32, Bytes48, Bytes96, Bitlist,
-    ByteList, ByteVector
-)
-from eth2spec.utils import bls
-from eth2spec.utils.hash_function import hash
-
-
-# Whenever this spec version is loaded, make sure we have the latest phase0
+from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256
 from importlib import reload
+'''
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
 reload(phase0)
-
-SSZObject = TypeVar('SSZObject', bound=View)
-
-CONFIG_NAME = 'mainnet'
 '''
 
     @classmethod
@@ -476,7 +454,8 @@ def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, fork: s
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), adjustment.hardcoded_ssz_dep_constants()))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, adjustment.hardcoded_custom_type_dep_constants()[x]), adjustment.hardcoded_custom_type_dep_constants()))
     spec = (
-            adjustment.imports_and_predefinitions()
+            adjustment.imports()
+            + adjustment.preparations()
             + '\n\n' + f"fork = \'{fork}\'\n"
             # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
             + ('\n\n' + custom_type_dep_constants + '\n' if custom_type_dep_constants != '' else '')
