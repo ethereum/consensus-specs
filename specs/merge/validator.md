@@ -62,7 +62,8 @@ def get_execution_payload(state: BeaconState) -> ExecutionPayload:
             return ExecutionPayload()
         else:
             # Signify merge via producing on top of the last PoW block
-            return produce_execution_payload(pow_block.block_hash)
+            timestamp = compute_time_at_slot(state, state.slot)
+            return produce_execution_payload(pow_block.block_hash, timestamp)
 
     # Post-merge, normal payload
     execution_parent_hash = state.latest_execution_payload_header.block_hash
