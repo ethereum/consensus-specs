@@ -114,7 +114,7 @@ def test_process_sync_committee_contributions(phases, spec, state):
                 spec, state, previous_slot, target_block_root, i, aggregation_index
             ),
         )
-        for i in range(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT)
+        for i in range(spec.SYNC_COMMITTEE_SUBNET_COUNT)
     ]
 
     # ensure the block has an empty sync aggregate...
