@@ -77,7 +77,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Merge]
     if is_transition_block(pre_state, block.body):
         # Delay consideration of block until PoW block is processed by the PoW node
-        pow_block = get_pow_block(block.body.application_payload.parent_hash)
+        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         assert pow_block.is_processed
         assert is_valid_transition_block(pow_block)
 
