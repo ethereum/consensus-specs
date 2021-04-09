@@ -42,25 +42,28 @@ def test_is_assigned_to_sync_committee(phases, spec, state):
         spec, state, next_query_epoch, state.next_sync_committee, active_pubkeys
     )
 
-    assert validator_count >= 3
     sync_committee_pubkeys = set(
         list(state.current_sync_committee.pubkeys)
         + list(state.next_sync_committee.pubkeys)
     )
-    disqualified_pubkeys = list(
+    disqualified_pubkeys = set(
         filter(lambda key: key not in sync_committee_pubkeys, active_pubkeys)
     )
-    some_pubkeys = rng.sample(disqualified_pubkeys, 3)
-    for pubkey in some_pubkeys:
-        validator_index = active_pubkeys.index(pubkey)
-        is_current = spec.is_assigned_to_sync_committee(
-            state, query_epoch, validator_index
-        )
-        is_next = spec.is_assigned_to_sync_committee(
-            state, next_query_epoch, validator_index
-        )
-        is_current_or_next = is_current or is_next
-        assert not is_current_or_next
+    # NOTE: only check `disqualified_pubkeys` if SYNC_COMMITEE_SIZE < validator count
+    if disqualified_pubkeys:
+        sample_size = 3
+        assert validator_count >= sample_size
+        some_pubkeys = rng.sample(disqualified_pubkeys, sample_size)
+        for pubkey in some_pubkeys:
+            validator_index = active_pubkeys.index(pubkey)
+            is_current = spec.is_assigned_to_sync_committee(
+                state, query_epoch, validator_index
+            )
+            is_next = spec.is_assigned_to_sync_committee(
+                state, next_query_epoch, validator_index
+            )
+            is_current_or_next = is_current or is_next
+            assert not is_current_or_next
 
 
 def _get_sync_committee_signature(
