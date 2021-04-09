@@ -179,25 +179,22 @@ class SpecAdjustment(ABC):
 class Phase0SpecAdjustment(SpecAdjustment):
     @classmethod
     def imports_and_predefinitions(cls) -> str:
-        return '''from eth2spec.config.config_util import apply_constants_config
-from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
-)
-
+        return '''from lru import LRU
 from dataclasses import (
     dataclass,
     field,
 )
+from typing import (
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
+)
 
-from lru import LRU
-
+from eth2spec.config.config_util import apply_constants_config
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils import bls
-
 from eth2spec.utils.hash_function import hash
 
 SSZObject = TypeVar('SSZObject', bound=View)
@@ -297,19 +294,18 @@ get_attesting_indices = cache_this(
 class AltairSpecAdjustment(Phase0SpecAdjustment):
     @classmethod
     def imports_and_predefinitions(cls) -> str:
-        return '''from eth2spec.phase0 import spec as phase0
-from eth2spec.config.config_util import apply_constants_config
-from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, Union
-)
-
+        return '''from lru import LRU
 from dataclasses import (
     dataclass,
     field,
 )
+from typing import (
+    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional, Union
+)
 
-from lru import LRU
 
+from eth2spec.config.config_util import apply_constants_config
+from eth2spec.phase0 import spec as phase0
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
@@ -320,7 +316,7 @@ from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
-# Whenever altair is loaded, make sure we have the latest phase0
+# Whenever this spec version is loaded, make sure we have the latest phase0
 from importlib import reload
 reload(phase0)
 
@@ -363,19 +359,17 @@ assert (
 class MergeSpecAdjustment(Phase0SpecAdjustment):
     @classmethod
     def imports_and_predefinitions(cls):
-        return '''from eth2spec.phase0 import spec as phase0
-from eth2spec.config.config_util import apply_constants_config
-from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
-)
-
+        return '''from lru import LRU
 from dataclasses import (
     dataclass,
     field,
 )
+from typing import (
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
+)
 
-from lru import LRU
-
+from eth2spec.phase0 import spec as phase0
+from eth2spec.config.config_util import apply_constants_config
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
@@ -383,8 +377,12 @@ from eth2spec.utils.ssz.ssz_typing import (
     ByteList, ByteVector
 )
 from eth2spec.utils import bls
-
 from eth2spec.utils.hash_function import hash
+
+
+# Whenever this spec version is loaded, make sure we have the latest phase0
+from importlib import reload
+reload(phase0)
 
 SSZObject = TypeVar('SSZObject', bound=View)
 
