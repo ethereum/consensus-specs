@@ -1,4 +1,5 @@
 import random
+from collections import defaultdict
 from eth2spec.utils.ssz.ssz_typing import Bitvector
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.keys import pubkey_to_privkey
@@ -135,24 +136,31 @@ def test_process_sync_committee_contributions(phases, spec, state):
     spec.process_block(state, block)
 
 
+def _validator_index_for_pubkey(state, pubkey):
+    return list(map(lambda v: v.pubkey, state.validators)).index(pubkey)
+
+
+def _subnet_for_sync_committee_index(spec, i):
+    return i // (spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT)
+
+
 @with_all_phases_except([PHASE0])
 @with_state
 def test_compute_subnets_for_sync_committee(state, spec, phases):
-    k = max(spec.SYNC_COMMITTEE_SIZE // 4, 1)
-    some_sync_committee_members = rng.sample(
-        list(
-            (i, pubkey) for i, pubkey in enumerate(state.current_sync_committee.pubkeys)
-        ),
-        k,
+    some_sync_committee_members = list(
+        (
+            _subnet_for_sync_committee_index(spec, i),
+            pubkey,
+        )
+        for i, pubkey in enumerate(state.current_sync_committee.pubkeys)
     )
-    validator_indices = [
-        list(map(lambda v: v.pubkey, state.validators)).index(pubkey)
-        for pubkey in map(lambda t: t[1], some_sync_committee_members)
-    ]
-    expected_subnets = [
-        index // (spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT)
-        for index in map(lambda t: t[0], some_sync_committee_members)
-    ]
-    for validator_index, expected_subnet in zip(validator_indices, expected_subnets):
+
+    expected_subnets_by_pubkey = defaultdict(list)
+    for (subnet, pubkey) in some_sync_committee_members:
+        expected_subnets_by_pubkey[pubkey].append(subnet)
+
+    for _, pubkey in some_sync_committee_members:
+        validator_index = _validator_index_for_pubkey(state, pubkey)
         subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
-        assert subnets == [expected_subnet]
+        expected_subnets = expected_subnets_by_pubkey[pubkey]
+        assert subnets == expected_subnets
