@@ -182,7 +182,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
-
     # Pre-merge, skip processing
     if not is_transition_completed(state) and not is_transition_block(state, body):
         return
