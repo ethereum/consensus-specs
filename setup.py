@@ -695,7 +695,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.18",
+        "remerkleable==0.1.19",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6",
     ]
