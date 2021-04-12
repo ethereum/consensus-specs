@@ -135,6 +135,17 @@ jobs:
       - run:
           name: Run linter for test generators
           command: make lint_generators
+  check_combined_configs:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_pyspec_cached_venv
+      - run:
+          name: Check combined config files
+          command: make check_combined_configs
   build_deposit_contract:
     docker:
       - image: ethereum/solc:0.6.11-alpine
@@ -214,6 +225,9 @@ workflows:
       - table_of_contents
       - codespell
       - lint:
+          requires:
+            - test
+      - check_combined_configs:
           requires:
             - test
       # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests. 
