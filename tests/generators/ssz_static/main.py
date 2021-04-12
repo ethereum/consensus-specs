@@ -9,7 +9,7 @@ from eth2spec.debug import random_value, encode
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.altair import spec as spec_altair
-from eth2spec.test.context import ALTAIR, TESTGEN_FORKS, MINIMAL, MAINNET
+from eth2spec.test.helpers.constants import ALTAIR, TESTGEN_FORKS, MINIMAL, MAINNET
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,

@@ -7,13 +7,15 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
-    CUSTODY_GAME,
-    MINIMAL,
     spec_state_test,
     with_phases,
     with_configs,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
+from eth2spec.test.helpers.constants import (
+    CUSTODY_GAME,
+    MINIMAL,
+)
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 from eth2spec.test.custody_game.block_processing.test_process_chunk_challenge import (

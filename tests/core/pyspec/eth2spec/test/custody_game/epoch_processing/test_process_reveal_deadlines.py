@@ -3,11 +3,13 @@ from eth2spec.test.helpers.custody import (
 )
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.context import (
-    CUSTODY_GAME,
-    MINIMAL,
     with_phases,
     with_configs,
     spec_state_test,
+)
+from eth2spec.test.helpers.constants import (
+    CUSTODY_GAME,
+    MINIMAL,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.custody_game.block_processing.test_process_custody_key_reveal import (

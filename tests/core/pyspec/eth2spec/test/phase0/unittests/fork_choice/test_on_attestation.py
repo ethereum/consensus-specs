@@ -1,6 +1,7 @@
-from eth2spec.test.context import PHASE0, ALTAIR, with_all_phases, spec_state_test
+from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 

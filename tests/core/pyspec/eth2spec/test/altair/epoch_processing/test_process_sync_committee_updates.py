@@ -1,9 +1,11 @@
 from eth2spec.test.context import (
-    PHASE0,
-    MINIMAL,
     spec_state_test,
     with_all_phases_except,
     with_configs,
+)
+from eth2spec.test.helpers.constants import (
+    PHASE0,
+    MINIMAL,
 )
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.epoch_processing import (

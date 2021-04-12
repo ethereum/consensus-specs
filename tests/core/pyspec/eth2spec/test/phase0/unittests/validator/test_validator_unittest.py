@@ -1,8 +1,8 @@
 from eth2spec.test.context import (
     spec_state_test,
     always_bls, with_phases, with_all_phases,
-    PHASE0,
 )
+from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit

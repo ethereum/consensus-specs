@@ -1,4 +1,5 @@
-from eth2spec.test.context import PHASE0, spec_state_test, with_phases
+from eth2spec.test.context import spec_state_test, with_phases
+from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with
 )

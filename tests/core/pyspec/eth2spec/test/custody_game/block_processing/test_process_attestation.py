@@ -1,9 +1,9 @@
 from eth2spec.test.context import (
-    CUSTODY_GAME,
     with_phases,
     spec_state_test,
     always_bls,
 )
+from eth2spec.test.helpers.constants import CUSTODY_GAME
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
