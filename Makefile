@@ -184,3 +184,11 @@ detect_generator_incomplete: $(TEST_VECTOR_DIR)
 
 detect_generator_error_log: $(TEST_VECTOR_DIR)
 	[ -f $(GENERATOR_ERROR_LOG_FILE) ] && echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists" || echo "[PASSED] error log file does not exist"
+
+combine_configs:
+	. venv/bin/activate;
+	python3 ./scripts/combine_configs.py
+
+check_combined_configs:
+	. venv/bin/activate;
+	python3 ./scripts/combine_configs.py check
