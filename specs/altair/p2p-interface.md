@@ -83,15 +83,23 @@ See the [state transition document](./beacon-chain.md#beaconblockbody) for Altai
  
 This topic is used to propagate partially aggregated sync committee signatures to be included in future blocks.
 
-The following validations MUST pass before forwarding the `signed_contribution_and_proof` on the network; define `contribution_and_proof = signed_contribution_and_proof.message` and `contribution = contribution_and_proof.contribution` for convenience:
+The following validations MUST pass before forwarding the `signed_contribution_and_proof` on the network; define `contribution_and_proof = signed_contribution_and_proof.message`, `contribution = contribution_and_proof.contribution`, and the following function `get_sync_subcommittee_pubkeys` for convenience:
+
+```python
+SYNC_SUBCOMMITTEE_SIZE = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
+
+def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64) -> Sequence[BLSPubkey]:
+    i = subcommittee_index * SYNC_SUBCOMMITTEE_SIZE
+    return state.current_sync_committee.pubkeys[i:i+SYNC_SUBCOMMITTEE_SIZE]
+```
 
 - _[IGNORE]_ The contribution's slot is for the current slot, i.e. `contribution.slot == current_slot`.
 - _[IGNORE]_ The block being signed over (`contribution.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
 - _[REJECT]_ The subcommittee index is in the allowed range, i.e. `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
-- _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index` for the slot `contribution.slot`.
-- _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(state, contribution.slot, contribution_and_proof.selection_proof)` returns `True`.
-- _[REJECT]_ The aggregator's validator index is within the current sync committee --
-  i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in state.current_sync_committee.pubkeys`.
+- _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index` for the slot `contribution.slot` and subcommittee index `contribution.subcommittee_index`.
+- _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(contribution_and_proof.selection_proof)` returns `True`.
+- _[REJECT]_ The aggregator's validator index is in the declared subcommittee of the current sync committee --
+  i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
 - _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature of the `SyncCommitteeSigningData` derived from the `contribution` by the validator with index `contribution_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_contribution_and_proof.signature`, is valid.
 - _[REJECT]_ The aggregate signature is valid for the message `beacon_block_root` and aggregate pubkey derived from the participation info in `aggregation_bits` for the subcommittee specified by the `subcommittee_index`.
