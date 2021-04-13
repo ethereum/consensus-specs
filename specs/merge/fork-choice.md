@@ -38,7 +38,7 @@ class PowBlock(Container):
 
 #### `get_pow_block`
 
-Let `get_pow_block(hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
+Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method does not distinguish invalid blocks from blocks that haven't been processed yet. Either extending this existing method or implementing a new one is required.
 
@@ -113,4 +113,3 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
             if ancestor_at_finalized_slot != store.finalized_checkpoint.root:
                 store.justified_checkpoint = state.current_justified_checkpoint
 ```
-
