@@ -7,8 +7,8 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, MERGE, SHARDING, CUSTODY_GAME, DAS,
-    ALL_PHASES,
+    PHASE0, ALTAIR,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR,
 )
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
@@ -362,8 +362,6 @@ def with_configs(configs, reason=None):
 
 
 def is_post_altair(spec):
-    # TODO: everything runs in parallel to Altair.
-    #  After features are rebased on the Altair fork, this can be reduced to just PHASE0.
-    if spec.fork in [PHASE0, MERGE, SHARDING, CUSTODY_GAME, DAS]:
+    if spec.fork in FORKS_BEFORE_ALTAIR:
         return False
     return True

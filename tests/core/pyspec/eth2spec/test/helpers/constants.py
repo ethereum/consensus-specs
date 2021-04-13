@@ -18,7 +18,9 @@ DAS = SpecForkName('das')
 ALL_PHASES = (PHASE0, ALTAIR)
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (PHASE0, ALTAIR)
-
+# TODO: everything runs in parallel to Altair.
+# After features are rebased on the Altair fork, this can be reduced to just PHASE0.
+FORKS_BEFORE_ALTAIR = (PHASE0, MERGE, SHARDING, CUSTODY_GAME, DAS)
 
 #
 # Config
