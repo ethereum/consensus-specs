@@ -16,7 +16,7 @@
   - [Transition](#transition)
   - [Execution](#execution)
 - [Containers](#containers)
-  - [Updated containers](#updated-containers)
+  - [Modified containers](#modified-containers)
     - [`Eth1Data`](#eth1data)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -31,7 +31,7 @@
     - [`compute_time_at_slot`](#compute_time_at_slot)
   - [Block processing](#block-processing)
     - [Execution payload processing](#execution-payload-processing)
-      - [`execution_state_transition`](#execution_state_transition)
+      - [`validate_execution_payload`](#validate_execution_payload)
       - [`process_execution_payload`](#process_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -187,12 +187,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Execution payload processing
 
-##### `execution_state_transition`
+##### `validate_execution_payload`
 
-Let `execution_state_transition(execution_state_root: Bytes32, execution_payload: ExecutionPayload) -> None` be the transition function of Ethereum execution state. 
+Let `validate_execution_payload(execution_payload: ExecutionPayload) -> boolean` be the function checking whether given `ExecutionPayload` is valid or not.
 The body of the function is implementation dependent.
-
-*Note*: `execution_state_transition` must throw `AssertionError` if either the transition itself or one of the pre or post conditions has failed.
 
 ##### `process_execution_payload`
 
@@ -213,8 +211,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
 
     assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
-    execution_state_root = state.latest_execution_payload_header.state_root
-    execution_state_transition(execution_state_root, body.execution_payload)
+    assert validate_execution_payload(execution_payload)
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,
