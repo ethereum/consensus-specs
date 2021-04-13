@@ -77,5 +77,5 @@ def get_loaded_config(configs_dir: str,
         loaded = yaml.load(path)
         loaded_config.update(loaded)
     assert loaded_config != {}
-
+    loaded_config = dict(sorted(loaded_config.items()))
     return loaded_config
