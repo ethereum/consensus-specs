@@ -36,6 +36,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
+    proposer_score_boost: LatestMessage
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_tree: Dict[Root, BlockTreeNode] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -79,12 +80,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_node_id = get_node_id(anchor_root, anchor_epoch)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     return Store(
         time=anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot,
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
+        proposer_score_boost=proposer_score_boost,
         blocks={anchor_root: copy(anchor_block)},
         block_tree={anchor_node_id: anchor_node},
         block_states={anchor_root: anchor_state.copy()},

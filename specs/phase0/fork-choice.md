@@ -65,6 +65,7 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
+| `ATTESTATION_OFFSET_QUOTIENT` | `3` | - | - |
 
 ### Helpers
 
@@ -112,6 +113,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
+    proposer_score_boost: LatestMessage
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_tree: Dict[Root, BlockTreeNode] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -135,12 +137,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_node_id = get_node_id(anchor_root, anchor_epoch)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     return Store(
         time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
+        proposer_score_boost=proposer_score_boost,
         blocks={anchor_root: copy(anchor_block)},
         block_tree={anchor_node_id: anchor_node},
         block_states={anchor_root: copy(anchor_state)},
@@ -207,7 +211,7 @@ def get_latest_attesting_balance(store: Store, node_id: Root) -> Gwei:
     node = store.block_tree[node_id]
     block = store.blocks[node.block_root]
     block_slot = block.slot
-    return Gwei(sum(
+    attestation_score = Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
             and get_ancestor_node_id(store,
@@ -215,6 +219,15 @@ def get_latest_attesting_balance(store: Store, node_id: Root) -> Gwei:
                                                  store.latest_messages[i].epoch),
                                      block_slot) == node_id)
     ))
+    proposer_score = Gwei(0)
+    if store.proposer_score_boost.epoch != 0:
+        committee_weight = Gwei(sum(state.validators[i].effective_balance for i in active_indices))
+        if get_ancestor_node_id(store,
+                                get_node_id(store.proposer_score_boost.root,
+                                            store.proposer_score_boost.epoch),
+                                block_slot) == node_id:
+            proposer_score = Gwei(committee_weight // 4)
+    return attestation_score + proposer_score
 ```
 
 #### `filter_block_tree`
@@ -441,6 +454,10 @@ def on_tick(store: Store, time: uint64) -> None:
     store.time = time
 
     current_slot = get_current_slot(store)
+    # Reset store.proposer_score_boost if this is a new slot
+    if store.proposer_score_boost.epoch != 0:
+        if current_slot != store.blocks[store.proposer_score_boost.root].slot:
+            store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
@@ -476,6 +493,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     add_block_tree_node(store, block, compute_epoch_at_slot(block.slot))
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
+
+    # Add LMD score boosting if the block is timely
+    if (get_current_slot(store) == block.slot and
+       store.time % SECONDS_PER_SLOT <= SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT):
+        store.proposer_score_boost = LatestMessage(
+            root=hash_tree_root(block),
+            epoch=compute_epoch_at_slot(block.slot)
+        )
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
