@@ -102,7 +102,7 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
   i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
 - _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature of the `SyncCommitteeSigningData` derived from the `contribution` by the validator with index `contribution_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_contribution_and_proof.signature`, is valid.
-- _[REJECT]_ The aggregate signature is valid for the message `beacon_block_root` and aggregate pubkey derived from the participation info in `aggregation_bits` for the subcommittee specified by the `subcommittee_index`.
+- _[REJECT]_ The aggregate signature is valid for the message `beacon_block_root` and aggregate pubkey derived from the participation info in `aggregation_bits` for the subcommittee specified by the `contribution.subcommittee_index`.
 
 #### Sync committee subnets
 
