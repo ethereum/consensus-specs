@@ -1,6 +1,6 @@
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.altair import spec as spec_altair
-from eth2spec.test.context import PHASE0, ALTAIR
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 

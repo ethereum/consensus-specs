@@ -4,7 +4,8 @@ from typing import Any, Callable, Dict, Iterable, Optional
 
 from eth2spec.config import config_util
 from eth2spec.utils import bls
-from eth2spec.test.context import ALL_CONFIGS, TESTGEN_FORKS, SpecForkName, ConfigName
+from eth2spec.test.helpers.constants import ALL_CONFIGS, TESTGEN_FORKS
+from eth2spec.test.helpers.typing import SpecForkName, ConfigName
 
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider

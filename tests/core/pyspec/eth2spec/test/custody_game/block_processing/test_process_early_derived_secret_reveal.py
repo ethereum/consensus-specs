@@ -1,7 +1,7 @@
+from eth2spec.test.helpers.constants import CUSTODY_GAME
 from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
 from eth2spec.test.helpers.state import next_epoch_via_block, get_balance
 from eth2spec.test.context import (
-    CUSTODY_GAME,
     with_phases,
     spec_state_test,
     expect_assertion_error,
