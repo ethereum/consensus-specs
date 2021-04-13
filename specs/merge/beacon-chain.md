@@ -121,6 +121,7 @@ class ExecutionPayload(Container):
     number: uint64
     gas_limit: uint64
     gas_used: uint64
+    timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     transactions: List[OpaqueTransaction, MAX_APPLICATION_TRANSACTIONS]
@@ -141,6 +142,7 @@ class ExecutionPayloadHeader(Container):
     number: uint64
     gas_limit: uint64
     gas_used: uint64
+    timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     transactions_root: Root
@@ -187,7 +189,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### `execution_state_transition`
 
-Let `execution_state_transition(execution_state_root: Bytes32, execution_payload: ExecutionPayload, timestamp: uint64) -> None` be the transition function of Ethereum execution state. 
+Let `execution_state_transition(execution_state_root: Bytes32, execution_payload: ExecutionPayload) -> None` be the transition function of Ethereum execution state. 
 The body of the function is implementation dependent.
 
 *Note*: `execution_state_transition` must throw `AssertionError` if either the transition itself or one of the pre or post conditions has failed.
@@ -209,9 +211,10 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1
 
-    timestamp = compute_time_at_slot(state, state.slot)
+    assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
+
     execution_state_root = state.latest_execution_payload_header.state_root
-    execution_state_transition(execution_state_root, body.execution_payload, timestamp)
+    execution_state_transition(execution_state_root, body.execution_payload)
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,
@@ -221,6 +224,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
         number=execution_payload.number,
         gas_limit=execution_payload.gas_limit,
         gas_used=execution_payload.gas_used,
+        timestamp=execution_payload.timestamp,
         receipt_root=execution_payload.receipt_root,
         logs_bloom=execution_payload.logs_bloom,
         transactions_root=hash_tree_root(execution_payload.transactions),
