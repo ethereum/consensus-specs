@@ -11,8 +11,8 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
+from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.context import (
-    PHASE0,
     with_all_phases_except,
     spec_state_test,
 )

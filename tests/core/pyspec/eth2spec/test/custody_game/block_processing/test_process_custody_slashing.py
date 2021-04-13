@@ -5,12 +5,14 @@ from eth2spec.test.helpers.custody import (
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
+from eth2spec.test.helpers.constants import (
+    CUSTODY_GAME,
+    MINIMAL,
+)
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_typing import ByteList
 from eth2spec.test.helpers.state import get_balance, transition_to
 from eth2spec.test.context import (
-    MINIMAL,
-    CUSTODY_GAME,
     with_phases,
     spec_state_test,
     expect_assertion_error,

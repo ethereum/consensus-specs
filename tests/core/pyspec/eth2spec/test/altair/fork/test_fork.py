@@ -1,6 +1,4 @@
 from eth2spec.test.context import (
-    PHASE0, ALTAIR,
-    MINIMAL,
     with_phases,
     with_custom_state,
     with_configs,
@@ -8,6 +6,10 @@ from eth2spec.test.context import (
     low_balances, misc_balances, large_validator_set,
 )
 from eth2spec.test.utils import with_meta_tags
+from eth2spec.test.helpers.constants import (
+    PHASE0, ALTAIR,
+    MINIMAL,
+)
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_epoch_via_block,
