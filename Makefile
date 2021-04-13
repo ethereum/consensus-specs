@@ -5,6 +5,7 @@ TEST_GENERATORS_DIR = ./tests/generators
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 TEST_VECTOR_DIR = ../eth2.0-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
+SCRIPTS_DIR = ./scripts
 SOLIDITY_DEPOSIT_CONTRACT_DIR = ./solidity_deposit_contract
 SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_contract.sol
 SOLIDITY_FILE_NAME = deposit_contract.json
@@ -16,6 +17,9 @@ GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
 GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
+# Scripts
+SCRIPTS = $(sort $(dir $(wildcard $(SCRIPTS_DIR)/*/.)))
+SCRIPTS_VENVS = $(patsubst $(SCRIPTS_DIR)/%, $(SCRIPTS_DIR)/%venv, $(SCRIPTS))
 
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
@@ -49,6 +53,7 @@ all: $(PY_SPEC_ALL_TARGETS)
 partial_clean:
 	rm -rf $(TEST_VECTOR_DIR)
 	rm -rf $(GENERATOR_VENVS)
+	rm -rf $(SCRIPTS_VENVS)
 	rm -rf .pytest_cache
 	rm -f .coverage
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
@@ -186,9 +191,11 @@ detect_generator_error_log: $(TEST_VECTOR_DIR)
 	[ -f $(GENERATOR_ERROR_LOG_FILE) ] && echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists" || echo "[PASSED] error log file does not exist"
 
 combine_configs:
-	. venv/bin/activate;
-	python3 ./scripts/combine_configs.py
+	cd $(SCRIPTS_DIR)/combine_configs; python3 -m venv venv; . venv/bin/activate; \
+	python3 -m pip install -r ./requirements.txt; \
+	cd $(CURRENT_DIR); python3 $(SCRIPTS_DIR)/combine_configs/combine_configs.py
 
 check_combined_configs:
-	. venv/bin/activate;
-	python3 ./scripts/combine_configs.py check
+	cd $(SCRIPTS_DIR)/combine_configs; python3 -m venv venv; . venv/bin/activate; \
+	python3 -m pip install -r ./requirements.txt; \
+	cd $(CURRENT_DIR); python3 $(SCRIPTS_DIR)/combine_configs/combine_configs.py check
