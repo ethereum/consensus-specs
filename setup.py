@@ -313,10 +313,8 @@ def get_pow_chain_head() -> PowBlock:
     pass
 
 
-def execution_state_transition(execution_state_root: Bytes32,
-                               execution_payload: ExecutionPayload,
-                               timestamp: uint64) -> None:
-    pass
+def verify_execution_state_transition(execution_payload: ExecutionPayload) -> bool:
+    return True
 
 
 def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload:
