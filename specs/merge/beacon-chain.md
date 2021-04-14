@@ -31,7 +31,7 @@
     - [`compute_time_at_slot`](#compute_time_at_slot)
   - [Block processing](#block-processing)
     - [Execution payload processing](#execution-payload-processing)
-      - [`validate_execution_payload`](#validate_execution_payload)
+      - [`verify_execution_state_transition`](#verify_execution_state_transition)
       - [`process_execution_payload`](#process_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -189,9 +189,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Execution payload processing
 
-##### `validate_execution_payload`
+##### `verify_execution_state_transition`
 
-Let `validate_execution_payload(execution_payload: ExecutionPayload) -> bool` be the function checking whether given `ExecutionPayload` is valid or not.
+Let `verify_execution_state_transition(execution_payload: ExecutionPayload) -> bool` be the function that verifies given `ExecutionPayload` with respect to execution state transition.
 The body of the function is implementation dependent.
 
 ##### `process_execution_payload`
@@ -213,7 +213,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
 
     assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
-    assert validate_execution_payload(execution_payload)
+    assert verify_execution_state_transition(execution_payload)
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,
