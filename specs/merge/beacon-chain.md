@@ -168,6 +168,8 @@ def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> bool
 
 #### `compute_time_at_slot`
 
+*Note*: This function is unsafe with respect to overflows and underflows.
+
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
     slots_since_genesis = slot - GENESIS_SLOT
