@@ -47,7 +47,7 @@ Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given t
 Used by fork-choice handler, `on_block`.
 
 ```python
-def is_valid_transition_block(block: PowBlock) -> boolean:
+def is_valid_transition_block(block: PowBlock) -> bool:
     is_total_difficulty_reached = block.total_difficulty >= TRANSITION_TOTAL_DIFFICULTY
     return block.is_valid and is_total_difficulty_reached
 ```

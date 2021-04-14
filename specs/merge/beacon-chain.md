@@ -155,14 +155,14 @@ class ExecutionPayloadHeader(Container):
 #### `is_transition_completed`
 
 ```python
-def is_transition_completed(state: BeaconState) -> boolean:
+def is_transition_completed(state: BeaconState) -> bool:
     return state.latest_execution_payload_header != ExecutionPayloadHeader()
 ```
 
 #### `is_transition_block`
 
 ```python
-def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
+def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> bool:
     return not is_transition_completed(state) and block_body.execution_payload != ExecutionPayload()
 ```
 
@@ -191,7 +191,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### `validate_execution_payload`
 
-Let `validate_execution_payload(execution_payload: ExecutionPayload) -> boolean` be the function checking whether given `ExecutionPayload` is valid or not.
+Let `validate_execution_payload(execution_payload: ExecutionPayload) -> bool` be the function checking whether given `ExecutionPayload` is valid or not.
 The body of the function is implementation dependent.
 
 ##### `process_execution_payload`
