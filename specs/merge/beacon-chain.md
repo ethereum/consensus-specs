@@ -16,8 +16,6 @@
   - [Transition](#transition)
   - [Execution](#execution)
 - [Containers](#containers)
-  - [Modified containers](#modified-containers)
-    - [`Eth1Data`](#eth1data)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
@@ -49,7 +47,6 @@ We define the following Python custom types for type hinting and readability:
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a byte-list containing a single [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
-| `Hash32` | `Bytes32` | a 256-bit hash |
 
 ## Constants
 
@@ -68,19 +65,6 @@ We define the following Python custom types for type hinting and readability:
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 
 ## Containers
-
-### Modified containers
-
-#### `Eth1Data`
-
-*Note*: The only modification is the type of `block_hash` field that is changed to `Hash32`.
-
-```python
-class Eth1Data(Container):
-    deposit_root: Root
-    deposit_count: uint64
-    block_hash: Hash32  # [Modified in Merge]
-```
 
 ### Extended containers
 
