@@ -52,7 +52,7 @@
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
     - [Sync committee updates](#sync-committee-updates)
-- [Initialize state for testnets](#initialize-state-for-testnets)
+- [Initialize state for Altair testnets](#initialize-state-for-altair-testnets)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
