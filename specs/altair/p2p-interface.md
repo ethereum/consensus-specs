@@ -86,11 +86,10 @@ This topic is used to propagate partially aggregated sync committee signatures t
 The following validations MUST pass before forwarding the `signed_contribution_and_proof` on the network; define `contribution_and_proof = signed_contribution_and_proof.message`, `contribution = contribution_and_proof.contribution`, and the following function `get_sync_subcommittee_pubkeys` for convenience:
 
 ```python
-SYNC_SUBCOMMITTEE_SIZE = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
-
 def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64) -> Sequence[BLSPubkey]:
-    i = subcommittee_index * SYNC_SUBCOMMITTEE_SIZE
-    return state.current_sync_committee.pubkeys[i:i+SYNC_SUBCOMMITTEE_SIZE]
+    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
+    i = subcommittee_index * sync_subcommittee_size
+    return state.current_sync_committee.pubkeys[i:i + sync_subcommittee_size]
 ```
 
 - _[IGNORE]_ The contribution's slot is for the current slot, i.e. `contribution.slot == current_slot`.
