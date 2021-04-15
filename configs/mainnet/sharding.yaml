@@ -1,7 +1,5 @@
 # Mainnet preset - Sharding
 
-CONFIG_NAME: "mainnet"
-
 # Fork
 # ---------------------------------------------------------------
 SHARDING_FORK_VERSION: 0x03000000

@@ -1,7 +1,5 @@
 # Minimal preset - Sharding
 
-CONFIG_NAME: "minimal"
-
 # Fork
 # ---------------------------------------------------------------
 SHARDING_FORK_VERSION: 0x03000001

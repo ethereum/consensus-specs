@@ -1,7 +1,5 @@
 # Minimal preset - Custody Game
 
-CONFIG_NAME: "minimal"
-
 # Time parameters
 # ---------------------------------------------------------------
 # 2**1 (= 2) epochs, 12.8 minutes
