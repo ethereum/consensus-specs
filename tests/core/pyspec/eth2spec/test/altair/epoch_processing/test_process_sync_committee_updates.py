@@ -1,4 +1,5 @@
 from eth2spec.test.context import (
+    always_bls,
     spec_state_test,
     spec_test,
     with_all_phases_except,
@@ -16,6 +17,11 @@ from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
 
+
+#
+# Note:
+# Calculating sync committees requires pubkey aggregation, thus all tests are generated with `always_bls`
+#
 
 def run_sync_committees_progress_test(spec, state):
     first_sync_committee = state.current_sync_committee
@@ -41,6 +47,7 @@ def run_sync_committees_progress_test(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@always_bls
 @with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress_genesis(spec, state):
     # Genesis epoch period has an exceptional case
@@ -52,6 +59,7 @@ def test_sync_committees_progress_genesis(spec, state):
 
 @with_all_phases_except([PHASE0])
 @spec_state_test
+@always_bls
 @with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
@@ -65,6 +73,7 @@ def test_sync_committees_progress_not_genesis(spec, state):
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
 @single_phase
+@always_bls
 @with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress_misc_balances(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
