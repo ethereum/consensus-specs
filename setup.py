@@ -5,7 +5,7 @@ from distutils import dir_util
 from distutils.util import convert_path
 import os
 import re
-from typing import Dict, NamedTuple, List
+from typing import Dict, NamedTuple, List, Sequence
 from abc import ABC, abstractmethod
 
 
@@ -131,7 +131,7 @@ def get_spec(file_name: str) -> SpecObject:
     )
 
 
-class SpecAdjustment(ABC):
+class SpecBuilder(ABC):
     @property
     @abstractmethod
     def fork(self) -> str:
@@ -185,11 +185,16 @@ class SpecAdjustment(ABC):
         """
         raise NotImplementedError()
 
+    @classmethod
+    @abstractmethod
+    def build_spec(cls, source_files: List[str]) -> str:
+        raise NotImplementedError()
+
 
 #
-# Phase0SpecAdjustment
+# Phase0SpecBuilder
 #
-class Phase0SpecAdjustment(SpecAdjustment):
+class Phase0SpecBuilder(SpecBuilder):
     fork: str = PHASE0
 
     @classmethod
@@ -305,11 +310,15 @@ get_attesting_indices = cache_this(
     def invariant_checks(cls) -> str:
         return ''
 
+    @classmethod
+    def build_spec(cls, source_files: Sequence[str]) -> str:
+        return _build_spec(cls.fork, source_files)
+
 
 #
-# AltairSpecAdjustment
+# AltairSpecBuilder
 #
-class AltairSpecAdjustment(Phase0SpecAdjustment):
+class AltairSpecBuilder(Phase0SpecBuilder):
     fork: str = ALTAIR
 
     @classmethod
@@ -359,9 +368,9 @@ assert (
 
 
 #
-# MergeSpecAdjustment
+# MergeSpecBuilder
 #
-class MergeSpecAdjustment(Phase0SpecAdjustment):
+class MergeSpecBuilder(Phase0SpecBuilder):
     fork: str = MERGE
 
     @classmethod
@@ -412,13 +421,13 @@ def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> Executi
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
 
-spec_adjustments = {
-    adjustment.fork: adjustment
-    for adjustment in (Phase0SpecAdjustment, AltairSpecAdjustment, MergeSpecAdjustment)
+spec_builders = {
+    builder.fork: builder
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder)
 }
 
 
-def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, ordered_class_objects: Dict[str, str]) -> str:
+def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class_objects: Dict[str, str]) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
@@ -448,13 +457,13 @@ def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, ordered
             spec_object.constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, spec_object.constants[x]), spec_object.constants))
     ordered_class_objects_spec = '\n\n'.join(ordered_class_objects.values())
-    ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, adjustment.hardcoded_ssz_dep_constants()[x]), adjustment.hardcoded_ssz_dep_constants()))
-    ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), adjustment.hardcoded_ssz_dep_constants()))
-    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, adjustment.hardcoded_custom_type_dep_constants()[x]), adjustment.hardcoded_custom_type_dep_constants()))
+    ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
+    ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
+    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
     spec = (
-            adjustment.imports()
-            + adjustment.preparations()
-            + '\n\n' + f"fork = \'{adjustment.fork}\'\n"
+            builder.imports()
+            + builder.preparations()
+            + '\n\n' + f"fork = \'{builder.fork}\'\n"
             # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
             + ('\n\n' + custom_type_dep_constants + '\n' if custom_type_dep_constants != '' else '')
             + '\n\n' + new_type_definitions
@@ -465,11 +474,11 @@ def objects_to_spec(spec_object: SpecObject, adjustment: SpecAdjustment, ordered
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ordered_class_objects_spec
             + '\n\n' + functions_spec
-            + '\n' + adjustment.sundry_functions()
+            + '\n' + builder.sundry_functions()
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
-            + ('\n' + adjustment.invariant_checks() if adjustment.invariant_checks() != '' else '')
+            + ('\n' + builder.invariant_checks() if builder.invariant_checks() != '' else '')
             + '\n'
     )
     return spec
@@ -551,7 +560,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     )
 
 
-def build_spec(fork: str, source_files: List[str]) -> str:
+def _build_spec(fork: str, source_files: Sequence[str]) -> str:
     all_specs = [get_spec(spec) for spec in source_files]
 
     spec_object = all_specs[0]
@@ -561,7 +570,7 @@ def build_spec(fork: str, source_files: List[str]) -> str:
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
     dependency_order_class_objects(class_objects, spec_object.custom_types)
 
-    return objects_to_spec(spec_object, spec_adjustments[fork], class_objects)
+    return objects_to_spec(spec_object, spec_builders[fork], class_objects)
 
 
 class PySpecCommand(Command):
@@ -631,7 +640,7 @@ class PySpecCommand(Command):
                 raise Exception('Pyspec markdown input file "%s" does not exist.' % filename)
 
     def run(self):
-        spec_str = build_spec(self.spec_fork, self.parsed_md_doc_paths)
+        spec_str = spec_builders[self.spec_fork].build_spec(self.parsed_md_doc_paths)
         if self.dry_run:
             self.announce('dry run successfully prepared contents for spec.'
                           f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}"')
@@ -659,7 +668,7 @@ class BuildPyCommand(build_py):
         self.run_command('pyspec')
 
     def run(self):
-        for spec_fork in spec_adjustments:
+        for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
         super(BuildPyCommand, self).run()
@@ -687,7 +696,7 @@ class PyspecDevCommand(Command):
 
     def run(self):
         print("running build_py command")
-        for spec_fork in spec_adjustments:
+        for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
 commands = {
