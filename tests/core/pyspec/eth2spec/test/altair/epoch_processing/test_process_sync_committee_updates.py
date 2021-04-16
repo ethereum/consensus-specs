@@ -27,7 +27,11 @@ def run_sync_committees_progress_test(spec, state):
     first_sync_committee = state.current_sync_committee
     second_sync_committee = state.next_sync_committee
 
-    end_slot_of_current_period = state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH - 1
+    current_period = spec.get_current_epoch(state) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    next_period = current_period + 1
+    next_period_start_epoch = next_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    next_period_start_slot = next_period_start_epoch * spec.SLOTS_PER_EPOCH
+    end_slot_of_current_period = next_period_start_slot - 1
     transition_to(spec, state, end_slot_of_current_period)
 
     # Ensure assignments have not changed:
@@ -51,7 +55,6 @@ def run_sync_committees_progress_test(spec, state):
 @with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress_genesis(spec, state):
     # Genesis epoch period has an exceptional case
-    spec.get_current_epoch(state)
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     yield from run_sync_committees_progress_test(spec, state)
@@ -63,8 +66,9 @@ def test_sync_committees_progress_genesis(spec, state):
 @with_configs([MINIMAL], reason="too slow")
 def test_sync_committees_progress_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
-    start_slot_of_next_period = state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    transition_to(spec, state, start_slot_of_next_period)
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+    slot_in_next_period = state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, slot_in_next_period)
 
     yield from run_sync_committees_progress_test(spec, state)
 
