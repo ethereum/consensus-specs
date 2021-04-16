@@ -1,7 +1,5 @@
 # Minimal preset - Altair
 
-CONFIG_NAME: "minimal"
-
 # Updated penalty values
 # ---------------------------------------------------------------
 # 3 * 2**24 (= 50,331,648)
@@ -51,3 +49,8 @@ MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
 MAX_VALID_LIGHT_CLIENT_UPDATES: 32
 # [customized]
 LIGHT_CLIENT_UPDATE_TIMEOUT: 32
+
+# Validator
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE: 4

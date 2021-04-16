@@ -6,11 +6,15 @@ from eth2spec.merge import spec as spec_merge
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
+from .helpers.constants import (
+    PHASE0, ALTAIR, MERGE, SHARDING, CUSTODY_GAME, DAS,
+    ALL_PHASES,
+)
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
 
 from random import Random
-from typing import Any, Callable, NewType, Sequence, TypedDict, Protocol
+from typing import Any, Callable, Sequence, TypedDict, Protocol
 
 from lru import LRU
 
@@ -22,30 +26,6 @@ def reload_specs():
     reload(spec_altair)
     reload(spec_merge)
 
-
-# Some of the Spec module functionality is exposed here to deal with phase-specific changes.
-
-SpecForkName = NewType("SpecForkName", str)
-ConfigName = NewType("ConfigName", str)
-
-PHASE0 = SpecForkName('phase0')
-ALTAIR = SpecForkName('altair')
-
-# Experimental phases (not included in default "ALL_PHASES"):
-MERGE = SpecForkName('merge')
-SHARDING = SpecForkName('sharding')
-CUSTODY_GAME = SpecForkName('custody_game')
-DAS = SpecForkName('das')
-
-ALL_PHASES = (PHASE0, ALTAIR)
-
-MAINNET = ConfigName('mainnet')
-MINIMAL = ConfigName('minimal')
-
-ALL_CONFIGS = (MINIMAL, MAINNET)
-
-# The forks that output to the test vectors.
-TESTGEN_FORKS = (PHASE0, ALTAIR)
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.

@@ -8,12 +8,14 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
 )
+from eth2spec.test.helpers.constants import (
+    PHASE0,
+    MAINNET, MINIMAL,
+)
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
 from eth2spec.test.context import (
-    PHASE0,
-    MAINNET, MINIMAL,
     expect_assertion_error,
     with_all_phases_except,
     with_configs,

@@ -1,14 +1,16 @@
 from typing import Dict, Sequence
 
 from eth2spec.test.context import (
-    CUSTODY_GAME,
-    MINIMAL,
     with_phases,
     spec_state_test,
     with_configs,
 )
 from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
 from eth2spec.test.helpers.block import build_empty_block
+from eth2spec.test.helpers.constants import (
+    CUSTODY_GAME,
+    MINIMAL,
+)
 from eth2spec.test.helpers.custody import (
     get_custody_slashable_test_vector,
     get_valid_chunk_challenge,

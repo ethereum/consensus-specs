@@ -396,11 +396,11 @@ def get_pow_chain_head() -> PowBlock:
     pass
 
 
-def execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None:
-    pass
+def verify_execution_state_transition(execution_payload: ExecutionPayload) -> bool:
+    return True
 
 
-def produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload:
+def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload:
     pass"""
 
 
@@ -743,7 +743,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.18",
+        "remerkleable==0.1.19",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6",
     ]

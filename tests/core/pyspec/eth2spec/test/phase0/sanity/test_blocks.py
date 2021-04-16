@@ -24,9 +24,8 @@ from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
     run_test_full_random_operations,
 )
-
+from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.context import (
-    PHASE0, MINIMAL,
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,

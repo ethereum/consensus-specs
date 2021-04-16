@@ -1,4 +1,4 @@
-from eth2spec.test.context import (
+from eth2spec.test.helpers.constants import (
     CUSTODY_GAME,
 )
 from eth2spec.test.helpers.custody import (

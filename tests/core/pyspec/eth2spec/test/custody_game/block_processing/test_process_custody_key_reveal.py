@@ -1,6 +1,6 @@
+from eth2spec.test.helpers.constants import CUSTODY_GAME
 from eth2spec.test.helpers.custody import get_valid_custody_key_reveal
 from eth2spec.test.context import (
-    CUSTODY_GAME,
     with_phases,
     spec_state_test,
     expect_assertion_error,

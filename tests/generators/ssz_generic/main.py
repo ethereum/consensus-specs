@@ -6,7 +6,7 @@ import ssz_bitvector
 import ssz_boolean
 import ssz_uints
 import ssz_container
-from eth2spec.test.context import PHASE0
+from eth2spec.test.helpers.constants import PHASE0
 
 
 def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typing.TestProvider:

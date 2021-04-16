@@ -157,12 +157,14 @@ We define the following Python custom types for type hinting and readability:
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Root` | `Bytes32` | a Merkle root |
+| `Hash32` | `Bytes32` | a 256-bit hash |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a domain type |
 | `ForkDigest` | `Bytes4` | a digest of the current fork data |
 | `Domain` | `Bytes32` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
+
 
 ## Constants
 
@@ -374,7 +376,7 @@ class PendingAttestation(Container):
 class Eth1Data(Container):
     deposit_root: Root
     deposit_count: uint64
-    block_hash: Bytes32
+    block_hash: Hash32
 ```
 
 #### `HistoricalBatch`

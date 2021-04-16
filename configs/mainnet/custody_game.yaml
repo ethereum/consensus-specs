@@ -1,7 +1,5 @@
 # Mainnet preset - Custody Game
 
-CONFIG_NAME: "mainnet"
-
 # Time parameters
 # ---------------------------------------------------------------
 # 2**1 (= 2) epochs, 12.8 minutes
