@@ -665,7 +665,7 @@ def process_sync_committee_updates(state: BeaconState) -> None:
 
 ## Initialize state for Altair testnets
 
-This helper function is only for initializing the pure Altair testnets and tests, where we use the dummy where the `ALTAIR_FORK_SLOT` GENESIS_SLOT`.
+This helper function is only for initializing the pure Altair testnets and tests, where we set `ALTAIR_FORK_SLOT = GENESIS_SLOT`.
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified with `ALTAIR_FORK_VERSION` fork version and initial sync committees. 
 
@@ -704,7 +704,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = hash_tree_root(state.validators)
 
-    # Fill in sync committees
+    # [New in Altair] Fill in sync committees
     state.current_sync_committee = get_sync_committee(state, get_current_epoch(state))
     state.next_sync_committee = get_sync_committee(state, get_current_epoch(state) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 
