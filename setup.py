@@ -313,11 +313,11 @@ def get_pow_chain_head() -> PowBlock:
     pass
 
 
-def execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None:
-    pass
+def verify_execution_state_transition(execution_payload: ExecutionPayload) -> bool:
+    return True
 
 
-def produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload:
+def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload:
     pass"""
 
 
@@ -329,7 +329,7 @@ ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
 }
 
 
-ALTAIR_INVAIANT_CHECKS = '''
+ALTAIR_INVARIANT_CHECKS = '''
 assert (
     TIMELY_HEAD_WEIGHT + TIMELY_SOURCE_WEIGHT + TIMELY_TARGET_WEIGHT + SYNC_REWARD_WEIGHT + PROPOSER_WEIGHT
 ) == WEIGHT_DENOMINATOR'''
@@ -414,7 +414,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
     if is_altair(fork):
         altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
         spec += '\n\n\n' + altair_ssz_dep_constants_verification
-        spec += '\n' + ALTAIR_INVAIANT_CHECKS
+        spec += '\n' + ALTAIR_INVARIANT_CHECKS
 
     spec += '\n'
     return spec
