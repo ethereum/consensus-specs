@@ -5,6 +5,7 @@ from distutils import dir_util
 from distutils.util import convert_path
 import os
 import re
+import string
 from typing import Dict, NamedTuple, List
 
 FUNCTION_REGEX = r'^def [\w_]*'
@@ -89,10 +90,10 @@ def get_spec(file_name: str) -> SpecObject:
                         if '`' in row[i]:
                             row[i] = row[i][:row[i].find('`')]
                     is_constant_def = True
-                    if row[0][0] not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_':
+                    if row[0][0] not in string.ascii_uppercase + '_':
                         is_constant_def = False
                     for c in row[0]:
-                        if c not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789':
+                        if c not in string.ascii_uppercase + '_' + string.digits:
                             is_constant_def = False
                     if is_constant_def:
                         if row[1].startswith('get_generalized_index'):
