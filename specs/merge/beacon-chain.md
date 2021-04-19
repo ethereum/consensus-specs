@@ -147,7 +147,9 @@ def is_transition_completed(state: BeaconState) -> bool:
 
 ```python
 def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> bool:
-    return not is_transition_completed(state) and block_body.execution_payload != ExecutionPayload()
+    if is_transition_completed(state):
+        return False
+    return block_body.execution_payload != ExecutionPayload()
 ```
 
 #### `compute_time_at_slot`
