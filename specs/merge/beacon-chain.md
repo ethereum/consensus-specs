@@ -61,7 +61,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_APPLICATION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
+| `MAX_EXECUTION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 
 ## Containers
@@ -108,7 +108,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    transactions: List[OpaqueTransaction, MAX_APPLICATION_TRANSACTIONS]
+    transactions: List[OpaqueTransaction, MAX_EXECUTION_TRANSACTIONS]
 ```
 
 #### `ExecutionPayloadHeader`
