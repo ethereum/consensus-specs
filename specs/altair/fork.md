@@ -26,17 +26,17 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
-| `ALTAIR_FORK_SLOT` | `Slot(18446744073709551615)` **TBD** |
+| `ALTAIR_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to Altair
 
 ### Fork trigger
 
-TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `ALTAIR_FORK_SLOT`, where `ALTAIR_FORK_SLOT % SLOTS_PER_EPOCH == 0`.
+TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at epoch `ALTAIR_FORK_EPOCH`.
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot == ALTAIR_FORK_SLOT`, an irregular state change is made to upgrade to Altair.
+After `process_slots` of Phase 0 finishes, if `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ALTAIR_FORK_EPOCH`, an irregular state change is made to upgrade to Altair.
 
 ```python
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
