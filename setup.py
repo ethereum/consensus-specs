@@ -1,4 +1,3 @@
-from enum import Enum, auto
 from setuptools import setup, find_packages, Command
 from setuptools.command.build_py import build_py
 from distutils import dir_util
@@ -6,11 +5,24 @@ from distutils.util import convert_path
 import os
 import re
 import string
-from typing import Dict, NamedTuple, List, Sequence
+from typing import Dict, NamedTuple, List, Sequence, Optional
 from abc import ABC, abstractmethod
+import ast
 
 
-FUNCTION_REGEX = r'^def [\w_]*'
+# NOTE: have to programmatically include third-party dependencies in `setup.py`.
+MARKO_VERSION = "marko==1.0.2"
+try:
+    import marko
+except ImportError:
+    import pip
+    pip.main(["install", MARKO_VERSION])
+
+from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
+from marko.inline import CodeSpan
+from marko.ext.gfm import gfm
+from marko.ext.gfm.elements import Table, Paragraph
+
 
 # Definitions in context.py
 PHASE0 = 'phase0'
@@ -45,83 +57,118 @@ class SpecObject(NamedTuple):
     dataclasses: Dict[str, str]
 
 
-class CodeBlockType(Enum):
-    SSZ = auto()
-    DATACLASS = auto()
-    FUNCTION = auto()
+def _get_name_from_heading(heading: Heading) -> Optional[str]:
+    last_child = heading.children[-1]
+    if isinstance(last_child, CodeSpan):
+        return last_child.children
+    return None
+
+
+def _get_source_from_code_block(block: FencedCode) -> str:
+    return block.children[0].children.strip()
+
+
+def _get_function_name_from_source(source: str) -> str:
+    fn = ast.parse(source).body[0]
+    return fn.name
+
+
+def _get_class_info_from_source(source: str) -> (str, Optional[str]):
+    class_def = ast.parse(source).body[0]
+    base = class_def.bases[0]
+    if isinstance(base, ast.Name):
+        parent_class = base.id
+    else:
+        # NOTE: SSZ definition derives from earlier phase...
+        # e.g. `phase0.SignedBeaconBlock`
+        # TODO: check for consistency with other phases
+        parent_class = None
+    return class_def.name, parent_class
+
+
+def _is_constant_id(name: str) -> bool:
+    if name[0] not in string.ascii_uppercase + '_':
+        return False
+    return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
+
+
+ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
+
+
+def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
+    _, _, title = child._parse_info
+    if not (title[0] == "(" and title[len(title)-1] == ")"):
+        return None
+    title = title[1:len(title)-1]
+    if not title.startswith(ETH2_SPEC_COMMENT_PREFIX):
+        return None
+    return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
 def get_spec(file_name: str) -> SpecObject:
-    """
-    Takes in the file name of a spec.md file, opens it and returns a parsed spec object.
-
-    Note: This function makes heavy use of the inherent ordering of dicts,
-    if this is not supported by your python version, it will not work.
-    """
-    pulling_from = None  # line number of start of latest object
-    current_name = None  # most recent section title
     functions: Dict[str, str] = {}
     constants: Dict[str, str] = {}
     ssz_dep_constants: Dict[str, str] = {}
     ssz_objects: Dict[str, str] = {}
     dataclasses: Dict[str, str] = {}
-    function_matcher = re.compile(FUNCTION_REGEX)
-    block_type = CodeBlockType.FUNCTION
     custom_types: Dict[str, str] = {}
-    for linenum, line in enumerate(open(file_name).readlines()):
-        line = line.rstrip()
-        if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
-            current_name = line[line[:-1].rfind('`') + 1: -1]
-        if line[:9] == '```python':
-            assert pulling_from is None
-            pulling_from = linenum + 1
-        elif line[:3] == '```':
-            pulling_from = None
-        else:
-            # Handle function definitions & ssz_objects
-            if pulling_from is not None:
-                if len(line) > 18 and line[:6] == 'class ' and (line[-12:] == '(Container):' or '(phase' in line):
-                    end = -12 if line[-12:] == '(Container):' else line.find('(')
-                    name = line[6:end]
-                    # Check consistency with markdown header
-                    assert name == current_name
-                    block_type = CodeBlockType.SSZ
-                elif line[:10] == '@dataclass':
-                    block_type = CodeBlockType.DATACLASS
-                elif function_matcher.match(line) is not None:
-                    current_name = function_matcher.match(line).group(0)
-                    block_type = CodeBlockType.FUNCTION
 
-                if block_type == CodeBlockType.SSZ:
-                    ssz_objects[current_name] = ssz_objects.get(current_name, '') + line + '\n'
-                elif block_type == CodeBlockType.DATACLASS:
-                    dataclasses[current_name] = dataclasses.get(current_name, '') + line + '\n'
-                elif block_type == CodeBlockType.FUNCTION:
-                    functions[current_name] = functions.get(current_name, '') + line + '\n'
-                else:
-                    pass
+    with open(file_name) as source_file:
+        document = gfm.parse(source_file.read())
 
-            # Handle constant and custom types table entries
-            elif pulling_from is None and len(line) > 0 and line[0] == '|':
-                row = line[1:].split('|')
-                if len(row) >= 2:
-                    for i in range(2):
-                        row[i] = row[i].strip().strip('`')
-                        if '`' in row[i]:
-                            row[i] = row[i][:row[i].find('`')]
-                    is_constant_def = True
-                    if row[0][0] not in string.ascii_uppercase + '_':
-                        is_constant_def = False
-                    for c in row[0]:
-                        if c not in string.ascii_uppercase + '_' + string.digits:
-                            is_constant_def = False
-                    if is_constant_def:
-                        if row[1].startswith('get_generalized_index'):
-                            ssz_dep_constants[row[0]] = row[1]
+    current_name = None
+    should_skip = False
+    for child in document.children:
+        if isinstance(child, BlankLine):
+            continue
+        if should_skip:
+            should_skip = False
+            continue
+        if isinstance(child, Heading):
+            current_name = _get_name_from_heading(child)
+        elif isinstance(child, FencedCode):
+            if child.lang != "python":
+                continue
+            source = _get_source_from_code_block(child)
+            if source.startswith("def"):
+                current_name = _get_function_name_from_source(source)
+                functions[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
+            elif source.startswith("@dataclass"):
+                dataclasses[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
+            elif source.startswith("class"):
+                class_name, parent_class = _get_class_info_from_source(source)
+                # check consistency with spec
+                assert class_name == current_name
+                if parent_class:
+                    assert parent_class == "Container"
+                # NOTE: trim whitespace from spec
+                ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
+            else:
+                raise Exception("unrecognized python code element")
+        elif isinstance(child, Table):
+            for row in child.children:
+                cells = row.children
+                if len(cells) >= 2:
+                    name_cell = cells[0]
+                    name = name_cell.children[0].children
+                    value_cell = cells[1]
+                    value = value_cell.children[0].children
+                    if isinstance(value, list):
+                        # marko parses `**X**` as a list containing a X
+                        value = value[0].children
+                    if _is_constant_id(name):
+                        if value.startswith("get_generalized_index"):
+                            ssz_dep_constants[name] = value
                         else:
-                            constants[row[0]] = row[1].replace('**TBD**', '2**32')
-                    elif row[1].startswith('uint') or row[1].startswith('Bytes') or row[1].startswith('ByteList'):
-                        custom_types[row[0]] = row[1]
+                            constants[name] = value.replace("TBD", "2**32")
+                    elif value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList"):
+                        custom_types[name] = value
+        elif isinstance(child, LinkRefDef):
+            comment = _get_eth2_spec_comment(child)
+            if comment:
+                if comment == "skip":
+                    should_skip = True
+    
     return SpecObject(
         functions=functions,
         custom_types=custom_types,
@@ -424,7 +471,7 @@ def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> Executi
 
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder)
+    for builder in (AltairSpecBuilder, )
 }
 
 
@@ -452,12 +499,12 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
     for k in list(spec_object.functions):
         if "ceillog2" in k or "floorlog2" in k:
             del spec_object.functions[k]
-    functions_spec = '\n\n'.join(spec_object.functions.values())
+    functions_spec = '\n\n\n'.join(spec_object.functions.values())
     for k in list(spec_object.constants.keys()):
         if k == "BLS12_381_Q":
             spec_object.constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, spec_object.constants[x]), spec_object.constants))
-    ordered_class_objects_spec = '\n\n'.join(ordered_class_objects.values())
+    ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
@@ -474,8 +521,8 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
             + '\n\n' + constants_spec
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ordered_class_objects_spec
-            + '\n\n' + functions_spec
-            + '\n' + builder.sundry_functions()
+            + '\n\n\n' + functions_spec
+            + '\n\n' + builder.sundry_functions()
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
@@ -619,6 +666,7 @@ class PySpecCommand(Command):
                     specs/altair/beacon-chain.md
                     specs/altair/fork.md
                     specs/altair/validator.md
+                    specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
             elif self.spec_fork == MERGE:
@@ -756,5 +804,6 @@ setup(
         "remerkleable==0.1.19",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6",
+        "marko==1.0.2",
     ]
 )
