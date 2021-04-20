@@ -663,11 +663,11 @@ def process_sync_committee_updates(state: BeaconState) -> None:
         state.next_sync_committee = get_sync_committee(state, next_epoch + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 ```
 
-## Initialize state for Altair testnets
+## Initialize state for pure Altair testnets and test vectors
 
-This helper function is only for initializing the pure Altair testnets and tests, where we set `ALTAIR_FORK_SLOT = GENESIS_SLOT`.
+This helper function is only for initializing the state for pure Altair testnets and tests.
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified with `ALTAIR_FORK_VERSION` fork version and initial sync committees. 
+*Note*: The function `initialize_beacon_state_from_eth1` is modified with `ALTAIR_FORK_VERSION` fork version and initial sync committees.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
