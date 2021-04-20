@@ -471,7 +471,7 @@ def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> Executi
 
 spec_builders = {
     builder.fork: builder
-    for builder in (AltairSpecBuilder, )
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder)
 }
 
 
