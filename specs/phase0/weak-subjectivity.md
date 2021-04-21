@@ -116,6 +116,11 @@ Clients may choose to validate that the input Weak Subjectivity Checkpoint is no
 To support this mechanism, the client needs to load the state associated with the input checkpoint into 
 `store.block_states`. This can be done by taking a trusted state as a CLI parameter, or fetching the state from
 some trusted source using the given checkpoint's information.
+
+Client that have been restarted from an offline status can also use this function to check whether they are operating
+under safe weak subjectivity conditions. In this case, the latest known finalized checkpoint is used as the input 
+Weak Subjectivity Checkpoint.
+
 The check can be implemented in the following way:
 
 ```python
