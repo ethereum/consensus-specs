@@ -402,7 +402,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     """
     epoch = compute_epoch_at_slot(slot)
     committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(beacon_state.slot))
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(slot))
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
