@@ -930,8 +930,11 @@ def test_balance_driven_status_transitions(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
+# Requires always_bls because historical root period and sync committee period is same length
+# so this epoch transition also computes new sync committees which requires aggregation
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_historical_batch(spec, state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
     pre_historical_roots_len = len(state.historical_roots)
