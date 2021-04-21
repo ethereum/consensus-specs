@@ -113,20 +113,17 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
 
 ### Checking for Stale Weak Subjectivity Checkpoint
 Clients may choose to validate that the input Weak Subjectivity Checkpoint is not stale at the time of startup.
-To support this mechanism, the client needs to take the state at the Weak Subjectivity Checkpoint as
-a CLI parameter input (or fetch the state associated with the input Weak Subjectivity Checkpoint from some source).
+To support this mechanism, the client needs to load the state associated with the input checkpoint into 
+`store.block_states`. This can be done by taking a trusted state as a CLI parameter, or fetching the state from
+some trusted source using the given checkpoint's information.
 The check can be implemented in the following way:
 
 ```python
-def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint) -> bool:
-    # Clients may choose to validate the input state against the input Weak Subjectivity Checkpoint
-    assert ws_state.latest_block_header.state_root == store.block_states[ws_checkpoint.root]
-    assert compute_epoch_at_slot(ws_state.slot) == ws_checkpoint.epoch
-
+def is_within_weak_subjectivity_period(store: Store, ws_checkpoint: Checkpoint) -> bool:
+    ws_state = store.block_states[ws_checkpoint.root]
     ws_period = compute_weak_subjectivity_period(ws_state)
-    ws_state_epoch = compute_epoch_at_slot(ws_state.slot)
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
-    return current_epoch <= ws_state_epoch + ws_period
+    return current_epoch <= ws_checkpoint.epoch + ws_period
 ```
 
 ## Distributing Weak Subjectivity Checkpoints
