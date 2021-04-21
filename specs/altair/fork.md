@@ -34,7 +34,7 @@ Warning: this configuration is not definitive.
 
 TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at epoch `ALTAIR_FORK_EPOCH`.
 
-Note that for the pure Altair testnets, we don't apply `upgrade_to_altair` since it starts with Altair version logic.
+Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since it starts with Altair version logic.
 
 ### Upgrading the state
 
