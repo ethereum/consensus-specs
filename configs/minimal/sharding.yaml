@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------
 SHARDING_FORK_VERSION: 0x03000001
 # TBD, temporarily max uint64 value: 2**64 - 1
-MERGE_FORK_SLOT: 18446744073709551615
+MERGE_FORK_EPOCH: 18446744073709551615
 
 
 # Beacon-chain
