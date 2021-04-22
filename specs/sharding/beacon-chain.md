@@ -677,13 +677,12 @@ def process_pending_headers(state: BeaconState) -> None:
                 c for c in state.previous_epoch_pending_shard_headers
                 if (c.slot, c.shard) == (slot, shard)
             ]
-            # The entire committee (and its balance)
-            full_committee = get_beacon_committee(state, slot, shard)
-            full_committee_balance = get_total_balance(state, full_committee)
             # If any candidates already confirmed, skip
             if True in [c.confirmed for c in candidates]:
                 continue
 
+            # The entire committee (and its balance)
+            full_committee = get_beacon_committee(state, slot, shard)
             # The set of voters who voted for each header (and their total balances)
             voting_sets = [
                 [v for i, v in enumerate(full_committee) if c.votes[i]]
