@@ -67,7 +67,7 @@ partial_clean:
 
 clean: partial_clean
 	rm -rf venv
-    # legacy cleanup. The pyspec venv should be located at the repository root
+      # legacy cleanup. The pyspec venv should be located at the repository root
 	rm -rf $(PY_SPEC_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/venv
