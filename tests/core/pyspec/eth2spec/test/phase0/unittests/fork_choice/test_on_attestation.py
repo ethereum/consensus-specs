@@ -132,7 +132,7 @@ def test_on_attestation_inconsistent_target_and_head(spec, state):
     target_state_1 = state.copy()
     next_epoch(spec, target_state_1)
 
-    # Create chain 2 with different block in chain from chain 1 from chain 1 from chain 1 from chain 1
+    # Create chain 2 with different block in chain from chain 1
     target_state_2 = state.copy()
     diff_block = build_empty_block_for_next_slot(spec, target_state_2)
     signed_diff_block = state_transition_and_sign_block(spec, target_state_2, diff_block)

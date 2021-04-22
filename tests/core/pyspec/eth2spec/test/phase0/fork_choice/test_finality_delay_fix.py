@@ -56,7 +56,7 @@ def test_finality_delay_fix(spec, state):
 
     # Build attestation from honest node, for an empty slot
     next_slots(spec, state, attack_length + 1)
-    spec.on_tick(store, state.slot * spec.SECONDS_PER_SLOT)
+    spec.on_tick(store, store.genesis_time + state.slot * spec.SECONDS_PER_SLOT)
     attestation = get_valid_late_attestation(spec, state, slot=attacker_blocks[-1].slot,
                                              index=None, signed=True, shard_transition=None)
     spec.on_attestation(store, attestation)
