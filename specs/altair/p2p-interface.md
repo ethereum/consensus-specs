@@ -182,6 +182,8 @@ Request and Response remain unchanged. A `ForkDigest`-context is used to select 
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
+[0]: # (eth2spec: skip)
+
 | `fork_version`           | Chunk SSZ type             |
 | ------------------------ | -------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
@@ -194,6 +196,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 Request and Response remain unchanged. A `ForkDigest`-context is used to select the fork namespace of the Response type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
 
 | `fork_version`           | Chunk SSZ type             |
 | ------------------------ | -------------------------- |
