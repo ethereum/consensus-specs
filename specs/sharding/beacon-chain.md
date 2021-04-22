@@ -679,7 +679,6 @@ def process_pending_headers(state: BeaconState) -> None:
             ]
             # The entire committee (and its balance)
             full_committee = get_beacon_committee(state, slot, shard)
-            full_committee_balance = get_total_balance(state, full_committee)
             # If any candidates already confirmed, skip
             if True in [c.confirmed for c in candidates]:
                 continue
