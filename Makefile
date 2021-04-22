@@ -2,7 +2,10 @@ SPEC_DIR = ./specs
 SSZ_DIR = ./ssz
 TEST_LIBS_DIR = ./tests/core
 TEST_GENERATORS_DIR = ./tests/generators
+# The working dir during testing
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
+ETH2SPEC_MODULE_DIR = $(PY_SPEC_DIR)/eth2spec
+TEST_REPORT_DIR = $(PY_SPEC_DIR)/test-reports
 TEST_VECTOR_DIR = ../eth2.0-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
 SOLIDITY_DEPOSIT_CONTRACT_DIR = ./solidity_deposit_contract
@@ -27,7 +30,8 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/alta
                  $(wildcard $(SPEC_DIR)/sharding/*.md)
 
 COV_HTML_OUT=.htmlcov
-COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
+COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
+COV_INDEX_FILE=$(COV_HTML_OUT_DIR)/index.html
 
 CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
@@ -53,17 +57,17 @@ partial_clean:
 	rm -f .coverage
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
-	rm -rf $(PY_SPEC_DIR)/phase0
-	rm -rf $(PY_SPEC_DIR)/altair
-	rm -rf $(PY_SPEC_DIR)/merge
-	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
-	rm -rf $(PY_SPEC_DIR)/.coverage
-	rm -rf $(PY_SPEC_DIR)/test-reports
+	rm -rf $(ETH2SPEC_MODULE_DIR)/phase0
+	rm -rf $(ETH2SPEC_MODULE_DIR)/altair
+	rm -rf $(ETH2SPEC_MODULE_DIR)/merge
+	rm -rf $(COV_HTML_OUT_DIR)
+	rm -rf $(TEST_REPORT_DIR)
 	rm -rf eth2spec.egg-info dist build
 	rm -rf build
 
 clean: partial_clean
 	rm -rf venv
+      # legacy cleanup. The pyspec venv should be located at the repository root
 	rm -rf $(PY_SPEC_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/venv
@@ -88,7 +92,7 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install .[lint]; python3 -m pip install -e .[test]
+	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
