@@ -668,9 +668,10 @@ def process_pending_headers(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
+    previous_epoch = get_previous_epoch(state)
+    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard in range(get_active_shard_count(state)):
+        for shard in range(get_active_shard_count(state, previous_epoch)):
             # Pending headers for this (slot, shard) combo
             candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
