@@ -40,7 +40,7 @@ After `process_slots` of Phase 0 finishes, if `state.slot % SLOTS_PER_EPOCH == 0
 
 ```python
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = phase0.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
