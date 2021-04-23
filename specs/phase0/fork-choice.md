@@ -220,7 +220,7 @@ def get_latest_attesting_balance(store: Store, node_id: Root) -> Gwei:
                                      block_slot) == node_id)
     ))
     proposer_score = Gwei(0)
-    if store.proposer_score_boost.epoch != 0:
+    if store.proposer_score_boost.root != Root():
         committee_weight = Gwei(sum(state.validators[i].effective_balance for i in active_indices))
         if get_ancestor_node_id(store,
                                 get_node_id(store.proposer_score_boost.root,
@@ -455,7 +455,7 @@ def on_tick(store: Store, time: uint64) -> None:
 
     current_slot = get_current_slot(store)
     # Reset store.proposer_score_boost if this is a new slot
-    if store.proposer_score_boost.epoch != 0:
+    if store.proposer_score_boost.root != Root():
         if current_slot != store.blocks[store.proposer_score_boost.root].slot:
             store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     # Not a new epoch, return
