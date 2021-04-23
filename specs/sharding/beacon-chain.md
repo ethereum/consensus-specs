@@ -280,7 +280,7 @@ class ShardProposerSlashing(Container):
 #### `next_power_of_two`
 
 ```python
-def next_power_of_two(x):
+def next_power_of_two(x: int) -> int:
     return 2 ** ((x - 1).bit_length())
 ```
 
@@ -374,7 +374,7 @@ ensuring that the balance is always sufficient to cover gas costs.
 def compute_proposer_index(beacon_state: BeaconState,
                            indices: Sequence[ValidatorIndex],
                            seed: Bytes32,
-                           min_effective_balance: GWei = GWei(0)) -> ValidatorIndex:
+                           min_effective_balance: Gwei = Gwei(0)) -> ValidatorIndex:
     """
     Return from ``indices`` a random index sampled by effective balance.
     """
