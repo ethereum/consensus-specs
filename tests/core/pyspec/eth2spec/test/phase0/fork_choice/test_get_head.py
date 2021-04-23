@@ -306,15 +306,19 @@ def test_lmd_proposer_scoring_fix(spec, state):
 
     # Process block_2
     yield from run_on_block(spec, store, signed_block_2, test_steps)
+    assert store.proposer_score_boost.root == spec.Root()
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     # Process block_1 on timely arrival
     # The head should temporarily change to block_1
     yield from run_on_block(spec, store, signed_block_1, test_steps)
+    assert store.proposer_score_boost == spec.LatestMessage(root=spec.hash_tree_root(block_1),
+                                                            epoch=spec.compute_epoch_at_slot(block_1.slot))
     assert spec.get_head(store) == spec.hash_tree_root(block_1)
 
     # After block_1.slot, the head should revert to block_2
     spec.on_tick(store, store.genesis_time + (block_1.slot + 1) * spec.SECONDS_PER_SLOT)
+    assert store.proposer_score_boost.root == spec.Root()
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     test_steps.append({
