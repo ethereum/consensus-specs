@@ -227,6 +227,7 @@ def get_latest_attesting_balance(store: Store, node_id: Root) -> Gwei:
                                             store.proposer_score_boost.epoch),
                                 block_slot) == node_id:
             proposer_score = Gwei(committee_weight // 4)
+            print(f"Applying proposer boost for {hash_tree_root(block)}")
     return attestation_score + proposer_score
 ```
 
@@ -457,6 +458,7 @@ def on_tick(store: Store, time: uint64) -> None:
     # Reset store.proposer_score_boost if this is a new slot
     if store.proposer_score_boost.root != Root():
         if current_slot != store.blocks[store.proposer_score_boost.root].slot:
+            print(f"Removing proposer boost for {store.proposer_score_boost.root}")
             store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):

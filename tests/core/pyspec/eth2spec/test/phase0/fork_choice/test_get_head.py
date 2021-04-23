@@ -301,18 +301,28 @@ def test_lmd_proposer_scoring_fix(spec, state):
 
     spec.on_tick(store, store.genesis_time + block_1.slot * spec.SECONDS_PER_SLOT)
 
+    print(f"block_1: {spec.hash_tree_root(block_1)}")
+    print(f"block_2: {spec.hash_tree_root(block_2)}")
+    print("---------------------------------------")
+
     # Process block_2
     yield from run_on_block(spec, store, signed_block_2, test_steps)
+    print(f"Head before: {spec.get_head(store)}")
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    print("---------------------------------------")
 
     # Process block_1 on timely arrival
     # The head should temporarily change to block_1
     yield from run_on_block(spec, store, signed_block_1, test_steps)
+    print(f"Head during: {spec.get_head(store)}")
     assert spec.get_head(store) == spec.hash_tree_root(block_1)
+    print("---------------------------------------")
 
     # After block_1.slot, the head should revert to block_2
     spec.on_tick(store, store.genesis_time + (block_1.slot + 1) * spec.SECONDS_PER_SLOT)
+    print(f"Head after: {spec.get_head(store)}")
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    print("---------------------------------------")
 
     test_steps.append({
         'checks': {
