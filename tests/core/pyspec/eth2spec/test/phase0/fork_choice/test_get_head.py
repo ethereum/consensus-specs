@@ -297,14 +297,14 @@ def test_lmd_proposer_scoring_fix(spec, state):
     block_2 = build_empty_block_for_next_slot(spec, state_2)
     while spec.hash_tree_root(block_1) > spec.hash_tree_root(block_2):
         block_2.body.graffiti = hex(random.getrandbits(8*16))[2:].encode()
+    print(f"block_1: {spec.hash_tree_root(block_1)}")
+    print(f"block_2: {spec.hash_tree_root(block_2)}")
+    assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
     signed_block_2 = state_transition_and_sign_block(spec, state_2, block_2)
 
     spec.on_tick(store, store.genesis_time + block_1.slot * spec.SECONDS_PER_SLOT)
 
-    print(f"block_1: {spec.hash_tree_root(block_1)}")
-    print(f"block_2: {spec.hash_tree_root(block_2)}")
     print("---------------------------------------")
-
     # Process block_2
     yield from run_on_block(spec, store, signed_block_2, test_steps)
     print(f"Head before: {spec.get_head(store)}")
