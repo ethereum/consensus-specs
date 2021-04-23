@@ -165,9 +165,8 @@ def get_spec(file_name: str) -> SpecObject:
                         custom_types[name] = value
         elif isinstance(child, LinkRefDef):
             comment = _get_eth2_spec_comment(child)
-            if comment:
-                if comment == "skip":
-                    should_skip = True
+            if comment == "skip":
+                should_skip = True
     
     return SpecObject(
         functions=functions,
