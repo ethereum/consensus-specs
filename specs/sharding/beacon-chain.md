@@ -559,7 +559,7 @@ def process_shard_header(state: BeaconState,
     assert header.shard < get_active_shard_count(state, header_epoch)
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
+    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
