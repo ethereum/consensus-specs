@@ -296,7 +296,7 @@ def test_lmd_proposer_scoring_fix(spec, state):
     next_slots(spec, state_2, 2)
     block_2 = build_empty_block_for_next_slot(spec, state_2)
     while spec.hash_tree_root(block_1) > spec.hash_tree_root(block_2):
-        block_2.body.graffiti = hex(random.getrandbits(8*32)).encode()
+        block_2.body.graffiti = hex(random.getrandbits(8*16))[2:].encode()
     signed_block_2 = state_transition_and_sign_block(spec, state_2, block_2)
 
     spec.on_tick(store, store.genesis_time + block_1.slot * spec.SECONDS_PER_SLOT)
