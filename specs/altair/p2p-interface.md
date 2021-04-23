@@ -15,6 +15,7 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 
   - [Warning](#warning)
 - [Modifications in Altair](#modifications-in-altair)
+  - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -30,6 +31,7 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [GetMetaData v2](#getmetadata-v2)
     - [Transitioning from v1 to v2](#transitioning-from-v1-to-v2)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
 
@@ -42,6 +44,23 @@ This document is currently illustrative for early Altair testnets and some parts
 Refer to the note in the [validator guide](./validator.md) for further details. 
 
 # Modifications in Altair
+
+## MetaData
+
+The `MetaData` stored locally by clients is updated with an additional field to communicate the sync committee subnet subscriptions:
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+)
+```
+
+Where
+
+- `seq_number` and `attnets` have the same meaning defined in the Phase 0 document.
+- `syncnets` is a `Bitvector` representing the node's sync committee subnet subscriptions. This field should mirror the data in the node's ENR as outlined in the [validator guide](./validator.md#sync-committee-subnet-stability).
 
 ## The gossip domain: gossipsub
 
@@ -210,6 +229,24 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | ------------------------ | -------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+
+#### GetMetaData v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/2/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  MetaData
+)
+```
+
+Requests the MetaData of a peer, using the new `MetaData` definition given above 
+that is extended from phase 0 in Altair. Other conditions for the `GetMetaData`
+protocol are unchanged from the phase 0 p2p networking document.
 
 ### Transitioning from v1 to v2
 
