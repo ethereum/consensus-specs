@@ -706,7 +706,7 @@ def process_pending_headers(state: BeaconState) -> None:
             state.grandparent_epoch_confirmed_commitments[shard][slot_index] = DataCommitment()
     confirmed_headers = [candidate for candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
     for header in confirmed_headers:
-        state.grandparent_epoch_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
+        state.grandparent_epoch_confirmed_commitments[header.shard][header.slot % SLOTS_PER_EPOCH] = header.commitment
 ```
 
 ```python
