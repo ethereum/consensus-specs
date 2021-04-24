@@ -539,7 +539,7 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
     participants = get_attesting_indices(state, attestation.data, pending_header.votes)
     participants_balance = get_total_balance(state, participants)
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    full_committee_balance = get_total_balance(state, full_committee)
+    full_committee_balance = get_total_balance(state, set(full_committee))
     if participants_balance * 3 >= full_committee_balance * 2:
         pending_header.confirmed = True
 ```
@@ -685,7 +685,7 @@ def process_pending_headers(state: BeaconState) -> None:
             full_committee = get_beacon_committee(state, slot, shard)
             # The set of voters who voted for each header (and their total balances)
             voting_sets = [
-                [v for i, v in enumerate(full_committee) if c.votes[i]]
+                set(v for i, v in enumerate(full_committee) if c.votes[i])
                 for c in candidates
             ]
             voting_balances = [
