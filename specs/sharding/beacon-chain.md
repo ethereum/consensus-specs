@@ -644,7 +644,7 @@ def process_epoch(state: BeaconState) -> None:
 
     # Sharding
     process_pending_headers(state)
-    process_confirmed_header_fees(state)
+    charge_confirmed_header_fees(state)
     reset_pending_headers(state)
 
     # Final updates
