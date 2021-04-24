@@ -728,7 +728,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
             candidate = confirmed_candidates[0]
 
             # Charge EIP 1559 fee
-            proposer = get_shard_proposer(state, slot, shard)
+            proposer = get_shard_proposer_index(state, slot, shard)
             fee = (
                 (state.shard_gasprice * candidate.commitment.length)
                 // TARGET_SAMPLES_PER_BLOCK
