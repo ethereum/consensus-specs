@@ -559,7 +559,7 @@ def process_shard_header(state: BeaconState,
     assert header.shard < get_active_shard_count(state, header_epoch)
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
+    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
@@ -644,7 +644,7 @@ def process_epoch(state: BeaconState) -> None:
 
     # Sharding
     process_pending_headers(state)
-    process_confirmed_header_fees(state)
+    charge_confirmed_header_fees(state)
     reset_pending_headers(state)
 
     # Final updates
@@ -706,7 +706,7 @@ def process_pending_headers(state: BeaconState) -> None:
             state.grandparent_epoch_confirmed_commitments[shard][slot_index] = DataCommitment()
     confirmed_headers = [candidate for candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
     for header in confirmed_headers:
-        state.grandparent_epoch_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
+        state.grandparent_epoch_confirmed_commitments[header.shard][header.slot % SLOTS_PER_EPOCH] = header.commitment
 ```
 
 ```python
@@ -728,7 +728,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
             candidate = confirmed_candidates[0]
 
             # Charge EIP 1559 fee
-            proposer = get_shard_proposer(state, slot, shard)
+            proposer = get_shard_proposer_index(state, slot, shard)
             fee = (
                 (state.shard_gasprice * candidate.commitment.length)
                 // TARGET_SAMPLES_PER_BLOCK
@@ -751,8 +751,8 @@ def reset_pending_headers(state: BeaconState) -> None:
     # Add dummy "empty" PendingShardHeader (default vote for if no shard header available)
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
-    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_IN_EPOCH):
-        for index in range(get_committee_count_per_slot(next_epoch)):
+    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
+        for index in range(get_committee_count_per_slot(state, next_epoch)):
             shard = compute_shard_from_committee_index(state, slot, index)
             committee_length = len(get_beacon_committee(state, slot, shard))
             state.current_epoch_pending_shard_headers.append(PendingShardHeader(
