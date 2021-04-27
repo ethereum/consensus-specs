@@ -15,9 +15,9 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Application Payload](#application-payload)
+      - [Execution Payload](#execution-payload)
         - [`get_pow_chain_head`](#get_pow_chain_head)
-        - [`produce_application_payload`](#produce_application_payload)
+        - [`produce_execution_payload`](#produce_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -34,37 +34,37 @@ All terminology, constants, functions, and protocol mechanics defined in the upd
 
 ## Beacon chain responsibilities
 
-All validator responsibilities remain unchanged other than those noted below. Namely, the transition block handling and the addition of `ApplicationPayload`.
+All validator responsibilities remain unchanged other than those noted below. Namely, the transition block handling and the addition of `ExecutionPayload`.
 
 ### Block proposal
 
 #### Constructing the `BeaconBlockBody`
 
-##### Application Payload
+##### Execution Payload
 
 ###### `get_pow_chain_head`
 
 Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of the PoW chain. The body of the function is implementation specific.
 
-###### `produce_application_payload`
+###### `produce_execution_payload`
 
-Let `produce_application_payload(parent_hash: Bytes32) -> ApplicationPayload` be the function that produces new instance of application payload.
+Let `produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload` be the function that produces new instance of execution payload.
 The body of this function is implementation dependent.
 
-* Set `block.body.application_payload = get_application_payload(state)` where:
+* Set `block.body.execution_payload = get_execution_payload(state)` where:
 
 ```python
-def get_application_payload(state: BeaconState) -> ApplicationPayload:
+def get_execution_payload(state: BeaconState) -> ExecutionPayload:
     if not is_transition_completed(state):
         pow_block = get_pow_chain_head()
-        if pow_block.total_difficulty < TRANSITION_TOTAL_DIFFICULTY:
+        if not is_valid_transition_block(pow_block):
             # Pre-merge, empty payload
-            return ApplicationPayload()
+            return ExecutionPayload()
         else:
-            # Signify merge via last PoW block_hash and an otherwise empty payload
-            return ApplicationPayload(block_hash=pow_block.block_hash)
+            # Signify merge via producing on top of the last PoW block
+            return produce_execution_payload(pow_block.block_hash)
 
     # Post-merge, normal payload
-    application_parent_hash = state.application_block_hash
-    return produce_application_payload(state.application_block_hash)
+    execution_parent_hash = state.latest_execution_payload_header.block_hash
+    return produce_execution_payload(execution_parent_hash)
 ```

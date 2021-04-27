@@ -20,14 +20,12 @@ from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
-from eth2spec.test.helpers.shard_transitions import get_shard_transition_of_committee
 from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
     run_test_full_random_operations,
 )
-
+from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.context import (
-    PHASE0, PHASE1, MINIMAL,
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
@@ -563,7 +561,7 @@ def test_duplicate_attester_slashing(spec, state):
     yield 'post', None
 
 
-# All AttesterSlashing tests should be adopted for Phase 1 but helper support is not yet there
+# TODO All AttesterSlashing tests should be adopted for SHARDING and later but helper support is not yet there
 
 @with_all_phases
 @spec_state_test
@@ -770,16 +768,10 @@ def test_attestation(spec, state):
     attestation_block = build_empty_block(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     index = 0
-    if spec.fork == PHASE1:
-        shard = spec.compute_shard_from_committee_index(state, index, state.slot)
-        shard_transition = get_shard_transition_of_committee(spec, state, index)
-        attestation_block.body.shard_transitions[shard] = shard_transition
-    else:
-        shard_transition = None
+    # if spec.fork == SHARDING:
+    #     TODO add shard data to block to vote on
 
-    attestation = get_valid_attestation(
-        spec, state, shard_transition=shard_transition, index=index, signed=True, on_time=True
-    )
+    attestation = get_valid_attestation(spec, state, index=index, signed=True, on_time=True)
 
     if not is_post_altair(spec):
         pre_current_attestations_len = len(state.current_epoch_attestations)
@@ -810,9 +802,10 @@ def test_attestation(spec, state):
         assert spec.hash_tree_root(state.previous_epoch_participation) == pre_current_epoch_participation_root
 
 
-# In phase1 a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
+# After SHARDING is enabled, a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
 # exceeding the minimal-config randao mixes memory size.
 # Applies to all voluntary-exit sanity block tests.
+# TODO: when integrating SHARDING tests, voluntary-exit tests may need to change.
 
 @with_all_phases
 @spec_state_test

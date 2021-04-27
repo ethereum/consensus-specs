@@ -1,6 +1,7 @@
-from eth2spec.test.context import PHASE0, PHASE1, ALTAIR, with_all_phases, spec_state_test
+from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 
@@ -23,16 +24,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
         )
-    elif spec.fork == PHASE1:
-        latest_message = spec.LatestMessage(
-            epoch=attestation.data.target.epoch,
-            root=attestation.data.beacon_block_root,
-        )
-        shard_latest_message = spec.ShardLatestMessage(
-            epoch=attestation.data.target.epoch,
-            root=attestation.data.shard_head_root,
-        )
-        assert store.shard_stores[attestation.data.shard].latest_messages[sample_index] == shard_latest_message
+    # elif spec.fork == SHARDING: TODO: check if vote count for shard blob increased as expected
 
     assert (
         store.latest_messages[sample_index] == latest_message

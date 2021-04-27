@@ -139,7 +139,7 @@
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
 At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of Ethereum 2.0, the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a validator happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
-The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block (Phase 1) and proof-of-stake votes for a beacon block (Phase 0).
+The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block (in a later Eth2 upgrade) and proof-of-stake votes for a beacon block (Phase 0).
 
 ## Notation
 

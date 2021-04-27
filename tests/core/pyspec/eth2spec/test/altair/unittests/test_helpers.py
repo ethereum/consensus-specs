@@ -1,8 +1,8 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
-    ALTAIR,
 )
+from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.test.helpers.merkle import build_proof
 
 

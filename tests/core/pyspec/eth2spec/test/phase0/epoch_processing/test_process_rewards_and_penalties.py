@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test, spec_test,
     with_all_phases, single_phase,
-    with_phases, PHASE0, PHASE1,
+    with_phases, PHASE0,
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
@@ -103,7 +103,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_phases([PHASE0, PHASE1])
+@with_phases([PHASE0])
 @spec_state_test
 def test_full_attestations_random_incorrect_fields(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
@@ -292,8 +292,6 @@ def test_duplicate_attestation(spec, state):
         assert single_state.balances[index] == dup_state.balances[index]
 
 
-# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
-# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_participants_different_attestation_1(spec, state):
@@ -334,8 +332,6 @@ def test_duplicate_participants_different_attestation_1(spec, state):
         assert single_correct_state.balances[index] == dup_state.balances[index]
 
 
-# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
-# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_participants_different_attestation_2(spec, state):
@@ -377,8 +373,6 @@ def test_duplicate_participants_different_attestation_2(spec, state):
         assert single_correct_state.balances[index] == dup_state.balances[index]
 
 
-# TODO: update to all phases when https://github.com/ethereum/eth2.0-specs/pull/2024 is merged
-# Currently disabled for Phase 1+ due to the mechanics of on-time-attestations complicating what should be a simple test
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_participants_different_attestation_3(spec, state):
