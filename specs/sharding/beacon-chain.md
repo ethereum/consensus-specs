@@ -683,7 +683,8 @@ def process_pending_headers(state: BeaconState) -> None:
                 continue
 
             # The entire committee (and its balance)
-            full_committee = get_beacon_committee(state, slot, CommitteeIndex(shard))
+            index = compute_committee_index_from_shard(state, slot, shard)
+            full_committee = get_beacon_committee(state, slot, index)
             # The set of voters who voted for each header (and their total balances)
             voting_sets = [
                 set(v for i, v in enumerate(full_committee) if c.votes[i])
