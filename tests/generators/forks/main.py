@@ -1,7 +1,7 @@
 from importlib import reload
 from typing import Iterable
 
-from eth2spec.test.context import PHASE0, ALTAIR, MINIMAL, MAINNET
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MINIMAL, MAINNET
 from eth2spec.config import config_util
 from eth2spec.test.altair.fork import test_fork as test_altair_forks
 from eth2spec.phase0 import spec as spec_phase0

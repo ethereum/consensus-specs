@@ -58,7 +58,7 @@ def test_finality_delay_fix(spec, state):
     next_slots(spec, state, attack_length + 1)
     spec.on_tick(store, store.genesis_time + state.slot * spec.SECONDS_PER_SLOT)
     attestation = get_valid_late_attestation(spec, state, slot=attacker_blocks[-1].slot,
-                                             index=None, signed=True, shard_transition=None)
+                                             index=None, signed=True)
     spec.on_attestation(store, attestation)
     honest_head_block_root = spec.get_head(store)
     for signed_attack_block in attacker_signed_blocks:

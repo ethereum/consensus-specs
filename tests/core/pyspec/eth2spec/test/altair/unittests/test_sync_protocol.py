@@ -1,6 +1,4 @@
 from eth2spec.test.context import (
-    ALTAIR,
-    MINIMAL,
     spec_state_test,
     with_configs,
     with_phases,
@@ -9,6 +7,10 @@ from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 from eth2spec.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
+)
+from eth2spec.test.helpers.constants import (
+    ALTAIR,
+    MINIMAL,
 )
 from eth2spec.test.helpers.state import (
     next_slots,

@@ -2,7 +2,6 @@ import random
 from eth_utils import encode_hex
 
 from eth2spec.test.context import (
-    MINIMAL,
     is_post_altair,
     spec_state_test,
     with_all_phases,
@@ -10,6 +9,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.fork_choice import (
     tick_and_run_on_attestation,
     tick_and_run_on_block,

@@ -141,12 +141,12 @@ Clients should allow users to input a Weak Subjectivity Checkpoint at startup, a
 ### Weak Subjectivity Sync Procedure
 
 1. Input a Weak Subjectivity Checkpoint as a CLI parameter in `block_root:epoch_number` format,
-  where `block_root` (an "0x" prefixed 32-byte hex string) and `epoch_number` (an integer) represent a valid `Checkpoint`.
-  Example of the format:
+   where `block_root` (an "0x" prefixed 32-byte hex string) and `epoch_number` (an integer) represent a valid `Checkpoint`.
+   Example of the format:
 
-```
-0x8584188b86a9296932785cc2827b925f9deebacce6d72ad8d53171fa046b43d9:9544
-```
+   ```
+   0x8584188b86a9296932785cc2827b925f9deebacce6d72ad8d53171fa046b43d9:9544
+   ```
 
 2. Check the weak subjectivity requirements:
     - *IF* `epoch_number > store.finalized_checkpoint.epoch`,

@@ -37,10 +37,10 @@ DOMAIN_CONTRIBUTION_AND_PROOF: 0x09000000
 
 # Fork
 # ---------------------------------------------------------------
-# Highest byte set to 0x01 to avoid collisions with mainnet versioning
+# [customized] Highest byte set to 0x01 to avoid collisions with mainnet versioning
 ALTAIR_FORK_VERSION: 0x01000001
 # [customized]
-ALTAIR_FORK_SLOT: 0
+ALTAIR_FORK_SLOT: 18446744073709551615
 
 
 # Sync protocol
@@ -51,3 +51,8 @@ MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
 MAX_VALID_LIGHT_CLIENT_UPDATES: 32
 # [customized]
 LIGHT_CLIENT_UPDATE_TIMEOUT: 32
+
+# Validator
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE: 4

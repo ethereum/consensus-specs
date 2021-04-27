@@ -1,16 +1,20 @@
 import pytest
 
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.altair import spec as spec_altair
+from eth2spec.merge import spec as spec_merge
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
+from .helpers.constants import (
+    PHASE0, ALTAIR, MERGE, SHARDING, CUSTODY_GAME, DAS,
+    ALL_PHASES,
+)
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
 
 from random import Random
-from typing import Any, Callable, NewType, Sequence, TypedDict, Protocol
+from typing import Any, Callable, Sequence, TypedDict, Protocol
 
 from lru import LRU
 
@@ -19,28 +23,9 @@ from importlib import reload
 
 def reload_specs():
     reload(spec_phase0)
-    reload(spec_phase1)
     reload(spec_altair)
+    reload(spec_merge)
 
-
-# Some of the Spec module functionality is exposed here to deal with phase-specific changes.
-
-SpecForkName = NewType("SpecForkName", str)
-ConfigName = NewType("ConfigName", str)
-
-PHASE0 = SpecForkName('phase0')
-PHASE1 = SpecForkName('phase1')
-ALTAIR = SpecForkName('altair')
-
-ALL_PHASES = (PHASE0, PHASE1, ALTAIR)
-
-MAINNET = ConfigName('mainnet')
-MINIMAL = ConfigName('minimal')
-
-ALL_CONFIGS = (MINIMAL, MAINNET)
-
-# The forks that output to the test vectors.
-TESTGEN_FORKS = (PHASE0, ALTAIR)
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -54,19 +39,18 @@ class SpecPhase0(Spec):
     ...
 
 
-class SpecPhase1(Spec):
-    ...
-
-
 class SpecAltair(Spec):
     ...
 
 
-# add transfer, bridge, etc. as the spec evolves
+class SpecMerge(Spec):
+    ...
+
+
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
-    PHASE1: SpecPhase1
     ALTAIR: SpecAltair
+    MERGE: SpecMerge
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -78,11 +62,8 @@ def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Ca
 
     state = create_genesis_state(spec=p0, validator_balances=balances,
                                  activation_threshold=activation_threshold)
-    if spec.fork == PHASE1:
-        # TODO: instead of upgrading a test phase0 genesis state we can also write a phase1 state helper.
-        # Decide based on performance/consistency results later.
-        state = phases[PHASE1].upgrade_to_phase1(state)
-    elif spec.fork == ALTAIR:
+    # TODO: upgrade to merge spec, and later sharding.
+    if spec.fork == ALTAIR:
         state = phases[ALTAIR].upgrade_to_altair(state)
 
     return state
@@ -337,30 +318,34 @@ def with_phases(phases, other_phases=None):
                     return None
                 run_phases = [phase]
 
+            if PHASE0 not in run_phases and ALTAIR not in run_phases:
+                dump_skipping_message("none of the recognized phases are executable, skipping test.")
+                return None
+
             available_phases = set(run_phases)
             if other_phases is not None:
                 available_phases |= set(other_phases)
 
-            # TODO: test state is dependent on phase0 but is immediately transitioned to phase1.
-            #  A new state-creation helper for phase 1 may be in place, and then phase1+ tests can run without phase0
+            # TODO: test state is dependent on phase0 but is immediately transitioned to later phases.
+            #  A new state-creation helper for later phases may be in place, and then tests can run without phase0
             available_phases.add(PHASE0)
 
             # Populate all phases for multi-phase tests
             phase_dir = {}
             if PHASE0 in available_phases:
                 phase_dir[PHASE0] = spec_phase0
-            if PHASE1 in available_phases:
-                phase_dir[PHASE1] = spec_phase1
             if ALTAIR in available_phases:
                 phase_dir[ALTAIR] = spec_altair
 
-            # return is ignored whenever multiple phases are ran. If
+            # return is ignored whenever multiple phases are ran.
+            # This return is for test generators to emit python generators (yielding test vector outputs)
             if PHASE0 in run_phases:
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
-            if PHASE1 in run_phases:
-                ret = fn(spec=spec_phase1, phases=phase_dir, *args, **kw)
             if ALTAIR in run_phases:
                 ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
+
+            # TODO: merge, sharding, custody_game and das are not executable yet.
+            #  Tests that specify these features will not run, and get ignored for these specific phases.
             return ret
         return wrapper
     return decorator
@@ -382,23 +367,9 @@ def with_configs(configs, reason=None):
     return decorator
 
 
-def only_full_crosslink(fn):
-    def is_full_crosslink(spec, state):
-        epoch = spec.compute_epoch_at_slot(state.slot)
-        return spec.get_committee_count_per_slot(state, epoch) >= spec.get_active_shard_count(state)
-
-    def wrapper(*args, spec: Spec, state: Any, **kw):
-        # TODO: update condition to "phase1+" if we have phase2
-        if spec.fork == PHASE1 and not is_full_crosslink(spec, state):
-            dump_skipping_message("only for full crosslink")
-            return None
-        return fn(*args, spec=spec, state=state, **kw)
-    return wrapper
-
-
 def is_post_altair(spec):
-    if spec.fork in [PHASE0, PHASE1]:
-        # TODO: PHASE1 fork is temporarily parallel to ALTAIR.
-        # Will make PHASE1 fork inherit ALTAIR later.
+    # TODO: everything runs in parallel to Altair.
+    #  After features are rebased on the Altair fork, this can be reduced to just PHASE0.
+    if spec.fork in [PHASE0, MERGE, SHARDING, CUSTODY_GAME, DAS]:
         return False
     return True

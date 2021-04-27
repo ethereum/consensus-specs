@@ -12,7 +12,7 @@ from eth_utils import (
 import milagro_bls_binding as milagro_bls
 
 from eth2spec.utils import bls
-from eth2spec.test.context import PHASE0
+from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 

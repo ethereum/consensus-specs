@@ -13,8 +13,7 @@ FUNCTION_REGEX = r'^def [\w_]*'
 # Definitions in context.py
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
-PHASE1 = 'phase1'
-
+MERGE = 'merge'
 
 class SpecObject(NamedTuple):
     functions: Dict[str, str]
@@ -100,7 +99,7 @@ def get_spec(file_name: str) -> SpecObject:
                             ssz_dep_constants[row[0]] = row[1]
                         else:
                             constants[row[0]] = row[1].replace('**TBD**', '2**32')
-                    elif row[1].startswith('uint') or row[1].startswith('Bytes'):
+                    elif row[1].startswith('uint') or row[1].startswith('Bytes') or row[1].startswith('ByteList'):
                         custom_types[row[0]] = row[1]
     return SpecObject(
         functions=functions,
@@ -141,40 +140,7 @@ SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
 '''
-PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
-from eth2spec.config.config_util import apply_constants_config
-from typing import (
-    Any, Dict, Set, Sequence, NewType, Tuple, TypeVar, Callable, Optional
-)
-from typing import List as PyList
 
-from dataclasses import (
-    dataclass,
-    field,
-)
-
-from lru import LRU
-
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
-from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64, bit,
-    ByteList, ByteVector, Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
-)
-from eth2spec.utils import bls
-
-from eth2spec.utils.hash_function import hash
-
-# Whenever phase 1 is loaded, make sure we have the latest phase0
-from importlib import reload
-reload(phase0)
-
-
-SSZVariableName = str
-GeneralizedIndex = NewType('GeneralizedIndex', int)
-SSZObject = TypeVar('SSZObject', bound=View)
-
-CONFIG_NAME = 'mainnet'
-'''
 ALTAIR_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.config_util import apply_constants_config
 from typing import (
@@ -205,6 +171,34 @@ reload(phase0)
 
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
+SSZObject = TypeVar('SSZObject', bound=View)
+
+CONFIG_NAME = 'mainnet'
+'''
+
+MERGE_IMPORTS = '''from eth2spec.phase0 import spec as phase0
+from eth2spec.config.config_util import apply_constants_config
+from typing import (
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
+)
+
+from dataclasses import (
+    dataclass,
+    field,
+)
+
+from lru import LRU
+
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
+from eth2spec.utils.ssz.ssz_typing import (
+    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
+    Bytes1, Bytes4, Bytes20, Bytes32, Bytes48, Bytes96, Bitlist,
+    ByteList, ByteVector
+)
+from eth2spec.utils import bls
+
+from eth2spec.utils.hash_function import hash
+
 SSZObject = TypeVar('SSZObject', bound=View)
 
 CONFIG_NAME = 'mainnet'
@@ -294,14 +288,6 @@ get_attesting_indices = cache_this(
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
-PHASE1_SUNDRY_FUNCTIONS = '''
-
-_get_start_shard = get_start_shard
-get_start_shard = cache_this(
-    lambda state, slot: (state.validators.hash_tree_root(), slot),
-    _get_start_shard, lru_size=SLOTS_PER_EPOCH * 3)'''
-
-
 ALTAIR_SUNDRY_FUNCTIONS = '''
 
 def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
@@ -311,11 +297,46 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
     return GeneralizedIndex(ssz_path.gindex())'''
 
 
+MERGE_SUNDRY_FUNCTIONS = """
+ExecutionState = Any
+
+
+def get_pow_block(hash: Bytes32) -> PowBlock:
+    pass
+
+
+def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
+    pass
+
+
+def get_pow_chain_head() -> PowBlock:
+    pass
+
+
+def execution_state_transition(execution_state: ExecutionState, execution_payload: ExecutionPayload) -> None:
+    pass
+
+
+def produce_execution_payload(parent_hash: Bytes32) -> ExecutionPayload:
+    pass"""
+
+
 # The constants that depend on SSZ objects
 # Will verify the value at the end of the spec
 ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS = {
     'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
     'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
+}
+
+
+ALTAIR_INVAIANT_CHECKS = '''
+assert (
+    TIMELY_HEAD_WEIGHT + TIMELY_SOURCE_WEIGHT + TIMELY_TARGET_WEIGHT + SYNC_REWARD_WEIGHT + PROPOSER_WEIGHT
+) == WEIGHT_DENOMINATOR'''
+
+
+MERGE_HARDCODED_CUSTOM_TYPE_DEP_CONSTANTS = {
+    'MAX_BYTES_PER_OPAQUE_TRANSACTION': 'uint64(2**20)',
 }
 
 
@@ -327,8 +348,8 @@ def is_altair(fork):
     return fork == ALTAIR
 
 
-def is_phase1(fork):
-    return fork == PHASE1
+def is_merge(fork):
+    return fork == MERGE
 
 
 def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_class_objects: Dict[str, str]) -> str:
@@ -340,6 +361,15 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             [
                 f"class {key}({value}):\n    pass\n"
                 for key, value in spec_object.custom_types.items()
+                if not value.startswith('ByteList')
+            ]
+        )
+        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if value.startswith('ByteList')]) > 0 else '')
+        + '\n\n'.join(
+            [
+                f"{key} = {value}\n"
+                for key, value in spec_object.custom_types.items()
+                if value.startswith('ByteList')
             ]
         )
     )
@@ -356,9 +386,15 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
     if is_altair(fork):
         altair_ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
 
+    if is_merge(fork):
+        merge_custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, MERGE_HARDCODED_CUSTOM_TYPE_DEP_CONSTANTS[x]), MERGE_HARDCODED_CUSTOM_TYPE_DEP_CONSTANTS))
+
+    
     spec = (
             imports
             + '\n\n' + f"fork = \'{fork}\'\n"
+            # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
+            + ('\n\n' + merge_custom_type_dep_constants  + '\n' if is_merge(fork) else '')
             + '\n\n' + new_type_definitions
             + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
             # The constants that some SSZ containers require. Need to be defined before `constants_spec`
@@ -370,7 +406,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
             # Functions to make pyspec work
             + '\n' + PHASE0_SUNDRY_FUNCTIONS
             + ('\n' + ALTAIR_SUNDRY_FUNCTIONS if is_altair(fork) else '')
-            + ('\n' + PHASE1_SUNDRY_FUNCTIONS if is_phase1(fork) else '')
+            + ('\n' + MERGE_SUNDRY_FUNCTIONS if is_merge(fork) else '')
     )
 
     # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
@@ -378,6 +414,7 @@ def objects_to_spec(spec_object: SpecObject, imports: str, fork: str, ordered_cl
     if is_altair(fork):
         altair_ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), ALTAIR_HARDCODED_SSZ_DEP_CONSTANTS))
         spec += '\n\n\n' + altair_ssz_dep_constants_verification
+        spec += '\n' + ALTAIR_INVAIANT_CHECKS
 
     spec += '\n'
     return spec
@@ -397,7 +434,7 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
 
 ignored_dependencies = [
     'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature',
-    'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
+    'Bytes1', 'Bytes4', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2',
@@ -461,8 +498,8 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 
 fork_imports = {
     'phase0': PHASE0_IMPORTS,
-    'phase1': PHASE1_IMPORTS,
     'altair': ALTAIR_IMPORTS,
+    'merge': MERGE_IMPORTS,
 }
 
 
@@ -515,20 +552,6 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            elif is_phase1(self.spec_fork):
-                self.md_doc_paths = """
-                    specs/phase0/beacon-chain.md
-                    specs/phase0/fork-choice.md
-                    specs/phase0/validator.md
-                    specs/phase0/weak-subjectivity.md
-                    specs/phase1/custody-game.md
-                    specs/phase1/beacon-chain.md
-                    specs/phase1/shard-transition.md
-                    specs/phase1/fork-choice.md
-                    specs/phase1/fork.md
-                    specs/phase1/shard-fork-choice.md
-                    specs/phase1/validator.md
-                """
             elif is_altair(self.spec_fork):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
@@ -539,6 +562,16 @@ class PySpecCommand(Command):
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/sync-protocol.md
+                """
+            elif is_merge(self.spec_fork):
+                self.md_doc_paths = """
+                    specs/phase0/beacon-chain.md
+                    specs/phase0/fork-choice.md
+                    specs/phase0/validator.md
+                    specs/phase0/weak-subjectivity.md
+                    specs/merge/beacon-chain.md
+                    specs/merge/fork-choice.md
+                    specs/merge/validator.md
                 """
             else:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -662,7 +695,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.18",
+        "remerkleable==0.1.19",
         "ruamel.yaml==0.16.5",
         "lru-dict==1.1.6",
     ]
