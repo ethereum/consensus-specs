@@ -671,7 +671,8 @@ def process_pending_headers(state: BeaconState) -> None:
     previous_epoch = get_previous_epoch(state)
     previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard in range(get_active_shard_count(state, previous_epoch)):
+        for shard_index in range(get_active_shard_count(state, previous_epoch)):
+            shard = Shard(shard_index)
             # Pending headers for this (slot, shard) combo
             candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
@@ -682,7 +683,8 @@ def process_pending_headers(state: BeaconState) -> None:
                 continue
 
             # The entire committee (and its balance)
-            full_committee = get_beacon_committee(state, slot, shard)
+            index = compute_committee_index_from_shard(state, slot, shard)
+            full_committee = get_beacon_committee(state, slot, index)
             # The set of voters who voted for each header (and their total balances)
             voting_sets = [
                 set(v for i, v in enumerate(full_committee) if c.votes[i])
@@ -718,7 +720,8 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
     )
     previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard in range(SHARD_COUNT):
+        for shard_index in range(SHARD_COUNT):
+            shard = Shard(shard_index)
             confirmed_candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
                 if (c.slot, c.shard, c.confirmed) == (slot, shard, True)
@@ -753,8 +756,9 @@ def reset_pending_headers(state: BeaconState) -> None:
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
     for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
         for index in range(get_committee_count_per_slot(state, next_epoch)):
-            shard = compute_shard_from_committee_index(state, slot, index)
-            committee_length = len(get_beacon_committee(state, slot, shard))
+            committee_index = CommitteeIndex(index)
+            shard = compute_shard_from_committee_index(state, slot, committee_index)
+            committee_length = len(get_beacon_committee(state, slot, committee_index))
             state.current_epoch_pending_shard_headers.append(PendingShardHeader(
                 slot=slot,
                 shard=shard,
