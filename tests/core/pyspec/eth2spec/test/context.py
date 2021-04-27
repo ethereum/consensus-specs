@@ -7,8 +7,8 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, MERGE, SHARDING, CUSTODY_GAME, DAS,
-    ALL_PHASES,
+    PHASE0, ALTAIR,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR,
 )
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
@@ -55,17 +55,11 @@ class SpecForks(TypedDict, total=False):
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
                    spec: Spec, phases: SpecForks):
-
-    p0 = phases[PHASE0]
-    balances = balances_fn(p0)
-    activation_threshold = threshold_fn(p0)
-
-    state = create_genesis_state(spec=p0, validator_balances=balances,
+    phase = phases[spec.fork]
+    balances = balances_fn(phase)
+    activation_threshold = threshold_fn(phase)
+    state = create_genesis_state(spec=phase, validator_balances=balances,
                                  activation_threshold=activation_threshold)
-    # TODO: upgrade to merge spec, and later sharding.
-    if spec.fork == ALTAIR:
-        state = phases[ALTAIR].upgrade_to_altair(state)
-
     return state
 
 
@@ -368,8 +362,6 @@ def with_configs(configs, reason=None):
 
 
 def is_post_altair(spec):
-    # TODO: everything runs in parallel to Altair.
-    #  After features are rebased on the Altair fork, this can be reduced to just PHASE0.
-    if spec.fork in [PHASE0, MERGE, SHARDING, CUSTODY_GAME, DAS]:
+    if spec.fork in FORKS_BEFORE_ALTAIR:
         return False
     return True
