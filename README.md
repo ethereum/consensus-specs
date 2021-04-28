@@ -30,6 +30,7 @@ The current features are:
 * [Altair fork](specs/altair/fork.md)
 * [Light client sync protocol](specs/altair/sync-protocol.md)
 * [Honest Validator guide changes](specs/altair/validator.md)
+* [P2P Networking](specs/altair/p2p-interface.md)
 
 ### Merge
 
