@@ -210,7 +210,7 @@ After constructing the `BeaconBlockBody` as per that section, the proposer has a
 The proposer receives a number of `SyncCommitteeContribution`s (wrapped in `SignedContributionAndProof`s on the wire) from validators in the sync committee who are selected to partially aggregate signatures from independent subcommittees formed by breaking the full sync committee into `SYNC_COMMITTEE_SUBNET_COUNT` pieces (see below for details).
 
 The proposer collects the contributions that match their local view of the chain (i.e. `contribution.beacon_block_root == block.parent_root`) for further aggregation when preparing a block. 
-Of these contributions, proposers should select the best contribution seen across all aggregators for each subnet/subcommitte.
+Of these contributions, proposers should select the best contribution seen across all aggregators for each subnet/subcommittee.
 A contribution with more valid signatures is better than a contribution with fewer signatures.
 
 Recall `block.body.sync_aggregate.sync_committee_bits` is a `Bitvector` where the `i`th bit is `True` if the corresponding validator in the sync committee has produced a valid signature, 
@@ -261,7 +261,7 @@ This process occurs each slot.
 
 ##### Prepare sync committee signature
 
-If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every slot in the current sync committee period the validator should prepare a `SyncCommitteeSignature` according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of the current slot.
+If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every slot in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of the current slot.
 
 This logic is triggered upon the same conditions as when producing an attestation. 
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
@@ -421,7 +421,7 @@ Subnet assignments are known `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs in advanc
 ENR advertisement is indicated by setting the appropriate bit(s) of the bitfield found under the `syncnets` key in the ENR corresponding to the derived `subnet_id`(s).
 Any bits modified for the sync committee responsibilities are unset in the ENR once the node no longer has any validators in the subcommittee.
 
-  *Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens which implies subnet assignments are not known until then.
+  *Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens, which implies subnet assignments are not known until then.
 Early sync committee members should listen for topic subscriptions from peers and employ discovery via the ENR advertisements near the fork boundary to form initial subnets.
 Some early sync committee rewards may be missed while the initial subnets form.
 
