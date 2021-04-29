@@ -339,6 +339,7 @@ from eth2spec.utils.ssz.ssz_typing import (
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
+from eth2spec.test.exceptions import ValidationError
 '''
 
     @classmethod
