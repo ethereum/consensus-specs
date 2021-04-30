@@ -35,6 +35,19 @@ def _skip_slots(*slots):
     return f
 
 
+def _no_blocks(_):
+    return False
+
+
+def _only_at(slot):
+    """
+    Only produce a block if its slot is `slot`.
+    """
+    def f(state_at_prior_slot):
+        return state_at_prior_slot.slot + 1 == slot
+    return f
+
+
 def _state_transition_across_slots(spec, state, slot_count, block_filter=_all_blocks):
     for _ in range(slot_count):
         should_make_block = block_filter(state)
@@ -183,6 +196,48 @@ def test_transition_missing_fork_block(state, fork_epoch, spec, post_spec, pre_t
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
     expected_slots = set(range(1, state.slot + 1)).difference(set([last_slot_of_pre_fork]))
     assert expected_slots == set(slots_with_blocks)
+
+    yield "blocks", blocks
+    yield "post", state
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Transition from the initial `state` to the epoch after the `fork_epoch`,
+    producing blocks for every slot along the way except for the first block
+    of the new fork.
+    """
+    yield "pre", state
+
+    assert spec.get_current_epoch(state) < fork_epoch
+
+    # regular state transition until fork:
+    last_slot_of_pre_fork = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    slot_count = last_slot_of_pre_fork - state.slot
+    blocks = []
+    blocks.extend([
+        pre_tag(block) for block in
+        _state_transition_across_slots(spec, state, slot_count, block_filter=_no_blocks)
+    ])
+
+    # irregular state transition to handle fork:
+    state, _ = _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+
+    # continue regular state transition with new spec into next epoch
+    slot_count = post_spec.SLOTS_PER_EPOCH
+    last_slot = (fork_epoch + 1) * post_spec.SLOTS_PER_EPOCH
+    blocks.extend([
+        post_tag(block) for block in
+        _state_transition_across_slots(post_spec, state, slot_count, block_filter=_only_at(last_slot))
+    ])
+
+    assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
+    assert post_spec.compute_epoch_at_slot(state.slot) == fork_epoch + 1
+
+    slots_with_blocks = [block.message.slot for block in blocks]
+    assert len(slots_with_blocks) == 1
+    assert slots_with_blocks[0] == last_slot
 
     yield "blocks", blocks
     yield "post", state

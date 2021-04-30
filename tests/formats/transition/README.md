@@ -19,7 +19,7 @@ For example, if a test case has `post_fork` of `altair`, the test consumer shoul
 post_fork: string              -- String name of the spec after the fork.
 fork_epoch: int                -- The epoch at which the fork takes place.
 fork_block: int                -- Optional. The `<index>` of the last block on the initial fork.
-blocks_count: int              -- Optional. The number of blocks processed in this test.
+blocks_count: int              -- The number of blocks processed in this test.
 ```
 
 *Note*: There may be a fork transition function to run at the `fork_epoch`.
@@ -35,8 +35,6 @@ the initial fork, the state before running the block transitions.
 A series of files, with `<index>` in range `[0, blocks_count)`.
 Blocks must be processed in order, following the main transition function
 (i.e. process slot and epoch transitions in between blocks as normal).
-
-*Note*: `blocks_count` will be missing if there are no blocks in this test.
 
 Blocks are encoded as `SignedBeaconBlock`s from the relevant spec version
 as indicated by the `post_fork` and `fork_block` data in the `meta.yaml`.
@@ -61,7 +59,8 @@ testing the fork from Phase 0 to Altair, blocks with indices `0, 1` represent
 `SignedBeaconBlock`s defined in the Phase 0 spec and blocks with indices `2, 3`
 represent `SignedBeaconBlock`s defined in the Altair spec.
 
-*Note*: `fork_block` will be missing if `blocks_count` is also missing.
+*Note*: If `fork_block` is missing, then all block data should be
+interpreted as belonging to the post fork.
 
 ### `post.ssz_snappy`
 
