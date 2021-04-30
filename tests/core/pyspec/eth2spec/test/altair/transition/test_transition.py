@@ -1,6 +1,6 @@
 from eth2spec.test.context import fork_transition_test
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
-from eth2spec.test.helpers.state import state_transition_and_sign_block
+from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
 
 
@@ -21,20 +21,32 @@ def _state_transition_and_sign_block_at_slot(spec, state):
     return sign_block(spec, state, block)
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
-def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
-    yield "pre", state
+def _all_blocks(_):
+    return True
 
-    assert spec.get_current_epoch(state) < fork_epoch
 
-    blocks = []
-    # regular state transition until fork:
-    for _ in range(state.slot, fork_epoch * spec.SLOTS_PER_EPOCH - 1):
-        block = build_empty_block_for_next_slot(spec, state)
-        signed_block = state_transition_and_sign_block(spec, state, block)
-        blocks.append(pre_tag(signed_block))
+def _skip_slots(*slots):
+    """
+    Skip making a block if its slot is
+    passed as an argument to this filter
+    """
+    def f(state_at_prior_slot):
+        return state_at_prior_slot.slot + 1 not in slots
+    return f
 
-    # irregular state transition to handle fork:
+
+def _state_transition_across_slots(spec, state, slot_count, block_filter=_all_blocks):
+    for _ in range(slot_count):
+        should_make_block = block_filter(state)
+        if should_make_block:
+            block = build_empty_block_for_next_slot(spec, state)
+            signed_block = state_transition_and_sign_block(spec, state, block)
+            yield signed_block
+        else:
+            next_slot(spec, state)
+
+
+def _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True):
     spec.process_slots(state, state.slot + 1)
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
@@ -46,14 +58,40 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     assert state.fork.previous_version == post_spec.GENESIS_FORK_VERSION
     assert state.fork.current_version == post_spec.ALTAIR_FORK_VERSION
 
-    signed_block = _state_transition_and_sign_block_at_slot(post_spec, state)
-    blocks.append(post_tag(signed_block))
+    if with_block:
+        return state, _state_transition_and_sign_block_at_slot(post_spec, state)
+    else:
+        return state, None
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Transition from the initial `state` to the epoch after the `fork_epoch`,
+    producing blocks for every slot along the way.
+    """
+    yield "pre", state
+
+    assert spec.get_current_epoch(state) < fork_epoch
+
+    # regular state transition until fork:
+    slot_count = fork_epoch * spec.SLOTS_PER_EPOCH - 1 - state.slot
+    blocks = []
+    blocks.extend([
+        pre_tag(block) for block in
+        _state_transition_across_slots(spec, state, slot_count)
+    ])
+
+    # irregular state transition to handle fork:
+    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    for _ in range(post_spec.SLOTS_PER_EPOCH):
-        block = build_empty_block_for_next_slot(post_spec, state)
-        signed_block = state_transition_and_sign_block(post_spec, state, block)
-        blocks.append(post_tag(signed_block))
+    slot_count = post_spec.SLOTS_PER_EPOCH
+    blocks.extend([
+        post_tag(block) for block in
+        _state_transition_across_slots(post_spec, state, slot_count)
+    ])
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.compute_epoch_at_slot(state.slot) == fork_epoch + 1
@@ -61,6 +99,90 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
     assert set(range(1, state.slot + 1)) == set(slots_with_blocks)
+
+    yield "blocks", blocks
+    yield "post", state
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Transition from the initial `state` to the epoch after the `fork_epoch`,
+    producing blocks for every slot along the way except for the first block
+    of the new fork.
+    """
+    yield "pre", state
+
+    assert spec.get_current_epoch(state) < fork_epoch
+
+    # regular state transition until fork:
+    slot_count = fork_epoch * spec.SLOTS_PER_EPOCH - 1 - state.slot
+    blocks = []
+    blocks.extend([
+        pre_tag(block) for block in
+        _state_transition_across_slots(spec, state, slot_count)
+    ])
+
+    # irregular state transition to handle fork:
+    state, _ = _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+
+    # continue regular state transition with new spec into next epoch
+    slot_count = post_spec.SLOTS_PER_EPOCH
+    blocks.extend([
+        post_tag(block) for block in
+        _state_transition_across_slots(post_spec, state, slot_count)
+    ])
+
+    assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
+    assert post_spec.compute_epoch_at_slot(state.slot) == fork_epoch + 1
+
+    slots_with_blocks = [block.message.slot for block in blocks]
+    assert len(set(slots_with_blocks)) == len(slots_with_blocks)
+    expected_slots = set(range(1, state.slot + 1)).difference(set([fork_epoch * spec.SLOTS_PER_EPOCH]))
+    assert expected_slots == set(slots_with_blocks)
+
+    yield "blocks", blocks
+    yield "post", state
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+def test_transition_missing_fork_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Transition from the initial `state` to the epoch after the `fork_epoch`,
+    producing blocks for every slot along the way except for the first block
+    of the new fork.
+    """
+    yield "pre", state
+
+    assert spec.get_current_epoch(state) < fork_epoch
+
+    # regular state transition until fork:
+    last_slot_of_pre_fork = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    slot_count = last_slot_of_pre_fork - state.slot
+    blocks = []
+    blocks.extend([
+        pre_tag(block) for block in
+        _state_transition_across_slots(spec, state, slot_count, block_filter=_skip_slots(last_slot_of_pre_fork))
+    ])
+
+    # irregular state transition to handle fork:
+    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    blocks.append(post_tag(block))
+
+    # continue regular state transition with new spec into next epoch
+    slot_count = post_spec.SLOTS_PER_EPOCH
+    blocks.extend([
+        post_tag(block) for block in
+        _state_transition_across_slots(post_spec, state, slot_count)
+    ])
+
+    assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
+    assert post_spec.compute_epoch_at_slot(state.slot) == fork_epoch + 1
+
+    slots_with_blocks = [block.message.slot for block in blocks]
+    assert len(set(slots_with_blocks)) == len(slots_with_blocks)
+    expected_slots = set(range(1, state.slot + 1)).difference(set([last_slot_of_pre_fork]))
+    assert expected_slots == set(slots_with_blocks)
 
     yield "blocks", blocks
     yield "post", state
