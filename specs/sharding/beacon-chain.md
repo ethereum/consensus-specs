@@ -763,7 +763,7 @@ def reset_pending_headers(state: BeaconState) -> None:
                 slot=slot,
                 shard=shard,
                 commitment=DataCommitment(),
-                root=Root(),
+                root=hash_tree_root(ShardBlobHeader(slot = slot, shard = shard)),
                 votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
                 confirmed=False,
             ))
