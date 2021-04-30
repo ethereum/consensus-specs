@@ -670,9 +670,8 @@ def process_pending_headers(state: BeaconState) -> None:
 
     previous_epoch = get_previous_epoch(state)
     previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
-    active_shard_count = get_active_shard_count(state, previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard_index in range(active_shard_count):
+        for shard_index in range(get_active_shard_count(state, previous_epoch)):
             shard = Shard(shard_index)
             # Pending headers for this (slot, shard) combo
             candidates = [
@@ -705,7 +704,7 @@ def process_pending_headers(state: BeaconState) -> None:
                 winning_index = [c.root for c in candidates].index(Root())
             candidates[winning_index].confirmed = True
     for slot_index in range(SLOTS_PER_EPOCH):
-        for shard in range(active_shard_count):
+        for shard in range(MAX_SHARDS):
             state.grandparent_epoch_confirmed_commitments[shard][slot_index] = DataCommitment()
     confirmed_headers = [candidate for candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
     for header in confirmed_headers:
@@ -719,10 +718,9 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
         get_active_shard_count(state, get_current_epoch(state))
         * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     )
-    previous_epoch = get_previous_epoch(state)
-    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
+    previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard_index in range(get_active_shard_count(state, previous_epoch)):
+        for shard_index in range(SHARD_COUNT):
             shard = Shard(shard_index)
             confirmed_candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
