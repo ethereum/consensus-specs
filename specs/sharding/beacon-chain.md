@@ -718,9 +718,10 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
         get_active_shard_count(state, get_current_epoch(state))
         * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     )
-    previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
+    previous_epoch = get_previous_epoch(state)
+    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard_index in range(SHARD_COUNT):
+        for shard_index in range(get_active_shard_count(state, previous_epoch)):
             shard = Shard(shard_index)
             confirmed_candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
