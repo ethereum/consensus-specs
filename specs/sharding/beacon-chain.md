@@ -563,7 +563,7 @@ def process_shard_header(state: BeaconState,
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
-    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER))
+    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSER))
     assert bls.Verify(state.validators[header.proposer_index].pubkey, signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
