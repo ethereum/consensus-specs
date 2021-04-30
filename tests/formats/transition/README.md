@@ -51,7 +51,7 @@ blocks_count: int              -- The number of blocks processed in this test.
 
 A SSZ-snappy encoded `BeaconState` according to the specification of the initial fork, the state before running the block transitions.
 
-*NOTE*: This object is _not_ "flagged" as it is assumed to always belong to the post fork.
+*NOTE*: This object is _not_ "flagged" as it is assumed to always belong to the pre fork.
 
 ### `blocks_<index>.ssz_snappy`
 
