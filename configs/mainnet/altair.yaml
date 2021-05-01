@@ -12,8 +12,8 @@ PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
 # Misc
 # ---------------------------------------------------------------
-# 2**10 (= 1,024)
-SYNC_COMMITTEE_SIZE: 1024
+# 2**9 (= 512)
+SYNC_COMMITTEE_SIZE: 512
 # 2**6 (= 64)
 SYNC_PUBKEYS_PER_AGGREGATE: 64
 # 2**2 (= 4)
@@ -22,8 +22,8 @@ INACTIVITY_SCORE_BIAS: 4
 
 # Time parameters
 # ---------------------------------------------------------------
-# 2**8 (= 256)
-EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+# 2**9 (= 512)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
 
 
 # Signature domains
