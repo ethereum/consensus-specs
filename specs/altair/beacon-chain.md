@@ -267,7 +267,7 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 ```python
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the sequence of sync committee indices (which may include duplicate indices) for a given state and epoch.
+    Return the sequence of sync committee indices (which may include duplicate indices) for a given ``state`` and ``epoch``.
     """
     MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
@@ -292,7 +292,7 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
 ```python
 def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
-    Return the sync committee for a given state and epoch.
+    Return the sync committee for a given ``state`` and ``epoch``.
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
@@ -323,7 +323,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epoch: Epoch) -> Set[ValidatorIndex]:
     """
-    Return the active and unslashed validator indices for the given epoch and flag index.
+    Return the active and unslashed validator indices for the given ``epoch`` and ``flag_index``.
     """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
@@ -340,7 +340,7 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
 ```python
 def get_flag_index_deltas(state: BeaconState, flag_index: int, weight: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
-    Return the deltas for a given flag index by scanning through the participation flags.
+    Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
