@@ -94,7 +94,7 @@ if __name__ == "__main__":
     settings.append((seed, MAINNET, random_value.RandomizationMode.mode_random, False, 5))
     seed += 1
     # TODO: enable testing for the whole merge spec.
-    for fork in TESTGEN_FORKS + (MERGE,):
+    for fork in TESTGEN_FORKS:
         gen_runner.run_generator("ssz_static", [
             create_provider(fork, config_name, seed, mode, chaos, cases_if_random)
             for (seed, config_name, mode, chaos, cases_if_random) in settings
