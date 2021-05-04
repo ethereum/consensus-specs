@@ -162,8 +162,8 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
 def test_transition_missing_fork_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial `state` to the epoch after the `fork_epoch`,
-    producing blocks for every slot along the way except for the first block
-    of the new fork.
+    producing blocks for every slot along the way except for the last block
+    of the old fork.
     """
     yield "pre", state
 
@@ -205,8 +205,8 @@ def test_transition_missing_fork_block(state, fork_epoch, spec, post_spec, pre_t
 def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial `state` to the epoch after the `fork_epoch`,
-    producing blocks for every slot along the way except for the first block
-    of the new fork.
+    skipping blocks for every slot along the way except for the first block
+    in the ending epoch.
     """
     yield "pre", state
 
