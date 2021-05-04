@@ -166,7 +166,7 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 ### `BeaconState`
 
 ```python
-class BeaconState(merge.BeaconState):  # [extends The Merge block body]
+class BeaconState(merge.BeaconState):  # [extends The Merge state]
     # [Updated fields]
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]

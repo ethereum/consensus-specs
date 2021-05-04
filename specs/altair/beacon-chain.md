@@ -276,7 +276,8 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 ```python
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the sequence of sync committee indices (which may include duplicate indices) for a given state and epoch.
+    Return the sequence of sync committee indices (which may include duplicate indices)
+    for a given ``state`` and ``epoch``.
     """
     MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
@@ -301,7 +302,7 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
 ```python
 def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
-    Return the sync committee for a given state and epoch.
+    Return the sync committee for a given ``state`` and ``epoch``.
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
