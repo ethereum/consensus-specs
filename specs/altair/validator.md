@@ -74,7 +74,7 @@ This document is currently illustrative for early Altair testnets and some parts
 | Name | Value | Unit |
 | - | - | :-: |
 | `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**2` (= 4) | validators |
-| `SYNC_COMMITTEE_SUBNET_COUNT` | `8` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+| `SYNC_COMMITTEE_SUBNET_COUNT` | `4` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
 
 ## Containers
 
