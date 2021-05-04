@@ -185,7 +185,7 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
     store.valid_updates.append(update)
 
     if (
-        sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2
+        sum(update.sync_committee_bits) * 3 >= len(update.sync_committee_bits) * 2
         and update.finality_header != BeaconBlockHeader()
     ):
         # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
