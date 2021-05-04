@@ -302,6 +302,14 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
 def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
     Return the sync committee for a given ``state`` and ``epoch``.
+
+    ``SyncCommittee`` contains an aggregate pubkey that enables
+    resource-constrained clients to save some computation when verifying
+    the sync committee's signature.
+
+    ``SyncCommittee`` can also contain duplicate pubkeys, when ``get_sync_committee_indices``
+    returns duplicate indices. Implementations must take care when handling
+    optimizations relating to aggregation and verification in the presence of duplicates.
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
