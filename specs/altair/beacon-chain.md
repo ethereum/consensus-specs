@@ -237,6 +237,9 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
 
 ```python
 def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
+    """
+    Return paired tuples of participation flag indices along with associated incentivization weights.
+    """
     return (
         (TIMELY_HEAD_FLAG_INDEX, TIMELY_HEAD_WEIGHT),
         (TIMELY_SOURCE_FLAG_INDEX, TIMELY_SOURCE_WEIGHT),
@@ -248,6 +251,9 @@ def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
 
 ```python
 def add_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
+    """
+    Return a new ``ParticipationFlags`` adding ``flag_index`` to ``flags``.
+    """
     flag = ParticipationFlags(2**flag_index)
     return flags | flag
 ```
@@ -256,6 +262,9 @@ def add_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
 
 ```python
 def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
+    """
+    Return whether ``flags`` has ``flag_index`` set.
+    """
     flag = ParticipationFlags(2**flag_index)
     return flags & flag == flag
 ```
@@ -311,10 +320,17 @@ def get_base_reward_per_increment(state: BeaconState) -> Gwei:
 
 #### `get_base_reward`
 
-*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH`.
+*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH` and the use of increment based accounting.
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    """
+    Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
+
+    Note: A validator can optimally earn one base reward per epoch over a long time horizon.
+    This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal
+    and sync committees).
+    """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
     return Gwei(increments * get_base_reward_per_increment(state))
 ```
@@ -324,7 +340,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epoch: Epoch) -> Set[ValidatorIndex]:
     """
-    Return the active and unslashed validator indices for the given ``epoch`` and ``flag_index``.
+    Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
@@ -341,7 +357,7 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
 ```python
 def get_flag_index_deltas(state: BeaconState, flag_index: int, weight: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
-    Return the deltas for a given ``flag_index`` by scanning through the participation flags.
+    Return the deltas for a given ``flag_index`` scaled by ``weight`` by scanning through the participation flags.
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
@@ -455,9 +471,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         justified_checkpoint = state.previous_justified_checkpoint
 
     # Matching roots
-    is_matching_head = data.beacon_block_root == get_block_root_at_slot(state, data.slot)
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = data.target.root == get_block_root(state, data.target.epoch)
+    is_matching_target = is_matching_source and data.target.root == get_block_root(state, data.target.epoch)
+    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
     assert is_matching_source
 
     # Verify signature
@@ -465,12 +481,12 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Participation flag indices
     participation_flag_indices = []
-    if is_matching_head and is_matching_target and state.slot == data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
-        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
     if is_matching_source and state.slot <= data.slot + integer_squareroot(SLOTS_PER_EPOCH):
         participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
     if is_matching_target and state.slot <= data.slot + SLOTS_PER_EPOCH:
         participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
+    if is_matching_head and state.slot == data.slot + MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
 
     # Update epoch participation flags
     proposer_reward_numerator = 0
@@ -488,7 +504,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 #### Modified `process_deposit`
 
-*Note*: The function `process_deposit` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, `current_epoch_participation`.
+*Note*: The function `process_deposit` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:

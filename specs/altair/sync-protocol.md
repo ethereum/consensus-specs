@@ -115,7 +115,8 @@ A light client maintains its state in a `store` object of type `LightClientStore
 #### `validate_light_client_update`
 
 ```python
-def validate_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate,
+def validate_light_client_update(snapshot: LightClientSnapshot,
+                                 update: LightClientUpdate,
                                  genesis_validators_root: Root) -> None:
     # Verify update slot is larger than snapshot slot
     assert update.header.slot > snapshot.header.slot
