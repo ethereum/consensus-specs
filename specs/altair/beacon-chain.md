@@ -328,7 +328,8 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
 
     Note: A validator can optimally earn one base reward per epoch over a long time horizon.
-    This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal and sync committees)
+    This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal
+    and sync committees).
     """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
     return Gwei(increments * get_base_reward_per_increment(state))
@@ -339,7 +340,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epoch: Epoch) -> Set[ValidatorIndex]:
     """
-    Return the set of validator indicies that are both active and unslashed for the given ``flag_index`` and ``epoch``.
+    Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """
     assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     if epoch == get_current_epoch(state):
