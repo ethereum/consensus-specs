@@ -8,7 +8,7 @@ from eth2spec.utils import bls
 from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
 )
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
@@ -363,5 +363,11 @@ def with_configs(configs, reason=None):
 
 def is_post_altair(spec):
     if spec.fork in FORKS_BEFORE_ALTAIR:
+        return False
+    return True
+
+
+def is_post_merge(spec):
+    if spec.fork in FORKS_BEFORE_MERGE:
         return False
     return True
