@@ -47,8 +47,6 @@ ALTAIR_FORK_EPOCH: 18446744073709551615
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
 # [customized]
 MAX_VALID_LIGHT_CLIENT_UPDATES: 32
-# [customized]
-LIGHT_CLIENT_UPDATE_TIMEOUT: 32
 
 # Validator
 # ---------------------------------------------------------------
