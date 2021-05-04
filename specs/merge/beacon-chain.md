@@ -146,8 +146,8 @@ def is_transition_completed(state: BeaconState) -> bool:
 #### `is_transition_block`
 
 ```python
-def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> bool:
-    return not is_transition_completed(state) and block_body.execution_payload != ExecutionPayload()
+def is_transition_block(state: BeaconState, block: BeaconBlock) -> bool:
+    return not is_transition_completed(state) and block.body.execution_payload != ExecutionPayload()
 ```
 
 #### `compute_time_at_slot`
@@ -168,7 +168,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    process_execution_payload(state, block.body)  # [New in Merge]
+    # Pre-merge, skip execution payload processing
+    if is_transition_completed(state) or is_transition_block(state, block):
+        process_execution_payload(state, block.body.execution_payload)  # [New in Merge]
 ```
 
 #### Execution payload processing
@@ -181,16 +183,10 @@ The body of the function is implementation dependent.
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_execution_payload(state: BeaconState, execution_payload: ExecutionPayload) -> None:
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
-    # Pre-merge, skip processing
-    if not is_transition_completed(state) and not is_transition_block(state, body):
-        return
-
-    execution_payload = body.execution_payload
-
     if is_transition_completed(state):
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1
