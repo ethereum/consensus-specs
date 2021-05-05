@@ -97,7 +97,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 | `PARTICIPATION_FLAGS_LENGTH` | `8` |
 | `PARTICIPATION_FLAGS` | `3` |
-| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_HEAD_WEIGHT, TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT]` |
 
 ## Configuration
