@@ -512,17 +512,22 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
         pending_headers = state.current_epoch_pending_shard_headers
     else:
         pending_headers = state.previous_epoch_pending_shard_headers
-    pending_header = None
-    for header in pending_headers:
-        if header.root == attestation.data.shard_header_root:
-            pending_header = header
-    assert pending_header is not None
-    assert pending_header.slot == attestation.data.slot
-    assert pending_header.shard == compute_shard_from_committee_index(
+    
+    attestation_shard = compute_shard_from_committee_index(
         state,
         attestation.data.slot,
         attestation.data.index,
     )
+    pending_header = None
+    for header in pending_headers:
+        if (
+            header.root == attestation.data.shard_header_root
+            and header.slot == attestation.data.slot
+            and header.shard == attestation_shard
+        ):
+            pending_header = header
+    assert pending_header is not None
+
     for i in range(len(pending_header.votes)):
         pending_header.votes[i] = pending_header.votes[i] or attestation.aggregation_bits[i]
 
