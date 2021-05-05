@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_merge_and_later
-
+from eth2spec.test.helpers.state import next_slot
 
 def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
     """
@@ -31,115 +31,10 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
 @with_merge_and_later
 @spec_state_test
 def test_success_first_payload(spec, state):
+    next_slot(spec, state)
     assert not spec.is_transition_completed(state)
 
-    # TODO: execution payload
     execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_success_regular_payload(spec, state):
-    # TODO: setup state
-    assert spec.is_transition_completed(state)
-
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_success_first_payload_with_gap_slot(spec, state):
-    # TODO: transition gap slot
-
-    assert not spec.is_transition_completed(state)
-
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_success_regular_payload_with_gap_slot(spec, state):
-    # TODO: setup state
-    assert spec.is_transition_completed(state)
-    # TODO: transition gap slot
-
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_execution_first_payload(spec, state):
-    # completely valid payload, but execution itself fails (e.g. block exceeds gas limit)
-
-    # TODO: execution payload.
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_execution_regular_payload(spec, state):
-    # completely valid payload, but execution itself fails (e.g. block exceeds gas limit)
-
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_parent_hash_first_payload(spec, state):
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_number_first_payload(spec, state):
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_everything_first_payload(spec, state):
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_timestamp_first_payload(spec, state):
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
-
-
-@with_merge_and_later
-@spec_state_test
-def test_bad_timestamp_regular_payload(spec, state):
-    # TODO: execution payload
-    execution_payload = spec.ExecutionPayload()
-
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
