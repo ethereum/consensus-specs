@@ -406,7 +406,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
-        (EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT)
+        EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT
         * HYSTERESIS_DOWNWARD_MULTIPLIER // HYSTERESIS_QUOTIENT
     )
     min_effective_balance = (
