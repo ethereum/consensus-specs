@@ -69,7 +69,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `BitVector[PARTICIPATION_FLAGS_LENGTH]` | a succinct representation of up to 8 boolean participation flags |
+| `ParticipationFlags` | `Bitvector[PARTICIPATION_FLAGS_LENGTH]` | a succinct representation of up to 8 boolean participation flags |
 
 ## Constants
 
