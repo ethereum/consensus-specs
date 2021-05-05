@@ -367,12 +367,20 @@ def with_configs(configs, reason=None):
 
 
 def is_post_altair(spec):
+    if spec.fork == MERGE:  # TODO: remove parallel Altair-Merge condition after rebase.
+        return False
     if spec.fork in FORKS_BEFORE_ALTAIR:
         return False
     return True
 
 
 def is_post_merge(spec):
+    if spec.fork == ALTAIR:  # TODO: remove parallel Altair-Merge condition after rebase.
+        return False
     if spec.fork in FORKS_BEFORE_MERGE:
         return False
     return True
+
+
+with_altair_and_later = with_phases([ALTAIR])  # TODO: include Merge, but not until Merge work is rebased.
+with_merge_and_later = with_phases([MERGE])

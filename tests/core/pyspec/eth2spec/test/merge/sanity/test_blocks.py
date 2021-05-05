@@ -5,11 +5,11 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot
 )
 from eth2spec.test.context import (
-    with_all_phases, spec_state_test
+    with_merge_and_later, spec_state_test
 )
 
 
-@with_all_phases
+@with_merge_and_later
 @spec_state_test
 def test_empty_block_transition(spec, state):
     yield 'pre', state

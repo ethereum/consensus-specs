@@ -1,8 +1,5 @@
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases_except
-
-with_merge_and_later = with_all_phases_except([PHASE0, ALTAIR])
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_merge_and_later
 
 
 def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
