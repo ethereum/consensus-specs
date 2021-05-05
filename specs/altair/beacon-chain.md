@@ -126,7 +126,7 @@ This patch updates a few configuration values to move penalty parameters toward 
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**9)` (= 512) | epochs | ~54 hours |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
 
 ### Domain types
 
