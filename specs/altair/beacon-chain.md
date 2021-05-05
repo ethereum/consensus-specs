@@ -205,6 +205,7 @@ class BeaconState(Container):
 ```python
 class SyncAggregate(Container):
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+    # TODO! Need multiple signatures as discussed between Justin and Vitalik May 3 2021 (see Telegram)
     sync_committee_signature: BLSSignature
 ```
 
@@ -255,8 +256,9 @@ def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
 ```python
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the sequence of sync committee indices (which may include duplicate indices)
+    Return the sequence of sync committee indices
     for a given ``state`` and ``epoch``.
+    Can contain duplicate indices for small validator sets (< 2 * SYNC_COMMITTEE_SIZE)
     """
     MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
@@ -270,7 +272,7 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
         candidate_index = active_validator_indices[shuffled_index]
         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:  # Sample with replacement
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             sync_committee_indices.append(candidate_index)
         i += 1
     return sync_committee_indices
