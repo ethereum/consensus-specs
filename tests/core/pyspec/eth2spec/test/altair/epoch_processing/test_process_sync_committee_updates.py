@@ -8,10 +8,7 @@ from eth2spec.test.context import (
     single_phase,
     misc_balances,
 )
-from eth2spec.test.helpers.constants import (
-    PHASE0,
-    MINIMAL,
-)
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,

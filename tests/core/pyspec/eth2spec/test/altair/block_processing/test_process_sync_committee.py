@@ -9,7 +9,6 @@ from eth2spec.test.helpers.state import (
     transition_to,
 )
 from eth2spec.test.helpers.constants import (
-    PHASE0,
     MAINNET, MINIMAL,
 )
 from eth2spec.test.helpers.sync_committee import (

@@ -7,7 +7,6 @@ from eth2spec.test.helpers.state import transition_to
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.test.context import (
-    PHASE0,
     with_altair_and_later,
     with_state,
 )

@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_merge_and_later
+from eth2spec.test.context import spec_state_test, expect_assertion_error, with_merge_and_later
 from eth2spec.test.helpers.state import next_slot
+
 
 def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
     """
@@ -37,4 +38,3 @@ def test_success_first_payload(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-

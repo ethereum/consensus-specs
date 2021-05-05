@@ -16,7 +16,7 @@ def build_empty_execution_payload(spec, state):
         gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
-        receipt_root=b"no receipts here" + b"\x00"*16,  # TODO: root of empty MPT may be better.
+        receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
         transactions=empty_txs,
     )
