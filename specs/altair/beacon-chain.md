@@ -125,6 +125,7 @@ This patch updates a few configuration values to move penalty parameters toward 
 ### Misc
 
 | Name | Value |
+| - | - |
 | `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
 
 ### Domain types
