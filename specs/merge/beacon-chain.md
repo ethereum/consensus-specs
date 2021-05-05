@@ -13,8 +13,8 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Transition](#transition)
   - [Execution](#execution)
+- [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -50,12 +50,6 @@ We define the following Python custom types for type hinting and readability:
 
 ## Constants
 
-### Transition
-
-| Name | Value |
-| - | - |
-| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
-
 ### Execution
 
 | Name | Value |
@@ -63,6 +57,16 @@ We define the following Python custom types for type hinting and readability:
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_EXECUTION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
+
+## Configuration
+
+Warning: this configuration is not definitive.
+
+| Name | Value |
+| - | - |
+| `MERGE_FORK_VERSION` | `Version('0x02000000')` |
+| `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
 
 ## Containers
 
