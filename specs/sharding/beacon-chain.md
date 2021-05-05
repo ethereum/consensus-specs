@@ -701,7 +701,7 @@ def process_pending_headers(state: BeaconState) -> None:
                 winning_index = voting_balances.index(max(voting_balances))
             else:
                 # If no votes, zero wins
-                winning_index = [c.commitment for c in candidates].index(DataCommitment())
+                winning_index = [c.root for c in candidates].index(Root())
             candidates[winning_index].confirmed = True
     for slot_index in range(SLOTS_PER_EPOCH):
         for shard in range(SHARD_COUNT):
