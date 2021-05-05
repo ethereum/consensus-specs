@@ -69,7 +69,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
+| `ParticipationFlags` | `BitVector[PARTICIPATION_FLAGS_LENGTH]` | a succinct representation of up to 8 boolean participation flags |
 
 ## Constants
 
@@ -99,6 +99,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 | Name | Value |
 | - | - |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `PARTICIPATION_FLAGS_LENGTH` | `8` |
 
 ## Configuration
 
@@ -247,28 +248,6 @@ def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
     )
 ```
 
-#### `add_flag`
-
-```python
-def add_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
-    """
-    Return a new ``ParticipationFlags`` adding ``flag_index`` to ``flags``.
-    """
-    flag = ParticipationFlags(2**flag_index)
-    return flags | flag
-```
-
-#### `has_flag`
-
-```python
-def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
-    """
-    Return whether ``flags`` has ``flag_index`` set.
-    """
-    flag = ParticipationFlags(2**flag_index)
-    return flags & flag == flag
-```
-
 ### Beacon state accessors
 
 #### `get_sync_committee_indices`
@@ -348,7 +327,7 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
     else:
         epoch_participation = state.previous_epoch_participation
     active_validator_indices = get_active_validator_indices(state, epoch)
-    participating_indices = [i for i in active_validator_indices if has_flag(epoch_participation[i], flag_index)]
+    participating_indices = [i for i in active_validator_indices if epoch_participation[i][flag_index]]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
 
@@ -492,8 +471,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
         for flag_index, weight in get_flag_indices_and_weights():
-            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
-                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+            if flag_index in participation_flag_indices and not epoch_participation[index][flag_index]:
+                epoch_participation[index][flag_index] = True
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
