@@ -114,19 +114,18 @@ This patch updates a few configuration values to move penalty parameters toward 
 | `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR` | `uint64(2**6)` (= 64) |
 | `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)` |
 
+### Sync committee
+
+| Name | Value | Unit | Duration |
+| - | - | - | - |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) | | |
+| `SYNC_PUBKEYS_PER_AGGREGATE` | `uint64(2**6)` (= 64) | | |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+
 ### Misc
 
 | Name | Value |
-| - | - |
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
-| `SYNC_PUBKEYS_PER_AGGREGATE` | `uint64(2**6)` (= 64) |
 | `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
-
-### Time parameters
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
 ### Domain types
 
