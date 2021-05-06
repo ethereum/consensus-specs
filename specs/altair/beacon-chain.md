@@ -98,7 +98,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 | Name | Value |
 | - | - |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
-| `PARTICIPATION_FLAGS` | `3` |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_HEAD_WEIGHT, TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT]` |
 
 ## Configuration
@@ -599,7 +598,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    flag_deltas = [get_flag_index_deltas(state, flag_index) for flag_index in range(PARTICIPATION_FLAGS)]
+    flag_deltas = [get_flag_index_deltas(state, flag_index) for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))]
     for (rewards, penalties) in flag_deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
