@@ -17,7 +17,7 @@
   - [Updated penalty values](#updated-penalty-values)
   - [Sync committee](#sync-committee)
 - [Configuration](#configuration)
-  - [Misc](#misc-1)
+  - [Inactivity penalties](#inactivity-penalties)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -28,7 +28,7 @@
 - [Helper functions](#helper-functions)
   - [`Predicates`](#predicates)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
-  - [Misc](#misc-2)
+  - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -133,7 +133,7 @@ This patch updates a few configuration values to move penalty parameters closer 
 
 ## Configuration
 
-### Misc
+### Inactivity penalties
 
 | Name | Value | Unit |
 | - | - | :-: | :-: |

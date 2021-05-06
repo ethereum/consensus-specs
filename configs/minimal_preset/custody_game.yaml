@@ -13,14 +13,6 @@ CUSTODY_PERIOD_TO_RANDAO_PADDING: 8
 # [customize for faster testing]
 MAX_CHUNK_CHALLENGE_DELAY: 64
 
-# Misc parameters
-# ---------------------------------------------------------------
-# 2**256 - 189
-CUSTODY_PRIME: 115792089237316195423570985008687907853269984665640564039457584007913129639747
-# 3
-CUSTODY_SECRETS: 3
-# 1/4 chance of custody bit 1 [customized for faster testing]
-CUSTODY_PROBABILITY_EXPONENT: 2
 
 # Max operations
 # ---------------------------------------------------------------
@@ -35,14 +27,9 @@ MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 8
 # 2**0 (= 1)
 MAX_CUSTODY_SLASHINGS: 1
 
+
 # Reward and penalty quotients
 # ---------------------------------------------------------------
 EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE: 2
 # 2**8 (= 256)
 MINOR_REWARD_QUOTIENT: 256
-
-# Signature domains
-# ---------------------------------------------------------------
-DOMAIN_CUSTODY_BIT_SLASHING: 0x83000000
-DOMAIN_LIGHT_SELECTION_PROOF: 0x84000000
-DOMAIN_LIGHT_AGGREGATE_AND_PROOF: 0x85000000

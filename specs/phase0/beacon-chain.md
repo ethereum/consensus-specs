@@ -20,8 +20,9 @@
   - [Rewards and penalties](#rewards-and-penalties)
   - [Max operations per block](#max-operations-per-block)
 - [Configuration](#configuration)
-  - [General](#general)
+  - [Genesis settings](#genesis-settings)
   - [Time parameters](#time-parameters-1)
+  - [Validator Churn](#validator-churn)
 - [Containers](#containers)
   - [Misc dependencies](#misc-dependencies)
     - [`Fork`](#fork)
@@ -285,26 +286,29 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 Defaults for this more dynamic type of configuration are available with the presets in the [`configs`](../../configs) directory.
 Testnets and other types of chain instances may use a different configuration.
 
-### General
+### Genesis settings
 
 | Name | Value |
 | - | - |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
 | `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
 | `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
-| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
+| `GENESIS_DELAY` | `uint64(604800)` (7 days) |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `GENESIS_DELAY` | `uint64(604800)` | seconds | 7 days |
 | `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
 | `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) | Eth1 blocks | ~8 hours |
+
+### Validator Churn
+
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
+| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 
 ## Containers
 
