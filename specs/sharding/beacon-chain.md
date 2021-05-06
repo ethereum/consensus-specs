@@ -11,12 +11,14 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-- [Configuration](#configuration)
   - [Misc](#misc)
-  - [Shard block configs](#shard-block-configs)
+  - [Domain types](#domain-types)
+- [Preset](#preset)
+  - [Misc](#misc-1)
+  - [Shard block samples](#shard-block-samples)
   - [Precomputed size verification points](#precomputed-size-verification-points)
   - [Gwei values](#gwei-values)
-  - [Domain types](#domain-types)
+- [Configuration](#configuration)
 - [Updated containers](#updated-containers)
   - [`AttestationData`](#attestationdata)
   - [`BeaconBlockBody`](#beaconblockbody)
@@ -31,7 +33,7 @@
   - [`SignedShardBlobReference`](#signedshardblobreference)
   - [`ShardProposerSlashing`](#shardproposerslashing)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc-1)
+  - [Misc](#misc-2)
     - [`next_power_of_two`](#next_power_of_two)
     - [`compute_previous_slot`](#compute_previous_slot)
     - [`compute_updated_gasprice`](#compute_updated_gasprice)
@@ -81,6 +83,8 @@ We define the following Python custom types for type hinting and readability:
 
 The following values are (non-configurable) constants used throughout the specification.
 
+### Misc
+
 | Name | Value | Notes |
 | - | - | - |
 | `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
@@ -88,19 +92,25 @@ The following values are (non-configurable) constants used throughout the specif
 | `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 
-## Configuration
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+
+## Preset
 
 ### Misc
 
 | Name | Value | Notes |
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes) |
-| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
-| `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
+| `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 
-### Shard block configs
+### Shard block samples
 
 | Name | Value | Notes |
 | - | - | - |
@@ -122,12 +132,11 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
 
-### Domain types
+## Configuration
 
-| Name | Value |
-| - | - |
-| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+| Name | Value | Notes |
+| - | - | - |
+| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 
 ## Updated containers
 
