@@ -38,7 +38,24 @@ Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ALTAIR_FORK_EPOCH`, an irregular state change is made to upgrade to Altair.
+`upgrade_to_altair` should run after processing the final epoch of Phase 0.
+The state transition logic is slightly modified near the fork boundary to catch
+this irregular case and handle the upgrade, even in the presence of skipped
+slots at the fork boundary. `process_slots_into_altair` is defined to demonstrate. After the upgrade has successfully occurred, the existing definition of `process_slots` will suffice.
+
+```python
+def process_slots_into_altair(state: phase0.BeaconState, slot: Slot) -> Optional[BeaconState]:
+    assert state.slot < slot
+    while state.slot < slot:
+        process_slot(state)
+        # Process epoch on the start slot of the next epoch
+        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+            process_epoch(state)
+        state.slot = Slot(state.slot + 1)
+        if state.slot == ALTAIR_FORK_EPOCH * SLOTS_PER_EPOCH:
+            return upgrade_to_altair(state)
+    return None
+```
 
 ```python
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
