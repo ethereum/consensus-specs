@@ -330,7 +330,6 @@ def with_phases(phases, other_phases=None):
                 phase_dir[PHASE0] = spec_phase0
             if ALTAIR in available_phases:
                 phase_dir[ALTAIR] = spec_altair
-
             if MERGE in available_phases:
                 phase_dir[MERGE] = spec_merge
 

@@ -24,6 +24,7 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
+    - [`is_execution_enabled`](#is_execution_enabled)
     - [`is_transition_completed`](#is_transition_completed)
     - [`is_transition_block`](#is_transition_block)
     - [`compute_time_at_slot`](#compute_time_at_slot)
@@ -140,6 +141,13 @@ class ExecutionPayloadHeader(Container):
 
 ### Misc
 
+#### `is_execution_enabled`
+
+```python
+def is_execution_enabled(state: BeaconState, block: BeaconBlock) -> bool:
+    return is_transition_completed(state) or is_transition_block(state, block)
+```
+
 #### `is_transition_completed`
 
 ```python
@@ -173,7 +181,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     # Pre-merge, skip execution payload processing
-    if is_transition_completed(state) or is_transition_block(state, block):
+    if is_execution_enabled(state, block):
         process_execution_payload(state, block.body.execution_payload)  # [New in Merge]
 ```
 

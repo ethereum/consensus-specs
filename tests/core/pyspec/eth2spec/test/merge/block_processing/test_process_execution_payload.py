@@ -13,6 +13,8 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     If ``valid == False``, run expecting ``AssertionError``
     """
 
+    pre_exec_header = state.latest_execution_payload_header.copy()
+
     yield 'pre', state
     yield 'execution', {'execution_valid': execution_valid}
     yield 'execution_payload', execution_payload
@@ -26,7 +28,8 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
 
     yield 'post', state
 
-    # TODO: any assertions to make?
+    assert pre_exec_header != state.latest_execution_payload_header
+    # TODO: any more assertions to make?
 
 
 @with_merge_and_later
