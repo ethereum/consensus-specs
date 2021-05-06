@@ -41,6 +41,21 @@ Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since
 After `process_slots` of Phase 0 finishes, if `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ALTAIR_FORK_EPOCH`, an irregular state change is made to upgrade to Altair.
 
 ```python
+def translate_participation(state: BeaconState, pending_attestations: Sequence[PendingAttestation]) -> None:
+    for attestation in pending_attestations:
+        data = attestation.data
+        inclusion_delay = attestation.inclusion_delay
+        # Translate attestation inclusion info to flag indices
+        participation_flag_indices = get_attestation_participation_flag_indices(state, data, inclusion_delay)
+
+        # Apply flags to all attesting validators
+        epoch_participation = state.previous_epoch_participation
+        for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+            for flag_index, weight in get_flag_indices_and_weights():
+                if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
+                    epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+
+
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
     post = BeaconState(
@@ -80,6 +95,8 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         # Inactivity
         inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
+    # Fill in previous epoch participation from the pre state's pending attestations
+    translate_participation(post, pre.previous_epoch_attestations)
     # Fill in sync committees
     post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
     post.next_sync_committee = get_sync_committee(post, get_current_epoch(post) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
