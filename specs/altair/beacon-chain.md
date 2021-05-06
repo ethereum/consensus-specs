@@ -357,10 +357,7 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
-            if is_in_inactivity_leak(state):
-                # This flag reward cancels the inactivity penalty corresponding to the flag index
-                rewards[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
-            else:
+            if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
         else:
@@ -384,9 +381,6 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
         previous_epoch = get_previous_epoch(state)
         matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
         for index in get_eligible_validator_indices(state):
-            for weight in PARTICIPATION_FLAG_WEIGHTS:
-                # This inactivity penalty cancels the flag reward corresponding to the flag index
-                penalties[index] += Gwei(get_base_reward(state, index) * weight // WEIGHT_DENOMINATOR)
             if index not in matching_target_indices:
                 penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
                 penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
