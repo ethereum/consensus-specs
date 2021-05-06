@@ -263,8 +263,7 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 ```python
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
-    Return the sequence of sync committee indices
-    for a given ``state`` and ``epoch``.
+    Return the sequence of sync committee indices for a given ``state`` and ``epoch``.
     Can contain duplicate indices for small validator sets (< 2 * SYNC_COMMITTEE_SIZE)
     """
     MAX_RANDOM_BYTE = 2**8 - 1
