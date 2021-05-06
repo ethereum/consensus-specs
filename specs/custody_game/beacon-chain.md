@@ -71,7 +71,7 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 | `BYTES_PER_CUSTODY_ATOM` | `uint64(32)` | bytes |
 | `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)` | - |
 
-## Configuration
+## Preset
 
 ### Time parameters
 
