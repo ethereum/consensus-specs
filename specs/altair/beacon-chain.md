@@ -350,7 +350,8 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, get_previous_epoch(state))
+    previous_epoch = get_previous_epoch(state)
+    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, previous_epoch)
     weight = PARTICIPATION_FLAG_WEIGHTS[flag_index]
     unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // EFFECTIVE_BALANCE_INCREMENT
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
@@ -363,29 +364,11 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
         elif not (in_inactivity_leak and flag_index == TIMELY_HEAD_FLAG_INDEX):
             penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
-    return rewards, penalties
-```
-
-#### Modified `get_inactivity_penalty_deltas`
-
-*Note*: The function `get_inactivity_penalty_deltas` is modified in the selection of matching target indices
-and the removal of `BASE_REWARDS_PER_EPOCH`.
-
-```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    """
-    Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
-    """
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
-    if is_in_inactivity_leak(state):
-        previous_epoch = get_previous_epoch(state)
-        matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
-        for index in get_eligible_validator_indices(state):
-            if index not in matching_target_indices:
-                penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-                penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
-                penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+        # Quadratic inactivity leak
+        if flag_index == TIMELY_TARGET_FLAG_INDEX and in_inactivity_leak and index not in unslashed_participating_indices:
+            penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
 
@@ -617,8 +600,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
 
     flag_deltas = [get_flag_index_deltas(state, flag_index) for flag_index in range(PARTICIPATION_FLAGS)]
-    deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
-    for (rewards, penalties) in deltas:
+    for (rewards, penalties) in flag_deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
             decrease_balance(state, ValidatorIndex(index), penalties[index])
