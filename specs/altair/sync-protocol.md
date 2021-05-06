@@ -10,7 +10,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-- [Configuration](#configuration)
+- [Preset](#preset)
   - [Misc](#misc)
 - [Containers](#containers)
   - [`LightClientSnapshot`](#lightclientsnapshot)
@@ -43,7 +43,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
 | `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` |
 
-## Configuration
+## Preset
 
 ### Misc
 

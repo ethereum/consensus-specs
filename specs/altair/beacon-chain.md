@@ -11,12 +11,13 @@
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
+  - [Domain types](#domain-types)
   - [Misc](#misc)
-- [Configuration](#configuration)
+- [Preset](#preset)
   - [Updated penalty values](#updated-penalty-values)
   - [Sync committee](#sync-committee)
+- [Configuration](#configuration)
   - [Misc](#misc-1)
-  - [Domain types](#domain-types)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -94,6 +95,14 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_SYNC_COMMITTEE` | `DomainType('0x07000000')` |
+| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
+| `DOMAIN_CONTRIBUTION_AND_PROOF` | `DomainType('0x09000000')` |
+
 ### Misc
 
 | Name | Value |
@@ -101,7 +110,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_FLAG_INDEX]` |
 
-## Configuration
+## Preset
 
 ### Updated penalty values
 
@@ -122,20 +131,14 @@ This patch updates a few configuration values to move penalty parameters closer 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
 
+## Configuration
+
 ### Misc
 
-| Name | Value |
-| - | - |
-| `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
-| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(16)` |
-
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_SYNC_COMMITTEE` | `DomainType('0x07000000')` |
-| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
-| `DOMAIN_CONTRIBUTION_AND_PROOF` | `DomainType('0x09000000')` |
+| Name | Value | Unit |
+| - | - | :-: | :-: |
+| `INACTIVITY_SCORE_BIAS` | `uint64(4)` | score points per inactive epoch |
+| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(16)` | score points per recovering epoch |
 
 ## Containers
 
