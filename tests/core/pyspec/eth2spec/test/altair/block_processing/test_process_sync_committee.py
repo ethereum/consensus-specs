@@ -243,6 +243,16 @@ def test_sync_committee_rewards_not_full_participants(spec, state):
 @with_all_phases_except([PHASE0])
 @spec_state_test
 @always_bls
+def test_sync_committee_rewards_empty_participants(spec, state):
+    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee_bits = [False for _ in committee]
+
+    yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
+
+
+@with_all_phases_except([PHASE0])
+@spec_state_test
+@always_bls
 def test_invalid_signature_past_block(spec, state):
     committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
 

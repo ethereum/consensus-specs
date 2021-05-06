@@ -14,8 +14,6 @@ PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 # ---------------------------------------------------------------
 # 2**9 (= 512)
 SYNC_COMMITTEE_SIZE: 512
-# 2**6 (= 64)
-SYNC_PUBKEYS_PER_AGGREGATE: 64
 # 2**2 (= 4)
 INACTIVITY_SCORE_BIAS: 4
 

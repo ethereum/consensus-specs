@@ -402,7 +402,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     """
     epoch = compute_epoch_at_slot(slot)
     committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(slot))
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER) + uint_to_bytes(slot))
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
@@ -563,7 +563,7 @@ def process_shard_header(state: BeaconState,
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
-    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER))
+    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSER))
     assert bls.Verify(state.validators[header.proposer_index].pubkey, signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
@@ -704,7 +704,7 @@ def process_pending_headers(state: BeaconState) -> None:
                 winning_index = [c.root for c in candidates].index(Root())
             candidates[winning_index].confirmed = True
     for slot_index in range(SLOTS_PER_EPOCH):
-        for shard in range(SHARD_COUNT):
+        for shard in range(MAX_SHARDS):
             state.grandparent_epoch_confirmed_commitments[shard][slot_index] = DataCommitment()
     confirmed_headers = [candidate for candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
     for header in confirmed_headers:
@@ -718,9 +718,10 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
         get_active_shard_count(state, get_current_epoch(state))
         * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     )
-    previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
+    previous_epoch = get_previous_epoch(state)
+    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard_index in range(SHARD_COUNT):
+        for shard_index in range(get_active_shard_count(state, previous_epoch)):
             shard = Shard(shard_index)
             confirmed_candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
