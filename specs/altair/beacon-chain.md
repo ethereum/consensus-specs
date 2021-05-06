@@ -118,14 +118,14 @@ This patch updates a few configuration values to move penalty parameters closer 
 
 | Name | Value |
 | - | - |
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) |
 | `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
 
 ### Domain types
 
