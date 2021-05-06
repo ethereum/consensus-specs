@@ -167,7 +167,7 @@ def get_spec(file_name: str) -> SpecObject:
             comment = _get_eth2_spec_comment(child)
             if comment == "skip":
                 should_skip = True
-    
+
     return SpecObject(
         functions=functions,
         custom_types=custom_types,
