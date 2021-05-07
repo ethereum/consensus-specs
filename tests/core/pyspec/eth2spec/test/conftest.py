@@ -1,3 +1,4 @@
+from pathlib import Path
 from eth2spec.config import config_util
 from eth2spec.test import context
 from eth2spec.utils import bls as bls_utils
@@ -42,8 +43,15 @@ def pytest_addoption(parser):
 
 @fixture(autouse=True)
 def config(request):
-    config_name = request.config.getoption("--config")
-    config_util.prepare_config('../../../configs/', config_name)
+    if not config_util.loaded_defaults:
+        config_util.load_defaults(Path("../../../configs"))
+
+    config_flag_value = request.config.getoption("--config")
+    if config_flag_value in ('minimal', 'mainnet'):
+        config_util.prepare_config(config_flag_value)
+    else:
+        # absolute network config path, e.g. run tests with testnet config
+        config_util.prepare_config(Path(config_flag_value))
     # now that the presets are loaded, reload the specs to apply them
     context.reload_specs()
 

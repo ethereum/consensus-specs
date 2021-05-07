@@ -1,4 +1,4 @@
-from .typing import SpecForkName, ConfigName
+from .typing import SpecForkName, PresetBaseName
 
 
 #
@@ -28,7 +28,7 @@ FORKS_BEFORE_MERGE = (PHASE0,)
 #
 # Config
 #
-MAINNET = ConfigName('mainnet')
-MINIMAL = ConfigName('minimal')
+MAINNET = PresetBaseName('mainnet')
+MINIMAL = PresetBaseName('minimal')
 
 ALL_CONFIGS = (MINIMAL, MAINNET)

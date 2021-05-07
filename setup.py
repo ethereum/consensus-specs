@@ -31,6 +31,7 @@ ALTAIR = 'altair'
 MERGE = 'merge'
 
 CONFIG_LOADER = '''
+PRESET_BASE = 'mainnet'
 apply_constants_config(globals())
 '''
 
