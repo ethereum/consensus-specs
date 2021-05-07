@@ -15,7 +15,7 @@
   - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blobs: `shard_blob_{shard}_{slot}`](#shard-blobs-shard_blob_shard)
+    - [Shard blobs: `shard_blob_{shard}_{slot}`](#shard-blobs-shard_blob_shard_slot)
     - [Shard header: `shard_header`](#shard-header-shard_header)
     - [Shard proposer slashing: `shard_proposer_slashing`](#shard-proposer-slashing-shard_proposer_slashing)
 
