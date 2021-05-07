@@ -1,5 +1,6 @@
 import pytest
 
+from copy import deepcopy
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.altair import spec as spec_altair
 from eth2spec.merge import spec as spec_merge
@@ -17,7 +18,7 @@ from random import Random
 from typing import Any, Callable, Sequence, TypedDict, Protocol
 
 from lru import LRU
-
+from eth2spec.config import config_util
 from importlib import reload
 
 
@@ -349,18 +350,51 @@ def with_phases(phases, other_phases=None):
     return decorator
 
 
-def with_configs(configs, reason=None):
+def with_presets(preset_bases, reason=None):
+    available_configs = set(preset_bases)
+
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            available_configs = set(configs)
-            if spec.CONFIG_NAME not in available_configs:
-                message = f"doesn't support this config: {spec.CONFIG_NAME}."
+            if spec.PRESET_BASE not in available_configs:
+                message = f"doesn't support this preset base: {spec.PRESET_BASE}."
                 if reason is not None:
                     message = f"{message} Reason: {reason}"
                 dump_skipping_message(message)
                 return None
 
             return fn(*args, spec=spec, **kw)
+        return wrapper
+    return decorator
+
+
+def with_config_overrides(config_overrides):
+    """
+    Decorator that applies a dict of config value overrides to the spec during execution.
+    This may be slow due to having to reload the spec modules,
+    since the specs uses globals instead of a configuration object.
+    """
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            # remember the old config
+            old_config = config_util.config
+
+            # apply our overrides to a copy of it, and apply it to the spec
+            tmp_config = deepcopy(old_config)
+            tmp_config.update(config_overrides)
+            config_util.config = tmp_config
+            reload_specs()  # Note this reloads the same module instance(s) that we passed into the test
+
+            # Run the function
+            out = fn(*args, spec=spec, **kw)
+            # If it's not returning None like a normal test function,
+            # it's generating things, and we need to complete it before setting back the config.
+            if out is not None:
+                yield from out
+
+            # Restore the old config and apply it
+            config_util.config = old_config
+            reload_specs()
+
         return wrapper
     return decorator
 

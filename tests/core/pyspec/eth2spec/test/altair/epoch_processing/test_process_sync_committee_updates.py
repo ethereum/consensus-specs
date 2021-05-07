@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     spec_state_test,
     spec_test,
     with_altair_and_later,
-    with_configs,
+    with_presets,
     with_custom_state,
     single_phase,
     misc_balances,
@@ -48,7 +48,7 @@ def run_sync_committees_progress_test(spec, state):
 @with_altair_and_later
 @spec_state_test
 @always_bls
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_genesis(spec, state):
     # Genesis epoch period has an exceptional case
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
@@ -59,7 +59,7 @@ def test_sync_committees_progress_genesis(spec, state):
 @with_altair_and_later
 @spec_state_test
 @always_bls
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
@@ -74,6 +74,6 @@ def test_sync_committees_progress_not_genesis(spec, state):
 @spec_test
 @single_phase
 @always_bls
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_misc_balances(spec, state):
     yield from run_sync_committees_progress_test(spec, state)

@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     is_post_altair,
     spec_test,
     single_phase,
-    with_configs,
+    with_presets,
     with_all_phases,
 )
 from eth2spec.test.helpers.constants import MINIMAL
@@ -44,7 +44,7 @@ def run_is_valid_genesis_state(spec, state, valid=True):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_true(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -57,7 +57,7 @@ def test_is_valid_genesis_state_true(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_false_invalid_timestamp(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -71,7 +71,7 @@ def test_is_valid_genesis_state_false_invalid_timestamp(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_true_more_balance(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -85,7 +85,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_true_one_more_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -108,7 +108,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_is_valid_genesis_state_false_not_enough_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)

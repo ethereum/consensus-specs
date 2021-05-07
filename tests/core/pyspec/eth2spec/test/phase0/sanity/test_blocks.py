@@ -30,7 +30,7 @@ from eth2spec.test.context import (
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
     disable_process_reveal_deadlines,
-    with_configs,
+    with_presets,
     with_custom_state,
     large_validator_set,
     is_post_altair,
@@ -98,7 +98,7 @@ def test_empty_block_transition(spec, state):
 
 
 @with_all_phases
-@with_configs([MINIMAL],
+@with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
@@ -326,7 +326,7 @@ def test_empty_epoch_transition(spec, state):
 
 
 @with_all_phases
-@with_configs([MINIMAL],
+@with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
