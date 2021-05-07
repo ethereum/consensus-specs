@@ -307,6 +307,8 @@ Testnets and other types of chain instances may use a different configuration.
 
 ### Validator Churn
 
+| Name | Value |
+| - | - |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 
