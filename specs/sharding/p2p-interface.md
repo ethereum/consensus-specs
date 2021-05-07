@@ -15,7 +15,7 @@
   - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blobs: `shard_blob_{shard}`](#shard-blobs-shard_blob_shard)
+    - [Shard blobs: `shard_blob_{shard}_{slot}`](#shard-blobs-shard_blob_shard)
     - [Shard header: `shard_header`](#shard-header-shard_header)
     - [Shard proposer slashing: `shard_proposer_slashing`](#shard-proposer-slashing-shard_proposer_slashing)
 
@@ -77,18 +77,19 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
-| `shard_blob_{shard}`             | `SignedShardBlob`         |
+| `shard_blob_{shard}_{slot}`      | `SignedShardBlob`         |
 | `shard_header`                   | `SignedShardHeader`       |
 | `shard_proposer_slashing`        | `ShardProposerSlashing`   |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
 
-#### Shard blobs: `shard_blob_{shard}`
+#### Shard blobs: `shard_blob_{shard}_{slot}`
 
-Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}` subnets.
+Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}_{slot}` subnets.
 
 The following validations MUST pass before forwarding the `signed_blob` (with inner `message` as `blob`) on the horizontal subnet or creating samples for it.
 - _[REJECT]_ `blob.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
+- _[REJECT]_ `blob.slot - compute_start_slot_at_epoch(blob.slot)` MUST match the topic `{slot}` parameter.
 - _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `blob.slot <= current_slot`
   (a client MAY queue future blobs for processing at the appropriate slot).
