@@ -35,14 +35,17 @@ def prepare_config(config_path: Union[Path, BinaryIO, TextIO, Literal['mainnet']
         conf_data = deepcopy(minimal_config_data)
     else:
         conf_data = load_config_file(config_path)
-    # Check the configured preset
-    base = conf_data['PRESET_BASE']
-    if base not in ('minimal', 'mainnet'):
-        raise Exception(f"unknown PRESET_BASE: {base}")
     # Apply configuration if everything checks out
     global config
-    config = deepcopy(mainnet_preset_data if base == 'mainnet' else minimal_preset_data)
-    config.update(conf_data)
+    if 'PRESET_BASE' in conf_data:
+        # Check the configured preset
+        base = conf_data['PRESET_BASE']
+        if base not in ('minimal', 'mainnet'):
+            raise Exception(f"unknown PRESET_BASE: {base}")
+        config = deepcopy(mainnet_preset_data if base == 'mainnet' else minimal_preset_data)
+        config.update(conf_data)
+    else:
+        config = conf_data
 
 
 def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
