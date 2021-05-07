@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from copy import deepcopy
-from contextlib import ExitStack
 from typing import Dict, Iterable, Union, BinaryIO, TextIO, Literal, Any
 from ruamel.yaml import YAML
 
@@ -97,6 +96,7 @@ minimal_preset_data: Dict[str, Any]
 mainnet_config_data: Dict[str, Any]
 minimal_config_data: Dict[str, Any]
 loaded_defaults = False
+
 
 def load_defaults(spec_configs_path: Path) -> None:
     global mainnet_preset_data, minimal_preset_data, mainnet_config_data, minimal_config_data
