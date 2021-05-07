@@ -577,11 +577,8 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
     # Apply participant and proposer rewards
-    committee_indices = []
-    pubkeys = [v.pubkey for v in state.validators]
-    for pubkey in state.current_sync_committee.pubkeys:
-        index = pubkeys.index(pubkey)
-        committee_indices.append(ValidatorIndex(index))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
     participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
     for participant_index in participant_indices:
         increase_balance(state, participant_index, participant_reward)
