@@ -143,6 +143,10 @@ A validator determines beacon committee assignments and beacon block proposal du
 To determine sync committee assignments, a validator can run the following function: `is_assigned_to_sync_committee(state, epoch, validator_index)` where `epoch` is an epoch number within the current or next sync committee period.
 This function is a predicate indicating the presence or absence of the validator in the corresponding sync committee for the queried sync committee period.
 
+*Note*: Being assigned to a sync committee for a given `slot` means that the validator produces and broadcasts signatures for `slot - 1` for inclusion in `slot`.
+This means that when assigned to an `epoch` sync committee signatures must be produced and broadcast for slots on range `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
+rather than for the range `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
+
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
@@ -261,7 +265,7 @@ This process occurs each slot.
 
 ##### Prepare sync committee signature
 
-If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every slot in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of the current slot.
+If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of `slot - 1`.
 
 This logic is triggered upon the same conditions as when producing an attestation.
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
