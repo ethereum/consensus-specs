@@ -451,9 +451,9 @@ def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
 def get_pow_chain_head() -> PowBlock:
     pass
 
-
+verify_execution_state_transition_ret_value = True
 def verify_execution_state_transition(execution_payload: ExecutionPayload) -> bool:
-    return True
+    return verify_execution_state_transition_ret_value
 
 
 def produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload:

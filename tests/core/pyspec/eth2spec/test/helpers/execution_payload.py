@@ -1,4 +1,3 @@
-
 def build_empty_execution_payload(spec, state):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
@@ -24,3 +23,33 @@ def build_empty_execution_payload(spec, state):
     payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))
 
     return payload
+
+def get_execution_payload_header(spec, execution_payload):
+    return spec.ExecutionPayloadHeader(
+        block_hash=execution_payload.block_hash,
+        parent_hash=execution_payload.parent_hash,
+        coinbase=execution_payload.coinbase,
+        state_root=execution_payload.state_root,
+        number=execution_payload.number,
+        gas_limit=execution_payload.gas_limit,
+        gas_used=execution_payload.gas_used,
+        timestamp=execution_payload.timestamp,
+        receipt_root=execution_payload.receipt_root,
+        logs_bloom=execution_payload.logs_bloom,
+        transactions_root=spec.hash_tree_root(execution_payload.transactions)
+    )
+
+def build_state_with_incomplete_transition(spec, state):
+    return build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+
+def build_state_with_complete_transition(spec, state):
+    pre_state_payload = build_empty_execution_payload(spec, state)
+    payload_header = get_execution_payload_header(spec, pre_state_payload)
+
+    return build_state_with_execution_payload_header(spec, state, payload_header)
+
+def build_state_with_execution_payload_header(spec, state, execution_payload_header):
+    pre_state = state.copy()
+    pre_state.latest_execution_payload_header = execution_payload_header
+
+    return pre_state
