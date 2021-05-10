@@ -15,8 +15,6 @@ PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 # [customized]
 SYNC_COMMITTEE_SIZE: 32
 # [customized]
-SYNC_PUBKEYS_PER_AGGREGATE: 16
-# [customized]
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
 
 
@@ -45,10 +43,7 @@ ALTAIR_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # 1
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
-# [customized]
-MAX_VALID_LIGHT_CLIENT_UPDATES: 32
-# [customized]
-LIGHT_CLIENT_UPDATE_TIMEOUT: 32
+
 
 
 # Validator

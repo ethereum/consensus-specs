@@ -2,16 +2,13 @@ from eth2spec.test.context import (
     always_bls,
     spec_state_test,
     spec_test,
-    with_all_phases_except,
+    with_altair_and_later,
     with_configs,
     with_custom_state,
     single_phase,
     misc_balances,
 )
-from eth2spec.test.helpers.constants import (
-    PHASE0,
-    MINIMAL,
-)
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
@@ -49,7 +46,7 @@ def run_sync_committees_progress_test(spec, state):
     assert state.next_sync_committee == third_sync_committee
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 @with_configs([MINIMAL], reason="too slow")
@@ -60,7 +57,7 @@ def test_sync_committees_progress_genesis(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 @with_configs([MINIMAL], reason="too slow")
@@ -73,7 +70,7 @@ def test_sync_committees_progress_not_genesis(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
 @spec_test
 @single_phase

@@ -49,18 +49,18 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
 
 ## Introduction
 
-This document represents the expected behavior of an "honest validator" with respect to the Altair upgrade of the Ethereum 2.0 protocol. 
-It builds on the [previous document for the behavior of an "honest validator" from Phase 0](../phase0/validator.md) of the Ethereum 2.0 protocol. 
+This document represents the expected behavior of an "honest validator" with respect to the Altair upgrade of the Ethereum 2.0 protocol.
+It builds on the [previous document for the behavior of an "honest validator" from Phase 0](../phase0/validator.md) of the Ethereum 2.0 protocol.
 This previous document is referred to below as the "Phase 0 document".
 
-Altair introduces a new type of committee: the sync committee. Sync committees are responsible for signing each block of the canonical chain and there exists an efficient algorithm for light clients to sync the chain using the output of the sync committees. 
-See the [sync protocol](./sync-protocol.md) for further details on the light client sync. 
-Under this network upgrade, validators track their participation in this new committee type and produce the relevant signatures as required. 
+Altair introduces a new type of committee: the sync committee. Sync committees are responsible for signing each block of the canonical chain and there exists an efficient algorithm for light clients to sync the chain using the output of the sync committees.
+See the [sync protocol](./sync-protocol.md) for further details on the light client sync.
+Under this network upgrade, validators track their participation in this new committee type and produce the relevant signatures as required.
 Block proposers incorporate the (aggregated) sync committee signatures into each block they produce.
 
 ## Prerequisites
 
-All terminology, constants, functions, and protocol mechanics defined in the [Altair -- The Beacon Chain](./beacon-chain.md) doc are requisite for this document and used throughout. 
+All terminology, constants, functions, and protocol mechanics defined in the [Altair -- The Beacon Chain](./beacon-chain.md) doc are requisite for this document and used throughout.
 Please see this document before continuing and use as a reference throughout.
 
 ## Warning
@@ -74,7 +74,7 @@ This document is currently illustrative for early Altair testnets and some parts
 | Name | Value | Unit |
 | - | - | :-: |
 | `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**2` (= 4) | validators |
-| `SYNC_COMMITTEE_SUBNET_COUNT` | `8` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+| `SYNC_COMMITTEE_SUBNET_COUNT` | `4` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
 
 ## Containers
 
@@ -168,11 +168,11 @@ def is_assigned_to_sync_committee(state: BeaconState,
 ### Lookahead
 
 The sync committee shufflings give validators 1 sync committee period of lookahead which amounts to `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs.
-At any given `epoch`, the `BeaconState` contains the current `SyncCommittee` and the next `SyncCommittee`. 
+At any given `epoch`, the `BeaconState` contains the current `SyncCommittee` and the next `SyncCommittee`.
 Once every `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs, the next `SyncCommittee` becomes the current `SyncCommittee` and the next committee is computed and stored.
 
-*Note*: The data required to compute a given committee is not cached in the `BeaconState` after committees are calculated at the period boundaries. 
-This means that calling `get_sync_commitee()` in a given `epoch` can return a different result than what was computed during the relevant epoch transition. 
+*Note*: The data required to compute a given committee is not cached in the `BeaconState` after committees are calculated at the period boundaries.
+This means that calling `get_sync_commitee()` in a given `epoch` can return a different result than what was computed during the relevant epoch transition.
 For this reason, *always* get committee assignments via the fields of the `BeaconState` (`current_sync_committee` and `next_sync_committee`) or use the above reference code.
 
 A validator should plan for future sync committee assignments by noting which sync committee periods they are selected for participation.
@@ -188,7 +188,7 @@ A validator maintains the responsibilities given in the Phase 0 document.
 Block proposals are modified to incorporate the sync committee signatures as detailed below.
 
 When assigned to a sync committee, validators have a new responsibility to sign and broadcast beacon block roots during each slot of the sync committee period.
-These signatures are aggregated and routed to the proposer over gossip for inclusion into a beacon block. 
+These signatures are aggregated and routed to the proposer over gossip for inclusion into a beacon block.
 Assignments to a particular sync committee are infrequent at normal validator counts; however, an action every slot is required when in the current active sync committee.
 
 ### Block proposal
@@ -202,25 +202,25 @@ No change to [Preparing for a `BeaconBlock`](../phase0/validator.md#preparing-fo
 
 #### Constructing the `BeaconBlockBody`
 
-Each section of [Constructing the `BeaconBlockBody`](../phase0/validator.md#constructing-the-beaconblockbody) should be followed. 
+Each section of [Constructing the `BeaconBlockBody`](../phase0/validator.md#constructing-the-beaconblockbody) should be followed.
 After constructing the `BeaconBlockBody` as per that section, the proposer has an additional task to include the sync committee signatures:
 
 ##### Sync committee
 
 The proposer receives a number of `SyncCommitteeContribution`s (wrapped in `SignedContributionAndProof`s on the wire) from validators in the sync committee who are selected to partially aggregate signatures from independent subcommittees formed by breaking the full sync committee into `SYNC_COMMITTEE_SUBNET_COUNT` pieces (see below for details).
 
-The proposer collects the contributions that match their local view of the chain (i.e. `contribution.beacon_block_root == block.parent_root`) for further aggregation when preparing a block. 
+The proposer collects the contributions that match their local view of the chain (i.e. `contribution.beacon_block_root == block.parent_root`) for further aggregation when preparing a block.
 Of these contributions, proposers should select the best contribution seen across all aggregators for each subnet/subcommittee.
 A contribution with more valid signatures is better than a contribution with fewer signatures.
 
-Recall `block.body.sync_aggregate.sync_committee_bits` is a `Bitvector` where the `i`th bit is `True` if the corresponding validator in the sync committee has produced a valid signature, 
+Recall `block.body.sync_aggregate.sync_committee_bits` is a `Bitvector` where the `i`th bit is `True` if the corresponding validator in the sync committee has produced a valid signature,
 and that `block.body.sync_aggregate.sync_committee_signature` is the aggregate BLS signature combining all of the valid signatures.
 
-Given a collection of the best seen `contributions` (with no repeating `subcommittee_index` values) and the `BeaconBlock` under construction, 
+Given a collection of the best seen `contributions` (with no repeating `subcommittee_index` values) and the `BeaconBlock` under construction,
 the proposer processes them as follows:
 
 ```python
-def process_sync_committee_contributions(block: BeaconBlock, 
+def process_sync_committee_contributions(block: BeaconBlock,
                                          contributions: Set[SyncCommitteeContribution]) -> None:
     sync_aggregate = SyncAggregate()
     signatures = []
@@ -248,7 +248,7 @@ No change to [Packaging into a `SignedBeaconBlock`](../phase0/validator.md#packa
 
 ### Attesting and attestation aggregation
 
-Refer to the phase 0 document for the [attesting](../phase0/validator.md#attesting) and [attestation aggregation](../phase0/validator.md#attestation-aggregation) responsibilities. 
+Refer to the phase 0 document for the [attesting](../phase0/validator.md#attesting) and [attestation aggregation](../phase0/validator.md#attestation-aggregation) responsibilities.
 There is no change compared to the phase 0 document.
 
 ### Sync committees
@@ -263,15 +263,15 @@ This process occurs each slot.
 
 If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every slot in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of the current slot.
 
-This logic is triggered upon the same conditions as when producing an attestation. 
+This logic is triggered upon the same conditions as when producing an attestation.
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
 
 `get_sync_committee_signature()` assumes `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
-def get_sync_committee_signature(state: BeaconState, 
+def get_sync_committee_signature(state: BeaconState,
                                  block_root: Root,
-                                 validator_index: ValidatorIndex, 
+                                 validator_index: ValidatorIndex,
                                  privkey: int) -> SyncCommitteeSignature:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
@@ -286,7 +286,7 @@ def get_sync_committee_signature(state: BeaconState,
 The validator broadcasts the assembled signature to the assigned subnet, the `sync_committee_{subnet_id}` pubsub topic.
 
 The `subnet_id` is derived from the position in the sync committee such that the sync committee is divided into "subcommittees".
-`subnet_id` can be computed via `compute_subnets_for_sync_committee()` where `state` is a `BeaconState` during the matching sync committee period. 
+`subnet_id` can be computed via `compute_subnets_for_sync_committee()` where `state` is a `BeaconState` during the matching sync committee period.
 
 *Note*: This function returns multiple subnets if a given validator index is included multiple times in a given sync committee across multiple subcommittees.
 
@@ -340,7 +340,7 @@ def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
 
 ##### Construct sync committee contribution
 
-If a validator is selected to aggregate the `SyncCommitteeSignature`s produced on a subnet during a given `slot`, they construct an aggregated `SyncCommitteeContribution`. 
+If a validator is selected to aggregate the `SyncCommitteeSignature`s produced on a subnet during a given `slot`, they construct an aggregated `SyncCommitteeContribution`.
 
 Given all of the (valid) collected `sync_committee_signatures: Set[SyncCommitteeSignature]` from the `sync_committee_{subnet_id}` gossip during the selected `slot` with an equivalent `beacon_block_root` to that of the aggregator, the aggregator creates a `contribution: SyncCommitteeContribution` with the following fields:
 
@@ -361,13 +361,13 @@ Set `contribution.subcommittee_index` to the index for the subcommittee index co
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
 An aggregator finds the index in the sync committee (as returned by `get_sync_committee_indices()`) for a given validator referenced by `sync_committee_signature.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
 
-For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution. 
+For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution.
 
 *Note*: A validator **could be included multiple times** in a given subcommittee such that multiple bits are set for a single `SyncCommitteeSignature`.
 
 ###### Signature
 
-Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_signatures` and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`. 
+Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_signatures` and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
 
 The collection of input signatures should include one signature per validator who had a bit set in the `aggregation_bits` bitfield, with repeated signatures if one validator maps to multiple indices within the subcommittee.
 
@@ -402,8 +402,8 @@ def get_contribution_and_proof(state: BeaconState,
 Then `signed_contribution_and_proof = SignedContributionAndProof(message=contribution_and_proof, signature=signature)` is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
-def get_contribution_and_proof_signature(state: BeaconState, 
-                                         contribution_and_proof: ContributionAndProof, 
+def get_contribution_and_proof_signature(state: BeaconState,
+                                         contribution_and_proof: ContributionAndProof,
                                          privkey: int) -> BLSSignature:
     contribution = contribution_and_proof.contribution
     domain = get_domain(state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot))

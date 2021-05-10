@@ -7,9 +7,9 @@ from eth2spec.test.helpers.block_processing import run_block_processing_to
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
+    next_epoch,
 )
 from eth2spec.test.helpers.constants import (
-    PHASE0,
     MAINNET, MINIMAL,
 )
 from eth2spec.test.helpers.sync_committee import (
@@ -17,7 +17,7 @@ from eth2spec.test.helpers.sync_committee import (
 )
 from eth2spec.test.context import (
     expect_assertion_error,
-    with_all_phases_except,
+    with_altair_and_later,
     with_configs,
     spec_state_test,
     always_bls,
@@ -62,7 +62,7 @@ def get_committee_indices(spec, state, duplicates=False):
         state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_invalid_signature_missing_participant(spec, state):
@@ -84,7 +84,7 @@ def test_invalid_signature_missing_participant(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_invalid_signature_extra_participant(spec, state):
@@ -160,13 +160,13 @@ def validate_sync_committee_rewards(spec, pre_state, post_state, committee, comm
                 committee_bits,
             )
 
-            if proposer_index == index:
-                reward += compute_sync_committee_proposer_reward(
-                    spec,
-                    pre_state,
-                    committee,
-                    committee_bits,
-                )
+        if proposer_index == index:
+            reward += compute_sync_committee_proposer_reward(
+                spec,
+                pre_state,
+                committee,
+                committee_bits,
+            )
 
         assert post_state.balances[index] == pre_state.balances[index] + reward
 
@@ -197,7 +197,7 @@ def run_successful_sync_committee_test(spec, state, committee, committee_bits):
     )
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_configs([MINIMAL], reason="to create nonduplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_nonduplicate_committee(spec, state):
@@ -213,7 +213,7 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_configs([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee(spec, state):
@@ -229,7 +229,7 @@ def test_sync_committee_rewards_duplicate_committee(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
@@ -240,7 +240,7 @@ def test_sync_committee_rewards_not_full_participants(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_empty_participants(spec, state):
@@ -250,7 +250,7 @@ def test_sync_committee_rewards_empty_participants(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_invalid_signature_past_block(spec, state):
@@ -289,7 +289,7 @@ def test_invalid_signature_past_block(spec, state):
     yield from run_sync_committee_processing(spec, state, invalid_block, expect_exception=True)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_configs([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
 @always_bls
@@ -326,7 +326,7 @@ def test_invalid_signature_previous_committee(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 @with_configs([MINIMAL], reason="too slow")
@@ -367,3 +367,43 @@ def test_valid_signature_future_committee(spec, state):
     )
 
     yield from run_sync_committee_processing(spec, state, block)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_sync_committee_is_only_computed_at_epoch_boundary(spec, state):
+    """
+    Sync committees can only be computed at sync committee period boundaries.
+    Ensure a client respects the committee in the state (assumed to be derived
+    in the correct way).
+    """
+    current_epoch = spec.get_current_epoch(state)
+
+    # use a "synthetic" committee to simulate the situation
+    # where ``spec.get_sync_committee`` at the sync committee
+    # period epoch boundary would have diverged some epochs into the
+    # period; ``aggregate_pubkey`` is not relevant to this test
+    pubkeys = []
+    committee_indices = []
+    i = 0
+    active_validator_count = len(spec.get_active_validator_indices(state, current_epoch))
+    while len(pubkeys) < spec.SYNC_COMMITTEE_SIZE:
+        v = state.validators[i % active_validator_count]
+        if spec.is_active_validator(v, current_epoch):
+            pubkeys.append(v.pubkey)
+            committee_indices.append(i)
+        i += 1
+
+    synthetic_committee = spec.SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=spec.BLSPubkey())
+    state.current_sync_committee = synthetic_committee
+
+    assert spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD > 3
+    for _ in range(3):
+        next_epoch(spec, state)
+
+    committee = get_committee_indices(spec, state)
+    assert committee != committee_indices
+    committee_size = len(committee_indices)
+    committee_bits = [True] * committee_size
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)

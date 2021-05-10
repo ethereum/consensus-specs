@@ -167,7 +167,7 @@ def get_spec(file_name: str) -> SpecObject:
             comment = _get_eth2_spec_comment(child)
             if comment == "skip":
                 should_skip = True
-    
+
     return SpecObject(
         functions=functions,
         custom_types=custom_types,
@@ -441,7 +441,7 @@ ExecutionState = Any
 
 
 def get_pow_block(hash: Bytes32) -> PowBlock:
-    pass
+    return PowBlock(block_hash=hash, is_valid=True, is_processed=True, total_difficulty=TRANSITION_TOTAL_DIFFICULTY)
 
 
 def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
@@ -548,7 +548,7 @@ ignored_dependencies = [
     'Bytes1', 'Bytes4', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
-    'Dict', 'dict', 'field', 'ceillog2', 'floorlog2',
+    'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
 ]
 
 

@@ -104,7 +104,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 ### Updated penalty values
 
-This patch updates a few configuration values to move penalty parameters toward their final, maximum security values.
+This patch updates a few configuration values to move penalty parameters closer to their final, maximum security values.
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
@@ -118,9 +118,8 @@ This patch updates a few configuration values to move penalty parameters toward 
 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**10)` (= 1,024) | | |
-| `SYNC_PUBKEYS_PER_AGGREGATE` | `uint64(2**6)` (= 64) | | |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
 
 ### Misc
 
@@ -212,7 +211,7 @@ class SyncAggregate(Container):
 ```python
 class SyncCommittee(Container):
     pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
-    pubkey_aggregates: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE // SYNC_PUBKEYS_PER_AGGREGATE]
+    aggregate_pubkey: BLSPubkey
 ```
 
 ## Helper functions
@@ -278,6 +277,9 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     """
     Return the sequence of sync committee indices (which may include duplicate indices)
     for a given ``state`` and ``epoch``.
+
+    Note: This function is not stable during a sync committee period as
+    a validator's effective balance may change enough to affect the sampling.
     """
     MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
@@ -303,12 +305,22 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
 def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
     Return the sync committee for a given ``state`` and ``epoch``.
+
+    ``SyncCommittee`` contains an aggregate pubkey that enables
+    resource-constrained clients to save some computation when verifying
+    the sync committee's signature.
+
+    ``SyncCommittee`` can also contain duplicate pubkeys, when ``get_sync_committee_indices``
+    returns duplicate indices. Implementations must take care when handling
+    optimizations relating to aggregation and verification in the presence of duplicates.
+
+    Note: This function should only be called at sync committee period boundaries, as
+    ``get_sync_committee_indices`` is not stable within a given period.
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
-    partition = [pubkeys[i:i + SYNC_PUBKEYS_PER_AGGREGATE] for i in range(0, len(pubkeys), SYNC_PUBKEYS_PER_AGGREGATE)]
-    pubkey_aggregates = [bls.AggregatePKs(preaggregate) for preaggregate in partition]
-    return SyncCommittee(pubkeys=pubkeys, pubkey_aggregates=pubkey_aggregates)
+    aggregate_pubkey = bls.AggregatePKs(pubkeys)
+    return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```
 
 #### `get_base_reward_per_increment`
@@ -409,7 +421,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 #### Modified `slash_validator`
 
-*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR` 
+*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`
 and use `PROPOSER_WEIGHT` when calculating the proposer reward.
 
 ```python
@@ -565,7 +577,8 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
     # Apply participant and proposer rewards
-    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
     participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
     for participant_index in participant_indices:
         increase_balance(state, participant_index, participant_reward)

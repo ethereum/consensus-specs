@@ -40,8 +40,8 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 
 ## Warning
 
-This document is currently illustrative for early Altair testnets and some parts are subject to change. 
-Refer to the note in the [validator guide](./validator.md) for further details. 
+This document is currently illustrative for early Altair testnets and some parts are subject to change.
+Refer to the note in the [validator guide](./validator.md) for further details.
 
 # Modifications in Altair
 
@@ -64,12 +64,12 @@ Where
 
 ## The gossip domain: gossipsub
 
-Gossip meshes are added in Altair to support the consensus activities of the sync committees. 
+Gossip meshes are added in Altair to support the consensus activities of the sync committees.
 Validators use an aggregation scheme to balance the processing and networking load across all of the relevant actors.
 
 ### Topics and messages
 
-Topics follow the same specification as in the Phase 0 document. 
+Topics follow the same specification as in the Phase 0 document.
 New topics are added in Altair to support the sync committees and the beacon block topic is updated with the modified type.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 document.
@@ -93,13 +93,13 @@ Altair changes the type of the global beacon block topic and adds one global top
 ##### `beacon_block`
 
 The existing specification for this topic does not change from the Phase 0 document,
-but the type of the payload does change to the (modified) `SignedBeaconBlock`. 
+but the type of the payload does change to the (modified) `SignedBeaconBlock`.
 This type changes due to the inclusion of the inner `BeaconBlockBody` that is modified in Altair.
 
 See the [state transition document](./beacon-chain.md#beaconblockbody) for Altair for further details.
 
 ##### `sync_committee_contribution_and_proof`
- 
+
 This topic is used to propagate partially aggregated sync committee signatures to be included in future blocks.
 
 The following validations MUST pass before forwarding the `signed_contribution_and_proof` on the network; define `contribution_and_proof = signed_contribution_and_proof.message`, `contribution = contribution_and_proof.contribution`, and the following function `get_sync_subcommittee_pubkeys` for convenience:
@@ -135,16 +135,16 @@ The following validations MUST pass before forwarding the `sync_committee_signat
 - _[IGNORE]_ The signature's slot is for the current slot, i.e. `sync_committee_signature.slot == current_slot`.
 - _[IGNORE]_ The block being signed over (`sync_committee_signature.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
 - _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_signature.validator_index`.
-- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_signature.validator_index)`. 
+- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_signature.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
 
 #### Sync committees and aggregation
 
-The aggregation scheme closely follows the design of the attestation aggregation scheme. 
-Sync committee signatures are broadcast into "subnets" defined by a topic. 
-The number of subnets is defined by `SYNC_COMMITTEE_SUBNET_COUNT` in the [Altair validator guide](./validator.md#constants). 
-Sync committee members are divided into "subcommittees" which are then assigned to a subnet for the duration of tenure in the sync committee. 
+The aggregation scheme closely follows the design of the attestation aggregation scheme.
+Sync committee signatures are broadcast into "subnets" defined by a topic.
+The number of subnets is defined by `SYNC_COMMITTEE_SUBNET_COUNT` in the [Altair validator guide](./validator.md#constants).
+Sync committee members are divided into "subcommittees" which are then assigned to a subnet for the duration of tenure in the sync committee.
 Individual validators can be duplicated in the broader sync committee such that they are included multiple times in a given subcommittee or across multiple subcommittees.
 
 Unaggregated signatures (along with metadata) are sent as `SyncCommitteeSignature`s on the `sync_committee_{subnet_id}` topics.
@@ -244,7 +244,7 @@ Response Content:
 )
 ```
 
-Requests the MetaData of a peer, using the new `MetaData` definition given above 
+Requests the MetaData of a peer, using the new `MetaData` definition given above
 that is extended from phase 0 in Altair. Other conditions for the `GetMetaData`
 protocol are unchanged from the phase 0 p2p networking document.
 
@@ -253,7 +253,7 @@ protocol are unchanged from the phase 0 p2p networking document.
 In advance of the fork, implementations can opt in to both run the v1 and v2 for a smooth transition.
 This is non-breaking, and is recommended as soon as the fork specification is stable.
 
-The v1 variants will be deprecated, and implementations should use v2 when available 
+The v1 variants will be deprecated, and implementations should use v2 when available
 (as negotiated with peers via LibP2P multistream-select).
 
 The v1 method MAY be unregistered at the fork boundary.
@@ -265,7 +265,7 @@ the responder MUST return the **InvalidRequest** response code.
 The `attnets` key of the ENR is used as defined in the Phase 0 document.
 
 An additional bitfield is added to the ENR under the key `syncnets` to facilitate sync committee subnet discovery.
-The length of this bitfield is `SYNC_COMMITTEE_SUBNET_COUNT` where each bit corresponds to a distinct `subnet_id` for a specific sync committee subnet. 
+The length of this bitfield is `SYNC_COMMITTEE_SUBNET_COUNT` where each bit corresponds to a distinct `subnet_id` for a specific sync committee subnet.
 The `i`th bit is set in this bitfield if the validator is currently subscribed to the `sync_committee_{i}` topic.
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for further details on how the new bits are used.
