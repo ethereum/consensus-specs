@@ -277,6 +277,9 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     """
     Return the sequence of sync committee indices (which may include duplicate indices)
     for a given ``state`` and ``epoch``.
+
+    Note: This function is not stable during a sync committee period as
+    a validator's effective balance may change enough to affect the sampling.
     """
     MAX_RANDOM_BYTE = 2**8 - 1
     base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
@@ -310,6 +313,9 @@ def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     ``SyncCommittee`` can also contain duplicate pubkeys, when ``get_sync_committee_indices``
     returns duplicate indices. Implementations must take care when handling
     optimizations relating to aggregation and verification in the presence of duplicates.
+
+    Note: This function should only be called at sync committee period boundaries, as
+    ``get_sync_committee_indices`` is not stable within a given period.
     """
     indices = get_sync_committee_indices(state, epoch)
     pubkeys = [state.validators[index].pubkey for index in indices]
@@ -571,7 +577,8 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
     # Apply participant and proposer rewards
-    committee_indices = get_sync_committee_indices(state, get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
     participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
     for participant_index in participant_indices:
         increase_balance(state, participant_index, participant_reward)
