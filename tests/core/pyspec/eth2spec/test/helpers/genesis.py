@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR,
     FORKS_BEFORE_ALTAIR,
+    MERGE,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -28,6 +29,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork == ALTAIR:
         current_version = spec.ALTAIR_FORK_VERSION
+    elif spec.fork == MERGE:
+        current_version = spec.MERGE_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
