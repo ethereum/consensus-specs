@@ -362,19 +362,22 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
     previous_epoch = get_previous_epoch(state)
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, previous_epoch)
     weight = PARTICIPATION_FLAG_WEIGHTS[flag_index]
-    unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // EFFECTIVE_BALANCE_INCREMENT
+    unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
+    unslashed_participating_increments = unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     in_inactivity_leak = is_in_inactivity_leak(state)
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
-        if index in unslashed_participating_indices:
+        index_participated = index in unslashed_participating_indices
+        if index_participated:
             if not in_inactivity_leak:
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
         elif not (in_inactivity_leak and flag_index == TIMELY_HEAD_FLAG_INDEX):
             penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
+
         # Quadratic inactivity leak
-        if flag_index == TIMELY_TARGET_FLAG_INDEX and in_inactivity_leak and index not in unslashed_participating_indices:
+        if flag_index == TIMELY_TARGET_FLAG_INDEX and in_inactivity_leak and index_participated:
             penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
             penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
