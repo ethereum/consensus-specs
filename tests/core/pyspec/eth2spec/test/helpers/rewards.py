@@ -133,10 +133,17 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
         validator = state.validators[index]
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
-            if enough_for_reward:
-                assert rewards[index] > 0
+            if is_post_altair(spec):
+                if not spec.is_in_inactivity_leak(state) and enough_for_reward:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
             else:
-                assert rewards[index] == 0
+                if enough_for_reward:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
+
             assert penalties[index] == 0
         else:
             assert rewards[index] == 0
@@ -225,18 +232,19 @@ def run_get_inactivity_penalty_deltas(spec, state):
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
-            else:
-                base_penalty = sum(
-                    base_reward * numerator // spec.WEIGHT_DENOMINATOR
-                    for (_, numerator) in spec.PARTICIPATION_FLAG_WEIGHTS
-                )
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices or not has_enough_for_leak_penalty(spec, state, index):
-                assert penalties[index] == base_penalty
+                if is_post_altair(spec):
+                    assert penalties[index] == 0
+                else:
+                    assert penalties[index] == base_penalty
             else:
-                assert penalties[index] > base_penalty
+                if is_post_altair(spec):
+                    assert penalties[index] > 0
+                else:
+                    assert penalties[index] > base_penalty
         else:
             assert penalties[index] == 0
 

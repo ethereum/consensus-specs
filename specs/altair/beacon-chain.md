@@ -366,11 +366,10 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
     unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
     unslashed_participating_increments = unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
-    in_inactivity_leak = is_in_inactivity_leak(state)
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
-            if not in_inactivity_leak:
+            if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
         else:
