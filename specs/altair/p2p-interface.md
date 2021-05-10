@@ -107,7 +107,7 @@ The following validations MUST pass before forwarding the `signed_contribution_a
 ```python
 def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64) -> Sequence[BLSPubkey]:
     # Committees assigned to `slot` sign for `slot - 1`
-    # This creates the exceptional logic below when transitioning between sync comittee periods
+    # This creates the exceptional logic below when transitioning between sync committee periods
     next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
         sync_committee = state.current_sync_committee
