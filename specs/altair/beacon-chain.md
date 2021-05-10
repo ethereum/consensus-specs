@@ -37,6 +37,7 @@
     - [`get_base_reward`](#get_base_reward)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
     - [`get_flag_index_deltas`](#get_flag_index_deltas)
+    - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `slash_validator`](#modified-slash_validator)
   - [Block processing](#block-processing)
@@ -368,19 +369,32 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
     in_inactivity_leak = is_in_inactivity_leak(state)
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
-        index_participated = index in unslashed_participating_indices
-        if index_participated:
+        if index in unslashed_participating_indices:
             if not in_inactivity_leak:
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
-        elif not (in_inactivity_leak and flag_index == TIMELY_HEAD_FLAG_INDEX):
+        else:
             penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
+    return rewards, penalties
+```
 
-        # Quadratic inactivity leak
-        if flag_index == TIMELY_TARGET_FLAG_INDEX and in_inactivity_leak and index_participated:
-            penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
-            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+#### Modified `get_inactivity_penalty_deltas`
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
+    """
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    if is_in_inactivity_leak(state):
+        previous_epoch = get_previous_epoch(state)
+        matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
+        for index in get_eligible_validator_indices(state):
+            if index not in matching_target_indices:
+                penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+                penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+                penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
 
@@ -613,7 +627,8 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         return
 
     flag_deltas = [get_flag_index_deltas(state, flag_index) for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))]
-    for (rewards, penalties) in flag_deltas:
+    deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
+    for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
             decrease_balance(state, ValidatorIndex(index), penalties[index])
