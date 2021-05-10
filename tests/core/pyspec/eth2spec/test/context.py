@@ -7,8 +7,8 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR,
+    PHASE0, ALTAIR, MERGE,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
 )
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
@@ -312,7 +312,7 @@ def with_phases(phases, other_phases=None):
                     return None
                 run_phases = [phase]
 
-            if PHASE0 not in run_phases and ALTAIR not in run_phases:
+            if PHASE0 not in run_phases and ALTAIR not in run_phases and MERGE not in run_phases:
                 dump_skipping_message("none of the recognized phases are executable, skipping test.")
                 return None
 
@@ -330,6 +330,8 @@ def with_phases(phases, other_phases=None):
                 phase_dir[PHASE0] = spec_phase0
             if ALTAIR in available_phases:
                 phase_dir[ALTAIR] = spec_altair
+            if MERGE in available_phases:
+                phase_dir[MERGE] = spec_merge
 
             # return is ignored whenever multiple phases are ran.
             # This return is for test generators to emit python generators (yielding test vector outputs)
@@ -337,6 +339,8 @@ def with_phases(phases, other_phases=None):
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if ALTAIR in run_phases:
                 ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
+            if MERGE in run_phases:
+                ret = fn(spec=spec_merge, phases=phase_dir, *args, **kw)
 
             # TODO: merge, sharding, custody_game and das are not executable yet.
             #  Tests that specify these features will not run, and get ignored for these specific phases.
@@ -362,6 +366,20 @@ def with_configs(configs, reason=None):
 
 
 def is_post_altair(spec):
+    if spec.fork == MERGE:  # TODO: remove parallel Altair-Merge condition after rebase.
+        return False
     if spec.fork in FORKS_BEFORE_ALTAIR:
         return False
     return True
+
+
+def is_post_merge(spec):
+    if spec.fork == ALTAIR:  # TODO: remove parallel Altair-Merge condition after rebase.
+        return False
+    if spec.fork in FORKS_BEFORE_MERGE:
+        return False
+    return True
+
+
+with_altair_and_later = with_phases([ALTAIR])  # TODO: include Merge, but not until Merge work is rebased.
+with_merge_and_later = with_phases([MERGE])
