@@ -369,7 +369,7 @@ def test_valid_signature_future_committee(spec, state):
     yield from run_sync_committee_processing(spec, state, block)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 def test_sync_committee_is_only_computed_at_epoch_boundary(spec, state):
     """

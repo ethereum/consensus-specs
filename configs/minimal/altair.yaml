@@ -10,18 +10,18 @@ MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
 PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
 
-# Misc
+# Sync committee
 # ---------------------------------------------------------------
 # [customized]
 SYNC_COMMITTEE_SIZE: 32
-# 2**2 (= 4)
-INACTIVITY_SCORE_BIAS: 4
-
-
-# Time parameters
-# ---------------------------------------------------------------
 # [customized]
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
+
+
+# Misc
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+INACTIVITY_SCORE_BIAS: 4
 
 
 # Signature domains
@@ -43,6 +43,7 @@ ALTAIR_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # 1
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
+
 
 
 # Validator
