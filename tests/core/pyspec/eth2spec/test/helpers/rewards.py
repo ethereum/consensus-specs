@@ -62,13 +62,13 @@ def run_deltas(spec, state):
 
     if is_post_altair(spec):
         def get_source_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX)
 
         def get_head_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX, spec.TIMELY_HEAD_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX)
 
         def get_target_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX, spec.TIMELY_TARGET_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX)
 
     yield from run_attestation_component_deltas(
         spec,
@@ -228,7 +228,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
             else:
                 base_penalty = sum(
                     base_reward * numerator // spec.WEIGHT_DENOMINATOR
-                    for (_, numerator) in spec.get_flag_indices_and_weights()
+                    for (_, numerator) in spec.PARTICIPATION_FLAG_WEIGHTS
                 )
 
             if not has_enough_for_reward(spec, state, index):
