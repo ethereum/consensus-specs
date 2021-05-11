@@ -146,6 +146,7 @@ This function is a predicate indicating the presence or absence of the validator
 *Note*: Being assigned to a sync committee for a given `slot` means that the validator produces and broadcasts signatures for `slot - 1` for inclusion in `slot`.
 This means that when assigned to an `epoch` sync committee signatures must be produced and broadcast for slots on range `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
 rather than for the range `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
+To reduce complexity during the Altair fork, sync committees are not expected to produce signatures for `compute_epoch_at_slot(ALTAIR_FORK_EPOCH) - 1`.
 
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
@@ -296,11 +297,14 @@ The `subnet_id` is derived from the position in the sync committee such that the
 
 ```python
 def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Sequence[uint64]:
+    next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
+        sync_committee = state.current_sync_committee
+    else:
+        sync_committee = state.next_sync_committee
+
     target_pubkey = state.validators[validator_index].pubkey
-    sync_committee_indices = [
-        index for index, pubkey in enumerate(state.current_sync_committee.pubkeys)
-        if pubkey == target_pubkey
-    ]
+    sync_committee_indices = [index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey]
     return [
         uint64(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
         for index in sync_committee_indices
