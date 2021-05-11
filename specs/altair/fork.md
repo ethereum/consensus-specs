@@ -80,8 +80,14 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         # Inactivity
         inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
+
     # Fill in sync committees
-    post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
-    post.next_sync_committee = get_sync_committee(post, get_current_epoch(post) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    current_period = epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    previous_period = current_period - min(1, current_period)
+    current_base_epoch = current_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    previous_base_epoch = previous_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+
+    post.current_sync_committee = get_sync_committee(post, previous_base_epoch)
+    post.next_sync_committee = get_sync_committee(post, current_base_epoch)
     return post
 ```

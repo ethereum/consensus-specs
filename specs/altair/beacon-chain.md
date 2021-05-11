@@ -304,7 +304,7 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
 ```python
 def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
     """
-    Return the sync committee for a given ``state`` and ``epoch``.
+    Return the *next* sync committee for a given ``state`` and ``epoch``.
 
     ``SyncCommittee`` contains an aggregate pubkey that enables
     resource-constrained clients to save some computation when verifying
@@ -690,7 +690,7 @@ def process_sync_committee_updates(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + Epoch(1)
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
         state.current_sync_committee = state.next_sync_committee
-        state.next_sync_committee = get_sync_committee(state, next_epoch + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+        state.next_sync_committee = get_sync_committee(state, next_epoch)
 ```
 
 ## Initialize state for pure Altair testnets and test vectors
