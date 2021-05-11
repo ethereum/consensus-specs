@@ -18,7 +18,8 @@ from eth2spec.test.context import (
 
 
 def run_sync_committee_sanity_test(spec, state, fraction_full=1.0):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     participants = random.sample(committee, int(len(committee) * fraction_full))
 
     yield 'pre', state

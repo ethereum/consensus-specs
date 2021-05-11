@@ -7,7 +7,6 @@ from eth2spec.test.helpers.block_processing import run_block_processing_to
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
-    next_epoch,
 )
 from eth2spec.test.helpers.constants import (
     MAINNET, MINIMAL,
@@ -367,43 +366,3 @@ def test_valid_signature_future_committee(spec, state):
     )
 
     yield from run_sync_committee_processing(spec, state, block)
-
-
-@with_altair_and_later
-@spec_state_test
-def test_sync_committee_is_only_computed_at_epoch_boundary(spec, state):
-    """
-    Sync committees can only be computed at sync committee period boundaries.
-    Ensure a client respects the committee in the state (assumed to be derived
-    in the correct way).
-    """
-    current_epoch = spec.get_current_epoch(state)
-
-    # use a "synthetic" committee to simulate the situation
-    # where ``spec.get_sync_committee`` at the sync committee
-    # period epoch boundary would have diverged some epochs into the
-    # period; ``aggregate_pubkey`` is not relevant to this test
-    pubkeys = []
-    committee_indices = []
-    i = 0
-    active_validator_count = len(spec.get_active_validator_indices(state, current_epoch))
-    while len(pubkeys) < spec.SYNC_COMMITTEE_SIZE:
-        v = state.validators[i % active_validator_count]
-        if spec.is_active_validator(v, current_epoch):
-            pubkeys.append(v.pubkey)
-            committee_indices.append(i)
-        i += 1
-
-    synthetic_committee = spec.SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=spec.BLSPubkey())
-    state.current_sync_committee = synthetic_committee
-
-    assert spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD > 3
-    for _ in range(3):
-        next_epoch(spec, state)
-
-    committee = get_committee_indices(spec, state)
-    assert committee != committee_indices
-    committee_size = len(committee_indices)
-    committee_bits = [True] * committee_size
-
-    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
