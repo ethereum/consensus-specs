@@ -13,8 +13,8 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Transition](#transition)
   - [Execution](#execution)
+- [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -24,6 +24,7 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
+    - [`is_execution_enabled`](#is_execution_enabled)
     - [`is_transition_completed`](#is_transition_completed)
     - [`is_transition_block`](#is_transition_block)
     - [`compute_time_at_slot`](#compute_time_at_slot)
@@ -50,12 +51,6 @@ We define the following Python custom types for type hinting and readability:
 
 ## Constants
 
-### Transition
-
-| Name | Value |
-| - | - |
-| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
-
 ### Execution
 
 | Name | Value |
@@ -63,6 +58,16 @@ We define the following Python custom types for type hinting and readability:
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_EXECUTION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
+
+## Configuration
+
+Warning: this configuration is not definitive.
+
+| Name | Value |
+| - | - |
+| `MERGE_FORK_VERSION` | `Version('0x02000000')` |
+| `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
 
 ## Containers
 
@@ -136,6 +141,13 @@ class ExecutionPayloadHeader(Container):
 
 ### Misc
 
+#### `is_execution_enabled`
+
+```python
+def is_execution_enabled(state: BeaconState, block: BeaconBlock) -> bool:
+    return is_transition_completed(state) or is_transition_block(state, block)
+```
+
 #### `is_transition_completed`
 
 ```python
@@ -146,8 +158,8 @@ def is_transition_completed(state: BeaconState) -> bool:
 #### `is_transition_block`
 
 ```python
-def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> bool:
-    return not is_transition_completed(state) and block_body.execution_payload != ExecutionPayload()
+def is_transition_block(state: BeaconState, block: BeaconBlock) -> bool:
+    return not is_transition_completed(state) and block.body.execution_payload != ExecutionPayload()
 ```
 
 #### `compute_time_at_slot`
@@ -168,7 +180,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    process_execution_payload(state, block.body)  # [New in Merge]
+    # Pre-merge, skip execution payload processing
+    if is_execution_enabled(state, block):
+        process_execution_payload(state, block.body.execution_payload)  # [New in Merge]
 ```
 
 #### Execution payload processing
@@ -181,16 +195,10 @@ The body of the function is implementation dependent.
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_execution_payload(state: BeaconState, execution_payload: ExecutionPayload) -> None:
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
-    # Pre-merge, skip processing
-    if not is_transition_completed(state) and not is_transition_block(state, body):
-        return
-
-    execution_payload = body.execution_payload
-
     if is_transition_completed(state):
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1

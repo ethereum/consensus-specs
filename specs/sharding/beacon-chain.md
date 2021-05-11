@@ -406,7 +406,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
-        (EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT)
+        EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT
         * HYSTERESIS_DOWNWARD_MULTIPLIER // HYSTERESIS_QUOTIENT
     )
     min_effective_balance = (
@@ -714,11 +714,11 @@ def process_pending_headers(state: BeaconState) -> None:
 ```python
 def charge_confirmed_header_fees(state: BeaconState) -> None:
     new_gasprice = state.shard_gasprice
+    previous_epoch = get_previous_epoch(state)
     adjustment_quotient = (
-        get_active_shard_count(state, get_current_epoch(state))
+        get_active_shard_count(state, previous_epoch)
         * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     )
-    previous_epoch = get_previous_epoch(state)
     previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
         for shard_index in range(get_active_shard_count(state, previous_epoch)):
