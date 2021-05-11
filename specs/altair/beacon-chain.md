@@ -276,10 +276,7 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
     Return the sequence of sync committee indices (which may include duplicate indices)
-    for a given ``state`` and ``epoch``.
-
-    Note: This function is not stable during a sync committee period as
-    a validator's effective balance may change enough to affect the sampling.
+    for a given ``state`` and ``epoch`` at a sync committee period boundary.
     """
     assert epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0
 
@@ -690,7 +687,6 @@ def process_participation_flag_updates(state: BeaconState) -> None:
 def process_sync_committee_updates(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + Epoch(1)
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
-        print("HEEEREEE")
         state.current_sync_committee = state.next_sync_committee
         state.next_sync_committee = get_sync_committee(state, next_epoch)
 ```

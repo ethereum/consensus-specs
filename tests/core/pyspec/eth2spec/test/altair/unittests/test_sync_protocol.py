@@ -46,7 +46,8 @@ def test_process_light_client_update_not_updated(spec, state):
         body_root=signed_block.message.body.hash_tree_root(),
     )
     # Sync committee signing the header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     sync_committee_bits = [True] * len(committee)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
@@ -111,7 +112,8 @@ def test_process_light_client_update_timeout(spec, state):
     )
 
     # Sync committee signing the finalized_block_header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     sync_committee_bits = [True] * len(committee)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
@@ -190,7 +192,8 @@ def test_process_light_client_update_finality_updated(spec, state):
     )
 
     # Sync committee signing the finalized_block_header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     sync_committee_bits = [True] * len(committee)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
