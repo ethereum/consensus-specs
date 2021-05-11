@@ -147,7 +147,9 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             assert penalties[index] == 0
         else:
             assert rewards[index] == 0
-            if enough_for_reward:
+            if is_post_altair(spec) and 'head' in deltas_name:
+                assert penalties[index] == 0
+            elif enough_for_reward:
                 assert penalties[index] > 0
             else:
                 assert penalties[index] == 0

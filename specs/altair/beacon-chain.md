@@ -372,7 +372,7 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
-        else:
+        elif not flag_index == TIMELY_HEAD_FLAG_INDEX:
             penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
     return rewards, penalties
 ```
