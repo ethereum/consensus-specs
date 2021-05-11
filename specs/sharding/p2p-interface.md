@@ -9,13 +9,15 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [New containers](#new-containers)
   - [ShardBlobBody](#shardblobbody)
   - [ShardBlob](#shardblob)
   - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blobs: `shard_blob_{shard}_{slot}`](#shard-blobs-shard_blob_shard_slot)
+    - [Shard blobs: `shard_blob_{subnet_id}`](#shard-blobs-shard_blob_subnet_id)
     - [Shard header: `shard_header`](#shard-header-shard_header)
     - [Shard proposer slashing: `shard_proposer_slashing`](#shard-proposer-slashing-shard_proposer_slashing)
 
@@ -28,6 +30,14 @@
 The specification of these changes continues in the same format as the [Phase0](../phase0/p2p-interface.md) and
 [Altair](../altair/p2p-interface.md) network specifications, and assumes them as pre-requisite. 
 The adjustments and additions for Shards are outlined in this document.
+
+## Constants
+
+### Misc
+
+| Name | Value | Description |
+| ---- | ----- | ----------- |
+| `SHARD_BLOB_SUBNET_COUNT` | `64` | The number of `shard_blob_{subnet_id}` subnets used in the gossipsub protocol. |
 
 ## New containers
 
@@ -77,24 +87,38 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
-| `shard_blob_{shard}_{slot}`      | `SignedShardBlob`         |
+| `shard_blob_{subnet_id}`         | `SignedShardBlob`         |
 | `shard_header`                   | `SignedShardHeader`       |
 | `shard_proposer_slashing`        | `ShardProposerSlashing`   |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
 
-#### Shard blobs: `shard_blob_{shard}_{slot}`
+#### Shard blobs: `shard_blob_{subnet_id}`
 
-Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}_{slot}` subnets.
+Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{subnet_id}` subnets.
+
+```python
+def compute_subnet_for_shard_blob(state: BeaconState, slot: Slot, shard: Shard) -> uint64:
+    """
+    Compute the correct subnet for a shard blob publication.
+    Note, this mimics compute_subnet_for_attestation().
+    """
+    committee_index = compute_committee_index_from_shard(state, slot, shard)
+    committees_per_slot = get_committee_count_per_slot(state, compute_epoch_at_slot(slot))
+    slots_since_epoch_start = Slot(slot % SLOTS_PER_EPOCH)
+    committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
+
+    return uint64((committees_since_epoch_start + committee_index) % SHARD_BLOB_SUBNET_COUNT)
+```
 
 The following validations MUST pass before forwarding the `signed_blob` (with inner `message` as `blob`) on the horizontal subnet or creating samples for it.
-- _[REJECT]_ `blob.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
-- _[REJECT]_ `blob.slot - compute_start_slot_at_epoch(blob.slot)` MUST match the topic `{slot}` parameter.
 - _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `blob.slot <= current_slot`
   (a client MAY queue future blobs for processing at the appropriate slot).
 - _[IGNORE]_ The `blob` is new enough to be still be processed --
   i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
+- _[REJECT]_ The shard blob is for the correct subnet --
+  i.e. `compute_subnet_for_shard_blob(state, blob.slot, blob.shard) == subnet_id`  
 - _[IGNORE]_ The blob is the first blob with valid signature received for the `(blob.proposer_index, blob.slot, blob.shard)` combination.
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
 - _[REJECT]_ The `blob.body.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
