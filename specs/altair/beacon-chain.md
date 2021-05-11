@@ -203,7 +203,6 @@ class BeaconState(Container):
 ```python
 class SyncAggregate(Container):
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
-    # TODO! Need multiple signatures as discussed between Justin and Vitalik May 3 2021 (see Telegram)
     sync_committee_signature: BLSSignature
 ```
 
