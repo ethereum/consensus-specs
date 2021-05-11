@@ -634,7 +634,7 @@ def process_inactivity_updates(state: BeaconState) -> None:
         else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
         # Decrease the score of all validators for forgiveness when not during a leak
-        if not if is_in_inactivity_leak(state):
+        if not is_in_inactivity_leak(state):
             state.inactivity_scores[index] -= min(INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index])
 ```
 
