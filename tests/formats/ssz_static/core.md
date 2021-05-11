@@ -18,7 +18,7 @@ One can iterate over the handlers, and select the type based on the handler name
 Suites are then the same format, but each specialized in one randomization mode.
 Some randomization modes may only produce a single test case (e.g. the all-zeroes case).
 
-The output parts are: `roots.yaml`, `serialized.ssz`, `value.yaml`
+The output parts are: `roots.yaml`, `serialized.ssz_snappy`, `value.yaml`
 
 ### `roots.yaml`
 
@@ -26,13 +26,13 @@ The output parts are: `roots.yaml`, `serialized.ssz`, `value.yaml`
 root: bytes32         -- string, hash-tree-root of the value, hex encoded, with prefix 0x
 ```
 
-### `serialized.ssz`
+### `serialized.ssz_snappy`
 
-The raw encoded bytes.
+The SSZ-snappy encoded bytes.
 
 ### `value.yaml`
 
-The same value as `serialized.ssz`, represented as YAML.
+The same value as `serialized.ssz_snappy`, represented as YAML.
 
 
 ## Condition

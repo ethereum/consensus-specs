@@ -12,10 +12,16 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Containers](#containers)
+  - [`Eth1Block`](#eth1block)
+  - [`AggregateAndProof`](#aggregateandproof)
+  - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [BLS public key](#bls-public-key)
-    - [BLS withdrawal key](#bls-withdrawal-key)
+    - [Withdrawal credentials](#withdrawal-credentials)
+      - [`BLS_WITHDRAWAL_PREFIX`](#bls_withdrawal_prefix)
+      - [`ETH1_ADDRESS_WITHDRAWAL_PREFIX`](#eth1_address_withdrawal_prefix)
   - [Submit deposit](#submit-deposit)
   - [Process deposit](#process-deposit)
   - [Validator index](#validator-index)
@@ -31,7 +37,6 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
       - [Eth1 Data](#eth1-data)
-        - [`Eth1Block`](#eth1block)
         - [`get_eth1_data`](#get_eth1_data)
       - [Proposer slashings](#proposer-slashings)
       - [Attester slashings](#attester-slashings)
@@ -58,8 +63,6 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
       - [Aggregation bits](#aggregation-bits-1)
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
-      - [`AggregateAndProof`](#aggregateandproof)
-      - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
@@ -90,6 +93,35 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 
+## Containers
+
+### `Eth1Block`
+
+```python
+class Eth1Block(Container):
+    timestamp: uint64
+    deposit_root: Root
+    deposit_count: uint64
+    # All other eth1 block fields
+```
+
+### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation
+    selection_proof: BLSSignature
+```
+
+### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof
+    signature: BLSSignature
+```
+
 ## Becoming a validator
 
 ### Initialization
@@ -100,14 +132,41 @@ A validator must initialize many parameters locally before submitting a deposit 
 
 Validator public keys are [G1 points](beacon-chain.md#bls-signatures) on the [BLS12-381 curve](https://z.cash/blog/new-snark-curve). A private key, `privkey`, must be securely generated along with the resultant `pubkey`. This `privkey` must be "hot", that is, constantly available to sign data throughout the lifetime of the validator.
 
-#### BLS withdrawal key
+#### Withdrawal credentials
 
-A secondary withdrawal private key, `withdrawal_privkey`, must also be securely generated along with the resultant `withdrawal_pubkey`. This `withdrawal_privkey` does not have to be available for signing during the normal lifetime of a validator and can live in "cold storage".
+The `withdrawal_credentials` field constrains validator withdrawals.
+The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes.
 
-The validator constructs their `withdrawal_credentials` via the following:
+The following withdrawal prefixes are currently supported.
 
-* Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`.
-* Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
+##### `BLS_WITHDRAWAL_PREFIX`
+
+Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
+`(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals.
+The `withdrawal_credentials` field must be such that:
+
+* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
+* `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+
+*Note*: The `bls_withdrawal_privkey` is not required for validating and can be kept in cold storage.
+
+##### `ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+
+Withdrawal credentials with the Eth1 address withdrawal prefix specify
+a 20-byte Eth1 address `eth1_withdrawal_address` as the recipient for all withdrawals.
+The `eth1_withdrawal_address` can be the address of either an externally owned account or of a contract.
+
+The `withdrawal_credentials` field must be such that:
+
+* `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+* `withdrawal_credentials[1:12] == b'\x00' * 11`
+* `withdrawal_credentials[12:] == eth1_withdrawal_address`
+
+After the merge of the current Ethereum application layer (Eth1) into the Beacon Chain (Eth2),
+withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH)
+triggered by a user transaction that will set the gas price and gas limit as well pay fees.
+As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers,
+the future withdrawal protocol is agnostic to all other implementation details.
 
 ### Submit deposit
 
@@ -273,19 +332,9 @@ If over half of the block proposers in the current Eth1 voting period vote for t
 `eth1_data` then `state.eth1_data` updates immediately allowing new deposits to be processed.
 Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-###### `Eth1Block`
+###### `get_eth1_data`
 
 Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and depost contract data available.
-
-```python
-class Eth1Block(Container):
-    timestamp: uint64
-    deposit_root: Root
-    deposit_count: uint64
-    # All other eth1 block fields
-```
-
-###### `get_eth1_data`
 
 Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
 
@@ -327,7 +376,9 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
-    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state.eth1_data
+    # Non-substantive casting for linter
+    state_eth1_data: Eth1Data = state.eth1_data
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data
 
     return max(
         valid_votes,
@@ -462,7 +513,7 @@ The `subnet_id` for the `attestation` is calculated with:
 def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:
     """
     Compute the correct subnet for an attestation for Phase 0.
-    Note, this mimics expected Phase 1 behavior where attestations will be mapped to their shard subnet.
+    Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
     """
     slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
@@ -538,7 +589,7 @@ def get_aggregate_and_proof(state: BeaconState,
     )
 ```
 
-Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadast. Where `signature` is obtained from:
+Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
 def get_aggregate_and_proof_signature(state: BeaconState,
@@ -548,23 +599,6 @@ def get_aggregate_and_proof_signature(state: BeaconState,
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     return bls.Sign(privkey, signing_root)
-```
-
-##### `AggregateAndProof`
-
-```python
-class AggregateAndProof(Container):
-    aggregator_index: ValidatorIndex
-    aggregate: Attestation
-    selection_proof: BLSSignature
-```
-
-##### `SignedAggregateAndProof`
-
-```python
-class SignedAggregateAndProof(Container):
-    message: AggregateAndProof
-    signature: BLSSignature
 ```
 
 ## Phase 0 attestation subnet stability
@@ -616,5 +650,5 @@ A validator client should be considered standalone and should consider the beaco
 1) Private keys -- private keys should be protected from being exported accidentally or by an attacker.
 2) Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
 3) Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
-4) Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity leak and potential ejection due to low balance. 
+4) Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity penalty and potential ejection due to low balance.
 A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.

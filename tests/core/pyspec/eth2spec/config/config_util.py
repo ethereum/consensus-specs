@@ -17,8 +17,8 @@ def apply_constants_config(spec_globals: Dict[str, Any], warn_if_unknown: bool =
             # Keep the same type as the default value indicates (which may be an SSZ basic type subclass, e.g. 'Gwei')
             spec_globals[k] = spec_globals[k].__class__(v)
         else:
-            # Note: Phase 0 spec will not know the phase 1 config values.
-            # Yet, during debugging you can enable explicit warnings.
+            # Note: The phase 0 spec will not warn if Altair or later config values are applied.
+            # During debugging you can enable explicit warnings.
             if warn_if_unknown:
                 print(f"WARNING: unknown config key: '{k}' with value: '{v}'")
 
@@ -54,8 +54,7 @@ def load_config_file(configs_dir: str, presets_name: str) -> Dict[str, Any]:
             out[k] = [int(item) if item.isdigit() else item for item in v]
         elif isinstance(v, str) and v.startswith("0x"):
             out[k] = bytes.fromhex(v[2:])
-        elif k == "CONFIG_NAME":
-            out[k] = str(v)
         else:
             out[k] = int(v)
+    out['CONFIG_NAME'] = presets_name
     return out

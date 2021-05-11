@@ -12,22 +12,22 @@ bls_setting: int       -- see general test-format spec.
 ```
 
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before running the transitions.
+An SSZ-snappy `BeaconState`, the state before running the transitions.
 
-Also available as `pre.ssz`.
+Also available as `pre.ssz_snappy`.
 
 
 ### `slots.yaml`
 
 An integer. The amount of slots to process (i.e. the difference in slots between pre and post), always a positive number.
 
-### `post.yaml`
+### `post.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state after applying the transitions.
+An SSZ-snappy `BeaconState`, the state after applying the transitions.
 
-Also available as `post.ssz`.
+Also available as `post.ssz_snappy`.
 
 
 ### Processing

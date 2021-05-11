@@ -33,7 +33,7 @@ Each of the handlers encodes the SSZ type declaration in the file-name. See [Typ
 
 ### `valid`
 
-Valid has 3 parts: `meta.yaml`, `serialized.ssz`, `value.yaml`
+Valid has 3 parts: `meta.yaml`, `serialized.ssz_snappy`, `value.yaml`
 
 ### `meta.yaml`
 
@@ -46,9 +46,9 @@ root: Bytes32             -- Hash-tree-root of the object
 
 The `Bytes32` is encoded as a string, hexadecimal encoding, prefixed with `0x`.
 
-### `serialized.ssz`
+### `serialized.ssz_snappy`
 
-The serialized form of the object, as raw SSZ bytes.
+The serialized form of the object, as snappy-compressed SSZ bytes.
 
 ### `value.yaml`
 
@@ -64,7 +64,7 @@ The conditions are the same for each type:
 
 ## `invalid`
 
-Test cases in the `invalid` suite only include the `serialized.ssz`
+Test cases in the `invalid` suite only include the `serialized.ssz_snappy`
 
 #### Condition
 

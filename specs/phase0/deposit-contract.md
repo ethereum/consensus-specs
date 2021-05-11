@@ -58,12 +58,13 @@ The amount of ETH (rounded down to the closest Gwei) sent to the deposit contrac
 
 #### Withdrawal credentials
 
-One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawing validator balance (e.g. to another validator, or to shards). The first byte of `withdrawal_credentials` is a version number. As of now, the only expected format is as follows:
+One of the `DepositData` fields is `withdrawal_credentials` which constrains validator withdrawals.
+The first byte of this 32-byte field is a withdrawal prefix which defines the semantics of the remaining 31 bytes.
+The withdrawal prefixes currently supported are `BLS_WITHDRAWAL_PREFIX` and `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+Read more in the [validator guide](./validator.md#withdrawal-credentials).
 
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-* `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
-
-The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
+*Note*: The deposit contract does not validate the `withdrawal_credentials` field.
+Support for new withdrawal prefixes can be added without modifying the deposit contract.
 
 #### `DepositEvent` log
 

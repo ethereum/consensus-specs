@@ -1,37 +1,21 @@
-from typing import Iterable
-
-from eth2spec.test.context import PHASE0
-from eth2spec.test.phase0.genesis import test_initialization, test_validity
-
-from gen_base import gen_runner, gen_typing
-from gen_from_tests.gen import generate_from_tests
-from eth2spec.phase0 import spec as spec
-from importlib import reload
-from eth2spec.config import config_util
-from eth2spec.utils import bls
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
+from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.altair import spec as spec_altair
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 
 
-def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
-
-    def prepare_fn(configs_path: str) -> str:
-        config_util.prepare_config(configs_path, config_name)
-        reload(spec)
-        bls.use_milagro()
-        return config_name
-
-    def cases_fn() -> Iterable[gen_typing.TestCase]:
-        return generate_from_tests(
-            runner_name='genesis',
-            handler_name=handler_name,
-            src=tests_src,
-            fork_name=PHASE0,
-        )
-
-    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
+specs = (spec_phase0, spec_altair)
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("genesis", [
-        create_provider('initialization', test_initialization, 'minimal'),
-        create_provider('validity', test_validity, 'minimal'),
-    ])
+    phase_0_mods = {key: 'eth2spec.test.phase0.genesis.test_' + key for key in [
+        'initialization',
+        'validity',
+    ]}
+    altair_mods = phase_0_mods
+    all_mods = {
+        PHASE0: phase_0_mods,
+        ALTAIR: altair_mods,
+    }
+
+    run_state_test_generators(runner_name="genesis", specs=specs, all_mods=all_mods)

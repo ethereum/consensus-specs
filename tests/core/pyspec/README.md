@@ -7,27 +7,30 @@ With this executable spec,
  test-generators can easily create test-vectors for client implementations,
  and the spec itself can be verified to be consistent and coherent through sanity tests implemented with pytest.
 
-## Building
-
-To build the pyspec: `python setup.py build`
- (or `pip install .`, but beware that ignored files will still be copied over to a temporary dir, due to pip issue 2195).
-This outputs the build files to the `./build/lib/eth2spec/...` dir, and can't be used for local test running. Instead, use the dev-install as described below. 
-
 ## Dev Install
 
-All the dynamic parts of the spec are automatically built with `python setup.py pyspecdev`.
-Unlike the regular install, this outputs spec files to their original source location, instead of build output only.
+First, create a `venv` and install the developer dependencies (`test` and `lint` extras):
 
-Alternatively, you can build a sub-set of the pyspec with the distutil command: 
-```bash
-python setup.py pyspec --spec-fork=phase0 --md-doc-paths="specs/phase0/beacon-chain.md specs/phase0/fork-choice.md" --out-dir=my_spec_dir
+```shell
+make install_test
 ```
 
-## Py-tests
+All the dynamic parts of the spec are built with:
 
-After installing, you can install the optional dependencies for testing and linting.
-With makefile: `make install_test`.
-Or manually: run `pip install .[testing]` and `pip install .[linting]`.
+```shell
+(venv) python setup.py pyspecdev
+```
+
+Unlike the regular install, this outputs spec files to their intended source location,
+to enable debuggers to navigate between packages and generated code, without fragile directory linking.
+
+By default, when installing the `eth2spec` as package in non-develop mode,
+the distutils implementation of the `setup` runs `build`, which is extended to run the same `pyspec` work,
+but outputs into the standard `./build/lib` output.
+This enables the `eth2.0-specs` repository to be installed like any other python package.
+
+
+## Py-tests
 
 These tests are not intended for client-consumption.
 These tests are testing the spec itself, to verify consistency and provide feedback on modifications of the spec.
@@ -39,20 +42,32 @@ However, most of the tests can be run in generator-mode, to output test vectors 
 
 Run `make test` from the root of the specs repository (after running `make install_test` if have not before).
 
+Note that the `make` commands run through the build steps: it runs the `build` output, not the local package source files.
+
 #### Manual
 
-From the repository root:
+See `Dev install` for test pre-requisites.
 
-Install venv and install:
-```bash
-python3 -m venv venv
-. venv/bin/activate
-python setup.py pyspecdev
+Tests are built for `pytest`.
+
+Caveats:
+- Working directory must be `./tests/core/pyspec`. The work-directory is important to locate eth2 configuration files.
+- Run `pytest` as module. It avoids environment differences, and the behavior is different too:
+  `pytest` as module adds the current directory to the `sys.path`
+
+Full test usage, with explicit configuration for illustration of options usage:
+```shell
+(venv) python -m pytest --config=minimal eth2spec
 ```
 
-Run the test command from the `tests/core/pyspec` directory:
+Or, to run a specific test file, specify the full path:
+```shell
+(venv) python -m pytest --config=minimal ./eth2spec/test/phase0/block_processing/test_process_attestation.py
 ```
-pytest --config=minimal eth2spec
+
+Or, to run a specific test function (specify the `eth2spec` module, or the script path if the keyword is ambiguous):
+```shell
+(venv) python -m pytest --config=minimal -k test_success_multi_proposer_index_iterations eth2spec
 ```
 
 Options:
@@ -64,6 +79,12 @@ Options:
 
 Run `make open_cov` from the root of the specs repository after running `make test` to open the html code coverage report.
 
+### Advanced
+
+Building spec files from any markdown sources, to a custom location:
+```bash
+(venv) python setup.py pyspec --spec-fork=phase0 --md-doc-paths="specs/phase0/beacon-chain.md specs/phase0/fork-choice.md" --out-dir=my_spec_dir
+```
 
 ## Contributing
 

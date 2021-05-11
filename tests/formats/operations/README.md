@@ -12,23 +12,17 @@ description: string    -- Optional description of test case, purely for debuggin
 bls_setting: int       -- see general test-format spec.
 ```
 
-### `pre.yaml`
+### `pre.ssz_snappy`
 
-A YAML-encoded `BeaconState`, the state before applying the operation.
+An SSZ-snappy encoded `BeaconState`, the state before applying the operation.
 
-Also available as `pre.ssz`.
+### `<input-name>.ssz_snappy`
 
-### `<input-name>.yaml`
+An SSZ-snappy encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
-A YAML-encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
+### `post.ssz_snappy`
 
-Also available as `<input-name>.ssz`.
-
-### `post.yaml`
-
-A YAML-encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
-
-Also available as `post.ssz`.
+An SSZ-snappy encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
 
 
 ## Condition
@@ -39,16 +33,23 @@ This excludes the other parts of the block-transition.
 
 Operations:
 
-| *`operation-name`*      | *`operation-object`*  | *`input name`*       | *`processing call`*                                    |
-|-------------------------|-----------------------|----------------------|--------------------------------------------------------|
-| `attestation`           | `Attestation`         | `attestation`        | `process_attestation(state, attestation)`              |
-| `attester_slashing`     | `AttesterSlashing`    | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`  |
-| `block_header`          | `BeaconBlock`         | **`block`**          | `process_block_header(state, block)`                   |
-| `deposit`               | `Deposit`             | `deposit`            | `process_deposit(state, deposit)`                      |
-| `proposer_slashing`     | `ProposerSlashing`    | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`  |
-| `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`        |
+| *`operation-name`*      | *`operation-object`*  | *`input name`*       | *`processing call`*                                                  |
+|-------------------------|-----------------------|----------------------|----------------------------------------------------------------------|
+| `attestation`           | `Attestation`         | `attestation`        | `process_attestation(state, attestation)`                            |
+| `attester_slashing`     | `AttesterSlashing`    | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`                |
+| `block_header`          | `BeaconBlock`         | **`block`**          | `process_block_header(state, block)`                                 |
+| `deposit`               | `Deposit`             | `deposit`            | `process_deposit(state, deposit)`                                    |
+| `proposer_slashing`     | `ProposerSlashing`    | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`                |
+| `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`                      |
+| `sync_aggregate`        | `SyncAggregate`       | `sync_aggregate`     | `process_sync_committee(state, sync_aggregate)` (new in Altair)      |
+| `execution_payload`     | `ExecutionPayload`    | `execution_payload`  | `process_execution_payload(state, execution_payload)` (new in Merge) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
+
+The `execution_payload` processing normally requires a `verify_execution_state_transition(execution_payload)`,
+a responsibility of an (external) execution engine.
+During testing this execution is mocked, an `execution.yml` is provided instead:
+a dict containing an `execution_valid` boolean field with the verification result.
 
 The resulting state should match the expected `post` state, or if the `post` state is left blank,
  the handler should reject the input operation as invalid.

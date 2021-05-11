@@ -1,34 +1,11 @@
-from typing import Iterable
-
-from gen_base import gen_runner, gen_typing
-from gen_from_tests.gen import generate_from_tests
-from importlib import reload, import_module
-from eth2spec.config import config_util
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.phase1 import spec as spec_phase1
-from eth2spec.test.context import PHASE0, PHASE1
-from eth2spec.utils import bls
+from eth2spec.altair import spec as spec_altair
+from eth2spec.merge import spec as spec_merge
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MERGE
 
 
-def create_provider(fork_name: str, handler_name: str,
-                    tests_src_mod_name: str, config_name: str) -> gen_typing.TestProvider:
-    def prepare_fn(configs_path: str) -> str:
-        config_util.prepare_config(configs_path, config_name)
-        reload(spec_phase0)
-        reload(spec_phase1)
-        bls.use_milagro()
-        return config_name
-
-    def cases_fn() -> Iterable[gen_typing.TestCase]:
-        tests_src = import_module(tests_src_mod_name)
-        return generate_from_tests(
-            runner_name='operations',
-            handler_name=handler_name,
-            src=tests_src,
-            fork_name=fork_name,
-        )
-
-    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
+specs = (spec_phase0, spec_altair, spec_merge)
 
 
 if __name__ == "__main__":
@@ -40,24 +17,33 @@ if __name__ == "__main__":
         'proposer_slashing',
         'voluntary_exit',
     ]}
-    phase_1_mods = {**{key: 'eth2spec.test.phase1.block_processing.test_process_' + key for key in [
-        'attestation',
-        'chunk_challenge',
-        'custody_key_reveal',
-        'custody_slashing',
-        'early_derived_secret_reveal',
-        'shard_transition',
-    ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against phase 1 spec)
+    altair_mods = {
+        **{key: 'eth2spec.test.altair.block_processing.test_process_' + key for key in [
+            'sync_committee',
+        ]},
+        **phase_0_mods,
+    }  # also run the previous phase 0 tests
 
-    gen_runner.run_generator(f"operations", [
-        create_provider(PHASE0, key, mod_name, 'minimal') for key, mod_name in phase_0_mods.items()
-    ])
-    gen_runner.run_generator(f"operations", [
-        create_provider(PHASE0, key, mod_name, 'mainnet') for key, mod_name in phase_0_mods.items()
-    ])
-    gen_runner.run_generator(f"operations", [
-        create_provider(PHASE1, key, mod_name, 'minimal') for key, mod_name in phase_1_mods.items()
-    ])
-    gen_runner.run_generator(f"operations", [
-        create_provider(PHASE1, key, mod_name, 'mainnet') for key, mod_name in phase_1_mods.items()
-    ])
+    merge_mods = {
+        **{key: 'eth2spec.test.merge.block_processing.test_process_' + key for key in [
+            'execution_payload',
+        ]},
+        **phase_0_mods,  # TODO: runs phase0 tests. Rebase to include `altair_mods` testing later.
+    }
+
+    # TODO Custody Game testgen is disabled for now
+    # custody_game_mods = {**{key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
+    #     'attestation',
+    #     'chunk_challenge',
+    #     'custody_key_reveal',
+    #     'custody_slashing',
+    #     'early_derived_secret_reveal',
+    # ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against custody game spec)
+
+    all_mods = {
+        PHASE0: phase_0_mods,
+        ALTAIR: altair_mods,
+        MERGE: merge_mods,
+    }
+
+    run_state_test_generators(runner_name="operations", specs=specs, all_mods=all_mods)

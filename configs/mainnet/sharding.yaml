@@ -1,0 +1,45 @@
+# Mainnet preset - Sharding
+
+# Fork
+# ---------------------------------------------------------------
+SHARDING_FORK_VERSION: 0x03000000
+# TBD, temporarily max uint64 value: 2**64 - 1
+SHARDING_FORK_EPOCH: 18446744073709551615
+
+
+# Beacon-chain
+# ---------------------------------------------------------------
+# Misc
+# 2**10 (= 1,024)
+MAX_SHARDS: 1024
+# 2**6 = 64
+INITIAL_ACTIVE_SHARDS: 64
+# 2**3 (= 8)
+GASPRICE_ADJUSTMENT_COEFFICIENT: 8
+# 2**4 (= 16)
+MAX_SHARD_PROPOSER_SLASHINGS: 16
+
+# Shard block configs
+# ---------------------------------------------------------------
+MAX_SHARD_HEADERS_PER_SHARD: 4
+# 2**11 (= 2,048)
+MAX_SAMPLES_PER_BLOCK: 2048
+# 2**10 (= 1,1024)
+TARGET_SAMPLES_PER_BLOCK: 1024
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**33 (= 8,589,934,592) Gwei
+MAX_GASPRICE: 8589934592
+# 2**3 (= 8) Gwei
+MIN_GASPRICE: 8
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**8 (= 256) | epochs
+SHARD_COMMITTEE_PERIOD: 256
+
+# Signature domains
+# ---------------------------------------------------------------
+DOMAIN_SHARD_PROPOSER: 0x80000000
+DOMAIN_SHARD_COMMITTEE: 0x81000000
