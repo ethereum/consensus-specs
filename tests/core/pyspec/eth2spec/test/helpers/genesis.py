@@ -69,9 +69,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork not in FORKS_BEFORE_ALTAIR:
         # Fill in sync committees
-        state.current_sync_committee = spec.get_sync_committee(state, spec.get_current_epoch(state))
-        state.next_sync_committee = (
-            spec.get_sync_committee(state, spec.get_current_epoch(state) + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-        )
+        current_period = spec.get_current_epoch(state) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+        previous_period = current_period - min(1, current_period)
+        current_base_epoch = current_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+        previous_base_epoch = previous_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+
+        state.current_sync_committee = spec.get_sync_committee(state, previous_base_epoch)
+        state.next_sync_committee = spec.get_sync_committee(state, current_base_epoch)
 
     return state

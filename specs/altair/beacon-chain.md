@@ -281,11 +281,12 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     Note: This function is not stable during a sync committee period as
     a validator's effective balance may change enough to affect the sampling.
     """
+    assert epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0
+
     MAX_RANDOM_BYTE = 2**8 - 1
-    base_epoch = Epoch((max(epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD, 1) - 1) * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-    active_validator_indices = get_active_validator_indices(state, base_epoch)
+    active_validator_indices = get_active_validator_indices(state, epoch)
     active_validator_count = uint64(len(active_validator_indices))
-    seed = get_seed(state, base_epoch, DOMAIN_SYNC_COMMITTEE)
+    seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     i = 0
     sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
@@ -689,6 +690,7 @@ def process_participation_flag_updates(state: BeaconState) -> None:
 def process_sync_committee_updates(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + Epoch(1)
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
+        print("HEEEREEE")
         state.current_sync_committee = state.next_sync_committee
         state.next_sync_committee = get_sync_committee(state, next_epoch)
 ```
@@ -735,8 +737,13 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     state.genesis_validators_root = hash_tree_root(state.validators)
 
     # [New in Altair] Fill in sync committees
-    state.current_sync_committee = get_sync_committee(state, get_current_epoch(state))
-    state.next_sync_committee = get_sync_committee(state, get_current_epoch(state) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    current_period = get_current_epoch(state) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    previous_period = current_period - min(1, current_period)
+    current_base_epoch = current_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    previous_base_epoch = previous_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+
+    state.current_sync_committee = get_sync_committee(state, previous_base_epoch)
+    state.next_sync_committee = get_sync_committee(state, current_base_epoch)
 
     return state
 ```

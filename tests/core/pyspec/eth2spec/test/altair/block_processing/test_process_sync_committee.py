@@ -345,10 +345,10 @@ def test_valid_signature_future_committee(spec, state):
     transition_to(spec, state, slot_in_future_sync_committee_period)
 
     sync_committee = state.current_sync_committee
+    next_sync_committee = state.next_sync_committee
+    expected_next_sync_committee = spec.get_sync_committee(state, epoch_in_future_sync_committee_period)
 
-    expected_sync_committee = spec.get_sync_committee(state, epoch_in_future_sync_committee_period)
-
-    assert sync_committee == expected_sync_committee
+    assert next_sync_committee == expected_next_sync_committee
     assert sync_committee != old_current_sync_committee
     assert sync_committee != old_next_sync_committee
 

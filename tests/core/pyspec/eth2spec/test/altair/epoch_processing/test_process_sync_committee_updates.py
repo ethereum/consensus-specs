@@ -40,7 +40,7 @@ def run_sync_committees_progress_test(spec, state):
     # Can compute the third committee having computed final balances in the last epoch
     # of this `EPOCHS_PER_SYNC_COMMITTEE_PERIOD`
     current_epoch = spec.get_current_epoch(state)
-    third_sync_committee = spec.get_sync_committee(state, current_epoch + 2 * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    third_sync_committee = spec.get_sync_committee(state, current_epoch + 1)
 
     assert state.current_sync_committee == second_sync_committee
     assert state.next_sync_committee == third_sync_committee
