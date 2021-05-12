@@ -606,6 +606,10 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ```python
 def process_inactivity_updates(state: BeaconState) -> None:
+    # Score updates Based on previous epoch participation, skip genesis epoch
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     for index in get_eligible_validator_indices(state):
         # Increase inactivity score of inactive validators
         if index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)):

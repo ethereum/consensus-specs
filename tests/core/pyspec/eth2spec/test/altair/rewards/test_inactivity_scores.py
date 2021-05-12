@@ -8,12 +8,9 @@ from eth2spec.test.context import (
     single_phase,
     low_balances, misc_balances,
 )
+from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 from eth2spec.test.helpers.rewards import leaking
 import eth2spec.test.helpers.rewards as rewards_helpers
-
-
-def randomize_inactivity_scores(spec, state, minimum=0, maximum=50000, rng=Random(4242)):
-    state.inactivity_scores = [rng.randint(minimum, maximum) for _ in range(len(state.validators))]
 
 
 @with_altair_and_later
