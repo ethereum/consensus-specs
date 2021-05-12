@@ -262,7 +262,7 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
     """
     Return the sequence of sync committee indices for a given ``state`` and ``epoch``.
-    Note: Committee can contain duplicate indices for small validator sets (< 2 * SYNC_COMMITTEE_SIZE)
+    Note: Committee can contain duplicate indices for small validator sets (< SYNC_COMMITTEE_SIZE + 128)
 
     Note: This function is not stable during a sync committee period as
     a validator's effective balance may change enough to affect the sampling.
