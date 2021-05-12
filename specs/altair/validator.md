@@ -177,7 +177,6 @@ At any given `epoch`, the `BeaconState` contains the current `SyncCommittee` and
 Once every `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs, the next `SyncCommittee` becomes the current `SyncCommittee` and the next committee is computed and stored.
 
 *Note*: The data required to compute a given committee is not cached in the `BeaconState` after committees are calculated at the period boundaries.
-This means that calling `get_sync_commitee()` in a given `epoch` can return a different result than what was computed during the relevant epoch transition.
 For this reason, *always* get committee assignments via the fields of the `BeaconState` (`current_sync_committee` and `next_sync_committee`) or use the above reference code.
 
 A validator should plan for future sync committee assignments by noting which sync committee periods they are selected for participation.
@@ -229,12 +228,12 @@ def process_sync_committee_contributions(block: BeaconBlock,
                                          contributions: Set[SyncCommitteeContribution]) -> None:
     sync_aggregate = SyncAggregate()
     signatures = []
+    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 
     for contribution in contributions:
         subcommittee_index = contribution.subcommittee_index
         for index, participated in enumerate(contribution.aggregation_bits):
             if participated:
-                sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
                 participant_index = sync_subcommittee_size * subcommittee_index + index
                 sync_aggregate.sync_committee_bits[participant_index] = True
         signatures.append(contribution.signature)
@@ -367,7 +366,7 @@ Set `contribution.subcommittee_index` to the index for the subcommittee index co
 ###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
-An aggregator finds the index in the sync committee (as returned by `get_sync_committee_indices()`) for a given validator referenced by `sync_committee_signature.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
+An aggregator finds the index in the sync committee (as determined by a reverse pubkey lookup on `state.current_sync_committee.pubkeys`) for a given validator referenced by `sync_committee_signature.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
 
 For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution.
 
