@@ -752,7 +752,7 @@ Clients MUST keep a record of signed blocks seen on the epoch range
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 
-Peers are *repeatedly* unable to reply to Block requests within the
+Peers that are unable to reply to block requests within the
 `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epoch range MAY get descored or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
@@ -763,7 +763,7 @@ proposer signatures and (2) that the blocks form a valid chain up to the most
 recent block referenced in the weak subjectivity state.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
-participating in the networking immediately, other peers that are actively block syncing MAY
+participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the first block that exists in the range, if they have it,
