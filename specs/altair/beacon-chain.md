@@ -28,7 +28,6 @@
   - [`Predicates`](#predicates)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Misc](#misc-2)
-    - [`get_flag_indices_and_weights`](#get_flag_indices_and_weights)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -99,6 +98,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 | Name | Value |
 | - | - |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_HEAD_WEIGHT, TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT]` |
 
 ## Configuration
 
@@ -232,20 +232,6 @@ def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, s
 
 ### Misc
 
-#### `get_flag_indices_and_weights`
-
-```python
-def get_flag_indices_and_weights() -> Sequence[Tuple[int, uint64]]:
-    """
-    Return paired tuples of participation flag indices along with associated incentivization weights.
-    """
-    return (
-        (TIMELY_HEAD_FLAG_INDEX, TIMELY_HEAD_WEIGHT),
-        (TIMELY_SOURCE_FLAG_INDEX, TIMELY_SOURCE_WEIGHT),
-        (TIMELY_TARGET_FLAG_INDEX, TIMELY_TARGET_WEIGHT),
-    )
-```
-
 #### `add_flag`
 
 ```python
@@ -277,6 +263,8 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     """
     Return the sequence of sync committee indices (which may include duplicate indices)
     for the next sync committee, given a ``state`` at a sync committee period boundary.
+
+    Note: Committee can contain duplicate indices for small validator sets (< SYNC_COMMITTEE_SIZE + 128)
     """
     epoch = Epoch(get_current_epoch(state) + 1)
 
@@ -291,7 +279,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
         candidate_index = active_validator_indices[shuffled_index]
         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:  # Sample with replacement
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             sync_committee_indices.append(candidate_index)
         i += 1
     return sync_committee_indices
@@ -312,8 +300,8 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     returns duplicate indices. Implementations must take care when handling
     optimizations relating to aggregation and verification in the presence of duplicates.
 
-    Note: This function should only be called at sync committee period boundaries, as
-    ``get_next_sync_committee_indices`` is not stable within a given period.
+    Note: This function should only be called at sync committee period boundaries by ``process_sync_committee_updates``
+    as ``get_next_sync_committee_indices`` is not stable within a given period.
     """
     indices = get_next_sync_committee_indices(state)
     pubkeys = [state.validators[index].pubkey for index in indices]
@@ -365,34 +353,30 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
 #### `get_flag_index_deltas`
 
 ```python
-def get_flag_index_deltas(state: BeaconState, flag_index: int, weight: uint64) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` scaled by ``weight`` by scanning through the participation flags.
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
-    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, get_previous_epoch(state))
-    increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from balances to avoid uint64 overflow
-    unslashed_participating_increments = get_total_balance(state, unslashed_participating_indices) // increment
-    active_increments = get_total_active_balance(state) // increment
+    previous_epoch = get_previous_epoch(state)
+    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, previous_epoch)
+    weight = PARTICIPATION_FLAG_WEIGHTS[flag_index]
+    unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
+    unslashed_participating_increments = unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
+    active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
-            if is_in_inactivity_leak(state):
-                # This flag reward cancels the inactivity penalty corresponding to the flag index
-                rewards[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
-            else:
+            if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
-        else:
+        elif flag_index != TIMELY_HEAD_FLAG_INDEX:
             penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
     return rewards, penalties
 ```
 
 #### Modified `get_inactivity_penalty_deltas`
-
-*Note*: The function `get_inactivity_penalty_deltas` is modified in the selection of matching target indices
-and the removal of `BASE_REWARDS_PER_EPOCH`.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -405,9 +389,6 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
         previous_epoch = get_previous_epoch(state)
         matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
         for index in get_eligible_validator_indices(state):
-            for (_, weight) in get_flag_indices_and_weights():
-                # This inactivity penalty cancels the flag reward corresponding to the flag index
-                penalties[index] += Gwei(get_base_reward(state, index) * weight // WEIGHT_DENOMINATOR)
             if index not in matching_target_indices:
                 penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
                 penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
@@ -501,7 +482,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Update epoch participation flags
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, data, attestation.aggregation_bits):
-        for flag_index, weight in get_flag_indices_and_weights():
+        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * weight
@@ -643,8 +624,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    flag_indices_and_numerators = get_flag_indices_and_weights()
-    flag_deltas = [get_flag_index_deltas(state, index, numerator) for (index, numerator) in flag_indices_and_numerators]
+    flag_deltas = [get_flag_index_deltas(state, flag_index) for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))]
     deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
     for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):
