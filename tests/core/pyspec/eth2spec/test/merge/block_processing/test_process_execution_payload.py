@@ -22,22 +22,28 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     yield 'execution', {'execution_valid': execution_valid}
     yield 'execution_payload', execution_payload
 
+    called_new_block = False
 
-    spec.verify_execution_state_transition_ret_value = execution_valid
+    class TestEngine(spec.NoopExecutionEngine):
+        def new_block(self, payload) -> bool:
+            nonlocal called_new_block, execution_valid
+            called_new_block = True
+            assert payload == execution_payload
+            return execution_valid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload))
+        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
         yield 'post', None
-        spec.verify_execution_state_transition_ret_value = True
         return
 
-    spec.process_execution_payload(state, execution_payload)
+    spec.process_execution_payload(state, execution_payload, TestEngine())
+
+    # Make sure we called the engine
+    assert called_new_block
 
     yield 'post', state
 
     assert state.latest_execution_payload_header == get_execution_payload_header(spec, execution_payload)
-
-    spec.verify_execution_state_transition_ret_value = True
 
 
 @with_merge_and_later

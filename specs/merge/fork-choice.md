@@ -8,11 +8,16 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-  - [Helpers](#helpers)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`set_head`](#set_head)
+    - [`finalize_block`](#finalize_block)
+- [Containers](#containers)
     - [`PowBlock`](#powblock)
+- [Helper functions](#helper-functions)
     - [`get_pow_block`](#get_pow_block)
     - [`is_valid_transition_block`](#is_valid_transition_block)
-  - [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Updated fork-choice handlers](#updated-fork-choice-handlers)
     - [`on_block`](#on_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -24,7 +29,44 @@ This is the modification of the fork choice according to the executable beacon c
 
 *Note*: It introduces the process of transition from the last PoW block to the first PoS block.
 
-### Helpers
+## Protocols
+
+### `ExecutionEngine`
+
+The following methods are added to the `ExecutionEngine` protocol for use in the fork choice:
+
+#### `set_head`
+
+Re-organizes the execution payload chain and corresponding state to make `block_hash` the head.
+
+The body of this function is implementation dependent.
+The Consensus API may be used to implement this with an external execution engine.
+
+```python
+def set_head(self: ExecutionEngine, block_hash: Hash32) -> bool:
+    """
+    Returns True if the ``block_hash`` was successfully set as head of the execution payload chain.
+    """
+    ...
+```
+
+#### `finalize_block`
+
+Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
+and corresponding state, up to and including `block_hash`.
+
+The body of this function is implementation dependent.
+The Consensus API may be used to implement this with an external execution engine.
+
+```python
+def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
+    """
+    Returns True if the data up to and including ``block_hash`` was successfully finalized.
+    """
+    ...
+```
+
+## Containers
 
 #### `PowBlock`
 
@@ -35,6 +77,8 @@ class PowBlock(Container):
     is_valid: boolean
     total_difficulty: uint256
 ```
+
+## Helper functions
 
 #### `get_pow_block`
 
@@ -52,7 +96,7 @@ def is_valid_transition_block(block: PowBlock) -> bool:
     return block.is_valid and is_total_difficulty_reached
 ```
 
-### Updated fork-choice handlers
+## Updated fork-choice handlers
 
 #### `on_block`
 
