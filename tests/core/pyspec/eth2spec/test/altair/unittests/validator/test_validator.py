@@ -8,7 +8,11 @@ from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.test.context import (
     with_altair_and_later,
+    with_configs,
     with_state,
+)
+from eth2spec.test.helpers.constants import (
+    MINIMAL,
 )
 
 rng = random.Random(1337)
@@ -91,6 +95,7 @@ def _get_sync_committee_signature(
 
 @only_with_bls()
 @with_altair_and_later
+@with_configs([MINIMAL], reason="too slow")
 @with_state
 def test_process_sync_committee_contributions(phases, spec, state):
     # skip over slots at genesis
@@ -143,20 +148,63 @@ def _subnet_for_sync_committee_index(spec, i):
     return i // (spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT)
 
 
+def _get_expected_subnets_by_pubkey(sync_committee_members):
+    expected_subnets_by_pubkey = defaultdict(list)
+    for (subnet, pubkey) in sync_committee_members:
+        expected_subnets_by_pubkey[pubkey].append(subnet)
+    return expected_subnets_by_pubkey
+
+
 @with_altair_and_later
+@with_configs([MINIMAL], reason="too slow")
 @with_state
 def test_compute_subnets_for_sync_committee(state, spec, phases):
+    # Transition to the head of the next period
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+
+    next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
+    assert (
+        spec.compute_sync_committee_period(spec.get_current_epoch(state))
+        == spec.compute_sync_committee_period(next_slot_epoch)
+    )
     some_sync_committee_members = list(
         (
             _subnet_for_sync_committee_index(spec, i),
             pubkey,
         )
+        # use current_sync_committee
         for i, pubkey in enumerate(state.current_sync_committee.pubkeys)
     )
+    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
 
-    expected_subnets_by_pubkey = defaultdict(list)
-    for (subnet, pubkey) in some_sync_committee_members:
-        expected_subnets_by_pubkey[pubkey].append(subnet)
+    for _, pubkey in some_sync_committee_members:
+        validator_index = _validator_index_for_pubkey(state, pubkey)
+        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        expected_subnets = expected_subnets_by_pubkey[pubkey]
+        assert subnets == expected_subnets
+
+
+@with_altair_and_later
+@with_configs([MINIMAL], reason="too slow")
+@with_state
+def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec, phases):
+    # Transition to the end of the period
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 1)
+
+    next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
+    assert (
+        spec.compute_sync_committee_period(spec.get_current_epoch(state))
+        != spec.compute_sync_committee_period(next_slot_epoch)
+    )
+    some_sync_committee_members = list(
+        (
+            _subnet_for_sync_committee_index(spec, i),
+            pubkey,
+        )
+        # use next_sync_committee
+        for i, pubkey in enumerate(state.next_sync_committee.pubkeys)
+    )
+    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
