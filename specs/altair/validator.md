@@ -271,7 +271,7 @@ If a validator is in the current sync committee (i.e. `is_assigned_to_sync_commi
 This logic is triggered upon the same conditions as when producing an attestation.
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
 
-`get_sync_committee_signature()` assumes `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
+`get_sync_committee_signature(state, block_root, validator_index, privkey)` assumes the parameter `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
 def get_sync_committee_signature(state: BeaconState,
@@ -291,7 +291,7 @@ def get_sync_committee_signature(state: BeaconState,
 The validator broadcasts the assembled signature to the assigned subnet, the `sync_committee_{subnet_id}` pubsub topic.
 
 The `subnet_id` is derived from the position in the sync committee such that the sync committee is divided into "subcommittees".
-`subnet_id` can be computed via `compute_subnets_for_sync_committee()` where `state` is a `BeaconState` during the matching sync committee period.
+`subnet_id` can be computed via `compute_subnets_for_sync_committee(state, validator_index)` where `state` is a `BeaconState` during the matching sync committee period.
 
 *Note*: This function returns multiple subnets if a given validator index is included multiple times in a given sync committee across multiple subcommittees.
 
