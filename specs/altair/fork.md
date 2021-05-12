@@ -38,7 +38,11 @@ Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ALTAIR_FORK_EPOCH`, an irregular state change is made to upgrade to Altair.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ALTAIR_FORK_EPOCH`, an irregular state change is made to upgrade to Altair.
+
+The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `ALTAIR_FORK_EPOCH * SLOTS_PER_EPOCH`.
+Care must be taken when transitioning through the fork boundary as implementations will need a modified state transition function that deviates from the Phase 0 spec.
+In particular, the outer `state_transition` function defined in the Phase 0 spec will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead the logic must be within `process_slots`.
 
 ```python
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
@@ -80,8 +84,10 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         # Inactivity
         inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
+
     # Fill in sync committees
-    post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
-    post.next_sync_committee = get_sync_committee(post, get_current_epoch(post) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    # Note: A duplicate committee is assigned for the current and next committee at the fork boundary
+    post.current_sync_committee = get_next_sync_committee(post)
+    post.next_sync_committee = get_next_sync_committee(post)
     return post
 ```

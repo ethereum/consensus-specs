@@ -136,7 +136,9 @@ A brief reference for what these values look like in practice ([reference script
 
 ## Weak Subjectivity Sync
 
-Clients should allow users to input a Weak Subjectivity Checkpoint at startup, and guarantee that any successful sync leads to the given Weak Subjectivity Checkpoint along the canonical chain. If such a sync is not possible, the client should treat this as a critical and irrecoverable failure.
+Clients should allow users to input a Weak Subjectivity Checkpoint at startup,
+and guarantee that any successful sync leads to the given Weak Subjectivity Checkpoint along the canonical chain.
+If such a sync is not possible, the client should treat this as a critical and irrecoverable failure.
 
 ### Weak Subjectivity Sync Procedure
 
