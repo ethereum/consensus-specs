@@ -32,8 +32,8 @@
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [`get_sync_committee_indices`](#get_sync_committee_indices)
-    - [`get_sync_committee`](#get_sync_committee)
+    - [`get_next_sync_committee_indices`](#get_next_sync_committee_indices)
+    - [`get_next_sync_committee`](#get_next_sync_committee)
     - [`get_base_reward_per_increment`](#get_base_reward_per_increment)
     - [`get_base_reward`](#get_base_reward)
     - [`get_unslashed_participating_indices`](#get_unslashed_participating_indices)
@@ -270,15 +270,15 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 
 ### Beacon state accessors
 
-#### `get_sync_committee_indices`
+#### `get_next_sync_committee_indices`
 
 ```python
-def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     """
     Return the sequence of sync committee indices (which may include duplicate indices)
-    for a given ``state`` and ``epoch`` at a sync committee period boundary.
+    for the next sync committee, given a ``state`` at a sync committee period boundary.
     """
-    assert epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0
+    epoch = Epoch(get_current_epoch(state) + 1)
 
     MAX_RANDOM_BYTE = 2**8 - 1
     active_validator_indices = get_active_validator_indices(state, epoch)
@@ -297,25 +297,25 @@ def get_sync_committee_indices(state: BeaconState, epoch: Epoch) -> Sequence[Val
     return sync_committee_indices
 ```
 
-#### `get_sync_committee`
+#### `get_next_sync_committee`
 
 ```python
-def get_sync_committee(state: BeaconState, epoch: Epoch) -> SyncCommittee:
+def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     """
-    Return the *next* sync committee for a given ``state`` and ``epoch``.
+    Return the *next* sync committee for a given ``state``.
 
     ``SyncCommittee`` contains an aggregate pubkey that enables
     resource-constrained clients to save some computation when verifying
     the sync committee's signature.
 
-    ``SyncCommittee`` can also contain duplicate pubkeys, when ``get_sync_committee_indices``
+    ``SyncCommittee`` can also contain duplicate pubkeys, when ``get_next_sync_committee_indices``
     returns duplicate indices. Implementations must take care when handling
     optimizations relating to aggregation and verification in the presence of duplicates.
 
     Note: This function should only be called at sync committee period boundaries, as
-    ``get_sync_committee_indices`` is not stable within a given period.
+    ``get_next_sync_committee_indices`` is not stable within a given period.
     """
-    indices = get_sync_committee_indices(state, epoch)
+    indices = get_next_sync_committee_indices(state)
     pubkeys = [state.validators[index].pubkey for index in indices]
     aggregate_pubkey = bls.AggregatePKs(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
@@ -688,7 +688,7 @@ def process_sync_committee_updates(state: BeaconState) -> None:
     next_epoch = get_current_epoch(state) + Epoch(1)
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
         state.current_sync_committee = state.next_sync_committee
-        state.next_sync_committee = get_sync_committee(state, next_epoch)
+        state.next_sync_committee = get_next_sync_committee(state)
 ```
 
 ## Initialize state for pure Altair testnets and test vectors
@@ -733,13 +733,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     state.genesis_validators_root = hash_tree_root(state.validators)
 
     # [New in Altair] Fill in sync committees
-    current_period = get_current_epoch(state) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    previous_period = current_period - min(1, current_period)
-    current_base_epoch = current_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    previous_base_epoch = previous_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-
-    state.current_sync_committee = get_sync_committee(state, previous_base_epoch)
-    state.next_sync_committee = get_sync_committee(state, current_base_epoch)
+    # Note: A duplicate committee is assigned for the current and next committee at genesis
+    state.current_sync_committee = get_next_sync_committee(state)
+    state.next_sync_committee = get_next_sync_committee(state)
 
     return state
 ```

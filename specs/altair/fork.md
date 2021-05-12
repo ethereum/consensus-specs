@@ -86,12 +86,8 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     )
 
     # Fill in sync committees
-    current_period = epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    previous_period = current_period - min(1, current_period)
-    current_base_epoch = current_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    previous_base_epoch = previous_period * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-
-    post.current_sync_committee = get_sync_committee(post, previous_base_epoch)
-    post.next_sync_committee = get_sync_committee(post, current_base_epoch)
+    # Note: A duplicate committee is assigned for the current and next committee at the fork boundary
+    post.current_sync_committee = get_next_sync_committee(post)
+    post.next_sync_committee = get_next_sync_committee(post)
     return post
 ```
