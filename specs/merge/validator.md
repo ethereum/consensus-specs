@@ -90,5 +90,5 @@ def get_execution_payload(state: BeaconState, execution_engine: ExecutionEngine)
     # Post-merge, normal payload
     execution_parent_hash = state.latest_execution_payload_header.block_hash
     timestamp = compute_time_at_slot(state, state.slot)
-    return produce_execution_payload(execution_parent_hash, timestamp)
+    return execution_engine.assemble_block(execution_parent_hash, timestamp)
 ```

@@ -216,7 +216,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, execution_payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState,
+                              execution_payload: ExecutionPayload,
+                              execution_engine: ExecutionEngine) -> None:
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
