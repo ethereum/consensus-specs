@@ -11,7 +11,7 @@ from .helpers.constants import (
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
 )
 from .helpers.genesis import create_genesis_state
-from .utils import vector_test, with_meta_tags
+from .utils import vector_test, with_meta_tags, build_transition_test
 
 from random import Random
 from typing import Any, Callable, Sequence, TypedDict, Protocol
@@ -383,3 +383,38 @@ def is_post_merge(spec):
 
 with_altair_and_later = with_phases([ALTAIR])  # TODO: include Merge, but not until Merge work is rebased.
 with_merge_and_later = with_phases([MERGE])
+
+
+def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):
+    """
+    A decorator to construct a "transition" test from one fork of the eth2 spec
+    to another.
+
+    Decorator assumes a transition from the `pre_fork_name` fork to the
+    `post_fork_name` fork. The user can supply a `fork_epoch` at which the
+    fork occurs or they must compute one (yielding to the generator) during the test
+    if more custom behavior is desired.
+
+    A test using this decorator should expect to receive as parameters:
+    `state`: the default state constructed for the `pre_fork_name` fork
+        according to the `with_state` decorator.
+    `fork_epoch`: the `fork_epoch` provided to this decorator, if given.
+    `spec`: the version of the eth2 spec corresponding to `pre_fork_name`.
+    `post_spec`: the version of the eth2 spec corresponding to `post_fork_name`.
+    `pre_tag`: a function to tag data as belonging to `pre_fork_name` fork.
+        Used to discriminate data during consumption of the generated spec tests.
+    `post_tag`: a function to tag data as belonging to `post_fork_name` fork.
+        Used to discriminate data during consumption of the generated spec tests.
+    """
+    def _wrapper(fn):
+        @with_phases([pre_fork_name], other_phases=[post_fork_name])
+        @spec_test
+        @with_state
+        def _adapter(*args, **kwargs):
+            wrapped = build_transition_test(fn,
+                                            pre_fork_name,
+                                            post_fork_name,
+                                            fork_epoch=fork_epoch)
+            return wrapped(*args, **kwargs)
+        return _adapter
+    return _wrapper
