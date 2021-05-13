@@ -22,6 +22,8 @@ EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
 # ---------------------------------------------------------------
 # 2**2 (= 4)
 INACTIVITY_SCORE_BIAS: 4
+# 2**4 (= 16)
+INACTIVITY_SCORE_RECOVERY_RATE: 16
 
 
 # Signature domains
