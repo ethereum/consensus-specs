@@ -43,8 +43,8 @@ The following methods are added to the `ExecutionEngine` protocol for use as a v
 
 #### `assemble_block`
 
-Produces a new instance of an execution payload, with the specified timestamp,
-on top of the execution payload chain tip identified by `block_head`.
+Produces a new instance of an execution payload, with the specified `timestamp`,
+on top of the execution payload chain tip identified by `block_hash`.
 
 The body of this function is implementation dependent.
 The Consensus API may be used to implement this with an external execution engine.

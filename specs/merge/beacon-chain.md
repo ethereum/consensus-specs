@@ -150,7 +150,7 @@ The following methods are added to the `ExecutionEngine` protocol for use in the
 
 #### `new_block`
 
-Verifies the given `ExecutionPayload` with respect to execution state transition, and persists changes if valid.
+Verifies the given `execution_payload` with respect to execution state transition, and persists changes if valid.
 
 The body of this function is implementation dependent.
 The Consensus API may be used to implement this with an external execution engine.
