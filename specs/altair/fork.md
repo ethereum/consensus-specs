@@ -45,6 +45,20 @@ Care must be taken when transitioning through the fork boundary as implementatio
 In particular, the outer `state_transition` function defined in the Phase 0 spec will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead the logic must be within `process_slots`.
 
 ```python
+def translate_participation(state: BeaconState, pending_attestations: Sequence[phase0.PendingAttestation]) -> None:
+    for attestation in pending_attestations:
+        data = attestation.data
+        inclusion_delay = attestation.inclusion_delay
+        # Translate attestation inclusion info to flag indices
+        participation_flag_indices = get_attestation_participation_flag_indices(state, data, inclusion_delay)
+
+        # Apply flags to all attesting validators
+        epoch_participation = state.previous_epoch_participation
+        for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+            for flag_index in participation_flag_indices:
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+
+
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
     post = BeaconState(
@@ -84,6 +98,8 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         # Inactivity
         inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
+    # Fill in previous epoch participation from the pre state's pending attestations
+    translate_participation(post, pre.previous_epoch_attestations)
 
     # Fill in sync committees
     # Note: A duplicate committee is assigned for the current and next committee at the fork boundary
