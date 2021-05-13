@@ -65,6 +65,7 @@ def test_genesis(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_all_zero_inactivity_scores_empty_participation(spec, state):
+    next_epoch_via_block(spec, state)
     state.inactivity_scores = [0] * len(state.validators)
     yield from run_process_inactivity_updates(spec, state)
 

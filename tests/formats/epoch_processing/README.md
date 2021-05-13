@@ -43,5 +43,6 @@ Sub-transitions:
 - `randao_mixes_reset`
 - `historical_roots_update`
 - `participation_record_updates`
+- `sync_committee_updates`
 
 The resulting state should match the expected `post` state.

@@ -606,7 +606,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ```python
 def process_inactivity_updates(state: BeaconState) -> None:
-    # Score updates Based on previous epoch participation, skip genesis epoch
+    # Score updates based on previous epoch participation, skip genesis epoch
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
