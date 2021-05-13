@@ -292,7 +292,7 @@ The validator broadcasts the assembled signature to the assigned subnet, the `sy
 The `subnet_id` is derived from the position in the sync committee such that the sync committee is divided into "subcommittees".
 `subnet_id` can be computed via `compute_subnets_for_sync_committee(state, validator_index)` where `state` is a `BeaconState` during the matching sync committee period.
 
-*Note*: This function returns multiple subnets if a given validator index is included multiple times in a given sync committee across multiple subcommittees.
+*Note*: This function returns multiple non-duplicated subnets if a given validator index is included multiple times in a given sync committee across multiple subcommittees.
 
 ```python
 def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Sequence[uint64]:
@@ -304,10 +304,10 @@ def compute_subnets_for_sync_committee(state: BeaconState, validator_index: Vali
 
     target_pubkey = state.validators[validator_index].pubkey
     sync_committee_indices = [index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey]
-    return [
+    return set([
         uint64(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
         for index in sync_committee_indices
-    ]
+    ])
 ```
 
 *Note*: Subnet assignment does not change during the duration of a validator's assignment to a given sync committee.
