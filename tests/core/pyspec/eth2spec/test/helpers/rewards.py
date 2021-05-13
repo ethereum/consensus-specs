@@ -62,13 +62,13 @@ def run_deltas(spec, state):
 
     if is_post_altair(spec):
         def get_source_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX)
 
         def get_head_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX, spec.TIMELY_HEAD_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX)
 
         def get_target_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX, spec.TIMELY_TARGET_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX)
 
     yield from run_attestation_component_deltas(
         spec,
@@ -133,14 +133,23 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
         validator = state.validators[index]
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
-            if enough_for_reward:
-                assert rewards[index] > 0
+            if is_post_altair(spec):
+                if not spec.is_in_inactivity_leak(state) and enough_for_reward:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
             else:
-                assert rewards[index] == 0
+                if enough_for_reward:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
+
             assert penalties[index] == 0
         else:
             assert rewards[index] == 0
-            if enough_for_reward:
+            if is_post_altair(spec) and 'head' in deltas_name:
+                assert penalties[index] == 0
+            elif enough_for_reward:
                 assert penalties[index] > 0
             else:
                 assert penalties[index] == 0
@@ -225,18 +234,19 @@ def run_get_inactivity_penalty_deltas(spec, state):
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
-            else:
-                base_penalty = sum(
-                    base_reward * numerator // spec.WEIGHT_DENOMINATOR
-                    for (_, numerator) in spec.get_flag_indices_and_weights()
-                )
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices or not has_enough_for_leak_penalty(spec, state, index):
-                assert penalties[index] == base_penalty
+                if is_post_altair(spec):
+                    assert penalties[index] == 0
+                else:
+                    assert penalties[index] == base_penalty
             else:
-                assert penalties[index] > base_penalty
+                if is_post_altair(spec):
+                    assert penalties[index] > 0
+                else:
+                    assert penalties[index] > base_penalty
         else:
             assert penalties[index] == 0
 

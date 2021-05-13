@@ -23,6 +23,7 @@ The current features are:
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
 * [P2P Networking](specs/phase0/p2p-interface.md)
+* [Weak Subjectivity](specs/phase0/weak-subjectivity.md)
 
 ### Altair
 

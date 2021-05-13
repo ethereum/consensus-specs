@@ -7,11 +7,11 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR,
+    PHASE0, ALTAIR, MERGE,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
 )
 from .helpers.genesis import create_genesis_state
-from .utils import vector_test, with_meta_tags
+from .utils import vector_test, with_meta_tags, build_transition_test
 
 from random import Random
 from typing import Any, Callable, Sequence, TypedDict, Protocol
@@ -312,7 +312,7 @@ def with_phases(phases, other_phases=None):
                     return None
                 run_phases = [phase]
 
-            if PHASE0 not in run_phases and ALTAIR not in run_phases:
+            if PHASE0 not in run_phases and ALTAIR not in run_phases and MERGE not in run_phases:
                 dump_skipping_message("none of the recognized phases are executable, skipping test.")
                 return None
 
@@ -330,6 +330,8 @@ def with_phases(phases, other_phases=None):
                 phase_dir[PHASE0] = spec_phase0
             if ALTAIR in available_phases:
                 phase_dir[ALTAIR] = spec_altair
+            if MERGE in available_phases:
+                phase_dir[MERGE] = spec_merge
 
             # return is ignored whenever multiple phases are ran.
             # This return is for test generators to emit python generators (yielding test vector outputs)
@@ -337,6 +339,8 @@ def with_phases(phases, other_phases=None):
                 ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
             if ALTAIR in run_phases:
                 ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
+            if MERGE in run_phases:
+                ret = fn(spec=spec_merge, phases=phase_dir, *args, **kw)
 
             # TODO: merge, sharding, custody_game and das are not executable yet.
             #  Tests that specify these features will not run, and get ignored for these specific phases.
@@ -362,6 +366,55 @@ def with_configs(configs, reason=None):
 
 
 def is_post_altair(spec):
+    if spec.fork == MERGE:  # TODO: remove parallel Altair-Merge condition after rebase.
+        return False
     if spec.fork in FORKS_BEFORE_ALTAIR:
         return False
     return True
+
+
+def is_post_merge(spec):
+    if spec.fork == ALTAIR:  # TODO: remove parallel Altair-Merge condition after rebase.
+        return False
+    if spec.fork in FORKS_BEFORE_MERGE:
+        return False
+    return True
+
+
+with_altair_and_later = with_phases([ALTAIR])  # TODO: include Merge, but not until Merge work is rebased.
+with_merge_and_later = with_phases([MERGE])
+
+
+def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):
+    """
+    A decorator to construct a "transition" test from one fork of the eth2 spec
+    to another.
+
+    Decorator assumes a transition from the `pre_fork_name` fork to the
+    `post_fork_name` fork. The user can supply a `fork_epoch` at which the
+    fork occurs or they must compute one (yielding to the generator) during the test
+    if more custom behavior is desired.
+
+    A test using this decorator should expect to receive as parameters:
+    `state`: the default state constructed for the `pre_fork_name` fork
+        according to the `with_state` decorator.
+    `fork_epoch`: the `fork_epoch` provided to this decorator, if given.
+    `spec`: the version of the eth2 spec corresponding to `pre_fork_name`.
+    `post_spec`: the version of the eth2 spec corresponding to `post_fork_name`.
+    `pre_tag`: a function to tag data as belonging to `pre_fork_name` fork.
+        Used to discriminate data during consumption of the generated spec tests.
+    `post_tag`: a function to tag data as belonging to `post_fork_name` fork.
+        Used to discriminate data during consumption of the generated spec tests.
+    """
+    def _wrapper(fn):
+        @with_phases([pre_fork_name], other_phases=[post_fork_name])
+        @spec_test
+        @with_state
+        def _adapter(*args, **kwargs):
+            wrapped = build_transition_test(fn,
+                                            pre_fork_name,
+                                            post_fork_name,
+                                            fork_epoch=fork_epoch)
+            return wrapped(*args, **kwargs)
+        return _adapter
+    return _wrapper

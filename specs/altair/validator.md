@@ -74,7 +74,7 @@ This document is currently illustrative for early Altair testnets and some parts
 | Name | Value | Unit |
 | - | - | :-: |
 | `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**2` (= 4) | validators |
-| `SYNC_COMMITTEE_SUBNET_COUNT` | `8` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+| `SYNC_COMMITTEE_SUBNET_COUNT` | `4` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
 
 ## Containers
 
@@ -143,6 +143,11 @@ A validator determines beacon committee assignments and beacon block proposal du
 To determine sync committee assignments, a validator can run the following function: `is_assigned_to_sync_committee(state, epoch, validator_index)` where `epoch` is an epoch number within the current or next sync committee period.
 This function is a predicate indicating the presence or absence of the validator in the corresponding sync committee for the queried sync committee period.
 
+*Note*: Being assigned to a sync committee for a given `slot` means that the validator produces and broadcasts signatures for `slot - 1` for inclusion in `slot`.
+This means that when assigned to an `epoch` sync committee signatures must be produced and broadcast for slots on range `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
+rather than for the range `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
+To reduce complexity during the Altair fork, sync committees are not expected to produce signatures for `compute_epoch_at_slot(ALTAIR_FORK_EPOCH) - 1`.
+
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
@@ -172,7 +177,6 @@ At any given `epoch`, the `BeaconState` contains the current `SyncCommittee` and
 Once every `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs, the next `SyncCommittee` becomes the current `SyncCommittee` and the next committee is computed and stored.
 
 *Note*: The data required to compute a given committee is not cached in the `BeaconState` after committees are calculated at the period boundaries.
-This means that calling `get_sync_commitee()` in a given `epoch` can return a different result than what was computed during the relevant epoch transition.
 For this reason, *always* get committee assignments via the fields of the `BeaconState` (`current_sync_committee` and `next_sync_committee`) or use the above reference code.
 
 A validator should plan for future sync committee assignments by noting which sync committee periods they are selected for participation.
@@ -224,12 +228,12 @@ def process_sync_committee_contributions(block: BeaconBlock,
                                          contributions: Set[SyncCommitteeContribution]) -> None:
     sync_aggregate = SyncAggregate()
     signatures = []
+    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 
     for contribution in contributions:
         subcommittee_index = contribution.subcommittee_index
         for index, participated in enumerate(contribution.aggregation_bits):
             if participated:
-                sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
                 participant_index = sync_subcommittee_size * subcommittee_index + index
                 sync_aggregate.sync_committee_bits[participant_index] = True
         signatures.append(contribution.signature)
@@ -261,12 +265,12 @@ This process occurs each slot.
 
 ##### Prepare sync committee signature
 
-If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every slot in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of the current slot.
+If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of `slot - 1`.
 
 This logic is triggered upon the same conditions as when producing an attestation.
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
 
-`get_sync_committee_signature()` assumes `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
+`get_sync_committee_signature(state, block_root, validator_index, privkey)` assumes the parameter `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
 def get_sync_committee_signature(state: BeaconState,
@@ -286,17 +290,20 @@ def get_sync_committee_signature(state: BeaconState,
 The validator broadcasts the assembled signature to the assigned subnet, the `sync_committee_{subnet_id}` pubsub topic.
 
 The `subnet_id` is derived from the position in the sync committee such that the sync committee is divided into "subcommittees".
-`subnet_id` can be computed via `compute_subnets_for_sync_committee()` where `state` is a `BeaconState` during the matching sync committee period.
+`subnet_id` can be computed via `compute_subnets_for_sync_committee(state, validator_index)` where `state` is a `BeaconState` during the matching sync committee period.
 
 *Note*: This function returns multiple subnets if a given validator index is included multiple times in a given sync committee across multiple subcommittees.
 
 ```python
 def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Sequence[uint64]:
+    next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
+        sync_committee = state.current_sync_committee
+    else:
+        sync_committee = state.next_sync_committee
+
     target_pubkey = state.validators[validator_index].pubkey
-    sync_committee_indices = [
-        index for index, pubkey in enumerate(state.current_sync_committee.pubkeys)
-        if pubkey == target_pubkey
-    ]
+    sync_committee_indices = [index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey]
     return [
         uint64(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
         for index in sync_committee_indices
@@ -359,7 +366,7 @@ Set `contribution.subcommittee_index` to the index for the subcommittee index co
 ###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
-An aggregator finds the index in the sync committee (as returned by `get_sync_committee_indices()`) for a given validator referenced by `sync_committee_signature.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
+An aggregator finds the index in the sync committee (as determined by a reverse pubkey lookup on `state.current_sync_committee.pubkeys`) for a given validator referenced by `sync_committee_signature.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
 
 For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution.
 

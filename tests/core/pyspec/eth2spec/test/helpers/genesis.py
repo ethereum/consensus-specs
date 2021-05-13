@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR,
     FORKS_BEFORE_ALTAIR,
+    MERGE,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -28,6 +29,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork == ALTAIR:
         current_version = spec.ALTAIR_FORK_VERSION
+    elif spec.fork == MERGE:
+        current_version = spec.MERGE_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -66,9 +69,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork not in FORKS_BEFORE_ALTAIR:
         # Fill in sync committees
-        state.current_sync_committee = spec.get_sync_committee(state, spec.get_current_epoch(state))
-        state.next_sync_committee = (
-            spec.get_sync_committee(state, spec.get_current_epoch(state) + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-        )
+        # Note: A duplicate committee is assigned for the current and next committee at genesis
+        state.current_sync_committee = spec.get_next_sync_committee(state)
+        state.next_sync_committee = spec.get_next_sync_committee(state)
 
     return state

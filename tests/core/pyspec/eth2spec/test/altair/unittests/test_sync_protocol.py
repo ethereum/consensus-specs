@@ -32,7 +32,7 @@ def test_process_light_client_update_not_updated(spec, state):
     )
     store = spec.LightClientStore(
         snapshot=pre_snapshot,
-        valid_updates=[]
+        valid_updates=set(),
     )
 
     # Block at slot 1 doesn't increase sync committee period, so it won't update snapshot
@@ -46,7 +46,8 @@ def test_process_light_client_update_not_updated(spec, state):
         body_root=signed_block.message.body.hash_tree_root(),
     )
     # Sync committee signing the header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     sync_committee_bits = [True] * len(committee)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
@@ -76,7 +77,7 @@ def test_process_light_client_update_not_updated(spec, state):
     spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
 
     assert len(store.valid_updates) == 1
-    assert store.valid_updates[0] == update
+    assert store.valid_updates.pop() == update
     assert store.snapshot == pre_snapshot
 
 
@@ -91,7 +92,7 @@ def test_process_light_client_update_timeout(spec, state):
     )
     store = spec.LightClientStore(
         snapshot=pre_snapshot,
-        valid_updates=[]
+        valid_updates=set(),
     )
 
     # Forward to next sync committee period
@@ -111,7 +112,8 @@ def test_process_light_client_update_timeout(spec, state):
     )
 
     # Sync committee signing the finalized_block_header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     sync_committee_bits = [True] * len(committee)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
@@ -156,7 +158,7 @@ def test_process_light_client_update_finality_updated(spec, state):
     )
     store = spec.LightClientStore(
         snapshot=pre_snapshot,
-        valid_updates=[]
+        valid_updates=set(),
     )
 
     # Change finality
@@ -190,7 +192,8 @@ def test_process_light_client_update_finality_updated(spec, state):
     )
 
     # Sync committee signing the finalized_block_header
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     sync_committee_bits = [True] * len(committee)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
