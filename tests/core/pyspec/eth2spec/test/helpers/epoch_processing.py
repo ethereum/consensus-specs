@@ -9,6 +9,7 @@ def get_process_calls(spec):
     # or the old function will stick around.
     return [
         'process_justification_and_finalization',
+        'process_inactivity_updates',  # altair
         'process_rewards_and_penalties',
         'process_registry_updates',
         'process_reveal_deadlines',  # custody game
@@ -26,7 +27,7 @@ def get_process_calls(spec):
         'process_participation_flag_updates' if is_post_altair(spec) else (
             'process_participation_record_updates'
         ),
-        'process_sync_committee_updates',
+        'process_sync_committee_updates',  # altair
         'process_shard_epoch_increment'  # sharding
     ]
 

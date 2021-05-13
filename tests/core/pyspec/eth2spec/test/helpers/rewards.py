@@ -272,7 +272,6 @@ _cache_dict = LRU(size=10)
 
 
 def leaking(epochs=None):
-
     def deco(fn):
         def entry(*args, spec, state, **kw):
             # If the pre-state is not already known in the LRU, then take it,

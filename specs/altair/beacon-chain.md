@@ -127,6 +127,7 @@ This patch updates a few configuration values to move penalty parameters closer 
 | Name | Value |
 | - | - |
 | `INACTIVITY_SCORE_BIAS` | `uint64(4)` |
+| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(16)` |
 
 ### Domain types
 
@@ -417,14 +418,13 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
-    if is_in_inactivity_leak(state):
-        previous_epoch = get_previous_epoch(state)
-        matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
-        for index in get_eligible_validator_indices(state):
-            if index not in matching_target_indices:
-                penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-                penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
-                penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+    previous_epoch = get_previous_epoch(state)
+    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
+    for index in get_eligible_validator_indices(state):
+        if index not in matching_target_indices:
+            penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
 
@@ -624,12 +624,19 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ```python
 def process_inactivity_updates(state: BeaconState) -> None:
+    # Score updates based on previous epoch participation, skip genesis epoch
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     for index in get_eligible_validator_indices(state):
+        # Increase inactivity score of inactive validators
         if index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)):
-            if state.inactivity_scores[index] > 0:
-                state.inactivity_scores[index] -= 1
-        elif is_in_inactivity_leak(state):
+            state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
+        else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
+        # Decrease the score of all validators for forgiveness when not during a leak
+        if not is_in_inactivity_leak(state):
+            state.inactivity_scores[index] -= min(INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index])
 ```
 
 #### Rewards and penalties
