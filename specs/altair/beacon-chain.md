@@ -77,17 +77,17 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_FLAG_INDEX` | `0` |
-| `TIMELY_SOURCE_FLAG_INDEX` | `1` |
-| `TIMELY_TARGET_FLAG_INDEX` | `2` |
+| `TIMELY_SOURCE_FLAG_INDEX` | `0` |
+| `TIMELY_TARGET_FLAG_INDEX` | `1` |
+| `TIMELY_HEAD_FLAG_INDEX` | `2` |
 
 ### Incentivization weights
 
 | Name | Value |
 | - | - |
-| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
 | `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
 | `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
+| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
 | `SYNC_REWARD_WEIGHT` | `uint64(8)` |
 | `PROPOSER_WEIGHT` | `uint64(8)` |
 | `WEIGHT_DENOMINATOR` | `uint64(64)` |
@@ -99,7 +99,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 | Name | Value |
 | - | - |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
-| `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_HEAD_WEIGHT, TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT]` |
+| `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_FLAG_INDEX]` |
 
 ## Configuration
 
