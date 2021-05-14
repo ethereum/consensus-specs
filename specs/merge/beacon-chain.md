@@ -22,6 +22,9 @@
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`new_block`](#new_block)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`is_execution_enabled`](#is_execution_enabled)
@@ -30,7 +33,6 @@
     - [`compute_time_at_slot`](#compute_time_at_slot)
   - [Block processing](#block-processing)
     - [Execution payload processing](#execution-payload-processing)
-      - [`verify_execution_state_transition`](#verify_execution_state_transition)
       - [`process_execution_payload`](#process_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -137,6 +139,30 @@ class ExecutionPayloadHeader(Container):
     transactions_root: Root
 ```
 
+## Protocols
+
+### `ExecutionEngine`
+
+The `ExecutionEngine` protocol separates the consensus and execution sub-systems.
+The consensus implementation references an instance of this sub-system with `EXECUTION_ENGINE`. 
+
+The following methods are added to the `ExecutionEngine` protocol for use in the state transition:
+
+#### `new_block`
+
+Verifies the given `execution_payload` with respect to execution state transition, and persists changes if valid.
+
+The body of this function is implementation dependent.
+The Consensus API may be used to implement this with an external execution engine.
+
+```python
+def new_block(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    """
+    Returns True if the ``execution_payload`` was verified and processed successfully, False otherwise. 
+    """
+    ...
+```
+
 ## Helper functions
 
 ### Misc
@@ -182,20 +208,17 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     # Pre-merge, skip execution payload processing
     if is_execution_enabled(state, block):
-        process_execution_payload(state, block.body.execution_payload)  # [New in Merge]
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 #### Execution payload processing
 
-##### `verify_execution_state_transition`
-
-Let `verify_execution_state_transition(execution_payload: ExecutionPayload) -> bool` be the function that verifies given `ExecutionPayload` with respect to execution state transition.
-The body of the function is implementation dependent.
-
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, execution_payload: ExecutionPayload) -> None:
+def process_execution_payload(state: BeaconState,
+                              execution_payload: ExecutionPayload,
+                              execution_engine: ExecutionEngine) -> None:
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
@@ -205,7 +228,7 @@ def process_execution_payload(state: BeaconState, execution_payload: ExecutionPa
 
     assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
-    assert verify_execution_state_transition(execution_payload)
+    assert execution_engine.new_block(execution_payload)
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,

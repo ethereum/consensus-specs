@@ -12,6 +12,9 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`assemble_block`](#assemble_block)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -32,6 +35,25 @@ This document is an extension of the [Phase 0 -- Validator](../phase0/validator.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout. Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
+## Protocols
+
+### `ExecutionEngine`
+
+The following methods are added to the `ExecutionEngine` protocol for use as a validator:
+
+#### `assemble_block`
+
+Produces a new instance of an execution payload, with the specified `timestamp`,
+on top of the execution payload chain tip identified by `block_hash`.
+
+The body of this function is implementation dependent.
+The Consensus API may be used to implement this with an external execution engine.
+
+```python
+def assemble_block(self: ExecutionEngine, block_hash: Hash32, timestamp: uint64) -> ExecutionPayload:
+    ...
+```
+
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below. Namely, the transition block handling and the addition of `ExecutionPayload`.
@@ -49,12 +71,12 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 ###### `produce_execution_payload`
 
 Let `produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload` be the function that produces new instance of execution payload.
-The body of this function is implementation dependent.
+The `ExecutionEngine` protocol is used for the implementation specific part of execution payload proposals.
 
 * Set `block.body.execution_payload = get_execution_payload(state)` where:
 
 ```python
-def get_execution_payload(state: BeaconState) -> ExecutionPayload:
+def get_execution_payload(state: BeaconState, execution_engine: ExecutionEngine) -> ExecutionPayload:
     if not is_transition_completed(state):
         pow_block = get_pow_chain_head()
         if not is_valid_transition_block(pow_block):
@@ -63,10 +85,10 @@ def get_execution_payload(state: BeaconState) -> ExecutionPayload:
         else:
             # Signify merge via producing on top of the last PoW block
             timestamp = compute_time_at_slot(state, state.slot)
-            return produce_execution_payload(pow_block.block_hash, timestamp)
+            return execution_engine.assemble_block(pow_block.block_hash, timestamp)
 
     # Post-merge, normal payload
     execution_parent_hash = state.latest_execution_payload_header.block_hash
     timestamp = compute_time_at_slot(state, state.slot)
-    return produce_execution_payload(execution_parent_hash, timestamp)
+    return execution_engine.assemble_block(execution_parent_hash, timestamp)
 ```
