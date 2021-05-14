@@ -149,9 +149,10 @@ def _subnet_for_sync_committee_index(spec, i):
 
 
 def _get_expected_subnets_by_pubkey(sync_committee_members):
-    expected_subnets_by_pubkey = defaultdict(list)
+    # Build deduplicated set for each pubkey
+    expected_subnets_by_pubkey = defaultdict(set)
     for (subnet, pubkey) in sync_committee_members:
-        expected_subnets_by_pubkey[pubkey].append(subnet)
+        expected_subnets_by_pubkey[pubkey].add(subnet)
     return expected_subnets_by_pubkey
 
 
