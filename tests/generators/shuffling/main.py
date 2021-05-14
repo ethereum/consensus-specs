@@ -6,7 +6,7 @@ from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec
-from eth2spec.test.context import PHASE0
+from eth2spec.test.helpers.constants import PHASE0
 
 
 def shuffling_case_fn(seed, count):

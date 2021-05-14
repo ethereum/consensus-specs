@@ -12,7 +12,6 @@
 - [Constants](#constants)
 - [Configuration](#configuration)
   - [Misc](#misc)
-  - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`LightClientSnapshot`](#lightclientsnapshot)
   - [`LightClientUpdate`](#lightclientupdate)
@@ -51,13 +50,6 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | Name | Value |
 | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` |
-| `MAX_VALID_LIGHT_CLIENT_UPDATES` | `uint64(2**64 - 1)` |
-
-### Time parameters
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `LIGHT_CLIENT_UPDATE_TIMEOUT` | `Slot(2**13)` | slots | ~27 hours |
 
 ## Containers
 
@@ -94,9 +86,10 @@ class LightClientUpdate(Container):
 ### `LightClientStore`
 
 ```python
-class LightClientStore(Container):
+@dataclass
+class LightClientStore(object):
     snapshot: LightClientSnapshot
-    valid_updates: List[LightClientUpdate, MAX_VALID_LIGHT_CLIENT_UPDATES]
+    valid_updates: Set[LightClientUpdate]
 ```
 
 ## Helper functions
@@ -115,7 +108,8 @@ A light client maintains its state in a `store` object of type `LightClientStore
 #### `validate_light_client_update`
 
 ```python
-def validate_light_client_update(snapshot: LightClientSnapshot, update: LightClientUpdate,
+def validate_light_client_update(snapshot: LightClientSnapshot,
+                                 update: LightClientUpdate,
                                  genesis_validators_root: Root) -> None:
     # Verify update slot is larger than snapshot slot
     assert update.header.slot > snapshot.header.slot
@@ -181,20 +175,21 @@ def apply_light_client_update(snapshot: LightClientSnapshot, update: LightClient
 def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot,
                                 genesis_validators_root: Root) -> None:
     validate_light_client_update(store.snapshot, update, genesis_validators_root)
-    store.valid_updates.append(update)
+    store.valid_updates.add(update)
 
+    update_timeout = SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     if (
-        sum(update.sync_committee_bits) * 3 > len(update.sync_committee_bits) * 2
+        sum(update.sync_committee_bits) * 3 >= len(update.sync_committee_bits) * 2
         and update.finality_header != BeaconBlockHeader()
     ):
         # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
         # Note that (2) means that the current light client design needs finality.
         # It may be changed to re-organizable light client design. See the on-going issue eth2.0-specs#2182.
         apply_light_client_update(store.snapshot, update)
-        store.valid_updates = []
-    elif current_slot > store.snapshot.header.slot + LIGHT_CLIENT_UPDATE_TIMEOUT:
+        store.valid_updates = set()
+    elif current_slot > store.snapshot.header.slot + update_timeout:
         # Forced best update when the update timeout has elapsed
         apply_light_client_update(store.snapshot,
                                   max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)))
-        store.valid_updates = []
+        store.valid_updates = set()
 ```

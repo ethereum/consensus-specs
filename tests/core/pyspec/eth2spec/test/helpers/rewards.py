@@ -3,9 +3,16 @@ from lru import LRU
 
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.test.context import is_post_altair
-from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
-from eth2spec.test.helpers.deposits import mock_deposit
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import (
+    next_epoch,
+)
+from eth2spec.test.helpers.random import (
+    set_some_new_deposits, exit_random_validators, slash_random_validators,
+    randomize_state,
+)
+from eth2spec.test.helpers.attestations import (
+    cached_prepare_state_with_attestations,
+)
 from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
 
@@ -62,13 +69,13 @@ def run_deltas(spec, state):
 
     if is_post_altair(spec):
         def get_source_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX, spec.TIMELY_SOURCE_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX)
 
         def get_head_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX, spec.TIMELY_HEAD_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_HEAD_FLAG_INDEX)
 
         def get_target_deltas(state):
-            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX, spec.TIMELY_TARGET_WEIGHT)
+            return spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX)
 
     yield from run_attestation_component_deltas(
         spec,
@@ -133,14 +140,23 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
         validator = state.validators[index]
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
-            if enough_for_reward:
-                assert rewards[index] > 0
+            if is_post_altair(spec):
+                if not spec.is_in_inactivity_leak(state) and enough_for_reward:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
             else:
-                assert rewards[index] == 0
+                if enough_for_reward:
+                    assert rewards[index] > 0
+                else:
+                    assert rewards[index] == 0
+
             assert penalties[index] == 0
         else:
             assert rewards[index] == 0
-            if enough_for_reward:
+            if is_post_altair(spec) and 'head' in deltas_name:
+                assert penalties[index] == 0
+            elif enough_for_reward:
                 assert penalties[index] > 0
             else:
                 assert penalties[index] == 0
@@ -225,18 +241,19 @@ def run_get_inactivity_penalty_deltas(spec, state):
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
                 base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
-            else:
-                base_penalty = sum(
-                    base_reward * numerator // spec.WEIGHT_DENOMINATOR
-                    for (_, numerator) in spec.get_flag_indices_and_weights()
-                )
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
             elif index in matching_attesting_indices or not has_enough_for_leak_penalty(spec, state, index):
-                assert penalties[index] == base_penalty
+                if is_post_altair(spec):
+                    assert penalties[index] == 0
+                else:
+                    assert penalties[index] == base_penalty
             else:
-                assert penalties[index] > base_penalty
+                if is_post_altair(spec):
+                    assert penalties[index] > 0
+                else:
+                    assert penalties[index] > base_penalty
         else:
             assert penalties[index] == 0
 
@@ -255,7 +272,6 @@ _cache_dict = LRU(size=10)
 
 
 def leaking(epochs=None):
-
     def deco(fn):
         def entry(*args, spec, state, **kw):
             # If the pre-state is not already known in the LRU, then take it,
@@ -273,49 +289,6 @@ def leaking(epochs=None):
             return fn(*args, spec=spec, state=state, **kw)
         return entry
     return deco
-
-
-def set_some_new_deposits(spec, state, rng):
-    num_validators = len(state.validators)
-    # Set ~1/10 to just recently deposited
-    for index in range(num_validators):
-        # If not already active, skip
-        if not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state)):
-            continue
-        if rng.randrange(num_validators) < num_validators // 10:
-            mock_deposit(spec, state, index)
-            # Set ~half of selected to eligible for activation
-            if rng.choice([True, False]):
-                state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
-
-
-def exit_random_validators(spec, state, rng):
-    if spec.get_current_epoch(state) < 5:
-        # Move epochs forward to allow for some validators already exited/withdrawable
-        for _ in range(5):
-            next_epoch(spec, state)
-
-    current_epoch = spec.get_current_epoch(state)
-    # Exit ~1/2 of validators
-    for index in spec.get_active_validator_indices(state, current_epoch):
-        if rng.choice([True, False]):
-            continue
-
-        validator = state.validators[index]
-        validator.exit_epoch = rng.choice([current_epoch - 1, current_epoch - 2, current_epoch - 3])
-        # ~1/2 are withdrawable
-        if rng.choice([True, False]):
-            validator.withdrawable_epoch = current_epoch
-        else:
-            validator.withdrawable_epoch = current_epoch + 1
-
-
-def slash_random_validators(spec, state, rng):
-    # Slash ~1/2 of validators
-    for index in range(len(state.validators)):
-        # slash at least one validator
-        if index == 0 or rng.choice([True, False]):
-            spec.slash_validator(state, index)
 
 
 def run_test_empty(spec, state):
@@ -521,49 +494,5 @@ def run_test_all_balances_too_low_for_reward(spec, state):
 
 
 def run_test_full_random(spec, state, rng=Random(8020)):
-    set_some_new_deposits(spec, state, rng)
-    exit_random_validators(spec, state, rng)
-    slash_random_validators(spec, state, rng)
-
-    cached_prepare_state_with_attestations(spec, state)
-
-    if not is_post_altair(spec):
-        for pending_attestation in state.previous_epoch_attestations:
-            # ~1/3 have bad target
-            if rng.randint(0, 2) == 0:
-                pending_attestation.data.target.root = b'\x55' * 32
-            # ~1/3 have bad head
-            if rng.randint(0, 2) == 0:
-                pending_attestation.data.beacon_block_root = b'\x66' * 32
-            # ~50% participation
-            pending_attestation.aggregation_bits = [rng.choice([True, False])
-                                                    for _ in pending_attestation.aggregation_bits]
-            # Random inclusion delay
-            pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
-    else:
-        for index in range(len(state.validators)):
-            # ~1/3 have bad head or bad target or not timely enough
-            is_timely_correct_head = rng.randint(0, 2) != 0
-            flags = state.previous_epoch_participation[index]
-
-            def set_flag(index, value):
-                nonlocal flags
-                flag = spec.ParticipationFlags(2**index)
-                if value:
-                    flags |= flag
-                else:
-                    flags &= 0xff ^ flag
-
-            set_flag(spec.TIMELY_HEAD_FLAG_INDEX, is_timely_correct_head)
-            if is_timely_correct_head:
-                # If timely head, then must be timely target
-                set_flag(spec.TIMELY_TARGET_FLAG_INDEX, True)
-                # If timely head, then must be timely source
-                set_flag(spec.TIMELY_SOURCE_FLAG_INDEX, True)
-            else:
-                # ~50% of remaining have bad target or not timely enough
-                set_flag(spec.TIMELY_TARGET_FLAG_INDEX, rng.choice([True, False]))
-                # ~50% of remaining have bad source or not timely enough
-                set_flag(spec.TIMELY_SOURCE_FLAG_INDEX, rng.choice([True, False]))
-            state.previous_epoch_participation[index] = flags
+    randomize_state(spec, state, rng)
     yield from run_deltas(spec, state)

@@ -166,7 +166,7 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 ### `BeaconState`
 
 ```python
-class BeaconState(merge.BeaconState):  # [extends The Merge block body]
+class BeaconState(merge.BeaconState):  # [extends The Merge state]
     # [Updated fields]
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
@@ -280,7 +280,7 @@ class ShardProposerSlashing(Container):
 #### `next_power_of_two`
 
 ```python
-def next_power_of_two(x):
+def next_power_of_two(x: int) -> int:
     return 2 ** ((x - 1).bit_length())
 ```
 
@@ -374,7 +374,7 @@ ensuring that the balance is always sufficient to cover gas costs.
 def compute_proposer_index(beacon_state: BeaconState,
                            indices: Sequence[ValidatorIndex],
                            seed: Bytes32,
-                           min_effective_balance: GWei = GWei(0)) -> ValidatorIndex:
+                           min_effective_balance: Gwei = Gwei(0)) -> ValidatorIndex:
     """
     Return from ``indices`` a random index sampled by effective balance.
     """
@@ -402,11 +402,11 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     """
     epoch = compute_epoch_at_slot(slot)
     committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(beacon_state.slot))
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER) + uint_to_bytes(slot))
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
-        (EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT)
+        EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT
         * HYSTERESIS_DOWNWARD_MULTIPLIER // HYSTERESIS_QUOTIENT
     )
     min_effective_balance = (
@@ -466,7 +466,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Sharding]
-    process_application_payload(state, block.body)  # [New in Merge]
+    process_execution_payload(state, block.body)  # [New in Merge]
 ```
 
 #### Operations
@@ -512,17 +512,22 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
         pending_headers = state.current_epoch_pending_shard_headers
     else:
         pending_headers = state.previous_epoch_pending_shard_headers
-    pending_header = None
-    for header in pending_headers:
-        if header.root == attestation.data.shard_header_root:
-            pending_header = header
-    assert pending_header is not None
-    assert pending_header.slot == attestation.data.slot
-    assert pending_header.shard == compute_shard_from_committee_index(
+    
+    attestation_shard = compute_shard_from_committee_index(
         state,
         attestation.data.slot,
         attestation.data.index,
     )
+    pending_header = None
+    for header in pending_headers:
+        if (
+            header.root == attestation.data.shard_header_root
+            and header.slot == attestation.data.slot
+            and header.shard == attestation_shard
+        ):
+            pending_header = header
+    assert pending_header is not None
+
     for i in range(len(pending_header.votes)):
         pending_header.votes[i] = pending_header.votes[i] or attestation.aggregation_bits[i]
 
@@ -539,7 +544,7 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
     participants = get_attesting_indices(state, attestation.data, pending_header.votes)
     participants_balance = get_total_balance(state, participants)
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    full_committee_balance = get_total_balance(state, full_committee)
+    full_committee_balance = get_total_balance(state, set(full_committee))
     if participants_balance * 3 >= full_committee_balance * 2:
         pending_header.confirmed = True
 ```
@@ -559,11 +564,11 @@ def process_shard_header(state: BeaconState,
     assert header.shard < get_active_shard_count(state, header_epoch)
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
+    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
     # Verify proposer
     assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
     # Verify signature
-    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_HEADER))
+    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSER))
     assert bls.Verify(state.validators[header.proposer_index].pubkey, signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
@@ -644,7 +649,7 @@ def process_epoch(state: BeaconState) -> None:
 
     # Sharding
     process_pending_headers(state)
-    process_confirmed_header_fees(state)
+    charge_confirmed_header_fees(state)
     reset_pending_headers(state)
 
     # Final updates
@@ -668,24 +673,26 @@ def process_pending_headers(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
+    previous_epoch = get_previous_epoch(state)
+    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard in range(get_active_shard_count(state)):
+        for shard_index in range(get_active_shard_count(state, previous_epoch)):
+            shard = Shard(shard_index)
             # Pending headers for this (slot, shard) combo
             candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
                 if (c.slot, c.shard) == (slot, shard)
             ]
-            # The entire committee (and its balance)
-            full_committee = get_beacon_committee(state, slot, shard)
-            full_committee_balance = get_total_balance(state, full_committee)
             # If any candidates already confirmed, skip
             if True in [c.confirmed for c in candidates]:
                 continue
 
+            # The entire committee (and its balance)
+            index = compute_committee_index_from_shard(state, slot, shard)
+            full_committee = get_beacon_committee(state, slot, index)
             # The set of voters who voted for each header (and their total balances)
             voting_sets = [
-                [v for i, v in enumerate(full_committee) if c.votes[i]]
+                set(v for i, v in enumerate(full_committee) if c.votes[i])
                 for c in candidates
             ]
             voting_balances = [
@@ -702,23 +709,25 @@ def process_pending_headers(state: BeaconState) -> None:
                 winning_index = [c.root for c in candidates].index(Root())
             candidates[winning_index].confirmed = True
     for slot_index in range(SLOTS_PER_EPOCH):
-        for shard in range(SHARD_COUNT):
+        for shard in range(MAX_SHARDS):
             state.grandparent_epoch_confirmed_commitments[shard][slot_index] = DataCommitment()
     confirmed_headers = [candidate for candidate in state.previous_epoch_pending_shard_headers if candidate.confirmed]
     for header in confirmed_headers:
-        state.grandparent_epoch_confirmed_commitments[c.shard][c.slot % SLOTS_PER_EPOCH] = c.commitment
+        state.grandparent_epoch_confirmed_commitments[header.shard][header.slot % SLOTS_PER_EPOCH] = header.commitment
 ```
 
 ```python
 def charge_confirmed_header_fees(state: BeaconState) -> None:
     new_gasprice = state.shard_gasprice
+    previous_epoch = get_previous_epoch(state)
     adjustment_quotient = (
-        get_active_shard_count(state, get_current_epoch(state))
+        get_active_shard_count(state, previous_epoch)
         * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
     )
-    previous_epoch_start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
+    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        for shard in range(SHARD_COUNT):
+        for shard_index in range(get_active_shard_count(state, previous_epoch)):
+            shard = Shard(shard_index)
             confirmed_candidates = [
                 c for c in state.previous_epoch_pending_shard_headers
                 if (c.slot, c.shard, c.confirmed) == (slot, shard, True)
@@ -728,7 +737,7 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
             candidate = confirmed_candidates[0]
 
             # Charge EIP 1559 fee
-            proposer = get_shard_proposer(state, slot, shard)
+            proposer = get_shard_proposer_index(state, slot, shard)
             fee = (
                 (state.shard_gasprice * candidate.commitment.length)
                 // TARGET_SAMPLES_PER_BLOCK
@@ -751,10 +760,11 @@ def reset_pending_headers(state: BeaconState) -> None:
     # Add dummy "empty" PendingShardHeader (default vote for if no shard header available)
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
-    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_IN_EPOCH):
-        for index in range(get_committee_count_per_slot(next_epoch)):
-            shard = compute_shard_from_committee_index(state, slot, index)
-            committee_length = len(get_beacon_committee(state, slot, shard))
+    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
+        for index in range(get_committee_count_per_slot(state, next_epoch)):
+            committee_index = CommitteeIndex(index)
+            shard = compute_shard_from_committee_index(state, slot, committee_index)
+            committee_length = len(get_beacon_committee(state, slot, committee_index))
             state.current_epoch_pending_shard_headers.append(PendingShardHeader(
                 slot=slot,
                 shard=shard,

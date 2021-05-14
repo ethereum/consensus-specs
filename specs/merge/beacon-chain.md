@@ -13,24 +13,27 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Transition](#transition)
   - [Execution](#execution)
+- [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
-    - [`ApplicationPayload`](#applicationpayload)
-    - [`ApplicationBlockHeader`](#applicationblockheader)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionPayloadHeader`](#executionpayloadheader)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`new_block`](#new_block)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
+    - [`is_execution_enabled`](#is_execution_enabled)
     - [`is_transition_completed`](#is_transition_completed)
     - [`is_transition_block`](#is_transition_block)
+    - [`compute_time_at_slot`](#compute_time_at_slot)
   - [Block processing](#block-processing)
-    - [Application payload processing](#application-payload-processing)
-      - [`get_application_state`](#get_application_state)
-      - [`application_state_transition`](#application_state_transition)
-      - [`process_application_payload`](#process_application_payload)
+    - [Execution payload processing](#execution-payload-processing)
+      - [`process_execution_payload`](#process_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -38,7 +41,7 @@
 ## Introduction
 
 This is a patch implementing the executable beacon chain proposal. 
-It enshrines application-layer execution and validity as a first class citizen at the core of the beacon chain.
+It enshrines transaction execution and validity as a first class citizen at the core of the beacon chain.
 
 ## Custom types
 
@@ -50,19 +53,23 @@ We define the following Python custom types for type hinting and readability:
 
 ## Constants
 
-### Transition
-
-| Name | Value |
-| - | - |
-| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
-
 ### Execution
 
 | Name | Value |
 | - | - |
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_APPLICATION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
+| `MAX_EXECUTION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
+
+## Configuration
+
+Warning: this configuration is not definitive.
+
+| Name | Value |
+| - | - |
+| `MERGE_FORK_VERSION` | `Version('0x02000000')` |
+| `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
 
 ## Containers
 
@@ -73,79 +80,122 @@ order and append any additional fields to the end.
 
 #### `BeaconBlockBody`
 
-*Note*: `BeaconBlockBody` fields remain unchanged other than the addition of `application_payload`.
+*Note*: `BeaconBlockBody` fields remain unchanged other than the addition of `execution_payload`.
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
-    application_payload: ApplicationPayload  # [New in Merge] application payload
+    execution_payload: ExecutionPayload  # [New in Merge]
 ```
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than addition of `latest_application_block_header`.
+*Note*: `BeaconState` fields remain unchanged other than addition of `latest_execution_payload_header`.
 
 ```python
 class BeaconState(phase0.BeaconState):
-    # Application-layer
-    latest_application_block_header: ApplicationBlockHeader  # [New in Merge]
+    # Execution-layer
+    latest_execution_payload_header: ExecutionPayloadHeader  # [New in Merge]
 ```
 
 ### New containers
 
-#### `ApplicationPayload`
+#### `ExecutionPayload`
 
-The application payload included in a `BeaconBlockBody`.
+The execution payload included in a `BeaconBlockBody`.
 
 ```python
-class ApplicationPayload(Container):
-    block_hash: Bytes32  # Hash of application block
-    parent_hash: Bytes32
+class ExecutionPayload(Container):
+    block_hash: Hash32  # Hash of execution block
+    parent_hash: Hash32
     coinbase: Bytes20
     state_root: Bytes32
     number: uint64
     gas_limit: uint64
     gas_used: uint64
+    timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    transactions: List[OpaqueTransaction, MAX_APPLICATION_TRANSACTIONS]
+    transactions: List[OpaqueTransaction, MAX_EXECUTION_TRANSACTIONS]
 ```
 
-#### `ApplicationBlockHeader`
+#### `ExecutionPayloadHeader`
 
-The application block header included in a `BeaconState`.
+The execution payload header included in a `BeaconState`.
 
-*Note:* Holds application payload data without transaction list.
+*Note:* Holds execution payload data without transaction bodies.
 
 ```python
-class ApplicationBlockHeader(Container):
-    block_hash: Bytes32  # Hash of application block
-    parent_hash: Bytes32
+class ExecutionPayloadHeader(Container):
+    block_hash: Hash32  # Hash of execution block
+    parent_hash: Hash32
     coinbase: Bytes20
     state_root: Bytes32
     number: uint64
     gas_limit: uint64
     gas_used: uint64
+    timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     transactions_root: Root
+```
+
+## Protocols
+
+### `ExecutionEngine`
+
+The `ExecutionEngine` protocol separates the consensus and execution sub-systems.
+The consensus implementation references an instance of this sub-system with `EXECUTION_ENGINE`. 
+
+The following methods are added to the `ExecutionEngine` protocol for use in the state transition:
+
+#### `new_block`
+
+Verifies the given `execution_payload` with respect to execution state transition, and persists changes if valid.
+
+The body of this function is implementation dependent.
+The Consensus API may be used to implement this with an external execution engine.
+
+```python
+def new_block(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    """
+    Returns True if the ``execution_payload`` was verified and processed successfully, False otherwise. 
+    """
+    ...
 ```
 
 ## Helper functions
 
 ### Misc
 
+#### `is_execution_enabled`
+
+```python
+def is_execution_enabled(state: BeaconState, block: BeaconBlock) -> bool:
+    return is_transition_completed(state) or is_transition_block(state, block)
+```
+
 #### `is_transition_completed`
 
 ```python
-def is_transition_completed(state: BeaconState) -> boolean:
-    return state.latest_application_block_header.block_hash != Bytes32()
+def is_transition_completed(state: BeaconState) -> bool:
+    return state.latest_execution_payload_header != ExecutionPayloadHeader()
 ```
 
 #### `is_transition_block`
 
 ```python
-def is_transition_block(state: BeaconState, block_body: BeaconBlockBody) -> boolean:
-    return state.latest_application_block_header.block_hash == Bytes32() and block_body.application_payload.block_hash != Bytes32()
+def is_transition_block(state: BeaconState, block: BeaconBlock) -> bool:
+    return not is_transition_completed(state) and block.body.execution_payload != ExecutionPayload()
+```
+
+#### `compute_time_at_slot`
+
+*Note*: This function is unsafe with respect to overflows and underflows.
+
+```python
+def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
+    slots_since_genesis = slot - GENESIS_SLOT
+    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
 ```
 
 ### Block processing
@@ -156,54 +206,41 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    process_application_payload(state, block.body)  # [New in Merge]
+    # Pre-merge, skip execution payload processing
+    if is_execution_enabled(state, block):
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
-#### Application payload processing
+#### Execution payload processing
 
-##### `get_application_state`
-
-*Note*: `ApplicationState` class is an abstract class representing ethereum application state.
-
-Let `get_application_state(application_state_root: Bytes32) -> ApplicationState`  be the function that given the root hash returns a copy of ethereum application state. 
-The body of the function is implementation dependent.
-
-##### `application_state_transition`
-
-Let `application_state_transition(application_state: ApplicationState, application_payload: ApplicationPayload) -> None` be the transition function of ethereum application state. 
-The body of the function is implementation dependent.
-
-*Note*: `application_state_transition` must throw `AssertionError` if either the transition itself or one of the post-transition verifications has failed.
-
-##### `process_application_payload`
+##### `process_execution_payload`
 
 ```python
-def process_application_payload(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_execution_payload(state: BeaconState,
+                              execution_payload: ExecutionPayload,
+                              execution_engine: ExecutionEngine) -> None:
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
+    if is_transition_completed(state):
+        assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
+        assert execution_payload.number == state.latest_execution_payload_header.number + 1
 
-    if not is_transition_completed(state):
-        assert body.application_payload == ApplicationPayload()
-        return
+    assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
-    if not is_transition_block(state, body):
-        assert body.application_payload.parent_hash == state.latest_application_block_header.block_hash
-        assert body.application_payload.number == state.latest_application_block_header.number + 1
+    assert execution_engine.new_block(execution_payload)
 
-    application_state = get_application_state(state.latest_application_block_header.state_root)
-    application_state_transition(application_state, body.application_payload)
-
-    state.latest_application_block_header = ApplicationBlockHeader(
-        block_hash=application_payload.block_hash,
-        parent_hash=application_payload.parent_hash,
-        coinbase=application_payload.coinbase,
-        state_root=application_payload.state_root,
-        number=application_payload.number,
-        gas_limit=application_payload.gas_limit,
-        gas_used=application_payload.gas_used,
-        receipt_root=application_payload.receipt_root,
-        logs_bloom=application_payload.logs_bloom,
-        transactions_root=hash_tree_root(application_payload.transactions),
+    state.latest_execution_payload_header = ExecutionPayloadHeader(
+        block_hash=execution_payload.block_hash,
+        parent_hash=execution_payload.parent_hash,
+        coinbase=execution_payload.coinbase,
+        state_root=execution_payload.state_root,
+        number=execution_payload.number,
+        gas_limit=execution_payload.gas_limit,
+        gas_used=execution_payload.gas_used,
+        timestamp=execution_payload.timestamp,
+        receipt_root=execution_payload.receipt_root,
+        logs_bloom=execution_payload.logs_bloom,
+        transactions_root=hash_tree_root(execution_payload.transactions),
     )
 ```

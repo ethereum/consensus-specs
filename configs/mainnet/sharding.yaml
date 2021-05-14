@@ -1,12 +1,10 @@
 # Mainnet preset - Sharding
 
-CONFIG_NAME: "mainnet"
-
 # Fork
 # ---------------------------------------------------------------
 SHARDING_FORK_VERSION: 0x03000000
 # TBD, temporarily max uint64 value: 2**64 - 1
-SHARDING_FORK_SLOT: 18446744073709551615
+SHARDING_FORK_EPOCH: 18446744073709551615
 
 
 # Beacon-chain

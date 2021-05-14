@@ -9,7 +9,8 @@ from eth2spec.debug import random_value, encode
 from eth2spec.config import config_util
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.altair import spec as spec_altair
-from eth2spec.test.context import ALTAIR, TESTGEN_FORKS, MINIMAL, MAINNET
+from eth2spec.merge import spec as spec_merge
+from eth2spec.test.helpers.constants import ALTAIR, MERGE, TESTGEN_FORKS, MINIMAL, MAINNET
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
@@ -64,6 +65,7 @@ def create_provider(fork_name, config_name: str, seed: int, mode: random_value.R
         config_util.prepare_config(configs_path, config_name)
         reload(spec_phase0)
         reload(spec_altair)
+        reload(spec_merge)
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
@@ -71,6 +73,8 @@ def create_provider(fork_name, config_name: str, seed: int, mode: random_value.R
         spec = spec_phase0
         if fork_name == ALTAIR:
             spec = spec_altair
+        elif fork_name == MERGE:
+            spec = spec_merge
 
         for (i, (name, ssz_type)) in enumerate(get_spec_ssz_types(spec)):
             yield from ssz_static_cases(fork_name, seed * 1000 + i, name, ssz_type, mode, chaos, count)
@@ -89,7 +93,6 @@ if __name__ == "__main__":
     seed += 1
     settings.append((seed, MAINNET, random_value.RandomizationMode.mode_random, False, 5))
     seed += 1
-
     for fork in TESTGEN_FORKS:
         gen_runner.run_generator("ssz_static", [
             create_provider(fork, config_name, seed, mode, chaos, cases_if_random)
