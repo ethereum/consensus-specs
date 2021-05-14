@@ -567,8 +567,6 @@ The response code can have one of the following values, encoded as a single unsi
   The response payload adheres to the `ErrorMessage` schema (described below).
 -  2: **ServerError** -- the responder encountered an error while processing the request.
   The response payload adheres to the `ErrorMessage` schema (described below).
--  3: **ResourceUnavailable** -- the responder does not have requested resource.
-  The response payload adheres to the `ErrorMessage` schema (described below).
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous request-specific responses.
 
