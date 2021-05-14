@@ -327,7 +327,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
 
-    Note: A validator can optimally earn one base reward per epoch over a long time horizon.
+    Note: An optimally performing validator can earn one base reward per epoch over a long time horizon.
     This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal
     and sync committees).
     """
@@ -388,7 +388,7 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 ```python
 def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
-    Return the deltas for a given ``flag_index`` scaled by ``weight`` by scanning through the participation flags.
+    Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
