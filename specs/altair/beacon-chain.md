@@ -320,7 +320,7 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
     """
     Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """
-    assert epoch in (get_previous_epoch(state), get_current_epoch(state))
+    require(epoch in (get_previous_epoch(state), get_current_epoch(state)))
     if epoch == get_current_epoch(state):
         epoch_participation = state.current_epoch_participation
     else:
@@ -348,7 +348,7 @@ def get_attestation_participation_flag_indices(state: BeaconState,
     is_matching_source = data.source == justified_checkpoint
     is_matching_target = is_matching_source and data.target.root == get_block_root(state, data.target.epoch)
     is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
-    assert is_matching_source
+    require(is_matching_source)
 
     participation_flag_indices = []
     if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
@@ -456,19 +456,19 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
-    assert data.target.epoch == compute_epoch_at_slot(data.slot)
-    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
-    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
+    require(data.target.epoch in (get_previous_epoch(state), get_current_epoch(state)))
+    require(data.target.epoch == compute_epoch_at_slot(data.slot))
+    require(data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH)
+    require(data.index < get_committee_count_per_slot(state, data.target.epoch))
 
     committee = get_beacon_committee(state, data.slot, data.index)
-    assert len(attestation.aggregation_bits) == len(committee)
+    require(len(attestation.aggregation_bits) == len(committee))
 
     # Participation flag indices
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
 
     # Verify signature
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    require(is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation)))
 
     # Update epoch participation flags
     if data.target.epoch == get_current_epoch(state):
@@ -496,13 +496,13 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Verify the Merkle branch
-    assert is_valid_merkle_branch(
+    require(is_valid_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         branch=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
-    )
+    ))
 
     # Deposits must be processed in order
     state.eth1_deposit_index += 1
@@ -544,7 +544,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
+    require(eth2_fast_aggregate_verify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature))
 
     # Compute participant and proposer rewards
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
