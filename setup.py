@@ -437,6 +437,7 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
     @classmethod
     def invariant_checks(cls) -> str:
         return '''
+assert ALTAIR_FORK_EPOCH % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0
 assert (
     TIMELY_HEAD_WEIGHT + TIMELY_SOURCE_WEIGHT + TIMELY_TARGET_WEIGHT + SYNC_REWARD_WEIGHT + PROPOSER_WEIGHT
 ) == WEIGHT_DENOMINATOR'''

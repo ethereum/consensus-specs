@@ -26,7 +26,7 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
-| `ALTAIR_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `ALTAIR_FORK_EPOCH` | `Epoch(9223372036854775808)` **TBD** |
 
 ## Fork to Altair
 
