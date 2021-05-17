@@ -111,50 +111,48 @@ A light client maintains its state in a `store` object of type `LightClientStore
 def validate_light_client_update(snapshot: LightClientSnapshot,
                                  update: LightClientUpdate,
                                  genesis_validators_root: Root) -> None:
-    # Verify update slot is larger than snapshot slot
-    assert update.header.slot > snapshot.header.slot
+    require(update.header.slot > snapshot.header.slot, 'update slot should be larger than snapshot slot')
 
-    # Verify update does not skip a sync committee period
     snapshot_period = compute_epoch_at_slot(snapshot.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     update_period = compute_epoch_at_slot(update.header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    assert update_period in (snapshot_period, snapshot_period + 1)
+    require(update_period in (snapshot_period, snapshot_period + 1), 'Update should not skip a sync committee period')
 
     # Verify update header root is the finalized root of the finality header, if specified
     if update.finality_header == BeaconBlockHeader():
         signed_header = update.header
-        assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+        require(update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))])
     else:
         signed_header = update.finality_header
-        assert is_valid_merkle_branch(
+        require(is_valid_merkle_branch(
             leaf=hash_tree_root(update.header),
             branch=update.finality_branch,
             depth=floorlog2(FINALIZED_ROOT_INDEX),
             index=get_subtree_index(FINALIZED_ROOT_INDEX),
             root=update.finality_header.state_root,
-        )
+        ))
 
     # Verify update next sync committee if the update period incremented
     if update_period == snapshot_period:
         sync_committee = snapshot.current_sync_committee
-        assert update.next_sync_committee_branch == [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
+        require(update.next_sync_committee_branch == [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))])
     else:
         sync_committee = snapshot.next_sync_committee
-        assert is_valid_merkle_branch(
+        require(is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
             depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
             index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
             root=update.header.state_root,
-        )
+        ))
 
     # Verify sync committee has sufficient participants
-    assert sum(update.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    require(sum(update.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS)
 
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
     signing_root = compute_signing_root(signed_header, domain)
-    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
+    require(bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature))
 ```
 
 #### `apply_light_client_update`
