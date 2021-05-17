@@ -213,12 +213,11 @@ def process_execution_payload(state: BeaconState,
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
     if is_transition_completed(state):
-        assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
-        assert execution_payload.number == state.latest_execution_payload_header.number + 1
+        require(execution_payload.parent_hash == state.latest_execution_payload_header.block_hash)
+        require(execution_payload.number == state.latest_execution_payload_header.number + 1)
 
-    assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
-
-    assert execution_engine.new_block(execution_payload)
+    require(execution_payload.timestamp == compute_time_at_slot(state, state.slot))
+    require(execution_engine.new_block(execution_payload))
 
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         block_hash=execution_payload.block_hash,
