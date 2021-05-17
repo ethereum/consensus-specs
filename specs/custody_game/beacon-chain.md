@@ -265,7 +265,7 @@ def legendre_bit(a: int, q: int) -> int:
         return legendre_bit(a % q, q)
     if a == 0:
         return 0
-    assert(q > a > 0 and q % 2 == 1)
+    require(q > a > 0 and q % 2 == 1)
     t = 1
     n = q
     while a != 0:
@@ -389,32 +389,32 @@ def process_custody_game_operations(state: BeaconState, body: BeaconBlockBody) -
 ```python
 def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge) -> None:
     # Verify the attestation
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
+    require(is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation)))
     # Verify it is not too late to challenge the attestation
     max_attestation_challenge_epoch = Epoch(challenge.attestation.data.target.epoch + MAX_CHUNK_CHALLENGE_DELAY)
-    assert get_current_epoch(state) <= max_attestation_challenge_epoch
+    require(get_current_epoch(state) <= max_attestation_challenge_epoch)
     # Verify it is not too late to challenge the responder
     responder = state.validators[challenge.responder_index]
     if responder.exit_epoch < FAR_FUTURE_EPOCH:
-        assert get_current_epoch(state) <= responder.exit_epoch + MAX_CHUNK_CHALLENGE_DELAY
+        require(get_current_epoch(state) <= responder.exit_epoch + MAX_CHUNK_CHALLENGE_DELAY)
     # Verify responder is slashable
-    assert is_slashable_validator(responder, get_current_epoch(state))
+    require(is_slashable_validator(responder, get_current_epoch(state)))
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bits)
-    assert challenge.responder_index in attesters
+    require(challenge.responder_index in attesters)
     # Verify shard transition is correctly given
-    assert hash_tree_root(challenge.shard_transition) == challenge.attestation.data.shard_transition_root
+    require(hash_tree_root(challenge.shard_transition) == challenge.attestation.data.shard_transition_root)
     data_root = challenge.shard_transition.shard_data_roots[challenge.data_index]
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
-        assert (
+        require((
             record.data_root != data_root or
             record.chunk_index != challenge.chunk_index
-        )
+        ))
     # Verify depth
     shard_block_length = challenge.shard_transition.shard_block_lengths[challenge.data_index]
     transition_chunks = (shard_block_length + BYTES_PER_CUSTODY_CHUNK - 1) // BYTES_PER_CUSTODY_CHUNK
-    assert challenge.chunk_index < transition_chunks
+    require(challenge.chunk_index < transition_chunks)
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
         challenge_index=state.custody_chunk_challenge_index,
@@ -441,18 +441,18 @@ def process_chunk_challenge_response(state: BeaconState,
         record for record in state.custody_chunk_challenge_records
         if record.challenge_index == response.challenge_index
     ]
-    assert len(matching_challenges) == 1
+    require(len(matching_challenges) == 1)
     challenge = matching_challenges[0]
     # Verify chunk index
-    assert response.chunk_index == challenge.chunk_index
+    require(response.chunk_index == challenge.chunk_index)
     # Verify the chunk matches the crosslink data root
-    assert is_valid_merkle_branch(
+    require(is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
         depth=CUSTODY_RESPONSE_DEPTH + 1,  # Add 1 for the List length mix-in
         index=response.chunk_index,
         root=challenge.data_root,
-    )
+    ))
     # Clear the challenge
     index_in_records = state.custody_chunk_challenge_records.index(challenge)
     state.custody_chunk_challenge_records[index_in_records] = CustodyChunkChallengeRecord()
@@ -480,15 +480,15 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
         revealer.next_custody_secret_to_reveal
         == get_custody_period_for_validator(reveal.revealer_index, revealer.exit_epoch - 1)
     )
-    assert is_past_reveal or (is_exited and is_exit_period_reveal)
+    require(is_past_reveal or (is_exited and is_exit_period_reveal))
 
     # Revealed validator is active or exited, but not withdrawn
-    assert is_slashable_validator(revealer, get_current_epoch(state))
+    require(is_slashable_validator(revealer, get_current_epoch(state)))
 
     # Verify signature
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     signing_root = compute_signing_root(epoch_to_sign, domain)
-    assert bls.Verify(revealer.pubkey, signing_root, reveal.reveal)
+    require(bls.Verify(revealer.pubkey, signing_root, reveal.reveal))
 
     # Process reveal
     if is_exited and is_exit_period_reveal:
@@ -515,10 +515,10 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
     revealed_validator = state.validators[reveal.revealed_index]
     derived_secret_location = uint64(reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS)
 
-    assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
-    assert reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    assert not revealed_validator.slashed
-    assert reveal.revealed_index not in state.exposed_derived_secrets[derived_secret_location]
+    require(reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS)
+    require(reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS)
+    require(not revealed_validator.slashed)
+    require(reveal.revealed_index not in state.exposed_derived_secrets[derived_secret_location])
 
     # Verify signature correctness
     masker = state.validators[reveal.masker_index]
@@ -526,7 +526,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
 
     domain = get_domain(state, DOMAIN_RANDAO, reveal.epoch)
     signing_roots = [compute_signing_root(root, domain) for root in [hash_tree_root(reveal.epoch), reveal.mask]]
-    assert bls.AggregateVerify(pubkeys, signing_roots, reveal.reveal)
+    require(bls.AggregateVerify(pubkeys, signing_roots, reveal.reveal))
 
     if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         # Full slashing when the secret was revealed so early it may be a valid custody
@@ -576,26 +576,26 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     whistleblower = state.validators[custody_slashing.whistleblower_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_SLASHING, get_current_epoch(state))
     signing_root = compute_signing_root(custody_slashing, domain)
-    assert bls.Verify(whistleblower.pubkey, signing_root, signed_custody_slashing.signature)
+    require(bls.Verify(whistleblower.pubkey, signing_root, signed_custody_slashing.signature))
     # Verify that the whistleblower is slashable
-    assert is_slashable_validator(whistleblower, get_current_epoch(state))
+    require(is_slashable_validator(whistleblower, get_current_epoch(state)))
     # Verify that the claimed malefactor is slashable
-    assert is_slashable_validator(malefactor, get_current_epoch(state))
+    require(is_slashable_validator(malefactor, get_current_epoch(state)))
 
     # Verify the attestation
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    require(is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation)))
 
     # TODO: can do a single combined merkle proof of data being attested.
     # Verify the shard transition is indeed attested by the attestation
     shard_transition = custody_slashing.shard_transition
-    assert hash_tree_root(shard_transition) == attestation.data.shard_transition_root
+    require(hash_tree_root(shard_transition) == attestation.data.shard_transition_root)
     # Verify that the provided data matches the shard-transition
-    assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]
-    assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
+    require(len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index])
+    require(hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index])
     # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-    assert custody_slashing.malefactor_index in attesters
-    
+    require(custody_slashing.malefactor_index in attesters)
+ 
     # Verify the malefactor custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
         get_custody_period_for_validator(custody_slashing.malefactor_index, attestation.data.target.epoch),
@@ -603,7 +603,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     signing_root = compute_signing_root(epoch_to_sign, domain)
-    assert bls.Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret)
+    require(bls.Verify(malefactor.pubkey, signing_root, custody_slashing.malefactor_secret))
 
     # Compute the custody bit
     computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_secret, custody_slashing.data)
