@@ -67,7 +67,7 @@ def reverse_bit_order(n: int, order: int):
     """
     Reverse the bit order of an integer n
     """
-    assert is_power_of_two(order)
+    require(is_power_of_two(order))
     return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
 ```
 
@@ -76,7 +76,7 @@ def reverse_bit_order(n: int, order: int):
 ```python
 def reverse_bit_order_list(elements: Sequence[int]) -> Sequence[int]:
     order = len(elements)
-    assert is_power_of_two(order)
+    require(is_power_of_two(order))
     return [elements[reverse_bit_order(i, order)] for i in range(order)]
 ```
 
@@ -153,10 +153,10 @@ def commit_to_data(data_as_poly: Sequence[Point]) -> BLSCommitment:
 ```python
 def sample_data(slot: Slot, shard: Shard, extended_data: Sequence[Point]) -> Sequence[DASSample]:
     sample_count = len(extended_data) // POINTS_PER_SAMPLE
-    assert sample_count <= MAX_SAMPLES_PER_BLOCK
+    require(sample_count <= MAX_SAMPLES_PER_BLOCK)
     # get polynomial form of full extended data, second half will be all zeroes.
     poly = ifft(reverse_bit_order_list(extended_data))
-    assert all(v == 0 for v in poly[len(poly)//2:])
+    require(all(v == 0 for v in poly[len(poly)//2:]))
     proofs = construct_proofs(poly)
     return [
         DASSample(
@@ -179,7 +179,7 @@ def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommit
     sample_root_of_unity = ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK  # change point-level to sample-level domain
     x = sample_root_of_unity**domain_pos
     ys = reverse_bit_order_list(sample.data)
-    assert check_multi_kzg_proof(commitment, sample.proof, x, ys)
+    require(check_multi_kzg_proof(commitment, sample.proof, x, ys))
 ```
 
 ```python
