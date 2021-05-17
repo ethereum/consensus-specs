@@ -16,7 +16,6 @@
   - [Shard block configs](#shard-block-configs)
   - [Precomputed size verification points](#precomputed-size-verification-points)
   - [Gwei values](#gwei-values)
-  - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [`AttestationData`](#attestationdata)
@@ -122,12 +121,6 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - | - |
 | `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
-
-### Time parameters
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
 ### Domain types
 
