@@ -12,7 +12,7 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
       - pre-state ('pre')
       - proposer_slashing ('proposer_slashing')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
 
     pre_state = state.copy()

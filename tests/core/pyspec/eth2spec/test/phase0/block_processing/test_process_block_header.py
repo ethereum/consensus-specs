@@ -15,7 +15,7 @@ def run_block_header_processing(spec, state, block, prepare_state=True, valid=Tr
       - pre-state ('pre')
       - block ('block')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     if prepare_state:
         prepare_state_for_header_processing(spec, state)

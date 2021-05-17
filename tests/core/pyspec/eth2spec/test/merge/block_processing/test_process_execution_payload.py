@@ -15,7 +15,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
       - execution payload ('execution_payload')
       - execution details, to mock EVM execution ('execution.yml', a dict with 'execution_valid' key and boolean value)
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
 
     yield 'pre', state

@@ -1,5 +1,7 @@
 from eth_utils import encode_hex
 
+from eth2spec.test.exceptions import ValidationError
+
 
 def get_anchor_root(spec, state):
     anchor_block_header = state.latest_block_header.copy()
@@ -77,8 +79,7 @@ def run_on_block(spec, store, signed_block, test_steps, valid=True):
     if not valid:
         try:
             spec.on_block(store, signed_block)
-
-        except AssertionError:
+        except (ValidationError, AssertionError):
             return
         else:
             assert False

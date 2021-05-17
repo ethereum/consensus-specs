@@ -15,7 +15,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
       - pre-state ('pre')
       - deposit ('deposit')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     pre_validator_count = len(state.validators)
     pre_balance = 0

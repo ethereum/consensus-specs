@@ -595,13 +595,13 @@ class SignedBeaconBlockHeader(Container):
 #### `require`
 
 ```python
-def require(condition: bool, message: str=None) -> None:
+def require(condition: bool, message: str='') -> None:
     """
     Check if the given condition is satisfied.
     If not, raise an exception to signal that it's INVALID.
     """
     if not condition:
-        raise ValidationError(str(condition) if message is None else message)
+        raise ValidationError(message)
 ```
 
 **Note**: The `message` value is just for debugging the executable spec. The error handling details are implementation specific.

@@ -231,11 +231,7 @@ def expect_assertion_error(fn):
     try:
         fn()
         bad = True
-    except ValidationError:
-        pass
-    except AssertionError:
-        pass
-    except IndexError:
+    except (ValidationError, AssertionError, IndexError):
         # Index errors are special; the spec is not explicit on bound checking, an IndexError is like a failed assert.
         pass
     if bad:

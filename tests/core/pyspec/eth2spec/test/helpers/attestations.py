@@ -16,7 +16,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
       - pre-state ('pre')
       - attestation ('attestation')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     # yield pre-state
     yield 'pre', state

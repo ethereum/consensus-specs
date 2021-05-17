@@ -28,7 +28,7 @@ def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, c
       - pre-state ('pre')
       - CustodySlashing ('custody_slashing')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     yield 'pre', state
     yield 'custody_slashing', custody_slashing
