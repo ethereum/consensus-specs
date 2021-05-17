@@ -114,24 +114,24 @@ def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlo
 def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: TransitionStore=None) -> None:
     block = signed_block.message
     # Parent block must be known
-    assert block.parent_root in store.block_states
+    require(block.parent_root in store.block_states)
     # Make a copy of the state to avoid mutability issues
     pre_state = copy(store.block_states[block.parent_root])
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
-    assert get_current_slot(store) >= block.slot
+    require(get_current_slot(store) >= block.slot)
 
     # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert block.slot > finalized_slot
+    require(block.slot > finalized_slot)
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
-    
+    require(get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root)
+ 
     # [New in Merge]
     if (transition_store is not None) and is_transition_block(pre_state, block):
         # Delay consideration of block until PoW block is processed by the PoW node
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
-        assert pow_block.is_processed
-        assert is_valid_terminal_pow_block(transition_store, pow_block)
+        require(pow_block.is_processed)
+        require(is_valid_terminal_pow_block(transition_store, pow_block))
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
