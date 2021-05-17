@@ -760,8 +760,9 @@ def reset_pending_headers(state: BeaconState) -> None:
     # Add dummy "empty" PendingShardHeader (default vote for if no shard header available)
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
+    committees_per_slot = get_committee_count_per_slot(state, next_epoch)
     for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
-        for index in range(get_committee_count_per_slot(state, next_epoch)):
+        for index in range(committees_per_slot):
             committee_index = CommitteeIndex(index)
             shard = compute_shard_from_committee_index(state, slot, committee_index)
             committee_length = len(get_beacon_committee(state, slot, committee_index))
