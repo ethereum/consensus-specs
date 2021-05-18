@@ -5,7 +5,7 @@ from inspect import getmembers, isclass
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 
 from eth2spec.debug import random_value, encode
-from eth2spec.test.helpers.constants import ALTAIR, MERGE, TESTGEN_FORKS, MINIMAL, MAINNET
+from eth2spec.test.helpers.constants import TESTGEN_FORKS, MINIMAL, MAINNET
 from eth2spec.test.context import spec_targets
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (

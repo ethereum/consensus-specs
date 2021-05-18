@@ -2,7 +2,7 @@ from eth_utils import to_tuple
 from typing import Iterable
 
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
-from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
+from eth2spec.test.helpers.typing import PresetBaseName
 
 from eth2spec.phase0 import mainnet as spec_mainnet, minimal as spec_minimal
 from eth2spec.test.helpers.constants import PHASE0, MINIMAL, MAINNET
