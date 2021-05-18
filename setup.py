@@ -326,7 +326,7 @@ from dataclasses import (
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
@@ -603,7 +603,7 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
-    config_spec = '@dataclass\nclass Configuration(object):\n'
+    config_spec = 'class Configuration(NamedTuple):\n'
     config_spec += '    PRESET_BASE: str\n'
     config_spec += '\n'.join(f'    {k}: {v.type_name if v.type_name is not None else "int"}'
                              for k, v in spec_object.config_vars.items())

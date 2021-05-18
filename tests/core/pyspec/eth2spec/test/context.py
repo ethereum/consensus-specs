@@ -23,9 +23,13 @@ from lru import LRU
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
 
+class Configuration(Protocol):
+    PRESET_BASE: str
+
 
 class Spec(Protocol):
-    version: str
+    fork: str
+    config: Configuration
 
 
 class SpecPhase0(Spec):
@@ -78,8 +82,8 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
     def deco(fn):
 
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
-            # make a key for the state
-            key = (spec.fork, spec.config.PRESET_BASE, spec.__file__, balances_fn, threshold_fn)
+            # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
+            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
             global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
@@ -209,6 +213,14 @@ def spec_test(fn):
 # shorthand for decorating @spectest() @with_state @single_phase
 def spec_state_test(fn):
     return spec_test(with_state(single_phase(fn)))
+
+
+def spec_configured_state_test(conf):
+    overrides = with_config_overrides(conf)
+
+    def decorator(fn):
+        return spec_test(overrides(with_state(single_phase(fn))))
+    return decorator
 
 
 def expect_assertion_error(fn):
@@ -380,9 +392,11 @@ def with_presets(preset_bases, reason=None):
 
 def with_config_overrides(config_overrides):
     """
-    Decorator that applies a dict of config value overrides to the spec during execution.
-    This may be slow due to having to reload the spec modules,
-    since the specs uses globals instead of a configuration object.
+    WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
+    This decorator forces the test to yield, and pytest doesn't run generator tests, and instead silently passes it.
+    Use 'spec_configured_state_test' instead of 'spec_state_test' if you are unsure.
+
+    This is a decorator that applies a dict of config value overrides to the spec during execution.
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
@@ -390,9 +404,16 @@ def with_config_overrides(config_overrides):
             old_config = spec.config
 
             # apply our overrides to a copy of it, and apply it to the spec
-            tmp_config = deepcopy(old_config)
+            tmp_config = deepcopy(old_config._asdict())  # not a private method, there are multiple
             tmp_config.update(config_overrides)
-            spec.config = tmp_config
+            config_types = spec.Configuration.__annotations__
+            # Retain types of all config values
+            test_config = {k: config_types[k](v) for k, v in tmp_config.items()}
+
+            # Output the config for test vectors  (TODO: check config YAML encoding)
+            yield 'config', test_config
+
+            spec.config = spec.Configuration(**test_config)
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
