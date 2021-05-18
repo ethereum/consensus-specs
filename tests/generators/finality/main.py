@@ -10,7 +10,7 @@ if __name__ == "__main__":
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
-        MERGE: spec_merge,
+        MERGE: merge_mods,
     }
 
     run_state_test_generators(runner_name="finality", all_mods=all_mods)
