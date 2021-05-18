@@ -69,8 +69,8 @@ def _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True):
     state = post_spec.upgrade_to_altair(state)
 
     assert state.fork.epoch == fork_epoch
-    assert state.fork.previous_version == post_spec.GENESIS_FORK_VERSION
-    assert state.fork.current_version == post_spec.ALTAIR_FORK_VERSION
+    assert state.fork.previous_version == post_spec.config.GENESIS_FORK_VERSION
+    assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
 
     if with_block:
         return state, _state_transition_and_sign_block_at_slot(post_spec, state)

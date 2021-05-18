@@ -197,7 +197,7 @@ def test_filtered_block_tree(spec, state):
     assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
-    current_time = state.slot * spec.SECONDS_PER_SLOT + store.genesis_time
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     for signed_block in signed_blocks:
         yield from run_on_block(spec, store, signed_block, test_steps)
@@ -243,7 +243,7 @@ def test_filtered_block_tree(spec, state):
             attestations.append(attestation)
 
     # tick time forward to be able to include up to the latest attestation
-    current_time = (attestations[-1].data.slot + 1) * spec.SECONDS_PER_SLOT + store.genesis_time
+    current_time = (attestations[-1].data.slot + 1) * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # include rogue block and associated attestations in the store

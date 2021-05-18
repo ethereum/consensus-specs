@@ -19,7 +19,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     Helper function to run a test that slashes and exits two validators
     """
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     yield 'pre', state
 
@@ -127,7 +127,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
 
 def run_test_full_random_operations(spec, state, rng=Random(2080)):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     # prepare state for deposits before building block
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)

@@ -45,7 +45,7 @@ def has_enough_for_leak_penalty(spec, state, index):
     if is_post_altair(spec):
         return (
             state.validators[index].effective_balance * state.inactivity_scores[index]
-            > spec.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+            > spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
         )
     else:
         return (
