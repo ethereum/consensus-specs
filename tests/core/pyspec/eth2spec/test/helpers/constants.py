@@ -31,4 +31,4 @@ FORKS_BEFORE_MERGE = (PHASE0,)
 MAINNET = PresetBaseName('mainnet')
 MINIMAL = PresetBaseName('minimal')
 
-ALL_CONFIGS = (MINIMAL, MAINNET)
+ALL_PRESETS = (MINIMAL, MAINNET)

@@ -1,15 +1,14 @@
 from eth_utils import to_tuple
 from typing import Iterable
-from importlib import reload
 
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 
-from eth2spec.config import config_util
-from eth2spec.phase0 import spec as spec
-from eth2spec.test.helpers.constants import PHASE0
+from eth2spec.phase0 import mainnet as spec_mainnet, minimal as spec_minimal
+from eth2spec.test.helpers.constants import PHASE0, MINIMAL, MAINNET
 
 
-def shuffling_case_fn(seed, count):
+def shuffling_case_fn(spec, seed, count):
     yield 'mapping', 'data', {
         'seed': '0x' + seed.hex(),
         'count': count,
@@ -17,28 +16,33 @@ def shuffling_case_fn(seed, count):
     }
 
 
-def shuffling_case(seed, count):
-    return f'shuffle_0x{seed.hex()}_{count}', lambda: shuffling_case_fn(seed, count)
+def shuffling_case(spec, seed, count):
+    return f'shuffle_0x{seed.hex()}_{count}', lambda: shuffling_case_fn(spec, seed, count)
 
 
 @to_tuple
-def shuffling_test_cases():
+def shuffling_test_cases(spec):
     for seed in [spec.hash(seed_init_value.to_bytes(length=4, byteorder='little')) for seed_init_value in range(30)]:
         for count in [0, 1, 2, 3, 5, 10, 33, 100, 1000, 9999]:
-            yield shuffling_case(seed, count)
+            yield shuffling_case(spec, seed, count)
 
 
-def create_provider(config_name: str) -> gen_typing.TestProvider:
+def create_provider(preset_name: PresetBaseName) -> gen_typing.TestProvider:
 
-    def prepare_fn(configs_path: str) -> str:
-        config_util.prepare_config(configs_path, config_name)
-        reload(spec)
-        return config_name
+    def prepare_fn() -> None:
+        return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
+        if preset_name == MAINNET:
+            spec = spec_mainnet
+        elif preset_name == MINIMAL:
+            spec = spec_minimal
+        else:
+            raise Exception(f"unrecognized preset: {preset_name}")
         for (case_name, case_fn) in shuffling_test_cases():
             yield gen_typing.TestCase(
                 fork_name=PHASE0,
+                preset_name=preset_name,
                 runner_name='shuffling',
                 handler_name='core',
                 suite_name='shuffle',
@@ -50,4 +54,4 @@ def create_provider(config_name: str) -> gen_typing.TestProvider:
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("shuffling", [create_provider("minimal"), create_provider("mainnet")])
+    gen_runner.run_generator("shuffling", [create_provider(MINIMAL), create_provider(MAINNET)])
