@@ -176,21 +176,14 @@ reveal_deadlines_setting:   -- optional, can have 2 different values:
                             1: `process_reveal_deadlines` is OFF.
 ```
 
+##### `config.yaml`
 
-## Config
+The runtime-configurables may be different for specific tests.
+When present, this replaces the default runtime-config that comes with the otherwise compile-time preset settings.
 
-A configuration is a separate YAML file.
-Separation of configuration and tests aims to:
-- Prevent duplication of configuration
-- Make all tests easy to upgrade (e.g. when a new config constant is introduced)
-- Clearly define which constants to use
-- Be easily shareable between clients, for cross-client short- or long-lived testnets
-- Minimize the amount of different constants permutations to compile as a client.
-  *Note*: Some clients prefer compile-time constants and optimizations.
-  They should compile for each configuration once, and run the corresponding tests per build target.
-- Include constants to coordinate forking with
-
-The format is described in [`/configs`](../../configs/README.md#format).
+The format matches that of the `mainnet_config.yaml` and `minimal_config.yaml`,
+see the [`/configs`](../../configs/README.md#format) documentation.
+Config values that are introduced at a later fork may be omitted from tests of previous forks.
 
 
 ## Config sourcing
