@@ -31,7 +31,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
-    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, deposit_root, _ = prepare_full_genesis_deposits(
         spec,
         spec.MAX_EFFECTIVE_BALANCE,
@@ -67,7 +67,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
-    main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec, spec.MAX_EFFECTIVE_BALANCE,
         deposit_count=main_deposit_count, signed=True,
@@ -112,7 +112,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
     # Submit all but one deposit as MAX_EFFECTIVE_BALANCE
-    main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
+    main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec, spec.MAX_EFFECTIVE_BALANCE,
         deposit_count=main_deposit_count, signed=True,
@@ -191,15 +191,15 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
     random_deposits, _, deposit_data_list = prepare_random_genesis_deposits(
         spec,
         deposit_count=20,
-        min_pubkey_index=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 5,
-        max_pubkey_index=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 5,
+        min_pubkey_index=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 5,
+        max_pubkey_index=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 5,
     )
 
-    # Then make spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT full deposits
+    # Then make spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT full deposits
     full_deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         spec.MAX_EFFECTIVE_BALANCE,
-        deposit_count=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT,
+        deposit_count=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT,
         signed=True,
         deposit_data_list=deposit_data_list
     )

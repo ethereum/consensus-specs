@@ -16,7 +16,7 @@ def get_post_altair_description(spec):
 
 
 def create_valid_beacon_state(spec):
-    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         amount=spec.MAX_EFFECTIVE_BALANCE,
@@ -90,7 +90,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
-    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
+    deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         amount=spec.MAX_EFFECTIVE_BALANCE,
@@ -113,7 +113,7 @@ def test_is_valid_genesis_state_false_not_enough_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
-    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
+    deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         amount=spec.MAX_EFFECTIVE_BALANCE,
