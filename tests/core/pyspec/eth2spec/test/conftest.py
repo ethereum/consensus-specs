@@ -41,9 +41,7 @@ def pytest_addoption(parser):
 
 @fixture(autouse=True)
 def preset(request):
-    # TODO: apply to tests, see context.py 'with_presets'
-    preset_flag_value = request.config.getoption("--preset")
-    print("preset:", preset_flag_value)
+    context.DEFAULT_TEST_PRESET = request.config.getoption("--preset")
 
 
 @fixture(autouse=True)

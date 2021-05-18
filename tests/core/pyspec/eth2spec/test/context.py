@@ -19,6 +19,9 @@ from typing import Any, Callable, Sequence, TypedDict, Protocol, Dict
 
 from lru import LRU
 
+# Without pytest CLI arg or pyspec-test-generator 'preset' argument, this will be the config to apply.
+DEFAULT_TEST_PRESET = MINIMAL
+
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -339,7 +342,7 @@ def with_phases(phases, other_phases=None):
             if other_phases is not None:
                 available_phases |= set(other_phases)
 
-            preset_name = MINIMAL
+            preset_name = DEFAULT_TEST_PRESET
             if 'preset' in kw:
                 preset_name = kw.pop('preset')
             targets = spec_targets[preset_name]
