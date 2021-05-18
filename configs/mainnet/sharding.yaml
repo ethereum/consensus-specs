@@ -34,11 +34,6 @@ MAX_GASPRICE: 8589934592
 # 2**3 (= 8) Gwei
 MIN_GASPRICE: 8
 
-# Time parameters
-# ---------------------------------------------------------------
-# 2**8 (= 256) | epochs
-SHARD_COMMITTEE_PERIOD: 256
-
 # Signature domains
 # ---------------------------------------------------------------
 DOMAIN_SHARD_PROPOSER: 0x80000000
