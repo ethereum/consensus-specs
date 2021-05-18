@@ -24,9 +24,8 @@ from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
     run_test_full_random_operations,
 )
-
+from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.context import (
-    PHASE0, MINIMAL,
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
@@ -931,8 +930,11 @@ def test_balance_driven_status_transitions(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
+# Requires always_bls because historical root period and sync committee period is same length
+# so this epoch transition also computes new sync committees which requires aggregation
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_historical_batch(spec, state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
     pre_historical_roots_len = len(state.historical_roots)

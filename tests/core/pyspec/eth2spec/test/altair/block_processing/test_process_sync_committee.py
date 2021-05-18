@@ -8,14 +8,15 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
 )
+from eth2spec.test.helpers.constants import (
+    MAINNET, MINIMAL,
+)
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
 from eth2spec.test.context import (
-    PHASE0,
-    MAINNET, MINIMAL,
     expect_assertion_error,
-    with_all_phases_except,
+    with_altair_and_later,
     with_configs,
     spec_state_test,
     always_bls,
@@ -48,9 +49,9 @@ def get_committee_indices(spec, state, duplicates=False):
     """
     state = state.copy()
     current_epoch = spec.get_current_epoch(state)
-    randao_index = current_epoch % spec.EPOCHS_PER_HISTORICAL_VECTOR
+    randao_index = (current_epoch + 1) % spec.EPOCHS_PER_HISTORICAL_VECTOR
     while True:
-        committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+        committee = spec.get_next_sync_committee_indices(state)
         if duplicates:
             if len(committee) != len(set(committee)):
                 return committee
@@ -60,57 +61,73 @@ def get_committee_indices(spec, state, duplicates=False):
         state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
 
 
-@with_all_phases_except([PHASE0])
+def compute_committee_indices(spec, state, committee):
+    """
+    Given a ``committee``, calculate and return the related indices
+    """
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee_indices = [all_pubkeys.index(pubkey) for pubkey in committee.pubkeys]
+    return committee_indices
+
+
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_invalid_signature_missing_participant(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     rng = random.Random(2020)
-    random_participant = rng.choice(committee)
+    random_participant = rng.choice(committee_indices)
 
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one participant whose signature was included.
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[index != random_participant for index in committee],
+        sync_committee_bits=[index != random_participant for index in committee_indices],
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
             block.slot - 1,
-            committee,  # full committee signs
+            committee_indices,  # full committee signs
         )
     )
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_invalid_signature_extra_participant(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     rng = random.Random(3030)
-    random_participant = rng.choice(committee)
+    random_participant = rng.choice(committee_indices)
 
     block = build_empty_block_for_next_slot(spec, state)
     # Exclude one signature even though the block claims the entire committee participated.
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[True] * len(committee),
+        sync_committee_bits=[True] * len(committee_indices),
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
             block.slot - 1,
-            [index for index in committee if index != random_participant],
+            [index for index in committee_indices if index != random_participant],
         )
     )
 
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-def compute_sync_committee_inclusion_reward(spec, state, participant_index, committee, committee_bits):
+def compute_sync_committee_inclusion_reward(spec,
+                                            state,
+                                            participant_index,
+                                            committee_indices,
+                                            committee_bits):
     total_active_increments = spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = spec.Gwei(spec.get_base_reward_per_increment(state) * total_active_increments)
     max_epoch_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT // spec.WEIGHT_DENOMINATOR)
-    included_indices = [index for index, bit in zip(committee, committee_bits) if bit]
-    max_slot_rewards = spec.Gwei(max_epoch_rewards * len(included_indices) // len(committee) // spec.SLOTS_PER_EPOCH)
+    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
+    max_slot_rewards = spec.Gwei(
+        max_epoch_rewards * len(included_indices)
+        // len(committee_indices) // spec.SLOTS_PER_EPOCH
+    )
 
     # Compute the participant and proposer sync rewards
     committee_effective_balance = sum([state.validators[index].effective_balance for index in included_indices])
@@ -119,53 +136,57 @@ def compute_sync_committee_inclusion_reward(spec, state, participant_index, comm
     return spec.Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
 
 
-def compute_sync_committee_participant_reward(spec, state, participant_index, committee, committee_bits):
-    included_indices = [index for index, bit in zip(committee, committee_bits) if bit]
+def compute_sync_committee_participant_reward(spec, state, participant_index, committee_indices, committee_bits):
+    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
     multiplicities = Counter(included_indices)
 
     inclusion_reward = compute_sync_committee_inclusion_reward(
-        spec, state, participant_index, committee, committee_bits,
+        spec, state, participant_index, committee_indices, committee_bits,
     )
-    proposer_reward = spec.Gwei(inclusion_reward // spec.PROPOSER_REWARD_QUOTIENT)
-    return spec.Gwei((inclusion_reward - proposer_reward) * multiplicities[participant_index])
+    return spec.Gwei(inclusion_reward * multiplicities[participant_index])
 
 
-def compute_sync_committee_proposer_reward(spec, state, committee, committee_bits):
+def compute_sync_committee_proposer_reward(spec, state, committee_indices, committee_bits):
     proposer_reward = 0
-    for index, bit in zip(committee, committee_bits):
+    for index, bit in zip(committee_indices, committee_bits):
         if not bit:
             continue
         inclusion_reward = compute_sync_committee_inclusion_reward(
-            spec, state, index, committee, committee_bits,
+            spec, state, index, committee_indices, committee_bits,
         )
-        proposer_reward += spec.Gwei(inclusion_reward // spec.PROPOSER_REWARD_QUOTIENT)
+        proposer_reward_denominator = (
+            (spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT)
+            * spec.WEIGHT_DENOMINATOR
+            // spec.PROPOSER_WEIGHT
+        )
+        proposer_reward += spec.Gwei((inclusion_reward * spec.WEIGHT_DENOMINATOR) // proposer_reward_denominator)
     return proposer_reward
 
 
-def validate_sync_committee_rewards(spec, pre_state, post_state, committee, committee_bits, proposer_index):
+def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indices, committee_bits, proposer_index):
     for index in range(len(post_state.validators)):
         reward = 0
-        if index in committee:
+        if index in committee_indices:
             reward += compute_sync_committee_participant_reward(
                 spec,
                 pre_state,
                 index,
-                committee,
+                committee_indices,
                 committee_bits,
             )
 
-            if proposer_index == index:
-                reward += compute_sync_committee_proposer_reward(
-                    spec,
-                    pre_state,
-                    committee,
-                    committee_bits,
-                )
+        if proposer_index == index:
+            reward += compute_sync_committee_proposer_reward(
+                spec,
+                pre_state,
+                committee_indices,
+                committee_bits,
+            )
 
         assert post_state.balances[index] == pre_state.balances[index] + reward
 
 
-def run_successful_sync_committee_test(spec, state, committee, committee_bits):
+def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
     pre_state = state.copy()
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -175,7 +196,7 @@ def run_successful_sync_committee_test(spec, state, committee, committee_bits):
             spec,
             state,
             block.slot - 1,
-            [index for index, bit in zip(committee, committee_bits) if bit],
+            [index for index, bit in zip(committee_indices, committee_bits) if bit],
         )
     )
 
@@ -185,60 +206,70 @@ def run_successful_sync_committee_test(spec, state, committee, committee_bits):
         spec,
         pre_state,
         state,
-        committee,
+        committee_indices,
         committee_bits,
         block.proposer_index,
     )
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_configs([MINIMAL], reason="to create nonduplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_nonduplicate_committee(spec, state):
-    committee = get_committee_indices(spec, state, duplicates=False)
-    committee_size = len(committee)
+    committee_indices = get_committee_indices(spec, state, duplicates=False)
+    committee_size = len(committee_indices)
     committee_bits = [True] * committee_size
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
     assert active_validator_count >= spec.SYNC_COMMITTEE_SIZE
-    assert committee_size == len(set(committee))
+    assert committee_size == len(set(committee_indices))
 
-    yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_configs([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee(spec, state):
-    committee = get_committee_indices(spec, state, duplicates=True)
-    committee_size = len(committee)
+    committee_indices = get_committee_indices(spec, state, duplicates=True)
+    committee_size = len(committee_indices)
     committee_bits = [True] * committee_size
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
     assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
-    assert committee_size > len(set(committee))
+    assert committee_size > len(set(committee_indices))
 
-    yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     rng = random.Random(1010)
-    committee_bits = [rng.choice([True, False]) for _ in committee]
+    committee_bits = [rng.choice([True, False]) for _ in committee_indices]
 
-    yield from run_successful_sync_committee_test(spec, state, committee, committee_bits)
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_sync_committee_rewards_empty_participants(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    committee_bits = [False for _ in committee_indices]
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_invalid_signature_past_block(spec, state):
-    committee = spec.get_sync_committee_indices(state, spec.get_current_epoch(state))
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
 
     blocks = []
     for _ in range(2):
@@ -246,12 +277,12 @@ def test_invalid_signature_past_block(spec, state):
         block = build_empty_block_for_next_slot(spec, state)
         # Valid sync committee signature here...
         block.body.sync_aggregate = spec.SyncAggregate(
-            sync_committee_bits=[True] * len(committee),
+            sync_committee_bits=[True] * len(committee_indices),
             sync_committee_signature=compute_aggregate_sync_committee_signature(
                 spec,
                 state,
                 block.slot - 1,
-                committee,
+                committee_indices,
             )
         )
 
@@ -261,19 +292,19 @@ def test_invalid_signature_past_block(spec, state):
     invalid_block = build_empty_block_for_next_slot(spec, state)
     # Invalid signature from a slot other than the previous
     invalid_block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[True] * len(committee),
+        sync_committee_bits=[True] * len(committee_indices),
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
             invalid_block.slot - 2,
-            committee,
+            committee_indices,
         )
     )
 
     yield from run_sync_committee_processing(spec, state, invalid_block, expect_exception=True)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @with_configs([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
 @always_bls
@@ -291,26 +322,25 @@ def test_invalid_signature_previous_committee(spec, state):
     transition_to(spec, state, slot_in_future_sync_committee_period)
 
     # Use the previous sync committee to produce the signature.
-    pubkeys = [validator.pubkey for validator in state.validators]
     # Ensure that the pubkey sets are different.
     assert set(old_sync_committee.pubkeys) != set(state.current_sync_committee.pubkeys)
-    committee = [pubkeys.index(pubkey) for pubkey in old_sync_committee.pubkeys]
+    committee_indices = compute_committee_indices(spec, state, old_sync_committee)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[True] * len(committee),
+        sync_committee_bits=[True] * len(committee_indices),
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
             block.slot - 1,
-            committee,
+            committee_indices,
         )
     )
 
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_all_phases_except([PHASE0])
+@with_altair_and_later
 @spec_state_test
 @always_bls
 @with_configs([MINIMAL], reason="too slow")
@@ -329,15 +359,13 @@ def test_valid_signature_future_committee(spec, state):
     transition_to(spec, state, slot_in_future_sync_committee_period)
 
     sync_committee = state.current_sync_committee
+    next_sync_committee = state.next_sync_committee
 
-    expected_sync_committee = spec.get_sync_committee(state, epoch_in_future_sync_committee_period)
-
-    assert sync_committee == expected_sync_committee
+    assert next_sync_committee != sync_committee
     assert sync_committee != old_current_sync_committee
     assert sync_committee != old_next_sync_committee
 
-    pubkeys = [validator.pubkey for validator in state.validators]
-    committee_indices = [pubkeys.index(pubkey) for pubkey in sync_committee.pubkeys]
+    committee_indices = compute_committee_indices(spec, state, sync_committee)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(

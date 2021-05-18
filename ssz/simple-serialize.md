@@ -75,7 +75,8 @@ For convenience we alias:
 
 * `bit` to `boolean`
 * `byte` to `uint8` (this is a basic type)
-* `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
+* `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
+* `ByteList[N]` to `List[byte, N]`
 * `null`: `{}`
 
 ### Default values

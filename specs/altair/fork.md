@@ -26,21 +26,41 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
-| `ALTAIR_FORK_SLOT` | `Slot(18446744073709551615)` **TBD** |
+| `ALTAIR_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to Altair
 
 ### Fork trigger
 
-TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at slot `ALTAIR_FORK_SLOT`, where `ALTAIR_FORK_SLOT % SLOTS_PER_EPOCH == 0`.
+TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at epoch `ALTAIR_FORK_EPOCH`.
+
+Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since it starts with Altair version logic.
 
 ### Upgrading the state
 
-After `process_slots` of Phase 0 finishes, if `state.slot == ALTAIR_FORK_SLOT`, an irregular state change is made to upgrade to Altair.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ALTAIR_FORK_EPOCH`, an irregular state change is made to upgrade to Altair.
+
+The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `ALTAIR_FORK_EPOCH * SLOTS_PER_EPOCH`.
+Care must be taken when transitioning through the fork boundary as implementations will need a modified state transition function that deviates from the Phase 0 spec.
+In particular, the outer `state_transition` function defined in the Phase 0 spec will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead the logic must be within `process_slots`.
 
 ```python
+def translate_participation(state: BeaconState, pending_attestations: Sequence[phase0.PendingAttestation]) -> None:
+    for attestation in pending_attestations:
+        data = attestation.data
+        inclusion_delay = attestation.inclusion_delay
+        # Translate attestation inclusion info to flag indices
+        participation_flag_indices = get_attestation_participation_flag_indices(state, data, inclusion_delay)
+
+        # Apply flags to all attesting validators
+        epoch_participation = state.previous_epoch_participation
+        for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+            for flag_index in participation_flag_indices:
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+
+
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = phase0.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -78,8 +98,12 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         # Inactivity
         inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
+    # Fill in previous epoch participation from the pre state's pending attestations
+    translate_participation(post, pre.previous_epoch_attestations)
+
     # Fill in sync committees
-    post.current_sync_committee = get_sync_committee(post, get_current_epoch(post))
-    post.next_sync_committee = get_sync_committee(post, get_current_epoch(post) + EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    # Note: A duplicate committee is assigned for the current and next committee at the fork boundary
+    post.current_sync_committee = get_next_sync_committee(post)
+    post.next_sync_committee = get_next_sync_committee(post)
     return post
 ```

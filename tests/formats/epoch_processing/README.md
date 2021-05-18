@@ -32,9 +32,8 @@ The provided pre-state is already transitioned to just before the specific sub-t
 
 Sub-transitions:
 
-Sub-transitions:
-
 - `justification_and_finalization`
+- `inactivity_penalty_updates`
 - `rewards_and_penalties`
 - `registry_updates`
 - `slashings`
@@ -44,5 +43,6 @@ Sub-transitions:
 - `randao_mixes_reset`
 - `historical_roots_update`
 - `participation_record_updates`
+- `sync_committee_updates`
 
 The resulting state should match the expected `post` state.

@@ -6,10 +6,12 @@ from eth2spec.test.helpers.custody import (
 from eth2spec.test.helpers.attestations import (
     get_valid_on_time_attestation,
 )
-from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
-from eth2spec.test.context import (
+from eth2spec.test.helpers.constants import (
     CUSTODY_GAME,
     MINIMAL,
+)
+from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
+from eth2spec.test.context import (
     expect_assertion_error,
     disable_process_reveal_deadlines,
     spec_state_test,

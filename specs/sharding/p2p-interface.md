@@ -9,13 +9,17 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [New containers](#new-containers)
+  - [ShardBlobBody](#shardblobbody)
   - [ShardBlob](#shardblob)
   - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blobs: `shard_blob_{shard}`](#shard-blobs-shard_blob_shard)
+    - [Shard blobs: `shard_blob_{subnet_id}`](#shard-blobs-shard_blob_subnet_id)
     - [Shard header: `shard_header`](#shard-header-shard_header)
+    - [Shard proposer slashing: `shard_proposer_slashing`](#shard-proposer-slashing-shard_proposer_slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -27,32 +31,51 @@ The specification of these changes continues in the same format as the [Phase0](
 [Altair](../altair/p2p-interface.md) network specifications, and assumes them as pre-requisite. 
 The adjustments and additions for Shards are outlined in this document.
 
+## Constants
+
+### Misc
+
+| Name | Value | Description |
+| ---- | ----- | ----------- |
+| `SHARD_BLOB_SUBNET_COUNT` | `64` | The number of `shard_blob_{subnet_id}` subnets used in the gossipsub protocol. |
+
 ## New containers
 
-### ShardBlob
+### ShardBlobBody
 
-Network-only.
+```python
+class ShardBlobBody(Container):
+    # The actual data commitment
+    commitment: DataCommitment
+    # Proof that the degree < commitment.length
+    degree_proof: BLSCommitment
+    # The actual data. Should match the commitment and degree proof.
+    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
+    # Latest block root of the Beacon Chain, before shard_blob.slot
+    beacon_block_root: Root
+```
+
+The user MUST always verify the commitments in the `body` are valid for the `data` in the `body`.
+
+### ShardBlob
 
 ```python
 class ShardBlob(Container):
     # Slot and shard that this blob is intended for
     slot: Slot
     shard: Shard
-    # The actual data. Represented in header as data commitment and degree proof
-    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
+    body: ShardBlobBody
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
 ```
 
-Note that the hash-tree-root of the `ShardBlob` does not match the `ShardHeader`,
-since the blob deals with full data, whereas the header includes the KZG commitment and degree proof instead.
+This is the expanded form of the `ShardBlobHeader` type.
 
 ### SignedShardBlob
-
-Network-only.
 
 ```python
 class SignedShardBlob(Container):
     message: ShardBlob
-    # The signature, the message is the commitment on the blob
     signature: BLSSignature
 ```
 
@@ -64,31 +87,74 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
-| `shard_blob_{shard}`             | `SignedShardBlob`         |
+| `shard_blob_{subnet_id}`         | `SignedShardBlob`         |
 | `shard_header`                   | `SignedShardHeader`       |
+| `shard_proposer_slashing`        | `ShardProposerSlashing`   |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
 
-#### Shard blobs: `shard_blob_{shard}`
+#### Shard blobs: `shard_blob_{subnet_id}`
 
-Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{shard}` subnets.
+Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{subnet_id}` subnets.
 
-The following validations MUST pass before forwarding the `signed_blob` (with inner `blob`) on the horizontal subnet or creating samples for it.
-- _[REJECT]_ `blob.shard` MUST match the topic `{shard}` parameter. (And thus within valid shard index range)
+```python
+def compute_subnet_for_shard_blob(state: BeaconState, slot: Slot, shard: Shard) -> uint64:
+    """
+    Compute the correct subnet for a shard blob publication.
+    Note, this mimics compute_subnet_for_attestation().
+    """
+    committee_index = compute_committee_index_from_shard(state, slot, shard)
+    committees_per_slot = get_committee_count_per_slot(state, compute_epoch_at_slot(slot))
+    slots_since_epoch_start = Slot(slot % SLOTS_PER_EPOCH)
+    committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
+
+    return uint64((committees_since_epoch_start + committee_index) % SHARD_BLOB_SUBNET_COUNT)
+```
+
+The following validations MUST pass before forwarding the `signed_blob` (with inner `message` as `blob`) on the horizontal subnet or creating samples for it.
 - _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `blob.slot <= current_slot`
   (a client MAY queue future blobs for processing at the appropriate slot).
-- _[IGNORE]_ The blob is the first blob with valid signature received for the proposer for the `(slot, shard)` combination.
+- _[IGNORE]_ The `blob` is new enough to be still be processed --
+  i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
+- _[REJECT]_ The shard blob is for the correct subnet --
+  i.e. `compute_subnet_for_shard_blob(state, blob.slot, blob.shard) == subnet_id`  
+- _[IGNORE]_ The blob is the first blob with valid signature received for the `(blob.proposer_index, blob.slot, blob.shard)` combination.
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
-- _[REJECT]_ The `blob.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
-- _[REJECT]_ The proposer signature, `signed_blob.signature`, is valid with respect to the `proposer_index` pubkey, signed over the SSZ output of `commit_to_data(blob.data)`.
-- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot.
+- _[REJECT]_ The `blob.body.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
+- _[REJECT]_ The proposer signature, `signed_blob.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's slot
+  in the context of the current shuffling (defined by `blob.body.beacon_block_root`/`slot`).
+  If the `proposer_index` cannot immediately be verified against the expected shuffling,
+  the block MAY be queued for later processing while proposers for the blob's branch are calculated --
+  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
-TODO: make double blob proposals slashable?
 
 #### Shard header: `shard_header`
 
-Shard header data, in the form of a `SignedShardHeader` is published to the global `shard_header` subnet.
+Shard header data, in the form of a `SignedShardBlobHeader` is published to the global `shard_header` subnet.
 
-TODO: validation conditions.
+The following validations MUST pass before forwarding the `signed_shard_header` (with inner `message` as `header`) on the network.
+- _[IGNORE]_ The `header` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. validate that `header.slot <= current_slot`
+  (a client MAY queue future headers for processing at the appropriate slot).
+- _[IGNORE]_ The `header` is new enough to be still be processed --
+  i.e. validate that `compute_epoch_at_slot(header.slot) >= get_previous_epoch(state)`
+- _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
+- _[REJECT]_ The proposer signature, `signed_shard_header.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The header is proposed by the expected `proposer_index` for the block's slot
+  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
+  If the `proposer_index` cannot immediately be verified against the expected shuffling,
+  the block MAY be queued for later processing while proposers for the block's branch are calculated --
+  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
+
+#### Shard proposer slashing: `shard_proposer_slashing`
+
+Shard proposer slashings, in the form of `ShardProposerSlashing`, are published to the global `shard_proposer_slashing` topic.
+
+The following validations MUST pass before forwarding the `shard_proposer_slashing` on to the network.
+- _[IGNORE]_ The shard proposer slashing is the first valid shard proposer slashing received
+  for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
+  The `slot` and `shard` are ignored, there are no per-shard slashings.
+- _[REJECT]_ All of the conditions within `process_shard_proposer_slashing` pass validation.

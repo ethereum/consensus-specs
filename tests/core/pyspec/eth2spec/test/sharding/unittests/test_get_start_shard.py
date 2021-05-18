@@ -1,8 +1,8 @@
 from eth2spec.test.context import (
-    SHARDING,
     with_phases,
     spec_state_test,
 )
+from eth2spec.test.helpers.constants import SHARDING
 from eth2spec.test.helpers.state import next_epoch
 
 

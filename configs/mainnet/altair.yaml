@@ -1,7 +1,5 @@
 # Mainnet preset - Altair
 
-CONFIG_NAME: "mainnet"
-
 # Updated penalty values
 # ---------------------------------------------------------------
 # 3 * 2**24 (= 50,331,648)
@@ -12,20 +10,20 @@ MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
 PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
 
+# Sync committee
+# ---------------------------------------------------------------
+# 2**9 (= 512)
+SYNC_COMMITTEE_SIZE: 512
+# 2**9 (= 512)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
+
+
 # Misc
 # ---------------------------------------------------------------
-# 2**10 (= 1,024)
-SYNC_COMMITTEE_SIZE: 1024
-# 2**6 (= 64)
-SYNC_PUBKEYS_PER_AGGREGATE: 64
 # 2**2 (= 4)
 INACTIVITY_SCORE_BIAS: 4
-
-
-# Time parameters
-# ---------------------------------------------------------------
-# 2**8 (= 256)
-EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+# 2**4 (= 16)
+INACTIVITY_SCORE_RECOVERY_RATE: 16
 
 
 # Signature domains
@@ -40,14 +38,16 @@ DOMAIN_CONTRIBUTION_AND_PROOF: 0x09000000
 # 0x01000000
 ALTAIR_FORK_VERSION: 0x01000000
 # TBD
-ALTAIR_FORK_SLOT: 18446744073709551615
+ALTAIR_FORK_EPOCH: 18446744073709551615
 
 
 # Sync protocol
 # ---------------------------------------------------------------
 # 1
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
-# 2**13
-MAX_VALID_LIGHT_CLIENT_UPDATES: 8192
-# 2**13 (=8192)
-LIGHT_CLIENT_UPDATE_TIMEOUT: 8192
+
+
+# Validator
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE: 4

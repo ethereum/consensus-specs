@@ -1,12 +1,10 @@
 # Minimal preset - Sharding
 
-CONFIG_NAME: "minimal"
-
 # Fork
 # ---------------------------------------------------------------
 SHARDING_FORK_VERSION: 0x03000001
 # TBD, temporarily max uint64 value: 2**64 - 1
-MERGE_FORK_SLOT: 18446744073709551615
+SHARDING_FORK_EPOCH: 18446744073709551615
 
 
 # Beacon-chain
@@ -18,6 +16,8 @@ MAX_SHARDS: 8
 INITIAL_ACTIVE_SHARDS: 2
 # 2**3 (= 8)
 GASPRICE_ADJUSTMENT_COEFFICIENT: 8
+# [customized] reduced for testing
+MAX_SHARD_PROPOSER_SLASHINGS: 4
 
 # Shard block configs
 # ---------------------------------------------------------------
@@ -34,13 +34,7 @@ MAX_GASPRICE: 8589934592
 # 2**3 (= 8) Gwei
 MIN_GASPRICE: 8
 
-# Time parameters
-# ---------------------------------------------------------------
-# 2**8 (= 256) | epochs
-SHARD_COMMITTEE_PERIOD: 256
-
 # Signature domains
 # ---------------------------------------------------------------
-DOMAIN_SHARD_PROPOSAL: 0x80000000
+DOMAIN_SHARD_PROPOSER: 0x80000000
 DOMAIN_SHARD_COMMITTEE: 0x81000000
-DOMAIN_LIGHT_CLIENT: 0x82000000

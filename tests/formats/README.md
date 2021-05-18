@@ -139,6 +139,8 @@ E.g. `pre.ssz_snappy`, `deposit.ssz_snappy`, `post.ssz_snappy`.
 Diffing a `pre.ssz_snappy` and `post.ssz_snappy` provides all the information for testing, when decompressed and decoded.
 Then the difference between pre and post can be compared to anything that changes the pre state, e.g. `deposit.ssz_snappy`
 
+Note that by default, the SSZ data is in the given test case's <fork or phase name> version, e.g., if it's `altair` test case, use `altair.BeaconState` container to deserialize the given state.
+
 YAML is generally used for test metadata, and for tests that do not use SSZ: e.g. shuffling and BLS tests.
 In this case, there is no point in adding special SSZ types. And the size and efficiency of YAML is acceptable.
 

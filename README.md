@@ -23,12 +23,15 @@ The current features are:
 * [Deposit Contract](specs/phase0/deposit-contract.md)
 * [Honest Validator](specs/phase0/validator.md)
 * [P2P Networking](specs/phase0/p2p-interface.md)
+* [Weak Subjectivity](specs/phase0/weak-subjectivity.md)
 
 ### Altair
 
 * [Beacon Chain changes](specs/altair/beacon-chain.md)
 * [Altair fork](specs/altair/fork.md)
-* [Honest Validator changes](specs/altair/validator.md)
+* [Light client sync protocol](specs/altair/sync-protocol.md)
+* [Honest Validator guide changes](specs/altair/validator.md)
+* [P2P Networking](specs/altair/p2p-interface.md)
 * [Light Client](specs/altair/light-client/README.md) - In active R&D
     * [Sync Protocol](specs/altair/light-client/sync-protocol.md)
     * [P2P Networking](specs/altair/light-client/p2p-interface.md)
