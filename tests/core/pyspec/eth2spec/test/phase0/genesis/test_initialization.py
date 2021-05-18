@@ -40,7 +40,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     )
 
     eth1_block_hash = b'\x12' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -48,7 +48,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert state.genesis_time == eth1_timestamp + spec.GENESIS_DELAY
+    assert state.genesis_time == eth1_timestamp + spec.config.GENESIS_DELAY
     assert len(state.validators) == deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == deposit_count
@@ -83,7 +83,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     deposits = main_deposits + small_deposits
 
     eth1_block_hash = b'\x12' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -91,7 +91,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert state.genesis_time == eth1_timestamp + spec.GENESIS_DELAY
+    assert state.genesis_time == eth1_timestamp + spec.config.GENESIS_DELAY
     assert len(state.validators) == small_deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == len(deposits)
@@ -139,7 +139,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     deposits = main_deposits + partial_deposits + top_up_deposits
 
     eth1_block_hash = b'\x13' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -167,7 +167,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
         max_pubkey_index=10,
     )
     eth1_block_hash = b'\x14' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME + 1
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME + 1
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -206,7 +206,7 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
 
     deposits = random_deposits + full_deposits
     eth1_block_hash = b'\x15' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME + 2
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME + 2
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits

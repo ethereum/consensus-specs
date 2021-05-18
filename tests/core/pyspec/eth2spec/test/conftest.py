@@ -1,5 +1,3 @@
-from pathlib import Path
-from eth2spec.config import config_util
 from eth2spec.test import context
 from eth2spec.utils import bls as bls_utils
 

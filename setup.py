@@ -508,7 +508,8 @@ ExecutionState = Any
 
 
 def get_pow_block(hash: Bytes32) -> PowBlock:
-    return PowBlock(block_hash=hash, is_valid=True, is_processed=True, total_difficulty=config.TRANSITION_TOTAL_DIFFICULTY)
+    return PowBlock(block_hash=hash, is_valid=True, is_processed=True,
+                    total_difficulty=config.TRANSITION_TOTAL_DIFFICULTY)
 
 
 def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
@@ -620,8 +621,8 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
-    constant_vars_spec = '# Constant vars \n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
-    preset_vars_spec = '# Preset vars \n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
+    constant_vars_spec = '# Constant vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
+    preset_vars_spec = '# Preset vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))

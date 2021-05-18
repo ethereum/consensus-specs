@@ -1,7 +1,7 @@
 from random import Random
 from lru import LRU
 
-from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
 from eth2spec.test.context import is_post_altair
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -17,8 +17,8 @@ from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 
 
 class Deltas(Container):
-    rewards: List[uint64, spec_phase0.VALIDATOR_REGISTRY_LIMIT]
-    penalties: List[uint64, spec_phase0.VALIDATOR_REGISTRY_LIMIT]
+    rewards: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    penalties: List[uint64, VALIDATOR_REGISTRY_LIMIT]
 
 
 def has_enough_for_reward(spec, state, index):
