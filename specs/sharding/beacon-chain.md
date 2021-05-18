@@ -16,7 +16,6 @@
   - [Shard block configs](#shard-block-configs)
   - [Precomputed size verification points](#precomputed-size-verification-points)
   - [Gwei values](#gwei-values)
-  - [Time parameters](#time-parameters)
   - [Domain types](#domain-types)
 - [Updated containers](#updated-containers)
   - [`AttestationData`](#attestationdata)
@@ -122,12 +121,6 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - | - |
 | `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
 | `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
-
-### Time parameters
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 
 ### Domain types
 
@@ -466,7 +459,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Sharding]
-    process_execution_payload(state, block.body)  # [New in Merge]
+    # Pre-merge, skip execution payload processing
+    if is_execution_enabled(state, block):
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 #### Operations
@@ -760,8 +755,9 @@ def reset_pending_headers(state: BeaconState) -> None:
     # Add dummy "empty" PendingShardHeader (default vote for if no shard header available)
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
+    committees_per_slot = get_committee_count_per_slot(state, next_epoch)
     for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
-        for index in range(get_committee_count_per_slot(state, next_epoch)):
+        for index in range(committees_per_slot):
             committee_index = CommitteeIndex(index)
             shard = compute_shard_from_committee_index(state, slot, committee_index)
             committee_length = len(get_beacon_committee(state, slot, committee_index))
