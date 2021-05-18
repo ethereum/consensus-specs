@@ -61,7 +61,7 @@ class ProtocolDefinition(NamedTuple):
 
 
 class VariableDefinition(NamedTuple):
-    type_name: str
+    type_name: Optional[str]
     value: str
     comment: Optional[str]  # e.g. "noqa: E501"
 
@@ -145,7 +145,7 @@ def _parse_value(name: str, typed_value: str) -> VariableDefinition:
 
     typed_value = typed_value.strip()
     if '(' not in typed_value:
-        return VariableDefinition(type_name='int', value=typed_value, comment=comment)
+        return VariableDefinition(type_name=None, value=typed_value, comment=comment)
     i = typed_value.index('(')
     type_name = typed_value[:i]
 
@@ -259,7 +259,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def imports(cls) -> str:
+    def imports(cls, preset_name: str) -> str:
         """
         Import objects from other libraries.
         """
@@ -307,7 +307,8 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def build_spec(cls, source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
+    def build_spec(cls, preset_name: str,
+                   source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
         raise NotImplementedError()
 
 
@@ -318,7 +319,7 @@ class Phase0SpecBuilder(SpecBuilder):
     fork: str = PHASE0
 
     @classmethod
-    def imports(cls) -> str:
+    def imports(cls, preset_name: str) -> str:
         return '''from lru import LRU
 from dataclasses import (
     dataclass,
@@ -429,8 +430,9 @@ get_attesting_indices = cache_this(
         return ''
 
     @classmethod
-    def build_spec(cls, source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
-        return _build_spec(cls.fork, source_files, preset_files, config_file)
+    def build_spec(cls, preset_name: str,
+                   source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
+        return _build_spec(preset_name, cls.fork, source_files, preset_files, config_file)
 
 
 #
@@ -440,21 +442,17 @@ class AltairSpecBuilder(Phase0SpecBuilder):
     fork: str = ALTAIR
 
     @classmethod
-    def imports(cls) -> str:
-        return super().imports() + '\n' + '''
+    def imports(cls, preset_name: str) -> str:
+        return super().imports(preset_name) + '\n' + f'''
 from typing import NewType, Union
-from importlib import reload
 
-from eth2spec.phase0 import spec as phase0
+from eth2spec.phase0 import {preset_name} as phase0
 from eth2spec.utils.ssz.ssz_typing import Path
 '''
 
     @classmethod
     def preparations(cls):
         return super().preparations() + '\n' + '''
-# Whenever this spec version is loaded, make sure we have the latest phase0
-reload(phase0)
-
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
 '''
@@ -492,19 +490,16 @@ class MergeSpecBuilder(Phase0SpecBuilder):
     fork: str = MERGE
 
     @classmethod
-    def imports(cls):
-        return super().imports() + '''
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
 from typing import Protocol
-from eth2spec.phase0 import spec as phase0
+from eth2spec.phase0 import {preset_name} as phase0
 from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256
-from importlib import reload
 '''
 
     @classmethod
     def preparations(cls):
-        return super().preparations() + '\n' + '''
-reload(phase0)
-'''
+        return super().preparations()
 
     @classmethod
     def sundry_functions(cls) -> str:
@@ -513,7 +508,7 @@ ExecutionState = Any
 
 
 def get_pow_block(hash: Bytes32) -> PowBlock:
-    return PowBlock(block_hash=hash, is_valid=True, is_processed=True, total_difficulty=TRANSITION_TOTAL_DIFFICULTY)
+    return PowBlock(block_hash=hash, is_valid=True, is_processed=True, total_difficulty=config.TRANSITION_TOTAL_DIFFICULTY)
 
 
 def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
@@ -556,7 +551,10 @@ spec_builders = {
 }
 
 
-def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class_objects: Dict[str, str]) -> str:
+def objects_to_spec(preset_name: str,
+                    spec_object: SpecObject,
+                    builder: SpecBuilder,
+                    ordered_class_objects: Dict[str, str]) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
@@ -596,19 +594,28 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
         functions_spec = functions_spec.replace(name, 'config.' + name)
 
     def format_config_var(name: str, vardef: VariableDefinition) -> str:
-        out = f'{name}={vardef.type_name}({vardef.value}),'
+        if vardef.type_name is None:
+            out = f'{name}={vardef.value}'
+        else:
+            out = f'{name}={vardef.type_name}({vardef.value}),'
         if vardef.comment is not None:
             out += f'  # {vardef.comment}'
         return out
 
     config_spec = '@dataclass\nclass Configuration(object):\n'
-    config_spec += '\n'.join(f'    {k}: {v.type_name}' for k, v in spec_object.config_vars.items())
+    config_spec += '    PRESET_BASE: str\n'
+    config_spec += '\n'.join(f'    {k}: {v.type_name if v.type_name is not None else "int"}'
+                             for k, v in spec_object.config_vars.items())
     config_spec += '\n\n\nconfig = Configuration(\n'
+    config_spec += f'    PRESET_BASE="{preset_name}",\n'
     config_spec += '\n'.join('    ' + format_config_var(k, v) for k, v in spec_object.config_vars.items())
     config_spec += '\n)\n'
 
     def format_constant(name: str, vardef: VariableDefinition) -> str:
-        out = f'{name} = {vardef.type_name}({vardef.value})'
+        if vardef.type_name is None:
+            out = f'{name} = {vardef.value}'
+        else:
+            out = f'{name} = {vardef.type_name}({vardef.value})'
         if vardef.comment is not None:
             out += f'  # {vardef.comment}'
         return out
@@ -620,7 +627,7 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
     spec = (
-            builder.imports()
+            builder.imports(preset_name)
             + builder.preparations()
             + '\n\n' + f"fork = \'{builder.fork}\'\n"
             # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
@@ -785,7 +792,8 @@ def load_config(config_path: Path) -> Dict[str, str]:
     return parse_config_vars(config_data)
 
 
-def _build_spec(fork: str, source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
+def _build_spec(preset_name: str, fork: str,
+                source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
     preset = load_preset(preset_files)
     config = load_config(config_file)
     all_specs = [get_spec(spec, preset, config) for spec in source_files]
@@ -797,7 +805,7 @@ def _build_spec(fork: str, source_files: Sequence[Path], preset_files: Sequence[
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
     dependency_order_class_objects(class_objects, spec_object.custom_types)
 
-    return objects_to_spec(spec_object, spec_builders[fork], class_objects)
+    return objects_to_spec(preset_name, spec_object, spec_builders[fork], class_objects)
 
 
 class BuildTarget(NamedTuple):
@@ -903,7 +911,8 @@ class PySpecCommand(Command):
             dir_util.mkpath(self.out_dir)
 
         for (name, preset_paths, config_path) in self.parsed_build_targets:
-            spec_str = spec_builders[self.spec_fork].build_spec(self.parsed_md_doc_paths, preset_paths, config_path)
+            spec_str = spec_builders[self.spec_fork].build_spec(
+                name, self.parsed_md_doc_paths, preset_paths, config_path)
             if self.dry_run:
                 self.announce('dry run successfully prepared contents for spec.'
                               f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}", build target: "{name}"')

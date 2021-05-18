@@ -1,31 +1,23 @@
 import pytest
-
 from copy import deepcopy
-from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.altair import spec as spec_altair
-from eth2spec.merge import spec as spec_merge
+from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
+from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
+from eth2spec.merge import mainnet as spec_merge_mainnet, minimal as spec_merge_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, MERGE,
+    SpecForkName, PresetBaseName,
+    PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
 )
 from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags, build_transition_test
 
 from random import Random
-from typing import Any, Callable, Sequence, TypedDict, Protocol
+from typing import Any, Callable, Sequence, TypedDict, Protocol, Dict
 
 from lru import LRU
-from eth2spec.config import config_util
-from importlib import reload
-
-
-def reload_specs():
-    reload(spec_phase0)
-    reload(spec_altair)
-    reload(spec_merge)
 
 
 # TODO: currently phases are defined as python modules.
@@ -46,6 +38,20 @@ class SpecAltair(Spec):
 
 class SpecMerge(Spec):
     ...
+
+
+spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
+    MINIMAL: {
+        PHASE0: spec_phase0_minimal,
+        ALTAIR: spec_altair_minimal,
+        MERGE: spec_merge_minimal,
+    },
+    MAINNET: {
+        PHASE0: spec_phase0_mainnet,
+        ALTAIR: spec_altair_mainnet,
+        MERGE: spec_merge_mainnet,
+    },
+}
 
 
 class SpecForks(TypedDict, total=False):
@@ -73,7 +79,7 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
 
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state
-            key = (spec.fork, spec.CONFIG_NAME, spec.__file__, balances_fn, threshold_fn)
+            key = (spec.fork, spec.config.PRESET_BASE, spec.__file__, balances_fn, threshold_fn)
             global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
@@ -321,6 +327,11 @@ def with_phases(phases, other_phases=None):
             if other_phases is not None:
                 available_phases |= set(other_phases)
 
+            preset_name = MINIMAL
+            if 'preset' in kw:
+                preset_name = kw.pop('preset')
+            targets = spec_targets[preset_name]
+
             # TODO: test state is dependent on phase0 but is immediately transitioned to later phases.
             #  A new state-creation helper for later phases may be in place, and then tests can run without phase0
             available_phases.add(PHASE0)
@@ -328,20 +339,20 @@ def with_phases(phases, other_phases=None):
             # Populate all phases for multi-phase tests
             phase_dir = {}
             if PHASE0 in available_phases:
-                phase_dir[PHASE0] = spec_phase0
+                phase_dir[PHASE0] = targets[PHASE0]
             if ALTAIR in available_phases:
-                phase_dir[ALTAIR] = spec_altair
+                phase_dir[ALTAIR] = targets[ALTAIR]
             if MERGE in available_phases:
-                phase_dir[MERGE] = spec_merge
+                phase_dir[MERGE] = targets[MERGE]
 
             # return is ignored whenever multiple phases are ran.
             # This return is for test generators to emit python generators (yielding test vector outputs)
             if PHASE0 in run_phases:
-                ret = fn(spec=spec_phase0, phases=phase_dir, *args, **kw)
+                ret = fn(spec=targets[PHASE0], phases=phase_dir, *args, **kw)
             if ALTAIR in run_phases:
-                ret = fn(spec=spec_altair, phases=phase_dir, *args, **kw)
+                ret = fn(spec=targets[ALTAIR], phases=phase_dir, *args, **kw)
             if MERGE in run_phases:
-                ret = fn(spec=spec_merge, phases=phase_dir, *args, **kw)
+                ret = fn(spec=targets[MERGE], phases=phase_dir, *args, **kw)
 
             # TODO: merge, sharding, custody_game and das are not executable yet.
             #  Tests that specify these features will not run, and get ignored for these specific phases.
@@ -351,12 +362,12 @@ def with_phases(phases, other_phases=None):
 
 
 def with_presets(preset_bases, reason=None):
-    available_configs = set(preset_bases)
+    available_presets = set(preset_bases)
 
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            if spec.PRESET_BASE not in available_configs:
-                message = f"doesn't support this preset base: {spec.PRESET_BASE}."
+            if spec.config.PRESET_BASE not in available_presets:
+                message = f"doesn't support this preset base: {spec.config.PRESET_BASE}."
                 if reason is not None:
                     message = f"{message} Reason: {reason}"
                 dump_skipping_message(message)
@@ -376,13 +387,12 @@ def with_config_overrides(config_overrides):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             # remember the old config
-            old_config = config_util.config
+            old_config = spec.config
 
             # apply our overrides to a copy of it, and apply it to the spec
             tmp_config = deepcopy(old_config)
             tmp_config.update(config_overrides)
-            config_util.config = tmp_config
-            reload_specs()  # Note this reloads the same module instance(s) that we passed into the test
+            spec.config = tmp_config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
@@ -392,8 +402,7 @@ def with_config_overrides(config_overrides):
                 yield from out
 
             # Restore the old config and apply it
-            config_util.config = old_config
-            reload_specs()
+            spec.config = old_config
 
         return wrapper
     return decorator

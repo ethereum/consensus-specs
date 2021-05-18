@@ -28,8 +28,8 @@ def fixture(*args, **kwargs):
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--config", action="store", type=str, default="minimal",
-        help="config: make the pyspec use the specified configuration"
+        "--preset", action="store", type=str, default="minimal",
+        help="preset: make the pyspec use the specified preset"
     )
     parser.addoption(
         "--disable-bls", action="store_true", default=False,
@@ -42,18 +42,10 @@ def pytest_addoption(parser):
 
 
 @fixture(autouse=True)
-def config(request):
-    if not config_util.loaded_defaults:
-        config_util.load_defaults(Path("../../../configs"))
-
-    config_flag_value = request.config.getoption("--config")
-    if config_flag_value in ('minimal', 'mainnet'):
-        config_util.prepare_config(config_flag_value)
-    else:
-        # absolute network config path, e.g. run tests with testnet config
-        config_util.prepare_config(Path(config_flag_value))
-    # now that the presets are loaded, reload the specs to apply them
-    context.reload_specs()
+def preset(request):
+    # TODO: apply to tests, see context.py 'with_presets'
+    preset_flag_value = request.config.getoption("--preset")
+    print("preset:", preset_flag_value)
 
 
 @fixture(autouse=True)
