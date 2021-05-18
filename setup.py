@@ -2,6 +2,7 @@ from setuptools import setup, find_packages, Command
 from setuptools.command.build_py import build_py
 from distutils import dir_util
 from distutils.util import convert_path
+from pathlib import Path
 import os
 import re
 import string
@@ -12,6 +13,15 @@ import ast
 
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
+RUAMEL_YAML_VERSION = "ruamel.yaml==0.16.5"
+try:
+    import ruamel.yaml
+except ImportError:
+    import pip
+    pip.main(["install", RUAMEL_YAML_VERSION])
+
+from ruamel.yaml import YAML
+
 MARKO_VERSION = "marko==1.0.2"
 try:
     import marko
@@ -55,11 +65,19 @@ class ProtocolDefinition(NamedTuple):
     functions: Dict[str, str]
 
 
+class VariableDefinition(NamedTuple):
+    type_name: str
+    value: str
+    comment: Optional[str]  # e.g. "noqa: E501"
+
+
 class SpecObject(NamedTuple):
     functions: Dict[str, str]
     protocols: Dict[str, ProtocolDefinition]
     custom_types: Dict[str, str]
-    constants: Dict[str, str]
+    constant_vars: Dict[str, VariableDefinition]
+    preset_vars: Dict[str, VariableDefinition]
+    config_vars: Dict[str, VariableDefinition]
     ssz_dep_constants: Dict[str, str]  # the constants that depend on ssz_objects
     ssz_objects: Dict[str, str]
     dataclasses: Dict[str, str]
@@ -125,10 +143,26 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
     return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
-def get_spec(file_name: str) -> SpecObject:
+def _parse_value(name: str, typed_value: str) -> VariableDefinition:
+    comment = None
+    if name == "BLS12_381_Q":
+        comment = "  # noqa: E501"
+
+    typed_value = typed_value.strip()
+    if '(' not in typed_value:
+        return VariableDefinition(type_name='int', value=typed_value, comment=comment)
+    i = typed_value.index('(')
+    type_name = typed_value[:i]
+
+    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment)
+
+
+def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
-    constants: Dict[str, str] = {}
+    constant_vars: Dict[str, VariableDefinition] = {}
+    preset_vars: Dict[str, VariableDefinition] = {}
+    config_vars: Dict[str, VariableDefinition] = {}
     ssz_dep_constants: Dict[str, str] = {}
     ssz_objects: Dict[str, str] = {}
     dataclasses: Dict[str, str] = {}
@@ -179,18 +213,31 @@ def get_spec(file_name: str) -> SpecObject:
                 if len(cells) >= 2:
                     name_cell = cells[0]
                     name = name_cell.children[0].children
+
                     value_cell = cells[1]
                     value = value_cell.children[0].children
                     if isinstance(value, list):
                         # marko parses `**X**` as a list containing a X
                         value = value[0].children
-                    if _is_constant_id(name):
-                        if value.startswith("get_generalized_index"):
-                            ssz_dep_constants[name] = value
-                        else:
-                            constants[name] = value.replace("TBD", "2**32")
-                    elif value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList"):
-                        custom_types[name] = value
+
+                    if not _is_constant_id(name):
+                        # Check for short type declarations
+                        if value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList"):
+                            custom_types[name] = value
+                        continue
+
+                    if value.startswith("get_generalized_index"):
+                        ssz_dep_constants[name] = value
+                        continue
+
+                    value_def = _parse_value(name, value)
+                    if name in preset:
+                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment)
+                    elif name in config:
+                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment)
+                    else:
+                        constant_vars[name] = value_def
+
         elif isinstance(child, LinkRefDef):
             comment = _get_eth2_spec_comment(child)
             if comment == "skip":
@@ -200,7 +247,9 @@ def get_spec(file_name: str) -> SpecObject:
         functions=functions,
         protocols=protocols,
         custom_types=custom_types,
-        constants=constants,
+        constant_vars=constant_vars,
+        preset_vars=preset_vars,
+        config_vars=config_vars,
         ssz_dep_constants=ssz_dep_constants,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
@@ -247,7 +296,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:  # TODO
         """
         The constants that are required for custom types.
         """
@@ -263,7 +312,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def build_spec(cls, source_files: List[str]) -> str:
+    def build_spec(cls, source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
         raise NotImplementedError()
 
 
@@ -387,8 +436,8 @@ get_attesting_indices = cache_this(
         return ''
 
     @classmethod
-    def build_spec(cls, source_files: Sequence[str]) -> str:
-        return _build_spec(cls.fork, source_files)
+    def build_spec(cls, source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
+        return _build_spec(cls.fork, source_files, preset_files, config_file)
 
 
 #
@@ -548,10 +597,19 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
         if "ceillog2" in k or "floorlog2" in k:
             del spec_object.functions[k]
     functions_spec = '\n\n\n'.join(spec_object.functions.values())
-    for k in list(spec_object.constants.keys()):
-        if k == "BLS12_381_Q":
-            spec_object.constants[k] += "  # noqa: E501"
-    constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, spec_object.constants[x]), spec_object.constants))
+
+    def format_constant(name: str, vardef: VariableDefinition) -> str:
+        if not hasattr(vardef, 'value'):
+            print(vardef)
+            raise Exception("oh no")
+        out = f'{name} = {vardef.type_name}({vardef.value})'
+        if vardef.comment is not None:
+            out += f'# {vardef.comment}'
+        return out
+
+    constant_vars_spec = '# Constant vars \n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
+    preset_vars_spec = '# Preset vars \n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
+    config_vars_spec = '# Config vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.config_vars.items())  # TODO make config reloading easier.
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
@@ -566,7 +624,9 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
             + '\n' + CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS
             # The constants that some SSZ containers require. Need to be defined before `constants_spec`
             + ('\n\n' + ssz_dep_constants if ssz_dep_constants != '' else '')
-            + '\n\n' + constants_spec
+            + '\n\n' + constant_vars_spec
+            + '\n\n' + preset_vars_spec
+            + '\n\n' + config_vars_spec
             + '\n\n' + CONFIG_LOADER
             + '\n\n' + ordered_class_objects_spec
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
@@ -602,6 +662,13 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     for key, value in new_constants.items():
         old_constants[key] = value
     return old_constants
+
+
+def combine_variables(old_vars: Dict[str, VariableDefinition],
+                      new_vars: Dict[str, VariableDefinition]) -> Dict[str, VariableDefinition]:
+    for key, value in new_vars.items():
+        old_vars[key] = value
+    return old_vars
 
 
 ignored_dependencies = [
@@ -650,28 +717,74 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     """
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
-    functions0, protocols0, custom_types0, constants0, ssz_dep_constants0, ssz_objects0, dataclasses0 = spec0
-    functions1, protocols1, custom_types1, constants1, ssz_dep_constants1, ssz_objects1, dataclasses1 = spec1
-    protocols = combine_protocols(protocols0, protocols1)
-    functions = combine_functions(functions0, functions1)
-    custom_types = combine_constants(custom_types0, custom_types1)
-    constants = combine_constants(constants0, constants1)
-    ssz_dep_constants = combine_constants(ssz_dep_constants0, ssz_dep_constants1)
-    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
-    dataclasses = combine_functions(dataclasses0, dataclasses1)
+    protocols = combine_protocols(spec0.protocols, spec1.protocols)
+    functions = combine_functions(spec0.functions, spec1.functions)
+    custom_types = combine_constants(spec0.custom_types, spec1.custom_types)
+    constant_vars = combine_variables(spec0.constant_vars, spec1.constant_vars)
+    preset_vars = combine_variables(spec0.preset_vars, spec1.preset_vars)
+    config_vars = combine_variables(spec0.config_vars, spec1.config_vars)
+    ssz_dep_constants = combine_constants(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
+    ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects, custom_types)
+    dataclasses = combine_functions(spec0.dataclasses, spec1.dataclasses)
     return SpecObject(
         functions=functions,
         protocols=protocols,
         custom_types=custom_types,
-        constants=constants,
+        constant_vars=constant_vars,
+        preset_vars=preset_vars,
+        config_vars=config_vars,
         ssz_dep_constants=ssz_dep_constants,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
     )
 
 
-def _build_spec(fork: str, source_files: Sequence[str]) -> str:
-    all_specs = [get_spec(spec) for spec in source_files]
+def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
+    """
+    Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
+    """
+    out: Dict[str, str] = dict()
+    for k, v in conf.items():
+        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE'):
+            # Represent byte data with string, to avoid misinterpretation as big-endian int.
+            # Everything is either byte data or an integer, with PRESET_BASE as one exception.
+            out[k] = f"'{v}'"
+        else:
+            out[k] = str(int(v))
+    return out
+
+
+def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
+    """
+    Loads the a directory of preset files, merges the result into one preset.
+    """
+    preset = {}
+    for fork_file in preset_files:
+        yaml = YAML(typ='base')
+        fork_preset: dict = yaml.load(fork_file)
+        if fork_preset is None:  # for empty YAML files
+            continue
+        if not set(fork_preset.keys()).isdisjoint(preset.keys()):
+            duplicates = set(fork_preset.keys()).intersection(set(preset.keys()))
+            raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
+        preset.update(fork_preset)
+    assert preset != {}
+    return parse_config_vars(preset)
+
+
+def load_config(config_path: Path) -> Dict[str, str]:
+    """
+    Loads the given configuration file.
+    """
+    yaml = YAML(typ='base')
+    config_data = yaml.load(config_path)
+    return parse_config_vars(config_data)
+
+
+def _build_spec(fork: str, source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
+    preset = load_preset(preset_files)
+    config = load_config(config_file)
+    all_specs = [get_spec(spec, preset, config) for spec in source_files]
 
     spec_object = all_specs[0]
     for value in all_specs[1:]:
@@ -683,6 +796,12 @@ def _build_spec(fork: str, source_files: Sequence[str]) -> str:
     return objects_to_spec(spec_object, spec_builders[fork], class_objects)
 
 
+class BuildTarget(NamedTuple):
+    name: str
+    preset_paths: List[Path]
+    config_path: Path
+
+
 class PySpecCommand(Command):
     """Convert spec markdown files to a spec python file"""
 
@@ -691,12 +810,15 @@ class PySpecCommand(Command):
     spec_fork: str
     md_doc_paths: str
     parsed_md_doc_paths: List[str]
+    build_targets: str
+    parsed_build_targets: List[BuildTarget]
     out_dir: str
 
     # The format is (long option, short option, description).
     user_options = [
         ('spec-fork=', None, "Spec fork to tag build with. Used to select md-docs defaults."),
         ('md-doc-paths=', None, "List of paths of markdown files to build spec with"),
+        ('build-targets=', None, "Names, directory paths of compile-time presets, and default config paths."),
         ('out-dir=', None, "Output directory to write spec package to")
     ]
 
@@ -706,6 +828,10 @@ class PySpecCommand(Command):
         self.spec_fork = PHASE0
         self.md_doc_paths = ''
         self.out_dir = 'pyspec_output'
+        self.build_targets = """
+                minimal:configs/minimal_preset:configs/minimal_config.yaml
+                mainnet:configs/mainnet_preset:configs/mainnet_config.yaml        
+        """
 
     def finalize_options(self):
         """Post-process options."""
@@ -750,16 +876,39 @@ class PySpecCommand(Command):
             if not os.path.exists(filename):
                 raise Exception('Pyspec markdown input file "%s" does not exist.' % filename)
 
+        self.parsed_build_targets = []
+        for target in self.build_targets.split():
+            target = target.strip()
+            data = target.split(':')
+            if len(data) != 3:
+                raise Exception('invalid target, expected "name:preset_dir:config_file" format, but got: %s' % target)
+            name, preset_dir_path, config_path = data
+            if any((c not in string.digits + string.ascii_letters) for c in name):
+                raise Exception('invalid target name: "%s"' % name)
+            if not os.path.exists(preset_dir_path):
+                raise Exception('Preset dir "%s" does not exist' % preset_dir_path)
+            _, _, preset_file_names = next(os.walk(preset_dir_path))
+            preset_paths = [(Path(preset_dir_path) / name) for name in preset_file_names]
+
+            if not os.path.exists(config_path):
+                raise Exception('Config file "%s" does not exist' % config_path)
+            self.parsed_build_targets.append(BuildTarget(name, preset_paths, Path(config_path)))
+
     def run(self):
-        spec_str = spec_builders[self.spec_fork].build_spec(self.parsed_md_doc_paths)
-        if self.dry_run:
-            self.announce('dry run successfully prepared contents for spec.'
-                          f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}"')
-            self.debug_print(spec_str)
-        else:
+        if not self.dry_run:
             dir_util.mkpath(self.out_dir)
-            with open(os.path.join(self.out_dir, 'spec.py'), 'w') as out:
-                out.write(spec_str)
+
+        for (name, preset_paths, config_path) in self.parsed_build_targets:
+            spec_str = spec_builders[self.spec_fork].build_spec(self.parsed_md_doc_paths, preset_paths, config_path)
+            if self.dry_run:
+                self.announce('dry run successfully prepared contents for spec.'
+                              f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}", build target: "{name}"')
+                self.debug_print(spec_str)
+            else:
+                with open(os.path.join(self.out_dir, name+'.py'), 'w') as out:
+                    out.write(spec_str)
+
+        if not self.dry_run:
             with open(os.path.join(self.out_dir, '__init__.py'), 'w') as out:
                 out.write("")
 
@@ -864,8 +1013,8 @@ setup(
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
         "remerkleable==0.1.19",
-        "ruamel.yaml==0.16.5",
+        RUAMEL_YAML_VERSION,
         "lru-dict==1.1.6",
-        "marko==1.0.2",
+        MARKO_VERSION,
     ]
 )
