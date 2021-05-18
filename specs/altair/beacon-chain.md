@@ -135,8 +135,8 @@ This patch updates a few configuration values to move penalty parameters closer 
 
 ### Inactivity penalties
 
-| Name | Value | Unit |
-| - | - | :-: | :-: |
+| Name | Value | Description |
+| - | - | - |
 | `INACTIVITY_SCORE_BIAS` | `uint64(4)` | score points per inactive epoch |
 | `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(16)` | score points per recovering epoch |
 
