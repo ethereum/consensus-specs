@@ -1,51 +1,6 @@
-import os
 from pathlib import Path
-from copy import deepcopy
-from typing import Dict, Iterable, Union, BinaryIO, TextIO, Literal, Any
+from typing import Dict, Iterable, Union, BinaryIO, TextIO, Any
 from ruamel.yaml import YAML
-
-# This holds the full config (both runtime config and compile-time preset), for specs to initialize
-config: Dict[str, Any] = {}
-
-
-# Access to overwrite spec constants based on configuration
-# This is called by the spec module after declaring its globals, and applies the loaded presets.
-def apply_constants_config(spec_globals: Dict[str, Any], warn_if_unknown: bool = False) -> None:
-    global config
-    for k, v in config.items():
-        # the spec should have default values for everything, if not, the config key is invalid.
-        if k in spec_globals:
-            # Keep the same type as the default value indicates (which may be an SSZ basic type subclass, e.g. 'Gwei')
-            spec_globals[k] = spec_globals[k].__class__(v)
-        else:
-            # Note: The phase 0 spec will not warn if Altair or later config values are applied.
-            # During debugging you can enable explicit warnings.
-            if warn_if_unknown:
-                print(f"WARNING: unknown config key: '{k}' with value: '{v}'")
-
-
-# Load YAML configuration from a file path or input, or pick the default 'mainnet' and 'minimal' configs.
-# This prepares the global config memory. This does not apply the config.
-# To apply the config, reload the spec module (it will re-initialize with the config taken from here).
-def prepare_config(config_path: Union[Path, BinaryIO, TextIO, Literal['mainnet'], Literal['minimal']]) -> None:
-    # Load the configuration, and try in-memory defaults.
-    if config_path == 'mainnet':
-        conf_data = deepcopy(mainnet_config_data)
-    elif config_path == 'minimal':
-        conf_data = deepcopy(minimal_config_data)
-    else:
-        conf_data = load_config_file(config_path)
-    # Apply configuration if everything checks out
-    global config
-    if 'PRESET_BASE' in conf_data:
-        # Check the configured preset
-        base = conf_data['PRESET_BASE']
-        if base not in ('minimal', 'mainnet'):
-            raise Exception(f"unknown PRESET_BASE: {base}")
-        config = deepcopy(mainnet_preset_data if base == 'mainnet' else minimal_preset_data)
-        config.update(conf_data)
-    else:
-        config = conf_data
 
 
 def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
@@ -93,21 +48,14 @@ def load_config_file(config_path: Union[Path, BinaryIO, TextIO]) -> Dict[str, An
     return parse_config_vars(config_data)
 
 
-# Can't load these with pkg_resources, because the files are not in a package (requires `__init__.py`).
-mainnet_preset_data: Dict[str, Any]
-minimal_preset_data: Dict[str, Any]
 mainnet_config_data: Dict[str, Any]
 minimal_config_data: Dict[str, Any]
 loaded_defaults = False
 
 
 def load_defaults(spec_configs_path: Path) -> None:
-    global mainnet_preset_data, minimal_preset_data, mainnet_config_data, minimal_config_data
+    global mainnet_config_data, minimal_config_data
 
-    _, _, mainnet_preset_file_names = next(os.walk(spec_configs_path / 'mainnet_preset'))
-    mainnet_preset_data = load_preset([spec_configs_path / 'mainnet_preset' / p for p in mainnet_preset_file_names])
-    _, _, minimal_preset_file_names = next(os.walk(spec_configs_path / 'minimal_preset'))
-    minimal_preset_data = load_preset([spec_configs_path / 'minimal_preset' / p for p in minimal_preset_file_names])
     mainnet_config_data = load_config_file(spec_configs_path / 'mainnet_config.yaml')
     minimal_config_data = load_config_file(spec_configs_path / 'minimal_config.yaml')
 

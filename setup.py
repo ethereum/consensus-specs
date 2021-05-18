@@ -40,11 +40,6 @@ PHASE0 = 'phase0'
 ALTAIR = 'altair'
 MERGE = 'merge'
 
-CONFIG_LOADER = '''
-PRESET_BASE = 'mainnet'
-apply_constants_config(globals())
-'''
-
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: int) -> uint64:
@@ -333,7 +328,6 @@ from typing import (
     Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar
 )
 
-from eth2spec.config.config_util import apply_constants_config
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
     View, boolean, Container, List, Vector, uint8, uint32, uint64,
@@ -347,7 +341,6 @@ from eth2spec.utils.hash_function import hash
     def preparations(cls) -> str:
         return  '''
 SSZObject = TypeVar('SSZObject', bound=View)
-CONFIG_NAME = 'mainnet'
 '''
 
     @classmethod
@@ -598,18 +591,30 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
             del spec_object.functions[k]
     functions_spec = '\n\n\n'.join(spec_object.functions.values())
 
+    # Access global dict of config vars for runtime configurables
+    for name in spec_object.config_vars.keys():
+        functions_spec = functions_spec.replace(name, 'config.' + name)
+
+    def format_config_var(name: str, vardef: VariableDefinition) -> str:
+        out = f'{name}={vardef.type_name}({vardef.value}),'
+        if vardef.comment is not None:
+            out += f'  # {vardef.comment}'
+        return out
+
+    config_spec = '@dataclass\nclass Configuration(object):\n'
+    config_spec += '\n'.join(f'    {k}: {v.type_name}' for k, v in spec_object.config_vars.items())
+    config_spec += '\n\n\nconfig = Configuration(\n'
+    config_spec += '\n'.join('    ' + format_config_var(k, v) for k, v in spec_object.config_vars.items())
+    config_spec += '\n)\n'
+
     def format_constant(name: str, vardef: VariableDefinition) -> str:
-        if not hasattr(vardef, 'value'):
-            print(vardef)
-            raise Exception("oh no")
         out = f'{name} = {vardef.type_name}({vardef.value})'
         if vardef.comment is not None:
-            out += f'# {vardef.comment}'
+            out += f'  # {vardef.comment}'
         return out
 
     constant_vars_spec = '# Constant vars \n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
     preset_vars_spec = '# Preset vars \n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
-    config_vars_spec = '# Config vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.config_vars.items())  # TODO make config reloading easier.
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
@@ -626,8 +631,7 @@ def objects_to_spec(spec_object: SpecObject, builder: SpecBuilder, ordered_class
             + ('\n\n' + ssz_dep_constants if ssz_dep_constants != '' else '')
             + '\n\n' + constant_vars_spec
             + '\n\n' + preset_vars_spec
-            + '\n\n' + config_vars_spec
-            + '\n\n' + CONFIG_LOADER
+            + '\n\n\n' + config_spec
             + '\n\n' + ordered_class_objects_spec
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
             + '\n\n\n' + functions_spec
