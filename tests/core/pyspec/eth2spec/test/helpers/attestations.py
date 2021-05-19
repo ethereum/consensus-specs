@@ -219,15 +219,14 @@ def add_attestations_to_state(spec, state, attestations, slot):
         spec.process_attestation(state, attestation)
 
 
-def next_epoch_with_attestations(spec,
+def next_slots_with_attestations(spec,
                                  state,
+                                 slot_count,
                                  fill_cur_epoch,
                                  fill_prev_epoch):
-    assert state.slot % spec.SLOTS_PER_EPOCH == 0
-
     post_state = state.copy()
     signed_blocks = []
-    for _ in range(spec.SLOTS_PER_EPOCH):
+    for _ in range(slot_count):
         block = build_empty_block_for_next_slot(spec, post_state)
         if fill_cur_epoch and post_state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
@@ -254,6 +253,19 @@ def next_epoch_with_attestations(spec,
         signed_blocks.append(signed_block)
 
     return state, signed_blocks, post_state
+
+
+def next_epoch_with_attestations(spec,
+                                 state,
+                                 fill_cur_epoch,
+                                 fill_prev_epoch):
+    assert state.slot % spec.SLOTS_PER_EPOCH == 0
+
+    return next_slots_with_attestations(spec,
+                                        state,
+                                        spec.SLOTS_PER_EPOCH,
+                                        fill_cur_epoch,
+                                        fill_prev_epoch)
 
 
 def prepare_state_with_attestations(spec, state, participation_fn=None):
