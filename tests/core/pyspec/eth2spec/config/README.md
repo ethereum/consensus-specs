@@ -1,8 +1,11 @@
 # Eth2 config util
 
-For configuration, see [Configs documentation](../../../../../configs/README.md).
+For run-time configuration, see [Configs documentation](../../../../../configs/README.md).
 
-## Usage:
+For compile-time presets, see [Presets documentation](../../../../../presets/README.md)
+and the `build-targets` flag for the `pyspec` distutils command.
+
+## Config usage:
 
 ```python
 from eth2spec.config import config_util
@@ -17,4 +20,4 @@ spec.config = spec.Configuration(**config_util.load_config_file(Path('mytestnet.
 
 Note: previously the testnet config files included both preset and runtime-configuration data.
 The new config loader is compatible with this: all config vars are loaded from the file, 
-but those that have become presets will be ignored. 
+but those that have become presets can be ignored. 

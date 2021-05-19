@@ -48,16 +48,14 @@ SHARD_COMMITTEE_PERIOD: 64
 ETH1_FOLLOW_DISTANCE: 16
 
 
-# Inactivity penalties
+# Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
 INACTIVITY_SCORE_BIAS: 4
 # 2**4 (= 16)
 INACTIVITY_SCORE_RECOVERY_RATE: 16
-
-
-# Validator Churn
-# ---------------------------------------------------------------
+# 2**4 * 10**9 (= 16,000,000,000) Gwei
+EJECTION_BALANCE: 16000000000
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)

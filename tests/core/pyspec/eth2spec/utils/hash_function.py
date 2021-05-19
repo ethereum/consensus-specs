@@ -6,8 +6,4 @@ ZERO_BYTES32 = b'\x00' * 32
 
 
 def hash(x: Union[bytes, bytearray, memoryview]) -> Bytes32:
-    try:
-        return Bytes32(sha256(x).digest())
-    except TypeError:
-        print(x)
-        raise Exception("bad")
+    return Bytes32(sha256(x).digest())

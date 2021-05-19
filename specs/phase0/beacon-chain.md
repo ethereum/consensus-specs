@@ -22,7 +22,7 @@
 - [Configuration](#configuration)
   - [Genesis settings](#genesis-settings)
   - [Time parameters](#time-parameters-1)
-  - [Validator Churn](#validator-churn)
+  - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [Misc dependencies](#misc-dependencies)
     - [`Fork`](#fork)
@@ -231,7 +231,6 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 | - | - |
 | `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 | `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
-| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
 | `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 
 ### Time parameters
@@ -305,10 +304,11 @@ Testnets and other types of chain instances may use a different configuration.
 | `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) | Eth1 blocks | ~8 hours |
 
-### Validator Churn
+### Validator cycle
 
 | Name | Value |
 | - | - |
+| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 

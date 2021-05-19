@@ -141,7 +141,7 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
 def _parse_value(name: str, typed_value: str) -> VariableDefinition:
     comment = None
     if name == "BLS12_381_Q":
-        comment = "  # noqa: E501"
+        comment = "noqa: E501"
 
     typed_value = typed_value.strip()
     if '(' not in typed_value:
@@ -842,8 +842,8 @@ class PySpecCommand(Command):
         self.md_doc_paths = ''
         self.out_dir = 'pyspec_output'
         self.build_targets = """
-                minimal:configs/minimal_preset:configs/minimal_config.yaml
-                mainnet:configs/mainnet_preset:configs/mainnet_config.yaml        
+                minimal:presets/minimal:configs/minimal.yaml
+                mainnet:presets/mainnet:configs/mainnet.yaml        
         """
 
     def finalize_options(self):
@@ -1003,11 +1003,13 @@ setup(
     url="https://github.com/ethereum/eth2.0-specs",
     include_package_data=False,
     package_data={'configs': ['*.yaml'],
+                  'presets': ['*.yaml'],
                   'specs': ['**/*.md'],
                   'eth2spec': ['VERSION.txt']},
     package_dir={
         "eth2spec": "tests/core/pyspec/eth2spec",
         "configs": "configs",
+        "presets": "presets",
         "specs": "specs",
     },
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],

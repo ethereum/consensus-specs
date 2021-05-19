@@ -56,8 +56,8 @@ loaded_defaults = False
 def load_defaults(spec_configs_path: Path) -> None:
     global mainnet_config_data, minimal_config_data
 
-    mainnet_config_data = load_config_file(spec_configs_path / 'mainnet_config.yaml')
-    minimal_config_data = load_config_file(spec_configs_path / 'minimal_config.yaml')
+    mainnet_config_data = load_config_file(spec_configs_path / 'mainnet.yaml')
+    minimal_config_data = load_config_file(spec_configs_path / 'minimal.yaml')
 
     global loaded_defaults
     loaded_defaults = True
