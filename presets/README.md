@@ -1,4 +1,4 @@
-## Presets
+# Presets
 
 Presets are more extensive than runtime configurations, and generally only applicable during compile-time.
 Each preset is defined as a directory, with YAML files per fork.
