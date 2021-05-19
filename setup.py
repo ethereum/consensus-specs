@@ -7,7 +7,7 @@ import os
 import re
 import string
 import textwrap
-from typing import Dict, NamedTuple, List, Sequence, Optional
+from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar
 from abc import ABC, abstractmethod
 import ast
 
@@ -659,28 +659,16 @@ def combine_protocols(old_protocols: Dict[str, ProtocolDefinition],
         if key not in old_protocols:
             old_protocols[key] = value
         else:
-            functions = combine_functions(old_protocols[key].functions, value.functions)
+            functions = combine_dicts(old_protocols[key].functions, value.functions)
             old_protocols[key] = ProtocolDefinition(functions=functions)
     return old_protocols
 
 
-def combine_functions(old_functions: Dict[str, str], new_functions: Dict[str, str]) -> Dict[str, str]:
-    for key, value in new_functions.items():
-        old_functions[key] = value
-    return old_functions
+T = TypeVar('T')
 
 
-def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, str]) -> Dict[str, str]:
-    for key, value in new_constants.items():
-        old_constants[key] = value
-    return old_constants
-
-
-def combine_variables(old_vars: Dict[str, VariableDefinition],
-                      new_vars: Dict[str, VariableDefinition]) -> Dict[str, VariableDefinition]:
-    for key, value in new_vars.items():
-        old_vars[key] = value
-    return old_vars
+def combine_dicts(old_dict: Dict[str, T], new_dict: Dict[str, T]) -> Dict[str, T]:
+    return {**old_dict, **new_dict}
 
 
 ignored_dependencies = [
@@ -730,14 +718,14 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
     protocols = combine_protocols(spec0.protocols, spec1.protocols)
-    functions = combine_functions(spec0.functions, spec1.functions)
-    custom_types = combine_constants(spec0.custom_types, spec1.custom_types)
-    constant_vars = combine_variables(spec0.constant_vars, spec1.constant_vars)
-    preset_vars = combine_variables(spec0.preset_vars, spec1.preset_vars)
-    config_vars = combine_variables(spec0.config_vars, spec1.config_vars)
-    ssz_dep_constants = combine_constants(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
+    functions = combine_dicts(spec0.functions, spec1.functions)
+    custom_types = combine_dicts(spec0.custom_types, spec1.custom_types)
+    constant_vars = combine_dicts(spec0.constant_vars, spec1.constant_vars)
+    preset_vars = combine_dicts(spec0.preset_vars, spec1.preset_vars)
+    config_vars = combine_dicts(spec0.config_vars, spec1.config_vars)
+    ssz_dep_constants = combine_dicts(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
     ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects, custom_types)
-    dataclasses = combine_functions(spec0.dataclasses, spec1.dataclasses)
+    dataclasses = combine_dicts(spec0.dataclasses, spec1.dataclasses)
     return SpecObject(
         functions=functions,
         protocols=protocols,
