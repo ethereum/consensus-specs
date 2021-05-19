@@ -3,7 +3,7 @@ from typing import Iterable
 
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MINIMAL, MAINNET
 from eth2spec.config import config_util
-from eth2spec.test.altair.fork import test_fork as test_altair_forks
+from eth2spec.test.altair.fork import test_altair_fork_basic, test_altair_fork_random
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.altair import spec as spec_altair
 
@@ -33,6 +33,8 @@ def create_provider(tests_src, config_name: str, phase: str, fork_name: str) -> 
 
 if __name__ == "__main__":
     gen_runner.run_generator("forks", [
-        create_provider(test_altair_forks, MINIMAL, PHASE0, ALTAIR),
-        create_provider(test_altair_forks, MAINNET, PHASE0, ALTAIR),
+        create_provider(test_altair_fork_basic, MINIMAL, PHASE0, ALTAIR),
+        create_provider(test_altair_fork_random, MINIMAL, PHASE0, ALTAIR),
+        create_provider(test_altair_fork_basic, MAINNET, PHASE0, ALTAIR),
+        create_provider(test_altair_fork_random, MAINNET, PHASE0, ALTAIR),
     ])
