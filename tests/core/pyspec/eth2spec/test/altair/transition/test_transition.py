@@ -2,6 +2,7 @@ from eth2spec.test.context import fork_transition_test
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
+from eth2spec.test.helpers.attestations import next_slots_with_attestations
 
 
 def _state_transition_and_sign_block_at_slot(spec, state):
@@ -239,6 +240,80 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(slots_with_blocks) == 1
     assert slots_with_blocks[0] == last_slot
+
+    yield "blocks", blocks
+    yield "post", state
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=3)
+def test_transition_with_finality(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
+    including attestations so as to produce finality through the fork boundary.
+    """
+    yield "pre", state
+
+    current_epoch = spec.get_current_epoch(state)
+    assert current_epoch < fork_epoch
+    assert current_epoch == spec.GENESIS_EPOCH
+
+    # regular state transition until fork:
+    fill_cur_epoch = False
+    fill_prev_epoch = True
+    blocks = []
+    for _ in range(current_epoch, fork_epoch - 1):
+        if current_epoch == spec.GENESIS_EPOCH:
+            fill_cur_epoch = True
+            fill_prev_epoch = False
+
+        _, blocks_in_epoch, state = next_slots_with_attestations(spec,
+                                                                 state,
+                                                                 spec.SLOTS_PER_EPOCH,
+                                                                 fill_cur_epoch,
+                                                                 fill_prev_epoch)
+        blocks.extend([pre_tag(block) for block in blocks_in_epoch])
+        if current_epoch == spec.GENESIS_EPOCH:
+            fill_cur_epoch = False
+            fill_prev_epoch = True
+
+    _, blocks_in_epoch, state = next_slots_with_attestations(spec,
+                                                             state,
+                                                             spec.SLOTS_PER_EPOCH - 1,
+                                                             fill_cur_epoch,
+                                                             fill_prev_epoch)
+    blocks.extend([pre_tag(block) for block in blocks_in_epoch])
+    assert spec.get_current_epoch(state) == fork_epoch - 1
+    assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
+
+    # irregular state transition to handle fork:
+    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    blocks.append(post_tag(block))
+
+    # continue regular state transition with new spec into next epoch
+    for _ in range(4):
+        _, blocks_in_epoch, state = next_slots_with_attestations(post_spec,
+                                                                 state,
+                                                                 post_spec.SLOTS_PER_EPOCH,
+                                                                 fill_cur_epoch,
+                                                                 fill_prev_epoch)
+        blocks.extend([post_tag(block) for block in blocks_in_epoch])
+
+    assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
+    assert post_spec.compute_epoch_at_slot(state.slot) == fork_epoch + 4
+
+    assert state.current_justified_checkpoint.epoch == fork_epoch + 2
+    assert state.finalized_checkpoint.epoch == fork_epoch
+
+    assert len(blocks) == (fork_epoch + 4) * post_spec.SLOTS_PER_EPOCH
+    assert len(blocks) == len(set(blocks))
+
+    blocks_without_attestations = [block for block in blocks if len(block.message.body.attestations) == 0]
+    # A boundary condition of ``next_slots_with_attestations`` skips
+    # over the block with ``slot == 1``.
+    # And the fork upgrade helper currently does not construct any attestations.
+    assert len(blocks_without_attestations) == 2
+    slots_without_attestations = [b.message.slot for b in blocks_without_attestations]
+    assert set(slots_without_attestations) == set([1, fork_epoch * spec.SLOTS_PER_EPOCH])
 
     yield "blocks", blocks
     yield "post", state
