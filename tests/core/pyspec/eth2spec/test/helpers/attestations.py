@@ -223,7 +223,11 @@ def next_slots_with_attestations(spec,
                                  state,
                                  slot_count,
                                  fill_cur_epoch,
-                                 fill_prev_epoch):
+                                 fill_prev_epoch,
+                                 participation_fn=None):
+    """
+    participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
+    """
     post_state = state.copy()
     signed_blocks = []
     for _ in range(slot_count):
@@ -234,19 +238,37 @@ def next_slots_with_attestations(spec,
             if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(post_state)):
                 for index in range(committees_per_slot):
                     # if spec.fork == SHARDING:  TODO: add shard data to attestation, include shard headers in block
+                    def participants_filter(comm):
+                        if participation_fn is None:
+                            return comm
+                        else:
+                            return participation_fn(post_state.slot, index, comm)
 
-                    cur_attestation = get_valid_attestation(
-                        spec, post_state, slot_to_attest,
-                        index=index, signed=True, on_time=True
-                    )
+                    cur_attestation = get_valid_attestation(spec,
+                                                            post_state,
+                                                            slot_to_attest,
+                                                            index=index,
+                                                            signed=True,
+                                                            on_time=True,
+                                                            filter_participant_set=participants_filter)
                     block.body.attestations.append(cur_attestation)
 
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
             committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
             for index in range(committees_per_slot):
-                prev_attestation = get_valid_attestation(
-                    spec, post_state, slot_to_attest, index=index, signed=True, on_time=False)
+                def participants_filter(comm):
+                    if participation_fn is None:
+                        return comm
+                    else:
+                        return participation_fn(post_state.slot, index, comm)
+                prev_attestation = get_valid_attestation(spec,
+                                                         post_state,
+                                                         slot_to_attest,
+                                                         index=index,
+                                                         signed=True,
+                                                         on_time=False,
+                                                         filter_participant_set=participants_filter)
                 block.body.attestations.append(prev_attestation)
 
         signed_block = state_transition_and_sign_block(spec, post_state, block)

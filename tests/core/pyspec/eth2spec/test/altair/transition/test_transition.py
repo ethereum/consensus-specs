@@ -1,3 +1,4 @@
+import random
 from eth2spec.test.context import fork_transition_test
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot
@@ -296,6 +297,93 @@ def test_transition_with_finality(state, fork_epoch, spec, post_spec, pre_tag, p
                                                                  post_spec.SLOTS_PER_EPOCH,
                                                                  fill_cur_epoch,
                                                                  fill_prev_epoch)
+        blocks.extend([post_tag(block) for block in blocks_in_epoch])
+
+    assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
+    assert post_spec.compute_epoch_at_slot(state.slot) == fork_epoch + 4
+
+    assert state.current_justified_checkpoint.epoch == fork_epoch + 2
+    assert state.finalized_checkpoint.epoch == fork_epoch
+
+    assert len(blocks) == (fork_epoch + 4) * post_spec.SLOTS_PER_EPOCH
+    assert len(blocks) == len(set(blocks))
+
+    blocks_without_attestations = [block for block in blocks if len(block.message.body.attestations) == 0]
+    # A boundary condition of ``next_slots_with_attestations`` skips
+    # over the block with ``slot == 1``.
+    # And the fork upgrade helper currently does not construct any attestations.
+    assert len(blocks_without_attestations) == 2
+    slots_without_attestations = [b.message.slot for b in blocks_without_attestations]
+    assert set(slots_without_attestations) == set([1, fork_epoch * spec.SLOTS_PER_EPOCH])
+
+    yield "blocks", blocks
+    yield "post", state
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=3)
+def test_transition_with_random_participation(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
+    including attestations so as to produce finality through the fork boundary.
+    """
+    rng = random.Random(1337)
+
+    def _drop_random_quarter(_slot, _index, indices):
+        # still finalize, but drop some attestations
+        committee_len = len(indices)
+        assert committee_len >= 4
+        one_quarter_len = committee_len // 4
+        participant_count = committee_len - one_quarter_len
+        return rng.sample(indices, participant_count)
+
+    yield "pre", state
+
+    current_epoch = spec.get_current_epoch(state)
+    assert current_epoch < fork_epoch
+    assert current_epoch == spec.GENESIS_EPOCH
+
+    # regular state transition until fork:
+    fill_cur_epoch = False
+    fill_prev_epoch = True
+    blocks = []
+    for _ in range(current_epoch, fork_epoch - 1):
+        if current_epoch == spec.GENESIS_EPOCH:
+            fill_cur_epoch = True
+            fill_prev_epoch = False
+
+        _, blocks_in_epoch, state = next_slots_with_attestations(spec,
+                                                                 state,
+                                                                 spec.SLOTS_PER_EPOCH,
+                                                                 fill_cur_epoch,
+                                                                 fill_prev_epoch,
+                                                                 participation_fn=_drop_random_quarter)
+        blocks.extend([pre_tag(block) for block in blocks_in_epoch])
+        if current_epoch == spec.GENESIS_EPOCH:
+            fill_cur_epoch = False
+            fill_prev_epoch = True
+
+    _, blocks_in_epoch, state = next_slots_with_attestations(spec,
+                                                             state,
+                                                             spec.SLOTS_PER_EPOCH - 1,
+                                                             fill_cur_epoch,
+                                                             fill_prev_epoch,
+                                                             participation_fn=_drop_random_quarter)
+    blocks.extend([pre_tag(block) for block in blocks_in_epoch])
+    assert spec.get_current_epoch(state) == fork_epoch - 1
+    assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
+
+    # irregular state transition to handle fork:
+    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    blocks.append(post_tag(block))
+
+    # continue regular state transition with new spec into next epoch
+    for _ in range(4):
+        _, blocks_in_epoch, state = next_slots_with_attestations(post_spec,
+                                                                 state,
+                                                                 post_spec.SLOTS_PER_EPOCH,
+                                                                 fill_cur_epoch,
+                                                                 fill_prev_epoch,
+                                                                 participation_fn=_drop_random_quarter)
         blocks.extend([post_tag(block) for block in blocks_in_epoch])
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
