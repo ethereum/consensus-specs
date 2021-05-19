@@ -14,7 +14,7 @@ and additional testnet assets.
 
 ## Forking
 
-Variables are not replaced, but extended with forks. This is to support syncing from one state to the other over a fork boundary, without hot-swapping a config.
+Variables are not replaced but extended with forks. This is to support syncing from one state to another over a fork boundary, without hot-swapping a config.
 Instead, for forks that introduce changes in a variable, the variable name is suffixed with the fork name, e.g. `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`.
 
 Future-fork variables can be ignored, e.g. ignore Sharding variables as a client that only supports Phase 0 currently.
