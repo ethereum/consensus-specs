@@ -127,7 +127,7 @@ def test_success_already_exited_recent(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_success_low_balances(spec, state):
@@ -137,7 +137,7 @@ def test_success_low_balances(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_success_misc_balances(spec, state):
@@ -147,7 +147,7 @@ def test_success_misc_balances(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_success_with_effective_balance_disparity(spec, state):

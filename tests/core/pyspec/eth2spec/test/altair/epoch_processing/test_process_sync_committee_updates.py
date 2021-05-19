@@ -70,7 +70,7 @@ def test_sync_committees_progress_not_genesis(spec, state):
 
 
 @with_altair_and_later
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 @always_bls

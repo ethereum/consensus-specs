@@ -101,7 +101,7 @@ def test_empty_block_transition(spec, state):
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_empty_block_transition_large_validator_set(spec, state):
     pre_slot = state.slot
@@ -329,7 +329,7 @@ def test_empty_epoch_transition(spec, state):
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_empty_epoch_transition_large_validator_set(spec, state):
     pre_slot = state.slot
@@ -916,7 +916,7 @@ def test_balance_driven_status_transitions(spec, state):
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    state.validators[validator_index].effective_balance = spec.EJECTION_BALANCE
+    state.validators[validator_index].effective_balance = spec.config.EJECTION_BALANCE
 
     yield 'pre', state
 
