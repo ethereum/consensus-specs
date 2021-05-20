@@ -62,7 +62,7 @@ def next_epoch_via_block(spec, state):
     """
     Transition to the start slot of the next epoch via a full block transition
     """
-    apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
+    return apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
 
 
 def get_state_root(spec, state, slot) -> bytes:
