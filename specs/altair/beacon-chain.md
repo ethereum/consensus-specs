@@ -171,7 +171,8 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    historical_root: Root
+    historical_block_roots: List[Root, HISTORICAL_BLOCK_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -554,6 +555,16 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         increase_balance(state, index, amount)
 ```
 
+#### Historical roots updates
+
+```python
+def process_historical_block_roots_update(state: BeaconState) -> None:
+    # Set historical block root accumulator
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        state.historical_block_roots.append(hash_tree_root(state.block_roots))
+```
+
 #### Sync committee processing
 
 ```python
@@ -595,7 +606,7 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    process_historical_roots_update(state)
+    process_historical_block_roots_update(state)
     process_participation_flag_updates(state)  # [New in Altair]
     process_sync_committee_updates(state)  # [New in Altair]
 ```

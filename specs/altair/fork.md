@@ -75,7 +75,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
-        historical_roots=pre.historical_roots,
+        historical_root=hash_tree_root(pre.historical_roots),
         # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
