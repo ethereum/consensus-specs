@@ -2,9 +2,7 @@ from typing import Iterable
 
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MINIMAL, MAINNET
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
-from eth2spec.test.altair.fork import test_altair_fork_basic
-from eth2spec.test.altair.fork import test_altair_fork_random
-
+from eth2spec.test.altair.fork import test_altair_fork_basic, test_altair_fork_random
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
 
