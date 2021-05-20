@@ -371,7 +371,7 @@ def test_transition_with_random_half_participation(state, fork_epoch, spec, post
     rng = random.Random(2020)
 
     def _drop_random_half(_slot, _index, indices):
-        # still finalize, but drop some attestations
+        # drop enough attestations to not finalize
         committee_len = len(indices)
         assert committee_len >= 2
         filter_len = committee_len // 2
