@@ -42,10 +42,10 @@ def transition_to_slot_via_block(spec, state, slot):
 
 def transition_to_valid_shard_slot(spec, state):
     """
-    Transition to slot `compute_epoch_at_slot(spec.SHARDING_FORK_EPOCH) + 1`
-    and fork at `compute_epoch_at_slot(spec.SHARDING_FORK_EPOCH)`.
+    Transition to slot `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH) + 1`
+    and fork at `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH)`.
     """
-    transition_to(spec, state, spec.compute_epoch_at_slot(spec.SHARDING_FORK_EPOCH))
+    transition_to(spec, state, spec.compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH))
     next_slot(spec, state)
 
 
@@ -62,7 +62,7 @@ def next_epoch_via_block(spec, state):
     """
     Transition to the start slot of the next epoch via a full block transition
     """
-    apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
+    return apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
 
 
 def get_state_root(spec, state, slot) -> bytes:

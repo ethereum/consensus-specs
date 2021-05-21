@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     is_post_altair,
     spec_state_test,
     with_all_phases,
-    with_configs,
+    with_presets,
 )
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
@@ -174,7 +174,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
 
 @with_all_phases
 @spec_state_test
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_filtered_block_tree(spec, state):
     test_steps = []
     # Initialization
@@ -197,7 +197,7 @@ def test_filtered_block_tree(spec, state):
     assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
-    current_time = state.slot * spec.SECONDS_PER_SLOT + store.genesis_time
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     for signed_block in signed_blocks:
         yield from run_on_block(spec, store, signed_block, test_steps)
@@ -243,7 +243,7 @@ def test_filtered_block_tree(spec, state):
             attestations.append(attestation)
 
     # tick time forward to be able to include up to the latest attestation
-    current_time = (attestations[-1].data.slot + 1) * spec.SECONDS_PER_SLOT + store.genesis_time
+    current_time = (attestations[-1].data.slot + 1) * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # include rogue block and associated attestations in the store

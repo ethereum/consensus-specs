@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_configs,
+    with_presets,
     with_phases,
 )
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
@@ -83,7 +83,7 @@ def test_process_light_client_update_not_updated(spec, state):
 
 @with_phases([ALTAIR])
 @spec_state_test
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
     pre_snapshot = spec.LightClientSnapshot(
         header=spec.BeaconBlockHeader(),
@@ -149,7 +149,7 @@ def test_process_light_client_update_timeout(spec, state):
 
 @with_phases([ALTAIR])
 @spec_state_test
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
     pre_snapshot = spec.LightClientSnapshot(
         header=spec.BeaconBlockHeader(),

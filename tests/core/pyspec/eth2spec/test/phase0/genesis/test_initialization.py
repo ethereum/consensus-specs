@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     is_post_altair,
     single_phase,
     spec_test,
-    with_configs,
+    with_presets,
     with_all_phases,
 )
 from eth2spec.test.helpers.constants import MINIMAL
@@ -26,12 +26,12 @@ def eth1_init_data(eth1_block_hash, eth1_timestamp):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_from_eth1(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
-    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, deposit_root, _ = prepare_full_genesis_deposits(
         spec,
         spec.MAX_EFFECTIVE_BALANCE,
@@ -40,7 +40,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     )
 
     eth1_block_hash = b'\x12' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -48,7 +48,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert state.genesis_time == eth1_timestamp + spec.GENESIS_DELAY
+    assert state.genesis_time == eth1_timestamp + spec.config.GENESIS_DELAY
     assert len(state.validators) == deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == deposit_count
@@ -62,12 +62,12 @@ def test_initialize_beacon_state_from_eth1(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_some_small_balances(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
-    main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec, spec.MAX_EFFECTIVE_BALANCE,
         deposit_count=main_deposit_count, signed=True,
@@ -83,7 +83,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     deposits = main_deposits + small_deposits
 
     eth1_block_hash = b'\x12' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -91,7 +91,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     # initialize beacon_state
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert state.genesis_time == eth1_timestamp + spec.GENESIS_DELAY
+    assert state.genesis_time == eth1_timestamp + spec.config.GENESIS_DELAY
     assert len(state.validators) == small_deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == len(deposits)
@@ -106,13 +106,13 @@ def test_initialize_beacon_state_some_small_balances(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_one_topup_activation(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
     # Submit all but one deposit as MAX_EFFECTIVE_BALANCE
-    main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
+    main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec, spec.MAX_EFFECTIVE_BALANCE,
         deposit_count=main_deposit_count, signed=True,
@@ -139,7 +139,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     deposits = main_deposits + partial_deposits + top_up_deposits
 
     eth1_block_hash = b'\x13' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -155,7 +155,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_random_invalid_genesis(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -167,7 +167,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
         max_pubkey_index=10,
     )
     eth1_block_hash = b'\x14' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME + 1
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME + 1
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
@@ -182,7 +182,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
 @with_all_phases
 @spec_test
 @single_phase
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_initialize_beacon_state_random_valid_genesis(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
@@ -191,22 +191,22 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
     random_deposits, _, deposit_data_list = prepare_random_genesis_deposits(
         spec,
         deposit_count=20,
-        min_pubkey_index=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 5,
-        max_pubkey_index=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 5,
+        min_pubkey_index=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 5,
+        max_pubkey_index=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 5,
     )
 
-    # Then make spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT full deposits
+    # Then make spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT full deposits
     full_deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         spec.MAX_EFFECTIVE_BALANCE,
-        deposit_count=spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT,
+        deposit_count=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT,
         signed=True,
         deposit_data_list=deposit_data_list
     )
 
     deposits = random_deposits + full_deposits
     eth1_block_hash = b'\x15' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME + 2
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME + 2
 
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits

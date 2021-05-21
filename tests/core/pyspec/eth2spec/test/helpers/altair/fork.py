@@ -36,7 +36,7 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) != getattr(post_state, field)
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
-    assert post_state.fork.current_version == post_spec.ALTAIR_FORK_VERSION
+    assert post_state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
     yield 'post', post_state

@@ -71,7 +71,13 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 | `BYTES_PER_CUSTODY_ATOM` | `uint64(32)` | bytes |
 | `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)` | - |
 
-## Configuration
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
+
+## Preset
 
 ### Time parameters
 

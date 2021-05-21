@@ -32,7 +32,7 @@ def test_success(spec, state):
 
 @with_all_phases
 @spec_test
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_success_multi_proposer_index_iterations(spec, state):
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)

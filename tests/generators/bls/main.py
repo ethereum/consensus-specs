@@ -358,10 +358,10 @@ def case05_aggregate_verify():
 def create_provider(handler_name: str,
                     test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:
 
-    def prepare_fn(configs_path: str) -> str:
+    def prepare_fn() -> None:
         # Nothing to load / change in spec. Maybe in future forks.
         # Put the tests into the general config category, to not require any particular configuration.
-        return 'general'
+        return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for data in test_case_fn():
@@ -369,6 +369,7 @@ def create_provider(handler_name: str,
             (case_name, case_content) = data
             yield gen_typing.TestCase(
                 fork_name=PHASE0,
+                preset_name='general',
                 runner_name='bls',
                 handler_name=handler_name,
                 suite_name='small',

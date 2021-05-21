@@ -7,7 +7,7 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Configuration](#configuration)
+  - [Preset](#preset)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
@@ -55,7 +55,7 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
 5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
-### Configuration
+### Preset
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |

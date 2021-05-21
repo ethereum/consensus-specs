@@ -25,12 +25,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
     eth1_block_hash = b'\xda' * 32
-    current_version = spec.GENESIS_FORK_VERSION
+    current_version = spec.config.GENESIS_FORK_VERSION
 
     if spec.fork == ALTAIR:
-        current_version = spec.ALTAIR_FORK_VERSION
+        current_version = spec.config.ALTAIR_FORK_VERSION
     elif spec.fork == MERGE:
-        current_version = spec.MERGE_FORK_VERSION
+        current_version = spec.config.MERGE_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -41,7 +41,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             block_hash=eth1_block_hash,
         ),
         fork=spec.Fork(
-            previous_version=spec.GENESIS_FORK_VERSION,
+            previous_version=spec.config.GENESIS_FORK_VERSION,
             current_version=current_version,
             epoch=spec.GENESIS_EPOCH,
         ),

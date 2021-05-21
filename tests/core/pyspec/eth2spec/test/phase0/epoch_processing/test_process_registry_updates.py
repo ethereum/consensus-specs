@@ -153,7 +153,7 @@ def test_ejection(spec, state):
     assert state.validators[index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # Mock an ejection
-    state.validators[index].effective_balance = spec.EJECTION_BALANCE
+    state.validators[index].effective_balance = spec.config.EJECTION_BALANCE
 
     yield from run_process_registry_updates(spec, state)
 
@@ -174,7 +174,7 @@ def test_ejection_past_churn_limit(spec, state):
     mock_ejections = churn_limit * 3
 
     for i in range(mock_ejections):
-        state.validators[i].effective_balance = spec.EJECTION_BALANCE
+        state.validators[i].effective_balance = spec.config.EJECTION_BALANCE
 
     expected_ejection_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
 
@@ -211,7 +211,7 @@ def test_activation_queue_activation_and_ejection(spec, state):
 
     # ready for ejection
     ejection_index = 2
-    state.validators[ejection_index].effective_balance = spec.EJECTION_BALANCE
+    state.validators[ejection_index].effective_balance = spec.config.EJECTION_BALANCE
 
     yield from run_process_registry_updates(spec, state)
 

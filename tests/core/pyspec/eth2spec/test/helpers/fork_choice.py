@@ -10,7 +10,7 @@ def get_anchor_root(spec, state):
 
 def add_block_to_store(spec, store, signed_block):
     pre_state = store.block_states[signed_block.message.parent_root]
-    block_time = pre_state.genesis_time + signed_block.message.slot * spec.SECONDS_PER_SLOT
+    block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
 
     if store.time < block_time:
         spec.on_tick(store, block_time)
@@ -23,7 +23,7 @@ def tick_and_run_on_block(spec, store, signed_block, test_steps=None):
         test_steps = []
 
     pre_state = store.block_states[signed_block.message.parent_root]
-    block_time = pre_state.genesis_time + signed_block.message.slot * spec.SECONDS_PER_SLOT
+    block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
 
     if store.time < block_time:
         on_tick_and_append_step(spec, store, block_time, test_steps)
@@ -37,8 +37,8 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps=None):
 
     parent_block = store.blocks[attestation.data.beacon_block_root]
     pre_state = store.block_states[spec.hash_tree_root(parent_block)]
-    block_time = pre_state.genesis_time + parent_block.slot * spec.SECONDS_PER_SLOT
-    next_epoch_time = block_time + spec.SLOTS_PER_EPOCH * spec.SECONDS_PER_SLOT
+    block_time = pre_state.genesis_time + parent_block.slot * spec.config.SECONDS_PER_SLOT
+    next_epoch_time = block_time + spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT
 
     if store.time < next_epoch_time:
         spec.on_tick(store, next_epoch_time)

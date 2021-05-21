@@ -11,13 +11,14 @@ from eth2spec.test.helpers.constants import PHASE0
 
 def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typing.TestProvider:
 
-    def prepare_fn(configs_path: str) -> str:
-        return "general"
+    def prepare_fn() -> None:
+        return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for (case_name, case_fn) in case_maker():
             yield gen_typing.TestCase(
                 fork_name=PHASE0,
+                preset_name="general",
                 runner_name='ssz_generic',
                 handler_name=handler_name,
                 suite_name=suite_name,
