@@ -61,6 +61,7 @@ def transition_unsigned_block(spec, state, block):
     assert state.latest_block_header.slot < block.slot  # There may not already be a block in this slot or past it.
     assert state.slot == block.slot  # The block must be for this slot
     spec.process_block(state, block)
+    return block
 
 
 def apply_empty_block(spec, state, slot=None):
@@ -68,7 +69,7 @@ def apply_empty_block(spec, state, slot=None):
     Transition via an empty block (on current slot, assuming no block has been applied yet).
     """
     block = build_empty_block(spec, state, slot)
-    transition_unsigned_block(spec, state, block)
+    return transition_unsigned_block(spec, state, block)
 
 
 def build_empty_block(spec, state, slot=None):

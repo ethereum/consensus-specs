@@ -219,41 +219,81 @@ def add_attestations_to_state(spec, state, attestations, slot):
         spec.process_attestation(state, attestation)
 
 
+def _get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None, on_time=True):
+    committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
+    for index in range(committees_per_slot):
+        def participants_filter(comm):
+            if participation_fn is None:
+                return comm
+            else:
+                return participation_fn(state.slot, index, comm)
+        # if spec.fork == SHARDING:  TODO: add shard data to attestation, include shard headers in block
+        yield get_valid_attestation(
+            spec,
+            state,
+            slot_to_attest,
+            index=index,
+            signed=True,
+            on_time=on_time,
+            filter_participant_set=participants_filter
+        )
+
+
+def next_slots_with_attestations(spec,
+                                 state,
+                                 slot_count,
+                                 fill_cur_epoch,
+                                 fill_prev_epoch,
+                                 participation_fn=None):
+    """
+    participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
+    """
+    post_state = state.copy()
+    signed_blocks = []
+    for _ in range(slot_count):
+        block = build_empty_block_for_next_slot(spec, post_state)
+        if fill_cur_epoch and post_state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
+            slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
+            if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(post_state)):
+                attestations = _get_valid_attestation_at_slot(
+                    post_state,
+                    spec,
+                    slot_to_attest,
+                    participation_fn=participation_fn
+                )
+                for attestation in attestations:
+                    block.body.attestations.append(attestation)
+        if fill_prev_epoch:
+            slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
+            attestations = _get_valid_attestation_at_slot(
+                post_state,
+                spec,
+                slot_to_attest,
+                on_time=False,
+                participation_fn=participation_fn
+            )
+            for attestation in attestations:
+                block.body.attestations.append(attestation)
+
+        signed_block = state_transition_and_sign_block(spec, post_state, block)
+        signed_blocks.append(signed_block)
+
+    return state, signed_blocks, post_state
+
+
 def next_epoch_with_attestations(spec,
                                  state,
                                  fill_cur_epoch,
                                  fill_prev_epoch):
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
 
-    post_state = state.copy()
-    signed_blocks = []
-    for _ in range(spec.SLOTS_PER_EPOCH):
-        block = build_empty_block_for_next_slot(spec, post_state)
-        if fill_cur_epoch and post_state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
-            slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
-            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
-            if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(post_state)):
-                for index in range(committees_per_slot):
-                    # if spec.fork == SHARDING:  TODO: add shard data to attestation, include shard headers in block
-
-                    cur_attestation = get_valid_attestation(
-                        spec, post_state, slot_to_attest,
-                        index=index, signed=True, on_time=True
-                    )
-                    block.body.attestations.append(cur_attestation)
-
-        if fill_prev_epoch:
-            slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
-            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
-            for index in range(committees_per_slot):
-                prev_attestation = get_valid_attestation(
-                    spec, post_state, slot_to_attest, index=index, signed=True, on_time=False)
-                block.body.attestations.append(prev_attestation)
-
-        signed_block = state_transition_and_sign_block(spec, post_state, block)
-        signed_blocks.append(signed_block)
-
-    return state, signed_blocks, post_state
+    return next_slots_with_attestations(
+        spec,
+        state,
+        spec.SLOTS_PER_EPOCH,
+        fill_cur_epoch,
+        fill_prev_epoch,
+    )
 
 
 def prepare_state_with_attestations(spec, state, participation_fn=None):
