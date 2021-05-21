@@ -287,11 +287,13 @@ def next_epoch_with_attestations(spec,
                                  fill_prev_epoch):
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
 
-    return next_slots_with_attestations(spec,
-                                        state,
-                                        spec.SLOTS_PER_EPOCH,
-                                        fill_cur_epoch,
-                                        fill_prev_epoch)
+    return next_slots_with_attestations(
+        spec,
+        state,
+        spec.SLOTS_PER_EPOCH,
+        fill_cur_epoch,
+        fill_prev_epoch,
+    )
 
 
 def prepare_state_with_attestations(spec, state, participation_fn=None):
