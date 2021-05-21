@@ -1,4 +1,4 @@
-import random
+from random import Random
 
 from eth2spec.test.context import (
     spec_state_test, expect_assertion_error, always_bls, with_all_phases,
@@ -127,7 +127,7 @@ def test_success_already_exited_recent(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_success_low_balances(spec, state):
@@ -137,7 +137,7 @@ def test_success_low_balances(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_success_misc_balances(spec, state):
@@ -147,14 +147,15 @@ def test_success_misc_balances(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_success_with_effective_balance_disparity(spec, state):
     # Jitter balances to be different from effective balances
+    rng = Random(12345)
     for i in range(len(state.balances)):
         pre = int(state.balances[i])
-        state.balances[i] += random.randrange(max(pre - 5000, 0), pre + 5000)
+        state.balances[i] += rng.randrange(max(pre - 5000, 0), pre + 5000)
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 

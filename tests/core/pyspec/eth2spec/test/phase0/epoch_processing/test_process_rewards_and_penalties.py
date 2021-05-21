@@ -423,7 +423,7 @@ def test_attestations_some_slashed(spec, state):
     attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
 
     # Slash maximum amount of validators allowed per epoch.
-    for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
+    for i in range(spec.config.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
     if not is_post_altair(spec):
@@ -435,5 +435,5 @@ def test_attestations_some_slashed(spec, state):
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) > 0
-    assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
+    assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
     validate_resulting_balances(spec, pre_state, state, attestations)

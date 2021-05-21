@@ -30,7 +30,7 @@ from eth2spec.test.context import (
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
     disable_process_reveal_deadlines,
-    with_configs,
+    with_presets,
     with_custom_state,
     large_validator_set,
     is_post_altair,
@@ -98,10 +98,10 @@ def test_empty_block_transition(spec, state):
 
 
 @with_all_phases
-@with_configs([MINIMAL],
+@with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_empty_block_transition_large_validator_set(spec, state):
     pre_slot = state.slot
@@ -326,10 +326,10 @@ def test_empty_epoch_transition(spec, state):
 
 
 @with_all_phases
-@with_configs([MINIMAL],
+@with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_empty_epoch_transition_large_validator_set(spec, state):
     pre_slot = state.slot
@@ -814,7 +814,7 @@ def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     signed_exits = prepare_signed_exits(spec, state, [validator_index])
     yield 'pre', state
@@ -842,7 +842,7 @@ def test_double_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     # Same index tries to exit twice, but should only be able to do so once.
     signed_exits = prepare_signed_exits(spec, state, [validator_index, validator_index])
@@ -866,7 +866,7 @@ def test_multiple_different_validator_exits_same_block(spec, state):
         for i in range(3)
     ]
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     signed_exits = prepare_signed_exits(spec, state, validator_indices)
     yield 'pre', state
@@ -916,7 +916,7 @@ def test_balance_driven_status_transitions(spec, state):
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    state.validators[validator_index].effective_balance = spec.EJECTION_BALANCE
+    state.validators[validator_index].effective_balance = spec.config.EJECTION_BALANCE
 
     yield 'pre', state
 

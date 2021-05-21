@@ -10,7 +10,7 @@ def test_effective_balance_hysteresis(spec, state):
     run_epoch_processing_to(spec, state, 'process_effective_balance_updates')
     # Set some edge cases for balances
     max = spec.MAX_EFFECTIVE_BALANCE
-    min = spec.EJECTION_BALANCE
+    min = spec.config.EJECTION_BALANCE
     inc = spec.EFFECTIVE_BALANCE_INCREMENT
     div = spec.HYSTERESIS_QUOTIENT
     hys_inc = inc // div

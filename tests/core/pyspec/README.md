@@ -57,21 +57,22 @@ Caveats:
 
 Full test usage, with explicit configuration for illustration of options usage:
 ```shell
-(venv) python -m pytest --config=minimal eth2spec
+(venv) python -m pytest --preset=minimal eth2spec
 ```
 
 Or, to run a specific test file, specify the full path:
 ```shell
-(venv) python -m pytest --config=minimal ./eth2spec/test/phase0/block_processing/test_process_attestation.py
+(venv) python -m pytest --preset=minimal ./eth2spec/test/phase0/block_processing/test_process_attestation.py
 ```
 
 Or, to run a specific test function (specify the `eth2spec` module, or the script path if the keyword is ambiguous):
 ```shell
-(venv) python -m pytest --config=minimal -k test_success_multi_proposer_index_iterations eth2spec
+(venv) python -m pytest --preset=minimal -k test_success_multi_proposer_index_iterations eth2spec
 ```
 
 Options:
-- `--config`, to change the config. Defaults to `minimal`, can be set to `mainnet`, or other configs from the configs directory.
+- `--preset`, to change the preset (compile-time configurables). Defaults to `minimal`, can be set to `mainnet`.
+  Use `@spec_configured_state_test({config here...}` to override runtime configurables on a per-test basis.
 - `--disable-bls`, to disable BLS (only for tests that can run without)
 - `--bls-type`, `milagro` or `py_ecc` (default)
 

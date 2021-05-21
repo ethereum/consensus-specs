@@ -9,16 +9,20 @@
 - [Notation](#notation)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-- [Configuration](#configuration)
   - [Misc](#misc)
-  - [Gwei values](#gwei-values)
-  - [Initial values](#initial-values)
   - [Withdrawal prefixes](#withdrawal-prefixes)
+  - [Domain types](#domain-types)
+- [Preset](#preset)
+  - [Misc](#misc-1)
+  - [Gwei values](#gwei-values)
   - [Time parameters](#time-parameters)
   - [State list lengths](#state-list-lengths)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Max operations per block](#max-operations-per-block)
-  - [Domain types](#domain-types)
+- [Configuration](#configuration)
+  - [Genesis settings](#genesis-settings)
+  - [Time parameters](#time-parameters-1)
+  - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [Misc dependencies](#misc-dependencies)
     - [`Fork`](#fork)
@@ -67,7 +71,7 @@
     - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
     - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
-  - [Misc](#misc-1)
+  - [Misc](#misc-2)
     - [`compute_shuffled_index`](#compute_shuffled_index)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
@@ -170,6 +174,8 @@ We define the following Python custom types for type hinting and readability:
 
 The following values are (non-configurable) constants used throughout the specification.
 
+### Misc
+
 | Name | Value |
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
@@ -180,23 +186,39 @@ The following values are (non-configurable) constants used throughout the specif
 | `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
 | `ENDIANNESS` | `'little'` |
 
-## Configuration
+### Withdrawal prefixes
 
-*Note*: The default mainnet configuration values are included here for illustrative purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory.
+| Name | Value |
+| - | - |
+| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
+| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
+| `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
+| `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
+| `DOMAIN_DEPOSIT`             | `DomainType('0x03000000')` |
+| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
+| `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
+| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
+
+## Preset
+
+*Note*: The below configuration is bundled as a preset: a bundle of configuration variables which are expected to differ
+between different modes of operation, e.g. testing, but not generally between different networks.
+Additional preset configurations can be found in the [`configs`](../../configs) directory.
 
 ### Misc
 
 | Name | Value |
 | - | - |
-| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) |
 | `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
-| `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
 | `HYSTERESIS_QUOTIENT` | `uint64(4)` |
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
 | `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
@@ -209,29 +231,12 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 | `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
-| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
 | `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
-
-### Initial values
-
-| Name | Value |
-| - | - |
-| `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
-
-### Withdrawal prefixes
-
-| Name | Value |
-| - | - |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
-| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `GENESIS_DELAY` | `uint64(604800)` | seconds | 7 days |
-| `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
 | `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
@@ -239,8 +244,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
@@ -276,17 +279,38 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 
-### Domain types
+## Configuration
+
+*Note*: The default mainnet configuration values are included here for illustrative purposes.
+Defaults for this more dynamic type of configuration are available with the presets in the [`configs`](../../configs) directory.
+Testnets and other types of chain instances may use a different configuration.
+
+### Genesis settings
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
-| `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
-| `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
-| `DOMAIN_DEPOSIT`             | `DomainType('0x03000000')` |
-| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
-| `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
-| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
+| `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
+| `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
+| `GENESIS_DELAY` | `uint64(604800)` (7 days) |
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) | Eth1 blocks | ~8 hours |
+
+### Validator cycle
+
+| Name | Value |
+| - | - |
+| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
+| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
 
 ## Containers
 
@@ -1556,7 +1580,10 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_eligible_for_activation_queue(validator):
             validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
-        if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
+        if (
+            is_active_validator(validator, get_current_epoch(state))
+            and validator.effective_balance <= EJECTION_BALANCE
+        ):
             initiate_validator_exit(state, ValidatorIndex(index))
 
     # Queue validators eligible for activation and not yet dequeued for activation

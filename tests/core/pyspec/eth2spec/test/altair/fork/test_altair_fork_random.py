@@ -3,7 +3,7 @@ from random import Random
 from eth2spec.test.context import (
     with_phases,
     with_custom_state,
-    with_configs,
+    with_presets,
     spec_test, with_state,
     low_balances, misc_balances, large_validator_set,
 )
@@ -93,7 +93,7 @@ def test_altair_fork_random_mismatched_attestations(spec, phases, state):
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_altair_fork_random_low_balances(spec, phases, state):
     randomize_state(spec, state, rng=Random(5050))
@@ -102,7 +102,7 @@ def test_altair_fork_random_low_balances(spec, phases, state):
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_altair_fork_random_misc_balances(spec, phases, state):
     randomize_state(spec, state, rng=Random(6060))
@@ -110,10 +110,10 @@ def test_altair_fork_random_misc_balances(spec, phases, state):
 
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])
-@with_configs([MINIMAL],
+@with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.EJECTION_BALANCE)
+@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_altair_fork_random_large_validator_set(spec, phases, state):
     randomize_state(spec, state, rng=Random(7070))

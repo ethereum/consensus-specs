@@ -15,6 +15,7 @@
 - [Constants](#constants)
   - [Execution](#execution)
 - [Configuration](#configuration)
+  - [Transition](#transition)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -64,6 +65,8 @@ We define the following Python custom types for type hinting and readability:
 ## Configuration
 
 Warning: this configuration is not definitive.
+
+### Transition
 
 | Name | Value |
 | - | - |

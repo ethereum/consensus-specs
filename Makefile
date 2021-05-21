@@ -96,11 +96,11 @@ install_test:
 
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.altair.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.mainnet --cov=eth2spec.altair.mainnet --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.spec --cov=eth2spec.altair.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.mainnet --cov=eth2spec.altair.mainnet --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p tests/core/pyspec/test-reports/eth2spec; . venv/bin/activate; cd $(PY_SPEC_DIR); \
@@ -167,7 +167,7 @@ define run_generator
 	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
 	pip3 install -r requirements.txt; \
-	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR) -c $(CURRENT_DIR)/$(CONFIGS_DIR); \
+	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
 	echo "generator $(1) finished"
 endef
 
