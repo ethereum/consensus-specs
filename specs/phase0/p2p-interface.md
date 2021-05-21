@@ -756,7 +756,7 @@ where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 
 Peers that are unable to reply to block requests within the `MIN_EPOCHS_FOR_BLOCK_REQUESTS`
-epoch range SHOULD respond with error code `3: **ResourceUnavailable**`.
+epoch range SHOULD respond with error code `3: ResourceUnavailable`.
 Such peers that are unable to successfully reply to this range of requests MAY get descored
 or disconnected at any time.
 
