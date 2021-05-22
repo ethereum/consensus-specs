@@ -13,7 +13,10 @@ from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_participation_flag_updates(spec, state):
+    old = state.current_epoch_participation
     yield from run_epoch_processing_with(spec, state, 'process_participation_flag_updates')
+    assert state.current_epoch_participation == [0] * len(state.validators)
+    assert state.previous_epoch_participation == old
 
 
 @with_altair_and_later
