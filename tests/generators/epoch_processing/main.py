@@ -17,6 +17,8 @@ if __name__ == "__main__":
     ]}
     altair_mods = {
         **{key: 'eth2spec.test.altair.epoch_processing.test_process_' + key for key in [
+            'inactivity_updates',
+            'participation_flag_updates',
             'sync_committee_updates',
         ]},
         **phase_0_mods,
