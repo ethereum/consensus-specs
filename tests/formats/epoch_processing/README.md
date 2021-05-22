@@ -33,7 +33,7 @@ The provided pre-state is already transitioned to just before the specific sub-t
 Sub-transitions:
 
 - `justification_and_finalization`
-- `inactivity_penalty_updates`
+- `inactivity_penalty_updates` (Altair)
 - `rewards_and_penalties`
 - `registry_updates`
 - `slashings`
@@ -42,7 +42,8 @@ Sub-transitions:
 - `slashings_reset`
 - `randao_mixes_reset`
 - `historical_roots_update`
-- `participation_record_updates`
-- `sync_committee_updates`
+- `participation_record_updates` (Phase 0 only)
+- `participation_flag_updates` (Altair)
+- `sync_committee_updates` (Altair)
 
 The resulting state should match the expected `post` state.
