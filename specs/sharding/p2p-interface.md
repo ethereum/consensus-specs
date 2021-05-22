@@ -17,9 +17,11 @@
   - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blobs: `shard_blob_{subnet_id}`](#shard-blobs-shard_blob_subnet_id)
-    - [Shard header: `shard_header`](#shard-header-shard_header)
-    - [Shard proposer slashing: `shard_proposer_slashing`](#shard-proposer-slashing-shard_proposer_slashing)
+    - [Shard blob subnets](#shard-blob-subnets)
+      - [`shard_blob_{subnet_id}`](#shard_blob_subnet_id)
+    - [Global topics](#global-topics)
+      - [`shard_blob_header`](#shard_blob_header)
+      - [`shard_proposer_slashing`](#shard_proposer_slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -88,12 +90,16 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
 | `shard_blob_{subnet_id}`         | `SignedShardBlob`         |
-| `shard_header`                   | `SignedShardHeader`       |
+| `shard_blob_header`              | `SignedShardBlobHeader`   |
 | `shard_proposer_slashing`        | `ShardProposerSlashing`   |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
 
-#### Shard blobs: `shard_blob_{subnet_id}`
+#### Shard blob subnets
+
+Shard blob subnets are used to propagate shard blobs to subsections of the network.
+
+##### `shard_blob_{subnet_id}`
 
 Shard block data, in the form of a `SignedShardBlob` is published to the `shard_blob_{subnet_id}` subnets.
 
@@ -129,19 +135,23 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
   the block MAY be queued for later processing while proposers for the blob's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
+#### Global topics
 
-#### Shard header: `shard_header`
+There are two additional global topics for Sharding, one is used to propagate shard blob headers (`shard_blob_header`) to 
+all nodes on the network. Another one is used to propagate validator message (`shard_proposer_slashing`).
 
-Shard header data, in the form of a `SignedShardBlobHeader` is published to the global `shard_header` subnet.
+##### `shard_blob_header`
 
-The following validations MUST pass before forwarding the `signed_shard_header` (with inner `message` as `header`) on the network.
+Shard header data, in the form of a `SignedShardBlobHeader` is published to the global `shard_blob_header` subnet.
+
+The following validations MUST pass before forwarding the `signed_shard_blob_header` (with inner `message` as `header`) on the network.
 - _[IGNORE]_ The `header` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `header.slot <= current_slot`
   (a client MAY queue future headers for processing at the appropriate slot).
 - _[IGNORE]_ The `header` is new enough to be still be processed --
   i.e. validate that `compute_epoch_at_slot(header.slot) >= get_previous_epoch(state)`
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
-- _[REJECT]_ The proposer signature, `signed_shard_header.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The proposer signature, `signed_shard_blob_header.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The header is proposed by the expected `proposer_index` for the block's slot
   in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
@@ -149,7 +159,7 @@ The following validations MUST pass before forwarding the `signed_shard_header` 
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 
-#### Shard proposer slashing: `shard_proposer_slashing`
+##### `shard_proposer_slashing`
 
 Shard proposer slashings, in the form of `ShardProposerSlashing`, are published to the global `shard_proposer_slashing` topic.
 
