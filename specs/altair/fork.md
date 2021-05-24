@@ -65,7 +65,7 @@ def load_historical_batches(pre: BeaconState) -> List[HistoricalBatchSummary, HI
     # altair-compatible clients leading up to the fork. All in all, this should
     # be around 10kb of hashes.
 
-    return []
+    return List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]()
 
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
