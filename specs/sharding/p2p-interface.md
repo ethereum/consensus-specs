@@ -20,7 +20,7 @@
     - [Shard blob subnets](#shard-blob-subnets)
       - [`shard_blob_{subnet_id}`](#shard_blob_subnet_id)
     - [Global topics](#global-topics)
-      - [`shard_blob_header`](#shard_blob_header)
+      - [`shard_header`](#shard_header)
       - [`shard_proposer_slashing`](#shard_proposer_slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -30,7 +30,7 @@
 ## Introduction
 
 The specification of these changes continues in the same format as the [Phase0](../phase0/p2p-interface.md) and
-[Altair](../altair/p2p-interface.md) network specifications, and assumes them as pre-requisite. 
+[Altair](../altair/p2p-interface.md) network specifications, and assumes them as pre-requisite.
 The adjustments and additions for Shards are outlined in this document.
 
 ## Constants
@@ -90,7 +90,7 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
 | `shard_blob_{subnet_id}`         | `SignedShardBlob`         |
-| `shard_blob_header`              | `SignedShardBlobHeader`   |
+| `shard_header`              | `SignedShardBlobHeader`   |
 | `shard_proposer_slashing`        | `ShardProposerSlashing`   |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
@@ -124,7 +124,7 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
 - _[IGNORE]_ The `blob` is new enough to be still be processed --
   i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
 - _[REJECT]_ The shard blob is for the correct subnet --
-  i.e. `compute_subnet_for_shard_blob(state, blob.slot, blob.shard) == subnet_id`  
+  i.e. `compute_subnet_for_shard_blob(state, blob.slot, blob.shard) == subnet_id`
 - _[IGNORE]_ The blob is the first blob with valid signature received for the `(blob.proposer_index, blob.slot, blob.shard)` combination.
 - _[REJECT]_ As already limited by the SSZ list-limit, it is important the blob is well-formatted and not too large.
 - _[REJECT]_ The `blob.body.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
@@ -137,12 +137,12 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
 
 #### Global topics
 
-There are two additional global topics for Sharding, one is used to propagate shard blob headers (`shard_blob_header`) to 
+There are two additional global topics for Sharding, one is used to propagate shard blob headers (`shard_header`) to
 all nodes on the network. Another one is used to propagate validator message (`shard_proposer_slashing`).
 
-##### `shard_blob_header`
+##### `shard_header`
 
-Shard header data, in the form of a `SignedShardBlobHeader` is published to the global `shard_blob_header` subnet.
+Shard header data, in the form of a `SignedShardBlobHeader` is published to the global `shard_header` subnet.
 
 The following validations MUST pass before forwarding the `signed_shard_blob_header` (with inner `message` as `header`) on the network.
 - _[IGNORE]_ The `header` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
@@ -168,3 +168,4 @@ The following validations MUST pass before forwarding the `shard_proposer_slashi
   for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
   The `slot` and `shard` are ignored, there are no per-shard slashings.
 - _[REJECT]_ All of the conditions within `process_shard_proposer_slashing` pass validation.
+- 
