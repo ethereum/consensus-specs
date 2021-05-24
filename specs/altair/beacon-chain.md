@@ -52,7 +52,7 @@
     - [Rewards and penalties](#rewards-and-penalties)
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
-    - [Historical roots updates](#historical-roots-updates)
+    - [Historical batches updates](#historical-batches-updates)
     - [Sync committee updates](#sync-committee-updates)
 - [Initialize state for pure Altair testnets and test vectors](#initialize-state-for-pure-altair-testnets-and-test-vectors)
 
@@ -175,8 +175,7 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_block_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    historical_state_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -204,6 +203,15 @@ class BeaconState(Container):
 ```
 
 ### New containers
+
+
+```python
+# The tree roots that make up a phase0 HistoricalBatch making its layout
+# hash_tree_root-compatible.
+class HistoricalBatchSummary(Container):
+    block_batch_root: Root
+    state_batch_root: Root
+```
 
 #### `SyncAggregate`
 
@@ -600,7 +608,7 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    process_historical_roots_update(state)
+    process_historical_batches_update(state)
     process_participation_flag_updates(state)  # [New in Altair]
     process_sync_committee_updates(state)  # [New in Altair]
 ```
@@ -689,17 +697,19 @@ def process_participation_flag_updates(state: BeaconState) -> None:
     state.current_epoch_participation = [ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
 ```
 
-#### Historical roots updates
+#### Historical batches updates
 
-*Note*: The function `process_historical_roots_update` changes definition compared to phase0.
+*Note*: The function `process_historical_batches_update` replaces `process_historical_roots_update` in phase0.
 
 ```python
-def process_historical_roots_update(state: BeaconState) -> None:
+def process_historical_batches_update(state: BeaconState) -> None:
     # Set historical block root accumulator
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        state.historical_block_roots.append(hash_tree_root(state.block_roots))
-        state.historical_state_roots.append(hash_tree_root(state.state_roots))
+        historical_batch = HistoricalBatchSummary(
+            block_batch_root=hash_tree_root(state.block_roots),
+            state_batch_root=hash_tree_root(state.state_roots))
+        state.historical_batches.append(historical_batch)
 ```
 
 #### Sync committee updates

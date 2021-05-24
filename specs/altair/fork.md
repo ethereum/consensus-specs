@@ -58,20 +58,21 @@ def translate_participation(state: BeaconState, pending_attestations: Sequence[p
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 
-def backfill_historical_roots(state: BeaconState, pre: BeaconState) -> None:
-    # Clients need to recreate `historical_block_roots` and
-    # `historical_state_roots` from their history. A large part can be
-    # precalculated and verified against historical_roots in state.
-    # Before the fork, clients should start collecting the part that has not
-    # been pre-calculated.
-    #
-    # The calclulated split historical roots can be verified against the existing
-    # historical_roots field up to the fork.
+def load_historical_batches(state: BeaconState, pre: BeaconState) -> List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]:
+    # Clients need to recalculate the historical batches from genesis and return
+    # them here with the roots of the blocks and states separated. It's assumed
+    # most of these are pre-calculated and the rest are stored on-the-fly by
+    # altair-compatible clients leading up to the fork. All in all, this should
+    # be around 10kb of hashes.
 
-
+    return []
 
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
+    historical_batches = load_historical_batches()
+
+    # Tree hash should match since HistoricalBatchSummary is an intermediate step in calculating the phase0 historical root entry
+    assert hash_tree_root(historical_batches) == hash_tree_root(pre.historical_roots)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -86,8 +87,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
-        historical_block_roots=[],
-        historical_state_roots=[],
+        historical_batches=historical_batches,
         # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
@@ -112,8 +112,6 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)
-
-    backfill_historical_roots(post, pre)
 
     # Fill in sync committees
     # Note: A duplicate committee is assigned for the current and next committee at the fork boundary
