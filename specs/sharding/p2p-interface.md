@@ -90,7 +90,7 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
 | `shard_blob_{subnet_id}`         | `SignedShardBlob`         |
-| `shard_header`              | `SignedShardBlobHeader`   |
+| `shard_header`                   | `SignedShardBlobHeader`   |
 | `shard_proposer_slashing`        | `ShardProposerSlashing`   |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
