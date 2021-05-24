@@ -9,7 +9,7 @@ from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
-    with_configs,
+    with_presets,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 from eth2spec.test.helpers.constants import (
@@ -29,7 +29,7 @@ def run_process_challenge_deadlines(spec, state):
 
 @with_phases([CUSTODY_GAME])
 @spec_state_test
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_validator_slashed_after_chunk_challenge(spec, state):
     transition_to_valid_shard_slot(spec, state)
     transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1

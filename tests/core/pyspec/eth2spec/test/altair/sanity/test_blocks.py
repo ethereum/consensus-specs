@@ -98,4 +98,4 @@ def test_inactivity_scores(spec, state):
     yield 'post', state
 
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
-        assert post == pre + spec.INACTIVITY_SCORE_BIAS
+        assert post == pre + spec.config.INACTIVITY_SCORE_BIAS

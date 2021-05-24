@@ -17,7 +17,7 @@ from eth2spec.test.context import (
     spec_state_test,
     expect_assertion_error,
     disable_process_reveal_deadlines,
-    with_configs,
+    with_presets,
 )
 from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
 
@@ -117,7 +117,7 @@ def run_standard_custody_slashing_test(spec,
 @with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state)
 
@@ -125,7 +125,7 @@ def test_custody_slashing(spec, state):
 @with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_incorrect_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, correct=False)
 
@@ -133,7 +133,7 @@ def test_incorrect_custody_slashing(spec, state):
 @with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_multiple_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3)
 
@@ -141,7 +141,7 @@ def test_multiple_epochs_custody(spec, state):
 @with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_many_epochs_custody(spec, state):
     yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5)
 
@@ -149,7 +149,7 @@ def test_many_epochs_custody(spec, state):
 @with_phases([CUSTODY_GAME])
 @spec_state_test
 @disable_process_reveal_deadlines
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 def test_invalid_custody_slashing(spec, state):
     yield from run_standard_custody_slashing_test(
         spec,

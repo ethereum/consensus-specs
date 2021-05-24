@@ -8,7 +8,7 @@ from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.test.context import (
     with_altair_and_later,
-    with_configs,
+    with_presets,
     with_state,
 )
 from eth2spec.test.helpers.constants import (
@@ -95,7 +95,7 @@ def _get_sync_committee_signature(
 
 @only_with_bls()
 @with_altair_and_later
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 @with_state
 def test_process_sync_committee_contributions(phases, spec, state):
     # skip over slots at genesis
@@ -157,7 +157,7 @@ def _get_expected_subnets_by_pubkey(sync_committee_members):
 
 
 @with_altair_and_later
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 @with_state
 def test_compute_subnets_for_sync_committee(state, spec, phases):
     # Transition to the head of the next period
@@ -186,7 +186,7 @@ def test_compute_subnets_for_sync_committee(state, spec, phases):
 
 
 @with_altair_and_later
-@with_configs([MINIMAL], reason="too slow")
+@with_presets([MINIMAL], reason="too slow")
 @with_state
 def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec, phases):
     # Transition to the end of the period

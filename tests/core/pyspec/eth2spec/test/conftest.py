@@ -1,4 +1,3 @@
-from eth2spec.config import config_util
 from eth2spec.test import context
 from eth2spec.utils import bls as bls_utils
 
@@ -27,8 +26,8 @@ def fixture(*args, **kwargs):
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--config", action="store", type=str, default="minimal",
-        help="config: make the pyspec use the specified configuration"
+        "--preset", action="store", type=str, default="minimal",
+        help="preset: make the pyspec use the specified preset"
     )
     parser.addoption(
         "--disable-bls", action="store_true", default=False,
@@ -41,11 +40,8 @@ def pytest_addoption(parser):
 
 
 @fixture(autouse=True)
-def config(request):
-    config_name = request.config.getoption("--config")
-    config_util.prepare_config('../../../configs/', config_name)
-    # now that the presets are loaded, reload the specs to apply them
-    context.reload_specs()
+def preset(request):
+    context.DEFAULT_TEST_PRESET = request.config.getoption("--preset")
 
 
 @fixture(autouse=True)

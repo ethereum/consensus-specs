@@ -41,8 +41,8 @@ def run_is_candidate_block(spec, eth1_block, period_start, success=True):
 
 def get_min_new_period_epochs(spec):
     return (
-        (spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2)  # to seconds
-        // spec.SECONDS_PER_SLOT // spec.SLOTS_PER_EPOCH
+        (spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE * 2)  # to seconds
+        // spec.config.SECONDS_PER_SLOT // spec.SLOTS_PER_EPOCH
     )
 
 
@@ -140,28 +140,29 @@ def test_get_epoch_signature(spec, state):
 @with_all_phases
 @spec_state_test
 def test_is_candidate_block(spec, state):
-    period_start = spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2 + 1000
+    distance_duration = spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+    period_start = distance_duration * 2 + 1000
     run_is_candidate_block(
         spec,
-        spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE),
+        spec.Eth1Block(timestamp=period_start - distance_duration),
         period_start,
         success=True,
     )
     run_is_candidate_block(
         spec,
-        spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE + 1),
+        spec.Eth1Block(timestamp=period_start - distance_duration + 1),
         period_start,
         success=False,
     )
     run_is_candidate_block(
         spec,
-        spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2),
+        spec.Eth1Block(timestamp=period_start - distance_duration * 2),
         period_start,
         success=True,
     )
     run_is_candidate_block(
         spec,
-        spec.Eth1Block(timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE * 2 - 1),
+        spec.Eth1Block(timestamp=period_start - distance_duration * 2 - 1),
         period_start,
         success=False,
     )
@@ -193,12 +194,12 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     state.eth1_data_votes = ()
 
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE - 1,
+        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE - 1,
         deposit_count=state.eth1_data.deposit_count,
         deposit_root=b'\x04' * 32,
     )
     block_2 = spec.Eth1Block(
-        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count + 1,
         deposit_root=b'\x05' * 32,
     )
@@ -229,12 +230,12 @@ def test_get_eth1_vote_tie(spec, state):
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE - 1,
+        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE - 1,
         deposit_count=state.eth1_data.deposit_count,
         deposit_root=b'\x04' * 32,
     )
     block_2 = spec.Eth1Block(
-        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count + 1,
         deposit_root=b'\x05' * 32,
     )
@@ -268,7 +269,7 @@ def test_get_eth1_vote_chain_in_past(spec, state):
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.SECONDS_PER_ETH1_BLOCK * spec.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count - 1,  # Chain prior to current eth1data
         deposit_root=b'\x42' * 32,
     )

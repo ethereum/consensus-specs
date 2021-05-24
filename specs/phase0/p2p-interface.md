@@ -567,6 +567,9 @@ The response code can have one of the following values, encoded as a single unsi
   The response payload adheres to the `ErrorMessage` schema (described below).
 -  2: **ServerError** -- the responder encountered an error while processing the request.
   The response payload adheres to the `ErrorMessage` schema (described below).
+-  3: **ResourceUnavailable** -- the responder does not have requested resource.
+  The response payload adheres to the `ErrorMessage` schema (described below).
+  *Note*: This response code is only valid as a response to `BlocksByRange`.
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous request-specific responses.
 
@@ -752,8 +755,10 @@ Clients MUST keep a record of signed blocks seen on the epoch range
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 
-Peers that are unable to reply to block requests within the
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` epoch range MAY get descored or disconnected at any time.
+Peers that are unable to reply to block requests within the `MIN_EPOCHS_FOR_BLOCK_REQUESTS`
+epoch range SHOULD respond with error code `3: ResourceUnavailable`.
+Such peers that are unable to successfully reply to this range of requests MAY get descored
+or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
 MUST backfill the local block database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS`
