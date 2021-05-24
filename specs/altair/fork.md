@@ -58,6 +58,13 @@ def translate_participation(state: BeaconState, pending_attestations: Sequence[p
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 
+def backfill_historical_block_roots(pre: BeaconState) -> List[Root, HISTORICAL_BLOCK_ROOTS_LIMIT]:
+    # Split historical blocks into chunks of SLOTS_PER_HISTORICAL_ROOT
+    # For each chunk, compute hash_tree_root(chunk) and add to returned list
+    # For new altair-based chains, use an empty list
+    # Backfilling requires access to external block storage.
+
+    return []
 
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
@@ -76,6 +83,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_root=hash_tree_root(pre.historical_roots),
+        historical_block_roots=backfill_historical_block_roots(pre),
         # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,

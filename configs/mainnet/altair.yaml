@@ -1,5 +1,10 @@
 # Mainnet preset - Altair
 
+# State vector lengths
+# ---------------------------------------------------------------
+# 2**24 (= 16,777,216) historical roots, ~26,131 years
+HISTORICAL_BLOCK_ROOTS_LIMIT: 16777216
+
 # Updated penalty values
 # ---------------------------------------------------------------
 # 3 * 2**24 (= 50,331,648)

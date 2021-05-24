@@ -44,6 +44,7 @@
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
     - [Modified `process_deposit`](#modified-process_deposit)
+    - [Historical roots updates](#historical-roots-updates)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
