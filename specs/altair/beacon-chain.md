@@ -23,6 +23,7 @@
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
+    - [`HistoricalBatchSummary`](#historicalbatchsummary)
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
@@ -204,11 +205,14 @@ class BeaconState(Container):
 
 ### New containers
 
+#### `HistoricalBatchSummary`
 
 ```python
-# The tree roots that make up a phase0 HistoricalBatch making its layout
-# hash_tree_root-compatible.
 class HistoricalBatchSummary(Container):
+    """
+    `HistoricalBatchSummary` matches the components of the phase0 HistoricalBatch
+    making the two hash_tree_root-compatible.
+    """
     block_batch_root: Root
     state_batch_root: Root
 ```

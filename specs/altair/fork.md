@@ -58,7 +58,7 @@ def translate_participation(state: BeaconState, pending_attestations: Sequence[p
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 
-def load_historical_batches(state: BeaconState, pre: BeaconState) -> List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]:
+def load_historical_batches(pre: BeaconState) -> List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]:
     # Clients need to recalculate the historical batches from genesis and return
     # them here with the roots of the blocks and states separated. It's assumed
     # most of these are pre-calculated and the rest are stored on-the-fly by
@@ -69,7 +69,7 @@ def load_historical_batches(state: BeaconState, pre: BeaconState) -> List[Histor
 
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
-    historical_batches = load_historical_batches()
+    historical_batches = load_historical_batches(pre)
 
     # Tree hash should match since HistoricalBatchSummary is an intermediate step in calculating the phase0 historical root entry
     assert hash_tree_root(historical_batches) == hash_tree_root(pre.historical_roots)
