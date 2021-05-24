@@ -55,6 +55,12 @@ def floorlog2(x: int) -> uint64:
 '''
 
 
+OPTIMIZED_BLS_AGGREGATE_PUBKEYS = '''
+def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
+    return bls.AggregatePKs(pubkeys)
+'''
+
+
 class ProtocolDefinition(NamedTuple):
     # just function definitions currently. May expand with configuration vars in future.
     functions: Dict[str, str]
@@ -306,6 +312,10 @@ class SpecBuilder(ABC):
         raise NotImplementedError()
 
     @classmethod
+    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+        return functions
+
+    @classmethod
     @abstractmethod
     def build_spec(cls, preset_name: str,
                    source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
@@ -482,6 +492,10 @@ assert (
     TIMELY_HEAD_WEIGHT + TIMELY_SOURCE_WEIGHT + TIMELY_TARGET_WEIGHT + SYNC_REWARD_WEIGHT + PROPOSER_WEIGHT
 ) == WEIGHT_DENOMINATOR'''
 
+    @classmethod
+    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+        if "eth2_aggregate_pubkeys" in functions:
+            return {**functions, **{"eth2_aggregate_pubkeys": OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()}}
 
 #
 # MergeSpecBuilder
@@ -588,7 +602,8 @@ def objects_to_spec(preset_name: str,
     for k in list(spec_object.functions):
         if "ceillog2" in k or "floorlog2" in k:
             del spec_object.functions[k]
-    functions_spec = '\n\n\n'.join(spec_object.functions.values())
+    functions = builder.implement_optimizations(spec_object.functions)
+    functions_spec = '\n\n\n'.join(functions.values())
 
     # Access global dict of config vars for runtime configurables
     for name in spec_object.config_vars.keys():
@@ -831,7 +846,7 @@ class PySpecCommand(Command):
         self.out_dir = 'pyspec_output'
         self.build_targets = """
                 minimal:presets/minimal:configs/minimal.yaml
-                mainnet:presets/mainnet:configs/mainnet.yaml        
+                mainnet:presets/mainnet:configs/mainnet.yaml
         """
 
     def finalize_options(self):

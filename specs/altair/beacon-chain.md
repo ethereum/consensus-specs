@@ -26,6 +26,8 @@
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
+  - [Crypto](#crypto)
+    - [BLS public keys](#bls-public-keys)
   - [`Predicates`](#predicates)
     - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Misc](#misc-1)
@@ -221,6 +223,32 @@ class SyncCommittee(Container):
 
 ## Helper functions
 
+
+### Crypto
+
+#### BLS public keys
+
+An additional function `AggregatePKs` is defined to extend the
+[IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
+spec referenced in the phase 0 document.
+
+```python
+def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
+    """
+    Return the aggregate public key for the public keys in ``pubkeys``.
+
+    NOTE: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
+    elliptic curve points that must be decoded from the input ``BLSPubkey``s.
+    This implementation is for demonstrative purposes only and ignores encoding/decoding concerns.
+    Refer to the BLS signature draft standard for more information.
+    """
+    assert len(pubkeys) > 0
+    result = copy(pubkeys[0])
+    for pubkey in pubkeys[1:]:
+        result += pubkey
+    return result
+```
+
 ### `Predicates`
 
 #### `eth2_fast_aggregate_verify`
@@ -310,7 +338,7 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     """
     indices = get_next_sync_committee_indices(state)
     pubkeys = [state.validators[index].pubkey for index in indices]
-    aggregate_pubkey = bls.AggregatePKs(pubkeys)
+    aggregate_pubkey = eth2_aggregate_pubkeys(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```
 
