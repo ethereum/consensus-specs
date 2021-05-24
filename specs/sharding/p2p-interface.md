@@ -168,4 +168,3 @@ The following validations MUST pass before forwarding the `shard_proposer_slashi
   for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
   The `slot` and `shard` are ignored, there are no per-shard slashings.
 - _[REJECT]_ All of the conditions within `process_shard_proposer_slashing` pass validation.
-- 
