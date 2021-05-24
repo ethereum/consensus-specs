@@ -136,7 +136,7 @@ This patch updates a few configuration values to move penalty parameters closer 
 ### State list lengths
 
 | Name | Value | Unit | Duration |
-
+| - | - | :-: | :-: |
 | `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
 
 ## Configuration
