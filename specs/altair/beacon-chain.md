@@ -16,6 +16,7 @@
 - [Preset](#preset)
   - [Updated penalty values](#updated-penalty-values)
   - [Sync committee](#sync-committee)
+  - [State list lengths](#state-list-lengths)
 - [Configuration](#configuration)
   - [Inactivity penalties](#inactivity-penalties)
 - [Containers](#containers)
@@ -131,6 +132,12 @@ This patch updates a few configuration values to move penalty parameters closer 
 | - | - | - | - |
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
+
+### State list lengths
+
+| Name | Value | Unit | Duration |
+
+| `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
 
 ## Configuration
 
