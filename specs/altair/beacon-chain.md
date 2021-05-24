@@ -44,7 +44,6 @@
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
     - [Modified `process_deposit`](#modified-process_deposit)
-    - [Historical roots updates](#historical-roots-updates)
     - [Sync committee processing](#sync-committee-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
@@ -52,6 +51,7 @@
     - [Rewards and penalties](#rewards-and-penalties)
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
+    - [Historical roots updates](#historical-roots-updates)
     - [Sync committee updates](#sync-committee-updates)
 - [Initialize state for pure Altair testnets and test vectors](#initialize-state-for-pure-altair-testnets-and-test-vectors)
 
@@ -556,16 +556,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         increase_balance(state, index, amount)
 ```
 
-#### Historical roots updates
-
-```python
-def process_historical_block_roots_update(state: BeaconState) -> None:
-    # Set historical block root accumulator
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        state.historical_block_roots.append(hash_tree_root(state.block_roots))
-```
-
 #### Sync committee processing
 
 ```python
@@ -694,6 +684,18 @@ def process_slashings(state: BeaconState) -> None:
 def process_participation_flag_updates(state: BeaconState) -> None:
     state.previous_epoch_participation = state.current_epoch_participation
     state.current_epoch_participation = [ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
+```
+
+#### Historical roots updates
+
+*Note*: The function `process_historical_block_roots_update` is new and replaces the `process_historical_roots_update` function from phase0.
+
+```python
+def process_historical_block_roots_update(state: BeaconState) -> None:
+    # Set historical block root accumulator
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        state.historical_block_roots.append(hash_tree_root(state.block_roots))
 ```
 
 #### Sync committee updates
