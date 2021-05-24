@@ -16,7 +16,6 @@
 - [Preset](#preset)
   - [Updated penalty values](#updated-penalty-values)
   - [Sync committee](#sync-committee)
-  - [State list lengths](#state-list-lengths)
 - [Configuration](#configuration)
   - [Inactivity penalties](#inactivity-penalties)
 - [Containers](#containers)
@@ -133,12 +132,6 @@ This patch updates a few configuration values to move penalty parameters closer 
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
 
-### State list lengths
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `HISTORICAL_BLOCK_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
-
 ## Configuration
 
 ### Inactivity penalties
@@ -182,8 +175,8 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_root: Root
-    historical_block_roots: List[Root, HISTORICAL_BLOCK_ROOTS_LIMIT]
+    historical_block_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    historical_state_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -607,7 +600,7 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    process_historical_block_roots_update(state)
+    process_historical_roots_update(state)
     process_participation_flag_updates(state)  # [New in Altair]
     process_sync_committee_updates(state)  # [New in Altair]
 ```
@@ -698,14 +691,15 @@ def process_participation_flag_updates(state: BeaconState) -> None:
 
 #### Historical roots updates
 
-*Note*: The function `process_historical_block_roots_update` is new and replaces the `process_historical_roots_update` function from phase0.
+*Note*: The function `process_historical_roots_update` changes definition compared to phase0.
 
 ```python
-def process_historical_block_roots_update(state: BeaconState) -> None:
+def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical block root accumulator
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         state.historical_block_roots.append(hash_tree_root(state.block_roots))
+        state.historical_state_roots.append(hash_tree_root(state.state_roots))
 ```
 
 #### Sync committee updates

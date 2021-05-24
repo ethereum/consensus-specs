@@ -58,13 +58,17 @@ def translate_participation(state: BeaconState, pending_attestations: Sequence[p
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 
-def backfill_historical_block_roots(pre: BeaconState) -> List[Root, HISTORICAL_BLOCK_ROOTS_LIMIT]:
-    # Split historical blocks into chunks of SLOTS_PER_HISTORICAL_ROOT
-    # For each chunk, compute hash_tree_root(chunk) and add to returned list
-    # For new altair-based chains, use an empty list
-    # Backfilling requires access to external block storage.
+def backfill_historical_roots(state: BeaconState, pre: BeaconState) -> None:
+    # Clients need to recreate `historical_block_roots` and
+    # `historical_state_roots` from their history. A large part can be
+    # precalculated and verified against historical_roots in state.
+    # Before the fork, clients should start collecting the part that has not
+    # been pre-calculated.
+    #
+    # The calclulated split historical roots can be verified against the existing
+    # historical_roots field up to the fork.
 
-    return []
+
 
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
@@ -82,8 +86,8 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
-        historical_root=hash_tree_root(pre.historical_roots),
-        historical_block_roots=backfill_historical_block_roots(pre),
+        historical_block_roots=[],
+        historical_state_roots=[],
         # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
@@ -108,6 +112,8 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)
+
+    backfill_historical_roots(post, pre)
 
     # Fill in sync committees
     # Note: A duplicate committee is assigned for the current and next committee at the fork boundary
