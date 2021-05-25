@@ -913,7 +913,7 @@ class PySpecCommand(Command):
         if not self.dry_run:
             with open(os.path.join(self.out_dir, '__init__.py'), 'w') as out:
                 # `mainnet` is the default spec.
-                out.write("from . import mainnet as spec\n")
+                out.write("from . import mainnet as spec  # noqa:F401\n")
 
 
 class BuildPyCommand(build_py):
