@@ -80,7 +80,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 | - | - |
 | `beacon_block` | `SignedBeaconBlock` (modified) |
 | `sync_committee_contribution_and_proof` | `SignedContributionAndProof` |
-| `sync_committee_{subnet_id}` | `SyncCommitteeSignature` |
+| `sync_committee_{subnet_id}` | `SyncCommitteeMessage` |
 
 Definitions of these new types can be found in the [Altair validator guide](./validator.md#containers).
 
@@ -139,12 +139,12 @@ Sync committee subnets are used to propagate unaggregated sync committee signatu
 
 The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync committee signatures to the subnet `subnet_id` to be aggregated before being gossiped to the global `sync_committee_contribution_and_proof` topic.
 
-The following validations MUST pass before forwarding the `sync_committee_signature` on the network:
+The following validations MUST pass before forwarding the `sync_committee_message` on the network:
 
-- _[IGNORE]_ The signature's slot is for the current slot, i.e. `sync_committee_signature.slot == current_slot`.
-- _[IGNORE]_ The block being signed over (`sync_committee_signature.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
-- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_signature.validator_index`.
-- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_signature.validator_index)`.
+- _[IGNORE]_ The signature's slot is for the current slot, i.e. `sync_committee_message.slot == current_slot`.
+- _[IGNORE]_ The block being signed over (`sync_committee_message.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
+- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`.
+- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
 
@@ -156,7 +156,7 @@ The number of subnets is defined by `SYNC_COMMITTEE_SUBNET_COUNT` in the [Altair
 Sync committee members are divided into "subcommittees" which are then assigned to a subnet for the duration of tenure in the sync committee.
 Individual validators can be duplicated in the broader sync committee such that they are included multiple times in a given subcommittee or across multiple subcommittees.
 
-Unaggregated signatures (along with metadata) are sent as `SyncCommitteeSignature`s on the `sync_committee_{subnet_id}` topics.
+Unaggregated signatures (along with metadata) are sent as `SyncCommitteeMessage`s on the `sync_committee_{subnet_id}` topics.
 
 Aggregated sync committee signatures are packaged into (signed) `SyncCommitteeContribution` along with proofs and gossiped to the `sync_committee_contribution_and_proof` topic.
 
