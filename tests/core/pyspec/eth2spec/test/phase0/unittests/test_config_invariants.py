@@ -47,3 +47,9 @@ def test_incentives(spec, state):
 @spec_state_test
 def test_time(spec, state):
     assert spec.SLOTS_PER_EPOCH <= spec.SLOTS_PER_HISTORICAL_ROOT
+
+
+@with_all_phases
+@spec_state_test
+def test_networking(spec, state):
+    assert spec.RANDOM_SUBNETS_PER_VALIDATOR <= spec.ATTESTATION_SUBNET_COUNT

@@ -15,3 +15,9 @@ def test_weight_denominator(spec, state):
         + spec.SYNC_REWARD_WEIGHT
         + spec.PROPOSER_WEIGHT
     ) == spec.WEIGHT_DENOMINATOR
+
+
+@with_phases([ALTAIR])
+@spec_state_test
+def test_inactivity_score(spec, state):
+    assert spec.config.INACTIVITY_SCORE_BIAS <= spec.config.INACTIVITY_SCORE_RECOVERY_RATE
