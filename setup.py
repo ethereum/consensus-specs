@@ -299,14 +299,6 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def invariant_checks(cls) -> str:
-        """
-        The invariant checks
-        """
-        raise NotImplementedError()
-
-    @classmethod
-    @abstractmethod
     def build_spec(cls, preset_name: str,
                    source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
         raise NotImplementedError()
@@ -426,10 +418,6 @@ get_attesting_indices = cache_this(
         return {}
 
     @classmethod
-    def invariant_checks(cls) -> str:
-        return ''
-
-    @classmethod
     def build_spec(cls, preset_name: str,
                    source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
         return _build_spec(preset_name, cls.fork, source_files, preset_files, config_file)
@@ -474,13 +462,6 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
             'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}
-
-    @classmethod
-    def invariant_checks(cls) -> str:
-        return '''
-assert (
-    TIMELY_HEAD_WEIGHT + TIMELY_SOURCE_WEIGHT + TIMELY_TARGET_WEIGHT + SYNC_REWARD_WEIGHT + PROPOSER_WEIGHT
-) == WEIGHT_DENOMINATOR'''
 
 
 #
@@ -647,7 +628,6 @@ def objects_to_spec(preset_name: str,
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
-            + ('\n' + builder.invariant_checks() if builder.invariant_checks() != '' else '')
             + '\n'
     )
     return spec
