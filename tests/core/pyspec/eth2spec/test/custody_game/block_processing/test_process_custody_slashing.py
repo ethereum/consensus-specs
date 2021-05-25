@@ -3,7 +3,7 @@ from eth2spec.test.helpers.custody import (
     get_custody_slashable_shard_transition,
 )
 from eth2spec.test.helpers.attestations import (
-    get_valid_on_time_attestation,
+    get_valid_attestation,
 )
 from eth2spec.test.helpers.constants import (
     CUSTODY_GAME,
@@ -96,8 +96,8 @@ def run_standard_custody_slashing_test(spec,
         slashable=correct,
     )
 
-    attestation = get_valid_on_time_attestation(spec, state, index=shard, signed=True,
-                                                shard_transition=shard_transition)
+    attestation = get_valid_attestation(spec, state, index=shard, signed=True,
+                                        shard_transition=shard_transition)
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
