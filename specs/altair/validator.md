@@ -30,8 +30,8 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
     - [Packaging into a `SignedBeaconBlock`](#packaging-into-a-signedbeaconblock)
   - [Attesting and attestation aggregation](#attesting-and-attestation-aggregation)
   - [Sync committees](#sync-committees)
-    - [Sync committee signatures](#sync-committee-signatures)
-      - [Prepare sync committee signature](#prepare-sync-committee-signature)
+    - [Sync committee messages](#sync-committee-messages)
+      - [Prepare sync committee message](#prepare-sync-committee-message)
       - [Broadcast sync committee message](#broadcast-sync-committee-message)
     - [Sync committee contributions](#sync-committee-contributions)
       - [Aggregation selection](#aggregation-selection)
@@ -261,9 +261,9 @@ Sync committee members employ an aggregation scheme to reduce load on the global
 Sync committee members produce individual signatures on subnets (similar to the attestation subnets) via `SyncCommitteeMessage`s which are then collected by aggregators sampled from the sync subcommittees to produce a `SyncCommitteeContribution` which is gossiped to proposers.
 This process occurs each slot.
 
-#### Sync committee signatures
+#### Sync committee messages
 
-##### Prepare sync committee signature
+##### Prepare sync committee message
 
 If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`.
 
@@ -374,7 +374,7 @@ For example, if a validator with index `2044` is pseudo-randomly sampled to sync
 
 ###### Signature
 
-Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_messages` and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
+Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_messages`s and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
 
 The collection of input signatures should include one signature per validator who had a bit set in the `aggregation_bits` bitfield, with repeated signatures if one validator maps to multiple indices within the subcommittee.
 
