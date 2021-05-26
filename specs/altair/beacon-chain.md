@@ -86,14 +86,19 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
-| `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
-| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
-| `SYNC_REWARD_WEIGHT` | `uint64(8)` |
+| `TIMELY_SOURCE_WEIGHT` | `uint64(14)` |
+| `TIMELY_TARGET_WEIGHT` | `uint64(28)` |
+| `TIMELY_HEAD_WEIGHT` | `uint64(14)` |
 | `PROPOSER_WEIGHT` | `uint64(8)` |
 | `WEIGHT_DENOMINATOR` | `uint64(64)` |
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
+
+### Penalty weights
+
+| Name | Value |
+| - | - |
+| `SYNC_PENALTY_WEIGHT` | `uint64(8)` |
 
 ### Domain types
 
@@ -331,8 +336,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
 
     Note: An optimally performing validator can earn one base reward per epoch over a long time horizon.
-    This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal
-    and sync committees).
+    This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal).
     """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
     return Gwei(increments * get_base_reward_per_increment(state))
@@ -572,16 +576,16 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     # Compute participant and proposer rewards
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
-    max_participant_rewards = Gwei(total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
-    participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
-    proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
+    max_offline_penalties = Gwei(total_base_rewards * SYNC_PENALTY_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
+    offline_penalty = Gwei(max_offline_penalties // SYNC_COMMITTEE_SIZE)
+    proposer_reward = Gwei(offline_penalty * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
     # Apply participant and proposer rewards
     all_pubkeys = [v.pubkey for v in state.validators]
     committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
-    participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
-    for participant_index in participant_indices:
-        increase_balance(state, participant_index, participant_reward)
+    offline_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if not bit]
+    for offline_index in offline_indices:
+        decrease_balance(state, offline_index, offline_penalty)
         increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 

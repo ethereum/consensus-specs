@@ -430,7 +430,7 @@ Any bits modified for the sync committee responsibilities are unset in the ENR o
 
   *Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens, which implies subnet assignments are not known until then.
 Early sync committee members should listen for topic subscriptions from peers and employ discovery via the ENR advertisements near the fork boundary to form initial subnets.
-Some early sync committee rewards may be missed while the initial subnets form.
+Some early sync committee penalties may be unavoidable while the initial subnets form.
 
 * To join a sync committee subnet, select a random number of epochs before the end of the current sync committee period between 1 and `SYNC_COMMITTEE_SUBNET_COUNT`, inclusive.
 Validators should join their member subnet at the beginning of the epoch they have randomly selected.
