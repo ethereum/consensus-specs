@@ -374,7 +374,7 @@ For example, if a validator with index `2044` is pseudo-randomly sampled to sync
 
 ###### Signature
 
-Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_messages`s and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
+Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_messages` and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
 
 The collection of input signatures should include one signature per validator who had a bit set in the `aggregation_bits` bitfield, with repeated signatures if one validator maps to multiple indices within the subcommittee.
 
