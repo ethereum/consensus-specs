@@ -11,6 +11,7 @@
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
+  - [Penalty weights](#penalty-weights)
   - [Domain types](#domain-types)
   - [Misc](#misc)
 - [Preset](#preset)
@@ -513,7 +514,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
-    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    weights = sum(PARTICIPATION_FLAG_WEIGHTS)
+    proposer_reward_denominator = (weights + SYNC_PENALTY_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
     proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
@@ -573,20 +575,24 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     assert eth2_fast_aggregate_verify(participant_pubkeys, signing_root, aggregate.sync_committee_signature)
 
-    # Compute participant and proposer rewards
+    # Compute offline penalties and proposer rewards
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
     max_offline_penalties = Gwei(total_base_rewards * SYNC_PENALTY_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
     offline_penalty = Gwei(max_offline_penalties // SYNC_COMMITTEE_SIZE)
-    proposer_reward = Gwei(offline_penalty * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
 
-    # Apply participant and proposer rewards
+    proposer_reward_denominator = WEIGHT_DENOMINATOR * (sum(PARTICIPATION_FLAG_WEIGHTS) + SYNC_PENALTY_WEIGHT)
+    proposer_reward = Gwei(offline_penalty * PROPOSER_WEIGHT // proposer_reward_denominator)
+
+    # Apply offline penalties and proposer rewards
     all_pubkeys = [v.pubkey for v in state.validators]
     committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
+    participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
+    for participant_index in participant_indices:
+        increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
     offline_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if not bit]
     for offline_index in offline_indices:
         decrease_balance(state, offline_index, offline_penalty)
-        increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
 ### Epoch processing
