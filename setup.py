@@ -500,7 +500,8 @@ assert (
     @classmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
         if "eth2_aggregate_pubkeys" in functions:
-            return {**functions, **{"eth2_aggregate_pubkeys": OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()}}
+            functions["eth2_aggregate_pubkeys"] = OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()
+        return super().implement_optimizations(functions)
 
 #
 # MergeSpecBuilder
@@ -873,6 +874,7 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/altair/beacon-chain.md
+                    specs/altair/bls.md
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
