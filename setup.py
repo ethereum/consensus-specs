@@ -312,8 +312,9 @@ class SpecBuilder(ABC):
         raise NotImplementedError()
 
     @classmethod
+    @abstractmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
-        return functions
+        raise NotImplementedError()
 
     @classmethod
     @abstractmethod
@@ -438,6 +439,10 @@ get_attesting_indices = cache_this(
     @classmethod
     def invariant_checks(cls) -> str:
         return ''
+
+    @classmethod
+    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+        return functions
 
     @classmethod
     def build_spec(cls, preset_name: str,
