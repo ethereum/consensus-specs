@@ -120,7 +120,7 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
     return sync_committee.pubkeys[i:i + sync_subcommittee_size]
 ```
 
-- _[IGNORE]_ The contribution's slot is for the current slot, i.e. `contribution.slot == current_slot`.
+- _[IGNORE]_ The contribution's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `contribution.slot == current_slot` .
 - _[IGNORE]_ The block being signed over (`contribution.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
 - _[REJECT]_ The subcommittee index is in the allowed range, i.e. `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
 - _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index` for the slot `contribution.slot` and subcommittee index `contribution.subcommittee_index`.
@@ -141,7 +141,7 @@ The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync 
 
 The following validations MUST pass before forwarding the `sync_committee_signature` on the network:
 
-- _[IGNORE]_ The signature's slot is for the current slot, i.e. `sync_committee_signature.slot == current_slot`.
+- _[IGNORE]_ The signature's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `sync_committee_signature.slot == current_slot`.
 - _[IGNORE]_ The block being signed over (`sync_committee_signature.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
 - _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_signature.validator_index`.
 - _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_signature.validator_index)`.
