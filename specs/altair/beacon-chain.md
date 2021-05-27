@@ -580,7 +580,7 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     all_pubkeys = [v.pubkey for v in state.validators]
     committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
     for index, participation_bit in zip(committee_indices, aggregate.sync_committee_bits):
-        if participant_bit:
+        if participation_bit:
             increase_balance(state, participant_index, participant_reward)
             increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
         else:
