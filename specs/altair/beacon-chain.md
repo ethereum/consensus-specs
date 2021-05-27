@@ -86,10 +86,10 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
-| `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
-| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
-| `SYNC_REWARD_WEIGHT` | `uint64(8)` |
+| `TIMELY_SOURCE_WEIGHT` | `uint64(14)` |
+| `TIMELY_TARGET_WEIGHT` | `uint64(26)` |
+| `TIMELY_HEAD_WEIGHT` | `uint64(14)` |
+| `SYNC_REWARD_WEIGHT` | `uint64(2)` |
 | `PROPOSER_WEIGHT` | `uint64(8)` |
 | `WEIGHT_DENOMINATOR` | `uint64(64)` |
 
@@ -129,7 +129,7 @@ This patch updates a few configuration values to move penalty parameters closer 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 
 ## Configuration
 
@@ -579,10 +579,12 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     # Apply participant and proposer rewards
     all_pubkeys = [v.pubkey for v in state.validators]
     committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
-    participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
-    for participant_index in participant_indices:
-        increase_balance(state, participant_index, participant_reward)
-        increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+    for index, participation_bit in zip(committee_indices, aggregate.sync_committee_bits):
+        if participant_bit:
+            increase_balance(state, participant_index, participant_reward)
+            increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+        else:
+            decrease_balance(state, participant_index, participant_reward)
 ```
 
 ### Epoch processing
