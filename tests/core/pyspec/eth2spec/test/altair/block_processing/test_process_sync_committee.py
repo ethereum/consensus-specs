@@ -115,75 +115,64 @@ def test_invalid_signature_extra_participant(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-def compute_sync_committee_inclusion_reward(spec,
+def compute_sync_committee_offline_penalty(spec,
                                             state,
-                                            participant_index,
-                                            committee_indices,
-                                            committee_bits):
+                                            committee_indices):
     total_active_increments = spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = spec.Gwei(spec.get_base_reward_per_increment(state) * total_active_increments)
-    max_epoch_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT // spec.WEIGHT_DENOMINATOR)
-    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
-    max_slot_rewards = spec.Gwei(
-        max_epoch_rewards * len(included_indices)
-        // len(committee_indices) // spec.SLOTS_PER_EPOCH
+    max_epoch_penalties = spec.Gwei(total_base_rewards * spec.SYNC_PENALTY_WEIGHT // spec.WEIGHT_DENOMINATOR)
+
+    return spec.Gwei(max_epoch_penalties // spec.SLOTS_PER_EPOCH // len(committee_indices))
+
+
+def compute_sync_committee_participant_penalty(spec, state, participant_index, committee_indices, committee_bits):
+    excluded_indices = [index for index, bit in zip(committee_indices, committee_bits) if not bit]
+    multiplicities = Counter(excluded_indices)
+    
+    offline_penalty = compute_sync_committee_offline_penalty(
+        spec, state, committee_indices
     )
-
-    # Compute the participant and proposer sync rewards
-    committee_effective_balance = sum([state.validators[index].effective_balance for index in included_indices])
-    committee_effective_balance = max(spec.EFFECTIVE_BALANCE_INCREMENT, committee_effective_balance)
-    effective_balance = state.validators[participant_index].effective_balance
-    return spec.Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
-
-
-def compute_sync_committee_participant_reward(spec, state, participant_index, committee_indices, committee_bits):
-    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
-    multiplicities = Counter(included_indices)
-
-    inclusion_reward = compute_sync_committee_inclusion_reward(
-        spec, state, participant_index, committee_indices, committee_bits,
-    )
-    return spec.Gwei(inclusion_reward * multiplicities[participant_index])
+    return spec.Gwei(offline_penalty * multiplicities[participant_index])
 
 
 def compute_sync_committee_proposer_reward(spec, state, committee_indices, committee_bits):
     proposer_reward = 0
+    inclusion_reward = compute_sync_committee_offline_penalty(
+        spec, state, committee_indices
+    )
+    proposer_reward_denominator = (
+        (sum(spec.PARTICIPATION_FLAG_WEIGHTS) + spec.SYNC_PENALTY_WEIGHT)
+        * spec.WEIGHT_DENOMINATOR
+    )
     for index, bit in zip(committee_indices, committee_bits):
         if not bit:
             continue
-        inclusion_reward = compute_sync_committee_inclusion_reward(
-            spec, state, index, committee_indices, committee_bits,
-        )
-        proposer_reward_denominator = (
-            (spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT)
-            * spec.WEIGHT_DENOMINATOR
-            // spec.PROPOSER_WEIGHT
-        )
-        proposer_reward += spec.Gwei((inclusion_reward * spec.WEIGHT_DENOMINATOR) // proposer_reward_denominator)
+        proposer_reward += spec.Gwei((inclusion_reward * spec.PROPOSER_WEIGHT) // proposer_reward_denominator)
     return proposer_reward
 
 
-def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indices, committee_bits, proposer_index):
+def validate_sync_committee_penalties(spec, pre_state, post_state, committee_indices, committee_bits, proposer_index):
     for index in range(len(post_state.validators)):
+        penalty = 0
         reward = 0
         if index in committee_indices:
-            reward += compute_sync_committee_participant_reward(
+            penalty = compute_sync_committee_participant_penalty(
                 spec,
                 pre_state,
                 index,
                 committee_indices,
-                committee_bits,
+                committee_bits
             )
 
         if proposer_index == index:
-            reward += compute_sync_committee_proposer_reward(
+            reward = compute_sync_committee_proposer_reward(
                 spec,
                 pre_state,
                 committee_indices,
                 committee_bits,
             )
 
-        assert post_state.balances[index] == pre_state.balances[index] + reward
+        assert post_state.balances[index] == pre_state.balances[index] + reward - penalty
 
 
 def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
@@ -202,7 +191,7 @@ def run_successful_sync_committee_test(spec, state, committee_indices, committee
 
     yield from run_sync_committee_processing(spec, state, block)
 
-    validate_sync_committee_rewards(
+    validate_sync_committee_penalties(
         spec,
         pre_state,
         state,
