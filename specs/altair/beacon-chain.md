@@ -27,9 +27,6 @@
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
   - [Crypto](#crypto)
-    - [BLS public keys](#bls-public-keys)
-  - [`Predicates`](#predicates)
-    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
@@ -109,7 +106,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT]` |
 
 ## Preset
@@ -223,45 +219,11 @@ class SyncCommittee(Container):
 
 ## Helper functions
 
-
 ### Crypto
 
-#### BLS public keys
-
-An additional function `AggregatePKs` is defined to extend the
-[IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
-spec referenced in the phase 0 document.
-
-```python
-def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
-    """
-    Return the aggregate public key for the public keys in ``pubkeys``.
-
-    NOTE: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
-    elliptic curve points that must be decoded from the input ``BLSPubkey``s.
-    This implementation is for demonstrative purposes only and ignores encoding/decoding concerns.
-    Refer to the BLS signature draft standard for more information.
-    """
-    assert len(pubkeys) > 0
-    result = copy(pubkeys[0])
-    for pubkey in pubkeys[1:]:
-        result += pubkey
-    return result
-```
-
-### `Predicates`
-
-#### `eth2_fast_aggregate_verify`
-
-```python
-def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
-    """
-    Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
-    """
-    if len(pubkeys) == 0 and signature == G2_POINT_AT_INFINITY:
-        return True
-    return bls.FastAggregateVerify(pubkeys, message, signature)
-```
+Refer to the definitions in the [phase 0 document regarding BLS signatures](../phase0/beacon-chain.md#bls-signatures)
+and the extensions defined in the [Altair BLS document](./bls.md). This specification assumes knowledge of
+the functionality described in those documents.
 
 ### Misc
 
