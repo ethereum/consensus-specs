@@ -64,6 +64,7 @@ class ShardBlob(Container):
     # Slot and shard that this blob is intended for
     slot: Slot
     shard: Shard
+    # Shard data with related commitments and beacon anchor
     body: ShardBlobBody
     # Proposer of the shard-blob
     proposer_index: ValidatorIndex
