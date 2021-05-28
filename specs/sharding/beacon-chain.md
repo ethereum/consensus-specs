@@ -33,6 +33,7 @@
   - [`ShardBlobReference`](#shardblobreference)
   - [`SignedShardBlobReference`](#signedshardblobreference)
   - [`ShardProposerSlashing`](#shardproposerslashing)
+  - [`ShardCommitteeWork`](#shardcommitteework)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-2)
     - [`next_power_of_two`](#next_power_of_two)
@@ -183,17 +184,8 @@ class BeaconState(merge.BeaconState):  # [extends The Merge state]
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # [New fields]
-    # A ring buffer of the latest shard headers per slot. Upon confirmation the data is reduced to just the header.
-    shard_headers: Vector[
-        List[
-          Union[                                                     # See Shard Header Status enum
-              None,                                                  # UNCONFIRMED_SHARD_DATA
-              DataCommitment,                                        # CONFIRMED_SHARD_DATA
-              List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD]  # PENDING_SHARD_DATA
-          ],
-          MAX_SHARDS
-        ],
-        SHARD_STATE_MEMORY_SLOTS]
+    # A ring buffer of the latest slots, with information per active shard.
+    shard_buffer: Vector[List[ShardCommitteeWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
 ```
@@ -288,6 +280,18 @@ class ShardProposerSlashing(Container):
     signed_reference_2: SignedShardBlobReference
 ```
 
+### `ShardCommitteeWork`
+
+```python
+class ShardWork(Container):
+    #  Upon confirmation the data is reduced to just the header.
+    status: Union[                                                   # See Shard Header Status enum
+              None,                                                  # UNCONFIRMED_SHARD_DATA
+              DataCommitment,                                        # CONFIRMED_SHARD_DATA
+              List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD]  # PENDING_SHARD_DATA
+            ]
+```
+
 ## Helper functions
 
 ### Misc
@@ -359,7 +363,7 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
     Return the number of active shards.
     Note that this puts an upper bound on the number of committees per slot.
     """
-    return INITIAL_ACTIVE_SHARDS  # TODO: use shard_headers from state instead?
+    return INITIAL_ACTIVE_SHARDS
 ```
 
 #### `get_shard_committee`
@@ -461,6 +465,7 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
 ```python
 def compute_shard_from_committee_index(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Shard:
     active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
+    assert index < active_shards
     return Shard((index + get_start_shard(state, slot)) % active_shards)
 ```
 
@@ -468,8 +473,11 @@ def compute_shard_from_committee_index(state: BeaconState, slot: Slot, index: Co
 
 ```python
 def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Shard) -> CommitteeIndex:
-    active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
-    return CommitteeIndex((active_shards + shard - get_start_shard(state, slot)) % active_shards)    
+    epoch = compute_epoch_at_slot(slot)
+    active_shards = get_active_shard_count(state, epoch)
+    index = CommitteeIndex((active_shards + shard - get_start_shard(state, slot)) % active_shards)
+    assert index >= get_committee_count_per_slot(state, epoch)
+    return index
 ```
 
 
@@ -530,20 +538,21 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
         attestation.data.index,
     )
     buffer_index = attestation.data.slot % SHARD_STATE_MEMORY_SLOTS
-    shard_header_status = state.shard_headers[buffer_index][attestation_shard]
+    committee_work = state.shard_buffer[buffer_index][attestation_shard]
 
     # Skip attestation vote accounting if the header is already confirmed
-    if shard_header_status.selector == CONFIRMED_SHARD_DATA:
+    if committee_work.status.selector == CONFIRMED_SHARD_DATA:
         return
 
-    assert shard_header_status.selector == PENDING_SHARD_DATA
-    current_headers: Sequence[PendingShardHeader] = shard_header_status.value
+    # Note that shard-slot combinations without an assigned committee do not have a pending state
+    assert shard_info.status.selector == PENDING_SHARD_DATA
+    current_headers: Sequence[PendingShardHeader] = committee_work.status.value
 
     # Find the corresponding header, abort if it cannot be found
     header_index = [header.root for header in current_headers].index(attestation.data.shard_header_root)
 
     # Update votes bitfield in the state
-    pending_header = state.shard_headers[buffer_index][attestation_shard][header_index] 
+    pending_header: PendingShardHeader = state.shard_buffer[buffer_index][attestation_shard][header_index] 
     for i, bit in enumerate(attestation.aggregation_bits):
         if bit:
             pending_header.votes[i] = True
@@ -554,10 +563,17 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     full_committee_balance = get_total_balance(state, set(full_committee))
     if participants_balance * 3 >= full_committee_balance * 2:
-        state.shard_headers[buffer_index][attestation_shard].change(
-            selector=CONFIRMED_SHARD_DATA,
-            value=pending_header.commitment,
-        )
+        if pending_header.commitment == DataCommitment():
+            # The committee voted to not confirm anything
+            state.shard_buffer[buffer_index][attestation_shard].change(
+                selector=UNCONFIRMED_SHARD_DATA,
+                value=None,
+            )
+        else:
+            state.shard_buffer[buffer_index][attestation_shard].change(
+                selector=CONFIRMED_SHARD_DATA,
+                value=pending_header.commitment,
+            )
 ```
 
 #### `process_shard_header`
@@ -577,11 +593,11 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
 
     # Check that this data is still pending
-    shard_header_status = state.shard_headers[header.slot % SHARD_STATE_MEMORY_SLOTS][header.slot]
-    assert shard_header_status.selector == PENDING_SHARD_DATA
+    committee_work = state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.slot]
+    assert committee_work.status.selector == PENDING_SHARD_DATA
 
     # Check that this header is not yet in the pending list
-    current_headers: Sequence[PendingShardHeader] = shard_header_status.value
+    current_headers: Sequence[PendingShardHeader] = committee_work.status.value
     assert header_root not in [pending_header.root for pending_header in current_headers]
 
     # Verify proposer
@@ -610,7 +626,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     )
 
     # Include it in the pending list
-    state.shard_headers[header.slot % SHARD_STATE_MEMORY_SLOTS][header.slot].append(pending_header)
+    state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.slot].append(pending_header)
 ```
 
 The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
@@ -689,9 +705,9 @@ def process_pending_headers(state: BeaconState) -> None:
     # Mark stale headers as unconfirmed
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
-        for shard_index in range(len(state.shard_headers[buffer_index])):
-            if state.shard_headers[buffer_index][shard_index].selector == PENDING_SHARD_DATA:
-                state.shard_headers[buffer_index][shard_index].change(selector=UNCONFIRMED_SHARD_DATA, value=None)
+        for shard_index in range(len(state.shard_buffer[buffer_index])):
+            if state.shard_buffer[buffer_index][shard_index].selector == PENDING_SHARD_DATA:
+                state.shard_buffer[buffer_index][shard_index].change(selector=UNCONFIRMED_SHARD_DATA, value=None)
 ```
 
 ```python
@@ -706,9 +722,9 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
     # Iterate through confirmed shard-headers
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
-        for shard_index in range(len(state.shard_headers[buffer_index])):
-            shard_header_status = state.shard_headers[buffer_index][shard_index]
-            if shard_header_status.selector == CONFIRMED_SHARD_DATA:
+        for shard_index in range(len(state.shard_buffer[buffer_index])):
+            committee_work = state.shard_buffer[buffer_index][shard_index]
+            if committee_work.status.selector == CONFIRMED_SHARD_DATA:
                 # Charge EIP 1559 fee
                 proposer = get_shard_proposer_index(state, slot, Shard(shard_index))
                 fee = (
@@ -728,24 +744,25 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
 
 ```python
 def reset_pending_headers(state: BeaconState) -> None:
-    # Add dummy "empty" PendingShardHeader (default vote for if no shard header available)
+    # Add dummy "empty" PendingShardHeader (default vote if no shard header is available)
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
     committees_per_slot = get_committee_count_per_slot(state, next_epoch)
     active_shards = get_active_shard_count(state, next_epoch)
-    
+
     for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
-        if len(state.shard_headers[buffer_index]) < active_shards:
-            state.shard_headers[buffer_index].extend()
+        
+        # Reset the shard work tracking
+        state.shard_buffer[buffer_index] = [ShardCommitteeWork() for _ in range(active_shards)]
 
         start_shard = get_start_shard(state, slot)
-        for shard_index in range(state.shard_headers[buffer_index]):
+        for shard_index in range(state.shard_buffer[buffer_index]):
             if start_shard <= shard_index < start_shard + committees_per_slot:
                 # a committee is available, initialize a pending shard-header list
                 committee_index = CommitteeIndex(shard_index - start_shard)
                 committee_length = len(get_beacon_committee(state, slot, committee_index))
-                state.shard_headers[buffer_index][shard_index].change(
+                state.shard_buffer[buffer_index][shard_index].change(
                     selector=PENDING_SHARD_DATA,
                     value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                         PendingShardHeader(
@@ -755,12 +772,7 @@ def reset_pending_headers(state: BeaconState) -> None:
                         )
                     )
                 )
-            else:
-                # shard is inactive, no committee available.
-                state.shard_headers[buffer_index][shard_index].change(
-                    selector=UNCONFIRMED_SHARD_DATA,
-                    value=None,
-                )
+            # the shard is inactive for this slot otherwise, no committee available, default to UNCONFIRMED_SHARD_DATA.
 ```
 
 #### Shard epoch increment
