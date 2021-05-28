@@ -22,6 +22,7 @@ This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](.
     - [Withdrawal credentials](#withdrawal-credentials)
       - [`BLS_WITHDRAWAL_PREFIX`](#bls_withdrawal_prefix)
       - [`ETH1_ADDRESS_WITHDRAWAL_PREFIX`](#eth1_address_withdrawal_prefix)
+      - [`ETH1_ADDRESS_WITHDRAWAL_AND_COINBASE_PREFIX`](#eth1_address_withdrawal_and_coinbase_prefix)
   - [Submit deposit](#submit-deposit)
   - [Process deposit](#process-deposit)
   - [Validator index](#validator-index)
