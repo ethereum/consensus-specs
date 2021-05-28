@@ -249,6 +249,8 @@ class PendingShardHeader(Container):
     root: Root
     # Who voted for the header
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    # Sum of effective balances of votes
+    weight: Gwei
 ```
 
 ### `ShardBlobReference`
@@ -552,15 +554,18 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
     header_index = [header.root for header in current_headers].index(attestation.data.shard_header_root)
 
     # Update votes bitfield in the state
-    pending_header: PendingShardHeader = state.shard_buffer[buffer_index][attestation_shard][header_index] 
+    pending_header: PendingShardHeader = state.shard_buffer[buffer_index][attestation_shard][header_index]
+    full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    participants_balance = Gwei(0)
     for i, bit in enumerate(attestation.aggregation_bits):
+        weight = state.validators[full_committee[i]].effective_balance
         if bit:
+            if not pending_header.votes[i]:
+                pending_header.weight += weight
             pending_header.votes[i] = True
+            participants_balance += weight
 
     # Check if the PendingShardHeader is eligible for expedited confirmation, requiring 2/3 of balance attesting
-    participants = get_attesting_indices(state, attestation.data, pending_header.votes)
-    participants_balance = get_total_balance(state, participants)
-    full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     full_committee_balance = get_total_balance(state, set(full_committee))
     if participants_balance * 3 >= full_committee_balance * 2:
         if pending_header.commitment == DataCommitment():
@@ -623,6 +628,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
         commitment=body_summary.commitment,
         root=header_root,
         votes=initial_votes,
+        weight=0,
     )
 
     # Include it in the pending list
@@ -706,8 +712,13 @@ def process_pending_headers(state: BeaconState) -> None:
     for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
         for shard_index in range(len(state.shard_buffer[buffer_index])):
-            if state.shard_buffer[buffer_index][shard_index].selector == PENDING_SHARD_DATA:
-                state.shard_buffer[buffer_index][shard_index].change(selector=UNCONFIRMED_SHARD_DATA, value=None)
+            committee_work = state.shard_buffer[buffer_index][shard_index]
+            if committee_work.selector == PENDING_SHARD_DATA:
+                winning_header = max(committee_work.value, key=lambda header: header.weight)
+                if winning_header.commitment == DataCommitment():
+                    committee_work.change(selector=UNCONFIRMED_SHARD_DATA, value=None)
+                else:
+                    committee_work.change(selector=CONFIRMED_SHARD_DATA, value=winning_header.commitment)
 ```
 
 ```python
@@ -769,6 +780,7 @@ def reset_pending_headers(state: BeaconState) -> None:
                             commitment=DataCommitment(),
                             root=Root(),
                             votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
+                            weight=0,
                         )
                     )
                 )
