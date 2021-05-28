@@ -17,7 +17,6 @@
 - [Serialization](#serialization)
   - [`uintN`](#uintn)
   - [`boolean`](#boolean)
-  - [`null`](#null)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
   - [Vectors, containers, lists](#vectors-containers-lists)
@@ -123,12 +122,6 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### `null`
-
-```python
-return b""
-```
-
 ### `Bitvector[N]`
 
 ```python
@@ -175,7 +168,7 @@ return b"".join(fixed_parts + variable_parts)
 A `value` as `Union[T...]` type has properties `value.value` with the contained value, and `value.selector` which indexes the selected `Union` type option `T`.
 
 A `Union`:
-- May have multiple selectors with the same type. 
+- May have multiple selectors with the same type.
 - Should not use selectors above 127 (i.e. highest bit is set), these are reserved for backwards compatible extensions.
 - Must have at least 1 type option.
 - May have `None` as first type option, i.e. `selector == 0`
@@ -194,7 +187,7 @@ else:
 
 ## Deserialization
 
-Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. 
+Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to.
 
 Deserialization can be implemented using a recursive algorithm. The deserialization of basic objects is easy, and from there we can find a simple recursive algorithm for all fixed-size objects. For variable-size objects we have to do one of the following depending on what kind of object it is:
 
