@@ -192,6 +192,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
+| `ETH1_ADDRESS_WITHDRAWAL_AND_COINBASE_PREFIX` | `Bytes1('0x02')` |
 
 ### Domain types
 

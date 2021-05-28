@@ -168,6 +168,26 @@ triggered by a user transaction that will set the gas price and gas limit as wel
 As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers,
 the future withdrawal protocol is agnostic to all other implementation details.
 
+##### `ETH1_ADDRESS_WITHDRAWAL_AND_COINBASE_PREFIX`
+
+This is an extension of `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+As with that prefix, this specifies a 20-byte Eth1 address `eth1_withdrawal_address`, which can be the address of either an externally owned account or of a contract.
+This address will be the recipient for all withdrawals.
+Additionally, blocks proposed by validators using this prefix **will be invalid** if the `coinbase` for those blocks is not equal to `eth1_withdrawal_address`.
+
+The `withdrawal_credentials` field must be such that:
+
+* `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_AND_COINBASE_PREFIX`
+* `withdrawal_credentials[1:12] == b'\x00' * 11`
+* `withdrawal_credentials[12:] == eth1_withdrawal_address`
+
+After the merge of the current Ethereum application layer (Eth1) into the Beacon Chain (Eth2),
+withdrawals to `eth1_withdrawal_address` will be normal ETH transfers (with no payload other than the validator's ETH)
+triggered by a user transaction that will set the gas price and gas limit as well pay fees.
+As long as the account or contract with address `eth1_withdrawal_address` can receive ETH transfers,
+the future withdrawal protocol is agnostic to all other implementation details.
+
+
 ### Submit deposit
 
 In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 chain defined by `DEPOSIT_CHAIN_ID` and `DEPOSIT_NETWORK_ID`. Deposits are made to the [deposit contract](./deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
