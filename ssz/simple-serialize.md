@@ -17,7 +17,6 @@
 - [Serialization](#serialization)
   - [`uintN`](#uintn)
   - [`boolean`](#boolean)
-  - [`null`](#null)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
   - [Vectors, containers, lists](#vectors-containers-lists)
@@ -121,12 +120,6 @@ return value.to_bytes(N // BITS_PER_BYTE, "little")
 ```python
 assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
-```
-
-### `null`
-
-```python
-return b""
 ```
 
 ### `Bitvector[N]`
