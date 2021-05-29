@@ -51,14 +51,14 @@
     - [`compute_committee_index_from_shard`](#compute_committee_index_from_shard)
   - [Block processing](#block-processing)
     - [Operations](#operations)
-  - [New Attestation processing](#new-attestation-processing)
-    - [Updated `process_attestation`](#updated-process_attestation)
-    - [`update_pending_votes`](#update_pending_votes)
-    - [`process_shard_header`](#process_shard_header)
-      - [Shard Proposer slashings](#shard-proposer-slashings)
+      - [Extended Attestation processing](#extended-attestation-processing)
+      - [`process_shard_header`](#process_shard_header)
+      - [`process_shard_proposer_slashing`](#process_shard_proposer_slashing)
   - [Epoch transition](#epoch-transition)
-    - [Pending headers](#pending-headers)
-    - [Shard epoch increment](#shard-epoch-increment)
+    - [`process_pending_shard_confirmations`](#process_pending_shard_confirmations)
+    - [`charge_confirmed_shard_fees`](#charge_confirmed_shard_fees)
+    - [`reset_pending_shard_work`](#reset_pending_shard_work)
+    - [`process_shard_epoch_increment`](#process_shard_epoch_increment)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -520,20 +520,16 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.voluntary_exits, process_voluntary_exit)
 ```
 
-### New Attestation processing
-
-#### Updated `process_attestation`
+##### Extended Attestation processing
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     phase0.process_attestation(state, attestation)
-    update_pending_votes(state, attestation)
+    update_pending_shard_work(state, attestation)
 ```
 
-#### `update_pending_votes`
-
 ```python
-def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
+def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> None:
     attestation_shard = compute_shard_from_committee_index(
         state,
         attestation.data.slot,
@@ -581,7 +577,7 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
             )
 ```
 
-#### `process_shard_header`
+##### `process_shard_header`
 
 ```python
 def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeader) -> None:
@@ -640,7 +636,7 @@ the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 
 where `MAX_DEGREE` is the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`.
 The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
 
-##### Shard Proposer slashings
+##### `process_shard_proposer_slashing`
 
 ```python
 def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
@@ -680,9 +676,9 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings(state)
 
     # Sharding
-    process_pending_headers(state)
-    charge_confirmed_header_fees(state)
-    reset_pending_headers(state)
+    process_pending_shard_confirmations(state)
+    charge_confirmed_shard_fees(state)
+    reset_pending_shard_work(state)
 
     # Final updates
     # Phase 0
@@ -696,10 +692,10 @@ def process_epoch(state: BeaconState) -> None:
     process_shard_epoch_increment(state)
 ```
 
-#### Pending headers
+#### `process_pending_shard_confirmations`
 
 ```python
-def process_pending_headers(state: BeaconState) -> None:
+def process_pending_shard_confirmations(state: BeaconState) -> None:
     # Pending header processing applies to the previous epoch.
     # Skip if `GENESIS_EPOCH` because no prior epoch to process.
     if get_current_epoch(state) == GENESIS_EPOCH:
@@ -721,8 +717,10 @@ def process_pending_headers(state: BeaconState) -> None:
                     committee_work.change(selector=CONFIRMED_SHARD_DATA, value=winning_header.commitment)
 ```
 
+#### `charge_confirmed_shard_fees`
+
 ```python
-def charge_confirmed_header_fees(state: BeaconState) -> None:
+def charge_confirmed_shard_fees(state: BeaconState) -> None:
     new_gasprice = state.shard_gasprice
     previous_epoch = get_previous_epoch(state)
     previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
@@ -753,8 +751,10 @@ def charge_confirmed_header_fees(state: BeaconState) -> None:
     state.shard_gasprice = new_gasprice
 ```
 
+#### `reset_pending_shard_work`
+
 ```python
-def reset_pending_headers(state: BeaconState) -> None:
+def reset_pending_shard_work(state: BeaconState) -> None:
     # Add dummy "empty" PendingShardHeader (default vote if no shard header is available)
     next_epoch = get_current_epoch(state) + 1
     next_epoch_start_slot = compute_start_slot_at_epoch(next_epoch)
@@ -787,7 +787,7 @@ def reset_pending_headers(state: BeaconState) -> None:
             # the shard is inactive for this slot otherwise, no committee available, default to UNCONFIRMED_SHARD_DATA.
 ```
 
-#### Shard epoch increment
+#### `process_shard_epoch_increment`
 
 ```python
 def process_shard_epoch_increment(state: BeaconState) -> None:
