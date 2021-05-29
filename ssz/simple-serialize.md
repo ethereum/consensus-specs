@@ -196,7 +196,7 @@ Deserialization can be implemented using a recursive algorithm. The deserializat
   * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
 * Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
 * In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
-* The first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
+* In the case of unions, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
 
