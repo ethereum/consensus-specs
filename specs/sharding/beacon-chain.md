@@ -119,7 +119,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
-| `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (=256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
+| `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
 
 ### Shard block samples
 
