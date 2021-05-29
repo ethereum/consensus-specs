@@ -33,7 +33,7 @@
   - [`ShardBlobReference`](#shardblobreference)
   - [`SignedShardBlobReference`](#signedshardblobreference)
   - [`ShardProposerSlashing`](#shardproposerslashing)
-  - [`ShardCommitteeWork`](#shardcommitteework)
+  - [`ShardWork`](#shardwork)
 - [Helper functions](#helper-functions)
   - [Misc](#misc-2)
     - [`next_power_of_two`](#next_power_of_two)
@@ -185,7 +185,7 @@ class BeaconState(merge.BeaconState):  # [extends The Merge state]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # [New fields]
     # A ring buffer of the latest slots, with information per active shard.
-    shard_buffer: Vector[List[ShardCommitteeWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
+    shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
     shard_gasprice: uint64
     current_epoch_start_shard: Shard
 ```
@@ -282,7 +282,7 @@ class ShardProposerSlashing(Container):
     signed_reference_2: SignedShardBlobReference
 ```
 
-### `ShardCommitteeWork`
+### `ShardWork`
 
 ```python
 class ShardWork(Container):
@@ -765,7 +765,7 @@ def reset_pending_headers(state: BeaconState) -> None:
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
         
         # Reset the shard work tracking
-        state.shard_buffer[buffer_index] = [ShardCommitteeWork() for _ in range(active_shards)]
+        state.shard_buffer[buffer_index] = [ShardWork() for _ in range(active_shards)]
 
         start_shard = get_start_shard(state, slot)
         for shard_index in range(state.shard_buffer[buffer_index]):
