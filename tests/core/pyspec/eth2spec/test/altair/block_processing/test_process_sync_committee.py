@@ -115,52 +115,28 @@ def test_invalid_signature_extra_participant(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-def compute_sync_committee_inclusion_reward(spec,
-                                            state,
-                                            participant_index,
-                                            committee_indices,
-                                            committee_bits):
+def compute_sync_committee_inclusion_reward(spec, state):
     total_active_increments = spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = spec.Gwei(spec.get_base_reward_per_increment(state) * total_active_increments)
-    max_epoch_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT // spec.WEIGHT_DENOMINATOR)
-    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
-    max_slot_rewards = spec.Gwei(
-        max_epoch_rewards * len(included_indices)
-        // len(committee_indices) // spec.SLOTS_PER_EPOCH
-    )
-
-    # Compute the participant and proposer sync rewards
-    committee_effective_balance = sum([state.validators[index].effective_balance for index in included_indices])
-    committee_effective_balance = max(spec.EFFECTIVE_BALANCE_INCREMENT, committee_effective_balance)
-    effective_balance = state.validators[participant_index].effective_balance
-    return spec.Gwei(max_slot_rewards * effective_balance // committee_effective_balance)
+    max_participant_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT // \
+                                        spec.WEIGHT_DENOMINATOR // spec.SLOTS_PER_EPOCH)
+    return spec.Gwei(max_participant_rewards // spec.SYNC_COMMITTEE_SIZE)
 
 
 def compute_sync_committee_participant_reward(spec, state, participant_index, committee_indices, committee_bits):
     included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
     multiplicities = Counter(included_indices)
 
-    inclusion_reward = compute_sync_committee_inclusion_reward(
-        spec, state, participant_index, committee_indices, committee_bits,
-    )
+    inclusion_reward = compute_sync_committee_inclusion_reward(spec, state)
     return spec.Gwei(inclusion_reward * multiplicities[participant_index])
 
 
 def compute_sync_committee_proposer_reward(spec, state, committee_indices, committee_bits):
-    proposer_reward = 0
-    for index, bit in zip(committee_indices, committee_bits):
-        if not bit:
-            continue
-        inclusion_reward = compute_sync_committee_inclusion_reward(
-            spec, state, index, committee_indices, committee_bits,
-        )
-        proposer_reward_denominator = (
-            (spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT)
-            * spec.WEIGHT_DENOMINATOR
-            // spec.PROPOSER_WEIGHT
-        )
-        proposer_reward += spec.Gwei((inclusion_reward * spec.WEIGHT_DENOMINATOR) // proposer_reward_denominator)
-    return proposer_reward
+    proposer_reward_denominator = spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT
+    inclusion_reward = compute_sync_committee_inclusion_reward(spec, state)
+    participant_number = committee_bits.count(True)
+    participant_reward = inclusion_reward * spec.PROPOSER_WEIGHT // proposer_reward_denominator
+    return spec.Gwei(participant_reward * participant_number)
 
 
 def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indices, committee_bits, proposer_index):
