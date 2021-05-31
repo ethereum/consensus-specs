@@ -118,7 +118,7 @@ def test_invalid_signature_extra_participant(spec, state):
 def compute_sync_committee_inclusion_reward(spec, state):
     total_active_increments = spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = spec.Gwei(spec.get_base_reward_per_increment(state) * total_active_increments)
-    max_participant_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT // \
+    max_participant_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT //
                                         spec.WEIGHT_DENOMINATOR // spec.SLOTS_PER_EPOCH)
     return spec.Gwei(max_participant_rewards // spec.SYNC_COMMITTEE_SIZE)
 
