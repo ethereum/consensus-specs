@@ -550,7 +550,7 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
     header_index = [header.root for header in current_headers].index(attestation.data.shard_header_root)
 
     # Update votes bitfield in the state
-    pending_header: PendingShardHeader = state.shard_buffer[buffer_index][attestation_shard][header_index]
+    pending_header: PendingShardHeader = current_headers[header_index]
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     participants_balance = Gwei(0)
     for i, bit in enumerate(attestation.aggregation_bits):
@@ -594,7 +594,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
 
     # Check that this data is still pending
-    committee_work = state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.slot]
+    committee_work = state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.shard]
     assert committee_work.status.selector == PENDING_SHARD_DATA
 
     # Check that this header is not yet in the pending list
@@ -628,7 +628,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     )
 
     # Include it in the pending list
-    state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.slot].append(pending_header)
+    state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.shard].append(pending_header)
 ```
 
 The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
