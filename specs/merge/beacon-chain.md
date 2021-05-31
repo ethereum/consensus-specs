@@ -70,8 +70,6 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `MERGE_FORK_VERSION` | `Version('0x02000000')` |
-| `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 | `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
 
 ## Containers

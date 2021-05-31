@@ -865,6 +865,7 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/merge/beacon-chain.md
+                    specs/merge/fork.md
                     specs/merge/fork-choice.md
                     specs/merge/validator.md
                 """
