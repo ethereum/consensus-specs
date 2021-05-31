@@ -251,6 +251,8 @@ class PendingShardHeader(Container):
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Sum of effective balances of votes
     weight: Gwei
+    # When the header was last updated, as reference for weight accuracy
+    update_slot: Slot
 ```
 
 ### `ShardBlobReference`
@@ -538,32 +540,39 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
     buffer_index = attestation.data.slot % SHARD_STATE_MEMORY_SLOTS
     committee_work = state.shard_buffer[buffer_index][attestation_shard]
 
-    # Skip attestation vote accounting if the header is already confirmed
-    if committee_work.status.selector == CONFIRMED_SHARD_DATA:
+    # Skip attestation vote accounting if the header is not pending
+    if committee_work.status.selector != PENDING_SHARD_DATA:
+        # TODO In Altair: set participation bit flag, if attestation matches winning header.
         return
 
-    # Note that shard-slot combinations without an assigned committee do not have a pending state
-    assert shard_info.status.selector == PENDING_SHARD_DATA
     current_headers: Sequence[PendingShardHeader] = committee_work.status.value
 
     # Find the corresponding header, abort if it cannot be found
     header_index = [header.root for header in current_headers].index(attestation.data.shard_header_root)
 
-    # Update votes bitfield in the state
     pending_header: PendingShardHeader = current_headers[header_index]
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    participants_balance = Gwei(0)
+    full_committee_balance = Gwei(0)
+
+    # The weight may be outdated if it is not the initial weight, and from a previous epoch
+    if pending_header.weight != 0 and compute_epoch_at_slot(pending_header.update_slot) < get_current_epoch(state):
+        pending_header.weight = sum(state.validators[index].effective_balance for index, bit
+                                    in zip(full_committee, pending_header.votes) if bit)
+
+    pending_header.update_slot = state.slot
+
+    # Update votes bitfield in the state, update weights
     for i, bit in enumerate(attestation.aggregation_bits):
         weight = state.validators[full_committee[i]].effective_balance
+        full_committee_balance += weight
         if bit:
             if not pending_header.votes[i]:
                 pending_header.weight += weight
-            pending_header.votes[i] = True
-            participants_balance += weight
+                pending_header.votes[i] = True
 
     # Check if the PendingShardHeader is eligible for expedited confirmation, requiring 2/3 of balance attesting
-    full_committee_balance = get_total_balance(state, set(full_committee))
-    if participants_balance * 3 >= full_committee_balance * 2:
+    if pending_header.weight * 3 >= full_committee_balance * 2:
+        # TODO In Altair: set participation bit flag for voters of this early winning header
         if pending_header.commitment == DataCommitment():
             # The committee voted to not confirm anything
             state.shard_buffer[buffer_index][attestation_shard].change(
@@ -625,6 +634,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
         root=header_root,
         votes=initial_votes,
         weight=0,
+        update_slot=state.slot,
     )
 
     # Include it in the pending list
@@ -669,19 +679,18 @@ This epoch transition overrides the Merge epoch transition:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)
-    process_rewards_and_penalties(state)
-    process_registry_updates(state)
-
-    process_slashings(state)
-
     # Sharding
     process_pending_shard_confirmations(state)
     charge_confirmed_shard_fees(state)
     reset_pending_shard_work(state)
 
+    # Phase0
+    process_justification_and_finalization(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+
     # Final updates
-    # Phase 0
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
@@ -711,6 +720,7 @@ def process_pending_shard_confirmations(state: BeaconState) -> None:
             committee_work = state.shard_buffer[buffer_index][shard_index]
             if committee_work.selector == PENDING_SHARD_DATA:
                 winning_header = max(committee_work.value, key=lambda header: header.weight)
+                # TODO In Altair: set participation bit flag of voters for winning header
                 if winning_header.commitment == DataCommitment():
                     committee_work.change(selector=UNCONFIRMED_SHARD_DATA, value=None)
                 else:
@@ -768,23 +778,23 @@ def reset_pending_shard_work(state: BeaconState) -> None:
         state.shard_buffer[buffer_index] = [ShardWork() for _ in range(active_shards)]
 
         start_shard = get_start_shard(state, slot)
-        for shard_index in range(state.shard_buffer[buffer_index]):
-            if start_shard <= shard_index < start_shard + committees_per_slot:
-                # a committee is available, initialize a pending shard-header list
-                committee_index = CommitteeIndex(shard_index - start_shard)
-                committee_length = len(get_beacon_committee(state, slot, committee_index))
-                state.shard_buffer[buffer_index][shard_index].change(
-                    selector=PENDING_SHARD_DATA,
-                    value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
-                        PendingShardHeader(
-                            commitment=DataCommitment(),
-                            root=Root(),
-                            votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
-                            weight=0,
-                        )
+        for committee_index in range(committees_per_slot):
+            shard = (start_shard + committee_index) % active_shards
+            # a committee is available, initialize a pending shard-header list
+            committee_length = len(get_beacon_committee(state, slot, committee_index))
+            state.shard_buffer[buffer_index][shard].change(
+                selector=PENDING_SHARD_DATA,
+                value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
+                    PendingShardHeader(
+                        commitment=DataCommitment(),
+                        root=Root(),
+                        votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
+                        weight=0,
+                        update_slot=slot,
                     )
                 )
-            # the shard is inactive for this slot otherwise, no committee available, default to UNCONFIRMED_SHARD_DATA.
+            )
+        # a shard without committee available defaults to UNCONFIRMED_SHARD_DATA.
 ```
 
 #### `process_shard_epoch_increment`
