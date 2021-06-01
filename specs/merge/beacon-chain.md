@@ -70,7 +70,7 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
+| `TRANSITION_TOTAL_DIFFICULTY_OFFSET` | **TBD** |
 
 ## Containers
 

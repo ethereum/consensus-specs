@@ -509,7 +509,7 @@ ExecutionState = Any
 
 def get_pow_block(hash: Bytes32) -> PowBlock:
     return PowBlock(block_hash=hash, is_valid=True, is_processed=True,
-                    total_difficulty=config.TRANSITION_TOTAL_DIFFICULTY)
+                    total_difficulty=uint256(0))
 
 
 def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:

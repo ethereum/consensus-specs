@@ -12,6 +12,7 @@
 - [Fork to Merge](#fork-to-merge)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
+  - [Initializing transition store](#initializing-transition-store)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -86,4 +87,16 @@ def upgrade_to_merge(pre: phase0.BeaconState) -> BeaconState:
     )
     
     return post
+```
+
+### Initializing transition store
+
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, a transition store is initialized to be further utilized by the transition process of the Merge.
+
+Transition store initialization occurs after the state has been modified by corresponding `upgrade_to_merge` function.
+
+```python
+def initialize_transition_store(state: BeaconState) -> TransitionStore:
+    pow_block = get_pow_block(state.eth1_data.block_hash)
+    return get_transition_store(pow_block)
 ```

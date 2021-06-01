@@ -20,7 +20,6 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Execution Payload](#execution-payload)
         - [`get_pow_chain_head`](#get_pow_chain_head)
-        - [`produce_execution_payload`](#produce_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -68,18 +67,13 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of the PoW chain. The body of the function is implementation specific.
 
-###### `produce_execution_payload`
-
-Let `produce_execution_payload(parent_hash: Hash32, timestamp: uint64) -> ExecutionPayload` be the function that produces new instance of execution payload.
-The `ExecutionEngine` protocol is used for the implementation specific part of execution payload proposals.
-
-* Set `block.body.execution_payload = get_execution_payload(state)` where:
+* Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine)` where:
 
 ```python
-def get_execution_payload(state: BeaconState, execution_engine: ExecutionEngine) -> ExecutionPayload:
+def get_execution_payload(state: BeaconState, transition_store: TransitionStore, execution_engine: ExecutionEngine) -> ExecutionPayload:
     if not is_transition_completed(state):
         pow_block = get_pow_chain_head()
-        if not is_valid_transition_block(pow_block):
+        if not is_valid_transition_block(transition_store, pow_block):
             # Pre-merge, empty payload
             return ExecutionPayload()
         else:
