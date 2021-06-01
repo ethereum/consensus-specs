@@ -22,7 +22,6 @@
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
-    - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`new_block`](#new_block)
@@ -92,12 +91,12 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than addition of `latest_execution_payload_header`.
+*Note*: `BeaconState` fields remain unchanged other than addition of `latest_execution_payload`.
 
 ```python
 class BeaconState(phase0.BeaconState):
     # Execution-layer
-    latest_execution_payload_header: ExecutionPayloadHeader  # [New in Merge]
+    latest_execution_payload: ExecutionPayload  # [New in Merge]
 ```
 
 ### New containers
@@ -119,27 +118,6 @@ class ExecutionPayload(Container):
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     transactions: List[OpaqueTransaction, MAX_EXECUTION_TRANSACTIONS]
-```
-
-#### `ExecutionPayloadHeader`
-
-The execution payload header included in a `BeaconState`.
-
-*Note:* Holds execution payload data without transaction bodies.
-
-```python
-class ExecutionPayloadHeader(Container):
-    block_hash: Hash32  # Hash of execution block
-    parent_hash: Hash32
-    coinbase: Bytes20
-    state_root: Bytes32
-    number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    receipt_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    transactions_root: Root
 ```
 
 ## Protocols
@@ -181,7 +159,7 @@ def is_execution_enabled(state: BeaconState, block: BeaconBlock) -> bool:
 
 ```python
 def is_transition_completed(state: BeaconState) -> bool:
-    return state.latest_execution_payload_header != ExecutionPayloadHeader()
+    return state.latest_execution_payload != ExecutionPayload()
 ```
 
 #### `is_transition_block`
@@ -226,24 +204,12 @@ def process_execution_payload(state: BeaconState,
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
     """
     if is_transition_completed(state):
-        assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
-        assert execution_payload.number == state.latest_execution_payload_header.number + 1
+        assert execution_payload.parent_hash == state.latest_execution_payload.block_hash
+        assert execution_payload.number == state.latest_execution_payload.number + 1
 
     assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
     assert execution_engine.new_block(execution_payload)
 
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        block_hash=execution_payload.block_hash,
-        parent_hash=execution_payload.parent_hash,
-        coinbase=execution_payload.coinbase,
-        state_root=execution_payload.state_root,
-        number=execution_payload.number,
-        gas_limit=execution_payload.gas_limit,
-        gas_used=execution_payload.gas_used,
-        timestamp=execution_payload.timestamp,
-        receipt_root=execution_payload.receipt_root,
-        logs_bloom=execution_payload.logs_bloom,
-        transactions_root=hash_tree_root(execution_payload.transactions),
-    )
+    state.latest_execution_payload = execution_payload
 ```
