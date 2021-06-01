@@ -70,7 +70,9 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 * Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine)` where:
 
 ```python
-def get_execution_payload(state: BeaconState, transition_store: TransitionStore, execution_engine: ExecutionEngine) -> ExecutionPayload:
+def get_execution_payload(state: BeaconState,
+                          transition_store: TransitionStore,
+                          execution_engine: ExecutionEngine) -> ExecutionPayload:
     if not is_transition_completed(state):
         pow_block = get_pow_chain_head()
         if not is_valid_transition_block(transition_store, pow_block):

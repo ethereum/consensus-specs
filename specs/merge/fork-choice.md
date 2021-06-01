@@ -98,7 +98,7 @@ Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given t
 
 ```python
 def get_transition_store(anchor_pow_block: PowBlock):
-    transition_total_difficulty = pow_block.total_difficulty + TRANSITION_TOTAL_DIFFICULTY_OFFSET
+    transition_total_difficulty = anchor_pow_block.total_difficulty + TRANSITION_TOTAL_DIFFICULTY_OFFSET
     return TransitionStore(transition_total_difficulty=transition_total_difficulty)
 ```
 
