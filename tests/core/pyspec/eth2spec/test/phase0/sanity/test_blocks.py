@@ -24,6 +24,10 @@ from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
     run_test_full_random_operations,
 )
+from eth2spec.test.helpers.sync_committee import (
+    compute_committee_indices,
+    compute_sync_committee_participant_reward_and_penalty,
+)
 from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
@@ -416,7 +420,7 @@ def test_proposer_slashing(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
+    check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block)
 
 
 @with_all_phases
@@ -491,7 +495,7 @@ def test_multiple_different_proposer_slashings_same_block(spec, state):
 
     for proposer_slashing in proposer_slashings:
         slashed_index = proposer_slashing.signed_header_1.message.proposer_index
-        check_proposer_slashing_effect(spec, pre_state, state, slashed_index)
+        check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block)
 
 
 def check_attester_slashing_effect(spec, pre_state, state, slashed_indices):
@@ -743,7 +747,8 @@ def test_deposit_top_up(spec, state):
     initial_balances_len = len(state.balances)
     validator_pre_balance = get_balance(state, validator_index)
 
-    yield 'pre', state
+    pre_state = state.copy()
+    yield 'pre', pre_state
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.deposits.append(deposit)
@@ -755,7 +760,23 @@ def test_deposit_top_up(spec, state):
 
     assert len(state.validators) == initial_registry_len
     assert len(state.balances) == initial_balances_len
-    assert get_balance(state, validator_index) == validator_pre_balance + amount
+
+    # Altair introduces sync committee (sm) reward and penalty
+    sync_committee_reward = sync_committee_penalty = 0
+    if is_post_altair(spec):
+        committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+        committee_bits = block.body.sync_aggregate.sync_committee_bits
+        sync_committee_reward, sync_committee_penalty = compute_sync_committee_participant_reward_and_penalty(
+            spec,
+            pre_state,
+            validator_index,
+            committee_indices,
+            committee_bits,
+        )
+
+    assert get_balance(state, validator_index) == (
+        validator_pre_balance + amount + sync_committee_reward - sync_committee_penalty
+    )
 
 
 @with_all_phases

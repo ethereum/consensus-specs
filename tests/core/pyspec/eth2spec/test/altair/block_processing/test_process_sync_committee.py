@@ -1,4 +1,3 @@
-from collections import Counter
 import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -13,6 +12,9 @@ from eth2spec.test.helpers.constants import (
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
+    compute_sync_committee_participant_reward_and_penalty,
+    compute_sync_committee_proposer_reward,
+    compute_committee_indices,
 )
 from eth2spec.test.context import (
     expect_assertion_error,
@@ -61,15 +63,6 @@ def get_committee_indices(spec, state, duplicates=False):
         state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
 
 
-def compute_committee_indices(spec, state, committee):
-    """
-    Given a ``committee``, calculate and return the related indices
-    """
-    all_pubkeys = [v.pubkey for v in state.validators]
-    committee_indices = [all_pubkeys.index(pubkey) for pubkey in committee.pubkeys]
-    return committee_indices
-
-
 @with_altair_and_later
 @spec_state_test
 @always_bls
@@ -115,41 +108,20 @@ def test_invalid_signature_extra_participant(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-def compute_sync_committee_inclusion_reward(spec, state):
-    total_active_increments = spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
-    total_base_rewards = spec.Gwei(spec.get_base_reward_per_increment(state) * total_active_increments)
-    max_participant_rewards = spec.Gwei(total_base_rewards * spec.SYNC_REWARD_WEIGHT //
-                                        spec.WEIGHT_DENOMINATOR // spec.SLOTS_PER_EPOCH)
-    return spec.Gwei(max_participant_rewards // spec.SYNC_COMMITTEE_SIZE)
-
-
-def compute_sync_committee_participant_reward(spec, state, participant_index, committee_indices, committee_bits):
-    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
-    multiplicities = Counter(included_indices)
-
-    inclusion_reward = compute_sync_committee_inclusion_reward(spec, state)
-    return spec.Gwei(inclusion_reward * multiplicities[participant_index])
-
-
-def compute_sync_committee_proposer_reward(spec, state, committee_indices, committee_bits):
-    proposer_reward_denominator = spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT
-    inclusion_reward = compute_sync_committee_inclusion_reward(spec, state)
-    participant_number = committee_bits.count(True)
-    participant_reward = inclusion_reward * spec.PROPOSER_WEIGHT // proposer_reward_denominator
-    return spec.Gwei(participant_reward * participant_number)
-
-
 def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indices, committee_bits, proposer_index):
     for index in range(len(post_state.validators)):
         reward = 0
+        penalty = 0
         if index in committee_indices:
-            reward += compute_sync_committee_participant_reward(
+            _reward, _penalty = compute_sync_committee_participant_reward_and_penalty(
                 spec,
                 pre_state,
                 index,
                 committee_indices,
                 committee_bits,
             )
+            reward += _reward
+            penalty += _penalty
 
         if proposer_index == index:
             reward += compute_sync_committee_proposer_reward(
@@ -159,7 +131,7 @@ def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indic
                 committee_bits,
             )
 
-        assert post_state.balances[index] == pre_state.balances[index] + reward
+        assert post_state.balances[index] == pre_state.balances[index] + reward - penalty
 
 
 def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
