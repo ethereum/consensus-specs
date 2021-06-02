@@ -282,7 +282,12 @@ def get_sync_committee_signature(state: BeaconState,
     signing_root = compute_signing_root(block_root, domain)
     signature = bls.Sign(privkey, signing_root)
 
-    return SyncCommitteeSignature(slot=state.slot, beacon_block_root=block_root, validator_index=validator_index, signature=signature)
+    return SyncCommitteeSignature(
+        slot=state.slot,
+        beacon_block_root=block_root,
+        validator_index=validator_index,
+        signature=signature,
+    )
 ```
 
 ##### Broadcast sync committee signature
