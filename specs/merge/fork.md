@@ -96,6 +96,10 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 Transition store initialization occurs after the state has been modified by corresponding `upgrade_to_merge` function.
 
 ```python
+def get_transition_store(anchor_pow_block: PowBlock) -> TransitionStore:
+    transition_total_difficulty = anchor_pow_block.total_difficulty + TRANSITION_TOTAL_DIFFICULTY_OFFSET
+    return TransitionStore(transition_total_difficulty=transition_total_difficulty)
+
 def initialize_transition_store(state: BeaconState) -> TransitionStore:
     pow_block = get_pow_block(state.eth1_data.block_hash)
     return get_transition_store(pow_block)

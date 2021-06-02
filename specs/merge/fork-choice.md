@@ -16,8 +16,7 @@
   - [`TransitionStore`](#transitionstore)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
-  - [`get_transition_store`](#get_transition_store)
-  - [`is_valid_transition_block`](#is_valid_transition_block)
+  - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -94,20 +93,12 @@ Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given t
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method does not distinguish invalid blocks from blocks that haven't been processed yet. Either extending this existing method or implementing a new one is required.
 
-### `get_transition_store`
-
-```python
-def get_transition_store(anchor_pow_block: PowBlock):
-    transition_total_difficulty = anchor_pow_block.total_difficulty + TRANSITION_TOTAL_DIFFICULTY_OFFSET
-    return TransitionStore(transition_total_difficulty=transition_total_difficulty)
-```
-
-### `is_valid_transition_block`
+### `is_valid_terminal_pow_block`
 
 Used by fork-choice handler, `on_block`.
 
 ```python
-def is_valid_transition_block(transition_store: TransitionStore, block: PowBlock) -> bool:
+def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock) -> bool:
     is_total_difficulty_reached = block.total_difficulty >= transition_store.transition_total_difficulty
     return block.is_valid and is_total_difficulty_reached
 ```
@@ -135,12 +126,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
     # [New in Merge]
-    is_transition_store_initialized = transition_store is not None
+    is_transition_store_initialized = (transition_store is not None)
     if is_transition_store_initialized and is_transition_block(pre_state, block):
         # Delay consideration of block until PoW block is processed by the PoW node
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         assert pow_block.is_processed
-        assert is_valid_transition_block(transition_store, pow_block)
+        assert is_valid_terminal_pow_block(transition_store, pow_block)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
