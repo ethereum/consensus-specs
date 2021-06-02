@@ -771,7 +771,7 @@ def test_attestation(spec, state):
     # if spec.fork == SHARDING:
     #     TODO add shard data to block to vote on
 
-    attestation = get_valid_attestation(spec, state, index=index, signed=True, on_time=True)
+    attestation = get_valid_attestation(spec, state, index=index, signed=True)
 
     if not is_post_altair(spec):
         pre_current_attestations_len = len(state.current_epoch_attestations)
