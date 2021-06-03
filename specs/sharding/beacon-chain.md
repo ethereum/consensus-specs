@@ -608,6 +608,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Check that this header is not yet in the pending list
     current_headers: Sequence[PendingShardHeader] = committee_work.status.value
+    header_root = hash_tree_root(header)
     assert header_root not in [pending_header.root for pending_header in current_headers]
 
     # Verify proposer
