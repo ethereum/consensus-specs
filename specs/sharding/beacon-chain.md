@@ -719,13 +719,13 @@ def process_pending_shard_confirmations(state: BeaconState) -> None:
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
         for shard_index in range(len(state.shard_buffer[buffer_index])):
             committee_work = state.shard_buffer[buffer_index][shard_index]
-            if committee_work.selector == SHARD_WORK_PENDING:
-                winning_header = max(committee_work.value, key=lambda header: header.weight)
+            if committee_work.status.selector == SHARD_WORK_PENDING:
+                winning_header = max(committee_work.status.value, key=lambda header: header.weight)
                 # TODO In Altair: set participation bit flag of voters for winning header
                 if winning_header.commitment == DataCommitment():
-                    committee_work.change(selector=SHARD_WORK_UNCONFIRMED, value=None)
+                    committee_work.status.change(selector=SHARD_WORK_UNCONFIRMED, value=None)
                 else:
-                    committee_work.change(selector=SHARD_WORK_CONFIRMED, value=winning_header.commitment)
+                    committee_work.status.change(selector=SHARD_WORK_CONFIRMED, value=winning_header.commitment)
 ```
 
 #### `charge_confirmed_shard_fees`
@@ -745,10 +745,11 @@ def charge_confirmed_shard_fees(state: BeaconState) -> None:
         for shard_index in range(len(state.shard_buffer[buffer_index])):
             committee_work = state.shard_buffer[buffer_index][shard_index]
             if committee_work.status.selector == SHARD_WORK_CONFIRMED:
+                commitment: DataCommitment = committee_work.status.value
                 # Charge EIP 1559 fee
                 proposer = get_shard_proposer_index(state, slot, Shard(shard_index))
                 fee = (
-                    (state.shard_gasprice * candidate.commitment.length)
+                    (state.shard_gasprice * commitment.length)
                     // TARGET_SAMPLES_PER_BLOCK
                 )
                 decrease_balance(state, proposer, fee)
@@ -756,7 +757,7 @@ def charge_confirmed_shard_fees(state: BeaconState) -> None:
                 # Track updated gas price
                 new_gasprice = compute_updated_gasprice(
                     new_gasprice,
-                    candidate.commitment.length,
+                    commitment.length,
                     adjustment_quotient,
                 )
     state.shard_gasprice = new_gasprice
