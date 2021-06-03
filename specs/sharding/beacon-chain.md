@@ -13,7 +13,7 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Domain types](#domain-types)
-  - [Shard Header Status](#shard-header-status)
+  - [Shard Work Status](#shard-work-status)
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Shard block samples](#shard-block-samples)
@@ -101,13 +101,13 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
 | `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
 
-### Shard Header Status
+### Shard Work Status
 
 | Name | Value | Notes |
 | - | - | - |
-| `UNCONFIRMED_SHARD_DATA` | `0` | Unconfirmed, nullified after confirmation time elapses |
-| `CONFIRMED_SHARD_DATA` | `1` | Confirmed, reduced to just the commitment |
-| `PENDING_SHARD_DATA` | `2` | Pending, a list of competing headers |
+| `SHARD_WORK_UNCONFIRMED` | `0` | Unconfirmed, nullified after confirmation time elapses |
+| `SHARD_WORK_CONFIRMED` | `1` | Confirmed, reduced to just the commitment |
+| `SHARD_WORK_PENDING` | `2` | Pending, a list of competing headers |
 
 ## Preset
 
@@ -289,10 +289,10 @@ class ShardProposerSlashing(Container):
 ```python
 class ShardWork(Container):
     #  Upon confirmation the data is reduced to just the header.
-    status: Union[                                                   # See Shard Header Status enum
-              None,                                                  # UNCONFIRMED_SHARD_DATA
-              DataCommitment,                                        # CONFIRMED_SHARD_DATA
-              List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD]  # PENDING_SHARD_DATA
+    status: Union[                                                   # See Shard Work Status enum
+              None,                                                  # SHARD_WORK_UNCONFIRMED
+              DataCommitment,                                        # SHARD_WORK_CONFIRMED
+              List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD]  # SHARD_WORK_PENDING
             ]
 ```
 
@@ -541,7 +541,7 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
     committee_work = state.shard_buffer[buffer_index][attestation_shard]
 
     # Skip attestation vote accounting if the header is not pending
-    if committee_work.status.selector != PENDING_SHARD_DATA:
+    if committee_work.status.selector != SHARD_WORK_PENDING:
         # TODO In Altair: set participation bit flag, if attestation matches winning header.
         return
 
@@ -552,7 +552,6 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
 
     pending_header: PendingShardHeader = current_headers[header_index]
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    full_committee_balance = Gwei(0)
 
     # The weight may be outdated if it is not the initial weight, and from a previous epoch
     if pending_header.weight != 0 and compute_epoch_at_slot(pending_header.update_slot) < get_current_epoch(state):
@@ -561,6 +560,7 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
 
     pending_header.update_slot = state.slot
 
+    full_committee_balance = Gwei(0)
     # Update votes bitfield in the state, update weights
     for i, bit in enumerate(attestation.aggregation_bits):
         weight = state.validators[full_committee[i]].effective_balance
@@ -576,12 +576,12 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
         if pending_header.commitment == DataCommitment():
             # The committee voted to not confirm anything
             state.shard_buffer[buffer_index][attestation_shard].change(
-                selector=UNCONFIRMED_SHARD_DATA,
+                selector=SHARD_WORK_UNCONFIRMED,
                 value=None,
             )
         else:
             state.shard_buffer[buffer_index][attestation_shard].change(
-                selector=CONFIRMED_SHARD_DATA,
+                selector=SHARD_WORK_CONFIRMED,
                 value=pending_header.commitment,
             )
 ```
@@ -604,7 +604,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Check that this data is still pending
     committee_work = state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.shard]
-    assert committee_work.status.selector == PENDING_SHARD_DATA
+    assert committee_work.status.selector == SHARD_WORK_PENDING
 
     # Check that this header is not yet in the pending list
     current_headers: Sequence[PendingShardHeader] = committee_work.status.value
@@ -718,13 +718,13 @@ def process_pending_shard_confirmations(state: BeaconState) -> None:
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
         for shard_index in range(len(state.shard_buffer[buffer_index])):
             committee_work = state.shard_buffer[buffer_index][shard_index]
-            if committee_work.selector == PENDING_SHARD_DATA:
+            if committee_work.selector == SHARD_WORK_PENDING:
                 winning_header = max(committee_work.value, key=lambda header: header.weight)
                 # TODO In Altair: set participation bit flag of voters for winning header
                 if winning_header.commitment == DataCommitment():
-                    committee_work.change(selector=UNCONFIRMED_SHARD_DATA, value=None)
+                    committee_work.change(selector=SHARD_WORK_UNCONFIRMED, value=None)
                 else:
-                    committee_work.change(selector=CONFIRMED_SHARD_DATA, value=winning_header.commitment)
+                    committee_work.change(selector=SHARD_WORK_CONFIRMED, value=winning_header.commitment)
 ```
 
 #### `charge_confirmed_shard_fees`
@@ -743,7 +743,7 @@ def charge_confirmed_shard_fees(state: BeaconState) -> None:
         buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
         for shard_index in range(len(state.shard_buffer[buffer_index])):
             committee_work = state.shard_buffer[buffer_index][shard_index]
-            if committee_work.status.selector == CONFIRMED_SHARD_DATA:
+            if committee_work.status.selector == SHARD_WORK_CONFIRMED:
                 # Charge EIP 1559 fee
                 proposer = get_shard_proposer_index(state, slot, Shard(shard_index))
                 fee = (
@@ -783,7 +783,7 @@ def reset_pending_shard_work(state: BeaconState) -> None:
             # a committee is available, initialize a pending shard-header list
             committee_length = len(get_beacon_committee(state, slot, committee_index))
             state.shard_buffer[buffer_index][shard].change(
-                selector=PENDING_SHARD_DATA,
+                selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                     PendingShardHeader(
                         commitment=DataCommitment(),
@@ -794,7 +794,7 @@ def reset_pending_shard_work(state: BeaconState) -> None:
                     )
                 )
             )
-        # a shard without committee available defaults to UNCONFIRMED_SHARD_DATA.
+        # a shard without committee available defaults to SHARD_WORK_UNCONFIRMED.
 ```
 
 #### `process_shard_epoch_increment`
