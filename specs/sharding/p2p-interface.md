@@ -125,7 +125,7 @@ The following validations MUST pass before forwarding the `signed_blob` (with in
 - _[IGNORE]_ The `blob` is new enough to be still be processed --
   i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
 - _[REJECT]_ The shard should have a committee at slot --
-  i.e. validate that `compute_committee_index_from_shard(state, blob.slot, blob.shard) is not None`
+  i.e. validate that `compute_committee_index_from_shard(state, blob.slot, blob.shard)` doesn't raise an error
 - _[REJECT]_ The shard blob is for the correct subnet --
   i.e. `compute_subnet_for_shard_blob(state, blob.slot, blob.shard) == subnet_id`
 - _[IGNORE]_ The blob is the first blob with valid signature received for the `(blob.proposer_index, blob.slot, blob.shard)` combination.
@@ -155,7 +155,7 @@ The following validations MUST pass before forwarding the `signed_shard_blob_hea
   i.e. validate that `compute_epoch_at_slot(header.slot) >= get_previous_epoch(state)`
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The shard should have a committee at slot --
-  i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard) is not None`
+  i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error
 - _[REJECT]_ The proposer signature, `signed_shard_blob_header.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The header is proposed by the expected `proposer_index` for the block's slot
   in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
