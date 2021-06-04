@@ -1,7 +1,7 @@
 import random
 from eth2spec.test.context import fork_transition_test
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
-from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot, next_epoch_via_block
+from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot, next_epoch_via_signed_block
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
 from eth2spec.test.helpers.attestations import next_slots_with_attestations
 
@@ -261,12 +261,12 @@ def _run_transition_test_with_attestations(state,
     assert current_epoch == spec.GENESIS_EPOCH
 
     # skip genesis epoch to avoid dealing with some edge cases...
-    block = next_epoch_via_block(spec, state)
+    block = next_epoch_via_signed_block(spec, state)
 
     # regular state transition until fork:
     fill_cur_epoch = False
     fill_prev_epoch = True
-    blocks = [pre_tag(sign_block(spec, state, block))]
+    blocks = [pre_tag(block)]
     current_epoch = spec.get_current_epoch(state)
     for _ in range(current_epoch, fork_epoch - 1):
         _, blocks_in_epoch, state = next_slots_with_attestations(
@@ -414,8 +414,8 @@ def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spe
 
     # continue regular state transition but add attestations
     # for enough epochs to finalize the ``fork_epoch``
-    block = next_epoch_via_block(post_spec, state)
-    blocks.append(post_tag(sign_block(post_spec, state, block)))
+    block = next_epoch_via_signed_block(post_spec, state)
+    blocks.append(post_tag(block))
     for _ in range(4):
         _, blocks_in_epoch, state = next_slots_with_attestations(
             post_spec,

@@ -596,7 +596,7 @@ def objects_to_spec(preset_name: str,
 
     def format_config_var(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:
-            out = f'{name}={vardef.value}'
+            out = f'{name}={vardef.value},'
         else:
             out = f'{name}={vardef.type_name}({vardef.value}),'
         if vardef.comment is not None:
@@ -1017,7 +1017,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.19",
+        "remerkleable==0.1.20",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.6",
         MARKO_VERSION,

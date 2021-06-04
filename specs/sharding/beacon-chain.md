@@ -216,6 +216,7 @@ class ShardBlobHeader(Container):
     # Slot and shard that this header is intended for
     slot: Slot
     shard: Shard
+    # SSZ-summary of ShardBlobBody
     body_summary: ShardBlobBodySummary
     # Proposer of the shard-blob
     proposer_index: ValidatorIndex
@@ -253,7 +254,7 @@ class ShardBlobReference(Container):
     # Slot and shard that this reference is intended for
     slot: Slot
     shard: Shard
-    # Hash-tree-root of commitment data
+    # Hash-tree-root of ShardBlobBody
     body_root: Root
     # Proposer of the shard-blob
     proposer_index: ValidatorIndex
