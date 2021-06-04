@@ -456,15 +456,8 @@ def compute_shard_from_committee_index(state: BeaconState, slot: Slot, index: Co
 
 ```python
 def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Shard) -> CommitteeIndex:
-    """
-    Returns either committee index for ``shard`` at ``slot`` or ``None`` if no committee 
-    """
     active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
-    index = (active_shards + shard - get_start_shard(state, slot)) % active_shards
-    if index >= get_committee_count_per_slot(state, compute_epoch_at_slot(slot)):
-        return None
-    else:
-        return CommitteeIndex(index)     
+    return CommitteeIndex((active_shards + shard - get_start_shard(state, slot)) % active_shards)    
 ```
 
 
@@ -567,7 +560,6 @@ def update_pending_votes(state: BeaconState, attestation: Attestation) -> None:
 def process_shard_header(state: BeaconState,
                          signed_header: SignedShardBlobHeader) -> None:
     header = signed_header.message
-    committee_index = compute_committee_index_from_shard(state, header.slot, header.shard)
     # Verify the header is not 0, and not from the future.
     assert Slot(0) < header.slot <= state.slot
     header_epoch = compute_epoch_at_slot(header.slot)
@@ -575,8 +567,6 @@ def process_shard_header(state: BeaconState,
     assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
     # Verify that the shard is active
     assert header.shard < get_active_shard_count(state, header_epoch)
-    # Verify that shard has a committee at slot
-    assert committee_index is not None
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
     assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
@@ -606,7 +596,8 @@ def process_shard_header(state: BeaconState,
     assert header_root not in [pending_header.root for pending_header in pending_headers]
 
     # Include it in the pending list
-    committee_length = len(get_beacon_committee(state, header.slot, committee_index))
+    index = compute_committee_index_from_shard(state, header.slot, header.shard)
+    committee_length = len(get_beacon_committee(state, header.slot, index))
     pending_headers.append(PendingShardHeader(
         slot=header.slot,
         shard=header.shard,
@@ -703,9 +694,6 @@ def process_pending_headers(state: BeaconState) -> None:
 
             # The entire committee (and its balance)
             index = compute_committee_index_from_shard(state, slot, shard)
-            if index is None:
-                # the shard had no committee on this slot
-                continue
             full_committee = get_beacon_committee(state, slot, index)
             # The set of voters who voted for each header (and their total balances)
             voting_sets = [
