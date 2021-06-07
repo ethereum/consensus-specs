@@ -26,8 +26,7 @@
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
-  - [`Predicates`](#predicates)
-    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+  - [Crypto](#crypto)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
@@ -107,7 +106,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT]` |
 
 ## Preset
@@ -220,19 +218,11 @@ class SyncCommittee(Container):
 
 ## Helper functions
 
-### `Predicates`
+### Crypto
 
-#### `eth2_fast_aggregate_verify`
-
-```python
-def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
-    """
-    Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
-    """
-    if len(pubkeys) == 0 and signature == G2_POINT_AT_INFINITY:
-        return True
-    return bls.FastAggregateVerify(pubkeys, message, signature)
-```
+Refer to the definitions in the [phase 0 document regarding BLS signatures](../phase0/beacon-chain.md#bls-signatures)
+and the extensions defined in the [Altair BLS document](./bls.md). This specification assumes knowledge of
+the functionality described in those documents.
 
 ### Misc
 
@@ -297,7 +287,7 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     """
     indices = get_next_sync_committee_indices(state)
     pubkeys = [state.validators[index].pubkey for index in indices]
-    aggregate_pubkey = bls.AggregatePKs(pubkeys)
+    aggregate_pubkey = eth2_aggregate_pubkeys(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```
 

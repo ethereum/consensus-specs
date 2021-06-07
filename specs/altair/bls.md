@@ -1,0 +1,65 @@
+# Ethereum 2.0 Altair BLS extensions
+
+## Table of contents
+
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [Constants](#constants)
+- [Extensions](#extensions)
+  - [`eth2_aggregate_pubkeys`](#eth2_aggregate_pubkeys)
+  - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
+## Introduction
+
+A number of extensions are defined to handle BLS signatures in the Altair upgrade.
+
+Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed, including type definitions.
+
+## Constants
+
+| Name | Value |
+| - | - |
+| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+
+## Extensions
+
+### `eth2_aggregate_pubkeys`
+
+An additional function `AggregatePKs` is defined to extend the
+[IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
+spec referenced in the phase 0 document.
+
+```python
+def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
+    """
+    Return the aggregate public key for the public keys in ``pubkeys``.
+
+    NOTE: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
+    elliptic curve points that must be decoded from the input ``BLSPubkey``s.
+    This implementation is for demonstrative purposes only and ignores encoding/decoding concerns.
+    Refer to the BLS signature draft standard for more information.
+    """
+    assert len(pubkeys) > 0
+    result = copy(pubkeys[0])
+    for pubkey in pubkeys[1:]:
+        result += pubkey
+    return result
+```
+
+### `eth2_fast_aggregate_verify`
+
+```python
+def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+    """
+    Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
+    """
+    if len(pubkeys) == 0 and signature == G2_POINT_AT_INFINITY:
+        return True
+    return bls.FastAggregateVerify(pubkeys, message, signature)
+```
