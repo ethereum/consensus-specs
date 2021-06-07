@@ -55,6 +55,12 @@ def floorlog2(x: int) -> uint64:
 '''
 
 
+OPTIMIZED_BLS_AGGREGATE_PUBKEYS = '''
+def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
+    return bls.AggregatePKs(pubkeys)
+'''
+
+
 class ProtocolDefinition(NamedTuple):
     # just function definitions currently. May expand with configuration vars in future.
     functions: Dict[str, str]
@@ -299,6 +305,11 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
+    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
     def build_spec(cls, preset_name: str,
                    source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
         raise NotImplementedError()
@@ -418,6 +429,10 @@ get_attesting_indices = cache_this(
         return {}
 
     @classmethod
+    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+        return functions
+
+    @classmethod
     def build_spec(cls, preset_name: str,
                    source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
         return _build_spec(preset_name, cls.fork, source_files, preset_files, config_file)
@@ -463,6 +478,11 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}
 
+    @classmethod
+    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+        if "eth2_aggregate_pubkeys" in functions:
+            functions["eth2_aggregate_pubkeys"] = OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()
+        return super().implement_optimizations(functions)
 
 #
 # MergeSpecBuilder
@@ -569,7 +589,8 @@ def objects_to_spec(preset_name: str,
     for k in list(spec_object.functions):
         if "ceillog2" in k or "floorlog2" in k:
             del spec_object.functions[k]
-    functions_spec = '\n\n\n'.join(spec_object.functions.values())
+    functions = builder.implement_optimizations(spec_object.functions)
+    functions_spec = '\n\n\n'.join(functions.values())
 
     # Access global dict of config vars for runtime configurables
     for name in spec_object.config_vars.keys():
@@ -577,7 +598,7 @@ def objects_to_spec(preset_name: str,
 
     def format_config_var(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:
-            out = f'{name}={vardef.value}'
+            out = f'{name}={vardef.value},'
         else:
             out = f'{name}={vardef.type_name}({vardef.value}),'
         if vardef.comment is not None:
@@ -811,7 +832,7 @@ class PySpecCommand(Command):
         self.out_dir = 'pyspec_output'
         self.build_targets = """
                 minimal:presets/minimal:configs/minimal.yaml
-                mainnet:presets/mainnet:configs/mainnet.yaml        
+                mainnet:presets/mainnet:configs/mainnet.yaml
         """
 
     def finalize_options(self):
@@ -833,6 +854,7 @@ class PySpecCommand(Command):
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                     specs/altair/beacon-chain.md
+                    specs/altair/bls.md
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
@@ -987,7 +1009,7 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.750"],
+        "lint": ["flake8==3.7.7", "mypy==0.812"],
         "generator": ["python-snappy==0.5.4"],
     },
     install_requires=[
@@ -997,7 +1019,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.19",
+        "remerkleable==0.1.20",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.6",
         MARKO_VERSION,

@@ -26,8 +26,7 @@
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
 - [Helper functions](#helper-functions)
-  - [`Predicates`](#predicates)
-    - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+  - [Crypto](#crypto)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
@@ -86,10 +85,10 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `TIMELY_SOURCE_WEIGHT` | `uint64(12)` |
-| `TIMELY_TARGET_WEIGHT` | `uint64(24)` |
-| `TIMELY_HEAD_WEIGHT` | `uint64(12)` |
-| `SYNC_REWARD_WEIGHT` | `uint64(8)` |
+| `TIMELY_SOURCE_WEIGHT` | `uint64(14)` |
+| `TIMELY_TARGET_WEIGHT` | `uint64(26)` |
+| `TIMELY_HEAD_WEIGHT` | `uint64(14)` |
+| `SYNC_REWARD_WEIGHT` | `uint64(2)` |
 | `PROPOSER_WEIGHT` | `uint64(8)` |
 | `WEIGHT_DENOMINATOR` | `uint64(64)` |
 
@@ -107,7 +106,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 | Name | Value |
 | - | - |
-| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT]` |
 
 ## Preset
@@ -129,7 +127,7 @@ This patch updates a few configuration values to move penalty parameters closer 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
 | `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 
 ## Configuration
 
@@ -137,8 +135,8 @@ This patch updates a few configuration values to move penalty parameters closer 
 
 | Name | Value | Description |
 | - | - | - |
-| `INACTIVITY_SCORE_BIAS` | `uint64(4)` | score points per inactive epoch |
-| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(16)` | score points per recovering epoch |
+| `INACTIVITY_SCORE_BIAS` | `uint64(2**2)` (= 4) | score points per inactive epoch |
+| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | score points per leak-free epoch |
 
 ## Containers
 
@@ -157,8 +155,7 @@ class BeaconBlockBody(Container):
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    # [New in Altair]
-    sync_aggregate: SyncAggregate
+    sync_aggregate: SyncAggregate  # [New in Altair]
 ```
 
 #### `BeaconState`
@@ -221,19 +218,11 @@ class SyncCommittee(Container):
 
 ## Helper functions
 
-### `Predicates`
+### Crypto
 
-#### `eth2_fast_aggregate_verify`
-
-```python
-def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
-    """
-    Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
-    """
-    if len(pubkeys) == 0 and signature == G2_POINT_AT_INFINITY:
-        return True
-    return bls.FastAggregateVerify(pubkeys, message, signature)
-```
+Refer to the definitions in the [phase 0 document regarding BLS signatures](../phase0/beacon-chain.md#bls-signatures)
+and the extensions defined in the [Altair BLS document](./bls.md). This specification assumes knowledge of
+the functionality described in those documents.
 
 ### Misc
 
@@ -266,10 +255,7 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
 ```python
 def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     """
-    Return the sequence of sync committee indices (which may include duplicate indices)
-    for the next sync committee, given a ``state`` at a sync committee period boundary.
-
-    Note: Committee can contain duplicate indices for small validator sets (< SYNC_COMMITTEE_SIZE + 128)
+    Return the sync committee indices, with possible duplicates, for the next sync committee.
     """
     epoch = Epoch(get_current_epoch(state) + 1)
 
@@ -292,25 +278,16 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
 #### `get_next_sync_committee`
 
+*Note*: The function `get_next_sync_committee` should only be called at sync committee period boundaries.
+
 ```python
 def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     """
-    Return the *next* sync committee for a given ``state``.
-
-    ``SyncCommittee`` contains an aggregate pubkey that enables
-    resource-constrained clients to save some computation when verifying
-    the sync committee's signature.
-
-    ``SyncCommittee`` can also contain duplicate pubkeys, when ``get_next_sync_committee_indices``
-    returns duplicate indices. Implementations must take care when handling
-    optimizations relating to aggregation and verification in the presence of duplicates.
-
-    Note: This function should only be called at sync committee period boundaries by ``process_sync_committee_updates``
-    as ``get_next_sync_committee_indices`` is not stable within a given period.
+    Return the next sync committee, with possible pubkey duplicates.
     """
     indices = get_next_sync_committee_indices(state)
     pubkeys = [state.validators[index].pubkey for index in indices]
-    aggregate_pubkey = bls.AggregatePKs(pubkeys)
+    aggregate_pubkey = eth2_aggregate_pubkeys(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```
 
@@ -325,14 +302,12 @@ def get_base_reward_per_increment(state: BeaconState) -> Gwei:
 
 *Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH` and the use of increment based accounting.
 
+*Note*: On average an optimally performing validator earns one base reward per epoch.
+
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
-
-    Note: An optimally performing validator can earn one base reward per epoch over a long time horizon.
-    This takes into account both per-epoch (e.g. attestation) and intermittent duties (e.g. block proposal
-    and sync committees).
     """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
     return Gwei(increments * get_base_reward_per_increment(state))
@@ -559,6 +534,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
 #### Sync committee processing
 
+*Note*: The function `process_sync_committee` is new.
+
 ```python
 def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
@@ -579,10 +556,12 @@ def process_sync_committee(state: BeaconState, aggregate: SyncAggregate) -> None
     # Apply participant and proposer rewards
     all_pubkeys = [v.pubkey for v in state.validators]
     committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
-    participant_indices = [index for index, bit in zip(committee_indices, aggregate.sync_committee_bits) if bit]
-    for participant_index in participant_indices:
-        increase_balance(state, participant_index, participant_reward)
-        increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+    for participant_index, participation_bit in zip(committee_indices, aggregate.sync_committee_bits):
+        if participation_bit:
+            increase_balance(state, participant_index, participant_reward)
+            increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+        else:
+            decrease_balance(state, participant_index, participant_reward)
 ```
 
 ### Epoch processing
@@ -627,17 +606,17 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 ```python
 def process_inactivity_updates(state: BeaconState) -> None:
-    # Score updates based on previous epoch participation, skip genesis epoch
+    # Skip the genesis epoch as score updates are based on the previous epoch participation
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
     for index in get_eligible_validator_indices(state):
-        # Increase inactivity score of inactive validators
+        # Increase the inactivity score of inactive validators
         if index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)):
             state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
         else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
-        # Decrease the score of all validators for forgiveness when not during a leak
+        # Decrease the inactivity score of all eligible validators during a leak-free epoch
         if not is_in_inactivity_leak(state):
             state.inactivity_scores[index] -= min(INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index])
 ```

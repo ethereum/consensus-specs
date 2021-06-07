@@ -2,6 +2,10 @@ from eth2spec.test.context import is_post_altair
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import get_balance
+from eth2spec.test.helpers.sync_committee import (
+    compute_committee_indices,
+    compute_sync_committee_participant_reward_and_penalty,
+)
 
 
 def get_min_slashing_penalty_quotient(spec):
@@ -11,7 +15,7 @@ def get_min_slashing_penalty_quotient(spec):
         return spec.MIN_SLASHING_PENALTY_QUOTIENT
 
 
-def check_proposer_slashing_effect(spec, pre_state, state, slashed_index):
+def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=None):
     slashed_validator = state.validators[slashed_index]
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -20,24 +24,51 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index):
     proposer_index = spec.get_beacon_proposer_index(state)
     slash_penalty = state.validators[slashed_index].effective_balance // get_min_slashing_penalty_quotient(spec)
     whistleblower_reward = state.validators[slashed_index].effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
+
+    # Altair introduces sync committee (SC) reward and penalty
+    sc_reward_for_slashed = sc_penalty_for_slashed = sc_reward_for_proposer = sc_penalty_for_proposer = 0
+    if is_post_altair(spec) and block is not None:
+        committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+        committee_bits = block.body.sync_aggregate.sync_committee_bits
+        sc_reward_for_slashed, sc_penalty_for_slashed = compute_sync_committee_participant_reward_and_penalty(
+            spec,
+            pre_state,
+            slashed_index,
+            committee_indices,
+            committee_bits,
+        )
+        sc_reward_for_proposer, sc_penalty_for_proposer = compute_sync_committee_participant_reward_and_penalty(
+            spec,
+            pre_state,
+            proposer_index,
+            committee_indices,
+            committee_bits,
+        )
+
     if proposer_index != slashed_index:
         # slashed validator lost initial slash penalty
         assert (
             get_balance(state, slashed_index)
-            == get_balance(pre_state, slashed_index) - slash_penalty
+            == get_balance(pre_state, slashed_index) - slash_penalty + sc_reward_for_slashed - sc_penalty_for_slashed
         )
         # block proposer gained whistleblower reward
         # >= because proposer could have reported multiple
         assert (
             get_balance(state, proposer_index)
-            >= get_balance(pre_state, proposer_index) + whistleblower_reward
+            >= (
+                get_balance(pre_state, proposer_index) + whistleblower_reward
+                + sc_reward_for_proposer - sc_penalty_for_proposer
+            )
         )
     else:
         # proposer reported themself so get penalty and reward
         # >= because proposer could have reported multiple
         assert (
             get_balance(state, slashed_index)
-            >= get_balance(pre_state, slashed_index) - slash_penalty + whistleblower_reward
+            >= (
+                get_balance(pre_state, slashed_index) - slash_penalty + whistleblower_reward
+                + sc_reward_for_slashed - sc_penalty_for_slashed
+            )
         )
 
 
