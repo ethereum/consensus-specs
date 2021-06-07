@@ -21,7 +21,7 @@ def run_process_participation_flag_updates(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-def test_zeroed(spec, state):
+def test_all_zeroed(spec, state):
     next_epoch_via_block(spec, state)
     state.current_epoch_participation = [0] * len(state.validators)
     state.previous_epoch_participation = [0] * len(state.validators)
@@ -70,7 +70,7 @@ def test_random_genesis(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-def test_zeroing(spec, state):
+def test_current_epoch_zeroed(spec, state):
     next_epoch_via_block(spec, state)
     random_flags(spec, state, 12, current=False)
     state.current_epoch_participation = [0] * len(state.validators)
@@ -79,7 +79,7 @@ def test_zeroing(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-def test_prev_zeroed(spec, state):
+def test_previous_epoch_zeroed(spec, state):
     next_epoch_via_block(spec, state)
     random_flags(spec, state, 13, previous=False)
     state.previous_epoch_participation = [0] * len(state.validators)

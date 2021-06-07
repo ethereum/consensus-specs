@@ -33,7 +33,7 @@ The provided pre-state is already transitioned to just before the specific sub-t
 Sub-transitions:
 
 - `justification_and_finalization`
-- `inactivity_penalty_updates` (Altair)
+- `inactivity_updates` (Altair)
 - `rewards_and_penalties`
 - `registry_updates`
 - `slashings`
