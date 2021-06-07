@@ -14,8 +14,6 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Execution](#execution)
-- [Configuration](#configuration)
-  - [Transition](#transition)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -61,16 +59,6 @@ We define the following Python custom types for type hinting and readability:
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_EXECUTION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
-
-## Configuration
-
-Warning: this configuration is not definitive.
-
-### Transition
-
-| Name | Value |
-| - | - |
-| `TRANSITION_TOTAL_DIFFICULTY_OFFSET` | **TBD** |
 
 ## Containers
 

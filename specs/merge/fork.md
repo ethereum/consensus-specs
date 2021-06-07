@@ -28,12 +28,16 @@ Warning: this configuration is not definitive.
 | - | - |
 | `MERGE_FORK_VERSION` | `Version('0x02000000')` |
 | `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `MIN_ANCHOR_POW_BLOCK_DIFFICULTY` | **TBD** |
+| `SECONDS_SINCE_MERGE_FORK` | `uint64(7 * 86400)` = (604,800) |
 
 ## Fork to Merge
 
 ### Fork trigger
 
 TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at epoch `MERGE_FORK_EPOCH`.
+
+Since the Merge transition process relies on `Eth1Data` in the beacon state we do want to make sure that this data is fresh. This is achieved by forcing `MERGE_FORK_EPOCH` to point to eth1 voting period boundary, i.e. `MERGE_FORK_EPOCH` should satisfy the following condition `MERGE_FORK_EPOCH % EPOCHS_PER_ETH1_VOTING_PERIOD == 0`.
 
 Note that for the pure Merge networks, we don't apply `upgrade_to_merge` since it starts with Merge version logic.
 
@@ -96,8 +100,18 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 Transition store initialization occurs after the state has been modified by corresponding `upgrade_to_merge` function.
 
 ```python
+def compute_transition_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
+    seconds_per_voting_period = EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH * SECONDS_PER_SLOT
+    pow_blocks_per_voting_period = seconds_per_voting_period / SECONDS_PER_ETH1_BLOCK
+    pow_blocks_since_merge_fork = SECONDS_SINCE_MERGE_FORK / SECONDS_PER_ETH1_BLOCK
+    pow_blocks_to_transition = ETH1_FOLLOW_DISTANCE + pow_blocks_per_voting_period + pow_blocks_since_merge_fork
+    anchor_difficulty = max(MIN_ANCHOR_POW_BLOCK_DIFFICULTY, anchor_pow_block.difficulty)
+
+    return anchor_pow_block.total_difficulty + anchor_difficulty * pow_blocks_to_transition
+
+
 def get_transition_store(anchor_pow_block: PowBlock) -> TransitionStore:
-    transition_total_difficulty = anchor_pow_block.total_difficulty + TRANSITION_TOTAL_DIFFICULTY_OFFSET
+    transition_total_difficulty = compute_transition_total_difficulty(anchor_pow_block)
     return TransitionStore(transition_total_difficulty=transition_total_difficulty)
 
 
