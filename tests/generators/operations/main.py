@@ -13,7 +13,7 @@ if __name__ == "__main__":
     ]}
     altair_mods = {
         **{key: 'eth2spec.test.altair.block_processing.test_process_' + key for key in [
-            'sync_committee',
+            'sync_aggregate',
         ]},
         **phase_0_mods,
     }  # also run the previous phase 0 tests
