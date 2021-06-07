@@ -32,7 +32,7 @@ def run_sync_committee_processing(spec, state, block, expect_exception=False):
     produces a pre-state and post-state (None if exception) specifically for sync-committee processing changes.
     """
     # process up to the sync committee work
-    call = run_block_processing_to(spec, state, block, 'process_sync_committee')
+    call = run_block_processing_to(spec, state, block, 'process_sync_aggregate')
     yield 'pre', state
     yield 'sync_aggregate', block.body.sync_aggregate
     if expect_exception:

@@ -44,7 +44,7 @@
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
     - [Modified `process_deposit`](#modified-process_deposit)
-    - [Sync committee processing](#sync-committee-processing)
+    - [Sync aggregate processing](#sync-aggregate-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
     - [Inactivity scores](#inactivity-scores)
