@@ -41,7 +41,7 @@ Operations:
 | `deposit`               | `Deposit`             | `deposit`            | `process_deposit(state, deposit)`                                    |
 | `proposer_slashing`     | `ProposerSlashing`    | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`                |
 | `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`                      |
-| `sync_aggregate`        | `SyncAggregate`       | `sync_aggregate`     | `process_sync_committee(state, sync_aggregate)` (new in Altair)      |
+| `sync_aggregate`        | `SyncAggregate`       | `sync_aggregate`     | `process_sync_aggregate(state, sync_aggregate)` (new in Altair)      |
 | `execution_payload`     | `ExecutionPayload`    | `execution_payload`  | `process_execution_payload(state, execution_payload)` (new in Merge) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.

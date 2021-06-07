@@ -25,8 +25,8 @@ def get_process_calls(spec):
         'process_voluntary_exit':
             lambda state, block: for_ops(state, block.body.voluntary_exits, spec.process_voluntary_exit),
         # Altair
-        'process_sync_committee':
-            lambda state, block: spec.process_sync_committee(state, block.body.sync_aggregate),
+        'process_sync_aggregate':
+            lambda state, block: spec.process_sync_aggregate(state, block.body.sync_aggregate),
         # Merge
         'process_application_payload':
             lambda state, block: spec.process_application_payload(state, block.body),

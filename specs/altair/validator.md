@@ -243,7 +243,7 @@ def process_sync_committee_contributions(block: BeaconBlock,
     block.body.sync_aggregate = sync_aggregate
 ```
 
-*Note*: The resulting block must pass the validations for the `SyncAggregate` defined in `process_sync_committee` defined in the [state transition document](./beacon-chain.md#sync-committee-processing).
+*Note*: The resulting block must pass the validations for the `SyncAggregate` defined in `process_sync_aggregate` defined in the [state transition document](./beacon-chain.md#sync-aggregate-processing).
 In particular, this means `SyncCommitteeContribution`s received from gossip must have a `beacon_block_root` that matches the proposer's local view of the chain.
 
 #### Packaging into a `SignedBeaconBlock`
