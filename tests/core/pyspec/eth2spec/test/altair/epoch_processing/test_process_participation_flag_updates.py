@@ -13,7 +13,7 @@ from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_participation_flag_updates(spec, state):
-    old = state.current_epoch_participation
+    old = state.current_epoch_participation.copy()
     yield from run_epoch_processing_with(spec, state, 'process_participation_flag_updates')
     assert state.current_epoch_participation == [0] * len(state.validators)
     assert state.previous_epoch_participation == old
@@ -99,6 +99,7 @@ def custom_validator_count(factor: float):
 @with_custom_state(balances_fn=custom_validator_count(1.3), threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_slightly_larger_random(spec, state):
+    next_epoch_via_block(spec, state)
     random_flags(spec, state, 14)
     yield from run_process_participation_flag_updates(spec, state)
 
@@ -109,5 +110,6 @@ def test_slightly_larger_random(spec, state):
 @with_custom_state(balances_fn=custom_validator_count(2.6), threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_large_random(spec, state):
+    next_epoch_via_block(spec, state)
     random_flags(spec, state, 15)
     yield from run_process_participation_flag_updates(spec, state)
