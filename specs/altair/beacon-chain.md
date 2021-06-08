@@ -446,7 +446,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Altair]
-    process_sync_aggregate(state, block.body.sync_aggregate)  # [New in Altair]
+    process_sync_aggregate(state, block.body)  # [New in Altair]
 ```
 
 #### Modified `process_attestation`
@@ -537,9 +537,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 *Note*: The function `process_sync_aggregate` is new.
 
 ```python
-def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
+def process_sync_aggregate(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
+    sync_aggregate = body.sync_aggregate
     participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits) if bit]
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
