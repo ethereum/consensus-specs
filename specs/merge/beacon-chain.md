@@ -182,7 +182,7 @@ def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bo
     """
     Returns ``True`` iff ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    # [...]
+    ...
 ```
 
 The above function is accessed through the `execution_engine` module which instantiates the `ExecutionEngine` protocol.
