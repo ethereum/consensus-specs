@@ -77,11 +77,13 @@ The specification around the creation, validation, and dissemination of messages
 The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
 The `message-id` MUST be the following 20 byte value computed from the message:
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
-  the concatenation of `MESSAGE_DOMAIN_VALID_SNAPPY` with the snappy decompressed message data and the topic name,
-  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + snappy_decompress(message.data) + message.topic)[:20]`.
+  the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the snappy decompressed message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data)[:20]`.
 * Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
-  the concatenation of `MESSAGE_DOMAIN_INVALID_SNAPPY` with the raw message data and the topic name,
-  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + message.data + message.topic)[:20]`.
+  the concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the raw message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
