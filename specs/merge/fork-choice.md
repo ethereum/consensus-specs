@@ -85,6 +85,7 @@ class PowBlock(object):
     is_processed: boolean
     is_valid: boolean
     total_difficulty: uint256
+    difficulty: uint256
 ```
 
 ### `get_pow_block`
