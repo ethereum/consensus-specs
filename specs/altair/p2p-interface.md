@@ -79,7 +79,7 @@ The `message-id` MUST be the following 20 byte value computed from the message:
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
   the topic byte string, and the snappy decompressed message data:
-  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data)[:20]`.
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
 * Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
   the topic byte string, and the raw message data:
