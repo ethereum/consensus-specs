@@ -12,13 +12,13 @@
   - [`ExecutionEngine`](#executionengine)
     - [`set_head`](#set_head)
     - [`finalize_block`](#finalize_block)
-- [Containers](#containers)
-    - [`PowBlock`](#powblock)
-- [Helper functions](#helper-functions)
-    - [`get_pow_block`](#get_pow_block)
-    - [`is_valid_transition_block`](#is_valid_transition_block)
+- [Helpers](#helpers)
+  - [`TransitionStore`](#transitionstore)
+  - [`PowBlock`](#powblock)
+  - [`get_pow_block`](#get_pow_block)
+  - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
-    - [`on_block`](#on_block)
+  - [`on_block`](#on_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -66,44 +66,52 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
     ...
 ```
 
-## Containers
+## Helpers
 
-#### `PowBlock`
+### `TransitionStore`
 
 ```python
-class PowBlock(Container):
+@dataclass
+class TransitionStore(object):
+    transition_total_difficulty: uint256
+```
+
+### `PowBlock`
+
+```python
+@dataclass
+class PowBlock(object):
     block_hash: Hash32
     is_processed: boolean
     is_valid: boolean
     total_difficulty: uint256
+    difficulty: uint256
 ```
 
-## Helper functions
-
-#### `get_pow_block`
+### `get_pow_block`
 
 Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method does not distinguish invalid blocks from blocks that haven't been processed yet. Either extending this existing method or implementing a new one is required.
 
-#### `is_valid_transition_block`
+### `is_valid_terminal_pow_block`
 
 Used by fork-choice handler, `on_block`.
 
 ```python
-def is_valid_transition_block(block: PowBlock) -> bool:
-    is_total_difficulty_reached = block.total_difficulty >= TRANSITION_TOTAL_DIFFICULTY
+def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock) -> bool:
+    is_total_difficulty_reached = block.total_difficulty >= transition_store.transition_total_difficulty
     return block.is_valid and is_total_difficulty_reached
 ```
 
 ## Updated fork-choice handlers
 
-#### `on_block`
+### `on_block`
 
 *Note*: The only modification is the addition of the verification of transition block conditions.
 
 ```python
-def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: TransitionStore=None) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
@@ -119,11 +127,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
     # [New in Merge]
-    if is_transition_block(pre_state, block):
+    if (transition_store is not None) and is_transition_block(pre_state, block):
         # Delay consideration of block until PoW block is processed by the PoW node
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         assert pow_block.is_processed
-        assert is_valid_transition_block(pow_block)
+        assert is_valid_terminal_pow_block(transition_store, pow_block)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
