@@ -74,13 +74,30 @@ New topics are added in Altair to support the sync committees and the beacon blo
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 document.
 
+The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
+The `message-id` MUST be the following 20 byte value computed from the message:
+* If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the snappy decompressed message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
+* Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the raw message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
+
+Implementations may need to carefully handle the function that computes the `message-id`. In particular, messages on topics with the Phase 0
+fork digest should use the `message-id` procedure specified in the Phase 0 document.
+Messages on topics with the Altair fork digest should use the `message-id` procedure defined here.
+If an implementation only supports a single `message-id` function, it can define a switch inline;
+for example, `if topic in phase0_topics: return phase0_msg_id_fn(message) else return altair_msg_id_fn(message)`.
+
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
 | Name | Message Type |
 | - | - |
 | `beacon_block` | `SignedBeaconBlock` (modified) |
 | `sync_committee_contribution_and_proof` | `SignedContributionAndProof` |
-| `sync_committee_{subnet_id}` | `SyncCommitteeSignature` |
+| `sync_committee_{subnet_id}` | `SyncCommitteeMessage` |
 
 Definitions of these new types can be found in the [Altair validator guide](./validator.md#containers).
 
@@ -120,7 +137,7 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
     return sync_committee.pubkeys[i:i + sync_subcommittee_size]
 ```
 
-- _[IGNORE]_ The contribution's slot is for the current slot, i.e. `contribution.slot == current_slot`.
+- _[IGNORE]_ The contribution's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `contribution.slot == current_slot`.
 - _[IGNORE]_ The block being signed over (`contribution.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
 - _[REJECT]_ The subcommittee index is in the allowed range, i.e. `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
 - _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index` for the slot `contribution.slot` and subcommittee index `contribution.subcommittee_index`.
@@ -139,12 +156,13 @@ Sync committee subnets are used to propagate unaggregated sync committee signatu
 
 The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync committee signatures to the subnet `subnet_id` to be aggregated before being gossiped to the global `sync_committee_contribution_and_proof` topic.
 
-The following validations MUST pass before forwarding the `sync_committee_signature` on the network:
+The following validations MUST pass before forwarding the `sync_committee_message` on the network:
 
-- _[IGNORE]_ The signature's slot is for the current slot, i.e. `sync_committee_signature.slot == current_slot`.
-- _[IGNORE]_ The block being signed over (`sync_committee_signature.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
-- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_signature.validator_index`.
-- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_signature.validator_index)`.
+- _[IGNORE]_ The signature's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `sync_committee_message.slot == current_slot`.
+- _[IGNORE]_ The block being signed over (`sync_committee_message.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
+- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`.
+  Note this validation is _per topic_ so that for a given `slot`, multiple messages could be forwarded with the same `validator_index` as long as the `subnet_id`s are distinct.
+- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
 
@@ -156,7 +174,7 @@ The number of subnets is defined by `SYNC_COMMITTEE_SUBNET_COUNT` in the [Altair
 Sync committee members are divided into "subcommittees" which are then assigned to a subnet for the duration of tenure in the sync committee.
 Individual validators can be duplicated in the broader sync committee such that they are included multiple times in a given subcommittee or across multiple subcommittees.
 
-Unaggregated signatures (along with metadata) are sent as `SyncCommitteeSignature`s on the `sync_committee_{subnet_id}` topics.
+Unaggregated signatures (along with metadata) are sent as `SyncCommitteeMessage`s on the `sync_committee_{subnet_id}` topics.
 
 Aggregated sync committee signatures are packaged into (signed) `SyncCommitteeContribution` along with proofs and gossiped to the `sync_committee_contribution_and_proof` topic.
 

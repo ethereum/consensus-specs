@@ -4,7 +4,7 @@ from eth2spec.utils.ssz.ssz_typing import Bitvector
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import transition_to
-from eth2spec.utils import bls
+from eth2spec.test.helpers.sync_committee import compute_sync_committee_signature
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.test.context import (
     with_altair_and_later,
@@ -85,12 +85,9 @@ def _get_sync_committee_signature(
     pubkey = state.current_sync_committee.pubkeys[sync_committee_index]
     privkey = pubkey_to_privkey[pubkey]
 
-    domain = spec.get_domain(
-        state,
-        spec.DOMAIN_SYNC_COMMITTEE,
+    return compute_sync_committee_signature(
+        spec, state, target_slot, privkey, block_root=target_block_root
     )
-    signing_data = spec.compute_signing_root(target_block_root, domain)
-    return bls.Sign(privkey, spec.hash_tree_root(signing_data))
 
 
 @only_with_bls()

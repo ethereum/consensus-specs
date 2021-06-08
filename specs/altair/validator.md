@@ -14,7 +14,7 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
-  - [`SyncCommitteeSignature`](#synccommitteesignature)
+  - [`SyncCommitteeMessage`](#synccommitteemessage)
   - [`SyncCommitteeContribution`](#synccommitteecontribution)
   - [`ContributionAndProof`](#contributionandproof)
   - [`SignedContributionAndProof`](#signedcontributionandproof)
@@ -30,9 +30,9 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
     - [Packaging into a `SignedBeaconBlock`](#packaging-into-a-signedbeaconblock)
   - [Attesting and attestation aggregation](#attesting-and-attestation-aggregation)
   - [Sync committees](#sync-committees)
-    - [Sync committee signatures](#sync-committee-signatures)
-      - [Prepare sync committee signature](#prepare-sync-committee-signature)
-      - [Broadcast sync committee signature](#broadcast-sync-committee-signature)
+    - [Sync committee messages](#sync-committee-messages)
+      - [Prepare sync committee message](#prepare-sync-committee-message)
+      - [Broadcast sync committee message](#broadcast-sync-committee-message)
     - [Sync committee contributions](#sync-committee-contributions)
       - [Aggregation selection](#aggregation-selection)
       - [Construct sync committee contribution](#construct-sync-committee-contribution)
@@ -78,10 +78,10 @@ This document is currently illustrative for early Altair testnets and some parts
 
 ## Containers
 
-### `SyncCommitteeSignature`
+### `SyncCommitteeMessage`
 
 ```python
-class SyncCommitteeSignature(Container):
+class SyncCommitteeMessage(Container):
     # Slot to which this contribution pertains
     slot: Slot
     # Block root for this signature
@@ -243,7 +243,7 @@ def process_sync_committee_contributions(block: BeaconBlock,
     block.body.sync_aggregate = sync_aggregate
 ```
 
-*Note*: The resulting block must pass the validations for the `SyncAggregate` defined in `process_sync_committee` defined in the [state transition document](./beacon-chain.md#sync-committee-processing).
+*Note*: The resulting block must pass the validations for the `SyncAggregate` defined in `process_sync_aggregate` defined in the [state transition document](./beacon-chain.md#sync-aggregate-processing).
 In particular, this means `SyncCommitteeContribution`s received from gossip must have a `beacon_block_root` that matches the proposer's local view of the chain.
 
 #### Packaging into a `SignedBeaconBlock`
@@ -258,34 +258,39 @@ There is no change compared to the phase 0 document.
 ### Sync committees
 
 Sync committee members employ an aggregation scheme to reduce load on the global proposer channel that is monitored by all potential proposers to be able to include the full output of the sync committee every slot.
-Sync committee members produce individual signatures on subnets (similar to the attestation subnets) via `SyncCommitteeSignature`s which are then collected by aggregators sampled from the sync subcommittees to produce a `SyncCommitteeContribution` which is gossiped to proposers.
+Sync committee members produce individual signatures on subnets (similar to the attestation subnets) via `SyncCommitteeMessage`s which are then collected by aggregators sampled from the sync subcommittees to produce a `SyncCommitteeContribution` which is gossiped to proposers.
 This process occurs each slot.
 
-#### Sync committee signatures
+#### Sync committee messages
 
-##### Prepare sync committee signature
+##### Prepare sync committee message
 
-If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeSignature` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_signature` as soon as they have determined the head block of `slot - 1`.
+If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`.
 
 This logic is triggered upon the same conditions as when producing an attestation.
-Meaning, a sync committee member should produce and broadcast a `SyncCommitteeSignature` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
+Meaning, a sync committee member should produce and broadcast a `SyncCommitteeMessage` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
 
-`get_sync_committee_signature(state, block_root, validator_index, privkey)` assumes the parameter `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
+`get_sync_committee_message(state, block_root, validator_index, privkey)` assumes the parameter `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
-def get_sync_committee_signature(state: BeaconState,
-                                 block_root: Root,
-                                 validator_index: ValidatorIndex,
-                                 privkey: int) -> SyncCommitteeSignature:
+def get_sync_committee_message(state: BeaconState,
+                               block_root: Root,
+                               validator_index: ValidatorIndex,
+                               privkey: int) -> SyncCommitteeMessage:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
     signing_root = compute_signing_root(block_root, domain)
     signature = bls.Sign(privkey, signing_root)
 
-    return SyncCommitteeSignature(slot=state.slot, validator_index=validator_index, signature=signature)
+    return SyncCommitteeMessage(
+        slot=state.slot,
+        beacon_block_root=block_root,
+        validator_index=validator_index,
+        signature=signature,
+    )
 ```
 
-##### Broadcast sync committee signature
+##### Broadcast sync committee message
 
 The validator broadcasts the assembled signature to the assigned subnet, the `sync_committee_{subnet_id}` pubsub topic.
 
@@ -312,11 +317,11 @@ def compute_subnets_for_sync_committee(state: BeaconState, validator_index: Vali
 
 *Note*: Subnet assignment does not change during the duration of a validator's assignment to a given sync committee.
 
-*Note*: If a validator has multiple `subnet_id` results from `compute_subnets_for_sync_committee`, the validator should broadcast a copy of the `sync_committee_signature` on each of the distinct subnets.
+*Note*: If a validator has multiple `subnet_id` results from `compute_subnets_for_sync_committee`, the validator should broadcast a copy of the `sync_committee_message` on each of the distinct subnets.
 
 #### Sync committee contributions
 
-Each slot, some sync committee members in each subcommittee are selected to aggregate the `SyncCommitteeSignature`s into a `SyncCommitteeContribution` which is broadcast on a global channel for inclusion into the next block.
+Each slot, some sync committee members in each subcommittee are selected to aggregate the `SyncCommitteeMessage`s into a `SyncCommitteeContribution` which is broadcast on a global channel for inclusion into the next block.
 
 ##### Aggregation selection
 
@@ -347,9 +352,9 @@ def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
 
 ##### Construct sync committee contribution
 
-If a validator is selected to aggregate the `SyncCommitteeSignature`s produced on a subnet during a given `slot`, they construct an aggregated `SyncCommitteeContribution`.
+If a validator is selected to aggregate the `SyncCommitteeMessage`s produced on a subnet during a given `slot`, they construct an aggregated `SyncCommitteeContribution`.
 
-Given all of the (valid) collected `sync_committee_signatures: Set[SyncCommitteeSignature]` from the `sync_committee_{subnet_id}` gossip during the selected `slot` with an equivalent `beacon_block_root` to that of the aggregator, the aggregator creates a `contribution: SyncCommitteeContribution` with the following fields:
+Given all of the (valid) collected `sync_committee_messages: Set[SyncCommitteeMessage]` from the `sync_committee_{subnet_id}` gossip during the selected `slot` with an equivalent `beacon_block_root` to that of the aggregator, the aggregator creates a `contribution: SyncCommitteeContribution` with the following fields:
 
 ###### Slot
 
@@ -357,7 +362,7 @@ Set `contribution.slot = state.slot` where `state` is the `BeaconState` for the 
 
 ###### Beacon block root
 
-Set `contribution.beacon_block_root = beacon_block_root` from the `beacon_block_root` found in the `sync_committee_signatures`.
+Set `contribution.beacon_block_root = beacon_block_root` from the `beacon_block_root` found in the `sync_committee_messages`.
 
 ###### Subcommittee index
 
@@ -366,15 +371,15 @@ Set `contribution.subcommittee_index` to the index for the subcommittee index co
 ###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
-An aggregator finds the index in the sync committee (as determined by a reverse pubkey lookup on `state.current_sync_committee.pubkeys`) for a given validator referenced by `sync_committee_signature.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
+An aggregator finds the index in the sync committee (as determined by a reverse pubkey lookup on `state.current_sync_committee.pubkeys`) for a given validator referenced by `sync_committee_message.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
 
 For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution.
 
-*Note*: A validator **could be included multiple times** in a given subcommittee such that multiple bits are set for a single `SyncCommitteeSignature`.
+*Note*: A validator **could be included multiple times** in a given subcommittee such that multiple bits are set for a single `SyncCommitteeMessage`.
 
 ###### Signature
 
-Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_signatures` and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
+Set `contribution.signature = aggregate_signature` where `aggregate_signature` is obtained by assembling the appropriate collection of `BLSSignature`s from the set of `sync_committee_messages` and using the `bls.Aggregate()` function to produce an aggregate `BLSSignature`.
 
 The collection of input signatures should include one signature per validator who had a bit set in the `aggregation_bits` bitfield, with repeated signatures if one validator maps to multiple indices within the subcommittee.
 

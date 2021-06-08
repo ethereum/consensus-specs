@@ -50,7 +50,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index, shard=None, on_time=True):
+def build_attestation_data(spec, state, slot, index, shard=None):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -85,45 +85,12 @@ def build_attestation_data(spec, state, slot, index, shard=None, on_time=True):
     return data
 
 
-def get_valid_on_time_attestation(spec, state, slot=None, index=None, signed=False):
-    '''
-    Construct on-time attestation for next slot
-    '''
-    if slot is None:
-        slot = state.slot
-    if index is None:
-        index = 0
-
-    return get_valid_attestation(
-        spec,
-        state,
-        slot=slot,
-        index=index,
-        signed=signed,
-        on_time=True,
-    )
-
-
-def get_valid_late_attestation(spec, state, slot=None, index=None, signed=False):
-    '''
-    Construct on-time attestation for next slot
-    '''
-    if slot is None:
-        slot = state.slot
-    if index is None:
-        index = 0
-
-    return get_valid_attestation(spec, state, slot=slot, index=index,
-                                 signed=signed, on_time=False)
-
-
 def get_valid_attestation(spec,
                           state,
                           slot=None,
                           index=None,
                           filter_participant_set=None,
-                          signed=False,
-                          on_time=True):
+                          signed=False):
     # If filter_participant_set filters everything, the attestation has 0 participants, and cannot be signed.
     # Thus strictly speaking invalid when no participant is added later.
     if slot is None:
@@ -132,7 +99,7 @@ def get_valid_attestation(spec,
         index = 0
 
     attestation_data = build_attestation_data(
-        spec, state, slot=slot, index=index, on_time=on_time
+        spec, state, slot=slot, index=index
     )
 
     beacon_committee = spec.get_beacon_committee(
@@ -219,7 +186,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
         spec.process_attestation(state, attestation)
 
 
-def _get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None, on_time=True):
+def _get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None):
     committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
     for index in range(committees_per_slot):
         def participants_filter(comm):
@@ -234,7 +201,6 @@ def _get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn
             slot_to_attest,
             index=index,
             signed=True,
-            on_time=on_time,
             filter_participant_set=participants_filter
         )
 
@@ -269,7 +235,6 @@ def next_slots_with_attestations(spec,
                 post_state,
                 spec,
                 slot_to_attest,
-                on_time=False,
                 participation_fn=participation_fn
             )
             for attestation in attestations:

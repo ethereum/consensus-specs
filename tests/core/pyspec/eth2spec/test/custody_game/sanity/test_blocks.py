@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     spec_state_test,
     with_presets,
 )
-from eth2spec.test.helpers.attestations import get_valid_on_time_attestation
+from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.constants import (
     CUSTODY_GAME,
@@ -60,7 +60,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
     shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
-    attestation = get_valid_on_time_attestation(
+    attestation = get_valid_attestation(
         spec, state, index=committee_index,
         shard_transition=shard_transitions[shard], signed=True,
     )
@@ -127,7 +127,7 @@ def test_custody_slashing(spec, state):
     shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
 
-    attestation = get_valid_on_time_attestation(
+    attestation = get_valid_attestation(
         spec, state, index=committee_index,
         shard_transition=shard_transitions[shard], signed=True,
     )

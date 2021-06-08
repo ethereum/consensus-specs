@@ -32,3 +32,9 @@ MAINNET = PresetBaseName('mainnet')
 MINIMAL = PresetBaseName('minimal')
 
 ALL_PRESETS = (MINIMAL, MAINNET)
+
+
+#
+# Number
+#
+MAX_UINT_64 = 2**64 - 1

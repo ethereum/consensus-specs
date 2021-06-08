@@ -58,11 +58,19 @@ def next_epoch(spec, state):
         spec.process_slots(state, slot)
 
 
-def next_epoch_via_block(spec, state):
+def next_epoch_via_block(spec, state, insert_state_root=False):
     """
     Transition to the start slot of the next epoch via a full block transition
     """
-    return apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
+    block = apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
+    if insert_state_root:
+        block.state_root = state.hash_tree_root()
+    return block
+
+
+def next_epoch_via_signed_block(spec, state):
+    block = next_epoch_via_block(spec, state, insert_state_root=True)
+    return sign_block(spec, state, block)
 
 
 def get_state_root(spec, state, slot) -> bytes:

@@ -14,8 +14,8 @@ PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 # ---------------------------------------------------------------
 # 2**9 (= 512)
 SYNC_COMMITTEE_SIZE: 512
-# 2**9 (= 512)
-EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
+# 2**8 (= 256)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
 
 
 # Sync protocol

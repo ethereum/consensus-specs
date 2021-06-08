@@ -43,6 +43,7 @@ while the details are in review and may change.
   * [ethereum.org](https://ethereum.org) high-level description of the merge [here](https://ethereum.org/en/eth2/docking/)
 * Specifications:
   * [Beacon Chain changes](specs/merge/beacon-chain.md)
+  * [Merge fork](specs/merge/fork.md)
   * [Fork Choice changes](specs/merge/fork-choice.md)
   * [Validator additions](specs/merge/validator.md)
 
