@@ -74,6 +74,23 @@ New topics are added in Altair to support the sync committees and the beacon blo
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 document.
 
+The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
+The `message-id` MUST be the following 20 byte value computed from the message:
+* If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the snappy decompressed message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data)[:20]`.
+* Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the raw message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
+
+Implementations may need to carefully handle the function that computes the `message-id`. In particular, messages on topics with the Phase 0
+fork digest should use the `message-id` procedure specified in the Phase 0 document.
+Messages on topics with the Altair fork digest should use the `message-id` procedure defined here.
+If an implementation only supports a single `message-id` function, it can define a switch inline;
+for example, `if topic in phase0_topics: return phase0_msg_id_fn(message) else return altair_msg_id_fn(message)`.
+
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
 | Name | Message Type |
