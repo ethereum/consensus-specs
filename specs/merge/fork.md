@@ -102,8 +102,8 @@ Transition store initialization occurs after the state has been modified by corr
 ```python
 def compute_transition_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
     seconds_per_voting_period = EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH * SECONDS_PER_SLOT
-    pow_blocks_per_voting_period = seconds_per_voting_period / SECONDS_PER_ETH1_BLOCK
-    pow_blocks_since_merge_fork = SECONDS_SINCE_MERGE_FORK / SECONDS_PER_ETH1_BLOCK
+    pow_blocks_per_voting_period = seconds_per_voting_period // SECONDS_PER_ETH1_BLOCK
+    pow_blocks_since_merge_fork = SECONDS_SINCE_MERGE_FORK // SECONDS_PER_ETH1_BLOCK
     pow_blocks_to_transition = ETH1_FOLLOW_DISTANCE + pow_blocks_per_voting_period + pow_blocks_since_merge_fork
     anchor_difficulty = max(MIN_ANCHOR_POW_BLOCK_DIFFICULTY, anchor_pow_block.difficulty)
 
