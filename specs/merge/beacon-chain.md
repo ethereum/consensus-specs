@@ -188,7 +188,7 @@ def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bo
     ...
 ```
 
-The above function is accessed through the `execution_engine` module which instantiates the `ExecutionEngine` protocol.
+The above function is accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
 
 ### Block processing
 
@@ -198,7 +198,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    process_execution_payload(state, block.body)  # [New in Merge]
+    if is_execution_enabled(state, block.body):
+        process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 ### Execution payload processing
@@ -206,10 +207,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 #### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Skip execution payload processing if execution is not enabled
-    if not is_execution_enabled(state, body):
-        return
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
     # Verify consistency of the parent hash and block number
     if is_merge_complete(state):
         assert body.execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
@@ -220,16 +218,16 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
     assert execution_engine.on_payload(body.execution_payload)
     # Cache execution payload
     state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=execution_payload.parent_hash,
-        coinbase=execution_payload.coinbase,
-        state_root=execution_payload.state_root,
-        logs_bloom=execution_payload.logs_bloom,
-        receipt_root=execution_payload.receipt_root,
-        block_number=execution_payload.block_number,
-        gas_limit=execution_payload.gas_limit,
-        gas_used=execution_payload.gas_used,
-        timestamp=execution_payload.timestamp,
-        block_hash=execution_payload.block_hash,
-        transactions_root=hash_tree_root(execution_payload.transactions),
+        parent_hash=body.execution_payload.parent_hash,
+        coinbase=body.execution_payload.coinbase,
+        state_root=body.execution_payload.state_root,
+        logs_bloom=body.execution_payload.logs_bloom,
+        receipt_root=body.execution_payload.receipt_root,
+        block_number=body.execution_payload.block_number,
+        gas_limit=body.execution_payload.gas_limit,
+        gas_used=body.execution_payload.gas_used,
+        timestamp=body.execution_payload.timestamp,
+        block_hash=body.execution_payload.block_hash,
+        transactions_root=hash_tree_root(body.execution_payload.transactions),
     )
 ```
