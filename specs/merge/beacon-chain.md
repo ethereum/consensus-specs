@@ -1,6 +1,6 @@
 # Ethereum 2.0 The Merge
 
-**Warning:** This document is currently based on [Phase 0](../phase0/beacon-chain.md) but will be rebased to [Altair](../altair/beacon-chain.md) once the latter is shipped.
+**Warning**: This document is currently based on [Phase 0](../phase0/beacon-chain.md) and will be rebased for [Altair](../altair/beacon-chain.md).
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -15,7 +15,7 @@
 - [Constants](#constants)
   - [Execution](#execution)
 - [Configuration](#configuration)
-  - [Transition](#transition)
+  - [Merge](#merge)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -23,34 +23,32 @@
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
-- [Protocols](#protocols)
-  - [`ExecutionEngine`](#executionengine)
-    - [`new_block`](#new_block)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc)
+  - [Predicates](#predicates)
+    - [`is_merge_complete`](#is_merge_complete)
+    - [`is_merge_block`](#is_merge_block)
     - [`is_execution_enabled`](#is_execution_enabled)
-    - [`is_transition_completed`](#is_transition_completed)
-    - [`is_transition_block`](#is_transition_block)
-    - [`compute_time_at_slot`](#compute_time_at_slot)
+  - [Misc](#misc)
+    - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
+- [Execution engine](#execution-engine)
+  - [`on_payload`](#on_payload)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Execution payload processing](#execution-payload-processing)
-      - [`process_execution_payload`](#process_execution_payload)
+  - [Execution payload processing](#execution-payload-processing)
+    - [`process_execution_payload`](#process_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This is a patch implementing the executable beacon chain proposal. 
-It enshrines transaction execution and validity as a first class citizen at the core of the beacon chain.
+This patch adds transaction execution to the beacon chain as part of the merge.
 
 ## Custom types
 
-We define the following Python custom types for type hinting and readability:
-
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a byte-list containing a single [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
+| `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
 
 ## Constants
 
@@ -59,44 +57,37 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_EXECUTION_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
+| `MAX_OPAQUE_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 
 ## Configuration
 
-Warning: this configuration is not definitive.
+### Merge
 
-### Transition
+*Note*: The configuration value `MERGE_FORK_EPOCH` is not final.
 
 | Name | Value |
 | - | - |
 | `MERGE_FORK_VERSION` | `Version('0x02000000')` |
-| `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
-| `TRANSITION_TOTAL_DIFFICULTY` | **TBD** |
+| `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` |
 
 ## Containers
 
 ### Extended containers
 
-*Note*: Extended SSZ containers inherit all fields from the parent in the original
-order and append any additional fields to the end.
-
 #### `BeaconBlockBody`
-
-*Note*: `BeaconBlockBody` fields remain unchanged other than the addition of `execution_payload`.
 
 ```python
 class BeaconBlockBody(phase0.BeaconBlockBody):
+    # Execution
     execution_payload: ExecutionPayload  # [New in Merge]
 ```
 
 #### `BeaconState`
 
-*Note*: `BeaconState` fields remain unchanged other than addition of `latest_execution_payload_header`.
-
 ```python
 class BeaconState(phase0.BeaconState):
-    # Execution-layer
+    # Execution
     latest_execution_payload_header: ExecutionPayloadHeader  # [New in Merge]
 ```
 
@@ -104,146 +95,140 @@ class BeaconState(phase0.BeaconState):
 
 #### `ExecutionPayload`
 
-The execution payload included in a `BeaconBlockBody`.
-
 ```python
 class ExecutionPayload(Container):
-    block_hash: Hash32  # Hash of execution block
+    # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20
+    coinbase: Bytes20  # 'beneficiary' in the yellow paper
     state_root: Bytes32
-    number: uint64
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    receipt_root: Bytes32  # 'receipts root' in the yellow paper
+    block_number: uint64  # 'number' in the yellow paper
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    receipt_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    transactions: List[OpaqueTransaction, MAX_EXECUTION_TRANSACTIONS]
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    opaque_transactions: List[OpaqueTransaction, MAX_OPAQUE_TRANSACTIONS]
 ```
 
 #### `ExecutionPayloadHeader`
 
-The execution payload header included in a `BeaconState`.
-
-*Note:* Holds execution payload data without transaction bodies.
-
 ```python
 class ExecutionPayloadHeader(Container):
-    block_hash: Hash32  # Hash of execution block
+    # Execution block header fields
     parent_hash: Hash32
     coinbase: Bytes20
     state_root: Bytes32
-    number: uint64
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    receipt_root: Bytes32
+    block_number: uint64
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    receipt_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    transactions_root: Root
-```
-
-## Protocols
-
-### `ExecutionEngine`
-
-The `ExecutionEngine` protocol separates the consensus and execution sub-systems.
-The consensus implementation references an instance of this sub-system with `EXECUTION_ENGINE`. 
-
-The following methods are added to the `ExecutionEngine` protocol for use in the state transition:
-
-#### `new_block`
-
-Verifies the given `execution_payload` with respect to execution state transition, and persists changes if valid.
-
-The body of this function is implementation dependent.
-The Consensus API may be used to implement this with an external execution engine.
-
-```python
-def new_block(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
-    """
-    Returns True if the ``execution_payload`` was verified and processed successfully, False otherwise. 
-    """
-    ...
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    opaque_transactions_root: Root
 ```
 
 ## Helper functions
 
-### Misc
+### Predicates
+
+#### `is_merge_complete`
+
+```python
+def is_merge_complete(state: BeaconState) -> bool:
+    return state.latest_execution_payload_header != ExecutionPayloadHeader()
+```
+
+#### `is_merge_block`
+
+```python
+def is_merge_block(state: BeaconState, body: BeaconBlockBody) -> bool:
+    return not is_merge_complete(state) and body.execution_payload != ExecutionPayload()
+```
 
 #### `is_execution_enabled`
 
 ```python
-def is_execution_enabled(state: BeaconState, block: BeaconBlock) -> bool:
-    return is_transition_completed(state) or is_transition_block(state, block)
+def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
+    return is_merge_block(state, body) or is_merge_complete(state)
 ```
 
-#### `is_transition_completed`
+### Misc
 
-```python
-def is_transition_completed(state: BeaconState) -> bool:
-    return state.latest_execution_payload_header != ExecutionPayloadHeader()
-```
-
-#### `is_transition_block`
-
-```python
-def is_transition_block(state: BeaconState, block: BeaconBlock) -> bool:
-    return not is_transition_completed(state) and block.body.execution_payload != ExecutionPayload()
-```
-
-#### `compute_time_at_slot`
+#### `compute_timestamp_at_slot`
 
 *Note*: This function is unsafe with respect to overflows and underflows.
 
 ```python
-def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
+def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
     slots_since_genesis = slot - GENESIS_SLOT
     return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
 ```
 
+## Execution engine
+
+The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
+
+* a state object `self.execution_state` of type `ExecutionState`
+* a state transition function `self.on_payload` which mutates `self.execution_state`
+
+### `on_payload`
+
+```python
+def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    """
+    Returns ``True`` iff ``execution_payload`` is valid with respect to ``self.execution_state``.
+    """
+    # [...]
+```
+
+The above function is accessed through the `execution_engine` module which instantiates the `ExecutionEngine` protocol.
+
+## Beacon chain state transition function
+
 ### Block processing
 
 ```python
-def process_block(state: BeaconState, block: BeaconBlock) -> None:
+def process_block(state: BeaconState, block: BeaconBlock, execution_state: ExecutionState) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    # Pre-merge, skip execution payload processing
-    if is_execution_enabled(state, block):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
+    process_execution_payload(state, block.body)  # [New in Merge]
 ```
 
-#### Execution payload processing
+### Execution payload processing
 
-##### `process_execution_payload`
+#### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState,
-                              execution_payload: ExecutionPayload,
-                              execution_engine: ExecutionEngine) -> None:
-    """
-    Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
-    """
-    if is_transition_completed(state):
-        assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
-        assert execution_payload.number == state.latest_execution_payload_header.number + 1
-
-    assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
-
-    assert execution_engine.new_block(execution_payload)
-
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Skip execution payload processing if execution is not enabled
+    if not is_execution_enabled(state, body):
+        return
+    # Verify consistency of the parent hash and block number
+    if is_merge_complete(state):
+        assert body.execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
+        assert body.execution_payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
+    # Verify timestamp
+    assert body.execution_payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify the execution payload is valid
+    assert execution_engine.on_payload(body.execution_payload)
+    # Cache execution payload
     state.latest_execution_payload_header = ExecutionPayloadHeader(
-        block_hash=execution_payload.block_hash,
         parent_hash=execution_payload.parent_hash,
         coinbase=execution_payload.coinbase,
         state_root=execution_payload.state_root,
-        number=execution_payload.number,
+        logs_bloom=execution_payload.logs_bloom,
+        receipt_root=execution_payload.receipt_root,
+        block_number=execution_payload.block_number,
         gas_limit=execution_payload.gas_limit,
         gas_used=execution_payload.gas_used,
         timestamp=execution_payload.timestamp,
-        receipt_root=execution_payload.receipt_root,
-        logs_bloom=execution_payload.logs_bloom,
-        transactions_root=hash_tree_root(execution_payload.transactions),
+        block_hash=execution_payload.block_hash,
+        opaque_transactions_root=hash_tree_root(execution_payload.opaque_transactions),
     )
 ```
