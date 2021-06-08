@@ -74,7 +74,7 @@ New topics are added in Altair to support the sync committees and the beacon blo
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 document.
 
-The derivation of the `message-id` has changed starting with Altair to incorporate the message topic along with the message data.
+The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
 The `message-id` MUST be the following 20 byte value computed from the message:
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of `MESSAGE_DOMAIN_VALID_SNAPPY` with the snappy decompressed message data and the topic name,
