@@ -30,9 +30,9 @@
     - [`is_execution_enabled`](#is_execution_enabled)
   - [Misc](#misc)
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
 - [Execution engine](#execution-engine)
   - [`on_payload`](#on_payload)
-- [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`process_execution_payload`](#process_execution_payload)
@@ -49,6 +49,7 @@ This patch adds transaction execution to the beacon chain as part of the merge.
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
+| `Transaction` | **TODO**: define as `Union` type with `OpaqueTransaction` | an execution transaction |
 
 ## Constants
 
@@ -57,7 +58,7 @@ This patch adds transaction execution to the beacon chain as part of the merge.
 | Name | Value |
 | - | - |
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_OPAQUE_TRANSACTIONS` | `uint64(2**14)` (= 16,384) |
+| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 
 ## Configuration
@@ -109,7 +110,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
-    opaque_transactions: List[OpaqueTransaction, MAX_OPAQUE_TRANSACTIONS]
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -128,7 +129,7 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
-    opaque_transactions_root: Root
+    transactions_root: Root
 ```
 
 ## Helper functions
@@ -168,14 +169,16 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
     return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
 ```
 
-## Execution engine
+## Beacon chain state transition function
+
+### Execution engine
 
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
 * a state transition function `self.on_payload` which mutates `self.execution_state`
 
-### `on_payload`
+#### `on_payload`
 
 ```python
 def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -186,8 +189,6 @@ def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bo
 ```
 
 The above function is accessed through the `execution_engine` module which instantiates the `ExecutionEngine` protocol.
-
-## Beacon chain state transition function
 
 ### Block processing
 
@@ -229,6 +230,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody) -> None
         gas_used=execution_payload.gas_used,
         timestamp=execution_payload.timestamp,
         block_hash=execution_payload.block_hash,
-        opaque_transactions_root=hash_tree_root(execution_payload.opaque_transactions),
+        transactions_root=hash_tree_root(execution_payload.transactions),
     )
 ```
