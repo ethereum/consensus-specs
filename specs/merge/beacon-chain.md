@@ -192,7 +192,7 @@ The above function is accessed through the `execution_engine` module which insta
 ### Block processing
 
 ```python
-def process_block(state: BeaconState, block: BeaconBlock, execution_state: ExecutionState) -> None:
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
