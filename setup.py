@@ -677,7 +677,7 @@ def combine_dicts(old_dict: Dict[str, T], new_dict: Dict[str, T]) -> Dict[str, T
 
 
 ignored_dependencies = [
-    'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature', 'Transaction',
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature',
     'Bytes1', 'Bytes4', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
