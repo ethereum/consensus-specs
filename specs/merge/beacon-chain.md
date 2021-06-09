@@ -46,10 +46,12 @@ This patch adds transaction execution to the beacon chain as part of the merge.
 
 ## Custom types
 
+*Note*: The `Transaction` type is a stub which is not final.
+
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
-| `Transaction` | **TODO**: define as `Union` type with `OpaqueTransaction` | an execution transaction |
+| `Transaction` | `Union[OpaqueTransaction]` | a transaction |
 
 ## Constants
 
@@ -209,25 +211,26 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
     # Verify consistency of the parent hash and block number
+    payload = body.execution_payload
     if is_merge_complete(state):
-        assert body.execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
-        assert body.execution_payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
+        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+        assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
     # Verify timestamp
-    assert body.execution_payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.on_payload(body.execution_payload)
+    assert execution_engine.on_payload(payload)
     # Cache execution payload
     state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=body.execution_payload.parent_hash,
-        coinbase=body.execution_payload.coinbase,
-        state_root=body.execution_payload.state_root,
-        logs_bloom=body.execution_payload.logs_bloom,
-        receipt_root=body.execution_payload.receipt_root,
-        block_number=body.execution_payload.block_number,
-        gas_limit=body.execution_payload.gas_limit,
-        gas_used=body.execution_payload.gas_used,
-        timestamp=body.execution_payload.timestamp,
-        block_hash=body.execution_payload.block_hash,
-        transactions_root=hash_tree_root(body.execution_payload.transactions),
+        parent_hash=payload.parent_hash,
+        coinbase=payload.coinbase,
+        state_root=payload.state_root,
+        logs_bloom=payload.logs_bloom,
+        receipt_root=payload.receipt_root,
+        block_number=payload.block_number,
+        gas_limit=payload.gas_limit,
+        gas_used=payload.gas_used,
+        timestamp=payload.timestamp,
+        block_hash=payload.block_hash,
+        transactions_root=hash_tree_root(payload.transactions),
     )
 ```
