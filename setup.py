@@ -223,7 +223,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList"):
+                        if value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList") or value.startswith("Union"):
                             custom_types[name] = value
                         continue
 
@@ -495,7 +495,7 @@ class MergeSpecBuilder(Phase0SpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.phase0 import {preset_name} as phase0
-from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256
+from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256, Union
 '''
 
     @classmethod
@@ -553,6 +553,10 @@ spec_builders = {
 }
 
 
+def is_spec_defined_type(value: str) -> bool:
+    return value.startswith('ByteList') or value.startswith('Union')
+
+
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     builder: SpecBuilder,
@@ -565,15 +569,15 @@ def objects_to_spec(preset_name: str,
             [
                 f"class {key}({value}):\n    pass\n"
                 for key, value in spec_object.custom_types.items()
-                if not value.startswith('ByteList')
+                if not is_spec_defined_type(value)
             ]
         )
-        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if value.startswith('ByteList')]) > 0 else '')
+        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if is_spec_defined_type(value)]) > 0 else '')
         + '\n\n'.join(
             [
                 f"{key} = {value}\n"
                 for key, value in spec_object.custom_types.items()
-                if value.startswith('ByteList')
+                if is_spec_defined_type(value)
             ]
         )
     )
@@ -673,7 +677,7 @@ def combine_dicts(old_dict: Dict[str, T], new_dict: Dict[str, T]) -> Dict[str, T
 
 
 ignored_dependencies = [
-    'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature',
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature', 'Transaction',
     'Bytes1', 'Bytes4', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
