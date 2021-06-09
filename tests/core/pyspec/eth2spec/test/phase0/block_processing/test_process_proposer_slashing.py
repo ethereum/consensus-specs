@@ -57,6 +57,14 @@ def test_success_slashed_and_proposer_index_the_same(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_success_block_header_from_future(spec, state):
+    proposer_slashing = get_valid_proposer_slashing(spec, state, slot=state.slot + 5, signed_1=True, signed_2=True)
+
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
+
+
+@with_all_phases
+@spec_state_test
 @always_bls
 def test_invalid_sig_1(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=True)
