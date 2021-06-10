@@ -23,6 +23,7 @@ Key of valid `fork` strings that might be found in `meta.yaml`
 | String ID | Pre-fork | Post-fork | Function |
 | - | - | - | - |
 | `altair` | Phase 0 | Altair | `upgrade_to_altair` |
+| `merge` | Phase 0 | Merge | `upgrade_to_merge` |
 
 ### `pre.ssz_snappy`
 

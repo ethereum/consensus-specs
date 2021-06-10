@@ -74,6 +74,23 @@ New topics are added in Altair to support the sync committees and the beacon blo
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 document.
 
+The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
+The `message-id` MUST be the following 20 byte value computed from the message:
+* If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the snappy decompressed message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
+* Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
+  the concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
+  the topic byte string, and the raw message data:
+  i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
+
+Implementations may need to carefully handle the function that computes the `message-id`. In particular, messages on topics with the Phase 0
+fork digest should use the `message-id` procedure specified in the Phase 0 document.
+Messages on topics with the Altair fork digest should use the `message-id` procedure defined here.
+If an implementation only supports a single `message-id` function, it can define a switch inline;
+for example, `if topic in phase0_topics: return phase0_msg_id_fn(message) else return altair_msg_id_fn(message)`.
+
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
 | Name | Message Type |
@@ -144,6 +161,7 @@ The following validations MUST pass before forwarding the `sync_committee_messag
 - _[IGNORE]_ The signature's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `sync_committee_message.slot == current_slot`.
 - _[IGNORE]_ The block being signed over (`sync_committee_message.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
 - _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`.
+  Note this validation is _per topic_ so that for a given `slot`, multiple messages could be forwarded with the same `validator_index` as long as the `subnet_id`s are distinct.
 - _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
