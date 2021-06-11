@@ -7,8 +7,7 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.context import spec_state_test, expect_assertion_error, with_merge_and_later
 from eth2spec.test.helpers.state import next_slot
 
-
-def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
+def run_execution_payload_processing(spec, state, execution_payload, randao_mix, valid=True, execution_valid=True):
     """
     Run ``process_execution_payload``, yielding:
       - pre-state ('pre')
@@ -32,11 +31,11 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
             return execution_valid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
+        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload, randao_mix, TestEngine()))
         yield 'post', None
         return
 
-    spec.process_execution_payload(state, execution_payload, TestEngine())
+    spec.process_execution_payload(state, execution_payload, randao_mix, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block
@@ -54,9 +53,9 @@ def test_success_first_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
 
-    yield from run_execution_payload_processing(spec, state, execution_payload)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32())
 
 
 @with_merge_and_later
@@ -67,9 +66,9 @@ def test_success_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
 
-    yield from run_execution_payload_processing(spec, state, execution_payload)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32())
 
 
 @with_merge_and_later
@@ -81,9 +80,9 @@ def test_success_first_payload_with_gap_slot(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
 
-    yield from run_execution_payload_processing(spec, state, execution_payload)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32())
 
 
 @with_merge_and_later
@@ -95,9 +94,9 @@ def test_success_regular_payload_with_gap_slot(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
 
-    yield from run_execution_payload_processing(spec, state, execution_payload)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32())
 
 
 @with_merge_and_later
@@ -110,9 +109,9 @@ def test_bad_execution_first_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False, execution_valid=False)
 
 
 @with_merge_and_later
@@ -125,9 +124,9 @@ def test_bad_execution_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False, execution_valid=False)
 
 
 @with_merge_and_later
@@ -138,10 +137,10 @@ def test_bad_parent_hash_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
     execution_payload.parent_hash = spec.Hash32()
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False)
 
 
 @with_merge_and_later
@@ -152,10 +151,10 @@ def test_bad_number_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
     execution_payload.number = execution_payload.number + 1
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False)
 
 
 @with_merge_and_later
@@ -166,11 +165,11 @@ def test_bad_everything_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
     execution_payload.parent_hash = spec.Hash32()
     execution_payload.number = execution_payload.number + 1
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False)
 
 
 @with_merge_and_later
@@ -181,10 +180,10 @@ def test_bad_timestamp_first_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
     execution_payload.timestamp = execution_payload.timestamp + 1
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False)
 
 
 @with_merge_and_later
@@ -195,7 +194,7 @@ def test_bad_timestamp_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
     execution_payload.timestamp = execution_payload.timestamp + 1
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(spec, state, execution_payload, spec.Bytes32(), valid=False)

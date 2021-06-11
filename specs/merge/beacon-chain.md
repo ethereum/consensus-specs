@@ -105,6 +105,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    randao: Bytes32  # 'difficulty' in the yellow paper
     transactions: List[OpaqueTransaction, MAX_EXECUTION_TRANSACTIONS]
 ```
 
@@ -126,6 +127,7 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    randao: Bytes32
     transactions_root: Root
 ```
 
@@ -198,7 +200,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     # Pre-merge, skip execution payload processing
     if is_execution_enabled(state, block):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
+        # [New in Merge]
+        randao_mix = get_randao_mix(state, get_current_epoch(state))
+        process_execution_payload(state, block.body.execution_payload, randao_mix, EXECUTION_ENGINE)
 ```
 
 #### Execution payload processing
@@ -208,6 +212,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_execution_payload(state: BeaconState,
                               execution_payload: ExecutionPayload,
+                              randao_mix: Bytes32,
                               execution_engine: ExecutionEngine) -> None:
     """
     Note: This function is designed to be able to be run in parallel with the other `process_block` sub-functions
@@ -215,6 +220,7 @@ def process_execution_payload(state: BeaconState,
     if is_transition_completed(state):
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1
+        assert execution_payload.randao == randao_mix
 
     assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
@@ -231,6 +237,7 @@ def process_execution_payload(state: BeaconState,
         timestamp=execution_payload.timestamp,
         receipt_root=execution_payload.receipt_root,
         logs_bloom=execution_payload.logs_bloom,
+        randao=execution_payload.randao,
         transactions_root=hash_tree_root(execution_payload.transactions),
     )
 ```
@@ -289,6 +296,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         timestamp=eth1_timestamp,
         receipt_root=Bytes32(),
         logs_bloom=ByteVector[BYTES_PER_LOGS_BLOOM](),
+        randao=eth1_block_hash,
         transactions_root=Root(),
     )
 
