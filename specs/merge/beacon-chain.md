@@ -198,9 +198,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    # Pre-merge, skip execution payload processing
+    # [New in Merge] Pre-merge, skip execution payload processing
     if is_execution_enabled(state, block):
-        # [New in Merge]
         randao_mix = get_randao_mix(state, get_current_epoch(state))
         process_execution_payload(state, block.body.execution_payload, randao_mix, EXECUTION_ENGINE)
 ```
@@ -252,6 +251,7 @@ This helper function is only for initializing the state for pure Merge testnets 
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
+    randao_seed = eth1_block_hash
     fork = Fork(
         previous_version=GENESIS_FORK_VERSION,
         current_version=MERGE_FORK_VERSION,  # [Modified in Merge]
@@ -262,7 +262,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
+        randao_mixes=[randao_seed] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
     )
 
     # Process deposits
@@ -296,7 +296,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         timestamp=eth1_timestamp,
         receipt_root=Bytes32(),
         logs_bloom=ByteVector[BYTES_PER_LOGS_BLOOM](),
-        randao=eth1_block_hash,
+        randao=randao_seed,
         transactions_root=Root(),
     )
 
