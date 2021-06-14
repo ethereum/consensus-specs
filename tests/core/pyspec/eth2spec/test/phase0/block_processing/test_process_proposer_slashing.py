@@ -35,6 +35,14 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
 @with_all_phases
 @spec_state_test
 def test_success(spec, state):
+    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
+
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
+
+
+@with_all_phases
+@spec_state_test
+def test_success_slashed_and_proposer_index_the_same(spec, state):
     # Get proposer for next slot
     block = build_empty_block_for_next_slot(spec, state)
     proposer_index = block.proposer_index
@@ -43,14 +51,6 @@ def test_success(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state,
                                                     slashed_index=proposer_index,
                                                     signed_1=True, signed_2=True)
-
-    yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
-
-
-@with_all_phases
-@spec_state_test
-def test_success_slashed_and_proposer_index_the_same(spec, state):
-    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
 
