@@ -73,12 +73,13 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=
 
 
 def get_valid_proposer_slashing(spec, state, random_root=b'\x99' * 32,
-                                slashed_index=None, signed_1=False, signed_2=False):
+                                slashed_index=None, slot=None, signed_1=False, signed_2=False):
     if slashed_index is None:
         current_epoch = spec.get_current_epoch(state)
         slashed_index = spec.get_active_validator_indices(state, current_epoch)[-1]
     privkey = pubkey_to_privkey[state.validators[slashed_index].pubkey]
-    slot = state.slot
+    if slot is None:
+        slot = state.slot
 
     header_1 = spec.BeaconBlockHeader(
         slot=slot,
