@@ -1,3 +1,7 @@
+def build_empty_execution_payload_with_randao(spec, state):
+    return build_empty_execution_payload(spec, state, spec.Bytes32())
+
+
 def build_empty_execution_payload(spec, state, randao_mix):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
@@ -24,6 +28,7 @@ def build_empty_execution_payload(spec, state, randao_mix):
     payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))
 
     return payload
+
 
 def get_execution_payload_header(spec, execution_payload):
     return spec.ExecutionPayloadHeader(

@@ -95,9 +95,9 @@ def get_execution_payload(state: BeaconState,
             return ExecutionPayload()
         else:
             # Signify merge via producing on top of the last PoW block
-            return produce_execution_payload(state, pow_block.block_hash, randao_reveal)
+            return produce_execution_payload(state, pow_block.block_hash, randao_reveal, execution_engine)
 
     # Post-merge, normal payload
     parent_hash = state.latest_execution_payload_header.block_hash
-    return produce_execution_payload(state, parent_hash, randao_reveal)
+    return produce_execution_payload(state, parent_hash, randao_reveal, execution_engine)
 ```
