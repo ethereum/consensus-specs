@@ -263,9 +263,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = hash_tree_root(state.validators)
 
-    # Initialize the execution payload header (with block number set to 0)
-    state.latest_execution_payload_header.block_hash = eth1_block_hash  # [New in Merge]
-    state.latest_execution_payload_header.timestamp = eth1_timestamp  # [New in Merge]
+    # [New in Merge] Initialize the execution payload header (with block number set to 0)
+    state.latest_execution_payload_header.block_hash = eth1_block_hash
+    state.latest_execution_payload_header.timestamp = eth1_timestamp
 
     return state
 ```
