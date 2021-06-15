@@ -74,17 +74,20 @@ def on_tick_and_append_step(spec, store, time, test_steps):
 
 
 def run_on_block(spec, store, signed_block, test_steps, valid=True):
+    yield get_block_file_name(signed_block), signed_block
     if not valid:
         try:
             spec.on_block(store, signed_block)
-
         except AssertionError:
+            test_steps.append({
+                'block': get_block_file_name(signed_block),
+                'valid': True,
+            })
             return
         else:
             assert False
 
     spec.on_block(store, signed_block)
-    yield get_block_file_name(signed_block), signed_block
     test_steps.append({'block': get_block_file_name(signed_block)})
 
     # An on_block step implies receiving block's attestations
