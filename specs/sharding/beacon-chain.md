@@ -470,7 +470,7 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
 ```python
 def compute_shard_from_committee_index(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Shard:
     active_shards = get_active_shard_count(state, compute_epoch_at_slot(slot))
-    assert index < active_shards
+    require(index < active_shards)
     return Shard((index + get_start_shard(state, slot)) % active_shards)
 ```
 
@@ -481,7 +481,7 @@ def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Sh
     epoch = compute_epoch_at_slot(slot)
     active_shards = get_active_shard_count(state, epoch)
     index = CommitteeIndex((active_shards + shard - get_start_shard(state, slot)) % active_shards)
-    assert index < get_committee_count_per_slot(state, epoch)
+    require(index < get_committee_count_per_slot(state, epoch))
     return index
 ```
 
