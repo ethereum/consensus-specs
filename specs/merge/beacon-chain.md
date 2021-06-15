@@ -34,14 +34,14 @@
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`process_execution_payload`](#process_execution_payload)
-- [Initialize state for pure Merge testnets and test vectors](#initialize-state-for-pure-merge-testnets-and-test-vectors)
+- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This patch adds transaction execution to the beacon chain as part of the merge.
+This patch adds transaction execution to the beacon chain as part of the Merge fork.
 
 ## Custom types
 
@@ -222,11 +222,11 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     )
 ```
 
-## Initialize state for pure Merge testnets and test vectors
+## Testing
 
-This helper function is only for initializing the state for pure Merge testnets and tests.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Merge testing only.
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified: (1) using `MERGE_FORK_VERSION` as the current fork version, (2) utilizing the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`, and (3) adding initial `latest_execution_payload_header`.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified to use `MERGE_FORK_VERSION` and initialize `latest_execution_payload_header`.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
@@ -263,21 +263,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = hash_tree_root(state.validators)
 
-    # [New in Merge] Construct execution payload header
-    # Note: initialized with zero block height
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        block_hash=eth1_block_hash,
-        parent_hash=Hash32(),
-        coinbase=Bytes20(),
-        state_root=Bytes32(),
-        number=uint64(0),
-        gas_limit=uint64(0),
-        gas_used=uint64(0),
-        timestamp=eth1_timestamp,
-        receipt_root=Bytes32(),
-        logs_bloom=ByteVector[BYTES_PER_LOGS_BLOOM](),
-        transactions_root=Root(),
-    )
+    # Initialize the execution payload header (with block number set to 0)
+    state.latest_execution_payload_header.block_hash = eth1_block_hash  # [New in Merge]
+    state.latest_execution_payload_header.timestamp = eth1_timestamp  # [New in Merge]
 
     return state
 ```
