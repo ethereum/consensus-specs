@@ -9,7 +9,7 @@ def run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=True
       - pre-state ('pre')
       - voluntary_exit ('voluntary_exit')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     validator_index = signed_voluntary_exit.message.validator_index
 

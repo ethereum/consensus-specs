@@ -1,4 +1,6 @@
 import pytest
+
+from eth2spec.test.exceptions import ValidationError
 from .merkle_minimal import zerohashes, merkleize_chunks, get_merkle_root
 from .hash_function import hash
 
@@ -71,7 +73,7 @@ def test_merkleize_chunks_and_get_merkle_root(count, limit, value):
         try:
             merkleize_chunks(chunks, limit=limit)
             bad = True
-        except AssertionError:
+        except (ValidationError, AssertionError):
             pass
         if bad:
             assert False, "expected merkleization to be invalid"

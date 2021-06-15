@@ -14,7 +14,7 @@ def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=Tru
       - pre-state ('pre')
       - custody_key_reveal ('custody_key_reveal')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     yield 'pre', state
     yield 'custody_key_reveal', custody_key_reveal

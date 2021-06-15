@@ -3,6 +3,7 @@ from eth2spec.test.context import (
     always_bls, with_phases, with_all_phases,
 )
 from eth2spec.test.helpers.constants import PHASE0
+from eth2spec.test.exceptions import ValidationError
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
@@ -29,7 +30,7 @@ def run_get_committee_assignment(spec, state, epoch, validator_index, valid=True
         assert committee_index < spec.get_committee_count_per_slot(state, epoch)
         assert validator_index in committee
         assert valid
-    except AssertionError:
+    except (ValidationError, AssertionError):
         assert not valid
     else:
         assert valid

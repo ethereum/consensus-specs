@@ -16,7 +16,7 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
       - pre-state ('pre')
       - randao_key_reveal ('randao_key_reveal')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     yield 'pre', state
     yield 'randao_key_reveal', randao_key_reveal

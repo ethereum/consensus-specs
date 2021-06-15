@@ -228,7 +228,7 @@ def get_committee_assignment(state: BeaconState,
     Return None if no assignment.
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    assert epoch <= next_epoch
+    require(epoch <= next_epoch)
 
     start_slot = compute_start_slot_at_epoch(epoch)
     committee_count_per_slot = get_committee_count_per_slot(state, epoch)

@@ -1,2 +1,6 @@
 class SkippedTest(Exception):
     ...
+
+
+class ValidationError(Exception):
+    ...

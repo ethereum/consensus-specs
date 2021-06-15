@@ -97,7 +97,7 @@ This should be the genesis state for a full client.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
-    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    require(anchor_block.state_root == hash_tree_root(anchor_state))
     anchor_root = hash_tree_root(anchor_block)
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
@@ -268,24 +268,24 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
     # If attestation target is from a future epoch, delay consideration until the epoch arrives
-    assert target.epoch in [current_epoch, previous_epoch]
-    assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
+    require(target.epoch in [current_epoch, previous_epoch])
+    require(target.epoch == compute_epoch_at_slot(attestation.data.slot))
 
     # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
-    assert target.root in store.blocks
+    require(target.root in store.blocks)
 
     # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
-    assert attestation.data.beacon_block_root in store.blocks
+    require(attestation.data.beacon_block_root in store.blocks)
     # Attestations must not be for blocks in the future. If not, the attestation should not be considered
-    assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
+    require(store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot)
 
     # LMD vote must be consistent with FFG vote target
     target_slot = compute_start_slot_at_epoch(target.epoch)
-    assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
+    require(target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot))
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
-    assert get_current_slot(store) >= attestation.data.slot + 1
+    require(get_current_slot(store) >= attestation.data.slot + 1)
 ```
 
 ##### `store_target_checkpoint_state`
@@ -338,17 +338,17 @@ def on_tick(store: Store, time: uint64) -> None:
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
-    assert block.parent_root in store.block_states
+    require(block.parent_root in store.block_states)
     # Make a copy of the state to avoid mutability issues
     pre_state = copy(store.block_states[block.parent_root])
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
-    assert get_current_slot(store) >= block.slot
+    require(get_current_slot(store) >= block.slot)
 
     # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert block.slot > finalized_slot
+    require(block.slot > finalized_slot)
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
+    require(get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
@@ -399,7 +399,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # Get state at the `target` to fully validate attestation
     target_state = store.checkpoint_states[attestation.data.target]
     indexed_attestation = get_indexed_attestation(target_state, attestation)
-    assert is_valid_indexed_attestation(target_state, indexed_attestation)
+    require(is_valid_indexed_attestation(target_state, indexed_attestation))
 
     # Update latest messages for attesting indices
     update_latest_messages(store, indexed_attestation.attesting_indices, attestation)

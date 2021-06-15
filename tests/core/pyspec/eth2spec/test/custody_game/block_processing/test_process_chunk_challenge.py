@@ -27,7 +27,7 @@ def run_chunk_challenge_processing(spec, state, custody_chunk_challenge, valid=T
       - pre-state ('pre')
       - CustodyBitChallenge ('custody_chunk_challenge')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     yield 'pre', state
     yield 'custody_chunk_challenge', custody_chunk_challenge
@@ -53,7 +53,7 @@ def run_custody_chunk_response_processing(spec, state, custody_response, valid=T
       - pre-state ('pre')
       - CustodyResponse ('custody_response')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
     yield 'pre', state
     yield 'custody_response', custody_response

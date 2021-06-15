@@ -23,7 +23,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
       - pre-state ('pre')
       - attester_slashing ('attester_slashing')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
+    If ``valid == False``, run expecting ``ValidationError``
     """
 
     yield 'pre', state

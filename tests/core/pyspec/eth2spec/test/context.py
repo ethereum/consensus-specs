@@ -5,7 +5,7 @@ from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_alta
 from eth2spec.merge import mainnet as spec_merge_mainnet, minimal as spec_merge_minimal
 from eth2spec.utils import bls
 
-from .exceptions import SkippedTest
+from .exceptions import SkippedTest, ValidationError
 from .helpers.constants import (
     SpecForkName, PresetBaseName,
     PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
@@ -231,9 +231,7 @@ def expect_assertion_error(fn):
     try:
         fn()
         bad = True
-    except AssertionError:
-        pass
-    except IndexError:
+    except (ValidationError, AssertionError, IndexError):
         # Index errors are special; the spec is not explicit on bound checking, an IndexError is like a failed assert.
         pass
     if bad:
