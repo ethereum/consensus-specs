@@ -608,7 +608,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     assert committee_work.status.selector == SHARD_WORK_PENDING
 
     # Check that this header is not yet in the pending list
-    current_headers: MutableSequence[PendingShardHeader] = committee_work.status.value
+    current_headers: List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD] = committee_work.status.value
     header_root = hash_tree_root(header)
     assert header_root not in [pending_header.root for pending_header in current_headers]
 
