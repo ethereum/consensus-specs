@@ -576,12 +576,12 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
         # TODO In Altair: set participation bit flag for voters of this early winning header
         if pending_header.commitment == DataCommitment():
             # The committee voted to not confirm anything
-            state.shard_buffer[buffer_index][attestation_shard].change(
+            state.shard_buffer[buffer_index][attestation_shard].status.change(
                 selector=SHARD_WORK_UNCONFIRMED,
                 value=None,
             )
         else:
-            state.shard_buffer[buffer_index][attestation_shard].change(
+            state.shard_buffer[buffer_index][attestation_shard].status.change(
                 selector=SHARD_WORK_CONFIRMED,
                 value=pending_header.commitment,
             )
@@ -785,7 +785,7 @@ def reset_pending_shard_work(state: BeaconState) -> None:
             shard = (start_shard + committee_index) % active_shards
             # a committee is available, initialize a pending shard-header list
             committee_length = len(get_beacon_committee(state, slot, committee_index))
-            state.shard_buffer[buffer_index][shard].change(
+            state.shard_buffer[buffer_index][shard].status.change(
                 selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                     PendingShardHeader(
