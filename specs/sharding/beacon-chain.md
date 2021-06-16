@@ -784,7 +784,7 @@ def reset_pending_shard_work(state: BeaconState) -> None:
         for committee_index in range(committees_per_slot):
             shard = (start_shard + committee_index) % active_shards
             # a committee is available, initialize a pending shard-header list
-            committee_length = len(get_beacon_committee(state, slot, committee_index))
+            committee_length = len(get_beacon_committee(state, slot, CommitteeIndex(committee_index)))
             state.shard_buffer[buffer_index][shard].change(
                 selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
