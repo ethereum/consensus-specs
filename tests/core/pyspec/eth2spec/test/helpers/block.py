@@ -35,11 +35,6 @@ def apply_randao_reveal(spec, state, block, proposer_index=None):
     block.body.randao_reveal = bls.Sign(privkey, signing_root)
 
 
-def compute_randao_mix(spec, state, randao_reveal):
-    epoch = spec.get_current_epoch(state)
-    return spec.xor(spec.get_randao_mix(state, epoch), spec.hash(randao_reveal))
-
-
 # Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.
 @only_with_bls()
 def apply_sig(spec, state, signed_block, proposer_index=None):
@@ -104,7 +99,7 @@ def build_empty_block(spec, state, slot=None):
         empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
     if is_post_merge(spec):
-        randao_mix = compute_randao_mix(spec, state, empty_block.body.randao_reveal)
+        randao_mix = spec.compute_randao_mix(state, empty_block.body.randao_reveal)
         empty_block.body.execution_payload = build_empty_execution_payload(spec, state, randao_mix)
 
     return empty_block

@@ -532,7 +532,7 @@ class NoopExecutionEngine(ExecutionEngine):
     def finalize_block(self, block_hash: Hash32) -> bool:
         return True
 
-    def assemble_block(self, block_hash: Hash32, timestamp: uint64, randao: Bytes32) -> ExecutionPayload:
+    def assemble_block(self, block_hash: Hash32, timestamp: uint64, random: Bytes32) -> ExecutionPayload:
         raise NotImplementedError("no default block production")
 
 

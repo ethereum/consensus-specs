@@ -105,7 +105,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    randao: Bytes32  # 'difficulty' in the yellow paper
+    random: Bytes32  # 'difficulty' in the yellow paper
     transactions: List[OpaqueTransaction, MAX_EXECUTION_TRANSACTIONS]
 ```
 
@@ -127,7 +127,7 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    randao: Bytes32
+    random: Bytes32
     transactions_root: Root
 ```
 
@@ -219,7 +219,7 @@ def process_execution_payload(state: BeaconState,
     if is_transition_completed(state):
         assert execution_payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert execution_payload.number == state.latest_execution_payload_header.number + 1
-        assert execution_payload.randao == randao_mix
+        assert execution_payload.random == randao_mix
 
     assert execution_payload.timestamp == compute_time_at_slot(state, state.slot)
 
@@ -236,7 +236,7 @@ def process_execution_payload(state: BeaconState,
         timestamp=execution_payload.timestamp,
         receipt_root=execution_payload.receipt_root,
         logs_bloom=execution_payload.logs_bloom,
-        randao=execution_payload.randao,
+        random=execution_payload.random,
         transactions_root=hash_tree_root(execution_payload.transactions),
     )
 ```
@@ -296,7 +296,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         timestamp=eth1_timestamp,
         receipt_root=Bytes32(),
         logs_bloom=ByteVector[BYTES_PER_LOGS_BLOOM](),
-        randao=randao_seed,
+        random=randao_seed,
         transactions_root=Root(),
     )
 

@@ -1,8 +1,8 @@
-def build_empty_execution_payload_with_randao(spec, state):
+def build_empty_execution_payload_with_zeroed_random(spec, state):
     return build_empty_execution_payload(spec, state, spec.Bytes32())
 
 
-def build_empty_execution_payload(spec, state, randao_mix):
+def build_empty_execution_payload(spec, state, random):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
@@ -21,7 +21,7 @@ def build_empty_execution_payload(spec, state, randao_mix):
         timestamp=timestamp,
         receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
-        randao=randao_mix,
+        random=random,
         transactions=empty_txs,
     )
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
@@ -42,7 +42,7 @@ def get_execution_payload_header(spec, execution_payload):
         timestamp=execution_payload.timestamp,
         receipt_root=execution_payload.receipt_root,
         logs_bloom=execution_payload.logs_bloom,
-        randao=execution_payload.randao,
+        random=execution_payload.random,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
 

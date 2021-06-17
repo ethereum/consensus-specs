@@ -49,7 +49,7 @@ The body of this function is implementation dependent.
 The Consensus API may be used to implement this with an external execution engine.
 
 ```python
-def assemble_block(self: ExecutionEngine, block_hash: Hash32, timestamp: uint64, randao: Bytes32) -> ExecutionPayload:
+def assemble_block(self: ExecutionEngine, block_hash: Hash32, timestamp: uint64, random: Bytes32) -> ExecutionPayload:
     ...
 ```
 
@@ -80,8 +80,8 @@ def produce_execution_payload(state: BeaconState,
                               randao_reveal: BLSSignature,
                               execution_engine: ExecutionEngine) -> ExecutionPayload:
     timestamp = compute_time_at_slot(state, state.slot)
-    randao = compute_randao_mix(state, randao_reveal)
-    return execution_engine.assemble_block(parent_hash, timestamp, randao)
+    randao_mix = compute_randao_mix(state, randao_reveal)
+    return execution_engine.assemble_block(parent_hash, timestamp, randao_mix)
 
 
 def get_execution_payload(state: BeaconState,
