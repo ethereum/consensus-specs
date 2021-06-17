@@ -523,7 +523,7 @@ def get_pow_chain_head() -> PowBlock:
 
 class NoopExecutionEngine(ExecutionEngine):
 
-    def new_block(self, execution_payload: ExecutionPayload) -> bool:
+    def on_payload(self, execution_payload: ExecutionPayload) -> bool:
         return True
 
     def set_head(self, block_hash: Hash32) -> bool:
