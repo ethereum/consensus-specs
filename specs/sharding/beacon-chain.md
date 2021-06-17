@@ -43,7 +43,6 @@
   - [Beacon state accessors](#beacon-state-accessors)
     - [Updated `get_committee_count_per_slot`](#updated-get_committee_count_per_slot)
     - [`get_active_shard_count`](#get_active_shard_count)
-    - [`get_shard_committee`](#get_shard_committee)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_start_shard`](#get_start_shard)
@@ -369,24 +368,6 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
     return INITIAL_ACTIVE_SHARDS
 ```
 
-#### `get_shard_committee`
-
-```python
-def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -> Sequence[ValidatorIndex]:
-    """
-    Return the shard committee of the given ``epoch`` of the given ``shard``.
-    """
-    source_epoch = compute_committee_source_epoch(epoch, SHARD_COMMITTEE_PERIOD)
-    active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
-    seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    return compute_committee(
-        indices=active_validator_indices,
-        seed=seed,
-        index=shard,
-        count=get_active_shard_count(beacon_state, epoch),
-    )
-```
-
 #### `compute_proposer_index`
 
 Updated version to get a proposer index that will only allow proposers with a certain minimum balance,
@@ -423,8 +404,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     Return the proposer's index of shard block at ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER) + uint_to_bytes(slot))
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER) + uint_to_bytes(slot) + uint_to_bytes(shard))
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
@@ -435,7 +415,8 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
         beacon_state.shard_gasprice * MAX_SAMPLES_PER_BLOCK // TARGET_SAMPLES_PER_BLOCK
         + EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION
     )
-    return compute_proposer_index(beacon_state, committee, seed, min_effective_balance)
+    indices = get_active_validator_indices(state, epoch)
+    return compute_proposer_index(beacon_state, indices, seed, min_effective_balance)
 ```
 
 #### `get_start_shard`
