@@ -416,7 +416,7 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
     state (forked from genesis):
         epoch
         [0] <- [1] <- [2] <- [3] <- [4] <- [5]
-         F                    J
+         F                           J
 
     another_state (forked from genesis):
         [0] <- [1] <- [2] <- [3] <- [4] <- [5]
@@ -437,9 +437,10 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
     for block in signed_blocks:
         spec.on_tick(store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT)
         run_on_block(spec, store, block)
-    # Skip epoch 2
-    next_epoch(spec, state)
-    # Fill epoch 3 & 4 with previous epoch attestations
+    # Skip epoch 2 & 3
+    for _ in range(2):
+        next_epoch(spec, state)
+    # Fill epoch 4 & 5 with previous epoch attestations
     for _ in range(2):
         _, signed_blocks, state = next_epoch_with_attestations(spec, state, False, True)
         for block in signed_blocks:
@@ -447,7 +448,7 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
             run_on_block(spec, store, block)
 
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 0
-    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
     assert store.justified_checkpoint.hash_tree_root() == state.current_justified_checkpoint.hash_tree_root()
 
     # Create another chain
