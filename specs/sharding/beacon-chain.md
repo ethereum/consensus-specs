@@ -9,6 +9,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+  - [Glossary](#glossary)
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
@@ -23,15 +24,25 @@
 - [Updated containers](#updated-containers)
   - [`AttestationData`](#attestationdata)
   - [`BeaconBlockBody`](#beaconblockbody)
+  - [`Builder`](#builder)
   - [`BeaconState`](#beaconstate)
 - [New containers](#new-containers)
   - [`DataCommitment`](#datacommitment)
+  - [ShardBlobBody](#shardblobbody)
   - [`ShardBlobBodySummary`](#shardblobbodysummary)
+  - [`ShardBlob`](#shardblob)
   - [`ShardBlobHeader`](#shardblobheader)
+  - [`SignedShardBlob`](#signedshardblob)
   - [`SignedShardBlobHeader`](#signedshardblobheader)
+  - [ShardBlock](#shardblock)
+  - [`ShardBlockHeader`](#shardblockheader)
+  - [`SignedShardBlock`](#signedshardblock)
+  - [`SignedShardBlockHeader`](#signedshardblockheader)
   - [`PendingShardHeader`](#pendingshardheader)
   - [`ShardBlobReference`](#shardblobreference)
   - [`SignedShardBlobReference`](#signedshardblobreference)
+  - [`ShardBlockReference`](#shardblockreference)
+  - [`SignedShardBlockReference`](#signedshardblockreference)
   - [`ShardProposerSlashing`](#shardproposerslashing)
   - [`ShardWork`](#shardwork)
 - [Helper functions](#helper-functions)
@@ -51,6 +62,7 @@
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [Extended Attestation processing](#extended-attestation-processing)
+    - [`charge_builder`](#charge_builder)
       - [`process_shard_header`](#process_shard_header)
       - [`process_shard_proposer_slashing`](#process_shard_proposer_slashing)
   - [Epoch transition](#epoch-transition)
@@ -68,6 +80,13 @@ This document describes the extensions made to the Phase 0 design of The Beacon 
 based on the ideas [here](https://hackmd.io/G-Iy5jqyT7CXWEz8Ssos8g) and more broadly [here](https://arxiv.org/abs/1809.09044),
 using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
+### Glossary
+
+- **Data**: A list of KZG points, to translate a byte string into
+- **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
+- **Builder**: Builds blobs and bids for proposal slots with fee-paying blob-headers, responsible for availability.
+- **Shard proposer**: Validator, selects a signed blob-header, taking bids for shard data opportunity.
+- **Shard block**: Unique per `(slot, shard, proposer)`, selected signed blob 
 
 ## Custom types
 
@@ -78,6 +97,7 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | A shard number |
 | `BLSCommitment` | `Bytes48` | A G1 curve point |
 | `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
+| `BuilderIndex` | `uint64` | Builder registry index |
 
 ## Constants
 
@@ -97,7 +117,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+| `DOMAIN_SHARD_BUILDER` | `DomainType('0x81000000')` |
 
 ### Shard Work Status
 
@@ -118,6 +138,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
+| `BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | builders |
 
 ### Shard block samples
 
@@ -162,8 +183,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Shard header root
-    shard_header_root: Root  # [New in Sharding]
+    # Hash-tree-root of ShardBlock
+    shard_block_root: Root  # [New in Sharding]
 ```
 
 ### `BeaconBlockBody`
@@ -171,7 +192,16 @@ class AttestationData(Container):
 ```python
 class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
     shard_proposer_slashings: List[ShardProposerSlashing, MAX_SHARD_PROPOSER_SLASHINGS]
-    shard_headers: List[SignedShardBlobHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
+    shard_headers: List[SignedShardBlockHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
+```
+
+### `Builder`
+
+```python
+class Builder(Container):
+    pubkey: BLSPubkey
+    # TODO: fields for either an expiry mechanism (refunding execution account with remaining balance) 
+    #  and/or a builder-transaction mechanism.
 ```
 
 ### `BeaconState`
@@ -182,15 +212,15 @@ class BeaconState(merge.BeaconState):
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # [New fields]
+    # Builder registry.
+    builders: List[Builder, BUILDER_REGISTRY_LIMIT]
+    builder_balances: List[Gwei, BUILDER_REGISTRY_LIMIT]
     # A ring buffer of the latest slots, with information per active shard.
     shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
     shard_gasprice: uint64
 ```
 
 ## New containers
-
-The shard data itself is network-layer only, and can be found in the [P2P specification](./p2p-interface.md).
-The beacon chain registers just the commitments of the shard data.
 
 ### `DataCommitment`
 
@@ -202,7 +232,32 @@ class DataCommitment(Container):
     length: uint64
 ```
 
+### ShardBlobBody
+
+Unsigned shard data, bundled by a shard-builder.
+Unique, signing different bodies as shard proposer for the same `(slot, shard)` is slashable.
+
+```python
+class ShardBlobBody(Container):
+    # The actual data commitment
+    commitment: DataCommitment
+    # Proof that the degree < commitment.length
+    degree_proof: BLSCommitment
+    # The actual data. Should match the commitment and degree proof.
+    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
+    # Latest block root of the Beacon Chain, before shard_blob.slot
+    beacon_block_root: Root
+    # Builder of the data, pays data-fee to proposer
+    builder_index: BuilderIndex
+    # TODO: fee payment amount fields (EIP 1559 like)
+```
+
 ### `ShardBlobBodySummary`
+
+Summary version of the `ShardBlobBody`, omitting the data payload, while preserving the data-commitments.
+
+The commitments are not further collapsed to a single hash, 
+to avoid an extra network roundtrip between proposer and builder, to include the header on-chain more quickly.
 
 ```python
 class ShardBlobBodySummary(Container):
@@ -214,26 +269,100 @@ class ShardBlobBodySummary(Container):
     data_root: Root
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
+    # Builder of the data, pays data-fee to proposer
+    builder_index: BuilderIndex
+    # TODO: fee payment amount fields (EIP 1559 like)
+```
+
+### `ShardBlob`
+
+`ShardBlobBody` wrapped with the header data that is unique to the shard blob proposal.
+
+```python
+class ShardBlob(Container):
+    slot: Slot
+    shard: Shard
+    # Blob contents
+    body: ShardBlobBody
 ```
 
 ### `ShardBlobHeader`
 
+Header version of `ShardBlob`. Separates designation (slot, shard) and contents (blob).
+
 ```python
 class ShardBlobHeader(Container):
-    # Slot and shard that this header is intended for
     slot: Slot
     shard: Shard
-    # SSZ-summary of ShardBlobBody
+    # Blob contents, without the full data
     body_summary: ShardBlobBodySummary
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
+```
+
+### `SignedShardBlob`
+
+Full blob data, signed by the shard builder, ensuring fee payment.
+
+```python
+class SignedShardBlob(Container):
+    message: ShardBlob
+    signature: BLSSignature
 ```
 
 ### `SignedShardBlobHeader`
 
+Header of the blob, the signature is equally applicable to `SignedShardBlob`.
+Shard proposers can accept `SignedShardBlobHeader` as a data-transaction.
+
 ```python
 class SignedShardBlobHeader(Container):
     message: ShardBlobHeader
+    signature: BLSSignature
+```
+
+### ShardBlock
+
+Full blob data signed by builder, to be confirmed by proxy as `ShardBlockHeader`.
+
+```python
+class ShardBlock(Container):
+    # Shard data with fee payment by bundle builder
+    signed_blob: SignedShardBlob
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+```
+
+### `ShardBlockHeader`
+
+Header version of `ShardBlock`, selecting a `SignedShardBlobHeader`.
+
+```python
+class ShardBlockHeader(Container):
+    # Shard commitments and fee payment by blob builder
+    signed_blob_header: SignedShardBlobHeader
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+```
+
+### `SignedShardBlock`
+
+Shard blob, signed for payment, and signed for proposal. Propagated to attesters.
+
+```python
+class SignedShardBlock(Container):
+    message: ShardBlock
+    signature: BLSSignature
+```
+
+### `SignedShardBlockHeader`
+
+Header version of `SignedShardBlock`, substituting the full data within the blob for just the hash-tree-root.
+
+The signature is equally applicable to `SignedShardBlock`, 
+which the builder can publish as soon as the signed header is seen. 
+
+```python
+class SignedShardBlockHeader(Container):
+    message: ShardBlockHeader
     signature: BLSSignature
 ```
 
@@ -243,7 +372,7 @@ class SignedShardBlobHeader(Container):
 class PendingShardHeader(Container):
     # KZG10 commitment to the data
     commitment: DataCommitment
-    # hash_tree_root of the ShardHeader (stored so that attestations can be checked against it)
+    # hash_tree_root of the ShardBlockHeader (stored so that attestations can be checked against it)
     root: Root
     # Who voted for the header
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
@@ -255,18 +384,19 @@ class PendingShardHeader(Container):
 
 ### `ShardBlobReference`
 
+Reference version of `ShardBlobHeader`, substituting the body for just a hash-tree-root.
+
 ```python
 class ShardBlobReference(Container):
-    # Slot and shard that this reference is intended for
     slot: Slot
     shard: Shard
-    # Hash-tree-root of ShardBlobBody
+    # Blob hash-tree-root for reference, enough for uniqueness
     body_root: Root
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
 ```
 
 ### `SignedShardBlobReference`
+
+`ShardBlobReference`, signed by the blob builder. The builder-signature is part of the block identity.
 
 ```python
 class SignedShardBlobReference(Container):
@@ -274,12 +404,30 @@ class SignedShardBlobReference(Container):
     signature: BLSSignature
 ```
 
+### `ShardBlockReference`
+
+```python
+class ShardBlockReference(Container):
+    # Blob, minimized for efficient slashing
+    signed_blob_reference: SignedShardBlobReference
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+```
+
+### `SignedShardBlockReference`
+
+```python
+class SignedShardBlockReference(Container):
+    message: ShardBlockReference
+    signature: BLSSignature
+```
+
 ### `ShardProposerSlashing`
 
 ```python
 class ShardProposerSlashing(Container):
-    signed_reference_1: SignedShardBlobReference
-    signed_reference_2: SignedShardBlobReference
+    signed_reference_1: SignedShardBlockReference
+    signed_reference_2: SignedShardBlockReference
 ```
 
 ### `ShardWork`
@@ -516,7 +664,7 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
     current_headers: Sequence[PendingShardHeader] = committee_work.status.value
 
     # Find the corresponding header, abort if it cannot be found
-    header_index = [header.root for header in current_headers].index(attestation.data.shard_header_root)
+    header_index = [header.root for header in current_headers].index(attestation.data.shard_block_root)
 
     pending_header: PendingShardHeader = current_headers[header_index]
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
@@ -554,36 +702,63 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
             )
 ```
 
+
+#### `charge_builder`
+
+```python
+def charge_builder(state: BeaconState, index: BuilderIndex, fee: Gwei) -> None:
+    """
+    Decrease the builder balance at index ``index`` by ``fee``, with underflow check.
+    """
+    assert state.builder_balances[index] >= fee
+    state.builder_balances[index] -= fee
+```
+
 ##### `process_shard_header`
 
 ```python
-def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeader) -> None:
-    header = signed_header.message
+def process_shard_header(state: BeaconState, signed_block_header: SignedShardBlockHeader) -> None:
+    block_header: ShardBlockHeader = signed_block_header.message
+    signed_blob_header: SignedShardBlobHeader = block_header.signed_blob_header
+    blob_header: ShardBlobHeader = signed_blob_header.message
+    slot = blob_header.slot
+    shard = blob_header.shard
+
     # Verify the header is not 0, and not from the future.
-    assert Slot(0) < header.slot <= state.slot
-    header_epoch = compute_epoch_at_slot(header.slot)
+    assert Slot(0) < slot <= state.slot
+    header_epoch = compute_epoch_at_slot(slot)
     # Verify that the header is within the processing time window
     assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
     # Verify that the shard is active
-    assert header.shard < get_active_shard_count(state, header_epoch)
+    assert shard < get_active_shard_count(state, header_epoch)
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
+    assert blob_header.body_summary.beacon_block_root == get_block_root_at_slot(state, slot - 1)
 
     # Check that this data is still pending
-    committee_work = state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.shard]
+    committee_work = state.shard_buffer[slot % SHARD_STATE_MEMORY_SLOTS][shard]
     assert committee_work.status.selector == SHARD_WORK_PENDING
 
     # Check that this header is not yet in the pending list
     current_headers: List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD] = committee_work.status.value
-    header_root = hash_tree_root(header)
+    header_root = hash_tree_root(block_header)
     assert header_root not in [pending_header.root for pending_header in current_headers]
 
     # Verify proposer
-    assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
-    # Verify signature
-    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSER))
-    assert bls.Verify(state.validators[header.proposer_index].pubkey, signing_root, signed_header.signature)
+    assert block_header.proposer_index == get_shard_proposer_index(state, slot, shard)
+    # Verify proposer signature
+    block_signing_root = compute_signing_root(block_header, get_domain(state, DOMAIN_SHARD_PROPOSER))
+    proposer_pubkey = state.validators[block_header.proposer_index].pubkey
+    assert bls.Verify(proposer_pubkey, block_signing_root, signed_block_header.signature)
+
+    # Verify builder requirements
+    blob_summary: ShardBlobBodySummary = blob_header.body_summary
+    builder_index = blob_summary.builder_index
+
+    # Verify builder signature
+    builder = state.builders[builder_index]
+    blob_signing_root = compute_signing_root(blob_header, get_domain(state, DOMAIN_SHARD_BUILDER))  # TODO new constant
+    assert bls.Verify(builder.pubkey, blob_signing_root, signed_blob_header.signature)
 
     # Verify the length by verifying the degree.
     body_summary = header.body_summary
@@ -594,12 +769,16 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
         == bls.Pairing(body_summary.commitment.point, G2_SETUP[-body_summary.commitment.length])
     )
 
+    # Charge builder, with hard balance requirement
+    fee = Gwei(123)  # TODO
+    charge_builder(state, builder_index, fee)
+
     # Initialize the pending header
-    index = compute_committee_index_from_shard(state, header.slot, header.shard)
-    committee_length = len(get_beacon_committee(state, header.slot, index))
+    index = compute_committee_index_from_shard(state, slot, shard)
+    committee_length = len(get_beacon_committee(state, slot, index))
     initial_votes = Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length)
     pending_header = PendingShardHeader(
-        commitment=body_summary.commitment,
+        commitment=blob_summary.commitment,
         root=header_root,
         votes=initial_votes,
         weight=0,
@@ -619,17 +798,22 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 
 ```python
 def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
-    reference_1 = proposer_slashing.signed_reference_1.message
-    reference_2 = proposer_slashing.signed_reference_2.message
+    reference_1: ShardBlockReference = proposer_slashing.signed_reference_1.message
+    reference_2 : ShardBlockReference = proposer_slashing.signed_reference_2.message
+    blob_1 = reference_1.signed_blob_reference.message
+    blob_2 = reference_2.signed_blob_reference.message
 
     # Verify header slots match
-    assert reference_1.slot == reference_2.slot
+    assert blob_1.slot == blob_2.slot
     # Verify header shards match
-    assert reference_1.shard == reference_2.shard
+    assert blob_1.shard == blob_2.shard
     # Verify header proposer indices match
     assert reference_1.proposer_index == reference_2.proposer_index
-    # Verify the headers are different (i.e. different body)
-    assert reference_1 != reference_2
+    # Verify the headers are different (i.e. different body, or different builder signature)
+    assert (
+            blob_1.body_root != blob_2.body_root 
+            or reference_1.signed_blob_reference.signature != reference_2.signed_blob_reference.signature
+    )
     # Verify the proposer is slashable
     proposer = state.validators[reference_1.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))

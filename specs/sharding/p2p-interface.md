@@ -11,10 +11,6 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [Misc](#misc)
-- [New containers](#new-containers)
-  - [ShardBlobBody](#shardblobbody)
-  - [ShardBlob](#shardblob)
-  - [SignedShardBlob](#signedshardblob)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
     - [Shard blob subnets](#shard-blob-subnets)
@@ -39,47 +35,6 @@ The adjustments and additions for Shards are outlined in this document.
 | Name | Value | Description |
 | ---- | ----- | ----------- |
 | `SHARD_BLOB_SUBNET_COUNT` | `64` | The number of `shard_blob_{subnet_id}` subnets used in the gossipsub protocol. |
-
-## New containers
-
-### ShardBlobBody
-
-```python
-class ShardBlobBody(Container):
-    # The actual data commitment
-    commitment: DataCommitment
-    # Proof that the degree < commitment.length
-    degree_proof: BLSCommitment
-    # The actual data. Should match the commitment and degree proof.
-    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
-    # Latest block root of the Beacon Chain, before shard_blob.slot
-    beacon_block_root: Root
-```
-
-The user MUST always verify the commitments in the `body` are valid for the `data` in the `body`.
-
-### ShardBlob
-
-```python
-class ShardBlob(Container):
-    # Slot and shard that this blob is intended for
-    slot: Slot
-    shard: Shard
-    # Shard data with related commitments and beacon anchor
-    body: ShardBlobBody
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
-```
-
-This is the expanded form of the `ShardBlobHeader` type.
-
-### SignedShardBlob
-
-```python
-class SignedShardBlob(Container):
-    message: ShardBlob
-    signature: BLSSignature
-```
 
 ## Gossip domain
 
