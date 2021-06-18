@@ -469,18 +469,40 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
         != another_state.current_justified_checkpoint.hash_tree_root()
     )
     pre_store_justified_checkpoint_root = store.justified_checkpoint.root
+    pre_best_justified_checkpoint = store.best_justified_checkpoint.copy()
 
     # Apply blocks of `another_state` to `store`
     for block in all_blocks:
         # NOTE: Do not call `on_tick` here
         run_on_block(spec, store, block)
 
+    # Verify pre_store_justified_checkpoint_root is NOT in finalized chain
     finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
     assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
 
+    # Verify store.justified_checkpoint.root is in finalized chain
+    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_ancestor(store, store.justified_checkpoint.root, finalized_slot)
+    assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
+
     assert store.finalized_checkpoint.hash_tree_root() == another_state.finalized_checkpoint.hash_tree_root()
     assert store.justified_checkpoint.hash_tree_root() == another_state.current_justified_checkpoint.hash_tree_root()
+
+    next_epoch(spec, another_state)
+    spec.on_tick(store, store.time + another_state.slot * spec.config.SECONDS_PER_SLOT)
+
+    # `on_tick` reverted `store.justified_checkpoint` to best_justified_checkpoint
+    assert (
+        store.justified_checkpoint.hash_tree_root()
+        == store.best_justified_checkpoint.hash_tree_root()
+        == pre_best_justified_checkpoint.hash_tree_root()
+    )
+
+    # FIXME: After `on_tick`, store.justified_checkpoint.root is NOT in finalized chain again!?
+    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_ancestor(store, store.justified_checkpoint.root, finalized_slot)
+    assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
 
 
 @with_all_phases
