@@ -261,6 +261,38 @@ def next_epoch_with_attestations(spec,
     )
 
 
+def state_transition_with_signed_full_block(spec, state, fill_cur_epoch, fill_prev_epoch):
+    # Build a block with previous attestations
+    block = build_empty_block_for_next_slot(spec, state)
+    attestations = []
+
+    if fill_prev_epoch:
+        # current epoch
+        slots = state.slot % spec.SLOTS_PER_EPOCH
+        for slot_offset in range(slots):
+            target_slot = state.slot - slot_offset
+            attestations += _get_valid_attestation_at_slot(
+                state,
+                spec,
+                target_slot,
+            )
+
+    if fill_prev_epoch:
+        # attest previous epoch
+        slots = spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH
+        for slot_offset in range(1, slots):
+            target_slot = state.slot - (state.slot % spec.SLOTS_PER_EPOCH) - slot_offset
+            attestations += _get_valid_attestation_at_slot(
+                state,
+                spec,
+                target_slot,
+            )
+
+    block.body.attestations = attestations
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    return signed_block
+
+
 def prepare_state_with_attestations(spec, state, participation_fn=None):
     """
     Prepare state with attestations according to the ``participation_fn``.
