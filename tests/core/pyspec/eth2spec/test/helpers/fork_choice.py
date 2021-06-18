@@ -1,4 +1,5 @@
 from eth_utils import encode_hex
+from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 
 
 def get_anchor_root(spec, state):
@@ -18,7 +19,7 @@ def add_block_to_store(spec, store, signed_block):
     spec.on_block(store, signed_block)
 
 
-def tick_and_run_on_block(spec, store, signed_block, test_steps=None):
+def tick_and_add_block(spec, store, signed_block, test_steps=None, valid=True):
     if test_steps is None:
         test_steps = []
 
@@ -28,7 +29,7 @@ def tick_and_run_on_block(spec, store, signed_block, test_steps=None):
     if store.time < block_time:
         on_tick_and_append_step(spec, store, block_time, test_steps)
 
-    yield from run_on_block(spec, store, signed_block, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps, valid=valid)
 
 
 def tick_and_run_on_attestation(spec, store, attestation, test_steps=None):
@@ -73,28 +74,47 @@ def on_tick_and_append_step(spec, store, time, test_steps):
     test_steps.append({'tick': int(time)})
 
 
-def run_on_block(spec, store, signed_block, test_steps, valid=True):
-    yield get_block_file_name(signed_block), signed_block
+def run_on_block(spec, store, signed_block, valid=True):
     if not valid:
         try:
             spec.on_block(store, signed_block)
         except AssertionError:
-            test_steps.append({
-                'block': get_block_file_name(signed_block),
-                'valid': True,
-            })
             return
         else:
             assert False
 
     spec.on_block(store, signed_block)
+    assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
+
+
+def add_block(spec, store, signed_block, test_steps=None, valid=True):
+    if test_steps is None:
+        test_steps = []
+
+    yield get_block_file_name(signed_block), signed_block
+
+    if not valid:
+        try:
+            run_on_block(spec, store, signed_block, valid=True)
+        except AssertionError:
+            test_steps.append({
+                'block': get_block_file_name(signed_block),
+                'valid': False,
+            })
+            return
+        else:
+            assert False
+
+    run_on_block(spec, store, signed_block, valid=True)
     test_steps.append({'block': get_block_file_name(signed_block)})
 
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:
         spec.on_attestation(store, attestation)
 
-    assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
+    block_root = signed_block.message.hash_tree_root()
+    assert store.blocks[block_root] == signed_block.message
+    assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
     test_steps.append({
         'checks': {
             'time': int(store.time),
@@ -113,3 +133,20 @@ def get_formatted_head_output(spec, store):
         'slot': int(slot),
         'root': encode_hex(head),
     }
+
+
+def apply_next_epoch_with_attestations(spec, state, store, test_steps=None):
+    if test_steps is None:
+        test_steps = []
+
+    _, new_signed_blocks, post_state = next_epoch_with_attestations(spec, state, True, False)
+    for signed_block in new_signed_blocks:
+        block = signed_block.message
+        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        block_root = block.hash_tree_root()
+        assert store.blocks[block_root] == block
+        last_signed_block = signed_block
+
+    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+
+    return post_state, store, last_signed_block

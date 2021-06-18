@@ -1,121 +1,15 @@
 from copy import deepcopy
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
-from eth2spec.test.context import with_all_phases, spec_state_test
-from eth2spec.test.helpers.attestations import next_epoch_with_attestations
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block, transition_unsigned_block, \
-    build_empty_block
-from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
+from eth2spec.test.context import with_all_phases, spec_state_test, with_phases, PHASE0
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block, \
+    build_empty_block, sign_block
+from eth2spec.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store,
+    run_on_block,
+    apply_next_epoch_with_attestations,
+)
 from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block, transition_to
-
-
-def run_on_block(spec, store, signed_block, valid=True):
-    if not valid:
-        try:
-            spec.on_block(store, signed_block)
-        except AssertionError:
-            return
-        else:
-            assert False
-
-    spec.on_block(store, signed_block)
-    assert store.blocks[hash_tree_root(signed_block.message)] == signed_block.message
-
-
-def apply_next_epoch_with_attestations(spec, state, store):
-    _, new_signed_blocks, post_state = next_epoch_with_attestations(spec, state, True, False)
-    for signed_block in new_signed_blocks:
-        block = signed_block.message
-        block_root = hash_tree_root(block)
-        store.blocks[block_root] = block
-        store.block_states[block_root] = post_state
-        last_signed_block = signed_block
-    spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    return post_state, store, last_signed_block
-
-
-@with_all_phases
-@spec_state_test
-def test_basic(spec, state):
-    # Initialization
-    store = get_genesis_forkchoice_store(spec, state)
-    time = 100
-    spec.on_tick(store, time)
-    assert store.time == time
-
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    run_on_block(spec, store, signed_block)
-
-    # On receiving a block of next epoch
-    store.time = time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
-    block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-
-    run_on_block(spec, store, signed_block)
-
-    # TODO: add tests for justified_root and finalized_root
-
-
-@with_all_phases
-@spec_state_test
-def test_on_block_checkpoints(spec, state):
-    # Initialization
-    store = get_genesis_forkchoice_store(spec, state)
-    time = 100
-    spec.on_tick(store, time)
-
-    next_epoch(spec, state)
-    spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
-    next_epoch(spec, state)
-    spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    last_block_root = hash_tree_root(last_signed_block.message)
-
-    # Mock the finalized_checkpoint
-    fin_state = store.block_states[last_block_root]
-    fin_state.finalized_checkpoint = (
-        store.block_states[last_block_root].current_justified_checkpoint
-    )
-
-    block = build_empty_block_for_next_slot(spec, fin_state)
-    signed_block = state_transition_and_sign_block(spec, deepcopy(fin_state), block)
-    run_on_block(spec, store, signed_block)
-
-
-@with_all_phases
-@spec_state_test
-def test_on_block_future_block(spec, state):
-    # Initialization
-    store = get_genesis_forkchoice_store(spec, state)
-
-    # do not tick time
-
-    # Fail receiving block of `GENESIS_SLOT + 1` slot
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    run_on_block(spec, store, signed_block, False)
-
-
-@with_all_phases
-@spec_state_test
-def test_on_block_bad_parent_root(spec, state):
-    # Initialization
-    store = get_genesis_forkchoice_store(spec, state)
-    time = 100
-    spec.on_tick(store, time)
-
-    # Fail receiving block of `GENESIS_SLOT + 1` slot
-    block = build_empty_block_for_next_slot(spec, state)
-    transition_unsigned_block(spec, state, block)
-    block.state_root = state.hash_tree_root()
-
-    block.parent_root = b'\x45' * 32
-
-    signed_block = sign_block(spec, state, block)
-
-    run_on_block(spec, store, signed_block, False)
 
 
 @with_all_phases
@@ -134,7 +28,7 @@ def test_on_block_before_finalized(spec, state):
     # Fail receiving block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    run_on_block(spec, store, signed_block, False)
+    run_on_block(spec, store, signed_block, valid=False)
 
 
 @with_all_phases
@@ -166,23 +60,31 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     transition_unsigned_block(spec, state, block)
     block.state_root = state.hash_tree_root()
     store = spec.get_forkchoice_store(state, block)
-    store.finalized_checkpoint = spec.Checkpoint(
-        epoch=store.finalized_checkpoint.epoch + 2,
-        root=store.finalized_checkpoint.root
-    )
 
-    # First transition through the epoch to ensure no skipped slots
-    state, store, _ = apply_next_epoch_with_attestations(spec, state, store)
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    spec.on_tick(store, current_time)
+    assert store.time == current_time
+
+    pre_finalized_checkpoint_epoch = store.finalized_checkpoint.epoch
+
+    # Finalized
+    for _ in range(3):
+        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store)
+    assert store.finalized_checkpoint.epoch == pre_finalized_checkpoint_epoch + 1
 
     # Now build a block at later slot than finalized epoch
     # Includes finalized block in chain, but not at appropriate skip slot
-    block = build_empty_block(spec, state, spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    pre_state = store.block_states[block.hash_tree_root()]
+    block = build_empty_block(spec,
+                              state=pre_state,
+                              slot=spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
+    signed_block = sign_block(spec, pre_state, block)
+
     spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    run_on_block(spec, store, signed_block, False)
+    run_on_block(spec, store, signed_block, valid=False)
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_state_test
 def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
     # Initialization
@@ -192,21 +94,33 @@ def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
 
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
+    state, store, last_signed_block = yield from apply_next_epoch_with_attestations(spec, state, store)
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    last_block_root = hash_tree_root(last_signed_block.message)
+    last_block = last_signed_block.message
+    last_block_root = last_block.hash_tree_root()
 
-    # Mock the justified checkpoint
+    # NOTE: Mock the justified checkpoint
     just_state = store.block_states[last_block_root]
     new_justified = spec.Checkpoint(
         epoch=just_state.current_justified_checkpoint.epoch + 1,
         root=b'\x77' * 32,
     )
-    just_state.current_justified_checkpoint = new_justified
+    just_state.current_justified_checkpoint = new_justified  # Mutate `store`
+
+    assert store.block_states[last_block_root].hash_tree_root() == just_state.hash_tree_root()
 
     block = build_empty_block_for_next_slot(spec, just_state)
-    signed_block = state_transition_and_sign_block(spec, deepcopy(just_state), block)
+
+    # NOTE: Mock store so that the modified state could be accessed
+    parent_block = last_signed_block.message.copy()
+    parent_block.state_root = just_state.hash_tree_root()
+    store.blocks[block.parent_root] = parent_block
+    store.block_states[block.parent_root] = just_state.copy()
+    assert block.parent_root in store.blocks.keys()
+    assert block.parent_root in store.block_states.keys()
+
+    signed_block = state_transition_and_sign_block(spec, just_state.copy(), block)
     assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH < spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
     run_on_block(spec, store, signed_block)
 
@@ -223,10 +137,10 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
 
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
+    state, store, last_signed_block = yield from apply_next_epoch_with_attestations(spec, state, store)
     last_block_root = hash_tree_root(last_signed_block.message)
 
-    # Mock fictitious justified checkpoint in store
+    # NOTE: Mock fictitious justified checkpoint in store
     store.justified_checkpoint = spec.Checkpoint(
         epoch=spec.compute_epoch_at_slot(last_signed_block.message.slot),
         root=spec.Root("0x4a55535449464945440000000000000000000000000000000000000000000000")
@@ -248,6 +162,7 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     # Add a series of new blocks with "better" justifications
     best_justified_checkpoint = spec.Checkpoint(epoch=0)
     for i in range(3, 0, -1):
+        # Mutate store
         just_state = store.block_states[last_block_root]
         new_justified = spec.Checkpoint(
             epoch=previously_justified.epoch + i,
@@ -261,6 +176,14 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
         block = build_empty_block_for_next_slot(spec, just_state)
         signed_block = state_transition_and_sign_block(spec, deepcopy(just_state), block)
 
+        # NOTE: Mock store so that the modified state could be accessed
+        parent_block = store.blocks[last_block_root].copy()
+        parent_block.state_root = just_state.hash_tree_root()
+        store.blocks[block.parent_root] = parent_block
+        store.block_states[block.parent_root] = just_state.copy()
+        assert block.parent_root in store.blocks.keys()
+        assert block.parent_root in store.block_states.keys()
+
         run_on_block(spec, store, signed_block)
 
     assert store.justified_checkpoint == previously_justified
@@ -273,15 +196,15 @@ def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
 def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Initialization
     store = get_genesis_forkchoice_store(spec, state)
-    time = 100
+    time = 0
     spec.on_tick(store, time)
 
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
-    state, store, last_signed_block = apply_next_epoch_with_attestations(spec, state, store)
+    state, store, last_signed_block = yield from apply_next_epoch_with_attestations(spec, state, store)
     last_block_root = hash_tree_root(last_signed_block.message)
 
-    # Mock fictitious justified checkpoint in store
+    # NOTE: Mock fictitious justified checkpoint in store
     store.justified_checkpoint = spec.Checkpoint(
         epoch=spec.compute_epoch_at_slot(last_signed_block.message.slot),
         root=spec.Root("0x4a55535449464945440000000000000000000000000000000000000000000000")
@@ -290,7 +213,7 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
 
-    # Create new higher justified checkpoint not in branch of store's justified checkpoint
+    # NOTE: Mock a new higher justified checkpoint not in branch of store's justified checkpoint
     just_block = build_empty_block_for_next_slot(spec, state)
     store.blocks[just_block.hash_tree_root()] = just_block
 
@@ -298,7 +221,7 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.config.SECONDS_PER_SLOT)
     assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH >= spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
 
-    # Mock justified and finalized update in state
+    # NOTE: Mock justified and finalized update in state
     just_fin_state = store.block_states[last_block_root]
     new_justified = spec.Checkpoint(
         epoch=spec.compute_epoch_at_slot(just_block.slot) + 1,
@@ -316,6 +239,14 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
     # Build and add block that includes the new justified/finalized info
     block = build_empty_block_for_next_slot(spec, just_fin_state)
     signed_block = state_transition_and_sign_block(spec, deepcopy(just_fin_state), block)
+
+    # NOTE: Mock store so that the modified state could be accessed
+    parent_block = last_signed_block.message.copy()
+    parent_block.state_root = just_fin_state.hash_tree_root()
+    store.blocks[block.parent_root] = parent_block
+    store.block_states[block.parent_root] = just_fin_state.copy()
+    assert block.parent_root in store.blocks.keys()
+    assert block.parent_root in store.block_states.keys()
 
     run_on_block(spec, store, signed_block)
 
