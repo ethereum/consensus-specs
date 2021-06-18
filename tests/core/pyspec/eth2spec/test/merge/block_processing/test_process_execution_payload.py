@@ -26,7 +26,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     called_new_block = False
 
     class TestEngine(spec.NoopExecutionEngine):
-        def new_block(self, payload) -> bool:
+        def on_payload(self, payload) -> bool:
             nonlocal called_new_block, execution_valid
             called_new_block = True
             assert payload == execution_payload
@@ -155,7 +155,7 @@ def test_bad_number_regular_payload(spec, state):
 
     # execution payload
     execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
-    execution_payload.number = execution_payload.number + 1
+    execution_payload.block_number = execution_payload.block_number + 1
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -170,7 +170,7 @@ def test_bad_everything_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
     execution_payload.parent_hash = spec.Hash32()
-    execution_payload.number = execution_payload.number + 1
+    execution_payload.block_number = execution_payload.block_number + 1
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 

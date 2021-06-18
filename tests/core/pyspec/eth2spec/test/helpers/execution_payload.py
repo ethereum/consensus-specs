@@ -8,20 +8,20 @@ def build_empty_execution_payload(spec, state, random):
     """
     latest = state.latest_execution_payload_header
     timestamp = spec.compute_time_at_slot(state, state.slot)
-    empty_txs = spec.List[spec.OpaqueTransaction, spec.MAX_EXECUTION_TRANSACTIONS]()
+    empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
     payload = spec.ExecutionPayload(
-        block_hash=spec.Hash32(),
         parent_hash=latest.block_hash,
         coinbase=spec.Bytes20(),
         state_root=latest.state_root,  # no changes to the state
-        number=latest.number + 1,
+        receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
+        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
+        block_number=latest.block_number + 1,
+        random=random,
         gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
-        receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
-        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
-        random=random,
+        block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
@@ -32,17 +32,17 @@ def build_empty_execution_payload(spec, state, random):
 
 def get_execution_payload_header(spec, execution_payload):
     return spec.ExecutionPayloadHeader(
-        block_hash=execution_payload.block_hash,
         parent_hash=execution_payload.parent_hash,
         coinbase=execution_payload.coinbase,
         state_root=execution_payload.state_root,
-        number=execution_payload.number,
-        gas_limit=execution_payload.gas_limit,
-        gas_used=execution_payload.gas_used,
-        timestamp=execution_payload.timestamp,
         receipt_root=execution_payload.receipt_root,
         logs_bloom=execution_payload.logs_bloom,
         random=execution_payload.random,
+        block_number=execution_payload.block_number,
+        gas_limit=execution_payload.gas_limit,
+        gas_used=execution_payload.gas_used,
+        timestamp=execution_payload.timestamp,
+        block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
 

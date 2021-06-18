@@ -223,7 +223,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList"):
+                        if value.startswith("uint") or value.startswith("Bytes") or value.startswith("ByteList") or value.startswith("Union"):
                             custom_types[name] = value
                         continue
 
@@ -495,7 +495,7 @@ class MergeSpecBuilder(Phase0SpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.phase0 import {preset_name} as phase0
-from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256
+from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256, Union
 '''
 
     @classmethod
@@ -523,7 +523,7 @@ def get_pow_chain_head() -> PowBlock:
 
 class NoopExecutionEngine(ExecutionEngine):
 
-    def new_block(self, execution_payload: ExecutionPayload) -> bool:
+    def on_payload(self, execution_payload: ExecutionPayload) -> bool:
         return True
 
     def set_head(self, block_hash: Hash32) -> bool:
@@ -553,6 +553,10 @@ spec_builders = {
 }
 
 
+def is_spec_defined_type(value: str) -> bool:
+    return value.startswith('ByteList') or value.startswith('Union')
+
+
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     builder: SpecBuilder,
@@ -565,15 +569,15 @@ def objects_to_spec(preset_name: str,
             [
                 f"class {key}({value}):\n    pass\n"
                 for key, value in spec_object.custom_types.items()
-                if not value.startswith('ByteList')
+                if not is_spec_defined_type(value)
             ]
         )
-        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if value.startswith('ByteList')]) > 0 else '')
+        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if is_spec_defined_type(value)]) > 0 else '')
         + '\n\n'.join(
             [
                 f"{key} = {value}\n"
                 for key, value in spec_object.custom_types.items()
-                if value.startswith('ByteList')
+                if is_spec_defined_type(value)
             ]
         )
     )
@@ -1020,7 +1024,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.20",
+        "remerkleable==0.1.21",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.6",
         MARKO_VERSION,

@@ -576,12 +576,12 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
         # TODO In Altair: set participation bit flag for voters of this early winning header
         if pending_header.commitment == DataCommitment():
             # The committee voted to not confirm anything
-            state.shard_buffer[buffer_index][attestation_shard].change(
+            state.shard_buffer[buffer_index][attestation_shard].status.change(
                 selector=SHARD_WORK_UNCONFIRMED,
                 value=None,
             )
         else:
-            state.shard_buffer[buffer_index][attestation_shard].change(
+            state.shard_buffer[buffer_index][attestation_shard].status.change(
                 selector=SHARD_WORK_CONFIRMED,
                 value=pending_header.commitment,
             )
@@ -608,7 +608,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     assert committee_work.status.selector == SHARD_WORK_PENDING
 
     # Check that this header is not yet in the pending list
-    current_headers: Sequence[PendingShardHeader] = committee_work.status.value
+    current_headers: List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD] = committee_work.status.value
     header_root = hash_tree_root(header)
     assert header_root not in [pending_header.root for pending_header in current_headers]
 
@@ -640,7 +640,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     )
 
     # Include it in the pending list
-    state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.shard].append(pending_header)
+    current_headers.append(pending_header)
 ```
 
 The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
@@ -784,8 +784,8 @@ def reset_pending_shard_work(state: BeaconState) -> None:
         for committee_index in range(committees_per_slot):
             shard = (start_shard + committee_index) % active_shards
             # a committee is available, initialize a pending shard-header list
-            committee_length = len(get_beacon_committee(state, slot, committee_index))
-            state.shard_buffer[buffer_index][shard].change(
+            committee_length = len(get_beacon_committee(state, slot, CommitteeIndex(committee_index)))
+            state.shard_buffer[buffer_index][shard].status.change(
                 selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                     PendingShardHeader(

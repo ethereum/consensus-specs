@@ -79,7 +79,7 @@ def produce_execution_payload(state: BeaconState,
                               parent_hash: Hash32,
                               randao_reveal: BLSSignature,
                               execution_engine: ExecutionEngine) -> ExecutionPayload:
-    timestamp = compute_time_at_slot(state, state.slot)
+    timestamp = compute_timestamp_at_slot(state, state.slot)
     randao_mix = compute_randao_mix(state, randao_reveal)
     return execution_engine.assemble_block(parent_hash, timestamp, randao_mix)
 
@@ -88,7 +88,7 @@ def get_execution_payload(state: BeaconState,
                           transition_store: TransitionStore,
                           randao_reveal: BLSSignature,
                           execution_engine: ExecutionEngine) -> ExecutionPayload:
-    if not is_transition_completed(state):
+    if not is_merge_complete(state):
         pow_block = get_pow_chain_head()
         if not is_valid_terminal_pow_block(transition_store, pow_block):
             # Pre-merge, empty payload
