@@ -127,7 +127,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
     # [New in Merge]
-    if (transition_store is not None) and is_transition_block(pre_state, block):
+    if (transition_store is not None) and is_merge_block(pre_state, block):
         # Delay consideration of block until PoW block is processed by the PoW node
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         assert pow_block.is_processed

@@ -73,7 +73,7 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 def get_execution_payload(state: BeaconState,
                           transition_store: TransitionStore,
                           execution_engine: ExecutionEngine) -> ExecutionPayload:
-    if not is_transition_completed(state):
+    if not is_merge_complete(state):
         pow_block = get_pow_chain_head()
         if not is_valid_terminal_pow_block(transition_store, pow_block):
             # Pre-merge, empty payload
