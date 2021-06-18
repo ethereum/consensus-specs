@@ -770,8 +770,11 @@ def process_shard_header(state: BeaconState, signed_block_header: SignedShardBlo
     )
 
     # Charge builder, with hard balance requirement
-    fee = Gwei(123)  # TODO
+    fee = Gwei(123)  # TODO EIP 1559 like fee? Burn some of it?
     charge_builder(state, builder_index, fee)
+    # TODO: proposer is charged for confirmed headers (see charge_confirmed_shard_fees).
+    #  Need to align incentive, so proposer does not gain from including unconfirmed headers
+    increase_balance(state, block_header.proposer_index, fee)
 
     # Initialize the pending header
     index = compute_committee_index_from_shard(state, slot, shard)
