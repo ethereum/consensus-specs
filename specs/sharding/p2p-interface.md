@@ -13,10 +13,10 @@
   - [Misc](#misc)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blob subnets](#shard-blob-subnets)
+    - [Shard block subnets](#shard-block-subnets)
       - [`shard_block_{subnet_id}`](#shard_block_subnet_id)
     - [Global topics](#global-topics)
-      - [`shard_header`](#shard_header)
+      - [`shard_block_header`](#shard_block_header)
       - [`shard_proposer_slashing`](#shard_proposer_slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
