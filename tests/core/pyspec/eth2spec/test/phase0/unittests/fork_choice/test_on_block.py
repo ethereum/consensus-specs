@@ -1,7 +1,8 @@
 from copy import deepcopy
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
-from eth2spec.test.context import with_all_phases, spec_state_test, with_phases, PHASE0
+from eth2spec.test.context import with_all_phases, spec_state_test
+from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block, \
     build_empty_block, sign_block
 from eth2spec.test.helpers.fork_choice import (
@@ -84,7 +85,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     run_on_block(spec, store, signed_block, valid=False)
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
     # Initialization
@@ -252,3 +253,139 @@ def test_on_block_outside_safe_slots_but_finality(spec, state):
 
     assert store.finalized_checkpoint == new_finalized
     assert store.justified_checkpoint == new_justified
+
+
+@with_all_phases
+@spec_state_test
+def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
+    """
+    J: Justified
+    F: Finalized
+    pre-store:
+        epoch
+        [0] <- [1] <- [2] <- [3] <- [4] <- [5]
+         F                    J
+
+    another_state:
+        [0] <- [1] <- [2] <- [3] <- [4] <- [5]
+                       F      J
+    """
+    another_state = state.copy()
+    # Initialization
+    store = get_genesis_forkchoice_store(spec, state)
+    time = 0
+    spec.on_tick(store, time)
+
+    # Process state
+    next_epoch(spec, state)
+    _, signed_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+    for block in signed_blocks:
+        spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+        run_on_block(spec, store, block)
+    next_epoch(spec, state)
+    for _ in range(2):
+        _, signed_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+        for block in signed_blocks:
+            spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+            run_on_block(spec, store, block)
+
+    assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 0
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+    assert store.justified_checkpoint.hash_tree_root() == state.current_justified_checkpoint.hash_tree_root()
+
+    # Create another chain
+    # another_state = store.block_states[store.justified_checkpoint.root].copy()
+    next_epoch(spec, another_state)
+    spec.on_tick(store, store.time + another_state.slot * spec.config.SECONDS_PER_SLOT)
+
+    all_blocks = []
+    for _ in range(3):
+        _, signed_blocks, another_state = next_epoch_with_attestations(spec, another_state, True, True)
+        all_blocks += signed_blocks
+
+    assert another_state.finalized_checkpoint.epoch == 2
+    assert another_state.current_justified_checkpoint.epoch == 3
+    assert state.finalized_checkpoint.hash_tree_root() != another_state.finalized_checkpoint.hash_tree_root()
+    assert (
+        state.current_justified_checkpoint.hash_tree_root()
+        != another_state.current_justified_checkpoint.hash_tree_root()
+    )
+
+    pre_store_justified_checkpoint_root = store.justified_checkpoint.root
+    for block in all_blocks:
+        run_on_block(spec, store, block)
+
+    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
+    assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
+
+    assert store.finalized_checkpoint.hash_tree_root() == another_state.finalized_checkpoint.hash_tree_root()
+    assert store.justified_checkpoint.hash_tree_root() == another_state.current_justified_checkpoint.hash_tree_root()
+
+
+@with_all_phases
+@spec_state_test
+def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
+    """
+    J: Justified
+    F: Finalized
+    pre-store:
+        epoch
+        [0] <- [1] <- [2] <- [3] <- [4] <- [5]
+                       F             J
+
+    another_state:
+                                 <- [4] <- [5]
+                                    F+J
+    """
+    # Initialization
+    store = get_genesis_forkchoice_store(spec, state)
+    time = 0
+    spec.on_tick(store, time)
+
+    # Process state
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+    _, signed_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+    for block in signed_blocks:
+        spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+        run_on_block(spec, store, block)
+    _, signed_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    for block in signed_blocks:
+        spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+        run_on_block(spec, store, block)
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+    for _ in range(2):
+        _, signed_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+        for block in signed_blocks:
+            spec.on_tick(store, store.time + state.slot * spec.config.SECONDS_PER_SLOT)
+            run_on_block(spec, store, block)
+
+    assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
+    assert store.justified_checkpoint.hash_tree_root() == state.current_justified_checkpoint.hash_tree_root()
+
+    # Create another chain
+    # Forking from epoch 3
+    all_blocks = []
+    slot = spec.compute_start_slot_at_epoch(3)
+    block_root = spec.get_block_root_at_slot(state, slot)
+    another_state = store.block_states[block_root].copy()
+    for _ in range(2):
+        _, signed_blocks, another_state = next_epoch_with_attestations(spec, another_state, True, True)
+        all_blocks += signed_blocks
+
+    assert another_state.finalized_checkpoint.epoch == 3
+    assert another_state.current_justified_checkpoint.epoch == 4
+
+    pre_store_justified_checkpoint_root = store.justified_checkpoint.root
+    for block in all_blocks:
+        run_on_block(spec, store, block)
+
+    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
+    assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
+
+    assert store.finalized_checkpoint.hash_tree_root() == another_state.finalized_checkpoint.hash_tree_root()
+    assert store.justified_checkpoint.hash_tree_root() != another_state.current_justified_checkpoint.hash_tree_root()
