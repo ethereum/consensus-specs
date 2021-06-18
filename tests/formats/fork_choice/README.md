@@ -30,8 +30,8 @@ The parameter that is required for executing `on_tick(store, time)`.
 ```yaml
 {
     tick: int       --  to execute `on_tick(store, time)`.
-    valid: bool     -- optional, default to `True`.
-                       If it's `False`, this execution step is expected to be invalid.
+    valid: bool     -- optional, default to `true`.
+                       If it's `false`, this execution step is expected to be invalid.
 }
 ```
 
@@ -45,8 +45,8 @@ The parameter that is required for executing `on_attestation(store, attestation)
 {
     attestation: string  -- the name of the `attestation_<32-byte-root>.ssz_snappy` file.
                             To execute `on_attestation(store, attestation)` with the given attestation.
-    valid: bool          -- optional, default to `True`.
-                            If it's `False`, this execution step is expected to be invalid.
+    valid: bool          -- optional, default to `true`.
+                            If it's `false`, this execution step is expected to be invalid.
 }
 ```
 The file is located in the same folder (see below).
@@ -61,8 +61,8 @@ The parameter that is required for executing `on_block(store, block)`.
 {
     block: string  -- the name of the `block_<32-byte-root>.ssz_snappy` file.
                       To execute `on_block(store, block)` with the given attestation.
-    valid: bool    -- optional, default to `True`.
-                      If it's `False`, this execution step is expected to be invalid.
+    valid: bool    -- optional, default to `true`.
+                      If it's `false`, this execution step is expected to be invalid.
 }  
 ```
 The file is located in the same folder (see below).
