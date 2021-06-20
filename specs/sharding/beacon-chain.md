@@ -34,15 +34,8 @@
   - [`ShardBlobHeader`](#shardblobheader)
   - [`SignedShardBlob`](#signedshardblob)
   - [`SignedShardBlobHeader`](#signedshardblobheader)
-  - [ShardBlock](#shardblock)
-  - [`ShardBlockHeader`](#shardblockheader)
-  - [`SignedShardBlock`](#signedshardblock)
-  - [`SignedShardBlockHeader`](#signedshardblockheader)
   - [`PendingShardHeader`](#pendingshardheader)
   - [`ShardBlobReference`](#shardblobreference)
-  - [`SignedShardBlobReference`](#signedshardblobreference)
-  - [`ShardBlockReference`](#shardblockreference)
-  - [`SignedShardBlockReference`](#signedshardblockreference)
   - [`ShardProposerSlashing`](#shardproposerslashing)
   - [`ShardWork`](#shardwork)
 - [Helper functions](#helper-functions)
@@ -116,8 +109,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
-| `DOMAIN_SHARD_BUILDER` | `DomainType('0x81000000')` |
+| `DOMAIN_SHARD_BLOB` | `DomainType('0x80000000')` |
 
 ### Shard Work Status
 
@@ -247,8 +239,6 @@ class ShardBlobBody(Container):
     data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK]
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
-    # Builder of the data, pays data-fee to proposer
-    builder_index: BuilderIndex
     # TODO: fee payment amount fields (EIP 1559 like)
 ```
 
@@ -269,8 +259,6 @@ class ShardBlobBodySummary(Container):
     data_root: Root
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
-    # Builder of the data, pays data-fee to proposer
-    builder_index: BuilderIndex
     # TODO: fee payment amount fields (EIP 1559 like)
 ```
 
@@ -282,18 +270,26 @@ class ShardBlobBodySummary(Container):
 class ShardBlob(Container):
     slot: Slot
     shard: Shard
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+    # Builder of the data, pays data-fee to proposer
+    builder_index: BuilderIndex
     # Blob contents
     body: ShardBlobBody
 ```
 
 ### `ShardBlobHeader`
 
-Header version of `ShardBlob`. Separates designation (slot, shard) and contents (blob).
+Header version of `ShardBlob`.
 
 ```python
 class ShardBlobHeader(Container):
     slot: Slot
     shard: Shard
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+    # Builder of the data, pays data-fee to proposer
+    builder_index: BuilderIndex
     # Blob contents, without the full data
     body_summary: ShardBlobBodySummary
 ```
@@ -316,53 +312,8 @@ Shard proposers can accept `SignedShardBlobHeader` as a data-transaction.
 ```python
 class SignedShardBlobHeader(Container):
     message: ShardBlobHeader
-    signature: BLSSignature
-```
-
-### ShardBlock
-
-Full blob data signed by builder, to be confirmed by proxy as `ShardBlockHeader`.
-
-```python
-class ShardBlock(Container):
-    # Shard data with fee payment by bundle builder
-    signed_blob: SignedShardBlob
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
-```
-
-### `ShardBlockHeader`
-
-Header version of `ShardBlock`, selecting a `SignedShardBlobHeader`.
-
-```python
-class ShardBlockHeader(Container):
-    # Shard commitments and fee payment by blob builder
-    signed_blob_header: SignedShardBlobHeader
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
-```
-
-### `SignedShardBlock`
-
-Shard blob, signed for payment, and signed for proposal. Propagated to attesters.
-
-```python
-class SignedShardBlock(Container):
-    message: ShardBlock
-    signature: BLSSignature
-```
-
-### `SignedShardBlockHeader`
-
-Header version of `SignedShardBlock`, substituting the full data within the blob for just the hash-tree-root.
-
-The signature is equally applicable to `SignedShardBlock`, 
-which the builder can publish as soon as the signed header is seen. 
-
-```python
-class SignedShardBlockHeader(Container):
-    message: ShardBlockHeader
+    # Signature by builder.
+    # Once accepted by proposer, the signatures is the aggregate of both.
     signature: BLSSignature
 ```
 
@@ -390,44 +341,26 @@ Reference version of `ShardBlobHeader`, substituting the body for just a hash-tr
 class ShardBlobReference(Container):
     slot: Slot
     shard: Shard
-    # Blob hash-tree-root for reference, enough for uniqueness
-    body_root: Root
-```
-
-### `SignedShardBlobReference`
-
-`ShardBlobReference`, signed by the blob builder. The builder-signature is part of the block identity.
-
-```python
-class SignedShardBlobReference(Container):
-    message: ShardBlobReference
-    signature: BLSSignature
-```
-
-### `ShardBlockReference`
-
-```python
-class ShardBlockReference(Container):
-    # Blob, minimized for efficient slashing
-    signed_blob_reference: SignedShardBlobReference
     # Proposer of the shard-blob
     proposer_index: ValidatorIndex
-```
-
-### `SignedShardBlockReference`
-
-```python
-class SignedShardBlockReference(Container):
-    message: ShardBlockReference
-    signature: BLSSignature
+    # Builder of the data
+    builder_index: BuilderIndex
+    # Blob hash-tree-root for slashing reference
+    body_root: Root
 ```
 
 ### `ShardProposerSlashing`
 
 ```python
 class ShardProposerSlashing(Container):
-    signed_reference_1: SignedShardBlockReference
-    signed_reference_2: SignedShardBlockReference
+    slot: Slot
+    shard: Shard
+    proposer_index: ValidatorIndex
+    builder_index: BuilderIndex
+    body_root_1: Root
+    body_root_2: Root
+    signature_1: BLSSignature
+    signature_2: BLSSignature
 ```
 
 ### `ShardWork`
@@ -552,7 +485,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     Return the proposer's index of shard block at ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER) + uint_to_bytes(slot) + uint_to_bytes(shard))
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_BLOB) + uint_to_bytes(slot) + uint_to_bytes(shard))
 
     # Proposer must have sufficient balance to pay for worst case fee burn
     EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
@@ -717,12 +650,10 @@ def charge_builder(state: BeaconState, index: BuilderIndex, fee: Gwei) -> None:
 ##### `process_shard_header`
 
 ```python
-def process_shard_header(state: BeaconState, signed_block_header: SignedShardBlockHeader) -> None:
-    block_header: ShardBlockHeader = signed_block_header.message
-    signed_blob_header: SignedShardBlobHeader = block_header.signed_blob_header
-    blob_header: ShardBlobHeader = signed_blob_header.message
-    slot = blob_header.slot
-    shard = blob_header.shard
+def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeader) -> None:
+    header: ShardBlobHeader = signed_header.message
+    slot = header.slot
+    shard = header.shard
 
     # Verify the header is not 0, and not from the future.
     assert Slot(0) < slot <= state.slot
@@ -733,7 +664,7 @@ def process_shard_header(state: BeaconState, signed_block_header: SignedShardBlo
     assert shard < get_active_shard_count(state, header_epoch)
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert blob_header.body_summary.beacon_block_root == get_block_root_at_slot(state, slot - 1)
+    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, slot - 1)
 
     # Check that this data is still pending
     committee_work = state.shard_buffer[slot % SHARD_STATE_MEMORY_SLOTS][shard]
@@ -741,24 +672,17 @@ def process_shard_header(state: BeaconState, signed_block_header: SignedShardBlo
 
     # Check that this header is not yet in the pending list
     current_headers: List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD] = committee_work.status.value
-    header_root = hash_tree_root(block_header)
+    header_root = hash_tree_root(header)
     assert header_root not in [pending_header.root for pending_header in current_headers]
 
-    # Verify proposer
-    assert block_header.proposer_index == get_shard_proposer_index(state, slot, shard)
-    # Verify proposer signature
-    block_signing_root = compute_signing_root(block_header, get_domain(state, DOMAIN_SHARD_PROPOSER))
-    proposer_pubkey = state.validators[block_header.proposer_index].pubkey
-    assert bls.Verify(proposer_pubkey, block_signing_root, signed_block_header.signature)
+    # Verify proposer matches
+    assert header.proposer_index == get_shard_proposer_index(state, slot, shard)
 
-    # Verify builder requirements
-    blob_summary: ShardBlobBodySummary = blob_header.body_summary
-    builder_index = blob_summary.builder_index
-
-    # Verify builder signature
-    builder = state.builders[builder_index]
-    blob_signing_root = compute_signing_root(blob_header, get_domain(state, DOMAIN_SHARD_BUILDER))  # TODO new constant
-    assert bls.Verify(builder.pubkey, blob_signing_root, signed_blob_header.signature)
+    # Verify builder and proposer aggregate signature
+    blob_signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_BLOB))
+    builder_pubkey = state.builders[header.builder_index].pubkey
+    proposer_pubkey = state.validators[header.proposer_index].pubkey
+    assert bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
     body_summary = header.body_summary
@@ -771,10 +695,10 @@ def process_shard_header(state: BeaconState, signed_block_header: SignedShardBlo
 
     # Charge builder, with hard balance requirement
     fee = Gwei(123)  # TODO EIP 1559 like fee? Burn some of it?
-    charge_builder(state, builder_index, fee)
+    charge_builder(state, header.builder_index, fee)
     # TODO: proposer is charged for confirmed headers (see charge_confirmed_shard_fees).
     #  Need to align incentive, so proposer does not gain from including unconfirmed headers
-    increase_balance(state, block_header.proposer_index, fee)
+    increase_balance(state, blob_header.proposer_index, fee)
 
     # Initialize the pending header
     index = compute_committee_index_from_shard(state, slot, shard)
@@ -801,32 +725,33 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 
 ```python
 def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
-    reference_1: ShardBlockReference = proposer_slashing.signed_reference_1.message
-    reference_2 : ShardBlockReference = proposer_slashing.signed_reference_2.message
-    blob_1 = reference_1.signed_blob_reference.message
-    blob_2 = reference_2.signed_blob_reference.message
+    # Verify the headers are different
+    assert proposer_slashing.body_root_1 != proposer_slashing.body_root_2
 
-    # Verify header slots match
-    assert blob_1.slot == blob_2.slot
-    # Verify header shards match
-    assert blob_1.shard == blob_2.shard
-    # Verify header proposer indices match
-    assert reference_1.proposer_index == reference_2.proposer_index
-    # Verify the headers are different (i.e. different body, or different builder signature)
-    assert (
-            blob_1.body_root != blob_2.body_root 
-            or reference_1.signed_blob_reference.signature != reference_2.signed_blob_reference.signature
-    )
+    slot = proposer_slashing.slot
+    shard = proposer_slashing.shard
+    proposer_index = proposer_slashing.proposer_index
+    builder_index = proposer_slashing.builder_index
+
     # Verify the proposer is slashable
-    proposer = state.validators[reference_1.proposer_index]
+    proposer = state.validators[proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
-    # Verify signatures
-    for signed_header in (proposer_slashing.signed_reference_1, proposer_slashing.signed_reference_2):
-        domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        signing_root = compute_signing_root(signed_header.message, domain)
-        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, reference_1.proposer_index)
+    reference_1 = ShardBlobReference(slot=slot, shard=shard,
+                                     proposer_index=proposer_index, builder_index=builder_index,
+                                     body_root= proposer_slashing.body_root_1)
+    reference_2 = ShardBlobReference(slot=slot, shard=shard,
+                                     proposer_index=proposer_index, builder_index=builder_index,
+                                     body_root= proposer_slashing.body_root_2)
+    proposer_pubkey = proposer.pubkey
+    builder_pubkey = state.builders[builder_index].pubkey
+    domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(slot))
+    signing_root_1 = compute_signing_root(reference_1, domain)
+    signing_root_2 = compute_signing_root(reference_2, domain)
+    assert bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], signing_root_1, proposer_slashing.signature_1)
+    assert bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], signing_root_2, proposer_slashing.signature_2)
+
+    slash_validator(state, proposer_index)
 ```
 
 ### Epoch transition
