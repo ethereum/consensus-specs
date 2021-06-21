@@ -17,7 +17,7 @@
   - [Shard Work Status](#shard-work-status)
 - [Preset](#preset)
   - [Misc](#misc-1)
-  - [Shard block samples](#shard-block-samples)
+  - [Shard blob samples](#shard-blob-samples)
   - [Precomputed size verification points](#precomputed-size-verification-points)
   - [Gwei values](#gwei-values)
 - [Configuration](#configuration)
