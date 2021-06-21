@@ -265,7 +265,7 @@ This process occurs each slot.
 
 ##### Prepare sync committee message
 
-If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`.
+If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`. This means that when assigned to `slot` a `SyncCommitteeMessage` is prepared and broadcast in `slot-1 ` instead of `slot`.   
 
 This logic is triggered upon the same conditions as when producing an attestation.
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeMessage` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
