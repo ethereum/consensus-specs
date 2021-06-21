@@ -58,7 +58,6 @@
     - [`process_pending_shard_confirmations`](#process_pending_shard_confirmations)
     - [`charge_confirmed_shard_fees`](#charge_confirmed_shard_fees)
     - [`reset_pending_shard_work`](#reset_pending_shard_work)
-    - [`process_shard_epoch_increment`](#process_shard_epoch_increment)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -187,7 +186,6 @@ class BeaconState(merge.BeaconState):
     # A ring buffer of the latest slots, with information per active shard.
     shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
     shard_gasprice: uint64
-    current_epoch_start_shard: Shard
 ```
 
 ## New containers
@@ -447,22 +445,10 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     """
     Return the start shard at ``slot``.
     """
-    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
-    shard = state.current_epoch_start_shard
-    if slot > current_epoch_start_slot:
-        # Current epoch or the next epoch lookahead
-        for _slot in range(current_epoch_start_slot, slot):
-            committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(_slot)))
-            active_shard_count = get_active_shard_count(state, compute_epoch_at_slot(Slot(_slot)))
-            shard = (shard + committee_count) % active_shard_count
-    elif slot < current_epoch_start_slot:
-        # Previous epoch
-        for _slot in list(range(slot, current_epoch_start_slot))[::-1]:
-            committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(_slot)))
-            active_shard_count = get_active_shard_count(state, compute_epoch_at_slot(Slot(_slot)))
-            # Ensure positive
-            shard = (shard + active_shard_count - committee_count) % active_shard_count
-    return Shard(shard)
+    epoch = compute_epoch_at_slot(Slot(_slot))
+    committee_count = get_committee_count_per_slot(state, epoch)
+    active_shard_count = get_active_shard_count(state, epoch)
+    return committee_count * slot % active_shard_count 
 ```
 
 #### `compute_shard_from_committee_index`
@@ -699,9 +685,6 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_roots_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-
-    # Sharding post-processing
-    process_shard_epoch_increment(state)
 ```
 
 #### `process_pending_shard_confirmations`
@@ -799,12 +782,4 @@ def reset_pending_shard_work(state: BeaconState) -> None:
                 )
             )
         # a shard without committee available defaults to SHARD_WORK_UNCONFIRMED.
-```
-
-#### `process_shard_epoch_increment`
-
-```python
-def process_shard_epoch_increment(state: BeaconState) -> None:
-    # Update current_epoch_start_shard
-    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
 ```
