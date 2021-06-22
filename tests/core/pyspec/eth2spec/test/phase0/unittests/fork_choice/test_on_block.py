@@ -406,6 +406,20 @@ def test_new_justified_is_later_than_store_justified(spec, state):
     assert (store.best_justified_checkpoint.hash_tree_root()
             == fork_2_state.current_justified_checkpoint.hash_tree_root())
 
+    # Verify best_justified_checkpoint
+    assert (store.best_justified_checkpoint.hash_tree_root()
+            == fork_2_state.current_justified_checkpoint.hash_tree_root()
+    assert store.best_justified_checkpoint.epoch == 5
+
+    # Tick to the next epoch
+    current_slot = spec.get_slots_since_genesis(store)
+    slot = current_slot + spec.SLOTS_PER_EPOCH - (current_slot % spec.SLOTS_PER_EPOCH)
+    spec.on_tick(store, (store.genesis_time + spec.config.SECONDS_PER_SLOT * slot))
+
+    # Verify justified_checkpoint
+    # FIXME: justified_checkpoint should have NOT been reverted!
+    assert store.justified_checkpoint.hash_tree_root() == fork_2_state.current_justified_checkpoint.hash_tree_root()
+
 
 @with_all_phases
 @spec_state_test
