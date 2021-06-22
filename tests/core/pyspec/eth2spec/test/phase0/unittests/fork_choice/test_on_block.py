@@ -7,8 +7,12 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_signed_full_block,
 )
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block, \
-    build_empty_block, sign_block
+from eth2spec.test.helpers.block import (
+    build_empty_block,
+    build_empty_block_for_next_slot,
+    sign_block,
+    transition_unsigned_block,
+)
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store,
     run_on_block,

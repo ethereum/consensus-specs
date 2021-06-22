@@ -29,7 +29,7 @@ The parameter that is required for executing `on_tick(store, time)`.
 
 ```yaml
 {
-    tick: int       --  to execute `on_tick(store, time)`.
+    tick: int       -- to execute `on_tick(store, time)`.
     valid: bool     -- optional, default to `true`.
                        If it's `false`, this execution step is expected to be invalid.
 }
