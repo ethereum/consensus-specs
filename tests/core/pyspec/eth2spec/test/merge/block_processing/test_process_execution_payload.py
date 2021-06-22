@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.execution_payload import (
-    build_empty_execution_payload_with_zeroed_random,
+    build_empty_execution_payload,
     get_execution_payload_header,
     build_state_with_incomplete_transition,
     build_state_with_complete_transition,
@@ -22,7 +22,6 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     yield 'execution', {'execution_valid': execution_valid}
     yield 'execution_payload', execution_payload
 
-    randao_mix = spec.Bytes32()
     called_new_block = False
 
     class TestEngine(spec.NoopExecutionEngine):
@@ -34,11 +33,11 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
 
     if not valid:
         expect_assertion_error(
-            lambda: spec.process_execution_payload(state, execution_payload, randao_mix, TestEngine()))
+            lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
         yield 'post', None
         return
 
-    spec.process_execution_payload(state, execution_payload, randao_mix, TestEngine())
+    spec.process_execution_payload(state, execution_payload, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block
@@ -56,7 +55,7 @@ def test_success_first_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
@@ -69,7 +68,7 @@ def test_success_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
@@ -83,7 +82,7 @@ def test_success_first_payload_with_gap_slot(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
@@ -97,7 +96,7 @@ def test_success_regular_payload_with_gap_slot(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
@@ -112,7 +111,7 @@ def test_bad_execution_first_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
 
@@ -127,7 +126,7 @@ def test_bad_execution_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
 
@@ -140,7 +139,7 @@ def test_bad_parent_hash_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.parent_hash = spec.Hash32()
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
@@ -154,7 +153,7 @@ def test_bad_number_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_number = execution_payload.block_number + 1
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
@@ -168,7 +167,7 @@ def test_bad_everything_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.parent_hash = spec.Hash32()
     execution_payload.block_number = execution_payload.block_number + 1
 
@@ -183,7 +182,7 @@ def test_bad_timestamp_first_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.timestamp = execution_payload.timestamp + 1
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
@@ -197,7 +196,7 @@ def test_bad_timestamp_regular_payload(spec, state):
     next_slot(spec, state)
 
     # execution payload
-    execution_payload = build_empty_execution_payload_with_zeroed_random(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.timestamp = execution_payload.timestamp + 1
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)

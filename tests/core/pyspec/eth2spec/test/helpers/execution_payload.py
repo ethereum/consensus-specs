@@ -1,14 +1,13 @@
-def build_empty_execution_payload_with_zeroed_random(spec, state):
-    return build_empty_execution_payload(spec, state, spec.Bytes32())
-
-
-def build_empty_execution_payload(spec, state, random):
+def build_empty_execution_payload(spec, state, randao_mix=None):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
     latest = state.latest_execution_payload_header
     timestamp = spec.compute_time_at_slot(state, state.slot)
     empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
+
+    if randao_mix is None:
+        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     payload = spec.ExecutionPayload(
         parent_hash=latest.block_hash,
@@ -17,7 +16,7 @@ def build_empty_execution_payload(spec, state, random):
         receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
         block_number=latest.block_number + 1,
-        random=random,
+        random=randao_mix,
         gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,

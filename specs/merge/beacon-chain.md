@@ -191,25 +191,22 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     if is_execution_enabled(state, block.body):
-        # [New in Merge]
-        randao_mix = get_randao_mix(state, get_current_epoch(state))
-        process_execution_payload(state, block.body.execution_payload, randao_mix, EXECUTION_ENGINE)
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 ### Execution payload processing
 
 #### `process_execution_payload`
 
+*Note:* This function depends on `process_randao` function call as it retrieves the most recent randao mix from the `state`. Implementations that are considering parallel processing of execution payload with respect to beacon chain state transition function should work around this dependency.
+
 ```python
-def process_execution_payload(state: BeaconState,
-                              payload: ExecutionPayload,
-                              randao_mix: Bytes32,
-                              execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
     # Verify consistency of the parent hash, block number and random
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
-        assert payload.random == randao_mix
+        assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
@@ -241,7 +238,6 @@ def process_execution_payload(state: BeaconState,
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
-    randao_seed = eth1_block_hash
     fork = Fork(
         previous_version=GENESIS_FORK_VERSION,
         current_version=MERGE_FORK_VERSION,  # [Modified in Merge]
@@ -252,7 +248,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
         fork=fork,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[randao_seed] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
+        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
     )
 
     # Process deposits
@@ -276,7 +272,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     # [New in Merge] Initialize the execution payload header (with block number set to 0)
     state.latest_execution_payload_header.block_hash = eth1_block_hash
     state.latest_execution_payload_header.timestamp = eth1_timestamp
-    state.latest_execution_payload_header.random = randao_seed
+    state.latest_execution_payload_header.random = eth1_block_hash
 
     return state
 ```
