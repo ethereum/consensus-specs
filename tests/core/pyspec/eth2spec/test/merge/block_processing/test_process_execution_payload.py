@@ -32,8 +32,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
             return execution_valid
 
     if not valid:
-        expect_assertion_error(
-            lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
+        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
         yield 'post', None
         return
 

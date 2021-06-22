@@ -51,7 +51,7 @@ def build_state_with_incomplete_transition(spec, state):
 
 
 def build_state_with_complete_transition(spec, state):
-    pre_state_payload = build_empty_execution_payload(spec, state, spec.Bytes32())
+    pre_state_payload = build_empty_execution_payload(spec, state)
     payload_header = get_execution_payload_header(spec, pre_state_payload)
 
     return build_state_with_execution_payload_header(spec, state, payload_header)
