@@ -35,8 +35,7 @@ The current features are:
 
 ### Merge
 
-The merge is still actively in R&D. The specifications outline a general direction for engineering work,
-while the details are in review and may change.
+The merge is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
 
 * Background material:
   * An [ethresear.ch](https://ethresear.ch) post [describing the basic mechanism](https://ethresear.ch/t/the-eth1-eth2-transition/6265)
