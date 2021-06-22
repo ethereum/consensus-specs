@@ -17,6 +17,7 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.state import (
     next_epoch,
     state_transition_and_sign_block,
+    transition_to,
 )
 
 
@@ -51,8 +52,8 @@ def test_basic(spec, state):
 
 
 @with_all_phases
-@with_presets([MINIMAL], reason="too slow")
 @spec_state_test
+@with_presets([MINIMAL], reason="too slow")
 def test_on_block_checkpoints(spec, state):
     test_steps = []
     # Initialization
@@ -76,10 +77,8 @@ def test_on_block_checkpoints(spec, state):
     on_tick_and_append_step(spec, store, store.time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
 
     # Mock the finalized_checkpoint and build a block on it
-    fin_state = store.block_states[last_block_root]
-    fin_state.finalized_checkpoint = (
-        store.block_states[last_block_root].current_justified_checkpoint
-    )
+    fin_state = store.block_states[last_block_root].copy()
+    fin_state.finalized_checkpoint = store.block_states[last_block_root].current_justified_checkpoint.copy()
 
     block = build_empty_block_for_next_slot(spec, fin_state)
     signed_block = state_transition_and_sign_block(spec, fin_state.copy(), block)
@@ -131,5 +130,106 @@ def test_on_block_bad_parent_root(spec, state):
     signed_block = sign_block(spec, state, block)
 
     yield from add_block(spec, store, signed_block, test_steps, valid=False)
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_block_before_finalized(spec, state):
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    # Fork
+    another_state = state.copy()
+
+    # Create a finalized chain
+    for _ in range(4):
+        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+    assert store.finalized_checkpoint.epoch == 2
+
+    # Fail receiving block of `GENESIS_SLOT + 1` slot
+    block = build_empty_block_for_next_slot(spec, another_state)
+    block.body.graffiti = b'\x12' * 32
+    signed_block = state_transition_and_sign_block(spec, another_state, block)
+    assert signed_block.message.hash_tree_root() not in store.blocks
+    yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False)
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_block_finalized_skip_slots(spec, state):
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    # Create a finalized chain
+    for _ in range(4):
+        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+    assert store.finalized_checkpoint.epoch == 2
+
+    # Another chain
+    another_state = store.block_states[store.finalized_checkpoint.root].copy()
+    # Build block that includes the skipped slots up to finality in chain
+    block = build_empty_block(spec,
+                              another_state,
+                              spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
+    block.body.graffiti = b'\x12' * 32
+    signed_block = state_transition_and_sign_block(spec, another_state, block)
+
+    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
+    test_steps = []
+    # Initialization
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
+    block = build_empty_block_for_next_slot(spec, state)
+    transition_unsigned_block(spec, state, block)
+    block.state_root = state.hash_tree_root()
+    store = spec.get_forkchoice_store(state, block)
+    yield 'anchor_state', state
+    yield 'anchor_block', block
+
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    pre_finalized_checkpoint_epoch = store.finalized_checkpoint.epoch
+
+    # Finalized
+    for _ in range(3):
+        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+    assert store.finalized_checkpoint.epoch == pre_finalized_checkpoint_epoch + 1
+
+    # Now build a block at later slot than finalized epoch
+    # Includes finalized block in chain, but not at appropriate skip slot
+    pre_state = store.block_states[block.hash_tree_root()].copy()
+    block = build_empty_block(spec,
+                              state=pre_state,
+                              slot=spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
+    block.body.graffiti = b'\x12' * 32
+    signed_block = sign_block(spec, pre_state, block)
+    yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False)
 
     yield 'steps', test_steps

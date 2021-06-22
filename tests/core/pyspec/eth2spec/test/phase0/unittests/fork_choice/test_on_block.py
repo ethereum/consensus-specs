@@ -8,86 +8,14 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_signed_full_block,
 )
 from eth2spec.test.helpers.block import (
-    build_empty_block,
     build_empty_block_for_next_slot,
-    sign_block,
-    transition_unsigned_block,
 )
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store,
     run_on_block,
     apply_next_epoch_with_attestations,
 )
-from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block, transition_to, next_slots
-
-
-@with_all_phases
-@spec_state_test
-def test_on_block_before_finalized(spec, state):
-    # Initialization
-    store = get_genesis_forkchoice_store(spec, state)
-
-    store.finalized_checkpoint = spec.Checkpoint(
-        epoch=store.finalized_checkpoint.epoch + 2,
-        root=store.finalized_checkpoint.root
-    )
-
-    # Fail receiving block of `GENESIS_SLOT + 1` slot
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    run_on_block(spec, store, signed_block, valid=False)
-
-
-@with_all_phases
-@spec_state_test
-def test_on_block_finalized_skip_slots(spec, state):
-    # Initialization
-    store = get_genesis_forkchoice_store(spec, state)
-
-    # Create a finalized chain
-    store.finalized_checkpoint = spec.Checkpoint(
-        epoch=store.finalized_checkpoint.epoch + 2,
-        root=store.finalized_checkpoint.root
-    )
-
-    # Build block that includes the skipped slots up to finality in chain
-    block = build_empty_block(spec, state, spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    spec.on_tick(store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT)
-    run_on_block(spec, store, signed_block)
-
-
-@with_all_phases
-@spec_state_test
-def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
-    # Initialization
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
-    block = build_empty_block_for_next_slot(spec, state)
-    transition_unsigned_block(spec, state, block)
-    block.state_root = state.hash_tree_root()
-    store = spec.get_forkchoice_store(state, block)
-
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    spec.on_tick(store, current_time)
-    assert store.time == current_time
-
-    pre_finalized_checkpoint_epoch = store.finalized_checkpoint.epoch
-
-    # Finalized
-    for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store)
-    assert store.finalized_checkpoint.epoch == pre_finalized_checkpoint_epoch + 1
-
-    # Now build a block at later slot than finalized epoch
-    # Includes finalized block in chain, but not at appropriate skip slot
-    pre_state = store.block_states[block.hash_tree_root()]
-    block = build_empty_block(spec,
-                              state=pre_state,
-                              slot=spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch) + 2)
-    signed_block = sign_block(spec, pre_state, block)
-
-    spec.on_tick(store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT)
-    run_on_block(spec, store, signed_block, valid=False)
+from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block, next_slots
 
 
 @with_all_phases
