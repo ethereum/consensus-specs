@@ -92,8 +92,9 @@ class ExecutionPayload(Container):
     parent_hash: Hash32
     coinbase: Bytes20  # 'beneficiary' in the yellow paper
     state_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     receipt_root: Bytes32  # 'receipts root' in the yellow paper
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    random: Bytes32  # 'difficulty' in the yellow paper
     block_number: uint64  # 'number' in the yellow paper
     gas_limit: uint64
     gas_used: uint64
@@ -111,8 +112,9 @@ class ExecutionPayloadHeader(Container):
     parent_hash: Hash32
     coinbase: Bytes20
     state_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     receipt_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    random: Bytes32
     block_number: uint64
     gas_limit: uint64
     gas_used: uint64
@@ -196,12 +198,15 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### `process_execution_payload`
 
+*Note:* This function depends on `process_randao` function call as it retrieves the most recent randao mix from the `state`. Implementations that are considering parallel processing of execution payload with respect to beacon chain state transition function should work around this dependency.
+
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash and block number
+    # Verify consistency of the parent hash, block number and random
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
+        assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
@@ -211,8 +216,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         parent_hash=payload.parent_hash,
         coinbase=payload.coinbase,
         state_root=payload.state_root,
-        logs_bloom=payload.logs_bloom,
         receipt_root=payload.receipt_root,
+        logs_bloom=payload.logs_bloom,
+        random=payload.random,
         block_number=payload.block_number,
         gas_limit=payload.gas_limit,
         gas_used=payload.gas_used,
@@ -266,6 +272,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     # [New in Merge] Initialize the execution payload header (with block number set to 0)
     state.latest_execution_payload_header.block_hash = eth1_block_hash
     state.latest_execution_payload_header.timestamp = eth1_timestamp
+    state.latest_execution_payload_header.random = eth1_block_hash
 
     return state
 ```
