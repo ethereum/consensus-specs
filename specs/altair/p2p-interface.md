@@ -137,13 +137,14 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
     return sync_committee.pubkeys[i:i + sync_subcommittee_size]
 ```
 
-- _[IGNORE]_ The contribution's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `contribution.slot == current_slot`.
-- _[IGNORE]_ The block being signed over (`contribution.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
+- _[IGNORE]_ The contribution's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `contribution.slot == current_slot`.
 - _[REJECT]_ The subcommittee index is in the allowed range, i.e. `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
-- _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index` for the slot `contribution.slot` and subcommittee index `contribution.subcommittee_index`.
 - _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(contribution_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is in the declared subcommittee of the current sync committee --
   i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
+- _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index`
+  for the slot `contribution.slot` and subcommittee index `contribution.subcommittee_index`
+  (this requires maintaining a cache of size `SYNC_COMMITTEE_SIZE` for this topic that can be flushed after each slot).
 - _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature of the `SyncAggregatorSelectionData` derived from the `contribution` by the validator with index `contribution_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_contribution_and_proof.signature`, is valid.
 - _[REJECT]_ The aggregate signature is valid for the message `beacon_block_root` and aggregate pubkey derived from the participation info in `aggregation_bits` for the subcommittee specified by the `contribution.subcommittee_index`.
@@ -158,12 +159,12 @@ The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync 
 
 The following validations MUST pass before forwarding the `sync_committee_message` on the network:
 
-- _[IGNORE]_ The signature's slot is for the current slot (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance), i.e. `sync_committee_message.slot == current_slot`.
-- _[IGNORE]_ The block being signed over (`sync_committee_message.beacon_block_root`) has been seen (via both gossip and non-gossip sources).
-- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`.
-  Note this validation is _per topic_ so that for a given `slot`, multiple messages could be forwarded with the same `validator_index` as long as the `subnet_id`s are distinct.
+- _[IGNORE]_ The signature's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `sync_committee_message.slot == current_slot`.
 - _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
+- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`
+  (this requires maintaining a cache of size `SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT` for each subnet that can be flushed after each slot).
+  Note this validation is _per topic_ so that for a given `slot`, multiple messages could be forwarded with the same `validator_index` as long as the `subnet_id`s are distinct.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
 
 #### Sync committees and aggregation
