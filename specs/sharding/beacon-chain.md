@@ -24,9 +24,9 @@
 - [Updated containers](#updated-containers)
   - [`AttestationData`](#attestationdata)
   - [`BeaconBlockBody`](#beaconblockbody)
-  - [`Builder`](#builder)
   - [`BeaconState`](#beaconstate)
 - [New containers](#new-containers)
+  - [`Builder`](#builder)
   - [`DataCommitment`](#datacommitment)
   - [ShardBlobBody](#shardblobbody)
   - [`ShardBlobBodySummary`](#shardblobbodysummary)
@@ -77,8 +77,8 @@ using KZG10 commitments to commit to data to remove any need for fraud proofs (a
 
 - **Data**: A list of KZG points, to translate a byte string into
 - **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
-- **Builder**: Builds blobs and bids for proposal slots with fee-paying blob-headers, responsible for availability.
-- **Shard proposer**: Validator, taking bids for shard data opportunity, co-signs with builder to propose the blob.
+- **Builder**: Independent actor that builds blobs and bids for proposal slots via fee-paying blob-headers, responsible for availability.
+- **Shard proposer**: Validator taking bids from blob builders for shard data opportunity, co-signs with builder to propose the blob.
 
 ## Custom types
 
@@ -129,7 +129,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
-| `BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | builders |
+| `BLOB_BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | shard blob builders |
 
 ### Shard blob samples
 
@@ -174,7 +174,7 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Hash-tree-root of ShardBlock
+    # Hash-tree-root of ShardBlob
     shard_blob_root: Root  # [New in Sharding]
 ```
 
@@ -183,16 +183,7 @@ class AttestationData(Container):
 ```python
 class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
     shard_proposer_slashings: List[ShardProposerSlashing, MAX_SHARD_PROPOSER_SLASHINGS]
-    shard_headers: List[SignedShardBlockHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
-```
-
-### `Builder`
-
-```python
-class Builder(Container):
-    pubkey: BLSPubkey
-    # TODO: fields for either an expiry mechanism (refunding execution account with remaining balance) 
-    #  and/or a builder-transaction mechanism.
+    shard_headers: List[SignedShardBlobHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
 ```
 
 ### `BeaconState`
@@ -203,15 +194,24 @@ class BeaconState(merge.BeaconState):
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # [New fields]
-    # Builder registry.
-    builders: List[Builder, BUILDER_REGISTRY_LIMIT]
-    builder_balances: List[Gwei, BUILDER_REGISTRY_LIMIT]
+    # Blob builder registry.
+    blob_builders: List[Builder, BLOB_BUILDER_REGISTRY_LIMIT]
+    blob_builder_balances: List[Gwei, BLOB_BUILDER_REGISTRY_LIMIT]
     # A ring buffer of the latest slots, with information per active shard.
     shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
     shard_gasprice: uint64
 ```
 
 ## New containers
+
+### `Builder`
+
+```python
+class Builder(Container):
+    pubkey: BLSPubkey
+    # TODO: fields for either an expiry mechanism (refunding execution account with remaining balance) 
+    #  and/or a builder-transaction mechanism.
+```
 
 ### `DataCommitment`
 
@@ -269,10 +269,10 @@ class ShardBlobBodySummary(Container):
 class ShardBlob(Container):
     slot: Slot
     shard: Shard
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
     # Builder of the data, pays data-fee to proposer
     builder_index: BuilderIndex
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
     # Blob contents
     body: ShardBlobBody
 ```
@@ -285,10 +285,10 @@ Header version of `ShardBlob`.
 class ShardBlobHeader(Container):
     slot: Slot
     shard: Shard
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
     # Builder of the data, pays data-fee to proposer
     builder_index: BuilderIndex
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
     # Blob contents, without the full data
     body_summary: ShardBlobBodySummary
 ```
@@ -322,7 +322,7 @@ class SignedShardBlobHeader(Container):
 class PendingShardHeader(Container):
     # KZG10 commitment to the data
     commitment: DataCommitment
-    # hash_tree_root of the ShardBlockHeader (stored so that attestations can be checked against it)
+    # hash_tree_root of the ShardBlobHeader (stored so that attestations can be checked against it)
     root: Root
     # Who voted for the header
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
@@ -340,10 +340,10 @@ Reference version of `ShardBlobHeader`, substituting the body for just a hash-tr
 class ShardBlobReference(Container):
     slot: Slot
     shard: Shard
-    # Proposer of the shard-blob
-    proposer_index: ValidatorIndex
     # Builder of the data
     builder_index: BuilderIndex
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
     # Blob hash-tree-root for slashing reference
     body_root: Root
 ```
@@ -643,8 +643,12 @@ def charge_builder(state: BeaconState, index: BuilderIndex, fee: Gwei) -> None:
     """
     Decrease the builder balance at index ``index`` by ``fee``, with underflow check.
     """
-    assert state.builder_balances[index] >= fee
-    state.builder_balances[index] -= fee
+    # TODO: apply stricter requirement to protect against fee-acceptance race conditions, e.g.:
+    #  - balance per shard (or builders per shard)
+    #  - balance / shard_count > fee
+    # TODO: also consider requirement to pay for base-fee of shard-data
+    assert state.blob_builder_balances[index] >= fee
+    state.blob_builder_balances[index] -= fee
 ```
 
 ##### `process_shard_header`
@@ -680,7 +684,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Verify builder and proposer aggregate signature
     blob_signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_BLOB))
-    builder_pubkey = state.builders[header.builder_index].pubkey
+    builder_pubkey = state.blob_builders[header.builder_index].pubkey
     proposer_pubkey = state.validators[header.proposer_index].pubkey
     assert bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_header.signature)
 
@@ -698,7 +702,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     charge_builder(state, header.builder_index, fee)
     # TODO: proposer is charged for confirmed headers (see charge_confirmed_shard_fees).
     #  Need to align incentive, so proposer does not gain from including unconfirmed headers
-    increase_balance(state, blob_header.proposer_index, fee)
+    increase_balance(state, header.proposer_index, fee)
 
     # Initialize the pending header
     index = compute_committee_index_from_shard(state, slot, shard)
@@ -725,28 +729,29 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 
 ```python
 def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
-    # Verify the headers are different
-    assert proposer_slashing.body_root_1 != proposer_slashing.body_root_2
-
     slot = proposer_slashing.slot
     shard = proposer_slashing.shard
     proposer_index = proposer_slashing.proposer_index
+
+    reference_1 = ShardBlobReference(slot=slot, shard=shard,
+                                     proposer_index=proposer_index,
+                                     builder_index=proposer_slashing.builder_index_1,
+                                     body_root=proposer_slashing.body_root_1)
+    reference_2 = ShardBlobReference(slot=slot, shard=shard,
+                                     proposer_index=proposer_index,
+                                     builder_index=proposer_slashing.builder_index_2,
+                                     body_root=proposer_slashing.body_root_2)
+
+    # Verify the signed messages are different
+    assert reference_1 != reference_2
 
     # Verify the proposer is slashable
     proposer = state.validators[proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
 
-    reference_1 = ShardBlobReference(slot=slot, shard=shard,
-                                     proposer_index=proposer_index,
-                                     builder_index=proposer_slashing.builder_index_1,
-                                     body_root= proposer_slashing.body_root_1)
-    reference_2 = ShardBlobReference(slot=slot, shard=shard,
-                                     proposer_index=proposer_index,
-                                     builder_index=proposer_slashing.builder_index_1,
-                                     body_root= proposer_slashing.body_root_2)
     # The builders are not slashed, the proposer co-signed with them
-    builder_pubkey_1 = state.builders[proposer_slashing.builder_index_1].pubkey
-    builder_pubkey_2 = state.builders[proposer_slashing.builder_index_2].pubkey
+    builder_pubkey_1 = state.blob_builders[proposer_slashing.builder_index_1].pubkey
+    builder_pubkey_2 = state.blob_builders[proposer_slashing.builder_index_2].pubkey
     domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(slot))
     signing_root_1 = compute_signing_root(reference_1, domain)
     signing_root_2 = compute_signing_root(reference_2, domain)
