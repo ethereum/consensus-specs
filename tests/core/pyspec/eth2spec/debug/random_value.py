@@ -121,7 +121,7 @@ def get_random_ssz_object(rng: Random,
         if mode == RandomizationMode.mode_zero:
             selector = 0
         elif mode == RandomizationMode.mode_max:
-            selector = len(options)-1
+            selector = len(options) - 1
         else:
             selector = rng.randrange(0, len(options))
         elem_type = options[selector]
