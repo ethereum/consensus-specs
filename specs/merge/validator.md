@@ -49,7 +49,7 @@ The body of this function is implementation dependent.
 The Consensus API may be used to implement this with an external execution engine.
 
 ```python
-def assemble_block(self: ExecutionEngine, block_hash: Hash32, timestamp: uint64) -> ExecutionPayload:
+def assemble_block(self: ExecutionEngine, block_hash: Hash32, timestamp: uint64, random: Bytes32) -> ExecutionPayload:
     ...
 ```
 
@@ -70,21 +70,34 @@ Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of 
 * Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine)` where:
 
 ```python
+def compute_randao_mix(state: BeaconState, randao_reveal: BLSSignature) -> Bytes32:
+    epoch = get_current_epoch(state)
+    return xor(get_randao_mix(state, epoch), hash(randao_reveal))
+
+
+def produce_execution_payload(state: BeaconState,
+                              parent_hash: Hash32,
+                              randao_reveal: BLSSignature,
+                              execution_engine: ExecutionEngine) -> ExecutionPayload:
+    timestamp = compute_timestamp_at_slot(state, state.slot)
+    randao_mix = compute_randao_mix(state, randao_reveal)
+    return execution_engine.assemble_block(parent_hash, timestamp, randao_mix)
+
+
 def get_execution_payload(state: BeaconState,
                           transition_store: TransitionStore,
+                          randao_reveal: BLSSignature,
                           execution_engine: ExecutionEngine) -> ExecutionPayload:
-    if not is_transition_completed(state):
+    if not is_merge_complete(state):
         pow_block = get_pow_chain_head()
         if not is_valid_terminal_pow_block(transition_store, pow_block):
             # Pre-merge, empty payload
             return ExecutionPayload()
         else:
             # Signify merge via producing on top of the last PoW block
-            timestamp = compute_time_at_slot(state, state.slot)
-            return execution_engine.assemble_block(pow_block.block_hash, timestamp)
+            return produce_execution_payload(state, pow_block.block_hash, randao_reveal, execution_engine)
 
     # Post-merge, normal payload
-    execution_parent_hash = state.latest_execution_payload_header.block_hash
-    timestamp = compute_time_at_slot(state, state.slot)
-    return execution_engine.assemble_block(execution_parent_hash, timestamp)
+    parent_hash = state.latest_execution_payload_header.block_hash
+    return produce_execution_payload(state, parent_hash, randao_reveal, execution_engine)
 ```

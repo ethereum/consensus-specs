@@ -6,8 +6,10 @@ from eth2spec.test.context import (
     low_balances, misc_balances,
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing, \
-    get_indexed_attestation_participants, get_attestation_2_data, get_attestation_1_data
+from eth2spec.test.helpers.attester_slashings import (
+    get_valid_attester_slashing, get_valid_attester_slashing_by_indices,
+    get_indexed_attestation_participants, get_attestation_2_data, get_attestation_1_data,
+)
 from eth2spec.test.helpers.proposer_slashings import get_min_slashing_penalty_quotient
 from eth2spec.test.helpers.state import (
     get_balance,
@@ -122,6 +124,39 @@ def test_success_already_exited_recent(spec, state):
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_success_proposer_index_slashed(spec, state):
+    # Transition past genesis slot because generally doesn't have a proposer
+    next_epoch_via_block(spec, state)
+
+    proposer_index = spec.get_beacon_proposer_index(state)
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state,
+        [proposer_index],
+        signed_1=True, signed_2=True,
+    )
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing)
+
+
+@with_all_phases
+@spec_state_test
+def test_success_attestation_from_future(spec, state):
+    # Transition state to future to enable generation of a "future" attestation
+    future_state = state.copy()
+    next_epoch_via_block(spec, future_state)
+    # Generate slashing using the future state
+    attester_slashing = get_valid_attester_slashing(
+        spec, future_state,
+        slot=state.slot + 5,  # Slot is in the future wrt `state`
+        signed_1=True, signed_2=True
+    )
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing)
 
