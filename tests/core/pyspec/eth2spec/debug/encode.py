@@ -1,7 +1,7 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, serialize
 from eth2spec.utils.ssz.ssz_typing import (
     uint, boolean,
-    Bitlist, Bitvector, Container, Vector, List
+    Bitlist, Bitvector, Container, Vector, List, Union
 )
 
 
@@ -31,5 +31,11 @@ def encode(value, include_hash_tree_roots=False):
         if include_hash_tree_roots:
             ret["hash_tree_root"] = '0x' + hash_tree_root(value).hex()
         return ret
+    elif isinstance(value, Union):
+        inner_value = value.value()
+        return {
+            'selector': int(value.selector()),
+            'value': None if inner_value is None else encode(inner_value, include_hash_tree_roots)
+        }
     else:
         raise Exception(f"Type not recognized: value={value}, typ={type(value)}")
