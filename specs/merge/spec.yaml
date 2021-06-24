@@ -1,0 +1,21 @@
+md_files:
+  - ../phase0/beacon-chain.md
+  - ../phase0/fork-choice.md
+  - ../phase0/validator.md
+  - ../phase0/weak-subjectivity.md
+  - ../merge/beacon-chain.md
+  - ../merge/fork.md
+  - ../merge/fork-choice.md
+  - ../merge/validator.md
+
+py_prefix:
+  - ../phase0/prefix.py
+  - prefix.py
+
+py_suffix:
+  - ../phase0/suffix.py
+  - suffix.py
+
+overridden_functions:
+  - ceillog2
+  - floorlog2

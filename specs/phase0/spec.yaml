@@ -1,0 +1,15 @@
+md_files:
+  - beacon-chain.md
+  - fork-choice.md
+  - validator.md
+  - weak-subjectivity.md
+
+py_prefix:
+  - prefix.py
+
+py_suffix:
+  - suffix.py
+
+overridden_functions:
+  - ceillog2
+  - floorlog2

@@ -124,7 +124,10 @@ codespell:
 
 # TODO: add future merge, sharding, etc. packages to linting.
 lint: pyspec
-	. venv/bin/activate; cd $(PY_SPEC_DIR); \
+	. venv/bin/activate; \
+	flake8 --config $(LINTER_CONFIG_FILE) setup.py; \
+	mypy --config-file $(LINTER_CONFIG_FILE) setup.py; \
+	cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.merge
 
