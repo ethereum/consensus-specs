@@ -68,7 +68,8 @@ def test_on_block_checkpoints(spec, state):
     next_epoch(spec, state)
     on_tick_and_append_step(spec, store, store.time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
 
-    state, store, last_signed_block = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+    state, store, last_signed_block = yield from apply_next_epoch_with_attestations(
+        spec, state, store, True, False, test_steps=test_steps)
     last_block_root = hash_tree_root(last_signed_block.message)
     assert spec.get_head(store) == last_block_root
 
@@ -152,7 +153,8 @@ def test_on_block_before_finalized(spec, state):
 
     # Create a finalized chain
     for _ in range(4):
-        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, False, test_steps=test_steps)
     assert store.finalized_checkpoint.epoch == 2
 
     # Fail receiving block of `GENESIS_SLOT + 1` slot
@@ -180,7 +182,8 @@ def test_on_block_finalized_skip_slots(spec, state):
 
     # Create a finalized chain
     for _ in range(4):
-        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, False, test_steps=test_steps)
     assert store.finalized_checkpoint.epoch == 2
 
     # Another chain
@@ -219,7 +222,8 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
 
     # Finalized
     for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(spec, state, store, test_steps)
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, False, test_steps=test_steps)
     assert store.finalized_checkpoint.epoch == pre_finalized_checkpoint_epoch + 1
 
     # Now build a block at later slot than finalized epoch

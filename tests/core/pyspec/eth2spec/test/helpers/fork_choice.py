@@ -88,6 +88,9 @@ def run_on_block(spec, store, signed_block, valid=True):
 
 
 def add_block(spec, store, signed_block, test_steps=None, valid=True):
+    """
+    Run on_block and on_attestation
+    """
     if test_steps is None:
         test_steps = []
 
@@ -135,11 +138,17 @@ def get_formatted_head_output(spec, store):
     }
 
 
-def apply_next_epoch_with_attestations(spec, state, store, test_steps=None):
+def apply_next_epoch_with_attestations(spec,
+                                       state,
+                                       store,
+                                       fill_cur_epoch,
+                                       fill_prev_epoch,
+                                       participation_fn=None,
+                                       test_steps=None):
     if test_steps is None:
         test_steps = []
 
-    _, new_signed_blocks, post_state = next_epoch_with_attestations(spec, state, True, False)
+    _, new_signed_blocks, post_state = next_epoch_with_attestations(spec, state, fill_cur_epoch, fill_prev_epoch)
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
