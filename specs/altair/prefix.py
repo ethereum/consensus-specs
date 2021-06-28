@@ -7,11 +7,9 @@ from eth2spec.utils.ssz.ssz_typing import Path
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
 
+
 def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
     return GeneralizedIndex(ssz_path.gindex())
-
-FINALIZED_ROOT_INDEX = GeneralizedIndex(105)
-NEXT_SYNC_COMMITTEE_INDEX = GeneralizedIndex(55)

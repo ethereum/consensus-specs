@@ -16,7 +16,6 @@ from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
 
-# Preparations
 SSZObject = TypeVar('SSZObject', bound=View)
 
 

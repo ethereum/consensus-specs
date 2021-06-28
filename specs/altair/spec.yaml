@@ -20,9 +20,7 @@ py_suffix:
 
 overridden_functions:
   - eth2_aggregate_pubkeys
-  - ceillog2
-  - floorlog2
 
 predefined_vars:
-  - FINALIZED_ROOT_INDEX
-  - NEXT_SYNC_COMMITTEE_INDEX
+  FINALIZED_ROOT_INDEX : GeneralizedIndex(105)
+  NEXT_SYNC_COMMITTEE_INDEX : GeneralizedIndex(55)

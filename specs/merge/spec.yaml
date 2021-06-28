@@ -15,7 +15,3 @@ py_prefix:
 py_suffix:
   - ../phase0/suffix.py
   - suffix.py
-
-overridden_functions:
-  - ceillog2
-  - floorlog2

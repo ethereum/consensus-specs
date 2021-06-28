@@ -312,23 +312,25 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
-    predefined_vars = spec_yaml.get("predefined_vars", [])
+    predefined_vars = spec_yaml.get("predefined_vars", {})
 
     vars_spec = '\n'.join(format_constant(k, v) for k, v in spec_object.vars.items() if k not in predefined_vars)
+    predefined_vars_spec = '\n'.join(f'{k} = {v}' for k, v in predefined_vars.items())
     predefined_vars_check = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.vars[x].value),
-                                      predefined_vars))
+                                      predefined_vars.keys()))
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     spec = (f'PRESET_NAME = "{preset_name}"\n\n'
             + '\n\n'.join(spec_object.python_prefix)
-            + '\n\n' + f"fork = \'{fork}\'\n"
-            + '\n\n' + new_type_definitions
+            + '\n\n' + f"fork = \'{fork}\'"
+            + ('\n\n' + predefined_vars_spec if predefined_vars_spec != '' else '')
+            + '\n\n\n' + new_type_definitions
             + '\n\n' + vars_spec
             + '\n\n\n' + config_spec
             + '\n\n' + ordered_class_objects_spec
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
             + '\n\n\n' + functions_spec
-            + '\n\n' + predefined_vars_check
-            + '\n' + '\n'.join(spec_object.python_suffix)
+            + ('\n\n\n' + predefined_vars_check if predefined_vars_check != '' else '')
+            + '\n\n\n' + '\n\n'.join(spec_object.python_suffix)
             )
     return spec
 

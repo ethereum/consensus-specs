@@ -1,4 +1,3 @@
-# Sundry Functions
 def get_eth1_data(block: Eth1Block) -> Eth1Data:
     """
     A stub function return mocking Eth1Data.

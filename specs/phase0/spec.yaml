@@ -9,7 +9,3 @@ py_prefix:
 
 py_suffix:
   - suffix.py
-
-overridden_functions:
-  - ceillog2
-  - floorlog2
