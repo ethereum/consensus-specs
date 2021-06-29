@@ -86,7 +86,7 @@ def test_on_block_checkpoints(spec, state):
 
     # Run for 1 epoch with full attestations
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
 
     state, store, last_signed_block = yield from apply_next_epoch_with_attestations(
         spec, state, store, True, False, test_steps=test_steps)
@@ -95,7 +95,7 @@ def test_on_block_checkpoints(spec, state):
 
     # Forward 1 epoch
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
 
     # Mock the finalized_checkpoint and build a block on it
     fin_state = store.block_states[last_block_root].copy()
@@ -596,11 +596,9 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
 
     assert another_state.finalized_checkpoint.epoch == 2
     assert another_state.current_justified_checkpoint.epoch == 3
-    assert state.finalized_checkpoint.hash_tree_root() != another_state.finalized_checkpoint.hash_tree_root()
-    assert (
-        state.current_justified_checkpoint.hash_tree_root()
-        != another_state.current_justified_checkpoint.hash_tree_root()
-    )
+    assert state.finalized_checkpoint != another_state.finalized_checkpoint
+    assert state.current_justified_checkpoint != another_state.current_justified_checkpoint
+
     # pre_store_justified_checkpoint_root = store.justified_checkpoint.root
 
     # FIXME: pending on the `on_block`, `on_attestation` fix
