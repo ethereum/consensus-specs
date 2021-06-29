@@ -21,6 +21,9 @@ py_suffix:
 overridden_functions:
   - eth2_aggregate_pubkeys
 
+# These constants are needed (in the definition of LightClientUpdate) before
+# they appear in the generated code. To solve this they are defined here and
+# later checked against the definition in the spec.
 predefined_vars:
   FINALIZED_ROOT_INDEX : GeneralizedIndex(105)
   NEXT_SYNC_COMMITTEE_INDEX : GeneralizedIndex(55)
