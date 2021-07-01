@@ -66,6 +66,29 @@ def get_committee_indices(spec, state, duplicates=False):
 @with_altair_and_later
 @spec_state_test
 @always_bls
+def test_invalid_signature_bad_domain(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    rng = random.Random(2020)
+    random_participant = rng.choice(committee_indices)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    # Exclude one participant whose signature was included.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[index != random_participant for index in committee_indices],
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee_indices,  # full committee signs
+            domain_type=spec.DOMAIN_BEACON_ATTESTER,
+        )
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
 def test_invalid_signature_missing_participant(spec, state):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     rng = random.Random(2020)
