@@ -178,7 +178,11 @@ def test_get_eth1_vote_default_vote(spec, state):
     state.eth1_data_votes = ()
     eth1_chain = []
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
-    assert eth1_data == state.eth1_data
+    assert eth1_data == spec.Eth1Data(
+        deposit_root=Bytes32(),
+        deposit_count=0,
+        block_hash=Bytes32(),
+    )
 
 
 @with_all_phases
@@ -280,7 +284,11 @@ def test_get_eth1_vote_chain_in_past(spec, state):
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
 
     # Should be default vote
-    assert eth1_data == state.eth1_data
+    assert eth1_data == spec.Eth1Data(
+        deposit_root=Bytes32(),
+        deposit_count=0,
+        block_hash=Bytes32(),
+    )
 
 
 @with_all_phases
