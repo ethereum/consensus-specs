@@ -202,7 +202,41 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
 @with_altair_and_later
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
-def test_sync_committee_rewards_duplicate_committee(spec, state):
+def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state):
+    committee_indices = get_committee_indices(spec, state, duplicates=True)
+    committee_size = len(committee_indices)
+    committee_bits = [False] * committee_size
+    assert len(committee_bits) == committee_size
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_half_participation(spec, state):
+    committee_indices = get_committee_indices(spec, state, duplicates=True)
+    committee_size = len(committee_indices)
+    committee_bits = [True] * (committee_size // 2) + [False] * (committee_size // 2)
+    assert len(committee_bits) == committee_size
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_full_participation(spec, state):
     committee_indices = get_committee_indices(spec, state, duplicates=True)
     committee_size = len(committee_indices)
     committee_bits = [True] * committee_size
