@@ -334,7 +334,7 @@ Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_
 
 ###### `get_eth1_data`
 
-Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and depost contract data available.
+Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and deposit contract data available.
 
 Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
 
@@ -376,9 +376,8 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
-    # Non-substantive casting for linter
-    state_eth1_data: Eth1Data = state.eth1_data
-    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data
+    zero_eth1_data = Eth1Data(block_hash=Bytes32(), deposit_root=Bytes32(), deposit_count=0)
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else zero_eth1_data
 
     return max(
         valid_votes,
