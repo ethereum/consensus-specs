@@ -170,7 +170,7 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
-    assert active_validator_count >= spec.SYNC_COMMITTEE_SIZE
+    assert active_validator_count > spec.SYNC_COMMITTEE_SIZE
     assert committee_size == len(set(committee_indices))
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
