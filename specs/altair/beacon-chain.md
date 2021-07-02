@@ -42,6 +42,7 @@
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `slash_validator`](#modified-slash_validator)
   - [Block processing](#block-processing)
+    - [Operations](#operations)
     - [Modified `process_attestation`](#modified-process_attestation)
     - [Modified `process_deposit`](#modified-process_deposit)
     - [Sync aggregate processing](#sync-aggregate-processing)
@@ -440,13 +441,26 @@ def slash_validator(state: BeaconState,
 
 ### Block processing
 
+#### Operations
+
+*Note*: The function `process_operations` is modified to process sync aggregate.
+
 ```python
-def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    process_block_header(state, block)
-    process_randao(state, block.body)
-    process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in Altair]
-    process_sync_aggregate(state, block.body.sync_aggregate)  # [New in Altair]
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+
+    process_sync_aggregate(state, body.sync_aggregate)  # [New in Altair]
 ```
 
 #### Modified `process_attestation`
