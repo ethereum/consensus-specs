@@ -12,6 +12,13 @@ from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
+def get_full_flags(spec):
+    full_flags = spec.ParticipationFlags(0)
+    for flag_index in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
+        full_flags = spec.add_flag(full_flags, flag_index)
+    return full_flags
+
+
 def run_process_participation_flag_updates(spec, state):
     old = state.current_epoch_participation.copy()
     yield from run_epoch_processing_with(spec, state, 'process_participation_flag_updates')
@@ -33,12 +40,30 @@ def test_all_zeroed(spec, state):
 def test_filled(spec, state):
     next_epoch_via_block(spec, state)
 
-    full_flags = spec.ParticipationFlags(0)
-    for flag_index in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
-        full_flags = spec.add_flag(full_flags, flag_index)
+    state.previous_epoch_participation = [get_full_flags(spec)] * len(state.validators)
+    state.current_epoch_participation = [get_full_flags(spec)] * len(state.validators)
 
-    state.previous_epoch_participation = [full_flags] * len(state.validators)
-    state.current_epoch_participation = [full_flags] * len(state.validators)
+    yield from run_process_participation_flag_updates(spec, state)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_previous_filled(spec, state):
+    next_epoch_via_block(spec, state)
+
+    state.previous_epoch_participation = [get_full_flags(spec)] * len(state.validators)
+    state.current_epoch_participation = [0] * len(state.validators)
+
+    yield from run_process_participation_flag_updates(spec, state)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_current_filled(spec, state):
+    next_epoch_via_block(spec, state)
+
+    state.previous_epoch_participation = [0] * len(state.validators)
+    state.current_epoch_participation = [get_full_flags(spec)] * len(state.validators)
 
     yield from run_process_participation_flag_updates(spec, state)
 
@@ -55,9 +80,25 @@ def random_flags(spec, state, seed: int, previous=True, current=True):
 
 @with_altair_and_later
 @spec_state_test
-def test_random(spec, state):
+def test_random_0(spec, state):
     next_epoch_via_block(spec, state)
-    random_flags(spec, state, 10)
+    random_flags(spec, state, 100)
+    yield from run_process_participation_flag_updates(spec, state)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_random_1(spec, state):
+    next_epoch_via_block(spec, state)
+    random_flags(spec, state, 101)
+    yield from run_process_participation_flag_updates(spec, state)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_random_2(spec, state):
+    next_epoch_via_block(spec, state)
+    random_flags(spec, state, 102)
     yield from run_process_participation_flag_updates(spec, state)
 
 
