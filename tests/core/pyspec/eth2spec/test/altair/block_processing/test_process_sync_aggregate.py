@@ -80,7 +80,7 @@ def test_invalid_signature_bad_domain(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # full committee signs
-            domain_type=spec.DOMAIN_BEACON_ATTESTER,
+            domain_type=spec.DOMAIN_BEACON_ATTESTER,  # Incorrect domain
         )
     )
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
