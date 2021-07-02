@@ -382,3 +382,41 @@ def test_valid_signature_future_committee(spec, state):
     )
 
     yield from run_sync_committee_processing(spec, state, block)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL], reason="prefer short search to find matching proposer")
+def test_proposer_in_committee_without_participation(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+
+    # NOTE: seem to reliably be getting a matching proposer in the first epoch w/ ``MINIMAL`` preset.
+    for _ in range(spec.SLOTS_PER_EPOCH):
+        block = build_empty_block_for_next_slot(spec, state)
+        proposer_index = block.proposer_index
+        proposer_pubkey = state.validators[proposer_index].pubkey
+        proposer_is_in_sync_committee = proposer_pubkey in state.current_sync_committee.pubkeys
+        if proposer_is_in_sync_committee:
+            participation = [index != proposer_index for index in committee_indices]
+            participants = [index for index in committee_indices if index != proposer_index]
+        else:
+            participation = [True for _ in committee_indices]
+            participants = committee_indices
+        # Valid sync committee signature here...
+        block.body.sync_aggregate = spec.SyncAggregate(
+            sync_committee_bits=participation,
+            sync_committee_signature=compute_aggregate_sync_committee_signature(
+                spec,
+                state,
+                block.slot - 1,
+                participants,
+            )
+        )
+
+        if proposer_is_in_sync_committee:
+            yield from run_sync_committee_processing(spec, state, block)
+            return
+        else:
+            state_transition_and_sign_block(spec, state, block)
+    raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
