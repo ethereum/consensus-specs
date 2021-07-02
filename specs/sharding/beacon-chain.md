@@ -488,17 +488,6 @@ def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Sh
 
 ### Block processing
 
-```python
-def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    process_block_header(state, block)
-    process_randao(state, block.body)
-    process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in Sharding]
-    # Pre-merge, skip execution payload processing
-    if is_execution_enabled(state, block):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
-```
-
 #### Operations
 
 ```python
@@ -521,6 +510,10 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
+
+    # Pre-merge, skip execution payload processing
+    if is_execution_enabled(state, block):
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 ##### Extended Attestation processing
