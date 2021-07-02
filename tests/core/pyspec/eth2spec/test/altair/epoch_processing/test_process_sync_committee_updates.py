@@ -21,8 +21,8 @@ from eth2spec.test.helpers.epoch_processing import (
 #
 
 def run_sync_committees_progress_test(spec, state):
-    first_sync_committee = state.current_sync_committee
-    second_sync_committee = state.next_sync_committee
+    first_sync_committee = state.current_sync_committee.copy()
+    second_sync_committee = state.next_sync_committee.copy()
 
     current_period = spec.get_current_epoch(state) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     next_period = current_period + 1
@@ -115,8 +115,8 @@ def test_sync_committees_no_progress_not_boundary(spec, state):
     slot_not_at_period_boundary = state.slot + spec.SLOTS_PER_EPOCH
     transition_to(spec, state, slot_not_at_period_boundary)
 
-    first_sync_committee = state.current_sync_committee
-    second_sync_committee = state.next_sync_committee
+    first_sync_committee = state.current_sync_committee.copy()
+    second_sync_committee = state.next_sync_committee.copy()
 
     yield from run_epoch_processing_with(spec, state, 'process_sync_committee_updates')
 
