@@ -276,7 +276,6 @@ def test_sync_committee_rewards_empty_participants(spec, state):
 def test_invalid_signature_past_block(spec, state):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
 
-    blocks = []
     for _ in range(2):
         # NOTE: need to transition twice to move beyond the degenerate case at genesis
         block = build_empty_block_for_next_slot(spec, state)
@@ -291,8 +290,7 @@ def test_invalid_signature_past_block(spec, state):
             )
         )
 
-        signed_block = state_transition_and_sign_block(spec, state, block)
-        blocks.append(signed_block)
+        state_transition_and_sign_block(spec, state, block)
 
     invalid_block = build_empty_block_for_next_slot(spec, state)
     # Invalid signature from a slot other than the previous
