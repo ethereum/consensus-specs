@@ -7,8 +7,10 @@ from eth2spec.test.helpers.block import (
 from eth2spec.utils import bls
 
 
-def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None):
-    domain = spec.get_domain(state, spec.DOMAIN_SYNC_COMMITTEE, spec.compute_epoch_at_slot(slot))
+def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None, domain_type=None):
+    if not domain_type:
+        domain_type = spec.DOMAIN_SYNC_COMMITTEE
+    domain = spec.get_domain(state, domain_type, spec.compute_epoch_at_slot(slot))
     if block_root is None:
         if slot == state.slot:
             block_root = build_empty_block_for_next_slot(spec, state).parent_root
@@ -18,7 +20,7 @@ def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None
     return bls.Sign(privkey, signing_root)
 
 
-def compute_aggregate_sync_committee_signature(spec, state, slot, participants, block_root=None):
+def compute_aggregate_sync_committee_signature(spec, state, slot, participants, block_root=None, domain_type=None):
     if len(participants) == 0:
         return spec.G2_POINT_AT_INFINITY
 
@@ -32,6 +34,7 @@ def compute_aggregate_sync_committee_signature(spec, state, slot, participants, 
                 slot,
                 privkey,
                 block_root=block_root,
+                domain_type=domain_type,
             )
         )
     return bls.Aggregate(signatures)
