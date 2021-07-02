@@ -417,10 +417,11 @@ def test_proposer_in_committee_without_participation(spec, state):
         if proposer_is_in_sync_committee:
             assert state.validators[block.proposer_index].pubkey in state.current_sync_committee.pubkeys
             yield from run_sync_committee_processing(spec, state, block)
-            return
+            break
         else:
             state_transition_and_sign_block(spec, state, block)
-    raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
+    else:
+        raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
 
 
 @with_altair_and_later
