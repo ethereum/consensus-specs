@@ -206,7 +206,6 @@ def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state
     committee_indices = get_committee_indices(spec, state, duplicates=True)
     committee_size = len(committee_indices)
     committee_bits = [False] * committee_size
-    assert len(committee_bits) == committee_size
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
