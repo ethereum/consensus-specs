@@ -17,8 +17,12 @@ from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,
 )
 from eth2spec.test.context import (
+    default_activation_threshold,
     expect_assertion_error,
+    misc_balances,
+    single_phase,
     with_altair_and_later,
+    with_custom_state,
     with_presets,
     spec_state_test,
     always_bls,
@@ -206,7 +210,6 @@ def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state
     committee_indices = get_committee_indices(spec, state, duplicates=True)
     committee_size = len(committee_indices)
     committee_bits = [False] * committee_size
-    assert len(committee_bits) == committee_size
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
@@ -457,3 +460,148 @@ def test_proposer_in_committee_with_participation(spec, state):
         else:
             state_transition_and_sign_block(spec, state, block)
     raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
+
+
+def _test_harness_for_randomized_test_case(spec, state, duplicates=False, participation_fn=None):
+    committee_indices = get_committee_indices(spec, state, duplicates=duplicates)
+
+    if participation_fn:
+        participating_indices = participation_fn(committee_indices)
+    else:
+        participating_indices = committee_indices
+
+    committee_bits = [index in participating_indices for index in committee_indices]
+    committee_size = len(committee_indices)
+    if duplicates:
+        assert committee_size > len(set(committee_indices))
+    else:
+        assert committee_size == len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_only_one_participant_with_duplicates(spec, state):
+    rng = random.Random(101)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: [rng.choice(comm)],
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_low_participation_with_duplicates(spec, state):
+    rng = random.Random(201)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_high_participation_with_duplicates(spec, state):
+    rng = random.Random(301)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_all_but_one_participating_with_duplicates(spec, state):
+    rng = random.Random(401)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1),
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@single_phase
+def test_random_misc_balances_and_half_participation_with_duplicates(spec, state):
+    rng = random.Random(1401)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_only_one_participant_without_duplicates(spec, state):
+    rng = random.Random(501)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: [rng.choice(comm)],
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_low_participation_without_duplicates(spec, state):
+    rng = random.Random(601)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_high_participation_without_duplicates(spec, state):
+    rng = random.Random(701)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_all_but_one_participating_without_duplicates(spec, state):
+    rng = random.Random(801)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@single_phase
+def test_random_misc_balances_and_half_participation_without_duplicates(spec, state):
+    rng = random.Random(1501)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2),
+    )
