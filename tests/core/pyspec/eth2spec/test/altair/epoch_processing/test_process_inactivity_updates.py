@@ -193,3 +193,66 @@ def test_random_inactivity_scores_full_participation_leaking(spec, state):
 
     # Check still in leak
     assert spec.is_in_inactivity_leak(state)
+
+
+def slash_some_validators(spec, state, rng=Random(40404040)):
+    # Slash ~1/4 of validaors
+    for validator_index in range(len(state.validators)):
+        if rng.choice(range(4)) == 0:
+            spec.slash_validator(state, validator_index)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_some_slashed_zero_scores_full_participation(spec, state):
+    slash_some_validators(spec, state, rng=Random(33429))
+    yield from run_inactivity_scores_test(
+        spec, state,
+        set_full_participation, zero_inactivity_scores,
+    )
+
+    assert set(state.inactivity_scores) == set([0])
+
+
+@with_altair_and_later
+@spec_state_test
+@leaking()
+def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
+    slash_some_validators(spec, state, rng=Random(33221))
+    yield from run_inactivity_scores_test(
+        spec, state,
+        set_full_participation_previous_epoch, zero_inactivity_scores,
+    )
+
+    # Check still in leak
+    assert spec.is_in_inactivity_leak(state)
+
+    # Ensure some zero scores (non-slashed values) and non-zero scores (slashed vals) in there
+    for score, validator in zip(state.inactivity_scores, state.validators):
+        if validator.slashed:
+            assert score > 0
+        else:
+            assert score == 0
+
+
+@with_altair_and_later
+@spec_state_test
+def test_some_slashed_full_random(spec, state):
+    rng = Random(1010222)
+    slash_some_validators(spec, state, rng=rng)
+    yield from run_inactivity_scores_test(
+        spec, state,
+        randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,
+    )
+
+
+@with_altair_and_later
+@spec_state_test
+@leaking()
+def test_some_slashed_full_random_leaking(spec, state):
+    rng = Random(1102233)
+    slash_some_validators(spec, state, rng=rng)
+    yield from run_inactivity_scores_test(
+        spec, state,
+        randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,
+    )
