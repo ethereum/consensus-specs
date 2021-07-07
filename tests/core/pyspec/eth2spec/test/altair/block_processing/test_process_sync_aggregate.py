@@ -489,7 +489,7 @@ def test_random_only_one_participant_with_duplicates(spec, state):
         spec,
         state,
         duplicates=True,
-        participation_fn=lambda comm: [rng.choice(comm)]
+        participation_fn=lambda comm: [rng.choice(comm)],
     )
 
 
@@ -502,7 +502,7 @@ def test_random_low_participation_with_duplicates(spec, state):
         spec,
         state,
         duplicates=True,
-        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25))
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25)),
     )
 
 
@@ -515,7 +515,7 @@ def test_random_high_participation_with_duplicates(spec, state):
         spec,
         state,
         duplicates=True,
-        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75))
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75)),
     )
 
 
@@ -528,7 +528,7 @@ def test_random_all_but_one_participating_with_duplicates(spec, state):
         spec,
         state,
         duplicates=True,
-        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1)
+        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1),
     )
 
 
@@ -542,7 +542,7 @@ def test_random_misc_balances_and_half_participation_with_duplicates(spec, state
         spec,
         state,
         duplicates=True,
-        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2)
+        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2),
     )
 
 
@@ -554,7 +554,7 @@ def test_random_only_one_participant_without_duplicates(spec, state):
     yield from _test_harness_for_randomized_test_case(
         spec,
         state,
-        participation_fn=lambda comm: [rng.choice(comm)]
+        participation_fn=lambda comm: [rng.choice(comm)],
     )
 
 
@@ -566,7 +566,7 @@ def test_random_low_participation_without_duplicates(spec, state):
     yield from _test_harness_for_randomized_test_case(
         spec,
         state,
-        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25))
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25)),
     )
 
 
@@ -578,7 +578,7 @@ def test_random_high_participation_without_duplicates(spec, state):
     yield from _test_harness_for_randomized_test_case(
         spec,
         state,
-        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75))
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75)),
     )
 
 
@@ -590,7 +590,7 @@ def test_random_all_but_one_participating_without_duplicates(spec, state):
     yield from _test_harness_for_randomized_test_case(
         spec,
         state,
-        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1)
+        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1),
     )
 
 
@@ -603,5 +603,5 @@ def test_random_misc_balances_and_half_participation_without_duplicates(spec, st
     yield from _test_harness_for_randomized_test_case(
         spec,
         state,
-        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2)
+        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2),
     )
