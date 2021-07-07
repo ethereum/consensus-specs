@@ -112,7 +112,7 @@ def test_random_high_inactivity_scores_leaking(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@leaking(epochs=5)
-def test_random_high_inactivity_scores_leaking_5_epochs(spec, state):
+@leaking(epochs=8)
+def test_random_high_inactivity_scores_leaking_8_epochs(spec, state):
     randomize_inactivity_scores(spec, state, minimum=500000, maximum=5000000, rng=Random(9998))
     yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(9998))

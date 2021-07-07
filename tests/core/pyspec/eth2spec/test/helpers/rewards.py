@@ -260,9 +260,9 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
 def transition_state_to_leak(spec, state, epochs=None):
     if epochs is None:
-        # +1 to trigger inactivity_score transitions
-        epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 1
-    assert epochs >= spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
+        # +2 because finality delay is based on previous_epoch and must be more than `MIN_EPOCHS_TO_INACTIVITY_PENALTY`
+        epochs = spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2
+    assert epochs > spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
 
     for _ in range(epochs):
         next_epoch(spec, state)

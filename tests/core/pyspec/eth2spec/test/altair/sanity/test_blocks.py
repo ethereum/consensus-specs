@@ -1,8 +1,9 @@
-import random
+from random import Random
+
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     next_epoch,
-    next_epoch_via_block,
+    set_full_participation_previous_epoch,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -15,12 +16,14 @@ from eth2spec.test.context import (
     with_altair_and_later,
     spec_state_test,
 )
+from eth2spec.test.helpers.rewards import leaking
+from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 
 
-def run_sync_committee_sanity_test(spec, state, fraction_full=1.0):
+def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(454545)):
     all_pubkeys = [v.pubkey for v in state.validators]
     committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
-    participants = random.sample(committee, int(len(committee) * fraction_full))
+    participants = rng.sample(committee, int(len(committee) * fraction_full))
 
     yield 'pre', state
 
@@ -51,7 +54,7 @@ def test_full_sync_committee_committee(spec, state):
 @spec_state_test
 def test_half_sync_committee_committee(spec, state):
     next_epoch(spec, state)
-    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5)
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5, rng=Random(1212))
 
 
 @with_altair_and_later
@@ -70,7 +73,7 @@ def test_full_sync_committee_committee_genesis(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_half_sync_committee_committee_genesis(spec, state):
-    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5)
+    yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5, rng=Random(2323))
 
 
 @with_altair_and_later
@@ -81,11 +84,13 @@ def test_empty_sync_committee_committee_genesis(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-def test_inactivity_scores(spec, state):
-    for _ in range(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2):
-        next_epoch_via_block(spec, state)
-
+@leaking()
+def test_inactivity_scores_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
+
+    randomize_inactivity_scores(spec, state, rng=Random(5252))
+    assert len(set(state.inactivity_scores)) > 1
+
     previous_inactivity_scores = state.inactivity_scores.copy()
 
     yield 'pre', state
@@ -97,5 +102,36 @@ def test_inactivity_scores(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
+    # No particiaption during a leak so all scores should increase
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
         assert post == pre + spec.config.INACTIVITY_SCORE_BIAS
+
+
+@with_altair_and_later
+@spec_state_test
+@leaking()
+def test_inactivity_scores_full_participation_leaking(spec, state):
+    randomize_inactivity_scores(spec, state, rng=Random(5252))
+    assert len(set(state.inactivity_scores)) > 1
+
+    # Only set full participation for previous epoch to remain in leak
+    set_full_participation_previous_epoch(spec, state)
+
+    previous_inactivity_scores = state.inactivity_scores.copy()
+
+    yield 'pre', state
+
+    # Block transition to next epoch
+    block = build_empty_block(spec, state, slot=state.slot + spec.SLOTS_PER_EPOCH)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    assert spec.is_in_inactivity_leak(state)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    # Full particiaption during a leak so all scores should decrease by 1
+    print(previous_inactivity_scores)
+    print(state.inactivity_scores)
+    for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
+        assert post == pre - 1

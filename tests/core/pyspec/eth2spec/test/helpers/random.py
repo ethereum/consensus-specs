@@ -100,6 +100,13 @@ def randomize_epoch_participation(spec, state, epoch, rng):
             epoch_participation[index] = flags
 
 
+def randomize_previous_epoch_participation(spec, state, rng=Random(8020)):
+    cached_prepare_state_with_attestations(spec, state)
+    randomize_epoch_participation(spec, state, spec.get_previous_epoch(state), rng)
+    if not is_post_altair(spec):
+        state.current_epoch_attestations = []
+
+
 def randomize_attestation_participation(spec, state, rng=Random(8020)):
     cached_prepare_state_with_attestations(spec, state)
     randomize_epoch_participation(spec, state, spec.get_previous_epoch(state), rng)
