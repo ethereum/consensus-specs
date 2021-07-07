@@ -278,7 +278,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
 #### `get_next_sync_committee`
 
-*Note*: The function `get_next_sync_committee` should only be called at sync committee period boundaries.
+*Note*: The function `get_next_sync_committee` should only be called at sync committee period boundaries and upgrading state to Altair.
 
 ```python
 def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
