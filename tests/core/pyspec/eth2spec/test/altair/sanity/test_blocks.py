@@ -102,7 +102,7 @@ def test_inactivity_scores_leaking(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # No particiaption during a leak so all scores should increase
+    # No participation during a leak so all scores should increase
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
         assert post == pre + spec.config.INACTIVITY_SCORE_BIAS
 
