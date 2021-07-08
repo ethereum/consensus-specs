@@ -105,7 +105,7 @@ Note that the `ForkDigestValue` path segment of the topic separates the old and 
 
 #### Global topics
 
-Altair changes the type of the global beacon block topic and adds one global topic to propagate partially aggregated sync committee signatures to all potential proposers of beacon blocks.
+Altair changes the type of the global beacon block topic and adds one global topic to propagate partially aggregated sync committee messages to all potential proposers of beacon blocks.
 
 ##### `beacon_block`
 
@@ -117,7 +117,7 @@ See the [state transition document](./beacon-chain.md#beaconblockbody) for Altai
 
 ##### `sync_committee_contribution_and_proof`
 
-This topic is used to propagate partially aggregated sync committee signatures to be included in future blocks.
+This topic is used to propagate partially aggregated sync committee messages to be included in future blocks.
 
 The following validations MUST pass before forwarding the `signed_contribution_and_proof` on the network; define `contribution_and_proof = signed_contribution_and_proof.message`, `contribution = contribution_and_proof.contribution`, and the following function `get_sync_subcommittee_pubkeys` for convenience:
 
@@ -151,18 +151,18 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
 
 #### Sync committee subnets
 
-Sync committee subnets are used to propagate unaggregated sync committee signatures to subsections of the network.
+Sync committee subnets are used to propagate unaggregated sync committee messages to subsections of the network.
 
 ##### `sync_committee_{subnet_id}`
 
-The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync committee signatures to the subnet `subnet_id` to be aggregated before being gossiped to the global `sync_committee_contribution_and_proof` topic.
+The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync committee messages to the subnet `subnet_id` to be aggregated before being gossiped to the global `sync_committee_contribution_and_proof` topic.
 
 The following validations MUST pass before forwarding the `sync_committee_message` on the network:
 
-- _[IGNORE]_ The signature's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `sync_committee_message.slot == current_slot`.
+- _[IGNORE]_ The message's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `sync_committee_message.slot == current_slot`.
 - _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
-- _[IGNORE]_ There has been no other valid sync committee signature for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`
+- _[IGNORE]_ There has been no other valid sync committee message for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`
   (this requires maintaining a cache of size `SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT` for each subnet that can be flushed after each slot).
   Note this validation is _per topic_ so that for a given `slot`, multiple messages could be forwarded with the same `validator_index` as long as the `subnet_id`s are distinct.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
@@ -170,14 +170,14 @@ The following validations MUST pass before forwarding the `sync_committee_messag
 #### Sync committees and aggregation
 
 The aggregation scheme closely follows the design of the attestation aggregation scheme.
-Sync committee signatures are broadcast into "subnets" defined by a topic.
+Sync committee messages are broadcast into "subnets" defined by a topic.
 The number of subnets is defined by `SYNC_COMMITTEE_SUBNET_COUNT` in the [Altair validator guide](./validator.md#constants).
 Sync committee members are divided into "subcommittees" which are then assigned to a subnet for the duration of tenure in the sync committee.
 Individual validators can be duplicated in the broader sync committee such that they are included multiple times in a given subcommittee or across multiple subcommittees.
 
-Unaggregated signatures (along with metadata) are sent as `SyncCommitteeMessage`s on the `sync_committee_{subnet_id}` topics.
+Unaggregated messages (along with metadata) are sent as `SyncCommitteeMessage`s on the `sync_committee_{subnet_id}` topics.
 
-Aggregated sync committee signatures are packaged into (signed) `SyncCommitteeContribution` along with proofs and gossiped to the `sync_committee_contribution_and_proof` topic.
+Aggregated sync committee messages are packaged into (signed) `SyncCommitteeContribution` along with proofs and gossiped to the `sync_committee_contribution_and_proof` topic.
 
 ### Transitioning the gossip
 
