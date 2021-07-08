@@ -266,6 +266,7 @@ def transition_state_to_leak(spec, state, epochs=None):
 
     for _ in range(epochs):
         next_epoch(spec, state)
+    assert spec.is_in_inactivity_leak(state)
 
 
 _cache_dict = LRU(size=10)

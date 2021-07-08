@@ -57,6 +57,7 @@ def run_inactivity_scores_test(spec, state, participation_fn=None, inactivity_sc
 @spec_state_test
 def test_all_zero_inactivity_scores_empty_participation(spec, state):
     yield from run_inactivity_scores_test(spec, state, set_empty_participation, zero_inactivity_scores)
+    # Not yet in leak so no leak score added even though no participation
     assert set(state.inactivity_scores) == set([0])
 
 
@@ -87,7 +88,7 @@ def test_all_zero_inactivity_scores_random_participation(spec, state):
 @spec_state_test
 @leaking()
 def test_all_zero_inactivity_scores_random_participation_leaking(spec, state):
-    # Only randompize participation in previous epoch to remain in leak
+    # Only randomize participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
         spec, state,
         randomize_previous_epoch_participation, zero_inactivity_scores, rng=Random(5555),

@@ -131,7 +131,5 @@ def test_inactivity_scores_full_participation_leaking(spec, state):
     yield 'post', state
 
     # Full particiaption during a leak so all scores should decrease by 1
-    print(previous_inactivity_scores)
-    print(state.inactivity_scores)
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
         assert post == pre - 1
