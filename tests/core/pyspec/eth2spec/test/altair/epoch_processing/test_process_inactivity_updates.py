@@ -4,7 +4,7 @@ from eth2spec.test.context import spec_state_test, with_altair_and_later
 from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores, zero_inactivity_scores
 from eth2spec.test.helpers.state import (
     next_epoch_via_block,
-    set_full_participation, set_full_participation_previous_epoch,
+    set_full_participation,
     set_empty_participation,
 )
 from eth2spec.test.helpers.epoch_processing import (
@@ -57,7 +57,6 @@ def run_inactivity_scores_test(spec, state, participation_fn=None, inactivity_sc
 @spec_state_test
 def test_all_zero_inactivity_scores_empty_participation(spec, state):
     yield from run_inactivity_scores_test(spec, state, set_empty_participation, zero_inactivity_scores)
-    # Not yet in leak so no leak score added even though no participation
     assert set(state.inactivity_scores) == set([0])
 
 
@@ -119,7 +118,7 @@ def test_all_zero_inactivity_scores_full_participation_leaking(spec, state):
     # Only set full participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
         spec, state,
-        set_full_participation_previous_epoch, zero_inactivity_scores,
+        set_full_participation, zero_inactivity_scores,
     )
 
     # Check still in leak
@@ -189,7 +188,7 @@ def test_random_inactivity_scores_full_participation_leaking(spec, state):
     # Only set full participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
         spec, state,
-        set_full_participation_previous_epoch, randomize_inactivity_scores, Random(33333),
+        set_full_participation, randomize_inactivity_scores, Random(33333),
     )
 
     # Check still in leak
@@ -222,7 +221,7 @@ def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
     slash_some_validators(spec, state, rng=Random(33221))
     yield from run_inactivity_scores_test(
         spec, state,
-        set_full_participation_previous_epoch, zero_inactivity_scores,
+        set_full_participation, zero_inactivity_scores,
     )
 
     # Check still in leak
@@ -243,7 +242,7 @@ def test_some_slashed_full_random(spec, state):
     slash_some_validators(spec, state, rng=rng)
     yield from run_inactivity_scores_test(
         spec, state,
-        randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,
+        randomize_attestation_participation, randomize_inactivity_scores, rng=rng,
     )
 
 
@@ -257,3 +256,6 @@ def test_some_slashed_full_random_leaking(spec, state):
         spec, state,
         randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,
     )
+
+    # Check still in leak
+    assert spec.is_in_inactivity_leak(state)

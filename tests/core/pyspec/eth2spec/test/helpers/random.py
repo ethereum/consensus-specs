@@ -105,6 +105,8 @@ def randomize_previous_epoch_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_previous_epoch(state), rng)
     if not is_post_altair(spec):
         state.current_epoch_attestations = []
+    else:
+        state.current_epoch_participation = [spec.ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
 
 
 def randomize_attestation_participation(spec, state, rng=Random(8020)):
