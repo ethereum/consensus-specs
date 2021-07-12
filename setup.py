@@ -63,6 +63,14 @@ class SpecObject(NamedTuple):
     dataclasses: Dict[str, str]
 
 
+class SpecConfig(NamedTuple):
+    md_files: List[Path]
+    py_prefix: List[Path]
+    py_suffix: List[Path]
+    overridden_functions: List[str]
+    predefined_vars: Dict[str, str]
+
+
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
     last_child = heading.children[-1]
     if isinstance(last_child, CodeSpan):
@@ -243,7 +251,7 @@ def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     fork: str,
                     ordered_class_objects: Dict[str, str],
-                    spec_dot_yaml: Dict,
+                    spec_config: SpecConfig,
                     python_prefixes: List[str],
                     python_suffixes: List[str]) -> str:
     """
@@ -309,12 +317,12 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
-    predefined_vars = spec_dot_yaml.get("predefined_vars", {})
-
-    vars_spec = '\n'.join(format_constant(k, v) for k, v in spec_object.vars.items() if k not in predefined_vars)
-    predefined_vars_spec = '\n'.join(f'{k} = {v}' for k, v in predefined_vars.items())
+    vars_spec = '\n'.join(format_constant(k, v)
+                          for k, v in spec_object.vars.items()
+                          if k not in spec_config.predefined_vars)
+    predefined_vars_spec = '\n'.join(f'{k} = {v}' for k, v in spec_config.predefined_vars.items())
     predefined_vars_check = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.vars[x].value),
-                                      predefined_vars.keys()))
+                                      spec_config.predefined_vars.keys()))
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     spec = (f'PRESET_NAME = "{preset_name}"\n\n'
             + '\n\n'.join(python_prefixes)
@@ -447,19 +455,19 @@ def load_config(config_path: Path) -> Dict[str, str]:
 
 
 def build_spec(preset_name: str, fork: str, source_files: Sequence[Path], preset_files: Sequence[Path],
-               config_file: Path, spec_dir: Path, spec_dot_yaml: Dict) -> str:
+               config_file: Path, spec_config: SpecConfig) -> str:
     preset = load_preset(preset_files)
     config = load_config(config_file)
     all_specs = [get_spec(spec, preset, config) for spec in source_files]
 
     python_prefixes = []
-    for path in spec_dot_yaml.get("py_prefix", []):
-        with open(os.path.join(spec_dir, path)) as file:
+    for path in spec_config.py_prefix:
+        with open(path) as file:
             python_prefixes.append(file.read())
 
     python_suffixes = []
-    for path in spec_dot_yaml.get("py_suffix", []):
-        with open(os.path.join(spec_dir, path)) as file:
+    for path in spec_config.py_suffix:
+        with open(path) as file:
             python_suffixes.append(file.read())
 
     spec_object = SpecObject(
@@ -474,15 +482,54 @@ def build_spec(preset_name: str, fork: str, source_files: Sequence[Path], preset
     for value in all_specs:
         spec_object = combine_spec_objects(spec_object, value)
 
-    for function in spec_dot_yaml.get("overridden_functions", []):
+    for function in spec_config.overridden_functions:
         if function in spec_object.functions:
             del spec_object.functions[function]
 
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
     dependency_order_class_objects(class_objects, spec_object.custom_types)
 
-    return objects_to_spec(preset_name, spec_object, fork, class_objects, spec_dot_yaml,
+    return objects_to_spec(preset_name, spec_object, fork, class_objects, spec_config,
                            python_prefixes, python_suffixes)
+
+
+def combine_spec_configs(spec_config1: SpecConfig, spec_config2: SpecConfig) -> SpecConfig:
+    return SpecConfig(
+        md_files=spec_config1.md_files + spec_config2.md_files,
+        py_prefix=spec_config1.py_prefix + spec_config2.py_prefix,
+        py_suffix=spec_config1.py_suffix + spec_config2.py_suffix,
+        overridden_functions=spec_config1.overridden_functions + spec_config2.overridden_functions,
+        predefined_vars=combine_dicts(spec_config1.predefined_vars, spec_config2.predefined_vars),
+    )
+
+
+def load_spec_config(spec_dot_yaml_path: Path) -> SpecConfig:
+    yaml = YAML(typ='base')
+    spec_dot_yaml = yaml.load(spec_dot_yaml_path)
+
+    if "depends" in spec_dot_yaml:
+        spec_config = load_spec_config(spec_dot_yaml_path.parent / spec_dot_yaml["depends"])
+    else:
+        spec_config = SpecConfig(
+            md_files=[],
+            py_prefix=[],
+            py_suffix=[],
+            overridden_functions=[],
+            predefined_vars={},
+        )
+
+    def amend_paths(paths: List[Path]) -> List[Path]:
+        return [spec_dot_yaml_path.parent / path for path in paths]
+
+    this_spec_config = SpecConfig(
+        md_files=amend_paths(spec_dot_yaml.get("md_files", [])),
+        py_prefix=amend_paths(spec_dot_yaml.get("py_prefix", [])),
+        py_suffix=amend_paths(spec_dot_yaml.get("py_suffix", [])),
+        overridden_functions=spec_dot_yaml.get("overridden_functions", []),
+        predefined_vars=spec_dot_yaml.get("predefined_vars", {}),
+    )
+
+    return combine_spec_configs(spec_config, this_spec_config)
 
 
 class BuildTarget(NamedTuple):
@@ -503,6 +550,7 @@ class PySpecCommand(Command):
     parsed_build_targets: List[BuildTarget]
     out_dir: str
     spec_dir: Optional[Path]
+    spec_config: SpecConfig
 
     # The format is (long option, short option, description).
     user_options = [
@@ -534,9 +582,8 @@ class PySpecCommand(Command):
                 self.spec_dir = Path("specs/merge/")
             else:
                 raise Exception('spec dir not specified and spec fork "%s" is unknown', self.spec_fork)
-        yaml = YAML(typ='base')
-        self.spec_dot_yaml = yaml.load(self.spec_dir / "spec.yaml")
-        self.md_doc_paths = [self.spec_dir / path for path in self.spec_dot_yaml["md_files"]]
+        self.spec_config = load_spec_config(self.spec_dir / "spec.yaml")
+        self.md_doc_paths = [path for path in self.spec_config.md_files]
 
         for filename in self.md_doc_paths:
             if not os.path.exists(filename):
@@ -565,9 +612,8 @@ class PySpecCommand(Command):
             dir_util.mkpath(self.out_dir)
 
         for (name, preset_paths, config_path) in self.parsed_build_targets:
-            assert self.spec_dir is not None
             spec_str = build_spec(name, self.spec_fork, self.md_doc_paths, preset_paths,
-                                  config_path, self.spec_dir, self.spec_dot_yaml)
+                                  config_path, self.spec_config)
             if self.dry_run:
                 self.announce('dry run successfully prepared contents for spec.'
                               f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}", build target: "{name}"')
