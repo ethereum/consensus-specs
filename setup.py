@@ -9,7 +9,6 @@ import string
 import textwrap
 from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar, Tuple
 import ast
-from ast import FunctionDef, ClassDef, Name
 
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
@@ -62,8 +61,6 @@ class SpecObject(NamedTuple):
     vars: Dict[str, VariableDefinition]
     ssz_objects: Dict[str, str]
     dataclasses: Dict[str, str]
-    python_prefix: List[str]
-    python_suffix: List[str]
 
 
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
@@ -79,13 +76,13 @@ def _get_source_from_code_block(block: FencedCode) -> str:
 
 def _get_function_name_from_source(source: str) -> str:
     fn = ast.parse(source).body[0]
-    assert isinstance(fn, FunctionDef)
+    assert isinstance(fn, ast.FunctionDef)
     return fn.name
 
 
 def _get_self_type_from_source(source: str) -> Optional[str]:
     fn = ast.parse(source).body[0]
-    assert isinstance(fn, FunctionDef)
+    assert isinstance(fn, ast.FunctionDef)
     args = fn.args.args
     if len(args) == 0:
         return None
@@ -93,13 +90,13 @@ def _get_self_type_from_source(source: str) -> Optional[str]:
         return None
     if args[0].annotation is None:
         return None
-    assert isinstance(args[0].annotation, Name)
+    assert isinstance(args[0].annotation, ast.Name)
     return args[0].annotation.id
 
 
 def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     class_def = ast.parse(source).body[0]
-    assert isinstance(class_def, ClassDef)
+    assert isinstance(class_def, ast.ClassDef)
     base = class_def.bases[0]
     if isinstance(base, ast.Name):
         parent_class: Optional[str] = base.id
@@ -235,8 +232,6 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
         vars=vars,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
-        python_prefix=[],
-        python_suffix=[],
     )
 
 
@@ -248,7 +243,9 @@ def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     fork: str,
                     ordered_class_objects: Dict[str, str],
-                    spec_yaml: Dict) -> str:
+                    spec_dot_yaml: Dict,
+                    python_prefixes: List[str],
+                    python_suffixes: List[str]) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
@@ -312,7 +309,7 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
-    predefined_vars = spec_yaml.get("predefined_vars", {})
+    predefined_vars = spec_dot_yaml.get("predefined_vars", {})
 
     vars_spec = '\n'.join(format_constant(k, v) for k, v in spec_object.vars.items() if k not in predefined_vars)
     predefined_vars_spec = '\n'.join(f'{k} = {v}' for k, v in predefined_vars.items())
@@ -320,7 +317,7 @@ def objects_to_spec(preset_name: str,
                                       predefined_vars.keys()))
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     spec = (f'PRESET_NAME = "{preset_name}"\n\n'
-            + '\n\n'.join(spec_object.python_prefix)
+            + '\n\n'.join(python_prefixes)
             + '\n\n' + f"fork = \'{fork}\'"
             + ('\n\n' + predefined_vars_spec if predefined_vars_spec != '' else '')
             + '\n\n\n' + new_type_definitions
@@ -330,7 +327,7 @@ def objects_to_spec(preset_name: str,
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
             + '\n\n\n' + functions_spec
             + ('\n\n\n' + predefined_vars_check if predefined_vars_check != '' else '')
-            + '\n\n\n' + '\n\n'.join(spec_object.python_suffix)
+            + '\n\n\n' + '\n\n'.join(python_suffixes)
             )
     return spec
 
@@ -396,8 +393,6 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     config_vars = combine_dicts(spec0.config_vars, spec1.config_vars)
     ssz_objects = combine_dicts(spec0.ssz_objects, spec1.ssz_objects)
     dataclasses = combine_dicts(spec0.dataclasses, spec1.dataclasses)
-    python_prefix = spec0.python_prefix + spec1.python_prefix
-    python_suffix = spec0.python_suffix + spec1.python_suffix
     return SpecObject(
         functions=functions,
         protocols=protocols,
@@ -406,8 +401,6 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
         config_vars=config_vars,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
-        python_prefix=python_prefix,
-        python_suffix=python_suffix,
     )
 
 
@@ -454,20 +447,20 @@ def load_config(config_path: Path) -> Dict[str, str]:
 
 
 def build_spec(preset_name: str, fork: str, source_files: Sequence[Path], preset_files: Sequence[Path],
-               config_file: Path, spec_dir: Path, spec_yaml: Dict) -> str:
+               config_file: Path, spec_dir: Path, spec_dot_yaml: Dict) -> str:
     preset = load_preset(preset_files)
     config = load_config(config_file)
     all_specs = [get_spec(spec, preset, config) for spec in source_files]
 
-    python_prefix = []
-    for path in spec_yaml.get("py_prefix", []):
+    python_prefixes = []
+    for path in spec_dot_yaml.get("py_prefix", []):
         with open(os.path.join(spec_dir, path)) as file:
-            python_prefix.append(file.read())
+            python_prefixes.append(file.read())
 
-    python_suffix = []
-    for path in spec_yaml.get("py_suffix", []):
+    python_suffixes = []
+    for path in spec_dot_yaml.get("py_suffix", []):
         with open(os.path.join(spec_dir, path)) as file:
-            python_suffix.append(file.read())
+            python_suffixes.append(file.read())
 
     spec_object = SpecObject(
         functions={},
@@ -477,20 +470,19 @@ def build_spec(preset_name: str, fork: str, source_files: Sequence[Path], preset
         config_vars={},
         ssz_objects={},
         dataclasses={},
-        python_prefix=python_prefix,
-        python_suffix=python_suffix,
     )
     for value in all_specs:
         spec_object = combine_spec_objects(spec_object, value)
 
-    for function in spec_yaml.get("overridden_functions", []):
+    for function in spec_dot_yaml.get("overridden_functions", []):
         if function in spec_object.functions:
             del spec_object.functions[function]
 
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
     dependency_order_class_objects(class_objects, spec_object.custom_types)
 
-    return objects_to_spec(preset_name, spec_object, fork, class_objects, spec_yaml)
+    return objects_to_spec(preset_name, spec_object, fork, class_objects, spec_dot_yaml,
+                           python_prefixes, python_suffixes)
 
 
 class BuildTarget(NamedTuple):
@@ -543,8 +535,8 @@ class PySpecCommand(Command):
             else:
                 raise Exception('spec dir not specified and spec fork "%s" is unknown', self.spec_fork)
         yaml = YAML(typ='base')
-        self.spec_yaml = yaml.load(self.spec_dir / "spec.yaml")
-        self.md_doc_paths = [self.spec_dir / path for path in self.spec_yaml["md_files"]]
+        self.spec_dot_yaml = yaml.load(self.spec_dir / "spec.yaml")
+        self.md_doc_paths = [self.spec_dir / path for path in self.spec_dot_yaml["md_files"]]
 
         for filename in self.md_doc_paths:
             if not os.path.exists(filename):
@@ -575,7 +567,7 @@ class PySpecCommand(Command):
         for (name, preset_paths, config_path) in self.parsed_build_targets:
             assert self.spec_dir is not None
             spec_str = build_spec(name, self.spec_fork, self.md_doc_paths, preset_paths,
-                                  config_path, self.spec_dir, self.spec_yaml)
+                                  config_path, self.spec_dir, self.spec_dot_yaml)
             if self.dry_run:
                 self.announce('dry run successfully prepared contents for spec.'
                               f' out dir: "{self.out_dir}", spec fork: "{self.spec_fork}", build target: "{name}"')
