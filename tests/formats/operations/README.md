@@ -1,6 +1,6 @@
 # Operations tests
 
-The different kinds of operations ("transactions") are tested individually with test handlers.
+The different kinds of operations or execution payload objects are tested individually with test handlers.
 
 ## Test case format
 
@@ -31,10 +31,10 @@ A handler of the `operations` test-runner should process these cases,
  calling the corresponding processing implementation.
 This excludes the other parts of the block-transition.
 
-Operations:
+Operations or execution payload:
 
-| *`operation-name`*      | *`operation-object`*  | *`input name`*       | *`processing call`*                                                  |
-|-------------------------|-----------------------|----------------------|----------------------------------------------------------------------|
+| *`processing name`*     | *`input object type`* | *`input name`*       | *`processing call`*                                                  |
+|-------------------------|-----------------------|----------------------| ---------------------------------------------------------------------|
 | `attestation`           | `Attestation`         | `attestation`        | `process_attestation(state, attestation)`                            |
 | `attester_slashing`     | `AttesterSlashing`    | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`                |
 | `block_header`          | `BeaconBlock`         | **`block`**          | `process_block_header(state, block)`                                 |
@@ -42,13 +42,13 @@ Operations:
 | `proposer_slashing`     | `ProposerSlashing`    | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`                |
 | `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`                      |
 | `sync_aggregate`        | `SyncAggregate`       | `sync_aggregate`     | `process_sync_aggregate(state, sync_aggregate)` (new in Altair)      |
-| `execution_payload`     | `ExecutionPayload`    | `execution_payload`  | `process_execution_payload(state, execution_payload)` (new in Merge) |
+| `execution_payload`     | `ExecutionPayload`    | `execution_payload`  | `process_execution_payload(state, execution_payload, ExecutionEngine)` (new in Merge) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 
 The `execution_payload` processing normally requires a `verify_execution_state_transition(execution_payload)`,
 a responsibility of an (external) execution engine.
-During testing this execution is mocked, an `execution.yml` is provided instead:
+During testing this execution is mocked, an `execution.yaml` is provided instead:
 a dict containing an `execution_valid` boolean field with the verification result.
 
 The resulting state should match the expected `post` state, or if the `post` state is left blank,
