@@ -21,8 +21,8 @@ from eth2spec.test.helpers.epoch_processing import (
 #
 
 def run_sync_committees_progress_test(spec, state):
-    first_sync_committee = state.current_sync_committee
-    second_sync_committee = state.next_sync_committee
+    first_sync_committee = state.current_sync_committee.copy()
+    second_sync_committee = state.next_sync_committee.copy()
 
     current_period = spec.get_current_epoch(state) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     next_period = current_period + 1
@@ -41,6 +41,15 @@ def run_sync_committees_progress_test(spec, state):
     # of this `EPOCHS_PER_SYNC_COMMITTEE_PERIOD`
     third_sync_committee = spec.get_next_sync_committee(state)
 
+    # Ensure assignments have changed:
+    assert state.next_sync_committee != second_sync_committee
+    if current_period > 0:
+        assert state.current_sync_committee != first_sync_committee
+    else:
+        # Current and next are duplicated in genesis period so remain stable
+        assert state.current_sync_committee == first_sync_committee
+
+    # Ensure expected committees were calculated
     assert state.current_sync_committee == second_sync_committee
     assert state.next_sync_committee == third_sync_committee
 
@@ -75,5 +84,42 @@ def test_sync_committees_progress_not_genesis(spec, state):
 @single_phase
 @always_bls
 @with_presets([MINIMAL], reason="too slow")
-def test_sync_committees_progress_misc_balances(spec, state):
+def test_sync_committees_progress_misc_balances_genesis(spec, state):
+    # Genesis epoch period has an exceptional case
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+
     yield from run_sync_committees_progress_test(spec, state)
+
+
+@with_altair_and_later
+@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@spec_test
+@single_phase
+@always_bls
+@with_presets([MINIMAL], reason="too slow")
+def test_sync_committees_progress_misc_balances_not_genesis(spec, state):
+    # Transition out of the genesis epoch period to test non-exceptional case
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+    slot_in_next_period = state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, slot_in_next_period)
+
+    yield from run_sync_committees_progress_test(spec, state)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL], reason="too slow")
+def test_sync_committees_no_progress_not_boundary(spec, state):
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+    slot_not_at_period_boundary = state.slot + spec.SLOTS_PER_EPOCH
+    transition_to(spec, state, slot_not_at_period_boundary)
+
+    first_sync_committee = state.current_sync_committee.copy()
+    second_sync_committee = state.next_sync_committee.copy()
+
+    yield from run_epoch_processing_with(spec, state, 'process_sync_committee_updates')
+
+    # Ensure assignments have not changed:
+    assert state.current_sync_committee == first_sync_committee
+    assert state.next_sync_committee == second_sync_committee

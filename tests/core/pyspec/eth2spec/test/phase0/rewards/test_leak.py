@@ -145,8 +145,8 @@ def test_full_random_leak(spec, state):
 
 @with_all_phases
 @spec_state_test
-@leaking(epochs=5)
-def test_full_random_five_epoch_leak(spec, state):
+@leaking(epochs=7)
+def test_full_random_seven_epoch_leak(spec, state):
     yield from rewards_helpers.run_test_full_random(spec, state)
 
 
