@@ -1,4 +1,4 @@
-from eth2spec.test.context import expect_assertion_error
+from eth2spec.test.context import expect_assertion_error, is_post_altair
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
 
 
@@ -92,3 +92,44 @@ def state_transition_and_sign_block(spec, state, block, expect_fail=False):
         transition_unsigned_block(spec, state, block)
     block.state_root = state.hash_tree_root()
     return sign_block(spec, state, block)
+
+
+#
+# WARNING: The following functions can only be used post-altair due to the manipulation of participation flags directly
+#
+
+
+def _set_full_participation(spec, state, current=True, previous=True):
+    assert is_post_altair(spec)
+
+    full_flags = spec.ParticipationFlags(0)
+    for flag_index in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
+        full_flags = spec.add_flag(full_flags, flag_index)
+
+    for index in range(len(state.validators)):
+        if current:
+            state.current_epoch_participation[index] = full_flags.copy()
+        if previous:
+            state.previous_epoch_participation[index] = full_flags.copy()
+
+
+def set_full_participation(spec, state, rng=None):
+    _set_full_participation(spec, state)
+
+
+def set_full_participation_previous_epoch(spec, state, rng=None):
+    _set_full_participation(spec, state, current=False, previous=True)
+
+
+def _set_empty_participation(spec, state, current=True, previous=True):
+    assert is_post_altair(spec)
+
+    for index in range(len(state.validators)):
+        if current:
+            state.current_epoch_participation[index] = spec.ParticipationFlags(0)
+        if previous:
+            state.previous_epoch_participation[index] = spec.ParticipationFlags(0)
+
+
+def set_empty_participation(spec, state, rng=None):
+    _set_empty_participation(spec, state)

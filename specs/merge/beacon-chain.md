@@ -211,7 +211,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.on_payload(payload)
-    # Cache execution payload
+    # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
         coinbase=payload.coinbase,

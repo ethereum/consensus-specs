@@ -17,8 +17,12 @@ from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,
 )
 from eth2spec.test.context import (
+    default_activation_threshold,
     expect_assertion_error,
+    misc_balances,
+    single_phase,
     with_altair_and_later,
+    with_custom_state,
     with_presets,
     spec_state_test,
     always_bls,
@@ -61,6 +65,29 @@ def get_committee_indices(spec, state, duplicates=False):
             if len(committee) == len(set(committee)):
                 return committee
         state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_invalid_signature_bad_domain(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    rng = random.Random(2020)
+    random_participant = rng.choice(committee_indices)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    # Exclude one participant whose signature was included.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[index != random_participant for index in committee_indices],
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            committee_indices,  # full committee signs
+            domain_type=spec.DOMAIN_BEACON_ATTESTER,  # Incorrect domain
+        )
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
 @with_altair_and_later
@@ -170,7 +197,7 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
 
     # Preconditions of this test case
-    assert active_validator_count >= spec.SYNC_COMMITTEE_SIZE
+    assert active_validator_count > spec.SYNC_COMMITTEE_SIZE
     assert committee_size == len(set(committee_indices))
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
@@ -179,7 +206,40 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
 @with_altair_and_later
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
-def test_sync_committee_rewards_duplicate_committee(spec, state):
+def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state):
+    committee_indices = get_committee_indices(spec, state, duplicates=True)
+    committee_size = len(committee_indices)
+    committee_bits = [False] * committee_size
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_half_participation(spec, state):
+    committee_indices = get_committee_indices(spec, state, duplicates=True)
+    committee_size = len(committee_indices)
+    committee_bits = [True] * (committee_size // 2) + [False] * (committee_size // 2)
+    assert len(committee_bits) == committee_size
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_full_participation(spec, state):
     committee_indices = get_committee_indices(spec, state, duplicates=True)
     committee_size = len(committee_indices)
     committee_bits = [True] * committee_size
@@ -219,7 +279,6 @@ def test_sync_committee_rewards_empty_participants(spec, state):
 def test_invalid_signature_past_block(spec, state):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
 
-    blocks = []
     for _ in range(2):
         # NOTE: need to transition twice to move beyond the degenerate case at genesis
         block = build_empty_block_for_next_slot(spec, state)
@@ -234,8 +293,7 @@ def test_invalid_signature_past_block(spec, state):
             )
         )
 
-        signed_block = state_transition_and_sign_block(spec, state, block)
-        blocks.append(signed_block)
+        state_transition_and_sign_block(spec, state, block)
 
     invalid_block = build_empty_block_for_next_slot(spec, state)
     # Invalid signature from a slot other than the previous
@@ -327,3 +385,223 @@ def test_valid_signature_future_committee(spec, state):
     )
 
     yield from run_sync_committee_processing(spec, state, block)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL], reason="prefer short search to find matching proposer")
+def test_proposer_in_committee_without_participation(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+
+    # NOTE: seem to reliably be getting a matching proposer in the first epoch w/ ``MINIMAL`` preset.
+    for _ in range(spec.SLOTS_PER_EPOCH):
+        block = build_empty_block_for_next_slot(spec, state)
+        proposer_index = block.proposer_index
+        proposer_pubkey = state.validators[proposer_index].pubkey
+        proposer_is_in_sync_committee = proposer_pubkey in state.current_sync_committee.pubkeys
+        if proposer_is_in_sync_committee:
+            participation = [index != proposer_index for index in committee_indices]
+            participants = [index for index in committee_indices if index != proposer_index]
+        else:
+            participation = [True for _ in committee_indices]
+            participants = committee_indices
+        # Valid sync committee signature here...
+        block.body.sync_aggregate = spec.SyncAggregate(
+            sync_committee_bits=participation,
+            sync_committee_signature=compute_aggregate_sync_committee_signature(
+                spec,
+                state,
+                block.slot - 1,
+                participants,
+            )
+        )
+
+        if proposer_is_in_sync_committee:
+            assert state.validators[block.proposer_index].pubkey in state.current_sync_committee.pubkeys
+            yield from run_sync_committee_processing(spec, state, block)
+            break
+        else:
+            state_transition_and_sign_block(spec, state, block)
+    else:
+        raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL], reason="prefer short search to find matching proposer")
+def test_proposer_in_committee_with_participation(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    participation = [True for _ in committee_indices]
+
+    # NOTE: seem to reliably be getting a matching proposer in the first epoch w/ ``MINIMAL`` preset.
+    for _ in range(spec.SLOTS_PER_EPOCH):
+        block = build_empty_block_for_next_slot(spec, state)
+        proposer_index = block.proposer_index
+        proposer_pubkey = state.validators[proposer_index].pubkey
+        proposer_is_in_sync_committee = proposer_pubkey in state.current_sync_committee.pubkeys
+
+        # Valid sync committee signature here...
+        block.body.sync_aggregate = spec.SyncAggregate(
+            sync_committee_bits=participation,
+            sync_committee_signature=compute_aggregate_sync_committee_signature(
+                spec,
+                state,
+                block.slot - 1,
+                committee_indices,
+            )
+        )
+
+        if proposer_is_in_sync_committee:
+            assert state.validators[block.proposer_index].pubkey in state.current_sync_committee.pubkeys
+            yield from run_sync_committee_processing(spec, state, block)
+            return
+        else:
+            state_transition_and_sign_block(spec, state, block)
+    raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
+
+
+def _test_harness_for_randomized_test_case(spec, state, duplicates=False, participation_fn=None):
+    committee_indices = get_committee_indices(spec, state, duplicates=duplicates)
+
+    if participation_fn:
+        participating_indices = participation_fn(committee_indices)
+    else:
+        participating_indices = committee_indices
+
+    committee_bits = [index in participating_indices for index in committee_indices]
+    committee_size = len(committee_indices)
+    if duplicates:
+        assert committee_size > len(set(committee_indices))
+    else:
+        assert committee_size == len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_only_one_participant_with_duplicates(spec, state):
+    rng = random.Random(101)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: [rng.choice(comm)],
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_low_participation_with_duplicates(spec, state):
+    rng = random.Random(201)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_high_participation_with_duplicates(spec, state):
+    rng = random.Random(301)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_random_all_but_one_participating_with_duplicates(spec, state):
+    rng = random.Random(401)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1),
+    )
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@single_phase
+def test_random_misc_balances_and_half_participation_with_duplicates(spec, state):
+    rng = random.Random(1401)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        duplicates=True,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_only_one_participant_without_duplicates(spec, state):
+    rng = random.Random(501)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: [rng.choice(comm)],
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_low_participation_without_duplicates(spec, state):
+    rng = random.Random(601)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.25)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_high_participation_without_duplicates(spec, state):
+    rng = random.Random(701)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, int(len(comm) * 0.75)),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_state_test
+def test_random_all_but_one_participating_without_duplicates(spec, state):
+    rng = random.Random(801)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) - 1),
+    )
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="to create nonduplicate committee")
+@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@single_phase
+def test_random_misc_balances_and_half_participation_without_duplicates(spec, state):
+    rng = random.Random(1501)
+    yield from _test_harness_for_randomized_test_case(
+        spec,
+        state,
+        participation_fn=lambda comm: rng.sample(comm, len(comm) // 2),
+    )
