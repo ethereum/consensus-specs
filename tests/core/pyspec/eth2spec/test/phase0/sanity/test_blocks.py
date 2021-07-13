@@ -148,6 +148,9 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     spec.process_randao(state, block.body)
     spec.process_eth1_data(state, block.body)
     spec.process_operations(state, block.body)
+    if is_post_merge(spec):
+        if spec.is_execution_enabled(state, block.body):
+            spec.process_execution_payload(state, block.body.execution_payload, spec.EXECUTION_ENGINE)
 
     # Insert post-state rot
     block.state_root = state.hash_tree_root()
