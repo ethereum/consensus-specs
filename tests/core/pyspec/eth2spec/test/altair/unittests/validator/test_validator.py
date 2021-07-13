@@ -13,6 +13,7 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.constants import (
+    MAINNET,
     MINIMAL,
 )
 
@@ -260,16 +261,21 @@ def test_get_sync_committee_selection_proof(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
+@with_presets([MAINNET], reason="to test against the mainnet SYNC_COMMITTEE_SIZE")
 def test_is_sync_committee_aggregator(spec, state):
-    sample_count = int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT)
+    sample_count = int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT) * 100
     is_aggregator_count = 0
     for i in range(sample_count):
         signature = spec.hash(i.to_bytes(32, byteorder="little"))
         if spec.is_sync_committee_aggregator(signature):
             is_aggregator_count += 1
 
-    assert is_aggregator_count == spec.TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE
+    # Accept ~10% deviation
+    assert (
+        spec.TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE * 100 * 0.9
+        <= is_aggregator_count
+        <= spec.TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE * 100 * 1.1
+    )
 
 
 @with_altair_and_later
