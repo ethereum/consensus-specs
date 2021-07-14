@@ -26,6 +26,7 @@ from eth2spec.test.context import (
     with_presets,
     spec_state_test,
     always_bls,
+    spec_test,
 )
 from eth2spec.utils.hash_function import hash
 
@@ -534,6 +535,7 @@ def test_random_all_but_one_participating_with_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MAINNET], reason="to create duplicate committee")
+@spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_misc_balances_and_half_participation_with_duplicates(spec, state):
@@ -596,6 +598,7 @@ def test_random_all_but_one_participating_without_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_misc_balances_and_half_participation_without_duplicates(spec, state):
