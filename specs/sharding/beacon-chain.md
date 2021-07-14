@@ -367,7 +367,7 @@ class ShardProposerSlashing(Container):
 
 ```python
 class ShardWork(Container):
-    #  Upon confirmation the data is reduced to just the header.
+    # Upon confirmation the data is reduced to just the commitment.
     status: Union[                                                   # See Shard Work Status enum
               None,                                                  # SHARD_WORK_UNCONFIRMED
               DataCommitment,                                        # SHARD_WORK_CONFIRMED
@@ -597,7 +597,15 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
     current_headers: Sequence[PendingShardHeader] = committee_work.status.value
 
     # Find the corresponding header, abort if it cannot be found
-    header_index = [header.root for header in current_headers].index(attestation.data.shard_blob_root)
+    header_index = len(current_headers)
+    for i, header in enumerate(current_headers):
+        if attestation.data.shard_blob_root == header.root:
+            header_index = i
+            break
+    # Attestations for an unknown header do not count towards shard confirmations, but can otherwise be valid.
+    if header_index == len(current_headers):
+        # TODO: Attestations may be re-included if headers are included late.
+        return
 
     pending_header: PendingShardHeader = current_headers[header_index]
     full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
