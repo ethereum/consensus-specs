@@ -218,7 +218,7 @@ def test_some_slashed_zero_scores_full_participation(spec, state):
 @spec_state_test
 @leaking()
 def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
-    slash_some_validators(spec, state, rng=Random(33221))
+    slash_some_validators(spec, state, rng=Random(332243))
     yield from run_inactivity_scores_test(
         spec, state,
         set_full_participation, zero_inactivity_scores,
