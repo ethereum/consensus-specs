@@ -131,6 +131,21 @@ def test_invalid_signature_no_participants(spec, state):
 @with_altair_and_later
 @spec_state_test
 @always_bls
+def test_invalid_signature_infinite_signature_with_participants(spec, state):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    # Exclude one participant whose signature was included.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True for _ in committee_indices],
+        sync_committee_signature=spec.G2_POINT_AT_INFINITY
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
 def test_invalid_signature_extra_participant(spec, state):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     rng = random.Random(3030)
