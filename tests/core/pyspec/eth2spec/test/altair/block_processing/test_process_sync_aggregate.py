@@ -116,6 +116,47 @@ def test_invalid_signature_missing_participant(spec, state):
 @with_altair_and_later
 @spec_state_test
 @always_bls
+def test_invalid_signature_no_participants(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    # No participants is an allowed case, but needs a specific signature, not the full-zeroed signature.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[False] * len(block.body.sync_aggregate.sync_committee_bits),
+        sync_committee_signature=b'\x00' * 96
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+# No-participants, with valid signature, is tested in test_sync_committee_rewards_empty_participants already.
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_invalid_signature_infinite_signature_with_all_participants(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    # Include all participants, try the special-case signature for no-participants
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * len(block.body.sync_aggregate.sync_committee_bits),
+        sync_committee_signature=spec.G2_POINT_AT_INFINITY
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_invalid_signature_infinite_signature_with_single_participant(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    # Try include a single participant with the special-case signature for no-participants.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] + ([False] * (len(block.body.sync_aggregate.sync_committee_bits) - 1)),
+        sync_committee_signature=spec.G2_POINT_AT_INFINITY
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
 def test_invalid_signature_extra_participant(spec, state):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     rng = random.Random(3030)
