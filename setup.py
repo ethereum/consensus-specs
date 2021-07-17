@@ -496,6 +496,7 @@ class MergeSpecBuilder(Phase0SpecBuilder):
 from typing import Protocol
 from eth2spec.phase0 import {preset_name} as phase0
 from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256, Union
+from typing import Union as PyUnion
 '''
 
     @classmethod
