@@ -1,0 +1,13 @@
+depends: ../phase0/spec.yaml
+
+md_files:
+  - beacon-chain.md
+  - fork.md
+  - fork-choice.md
+  - validator.md
+
+py_prefix:
+  - prefix.py
+
+py_suffix:
+  - suffix.py
