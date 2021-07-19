@@ -11,7 +11,7 @@ This repository hosts the current Eth2 specifications. Discussions about design 
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
 
-Core specifications for Eth2 clients be found in [specs](specs/). These are divided into features.
+Core specifications for Eth2 clients can be found in [specs](specs/). These are divided into features.
 Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
 
 The current features are:
