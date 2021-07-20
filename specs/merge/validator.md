@@ -19,7 +19,6 @@
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Execution Payload](#execution-payload)
-        - [`get_pow_chain_head`](#get_pow_chain_head)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -63,13 +62,19 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### Execution Payload
 
-###### `get_pow_chain_head`
-
-Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of the PoW chain. The body of the function is implementation specific.
-
-* Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine)` where:
+* Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine, pow_chain)` where:
 
 ```python
+def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+    # `pow_chain` abstractly represents all blocks in the PoW chain
+    for block in pow_chain:
+        parent = get_pow_block(block.parent_hash)
+        if block.total_difficulty >= total_difficulty and parent.total_difficulty < total_difficulty:
+            return block
+
+    return None
+
+
 def compute_randao_mix(state: BeaconState, randao_reveal: BLSSignature) -> Bytes32:
     epoch = get_current_epoch(state)
     return xor(get_randao_mix(state, epoch), hash(randao_reveal))
@@ -87,15 +92,16 @@ def produce_execution_payload(state: BeaconState,
 def get_execution_payload(state: BeaconState,
                           transition_store: TransitionStore,
                           randao_reveal: BLSSignature,
-                          execution_engine: ExecutionEngine) -> ExecutionPayload:
+                          execution_engine: ExecutionEngine,
+                          pow_chain: Sequence[PowBlock]) -> ExecutionPayload:
     if not is_merge_complete(state):
-        pow_block = get_pow_chain_head()
-        if not is_valid_terminal_pow_block(transition_store, pow_block):
+        terminal_pow_block = get_pow_block_at_total_difficulty(transition_store.transition_total_difficulty, pow_chain)
+        if terminal_pow_block is None:
             # Pre-merge, empty payload
             return ExecutionPayload()
         else:
             # Signify merge via producing on top of the last PoW block
-            return produce_execution_payload(state, pow_block.block_hash, randao_reveal, execution_engine)
+            return produce_execution_payload(state, terminal_pow_block.block_hash, randao_reveal, execution_engine)
 
     # Post-merge, normal payload
     parent_hash = state.latest_execution_payload_header.block_hash
