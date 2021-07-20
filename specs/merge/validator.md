@@ -65,8 +65,7 @@ All validator responsibilities remain unchanged other than those noted below. Na
 * Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine, pow_chain)` where:
 
 ```python
-def get_pow_block_at_total_difficulty(total_difficulty: uint256,
-                                      pow_chain: Sequence[PowBlock]) -> PyUnion[PowBlock, None]:
+def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain:
         parent = get_pow_block(block.parent_hash)
