@@ -139,6 +139,8 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
 
 - _[IGNORE]_ The contribution's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `contribution.slot == current_slot`.
 - _[REJECT]_ The subcommittee index is in the allowed range, i.e. `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
+- _[REJECT]_ The contribution has participants --
+  that is, `len(set(bit for bit in contribution.aggregation_bits if bit == True)) >= 1`.
 - _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(contribution_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is in the declared subcommittee of the current sync committee --
   i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
