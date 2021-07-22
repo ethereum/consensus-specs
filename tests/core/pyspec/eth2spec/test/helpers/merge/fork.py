@@ -4,9 +4,6 @@ MERGE_FORK_TEST_META_TAGS = {
 
 
 def run_fork_test(post_spec, pre_state):
-    # Clean up state to be more realistic
-    pre_state.current_epoch_attestations = []
-
     yield 'pre', pre_state
 
     post_state = post_spec.upgrade_to_merge(pre_state)

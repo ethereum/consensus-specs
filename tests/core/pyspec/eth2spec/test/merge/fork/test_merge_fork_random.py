@@ -16,10 +16,7 @@ from eth2spec.test.helpers.merge.fork import (
     MERGE_FORK_TEST_META_TAGS,
     run_fork_test,
 )
-from eth2spec.test.helpers.random import (
-    randomize_state,
-    randomize_attestation_participation,
-)
+from eth2spec.test.helpers.random import randomize_state
 
 
 @with_phases(phases=[ALTAIR], other_phases=[MERGE])
@@ -56,39 +53,6 @@ def test_merge_fork_random_2(spec, phases, state):
 def test_merge_fork_random_3(spec, phases, state):
     randomize_state(spec, state, rng=Random(4040))
     yield from run_fork_test(phases[MERGE], state)
-
-
-@with_phases(phases=[ALTAIR], other_phases=[MERGE])
-@spec_test
-@with_state
-@with_meta_tags(MERGE_FORK_TEST_META_TAGS)
-def test_merge_fork_random_duplicate_attestations(spec, phases, state):
-    randomize_state(spec, state, rng=Random(1111))
-    # Note: `run_fork_test` empties `current_epoch_attestations`
-    state.previous_epoch_attestations = state.previous_epoch_attestations + state.previous_epoch_attestations
-    yield from run_fork_test(phases[MERGE], state)
-
-
-@with_phases(phases=[ALTAIR], other_phases=[MERGE])
-@spec_test
-@with_state
-@with_meta_tags(MERGE_FORK_TEST_META_TAGS)
-def test_merge_fork_random_mismatched_attestations(spec, phases, state):
-    # Create a random state
-    randomize_state(spec, state, rng=Random(2222))
-
-    # Now make two copies
-    state_0 = state.copy()
-    state_1 = state.copy()
-
-    # Randomize attestation participation of both
-    randomize_attestation_participation(spec, state_0, rng=Random(3333))
-    randomize_attestation_participation(spec, state_1, rng=Random(4444))
-
-    # Note: `run_fork_test` empties `current_epoch_attestations`
-    # Use pending attestations from both random states in a single state for testing
-    state_0.previous_epoch_attestations = state_0.previous_epoch_attestations + state_1.previous_epoch_attestations
-    yield from run_fork_test(phases[MERGE], state_0)
 
 
 @with_phases(phases=[ALTAIR], other_phases=[MERGE])
