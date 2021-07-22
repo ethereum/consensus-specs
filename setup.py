@@ -447,7 +447,7 @@ class AltairSpecBuilder(Phase0SpecBuilder):
     @classmethod
     def imports(cls, preset_name: str) -> str:
         return super().imports(preset_name) + '\n' + f'''
-from typing import NewType, Union
+from typing import NewType, Union as PyUnion
 
 from eth2spec.phase0 import {preset_name} as phase0
 from eth2spec.utils.ssz.ssz_typing import Path
@@ -463,7 +463,7 @@ GeneralizedIndex = NewType('GeneralizedIndex', int)
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
+def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariableName]]) -> GeneralizedIndex:
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
@@ -487,14 +487,14 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[Union[int, SSZVariable
 #
 # MergeSpecBuilder
 #
-class MergeSpecBuilder(Phase0SpecBuilder):
+class MergeSpecBuilder(AltairSpecBuilder):
     fork: str = MERGE
 
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
 from typing import Protocol
-from eth2spec.phase0 import {preset_name} as phase0
+from eth2spec.altair import {preset_name} as altair
 from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256, Union
 '''
 
@@ -844,19 +844,15 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork == PHASE0:
+            if self.spec_fork in (PHASE0, ALTAIR, MERGE):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            elif self.spec_fork == ALTAIR:
-                self.md_doc_paths = """
-                    specs/phase0/beacon-chain.md
-                    specs/phase0/fork-choice.md
-                    specs/phase0/validator.md
-                    specs/phase0/weak-subjectivity.md
+            if self.spec_fork in (ALTAIR, MERGE):
+                self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
                     specs/altair/fork.md
@@ -864,18 +860,14 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            elif self.spec_fork == MERGE:
-                self.md_doc_paths = """
-                    specs/phase0/beacon-chain.md
-                    specs/phase0/fork-choice.md
-                    specs/phase0/validator.md
-                    specs/phase0/weak-subjectivity.md
+            if self.spec_fork == MERGE:
+                self.md_doc_paths += """
                     specs/merge/beacon-chain.md
                     specs/merge/fork.md
                     specs/merge/fork-choice.md
                     specs/merge/validator.md
                 """
-            else:
+            if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
         self.parsed_md_doc_paths = self.md_doc_paths.split()

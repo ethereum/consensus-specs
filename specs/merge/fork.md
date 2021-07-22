@@ -43,15 +43,18 @@ Note that for the pure Merge networks, we don't apply `upgrade_to_merge` since i
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, an irregular state change is made to upgrade to Merge.
+As with the Phase0-to-Altair upgrade, the `state_transition` is modified to upgrade the `BeaconState`.
+The `BeaconState` upgrade runs as part of `process_slots`, slots with missing block proposals do not affect the upgrade time.
 
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, an irregular state change is made to upgrade to Merge.
 The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `MERGE_FORK_EPOCH * SLOTS_PER_EPOCH`.
-Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
-In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead the logic must be within `process_slots`.
+
+When multiple upgrades are scheduled for the same epoch (common for test-networks),
+all the upgrades run in sequence before resuming the regular state transition.
 
 ```python
-def upgrade_to_merge(pre: phase0.BeaconState) -> BeaconState:
-    epoch = phase0.get_current_epoch(pre)
+def upgrade_to_merge(pre: altair.BeaconState) -> BeaconState:
+    epoch = altair.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -78,14 +81,16 @@ def upgrade_to_merge(pre: phase0.BeaconState) -> BeaconState:
         randao_mixes=pre.randao_mixes,
         # Slashings
         slashings=pre.slashings,
-        # Attestations
-        previous_epoch_attestations=pre.previous_epoch_attestations,
-        current_epoch_attestations=pre.current_epoch_attestations,
+        # Participation
+        previous_epoch_participation=pre.previous_epoch_participation,
+        current_epoch_participation=pre.current_epoch_participation,
         # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
+        # Inactivity
+        inactivity_scores=pre.inactivity_scores,
         # Execution-layer
         latest_execution_payload_header=ExecutionPayloadHeader(),
     )
