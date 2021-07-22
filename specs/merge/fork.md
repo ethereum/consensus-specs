@@ -91,6 +91,9 @@ def upgrade_to_merge(pre: altair.BeaconState) -> BeaconState:
         finalized_checkpoint=pre.finalized_checkpoint,
         # Inactivity
         inactivity_scores=pre.inactivity_scores,
+        # Sync
+        current_sync_committee=pre.current_sync_committee,
+        next_sync_committee=pre.next_sync_committee,
         # Execution-layer
         latest_execution_payload_header=ExecutionPayloadHeader(),
     )
