@@ -85,7 +85,7 @@ class BeaconBlockBody(Container):
 #### `BeaconState`
 
 ```python
-class BeaconState(altair.BeaconState):
+class BeaconState(Container):
     # Versioning
     genesis_time: uint64
     genesis_validators_root: Root
