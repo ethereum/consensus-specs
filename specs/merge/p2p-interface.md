@@ -81,7 +81,7 @@ details on how to handle transitioning gossip topics for the Merge.
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
 Request and Response remain unchanged.
-`MERGE_FORK_VERSION` is used as an additional `context` to specify the Merge block type.
+The Merge fork-digest is introduced to the `context` enum to specify the Merge block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -98,7 +98,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
 Request and Response remain unchanged.
-`MERGE_FORK_VERSION` is used as an additional `context` to specify the Merge block type.
+The Merge fork-digest is introduced to the `context` enum to specify the Merge block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
