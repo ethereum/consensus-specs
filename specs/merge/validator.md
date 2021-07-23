@@ -1,7 +1,5 @@
 # Ethereum 2.0 The Merge
 
-**Warning:** This document is currently based on [Phase 0](../phase0/validator.md) but will be rebased to [Altair](../altair/validator.md) once the latter is shipped.
-
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
@@ -29,9 +27,11 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Phase 0 -- Validator](../phase0/validator.md). All behaviors and definitions defined in the Phase 0 doc carry over unless explicitly noted or overridden.
+This document is an extension of the [Altair -- Honest Validator](../altair/validator.md) guide.
+All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout. Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout.
+Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Protocols
 

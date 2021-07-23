@@ -1,7 +1,5 @@
 # Ethereum 2.0 The Merge
 
-**Warning**: This document is currently based on [Phase 0](../phase0/beacon-chain.md) and will be rebased on [Altair](../altair/beacon-chain.md).
-
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
@@ -69,7 +67,17 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload  # [New in Merge]
 ```
@@ -77,7 +85,41 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 #### `BeaconState`
 
 ```python
-class BeaconState(phase0.BeaconState):
+class BeaconState(Container):
+    # Versioning
+    genesis_time: uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    # History
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    # Eth1
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_deposit_index: uint64
+    # Registry
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    # Randomness
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
+    # Slashings
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    # Participation
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    # Finality
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Checkpoint
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    # Inactivity
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # Sync
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader  # [New in Merge]
 ```
@@ -190,6 +232,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
+    process_sync_aggregate(state, block.body.sync_aggregate)
     if is_execution_enabled(state, block.body):
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
@@ -232,7 +275,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Merge testing only.
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified to use `MERGE_FORK_VERSION` and initialize `latest_execution_payload_header`.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified: (1) using `MERGE_FORK_VERSION` as the current fork version, (2) utilizing the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`, and (3) initialize `latest_execution_payload_header`.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
@@ -268,6 +311,11 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
 
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = hash_tree_root(state.validators)
+
+    # Fill in sync committees
+    # Note: A duplicate committee is assigned for the current and next committee at genesis
+    state.current_sync_committee = get_next_sync_committee(state)
+    state.next_sync_committee = get_next_sync_committee(state)
 
     # [New in Merge] Initialize the execution payload header (with block number set to 0)
     state.latest_execution_payload_header.block_hash = eth1_block_hash

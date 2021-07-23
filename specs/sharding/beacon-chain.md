@@ -179,7 +179,7 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 ### `BeaconState`
 
 ```python
-class BeaconState(merge.BeaconState):  # [extends The Merge state]
+class BeaconState(merge.BeaconState):
     # [Updated fields] (Warning: this changes with Altair, Sharding will rebase to use participation-flags)
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
@@ -494,9 +494,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Sharding]
-    # Pre-merge, skip execution payload processing
-    if is_execution_enabled(state, block):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
+    process_sync_aggregate(state, block.body.sync_aggregate)
+    # is_execution_enabled is omitted, execution is enabled by default. 
+    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
 ```
 
 #### Operations
@@ -527,7 +527,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
-    phase0.process_attestation(state, attestation)
+    altair.process_attestation(state, attestation)
     update_pending_shard_work(state, attestation)
 ```
 
@@ -681,25 +681,26 @@ This epoch transition overrides the Merge epoch transition:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    # Sharding
+    # Sharding pre-processing
     process_pending_shard_confirmations(state)
     charge_confirmed_shard_fees(state)
     reset_pending_shard_work(state)
 
-    # Phase0
+    # Base functionality
     process_justification_and_finalization(state)
+    process_inactivity_updates(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_slashings(state)
-
-    # Final updates
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
-    process_participation_record_updates(state)
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
 
+    # Sharding post-processing
     process_shard_epoch_increment(state)
 ```
 
