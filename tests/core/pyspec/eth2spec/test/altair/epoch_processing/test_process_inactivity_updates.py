@@ -195,17 +195,24 @@ def test_random_inactivity_scores_full_participation_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
 
 
-def slash_some_validators(spec, state, rng=Random(40404040)):
+def slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(40404040)):
+    # ``run_inactivity_scores_test`` runs at the next epoch from `state`.
+    # We retrieve the proposer of this future state to avoid
+    # accidentally slashing that validator
+    future_state = state.copy()
+    next_epoch_via_block(spec, future_state)
+
+    proposer_index = spec.get_beacon_proposer_index(future_state)
     # Slash ~1/4 of validaors
     for validator_index in range(len(state.validators)):
-        if rng.choice(range(4)) == 0:
+        if rng.choice(range(4)) == 0 and validator_index != proposer_index:
             spec.slash_validator(state, validator_index)
 
 
 @with_altair_and_later
 @spec_state_test
 def test_some_slashed_zero_scores_full_participation(spec, state):
-    slash_some_validators(spec, state, rng=Random(33429))
+    slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(33429))
     yield from run_inactivity_scores_test(
         spec, state,
         set_full_participation, zero_inactivity_scores,
@@ -218,7 +225,7 @@ def test_some_slashed_zero_scores_full_participation(spec, state):
 @spec_state_test
 @leaking()
 def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
-    slash_some_validators(spec, state, rng=Random(33221))
+    slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(332243))
     yield from run_inactivity_scores_test(
         spec, state,
         set_full_participation, zero_inactivity_scores,
@@ -239,7 +246,7 @@ def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
 @spec_state_test
 def test_some_slashed_full_random(spec, state):
     rng = Random(1010222)
-    slash_some_validators(spec, state, rng=rng)
+    slash_some_validators_for_inactivity_scores_test(spec, state, rng=rng)
     yield from run_inactivity_scores_test(
         spec, state,
         randomize_attestation_participation, randomize_inactivity_scores, rng=rng,
@@ -251,7 +258,7 @@ def test_some_slashed_full_random(spec, state):
 @leaking()
 def test_some_slashed_full_random_leaking(spec, state):
     rng = Random(1102233)
-    slash_some_validators(spec, state, rng=rng)
+    slash_some_validators_for_inactivity_scores_test(spec, state, rng=rng)
     yield from run_inactivity_scores_test(
         spec, state,
         randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,

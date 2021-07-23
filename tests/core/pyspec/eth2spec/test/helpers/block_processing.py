@@ -30,6 +30,7 @@ def get_process_calls(spec):
         # Merge
         'process_application_payload':
             lambda state, block: spec.process_application_payload(state, block.body),
+        # TODO: add sharding processing functions when spec stabilizes.
         # Custody Game
         'process_custody_game_operations':
             lambda state, block: spec.process_custody_game_operations(state, block.body),

@@ -26,6 +26,7 @@ from eth2spec.test.context import (
     with_presets,
     spec_state_test,
     always_bls,
+    spec_test,
 )
 from eth2spec.utils.hash_function import hash
 
@@ -108,6 +109,47 @@ def test_invalid_signature_missing_participant(spec, state):
             block.slot - 1,
             committee_indices,  # full committee signs
         )
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_invalid_signature_no_participants(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    # No participants is an allowed case, but needs a specific signature, not the full-zeroed signature.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[False] * len(block.body.sync_aggregate.sync_committee_bits),
+        sync_committee_signature=b'\x00' * 96
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+# No-participants, with valid signature, is tested in test_sync_committee_rewards_empty_participants already.
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_invalid_signature_infinite_signature_with_all_participants(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    # Include all participants, try the special-case signature for no-participants
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] * len(block.body.sync_aggregate.sync_committee_bits),
+        sync_committee_signature=spec.G2_POINT_AT_INFINITY
+    )
+    yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_invalid_signature_infinite_signature_with_single_participant(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    # Try include a single participant with the special-case signature for no-participants.
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=[True] + ([False] * (len(block.body.sync_aggregate.sync_committee_bits) - 1)),
+        sync_committee_signature=spec.G2_POINT_AT_INFINITY
     )
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
@@ -534,6 +576,7 @@ def test_random_all_but_one_participating_with_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MAINNET], reason="to create duplicate committee")
+@spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_misc_balances_and_half_participation_with_duplicates(spec, state):
@@ -596,6 +639,7 @@ def test_random_all_but_one_participating_without_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
+@spec_test
 @with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_misc_balances_and_half_participation_without_duplicates(spec, state):

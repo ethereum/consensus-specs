@@ -347,10 +347,6 @@ def with_phases(phases, other_phases=None):
                 preset_name = kw.pop('preset')
             targets = spec_targets[preset_name]
 
-            # TODO: test state is dependent on phase0 but is immediately transitioned to later phases.
-            #  A new state-creation helper for later phases may be in place, and then tests can run without phase0
-            available_phases.add(PHASE0)
-
             # Populate all phases for multi-phase tests
             phase_dir = {}
             if PHASE0 in available_phases:
@@ -433,23 +429,15 @@ def with_config_overrides(config_overrides):
 
 
 def is_post_altair(spec):
-    if spec.fork == MERGE:  # TODO: remove parallel Altair-Merge condition after rebase.
-        return False
-    if spec.fork in FORKS_BEFORE_ALTAIR:
-        return False
-    return True
+    return spec.fork not in FORKS_BEFORE_ALTAIR
 
 
 def is_post_merge(spec):
-    if spec.fork == ALTAIR:  # TODO: remove parallel Altair-Merge condition after rebase.
-        return False
-    if spec.fork in FORKS_BEFORE_MERGE:
-        return False
-    return True
+    return spec.fork not in FORKS_BEFORE_MERGE
 
 
-with_altair_and_later = with_phases([ALTAIR])  # TODO: include Merge, but not until Merge work is rebased.
-with_merge_and_later = with_phases([MERGE])
+with_altair_and_later = with_phases([ALTAIR, MERGE])
+with_merge_and_later = with_phases([MERGE])  # TODO: include sharding when spec stabilizes.
 
 
 def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):

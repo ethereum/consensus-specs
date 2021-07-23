@@ -29,8 +29,7 @@
 
 ## Introduction
 
-The specification of these changes continues in the same format as the [Phase0](../phase0/p2p-interface.md) and
-[Altair](../altair/p2p-interface.md) network specifications, and assumes them as pre-requisite.
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 The adjustments and additions for Shards are outlined in this document.
 
 ## Constants
