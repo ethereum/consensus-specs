@@ -441,7 +441,8 @@ def compute_previous_slot(slot: Slot) -> Slot:
 #### `compute_updated_sample_price`
 
 ```python
-def compute_updated_sample_price(prev_price: Gwei, samples: uint64, adjustment_quotient: uint64) -> Gwei:
+def compute_updated_sample_price(prev_price: Gwei, samples: uint64, active_shards: uint64) -> Gwei:
+    adjustment_quotient = active_shards * SLOTS_PER_EPOCH * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT
     if samples > TARGET_SAMPLES_PER_BLOB:
         delta = max(1, prev_price * (samples - TARGET_SAMPLES_PER_BLOB) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
         return min(prev_price + delta, MAX_SAMPLE_PRICE)
@@ -578,19 +579,19 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attester_slashings, process_attester_slashing)
     # New shard proposer slashing processing
     for_ops(body.shard_proposer_slashings, process_shard_proposer_slashing)
-    # Limit is dynamic based on active shard count
+
+    # Limit is dynamic: based on active shard count
     assert len(body.shard_headers) <= MAX_SHARD_HEADERS_PER_SHARD * get_active_shard_count(state, get_current_epoch(state))
-    # Included shard headers must be sorted by shard index, the base-fee is adjusted in sequence (capacity is staggered)
-    # Duplicates (same slot and shard) are allowed, although slashable, only the first affects capacity.
-    if len(body.shard_headers) > 0:
-        shard = 0
-        for i, header in body.shard_headers[1:]
-            
     for_ops(body.shard_headers, process_shard_header)
+
     # New attestation processing
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
+
+    # TODO: to avoid parallel shards racing, and avoid inclusion-order problems,
+    #  update the fee price per slot, instead of per header.
+    # state.shard_sample_price = compute_updated_sample_price(state.shard_sample_price, ?, shard_count)
 ```
 
 ##### Extended Attestation processing
@@ -689,17 +690,15 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     header_epoch = compute_epoch_at_slot(slot)
     # Verify that the header is within the processing time window
     assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
-    # Verify that the shard is active
-    start_shard = get_start_shard(state, slot)
-    committees_per_slot = get_committee_count_per_slot(state, header_epoch)
-    end_shard = start_shard + committees_per_slot
+    # Verify that the shard is valid
     shard_count = get_active_shard_count(state, header_epoch)
-    # Per slot, there may be max. shard_count committees.
-    # If there are shard_count * 2/3 per slot, then wrap around.
-    if end_shard >= shard_count:
-        assert not (end_shard - shard_count <= shard < start_shard)
-    else:
-        assert start_shard <= shard < end_shard
+    assert shard < shard_count
+    # Verify that a committee is able to attest this (slot, shard)
+    start_shard = get_start_shard(state, slot)
+    committee_index = (shard_count + shard - start_shard) % shard_count    
+    committees_per_slot = get_committee_count_per_slot(state, header_epoch)
+    assert committee_index <= committees_per_slot
+
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
     assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, slot - 1)
@@ -752,14 +751,6 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     decrease_balance(state, header.builder_index, base_fee + priority_fee)
     # Pay out priority fee
     increase_balance(state, header.proposer_index, priority_fee)
-
-    # Track updated sample price
-    adjustment_quotient = (
-            get_active_shard_count(state, previous_epoch)
-            * SLOTS_PER_EPOCH * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT
-    )
-    state.shard_sample_price = compute_updated_sample_price(
-        state.shard_sample_price, blob_summary.commitment.length, adjustment_quotient)
 
     # Initialize the pending header
     index = compute_committee_index_from_shard(state, slot, shard)
