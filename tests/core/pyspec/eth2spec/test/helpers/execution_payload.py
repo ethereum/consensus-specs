@@ -17,12 +17,14 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
         block_number=latest.block_number + 1,
         random=randao_mix,
-        gas_limit=latest.gas_limit,  # retain same limit
+        gas_limit=max(latest.gas_limit, spec.MIN_GAS_LIMIT),
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
+        base_fee_per_gas=spec.uint64(0),
         block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
+    payload.base_fee_per_gas = spec.compute_base_fee_per_gas(latest, payload)
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
     payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))
 
@@ -41,6 +43,7 @@ def get_execution_payload_header(spec, execution_payload):
         gas_limit=execution_payload.gas_limit,
         gas_used=execution_payload.gas_used,
         timestamp=execution_payload.timestamp,
+        base_fee_per_gas=execution_payload.base_fee_per_gas,
         block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
