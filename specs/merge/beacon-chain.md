@@ -31,6 +31,8 @@
     - [`on_payload`](#on_payload)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
+    - [`is_valid_gas_limit`](#is_valid_gas_limit)
+    - [`compute_base_fee_per_gas`](#compute_base_fee_per_gas)
     - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
 
