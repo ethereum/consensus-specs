@@ -412,7 +412,7 @@ class ShardWork(Container):
     # Upon confirmation the data is reduced to just the commitment.
     status: Union[                                                   # See Shard Work Status enum
               None,                                                  # SHARD_WORK_UNCONFIRMED
-              ConfirmedDataCommitment,                               # SHARD_WORK_CONFIRMED
+              AttestedDataCommitment,                                # SHARD_WORK_CONFIRMED
               List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD]  # SHARD_WORK_PENDING
             ]
 ```
@@ -737,7 +737,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     max_fee = blob_summary.max_fee_per_sample * samples
 
     # Builder must have sufficient balance, even if max_fee is not completely utilized
-    assert state.blob_builder_balances[header.builder_index] > max_fee
+    assert state.blob_builder_balances[header.builder_index] >= max_fee
 
     base_fee = state.shard_sample_price * samples
     # Base fee must be paid
@@ -748,7 +748,8 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     priority_fee = min(max_fee - base_fee, max_priority_fee)
 
     # Burn base fee, take priority fee
-    decrease_balance(state, header.builder_index, base_fee + priority_fee)
+    # priority_fee <= max_fee - base_fee, thus priority_fee + base_fee <= max_fee, thus sufficient balance.
+    state.blob_builder_balances[header.builder_index] -= base_fee + priority_fee
     # Pay out priority fee
     increase_balance(state, header.proposer_index, priority_fee)
 
