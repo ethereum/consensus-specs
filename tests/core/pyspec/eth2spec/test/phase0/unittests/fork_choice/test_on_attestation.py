@@ -308,7 +308,7 @@ def test_on_attestation_same_slot(spec, state):
     spec.on_block(store, signed_block)
 
     attestation = get_valid_attestation(spec, state, slot=block.slot, signed=True)
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, True)
 
 
 @with_all_phases
