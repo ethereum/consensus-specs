@@ -283,9 +283,8 @@ def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     target_slot = compute_start_slot_at_epoch(target.epoch)
     assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
 
-    # Attestations can only affect the fork choice of subsequent slots.
-    # Delay consideration in the fork choice until their slot is in the past.
-    assert get_current_slot(store) >= attestation.data.slot + 1
+    # Attestations can only affect the fork choice of the current and subsequent slots.
+    assert get_current_slot(store) >= attestation.data.slot
 ```
 
 ##### `store_target_checkpoint_state`
