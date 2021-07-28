@@ -618,7 +618,7 @@ def process_attested_shard_work(state: BeaconState, attestation: Attestation) ->
     if committee_work.status.selector != SHARD_WORK_PENDING:
         # If the data was already confirmed, check if this matches, to apply the flag to the attesters.
         if committee_work.status.selector == SHARD_WORK_CONFIRMED:
-            attested: AttestedDataCommitment = current_headers[header_index]
+            attested: AttestedDataCommitment = committee_work.status.value
             if attested.root == attestation.data.shard_blob_root:
                 batch_apply_participation_flag(state, attestation.aggregation_bits,
                                                attestation.data.target.epoch,
