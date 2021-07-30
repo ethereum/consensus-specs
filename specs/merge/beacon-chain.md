@@ -12,6 +12,8 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Configuration](#configuration)
+  - [Genesis settings](#genesis-settings)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -65,6 +67,17 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
 | `BASE_FEE_MAX_CHANGE_DENOMINATOR` | `uint64(2**3)` (= 8) |
 | `ELASTICITY_MULTIPLIER` | `uint64(2**1)` (= 2) |
+
+## Configuration
+
+### Genesis settings
+
+*Note*: These configuration settings do not apply to the mainnet and are utilized only by pure Merge testing.
+
+| Name | Value |
+| - | - |
+| `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
+| `GENESIS_BASE_FEE_PER_GAS` | `uint64(1000000000)` (= 1,000,000,000) |
 
 ## Containers
 
@@ -380,7 +393,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     state.latest_execution_payload_header.block_hash = eth1_block_hash
     state.latest_execution_payload_header.timestamp = eth1_timestamp
     state.latest_execution_payload_header.random = eth1_block_hash
-    state.latest_execution_payload_header.gas_limit = MIN_GAS_LIMIT
+    state.latest_execution_payload_header.gas_limit = GENESIS_GAS_LIMIT
+    state.latest_execution_payload_header.base_fee_per_gas = GENESIS_BASE_FEE_PER_GAS
 
     return state
 ```

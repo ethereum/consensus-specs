@@ -78,6 +78,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header.block_hash = eth1_block_hash
         state.latest_execution_payload_header.random = eth1_block_hash
-        state.latest_execution_payload_header.gas_limit = spec.MIN_GAS_LIMIT
+        state.latest_execution_payload_header.gas_limit = spec.GENESIS_GAS_LIMIT
+        state.latest_execution_payload_header.base_fee_per_gas = spec.GENESIS_BASE_FEE_PER_GAS
 
     return state
