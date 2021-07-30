@@ -151,6 +151,7 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 | Name | Value | Notes |
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes) |
+| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Sample price may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
@@ -181,9 +182,8 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 
 ## Configuration
 
-| Name | Value | Notes |
-| - | - | - |
-| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
+Note: some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.  
+E.g. `INITIAL_ACTIVE_SHARDS`, `MAX_SAMPLES_PER_BLOB` and `TARGET_SAMPLES_PER_BLOB`.
 
 ## Updated containers
 
