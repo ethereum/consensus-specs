@@ -147,7 +147,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    base_fee_per_gas: uint64  # base fee introduced in eip-1559
+    base_fee_per_gas: uint64  # base fee introduced in EIP-1559
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -253,17 +253,17 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> bool:
     parent_gas_limit = parent.gas_limit
 
-    # check if the payload used too much gas
+    # Check if the payload used too much gas
     if payload.gas_used > payload.gas_limit:
         return False
 
-    # check if the payload changed the gas limit too much
+    # Check if the payload changed the gas limit too much
     if payload.gas_limit >= parent_gas_limit + parent_gas_limit // GAS_LIMIT_DIVISOR:
         return False
     if payload.gas_limit <= parent_gas_limit - parent_gas_limit // GAS_LIMIT_DIVISOR:
         return False
 
-    # check if the gas limit is at least the minimum gas limit
+    # Check if the gas limit is at least the minimum gas limit
     if payload.gas_limit < MIN_GAS_LIMIT:
         return False
 
@@ -282,13 +282,16 @@ def compute_base_fee_per_gas(payload: ExecutionPayload, parent: ExecutionPayload
         return parent_base_fee_per_gas
     elif parent_gas_used > parent_gas_target:
         gas_used_delta = parent_gas_used - parent_gas_target
-        base_fee_per_gas_delta = \
-            max(parent_base_fee_per_gas * gas_used_delta // parent_gas_target // BASE_FEE_MAX_CHANGE_DENOMINATOR, 1)
+        base_fee_per_gas_delta = max(
+            parent_base_fee_per_gas * gas_used_delta // parent_gas_target // BASE_FEE_MAX_CHANGE_DENOMINATOR,
+            1,
+        )
         return parent_base_fee_per_gas + base_fee_per_gas_delta
     else:
         gas_used_delta = parent_gas_target - parent_gas_used
-        base_fee_per_gas_delta = \
+        base_fee_per_gas_delta = (
             parent_base_fee_per_gas * gas_used_delta // parent_gas_target // BASE_FEE_MAX_CHANGE_DENOMINATOR
+        )
         return max(parent_base_fee_per_gas - base_fee_per_gas_delta, 0)
 ```
 
