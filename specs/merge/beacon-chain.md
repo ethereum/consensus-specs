@@ -61,7 +61,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
-| `GAS_LIMIT_DIVISOR` | `uint64(2**10)` (= 1,024) |
+| `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
 | `BASE_FEE_MAX_CHANGE_DENOMINATOR` | `uint64(2**3)` (= 8) |
 | `ELASTICITY_MULTIPLIER` | `uint64(2**1)` (= 2) |
@@ -258,9 +258,9 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
         return False
 
     # Check if the payload changed the gas limit too much
-    if payload.gas_limit >= parent_gas_limit + parent_gas_limit // GAS_LIMIT_DIVISOR:
+    if payload.gas_limit >= parent_gas_limit + parent_gas_limit // GAS_LIMIT_DENOMINATOR:
         return False
-    if payload.gas_limit <= parent_gas_limit - parent_gas_limit // GAS_LIMIT_DIVISOR:
+    if payload.gas_limit <= parent_gas_limit - parent_gas_limit // GAS_LIMIT_DENOMINATOR:
         return False
 
     # Check if the gas limit is at least the minimum gas limit
