@@ -305,7 +305,7 @@ def compute_base_fee_per_gas(payload: ExecutionPayload, parent: ExecutionPayload
         base_fee_per_gas_delta = (
             parent_base_fee_per_gas * gas_used_delta // parent_gas_target // BASE_FEE_MAX_CHANGE_DENOMINATOR
         )
-        return max(parent_base_fee_per_gas - base_fee_per_gas_delta, 0)
+        return parent_base_fee_per_gas - base_fee_per_gas_delta  # This subtraction can't underflow
 ```
 
 #### `process_execution_payload`
