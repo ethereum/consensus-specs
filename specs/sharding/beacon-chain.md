@@ -732,9 +732,9 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Charge EIP 1559 fee, builder pays for opportunity, and is responsible for later availability,
     # or fail to publish at their own expense.
-    samples = blob_summary.commitment.length
+    samples = body_summary.commitment.length
     # TODO: overflows, need bigger int type
-    max_fee = blob_summary.max_fee_per_sample * samples
+    max_fee = body_summary.max_fee_per_sample * samples
 
     # Builder must have sufficient balance, even if max_fee is not completely utilized
     assert state.blob_builder_balances[header.builder_index] >= max_fee
@@ -744,7 +744,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     assert max_fee >= base_fee
 
     # Remaining fee goes towards proposer for prioritizing, up to a maximum
-    max_priority_fee = blob_summary.max_priority_fee_per_sample * samples
+    max_priority_fee = body_summary.max_priority_fee_per_sample * samples
     priority_fee = min(max_fee - base_fee, max_priority_fee)
 
     # Burn base fee, take priority fee
@@ -759,7 +759,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     initial_votes = Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length)
     pending_header = PendingShardHeader(
         attested=AttestedDataCommitment(
-            commitment=blob_summary.commitment,
+            commitment=body_summary.commitment,
             root=header_root,
             includer_index=get_beacon_proposer_index(state),
         )
