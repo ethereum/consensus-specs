@@ -216,10 +216,6 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 
 ```python
 class BeaconState(merge.BeaconState):
-    # [Updated fields] (Warning: this changes with Altair, Sharding will rebase to use participation-flags)
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # [New fields]
     # Blob builder registry.
     blob_builders: List[Builder, BLOB_BUILDER_REGISTRY_LIMIT]
     blob_builder_balances: List[Gwei, BLOB_BUILDER_REGISTRY_LIMIT]
