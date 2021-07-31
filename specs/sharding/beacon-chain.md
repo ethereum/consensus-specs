@@ -853,7 +853,6 @@ def process_pending_shard_confirmations(state: BeaconState) -> None:
             committee_work = state.shard_buffer[buffer_index][shard_index]
             if committee_work.status.selector == SHARD_WORK_PENDING:
                 winning_header = max(committee_work.status.value, key=lambda header: header.weight)
-                # TODO In Altair: set participation bit flag of voters for winning header
                 if winning_header.attested.commitment == DataCommitment():
                     committee_work.status.change(selector=SHARD_WORK_UNCONFIRMED, value=None)
                 else:
