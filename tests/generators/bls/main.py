@@ -12,8 +12,10 @@ from eth_utils import (
 import milagro_bls_binding as milagro_bls
 
 from eth2spec.utils import bls
-from eth2spec.test.helpers.constants import PHASE0
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.altair import spec
 
 
 def to_bytes(i):
@@ -51,6 +53,7 @@ PRIVKEYS = [
 ]
 PUBKEYS = [bls.SkToPk(privkey) for privkey in PRIVKEYS]
 
+ZERO_PUBKEY = b'\x00' * 48
 Z1_PUBKEY = b'\xc0' + b'\x00' * 47
 NO_SIGNATURE = b'\x00' * 96
 Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
@@ -355,7 +358,130 @@ def case05_aggregate_verify():
     }
 
 
+def case06_eth2_aggregate_pubkeys():
+    aggregate_pubkey = spec.eth2_aggregate_pubkeys(PUBKEYS)
+    assert aggregate_pubkey == milagro_bls._AggregatePKs(PUBKEYS)
+    yield f'eth2_aggregate_pubkeys_some_pubkeys', {
+        'input': [encode_hex(pubkey) for pubkey in PUBKEYS],
+        'output': encode_hex(aggregate_pubkey),
+    }
+
+    # Invalid pubkeys -- len(pubkeys) == 0
+    expect_exception(spec.eth2_aggregate_pubkeys, [])
+    expect_exception(milagro_bls._AggregatePKs, [])
+    yield f'eth2_aggregate_pubkeys_', {
+        'input': [],
+        'output': None,
+    }
+
+    # Invalid pubkeys -- [ZERO_PUBKEY]
+    expect_exception(spec.eth2_aggregate_pubkeys, [ZERO_PUBKEY])
+    expect_exception(milagro_bls._AggregatePKs, [ZERO_PUBKEY])
+    yield f'eth2_aggregate_pubkeys_all_zero_pubkey', {
+        'input': [encode_hex(ZERO_PUBKEY)],
+        'output': None,
+    }
+
+    # TODO: TBD
+    # Valid to aggregate G1 point at infinity
+    # aggregate_pubkey = spec.eth2_aggregate_pubkeys([Z1_PUBKEY])
+    # assert aggregate_pubkey == milagro_bls._AggregatePKs([Z1_PUBKEY]) == Z1_PUBKEY
+    # yield f'eth2_aggregate_pubkeys_infinity_pubkey', {
+    #     'input': [encode_hex(Z1_PUBKEY)],
+    #     'output': encode_hex(aggregate_pubkey),
+    # }
+
+
+def case07_eth2_fast_aggregate_verify():
+    """
+    Similar to `case04_fast_aggregate_verify` except for the empty case
+    """
+    for i, message in enumerate(MESSAGES):
+        privkeys = PRIVKEYS[:i + 1]
+        sigs = [bls.Sign(privkey, message) for privkey in privkeys]
+        aggregate_signature = bls.Aggregate(sigs)
+        pubkeys = [bls.SkToPk(privkey) for privkey in privkeys]
+        pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
+
+        # Valid signature
+        identifier = f'{pubkeys_serial}_{encode_hex(message)}'
+        assert spec.eth2_fast_aggregate_verify(pubkeys, message, aggregate_signature)
+        yield f'eth2_fast_aggregate_verify_valid_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'pubkeys': pubkeys_serial,
+                'message': encode_hex(message),
+                'signature': encode_hex(aggregate_signature),
+            },
+            'output': True,
+        }
+
+        # Invalid signature -- extra pubkey
+        pubkeys_extra = pubkeys + [bls.SkToPk(PRIVKEYS[-1])]
+        pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
+        identifier = f'{pubkeys_extra_serial}_{encode_hex(message)}'
+        assert not spec.eth2_fast_aggregate_verify(pubkeys_extra, message, aggregate_signature)
+        yield f'eth_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'pubkeys': pubkeys_extra_serial,
+                'message': encode_hex(message),
+                'signature': encode_hex(aggregate_signature),
+            },
+            'output': False,
+        }
+
+        # Invalid signature -- tampered with signature
+        tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
+        identifier = f'{pubkeys_serial}_{encode_hex(message)}'
+        assert not spec.eth2_fast_aggregate_verify(pubkeys, message, tampered_signature)
+        yield f'eth2_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'pubkeys': pubkeys_serial,
+                'message': encode_hex(message),
+                'signature': encode_hex(tampered_signature),
+            },
+            'output': False,
+        }
+
+    # NOTE: Unlike `FastAggregateVerify`, len(pubkeys) == 0 and signature == Z1_SIGNATURE is VALID
+    assert spec.eth2_fast_aggregate_verify([], message, Z2_SIGNATURE)
+    yield f'eth2_fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
+        'input': {
+            'pubkeys': [],
+            'message': encode_hex(message),
+            'signature': encode_hex(Z2_SIGNATURE),
+        },
+        'output': True,
+    }
+
+    # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
+    assert not spec.eth2_fast_aggregate_verify([], message, NO_SIGNATURE)
+    yield f'eth2_fast_aggregate_verify_na_pubkeys_and_na_signature', {
+        'input': {
+            'pubkeys': [],
+            'message': encode_hex(message),
+            'signature': encode_hex(NO_SIGNATURE),
+        },
+        'output': False,
+    }
+
+    # Invalid pubkeys and signature -- pubkeys contains point at infinity
+    pubkeys = PUBKEYS.copy()
+    pubkeys_with_infinity = pubkeys + [Z1_PUBKEY]
+    signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
+    aggregate_signature = bls.Aggregate(signatures)
+    assert not spec.eth2_fast_aggregate_verify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
+    yield f'eth2_fast_aggregate_verify_infinity_pubkey', {
+        'input': {
+            'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
+            'message': encode_hex(SAMPLE_MESSAGE),
+            'signature': encode_hex(aggregate_signature),
+        },
+        'output': False,
+    }
+
+
 def create_provider(handler_name: str,
+                    fork_name: SpecForkName,
                     test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:
 
     def prepare_fn() -> None:
@@ -368,7 +494,7 @@ def create_provider(handler_name: str,
             print(data)
             (case_name, case_content) = data
             yield gen_typing.TestCase(
-                fork_name=PHASE0,
+                fork_name=fork_name,
                 preset_name='general',
                 runner_name='bls',
                 handler_name=handler_name,
@@ -383,9 +509,13 @@ def create_provider(handler_name: str,
 if __name__ == "__main__":
     bls.use_py_ecc()  # Py-ecc is chosen instead of Milagro, since the code is better understood to be correct.
     gen_runner.run_generator("bls", [
-        create_provider('sign', case01_sign),
-        create_provider('verify', case02_verify),
-        create_provider('aggregate', case03_aggregate),
-        create_provider('fast_aggregate_verify', case04_fast_aggregate_verify),
-        create_provider('aggregate_verify', case05_aggregate_verify),
+        # PHASE0
+        create_provider('sign', PHASE0, case01_sign),
+        create_provider('verify', PHASE0, case02_verify),
+        create_provider('aggregate', PHASE0, case03_aggregate),
+        create_provider('fast_aggregate_verify', PHASE0, case04_fast_aggregate_verify),
+        create_provider('aggregate_verify', PHASE0, case05_aggregate_verify),
+        # ALTAIR
+        create_provider('eth2_aggregate_pubkeys', ALTAIR, case06_eth2_aggregate_pubkeys),
+        create_provider('eth2_fast_aggregate_verify', ALTAIR, case07_eth2_fast_aggregate_verify),
     ])

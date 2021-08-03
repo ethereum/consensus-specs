@@ -1,4 +1,4 @@
-# Test format: BLS fast aggregate verify
+# Test format: Ethereum-customized BLS fast aggregate verify
 
 Verify the signature against the given pubkeys and one message.
 
