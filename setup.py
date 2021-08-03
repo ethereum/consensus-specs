@@ -56,7 +56,7 @@ def floorlog2(x: int) -> uint64:
 
 
 OPTIMIZED_BLS_AGGREGATE_PUBKEYS = '''
-def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
+def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     return bls.AggregatePKs(pubkeys)
 '''
 
@@ -480,8 +480,8 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
 
     @classmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
-        if "eth2_aggregate_pubkeys" in functions:
-            functions["eth2_aggregate_pubkeys"] = OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()
+        if "eth_aggregate_pubkeys" in functions:
+            functions["eth_aggregate_pubkeys"] = OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()
         return super().implement_optimizations(functions)
 
 #
