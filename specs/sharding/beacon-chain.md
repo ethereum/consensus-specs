@@ -182,7 +182,7 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 
 ## Configuration
 
-Note: some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.  
+Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.  
 E.g. `INITIAL_ACTIVE_SHARDS`, `MAX_SAMPLES_PER_BLOB` and `TARGET_SAMPLES_PER_BLOB`.
 
 ## Updated containers
