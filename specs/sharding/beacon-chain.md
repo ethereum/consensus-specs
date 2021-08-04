@@ -242,7 +242,7 @@ class DataCommitment(Container):
     # KZG10 commitment to the data
     point: BLSCommitment
     # Length of the data in samples
-    length: uint64
+    samples_count: uint64
 ```
 
 ### `AttestedDataCommitment`
@@ -266,7 +266,7 @@ Unique, signing different bodies as shard proposer for the same `(slot, shard)` 
 class ShardBlobBody(Container):
     # The actual data commitment
     commitment: DataCommitment
-    # Proof that the degree < commitment.length
+    # Proof that the degree < commitment.samples_count * POINTS_PER_SAMPLE
     degree_proof: BLSCommitment
     # The actual data. Should match the commitment and degree proof.
     data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOB]
@@ -289,7 +289,7 @@ to avoid an extra network roundtrip between proposer and builder, to include the
 class ShardBlobBodySummary(Container):
     # The actual data commitment
     commitment: DataCommitment
-    # Proof that the degree < commitment.length
+    # Proof that the degree < commitment.samples_count * POINTS_PER_SAMPLE
     degree_proof: BLSCommitment
     # Hash-tree-root as summary of the data field
     data_root: Root
@@ -719,16 +719,17 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Verify the length by verifying the degree.
     body_summary = header.body_summary
-    if body_summary.commitment.length == 0:
+    points_count = body_summary.commitment.samples_count * POINTS_PER_SAMPLE
+    if points_count == 0:
         assert body_summary.degree_proof == G1_SETUP[0]
     assert (
         bls.Pairing(body_summary.degree_proof, G2_SETUP[0])
-        == bls.Pairing(body_summary.commitment.point, G2_SETUP[-body_summary.commitment.length])
+        == bls.Pairing(body_summary.commitment.point, G2_SETUP[-points_count])
     )
 
     # Charge EIP 1559 fee, builder pays for opportunity, and is responsible for later availability,
     # or fail to publish at their own expense.
-    samples = body_summary.commitment.length
+    samples = body_summary.commitment.samples_count
     # TODO: overflows, need bigger int type
     max_fee = body_summary.max_fee_per_sample * samples
 
