@@ -46,6 +46,10 @@ def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     Refer to the BLS signature draft standard for more information.
     """
     assert len(pubkeys) > 0
+    for pubkey in pubkeys:
+        # Ensure that the given inputs are valid pubkeys
+        assert bls.KeyValidate(pubkey)
+
     result = copy(pubkeys[0])
     for pubkey in pubkeys[1:]:
         result += pubkey

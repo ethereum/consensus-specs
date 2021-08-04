@@ -647,6 +647,7 @@ The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irt
 - `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
 - `def FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
 - `def AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
+- `def KeyValidate(pubkey: BLSPubkey) -> bool`
 
 The above functions are accessed through the `bls` module, e.g. `bls.Verify`.
 

@@ -95,6 +95,13 @@ def signature_to_G2(signature):
 
 @only_with_bls(alt_return=STUB_PUBKEY)
 def AggregatePKs(pubkeys):
+    if bls == py_ecc_bls:
+        for pubkey in pubkeys:
+            assert bls.KeyValidate(pubkey)
+    elif bls == milagro_bls:
+        # milagro_bls._AggregatePKs checks KeyValidate internally
+        pass
+
     return bls._AggregatePKs(list(pubkeys))
 
 

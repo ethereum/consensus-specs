@@ -369,7 +369,7 @@ def case06_eth2_aggregate_pubkeys():
     # Invalid pubkeys -- len(pubkeys) == 0
     expect_exception(spec.eth2_aggregate_pubkeys, [])
     expect_exception(milagro_bls._AggregatePKs, [])
-    yield f'eth2_aggregate_pubkeys_', {
+    yield f'eth2_aggregate_pubkeys_empty_list', {
         'input': [],
         'output': None,
     }
@@ -377,19 +377,27 @@ def case06_eth2_aggregate_pubkeys():
     # Invalid pubkeys -- [ZERO_PUBKEY]
     expect_exception(spec.eth2_aggregate_pubkeys, [ZERO_PUBKEY])
     expect_exception(milagro_bls._AggregatePKs, [ZERO_PUBKEY])
-    yield f'eth2_aggregate_pubkeys_all_zero_pubkey', {
+    yield f'eth2_aggregate_pubkeys_na_pubkey', {
         'input': [encode_hex(ZERO_PUBKEY)],
         'output': None,
     }
 
-    # TODO: TBD
-    # Valid to aggregate G1 point at infinity
-    # aggregate_pubkey = spec.eth2_aggregate_pubkeys([Z1_PUBKEY])
-    # assert aggregate_pubkey == milagro_bls._AggregatePKs([Z1_PUBKEY]) == Z1_PUBKEY
-    # yield f'eth2_aggregate_pubkeys_infinity_pubkey', {
-    #     'input': [encode_hex(Z1_PUBKEY)],
-    #     'output': encode_hex(aggregate_pubkey),
-    # }
+    # Invalid pubkeys -- G1 point at infinity
+    expect_exception(spec.eth2_aggregate_pubkeys, [Z1_PUBKEY])
+    expect_exception(milagro_bls._AggregatePKs, [Z1_PUBKEY])
+    yield f'eth2_aggregate_pubkeys_infinity_pubkey', {
+        'input': [encode_hex(Z1_PUBKEY)],
+        'output': None,
+    }
+
+    # Invalid pubkeys -- b'\x40\x00\x00\x00....\x00' pubkey
+    x40_pubkey = b'\x40' + b'\00' * 47
+    expect_exception(spec.eth2_aggregate_pubkeys, [x40_pubkey])
+    expect_exception(milagro_bls._AggregatePKs, [x40_pubkey])
+    yield f'eth2_aggregate_pubkeys_x40_pubkey', {
+        'input': [encode_hex(x40_pubkey)],
+        'output': None,
+    }
 
 
 def case07_eth2_fast_aggregate_verify():
@@ -420,7 +428,7 @@ def case07_eth2_fast_aggregate_verify():
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         identifier = f'{pubkeys_extra_serial}_{encode_hex(message)}'
         assert not spec.eth2_fast_aggregate_verify(pubkeys_extra, message, aggregate_signature)
-        yield f'eth_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'eth2_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_extra_serial,
                 'message': encode_hex(message),
@@ -480,8 +488,8 @@ def case07_eth2_fast_aggregate_verify():
     }
 
 
-def create_provider(handler_name: str,
-                    fork_name: SpecForkName,
+def create_provider(fork_name: SpecForkName,
+                    handler_name: str,
                     test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:
 
     def prepare_fn() -> None:
@@ -510,12 +518,12 @@ if __name__ == "__main__":
     bls.use_py_ecc()  # Py-ecc is chosen instead of Milagro, since the code is better understood to be correct.
     gen_runner.run_generator("bls", [
         # PHASE0
-        create_provider('sign', PHASE0, case01_sign),
-        create_provider('verify', PHASE0, case02_verify),
-        create_provider('aggregate', PHASE0, case03_aggregate),
-        create_provider('fast_aggregate_verify', PHASE0, case04_fast_aggregate_verify),
-        create_provider('aggregate_verify', PHASE0, case05_aggregate_verify),
+        create_provider(PHASE0, 'sign', case01_sign),
+        create_provider(PHASE0, 'verify', case02_verify),
+        create_provider(PHASE0, 'aggregate', case03_aggregate),
+        create_provider(PHASE0, 'fast_aggregate_verify', case04_fast_aggregate_verify),
+        create_provider(PHASE0, 'aggregate_verify', case05_aggregate_verify),
         # ALTAIR
-        create_provider('eth2_aggregate_pubkeys', ALTAIR, case06_eth2_aggregate_pubkeys),
-        create_provider('eth2_fast_aggregate_verify', ALTAIR, case07_eth2_fast_aggregate_verify),
+        create_provider(ALTAIR, 'eth2_aggregate_pubkeys', case06_eth2_aggregate_pubkeys),
+        create_provider(ALTAIR, 'eth2_fast_aggregate_verify', case07_eth2_fast_aggregate_verify),
     ])
