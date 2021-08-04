@@ -437,13 +437,13 @@ def compute_previous_slot(slot: Slot) -> Slot:
 #### `compute_updated_sample_price`
 
 ```python
-def compute_updated_sample_price(prev_price: Gwei, samples: uint64, active_shards: uint64) -> Gwei:
+def compute_updated_sample_price(prev_price: Gwei, samples_length: uint64, active_shards: uint64) -> Gwei:
     adjustment_quotient = active_shards * SLOTS_PER_EPOCH * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT
-    if samples > TARGET_SAMPLES_PER_BLOB:
-        delta = max(1, prev_price * (samples - TARGET_SAMPLES_PER_BLOB) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
+    if samples_length > TARGET_SAMPLES_PER_BLOB:
+        delta = max(1, prev_price * (samples_length - TARGET_SAMPLES_PER_BLOB) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
         return min(prev_price + delta, MAX_SAMPLE_PRICE)
     else:
-        delta = max(1, prev_price * (TARGET_SAMPLES_PER_BLOB - samples) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
+        delta = max(1, prev_price * (TARGET_SAMPLES_PER_BLOB - samples_length) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
         return max(prev_price, MIN_SAMPLE_PRICE + delta) - delta
 ```
 
