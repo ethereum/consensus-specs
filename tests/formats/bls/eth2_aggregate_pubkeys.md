@@ -1,6 +1,6 @@
-# Test format: Ethereum-customized BLS pubkeys aggregation
+# Test format: Ethereum-customized BLS pubkey aggregation
 
-A BLS pubkeys aggregation combines a series of pubkeys into a single pubkey.
+A BLS pubkey aggregation combines a series of pubkeys into a single pubkey.
 
 ## Test case format
 

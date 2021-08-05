@@ -450,7 +450,7 @@ def case07_eth2_fast_aggregate_verify():
             'output': False,
         }
 
-    # NOTE: Unlike `FastAggregateVerify`, len(pubkeys) == 0 and signature == Z1_SIGNATURE is VALID
+    # NOTE: Unlike `FastAggregateVerify`, len(pubkeys) == 0 and signature == Z2_SIGNATURE is VALID
     assert spec.eth2_fast_aggregate_verify([], message, Z2_SIGNATURE)
     yield f'eth2_fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
