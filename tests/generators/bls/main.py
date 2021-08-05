@@ -358,49 +358,49 @@ def case05_aggregate_verify():
     }
 
 
-def case06_eth2_aggregate_pubkeys():
-    aggregate_pubkey = spec.eth2_aggregate_pubkeys(PUBKEYS)
+def case06_eth_aggregate_pubkeys():
+    aggregate_pubkey = spec.eth_aggregate_pubkeys(PUBKEYS)
     assert aggregate_pubkey == milagro_bls._AggregatePKs(PUBKEYS)
-    yield f'eth2_aggregate_pubkeys_some_pubkeys', {
+    yield f'eth_aggregate_pubkeys_some_pubkeys', {
         'input': [encode_hex(pubkey) for pubkey in PUBKEYS],
         'output': encode_hex(aggregate_pubkey),
     }
 
     # Invalid pubkeys -- len(pubkeys) == 0
-    expect_exception(spec.eth2_aggregate_pubkeys, [])
+    expect_exception(spec.eth_aggregate_pubkeys, [])
     expect_exception(milagro_bls._AggregatePKs, [])
-    yield f'eth2_aggregate_pubkeys_empty_list', {
+    yield f'eth_aggregate_pubkeys_empty_list', {
         'input': [],
         'output': None,
     }
 
     # Invalid pubkeys -- [ZERO_PUBKEY]
-    expect_exception(spec.eth2_aggregate_pubkeys, [ZERO_PUBKEY])
+    expect_exception(spec.eth_aggregate_pubkeys, [ZERO_PUBKEY])
     expect_exception(milagro_bls._AggregatePKs, [ZERO_PUBKEY])
-    yield f'eth2_aggregate_pubkeys_na_pubkey', {
+    yield f'eth_aggregate_pubkeys_na_pubkey', {
         'input': [encode_hex(ZERO_PUBKEY)],
         'output': None,
     }
 
     # Invalid pubkeys -- G1 point at infinity
-    expect_exception(spec.eth2_aggregate_pubkeys, [Z1_PUBKEY])
+    expect_exception(spec.eth_aggregate_pubkeys, [Z1_PUBKEY])
     expect_exception(milagro_bls._AggregatePKs, [Z1_PUBKEY])
-    yield f'eth2_aggregate_pubkeys_infinity_pubkey', {
+    yield f'eth_aggregate_pubkeys_infinity_pubkey', {
         'input': [encode_hex(Z1_PUBKEY)],
         'output': None,
     }
 
     # Invalid pubkeys -- b'\x40\x00\x00\x00....\x00' pubkey
     x40_pubkey = b'\x40' + b'\00' * 47
-    expect_exception(spec.eth2_aggregate_pubkeys, [x40_pubkey])
+    expect_exception(spec.eth_aggregate_pubkeys, [x40_pubkey])
     expect_exception(milagro_bls._AggregatePKs, [x40_pubkey])
-    yield f'eth2_aggregate_pubkeys_x40_pubkey', {
+    yield f'eth_aggregate_pubkeys_x40_pubkey', {
         'input': [encode_hex(x40_pubkey)],
         'output': None,
     }
 
 
-def case07_eth2_fast_aggregate_verify():
+def case07_eth_fast_aggregate_verify():
     """
     Similar to `case04_fast_aggregate_verify` except for the empty case
     """
@@ -413,8 +413,8 @@ def case07_eth2_fast_aggregate_verify():
 
         # Valid signature
         identifier = f'{pubkeys_serial}_{encode_hex(message)}'
-        assert spec.eth2_fast_aggregate_verify(pubkeys, message, aggregate_signature)
-        yield f'eth2_fast_aggregate_verify_valid_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        assert spec.eth_fast_aggregate_verify(pubkeys, message, aggregate_signature)
+        yield f'eth_fast_aggregate_verify_valid_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_serial,
                 'message': encode_hex(message),
@@ -427,8 +427,8 @@ def case07_eth2_fast_aggregate_verify():
         pubkeys_extra = pubkeys + [bls.SkToPk(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         identifier = f'{pubkeys_extra_serial}_{encode_hex(message)}'
-        assert not spec.eth2_fast_aggregate_verify(pubkeys_extra, message, aggregate_signature)
-        yield f'eth2_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        assert not spec.eth_fast_aggregate_verify(pubkeys_extra, message, aggregate_signature)
+        yield f'eth_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_extra_serial,
                 'message': encode_hex(message),
@@ -440,8 +440,8 @@ def case07_eth2_fast_aggregate_verify():
         # Invalid signature -- tampered with signature
         tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
         identifier = f'{pubkeys_serial}_{encode_hex(message)}'
-        assert not spec.eth2_fast_aggregate_verify(pubkeys, message, tampered_signature)
-        yield f'eth2_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        assert not spec.eth_fast_aggregate_verify(pubkeys, message, tampered_signature)
+        yield f'eth_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_serial,
                 'message': encode_hex(message),
@@ -451,8 +451,8 @@ def case07_eth2_fast_aggregate_verify():
         }
 
     # NOTE: Unlike `FastAggregateVerify`, len(pubkeys) == 0 and signature == Z2_SIGNATURE is VALID
-    assert spec.eth2_fast_aggregate_verify([], message, Z2_SIGNATURE)
-    yield f'eth2_fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
+    assert spec.eth_fast_aggregate_verify([], message, Z2_SIGNATURE)
+    yield f'eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
             'pubkeys': [],
             'message': encode_hex(message),
@@ -462,8 +462,8 @@ def case07_eth2_fast_aggregate_verify():
     }
 
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
-    assert not spec.eth2_fast_aggregate_verify([], message, NO_SIGNATURE)
-    yield f'eth2_fast_aggregate_verify_na_pubkeys_and_na_signature', {
+    assert not spec.eth_fast_aggregate_verify([], message, NO_SIGNATURE)
+    yield f'eth_fast_aggregate_verify_na_pubkeys_and_na_signature', {
         'input': {
             'pubkeys': [],
             'message': encode_hex(message),
@@ -477,8 +477,8 @@ def case07_eth2_fast_aggregate_verify():
     pubkeys_with_infinity = pubkeys + [Z1_PUBKEY]
     signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
     aggregate_signature = bls.Aggregate(signatures)
-    assert not spec.eth2_fast_aggregate_verify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
-    yield f'eth2_fast_aggregate_verify_infinity_pubkey', {
+    assert not spec.eth_fast_aggregate_verify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
+    yield f'eth_fast_aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
             'message': encode_hex(SAMPLE_MESSAGE),
@@ -524,6 +524,6 @@ if __name__ == "__main__":
         create_provider(PHASE0, 'fast_aggregate_verify', case04_fast_aggregate_verify),
         create_provider(PHASE0, 'aggregate_verify', case05_aggregate_verify),
         # ALTAIR
-        create_provider(ALTAIR, 'eth2_aggregate_pubkeys', case06_eth2_aggregate_pubkeys),
-        create_provider(ALTAIR, 'eth2_fast_aggregate_verify', case07_eth2_fast_aggregate_verify),
+        create_provider(ALTAIR, 'eth_aggregate_pubkeys', case06_eth_aggregate_pubkeys),
+        create_provider(ALTAIR, 'eth_fast_aggregate_verify', case07_eth_fast_aggregate_verify),
     ])

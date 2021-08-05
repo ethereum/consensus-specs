@@ -16,4 +16,4 @@ output: BLS Pubkey -- expected output, single BLS pubkeys or empty.
 
 ## Condition
 
-The `eth2_aggregate_pubkeys` handler should aggregate the signatures in the `input`, and the result should match the expected `output`.
+The `eth_aggregate_pubkeys` handler should aggregate the signatures in the `input`, and the result should match the expected `output`.
