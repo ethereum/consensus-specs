@@ -10,9 +10,8 @@ bls = py_ecc_bls
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
-Z1_PUBKEY = b'\xc0' + b'\x00' * 47
-Z2_SIGNATURE = b'\xc0' + b'\x00' * 95
-STUB_COORDINATES = _signature_to_G2(Z2_SIGNATURE)
+G2_POINT_AT_INFINITY = b'\xc0' + b'\x00' * 95
+STUB_COORDINATES = _signature_to_G2(G2_POINT_AT_INFINITY)
 
 
 def use_milagro():
@@ -96,8 +95,7 @@ def signature_to_G2(signature):
 @only_with_bls(alt_return=STUB_PUBKEY)
 def AggregatePKs(pubkeys):
     if bls == py_ecc_bls:
-        for pubkey in pubkeys:
-            assert bls.KeyValidate(pubkey)
+        assert all(bls.KeyValidate(pubkey) for pubkey in pubkeys)
     elif bls == milagro_bls:
         # milagro_bls._AggregatePKs checks KeyValidate internally
         pass
