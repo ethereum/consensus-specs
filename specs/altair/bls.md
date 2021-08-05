@@ -9,8 +9,8 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
 - [Extensions](#extensions)
-  - [`eth2_aggregate_pubkeys`](#eth2_aggregate_pubkeys)
-  - [`eth2_fast_aggregate_verify`](#eth2_fast_aggregate_verify)
+  - [`eth_aggregate_pubkeys`](#eth_aggregate_pubkeys)
+  - [`eth_fast_aggregate_verify`](#eth_fast_aggregate_verify)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -29,14 +29,14 @@ Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed, 
 
 ## Extensions
 
-### `eth2_aggregate_pubkeys`
+### `eth_aggregate_pubkeys`
 
 An additional function `AggregatePKs` is defined to extend the
 [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
 spec referenced in the phase 0 document.
 
 ```python
-def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
+def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     """
     Return the aggregate public key for the public keys in ``pubkeys``.
 
@@ -56,10 +56,10 @@ def eth2_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     return result
 ```
 
-### `eth2_fast_aggregate_verify`
+### `eth_fast_aggregate_verify`
 
 ```python
-def eth2_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+def eth_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
     """
     Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
     """
