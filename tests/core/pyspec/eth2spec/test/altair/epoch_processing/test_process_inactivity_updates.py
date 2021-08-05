@@ -287,7 +287,7 @@ def test_some_exited_full_random_leaking(spec, state):
 
     assert not any(get_exited_validators(spec, state))
     exited_indices = exit_validators(spec, state, exit_count, rng=rng)
-    assert not get_exited_validators(spec, state)
+    assert not any(get_exited_validators(spec, state))
 
     # advance the state to effect the exits
     target_epoch = max(state.validators[index].exit_epoch for index in exited_indices)
