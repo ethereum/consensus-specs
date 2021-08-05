@@ -285,7 +285,7 @@ def test_some_exited_full_random_leaking(spec, state):
     # mutations applied to their inactivity scores
     randomize_inactivity_scores(spec, state, rng=rng)
 
-    assert not get_exited_validators(spec, state)
+    assert not any(get_exited_validators(spec, state))
     exited_indices = exit_validators(spec, state, exit_count, rng=rng)
     assert not get_exited_validators(spec, state)
 
