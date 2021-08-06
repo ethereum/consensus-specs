@@ -1,3 +1,4 @@
+from random import Random
 from eth2spec.utils import bls
 from eth2spec.test.helpers.keys import privkeys
 
@@ -23,3 +24,21 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey):
         message=voluntary_exit,
         signature=bls.Sign(privkey, signing_root)
     )
+
+
+#
+# Helpers for applying effects of a voluntary exit
+#
+def get_exited_validators(spec, state):
+    current_epoch = spec.get_current_epoch(state)
+    return [index for (index, validator) in enumerate(state.validators) if validator.exit_epoch <= current_epoch]
+
+
+def exit_validators(spec, state, validator_count, rng=None):
+    if rng is None:
+        rng = Random(1337)
+
+    indices = rng.sample(range(len(state.validators)), validator_count)
+    for index in indices:
+        spec.initiate_validator_exit(state, index)
+    return indices
