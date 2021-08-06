@@ -8,7 +8,7 @@ The test data is declared in a `data.yaml` file:
 
 ```yaml
 input: List[BLS Pubkey] -- list of input BLS pubkeys
-output: BLS Pubkey -- expected output, single BLS pubkeys or empty.
+output: BLSPubkey -- expected output, single BLS pubkeys or empty.
 ```
 
 - `BLS Pubkey` here is encoded as a string: hexadecimal encoding of 48 bytes (96 nibbles), prefixed with `0x`.
