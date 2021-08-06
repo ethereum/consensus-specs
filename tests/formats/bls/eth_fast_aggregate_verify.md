@@ -1,4 +1,4 @@
-# Test format: BLS fast aggregate verify
+# Test format: Ethereum-customized BLS fast aggregate verify
 
 Verify the signature against the given pubkeys and one message.
 
@@ -21,4 +21,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `fast_aggregate_verify` handler should verify the signature with pubkeys and message in the `input`, and the result should match the expected `output`.
+The `eth_fast_aggregate_verify` handler should verify the signature with pubkeys and message in the `input`, and the result should match the expected `output`.
