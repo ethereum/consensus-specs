@@ -61,11 +61,31 @@ The Merge changes the type of the global beacon block topic.
 
 ##### `beacon_block`
 
-The existing specification for this topic does not change from prior upgrades,
-but the type of the payload does change to the (modified) `SignedBeaconBlock` found in the Merge.
-This type changes due to the addition of `execution_payload` to the inner `BeaconBlockBody`.
-
+The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in the Merge.
+Specifically, this type changes with the addition of `execution_payload` to the inner `BeaconBlockBody`.
 See the Merge [state transition document](./beacon-chain.md#beaconblockbody) for further details.
+
+In addition to the gossip validations for this topic from prior specifications,
+the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
+Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
+- If the merge is complete with respect to the head state -- i.e. `is_merge_complete(state)` --
+  then validate the following:
+  - _[REJECT]_ The block's execution payload must be non-empty --
+    i.e. `execution_payload != ExecutionPayload()`
+- If the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`
+  then validate the following:
+  - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
+    -- i.e. `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
+  - _[REJECT]_ Gas used is less than the gas limit --
+    i.e. `execution_payload.gas_used <= execution_payload.gas_limit`.
+  - _[REJECT]_ The execution payload block hash is not equal to the parent hash --
+    i.e. `execution_payload.block_hash != execution_payload.parent_hash`.
+  - _[REJECT]_ The execution payload transaction list data is within expected size limits,
+    the data MUST NOT be larger than the SSZ list-limit,
+    and a client MAY be more strict.
+
+*Note*: Additional [gossip validations](https://github.com/ethereum/devp2p/blob/master/caps/eth.md#block-encoding-and-validity)
+(see block "data validity" conditions) that rely more heavily on execution-layer state and logic are currently under consideration.
 
 ### Transitioning the gossip
 
