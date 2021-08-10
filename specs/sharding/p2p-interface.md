@@ -89,10 +89,10 @@ on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.m
 - _[REJECT]_ The shard blob is for the correct subnet --
   i.e. `compute_subnet_for_shard_blob(state, blob.slot, blob.shard) == subnet_id`
 - _[IGNORE]_ The blob is the first blob with valid signature received for the `(blob.proposer_index, blob.slot, blob.shard)` combination.
-- _[REJECT]_ The blob is not too large, the data MUST NOT be larger than the SSZ list-limit, and a client MAY be more strict.
+- _[REJECT]_ The blob is not too large -- the data MUST NOT be larger than the SSZ list-limit, and a client MAY apply stricter bounds.
 - _[REJECT]_ The `blob.body.data` MUST NOT contain any point `p >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
-- _[REJECT]_ The blob builder exists and has sufficient balance to back the fee payment.
-- _[REJECT]_ The blob signature is valid for the aggregate of proposer and builder, `signed_blob.signature`,
+- _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
+- _[REJECT]_ The blob signature, `signed_blob.signature`, is valid for the aggregate of proposer and builder --
   i.e. `bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_blob.signature)`.
 - _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's `slot` and `shard`,
   in the context of the current shuffling (defined by `blob.body.beacon_block_root`/`slot`).
@@ -104,17 +104,17 @@ on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.m
 
 There are three additional global topics for Sharding.
 
-- `shard_blob_header`: co-signed headers, to be included on-chain, and signaling builders to publish full data.
+- `shard_blob_header`: co-signed headers to be included on-chain and to serve as a signal to the builder to publish full data.
 - `shard_blob_tx`: builder-signed headers, also known as "data transaction".
-- `shard_proposer_slashing`: slashings of duplicate shard proposals
+- `shard_proposer_slashing`: slashings of duplicate shard proposals.
 
 ##### `shard_blob_header`
 
 Shard header data, in the form of a `SignedShardBlobHeader` is published to the global `shard_blob_header` subnet.
-Shard blob headers select shard blob bids by builders,
+Shard blob headers select shard blob bids by builders
 and should be timely to ensure builders can publish the full shard blob before subsequent attestations.
 
-The following validations MUST pass before forwarding the `signed_blob_header` on the network. Alias `header = signed_blob_header.message`
+The following validations MUST pass before forwarding the `signed_blob_header` on the network. Alias `header = signed_blob_header.message`.
 
 - _[IGNORE]_ The `header` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `header.slot <= current_slot`
@@ -126,8 +126,8 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
   i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
-- _[REJECT]_ The blob builder exists and has sufficient balance to back the fee payment.
-- _[REJECT]_ The header signature is valid for the aggregate of proposer and builder, `signed_blob_header.signature`,
+- _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
+- _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for the aggregate of proposer and builder --
   i.e. `bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_blob_header.signature)`.
 - _[REJECT]_ The header is proposed by the expected `proposer_index` for the blob's `header.slot` and `header.shard`
   in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
@@ -137,12 +137,12 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 
 ##### `shard_blob_tx`
 
-Shard data-transactions, in the form of a `SignedShardBlobHeader` is published to the global `shard_blob_tx` subnet.
+Shard data-transactions in the form of a `SignedShardBlobHeader` are published to the global `shard_blob_tx` subnet.
 These shard blob headers are signed solely by the blob-builder.
 
-The following validations MUST pass before forwarding the `signed_blob_header` on the network. Alias `header = signed_blob_header.message`
+The following validations MUST pass before forwarding the `signed_blob_header` on the network. Alias `header = signed_blob_header.message`.
 
-- _[IGNORE]_ The `header` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+- _[IGNORE]_ The header is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `header.slot <= current_slot`
   (a client MAY queue future headers for processing at the appropriate slot).
 - _[IGNORE]_ The header is new enough to still be processed --
@@ -152,10 +152,10 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
   i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.builder_index, header.slot, header.shard)` combination.
-- _[REJECT]_ The blob builder exists and has sufficient balance to back the fee payment.
+- _[REJECT]_ The blob builder, define by `header.builder_index`, exists and has sufficient balance to back the fee payment.
 - _[IGNORE]_ The header fee SHOULD be higher than previously seen headers for `(header.slot, header.shard)`, from any builder.
   Propagating nodes MAY increase fee increments in case of spam.
-- _[REJECT]_ The header signature is valid for ONLY the builder, `signed_blob_header.signature`,
+- _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for ONLY the builder --
   i.e. `bls.Verify(builder_pubkey, blob_signing_root, signed_blob_header.signature)`. The signature is not an aggregate with the proposer.
 - _[REJECT]_ The header is designated for proposal by the expected `proposer_index` for the blob's `header.slot` and `header.shard`
   in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
