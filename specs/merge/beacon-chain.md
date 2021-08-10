@@ -13,7 +13,7 @@
 - [Constants](#constants)
   - [Execution](#execution)
 - [Configuration](#configuration)
-  - [Genesis settings](#genesis-settings)
+  - [Genesis testing settings](#genesis-testing-settings)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -70,7 +70,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 
 ## Configuration
 
-### Genesis settings
+### Genesis testing settings
 
 *Note*: These configuration settings do not apply to the mainnet and are utilized only by pure Merge testing.
 
@@ -314,7 +314,7 @@ def compute_base_fee_per_gas(payload: ExecutionPayload, parent: ExecutionPayload
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash, block number and random
+    # Verify consistency of the parent hash, block number, random, base fee per gas and gas limit
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
