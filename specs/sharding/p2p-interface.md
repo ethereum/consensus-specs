@@ -36,6 +36,9 @@ The adjustments and additions for Shards are outlined in this document.
 | Name | Value | Description |
 | ---- | ----- | ----------- |
 | `SHARD_BLOB_SUBNET_COUNT` | `64` | The number of `shard_blob_{subnet_id}` subnets used in the gossipsub protocol. |
+| `SHARD_TX_PROPAGATION_GRACE_SLOTS` | `4` | The number of slots for a late transaction to propagate |
+| `SHARD_TX_PROPAGATION_BUFFER_SLOTS` | `8` | The number of slots for an early transaction to propagate |
+
 
 ## Gossip domain
 
@@ -77,9 +80,9 @@ def compute_subnet_for_shard_blob(state: BeaconState, slot: Slot, shard: Shard) 
 The following validations MUST pass before forwarding the `signed_blob`,
 on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.message`.
 
-- _[IGNORE]_ The `blob` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `blob.slot <= current_slot`
-  (a client MAY queue future blobs for processing at the appropriate slot).
+- _[IGNORE]_ The `blob` is published 1 slot early or later (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. validate that `blob.slot <= current_slot + 1`
+  (a client MAY queue future blobs for propagation at the appropriate slot).
 - _[IGNORE]_ The `blob` is new enough to still be processed --
   i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
 - _[REJECT]_ The shard blob is for an active shard --
@@ -116,15 +119,15 @@ and should be timely to ensure builders can publish the full shard blob before s
 
 The following validations MUST pass before forwarding the `signed_blob_header` on the network. Alias `header = signed_blob_header.message`.
 
-- _[IGNORE]_ The `header` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `header.slot <= current_slot`
-  (a client MAY queue future headers for processing at the appropriate slot).
+- _[IGNORE]_ The `header` is published 1 slot early or later (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. validate that `header.slot <= current_slot + 1`
+  (a client MAY queue future headers for propagation at the appropriate slot).
 - _[IGNORE]_ The header is new enough to still be processed --
   i.e. validate that `compute_epoch_at_slot(header.slot) >= get_previous_epoch(state)`
 - _[REJECT]_ The shard header is for an active shard --
   i.e. `header.shard < get_active_shard_count(state, compute_epoch_at_slot(header.slot))`
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
-  i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error
+  i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error.
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
 - _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for the aggregate of proposer and builder --
@@ -142,15 +145,15 @@ These shard blob headers are signed solely by the blob-builder.
 
 The following validations MUST pass before forwarding the `signed_blob_header` on the network. Alias `header = signed_blob_header.message`.
 
-- _[IGNORE]_ The header is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. validate that `header.slot <= current_slot`
-  (a client MAY queue future headers for processing at the appropriate slot).
-- _[IGNORE]_ The header is new enough to still be processed --
-  i.e. validate that `compute_epoch_at_slot(header.slot) >= get_previous_epoch(state)`
+- _[IGNORE]_ The header is not propagating more than `SHARD_TX_PROPAGATION_BUFFER_SLOTS` slots ahead of time --
+  i.e. validate that `header.slot <= current_slot + SHARD_TX_PROPAGATION_BUFFER_SLOTS`.
+- _[IGNORE]_ The header is not propagating later than `SHARD_TX_PROPAGATION_GRACE_SLOTS` slots too late --
+  i.e. validate that `header.slot + SHARD_TX_PROPAGATION_GRACE_SLOTS >= current_slot`
 - _[REJECT]_ The shard header is for an active shard --
   i.e. `header.shard < get_active_shard_count(state, compute_epoch_at_slot(header.slot))`
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
-  i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error
+  i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error.
+- _[IGNORE]_ The header is not stale -- i.e. the corresponding shard proposer has not already selected a header for `(header.slot, header.shard)`.
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.builder_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The blob builder, define by `header.builder_index`, exists and has sufficient balance to back the fee payment.
 - _[IGNORE]_ The header fee SHOULD be higher than previously seen headers for `(header.slot, header.shard)`, from any builder.
