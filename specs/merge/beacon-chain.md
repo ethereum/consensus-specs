@@ -65,7 +65,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
-| `BASE_FEE_MAX_CHANGE_DENOMINATOR` | `uint64(2**3)` (= 8) |
+| `BASE_FEE_MAX_CHANGE_DENOMINATOR` | `uint256(2**3)` (= 8) |
 | `ELASTICITY_MULTIPLIER` | `uint64(2**1)` (= 2) |
 
 ## Configuration
@@ -77,7 +77,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | Name | Value |
 | - | - |
 | `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
-| `GENESIS_BASE_FEE_PER_GAS` | `uint64(1000000000)` (= 1,000,000,000) |
+| `GENESIS_BASE_FEE_PER_GAS` | `uint256(1000000000)` (= 1,000,000,000) |
 
 ## Containers
 
@@ -160,7 +160,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    base_fee_per_gas: uint64  # base fee introduced in EIP-1559
+    base_fee_per_gas: uint256  # base fee introduced in EIP-1559
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -181,7 +181,7 @@ class ExecutionPayloadHeader(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    base_fee_per_gas: uint64
+    base_fee_per_gas: uint256
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
@@ -286,10 +286,10 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
 #### `compute_base_fee_per_gas`
 
 ```python
-def compute_base_fee_per_gas(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> uint64:
-    parent_gas_target = parent.gas_limit // ELASTICITY_MULTIPLIER
+def compute_base_fee_per_gas(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> uint256:
+    parent_gas_target = uint256(parent.gas_limit // ELASTICITY_MULTIPLIER)
     parent_base_fee_per_gas = parent.base_fee_per_gas
-    parent_gas_used = payload.gas_used
+    parent_gas_used = uint256(payload.gas_used)
 
     if parent_gas_used == parent_gas_target:
         return parent_base_fee_per_gas

@@ -20,7 +20,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
-        base_fee_per_gas=spec.uint64(0),
+        base_fee_per_gas=spec.uint256(0),
         block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
