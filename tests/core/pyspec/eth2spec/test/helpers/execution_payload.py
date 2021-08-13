@@ -20,11 +20,10 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
-        base_fee_per_gas=spec.uint64(0),
+        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
         block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
-    payload.base_fee_per_gas = spec.compute_base_fee_per_gas(payload, latest)
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
     payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))
 

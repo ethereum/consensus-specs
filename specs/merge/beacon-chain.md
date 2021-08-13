@@ -34,7 +34,6 @@
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`is_valid_gas_limit`](#is_valid_gas_limit)
-    - [`compute_base_fee_per_gas`](#compute_base_fee_per_gas)
     - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
 
@@ -65,8 +64,6 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
-| `BASE_FEE_MAX_CHANGE_DENOMINATOR` | `uint64(2**3)` (= 8) |
-| `ELASTICITY_MULTIPLIER` | `uint64(2**1)` (= 2) |
 
 ## Configuration
 
@@ -77,7 +74,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | Name | Value |
 | - | - |
 | `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
-| `GENESIS_BASE_FEE_PER_GAS` | `uint64(1000000000)` (= 1,000,000,000) |
+| `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x000000000000000000000000000000000000000000000000000000003b9aca00')` (= 1,000,000,000) |
 
 ## Containers
 
@@ -160,7 +157,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    base_fee_per_gas: uint64  # base fee introduced in EIP-1559
+    base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -181,7 +178,7 @@ class ExecutionPayloadHeader(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    base_fee_per_gas: uint64
+    base_fee_per_gas: Bytes32
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
@@ -283,31 +280,6 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
     return True
 ```
 
-#### `compute_base_fee_per_gas`
-
-```python
-def compute_base_fee_per_gas(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> uint64:
-    parent_gas_target = parent.gas_limit // ELASTICITY_MULTIPLIER
-    parent_base_fee_per_gas = parent.base_fee_per_gas
-    parent_gas_used = payload.gas_used
-
-    if parent_gas_used == parent_gas_target:
-        return parent_base_fee_per_gas
-    elif parent_gas_used > parent_gas_target:
-        gas_used_delta = parent_gas_used - parent_gas_target
-        base_fee_per_gas_delta = max(
-            parent_base_fee_per_gas * gas_used_delta // parent_gas_target // BASE_FEE_MAX_CHANGE_DENOMINATOR,
-            1,
-        )
-        return parent_base_fee_per_gas + base_fee_per_gas_delta
-    else:
-        gas_used_delta = parent_gas_target - parent_gas_used
-        base_fee_per_gas_delta = (
-            parent_base_fee_per_gas * gas_used_delta // parent_gas_target // BASE_FEE_MAX_CHANGE_DENOMINATOR
-        )
-        return parent_base_fee_per_gas - base_fee_per_gas_delta  # This subtraction can't underflow
-```
-
 #### `process_execution_payload`
 
 *Note:* This function depends on `process_randao` function call as it retrieves the most recent randao mix from the `state`. Implementations that are considering parallel processing of execution payload with respect to beacon chain state transition function should work around this dependency.
@@ -319,7 +291,6 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
         assert payload.random == get_randao_mix(state, get_current_epoch(state))
-        assert payload.base_fee_per_gas == compute_base_fee_per_gas(payload, state.latest_execution_payload_header)
         assert is_valid_gas_limit(payload, state.latest_execution_payload_header)
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
