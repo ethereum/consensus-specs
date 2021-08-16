@@ -74,7 +74,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | Name | Value |
 | - | - |
 | `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
-| `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x000000000000000000000000000000000000000000000000000000003b9aca00')` (= 1,000,000,000) |
+| `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000')` (= 1,000,000,000) |
 
 ## Containers
 
@@ -144,6 +144,8 @@ class BeaconState(Container):
 
 #### `ExecutionPayload`
 
+*Note*: The `base_fee_per_gas` field is serialized in little-endian.
+
 ```python
 class ExecutionPayload(Container):
     # Execution block header fields
@@ -157,7 +159,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
-    base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559
+    base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559, little-endian serialized
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
