@@ -1,7 +1,6 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR,
-    FORKS_BEFORE_ALTAIR,
-    MERGE,
+    ALTAIR, MERGE,
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -25,11 +24,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
     eth1_block_hash = b'\xda' * 32
+    previous_version = spec.config.GENESIS_FORK_VERSION
     current_version = spec.config.GENESIS_FORK_VERSION
 
     if spec.fork == ALTAIR:
         current_version = spec.config.ALTAIR_FORK_VERSION
     elif spec.fork == MERGE:
+        previous_version = spec.config.ALTAIR_FORK_VERSION
         current_version = spec.config.MERGE_FORK_VERSION
 
     state = spec.BeaconState(
@@ -41,7 +42,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             block_hash=eth1_block_hash,
         ),
         fork=spec.Fork(
-            previous_version=spec.config.GENESIS_FORK_VERSION,
+            previous_version=previous_version,
             current_version=current_version,
             epoch=spec.GENESIS_EPOCH,
         ),
@@ -72,5 +73,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         # Note: A duplicate committee is assigned for the current and next committee at genesis
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
+
+    if spec.fork not in FORKS_BEFORE_MERGE:
+        # Initialize the execution payload header (with block number and genesis time set to 0)
+        state.latest_execution_payload_header.block_hash = eth1_block_hash
+        state.latest_execution_payload_header.random = eth1_block_hash
+        state.latest_execution_payload_header.gas_limit = spec.GENESIS_GAS_LIMIT
+        state.latest_execution_payload_header.base_fee_per_gas = spec.GENESIS_BASE_FEE_PER_GAS
 
     return state

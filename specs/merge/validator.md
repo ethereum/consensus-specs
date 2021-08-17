@@ -1,7 +1,5 @@
 # Ethereum 2.0 The Merge
 
-**Warning:** This document is currently based on [Phase 0](../phase0/validator.md) but will be rebased to [Altair](../altair/validator.md) once the latter is shipped.
-
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
@@ -19,7 +17,6 @@
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Execution Payload](#execution-payload)
-        - [`get_pow_chain_head`](#get_pow_chain_head)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -30,9 +27,11 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Phase 0 -- Validator](../phase0/validator.md). All behaviors and definitions defined in the Phase 0 doc carry over unless explicitly noted or overridden.
+This document is an extension of the [Altair -- Honest Validator](../altair/validator.md) guide.
+All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout. Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout.
+Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Protocols
 
@@ -63,13 +62,19 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### Execution Payload
 
-###### `get_pow_chain_head`
-
-Let `get_pow_chain_head() -> PowBlock` be the function that returns the head of the PoW chain. The body of the function is implementation specific.
-
-* Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine)` where:
+* Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine, pow_chain)` where:
 
 ```python
+def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+    # `pow_chain` abstractly represents all blocks in the PoW chain
+    for block in pow_chain:
+        parent = get_pow_block(block.parent_hash)
+        if block.total_difficulty >= total_difficulty and parent.total_difficulty < total_difficulty:
+            return block
+
+    return None
+
+
 def compute_randao_mix(state: BeaconState, randao_reveal: BLSSignature) -> Bytes32:
     epoch = get_current_epoch(state)
     return xor(get_randao_mix(state, epoch), hash(randao_reveal))
@@ -87,15 +92,16 @@ def produce_execution_payload(state: BeaconState,
 def get_execution_payload(state: BeaconState,
                           transition_store: TransitionStore,
                           randao_reveal: BLSSignature,
-                          execution_engine: ExecutionEngine) -> ExecutionPayload:
+                          execution_engine: ExecutionEngine,
+                          pow_chain: Sequence[PowBlock]) -> ExecutionPayload:
     if not is_merge_complete(state):
-        pow_block = get_pow_chain_head()
-        if not is_valid_terminal_pow_block(transition_store, pow_block):
+        terminal_pow_block = get_pow_block_at_total_difficulty(transition_store.transition_total_difficulty, pow_chain)
+        if terminal_pow_block is None:
             # Pre-merge, empty payload
             return ExecutionPayload()
         else:
             # Signify merge via producing on top of the last PoW block
-            return produce_execution_payload(state, pow_block.block_hash, randao_reveal, execution_engine)
+            return produce_execution_payload(state, terminal_pow_block.block_hash, randao_reveal, execution_engine)
 
     # Post-merge, normal payload
     parent_hash = state.latest_execution_payload_header.block_hash

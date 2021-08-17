@@ -9,14 +9,18 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+  - [Glossary](#glossary)
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Domain types](#domain-types)
   - [Shard Work Status](#shard-work-status)
-- [Preset](#preset)
   - [Misc](#misc-1)
-  - [Shard block samples](#shard-block-samples)
+  - [Participation flag indices](#participation-flag-indices)
+  - [Incentivization weights](#incentivization-weights)
+- [Preset](#preset)
+  - [Misc](#misc-2)
+  - [Shard blob samples](#shard-blob-samples)
   - [Precomputed size verification points](#precomputed-size-verification-points)
   - [Gwei values](#gwei-values)
 - [Configuration](#configuration)
@@ -25,26 +29,29 @@
   - [`BeaconBlockBody`](#beaconblockbody)
   - [`BeaconState`](#beaconstate)
 - [New containers](#new-containers)
+  - [`Builder`](#builder)
   - [`DataCommitment`](#datacommitment)
+  - [`AttestedDataCommitment`](#attesteddatacommitment)
+  - [ShardBlobBody](#shardblobbody)
   - [`ShardBlobBodySummary`](#shardblobbodysummary)
+  - [`ShardBlob`](#shardblob)
   - [`ShardBlobHeader`](#shardblobheader)
+  - [`SignedShardBlob`](#signedshardblob)
   - [`SignedShardBlobHeader`](#signedshardblobheader)
   - [`PendingShardHeader`](#pendingshardheader)
   - [`ShardBlobReference`](#shardblobreference)
-  - [`SignedShardBlobReference`](#signedshardblobreference)
   - [`ShardProposerSlashing`](#shardproposerslashing)
   - [`ShardWork`](#shardwork)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc-2)
+  - [Misc](#misc-3)
     - [`next_power_of_two`](#next_power_of_two)
     - [`compute_previous_slot`](#compute_previous_slot)
-    - [`compute_updated_gasprice`](#compute_updated_gasprice)
+    - [`compute_updated_sample_price`](#compute_updated_sample_price)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
+    - [`batch_apply_participation_flag`](#batch_apply_participation_flag)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Updated `get_committee_count_per_slot`](#updated-get_committee_count_per_slot)
     - [`get_active_shard_count`](#get_active_shard_count)
-    - [`get_shard_committee`](#get_shard_committee)
-    - [`compute_proposer_index`](#compute_proposer_index)
     - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [`get_start_shard`](#get_start_shard)
     - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
@@ -56,9 +63,7 @@
       - [`process_shard_proposer_slashing`](#process_shard_proposer_slashing)
   - [Epoch transition](#epoch-transition)
     - [`process_pending_shard_confirmations`](#process_pending_shard_confirmations)
-    - [`charge_confirmed_shard_fees`](#charge_confirmed_shard_fees)
     - [`reset_pending_shard_work`](#reset_pending_shard_work)
-    - [`process_shard_epoch_increment`](#process_shard_epoch_increment)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -70,6 +75,12 @@ This document describes the extensions made to the Phase 0 design of The Beacon 
 based on the ideas [here](https://hackmd.io/G-Iy5jqyT7CXWEz8Ssos8g) and more broadly [here](https://arxiv.org/abs/1809.09044),
 using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
+### Glossary
+
+- **Data**: A list of KZG points, to translate a byte string into
+- **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
+- **Builder**: Independent actor that builds blobs and bids for proposal slots via fee-paying blob-headers, responsible for availability.
+- **Shard proposer**: Validator taking bids from blob builders for shard data opportunity, co-signs with builder to propose the blob.
 
 ## Custom types
 
@@ -80,6 +91,7 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | A shard number |
 | `BLSCommitment` | `Bytes48` | A G1 curve point |
 | `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
+| `BuilderIndex` | `uint64` | Builder registry index |
 
 ## Constants
 
@@ -98,8 +110,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
-| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` |
+| `DOMAIN_SHARD_BLOB` | `DomainType('0x80000000')` |
 
 ### Shard Work Status
 
@@ -109,6 +120,30 @@ The following values are (non-configurable) constants used throughout the specif
 | `SHARD_WORK_CONFIRMED` | `1` | Confirmed, reduced to just the commitment |
 | `SHARD_WORK_PENDING` | `2` | Pending, a list of competing headers |
 
+### Misc
+
+TODO: `PARTICIPATION_FLAG_WEIGHTS` backwards-compatibility is difficult, depends on usage.
+
+| Name | Value |
+| - | - |
+| `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT, TIMELY_SHARD_WEIGHT]` |
+
+### Participation flag indices
+
+| Name | Value |
+| - | - |
+| `TIMELY_SHARD_FLAG_INDEX` | `3` |
+
+### Incentivization weights
+
+TODO: determine weight for shard attestations
+
+| Name | Value |
+| - | - |
+| `TIMELY_SHARD_WEIGHT` | `uint64(8)` |
+
+TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair code.
+
 ## Preset
 
 ### Misc
@@ -116,17 +151,19 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Notes |
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes) |
-| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Gasprice may decrease/increase by at most exp(1 / this value) *per epoch* |
+| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
+| `SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Sample price may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
+| `BLOB_BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | shard blob builders |
 
-### Shard block samples
+### Shard blob samples
 
 | Name | Value | Notes |
 | - | - | - |
-| `MAX_SAMPLES_PER_BLOCK` | `uint64(2**11)` (= 2,048) | 248 * 2,048 = 507,904 bytes |
-| `TARGET_SAMPLES_PER_BLOCK` | `uint64(2**10)` (= 1,024) | 248 * 1,024 = 253,952 bytes |
+| `MAX_SAMPLES_PER_BLOB` | `uint64(2**11)` (= 2,048) | 248 * 2,048 = 507,904 bytes |
+| `TARGET_SAMPLES_PER_BLOB` | `uint64(2**10)` (= 1,024) | 248 * 1,024 = 253,952 bytes |
 
 ### Precomputed size verification points
 
@@ -134,20 +171,19 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
 | `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // int(MAX_SAMPLES_PER_BLOCK * POINTS_PER_SAMPLE), MODULUS)` |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // int(MAX_SAMPLES_PER_BLOB * POINTS_PER_SAMPLE), MODULUS)` |
 
 ### Gwei values
 
 | Name | Value | Unit | Description |
 | - | - | - | - |
-| `MAX_GASPRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max gasprice charged for a TARGET-sized shard block |  
-| `MIN_GASPRICE` | `Gwei(2**3)` (= 8) | Gwei | Min gasprice charged for a TARGET-sized shard block |
+| `MAX_SAMPLE_PRICE` | `Gwei(2**33)` (= 8,589,934,592) | Gwei | Max sample charged for a TARGET-sized shard blob |  
+| `MIN_SAMPLE_PRICE` | `Gwei(2**3)` (= 8) | Gwei | Min sample price charged for a TARGET-sized shard blob |
 
 ## Configuration
 
-| Name | Value | Notes |
-| - | - | - |
-| `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
+Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.  
+E.g. `INITIAL_ACTIVE_SHARDS`, `MAX_SAMPLES_PER_BLOB` and `TARGET_SAMPLES_PER_BLOB`.
 
 ## Updated containers
 
@@ -164,8 +200,8 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Shard header root
-    shard_header_root: Root  # [New in Sharding]
+    # Hash-tree-root of ShardBlob
+    shard_blob_root: Root  # [New in Sharding]
 ```
 
 ### `BeaconBlockBody`
@@ -179,21 +215,25 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 ### `BeaconState`
 
 ```python
-class BeaconState(merge.BeaconState):  # [extends The Merge state]
-    # [Updated fields] (Warning: this changes with Altair, Sharding will rebase to use participation-flags)
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # [New fields]
+class BeaconState(merge.BeaconState):
+    # Blob builder registry.
+    blob_builders: List[Builder, BLOB_BUILDER_REGISTRY_LIMIT]
+    blob_builder_balances: List[Gwei, BLOB_BUILDER_REGISTRY_LIMIT]
     # A ring buffer of the latest slots, with information per active shard.
     shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
-    shard_gasprice: uint64
-    current_epoch_start_shard: Shard
+    shard_sample_price: uint64
 ```
 
 ## New containers
 
-The shard data itself is network-layer only, and can be found in the [P2P specification](./p2p-interface.md).
-The beacon chain registers just the commitments of the shard data.
+### `Builder`
+
+```python
+class Builder(Container):
+    pubkey: BLSPubkey
+    # TODO: fields for either an expiry mechanism (refunding execution account with remaining balance) 
+    #  and/or a builder-transaction mechanism.
+```
 
 ### `DataCommitment`
 
@@ -202,41 +242,117 @@ class DataCommitment(Container):
     # KZG10 commitment to the data
     point: BLSCommitment
     # Length of the data in samples
-    length: uint64
+    samples_count: uint64
+```
+
+### `AttestedDataCommitment`
+
+```python
+class AttestedDataCommitment(Container):
+    # KZG10 commitment to the data, and length
+    commitment: DataCommitment
+    # hash_tree_root of the ShardBlobHeader (stored so that attestations can be checked against it)
+    root: Root
+    # The proposer who included the shard-header
+    includer_index: ValidatorIndex
+```
+
+### ShardBlobBody
+
+Unsigned shard data, bundled by a shard-builder.
+Unique, signing different bodies as shard proposer for the same `(slot, shard)` is slashable.
+
+```python
+class ShardBlobBody(Container):
+    # The actual data commitment
+    commitment: DataCommitment
+    # Proof that the degree < commitment.samples_count * POINTS_PER_SAMPLE
+    degree_proof: BLSCommitment
+    # The actual data. Should match the commitment and degree proof.
+    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOB]
+    # Latest block root of the Beacon Chain, before shard_blob.slot
+    beacon_block_root: Root
+    # fee payment fields (EIP 1559 like)
+    # TODO: express in MWei instead?
+    max_priority_fee_per_sample: Gwei
+    max_fee_per_sample: Gwei
 ```
 
 ### `ShardBlobBodySummary`
+
+Summary version of the `ShardBlobBody`, omitting the data payload, while preserving the data-commitments.
+
+The commitments are not further collapsed to a single hash, 
+to avoid an extra network roundtrip between proposer and builder, to include the header on-chain more quickly.
 
 ```python
 class ShardBlobBodySummary(Container):
     # The actual data commitment
     commitment: DataCommitment
-    # Proof that the degree < commitment.length
+    # Proof that the degree < commitment.samples_count * POINTS_PER_SAMPLE
     degree_proof: BLSCommitment
     # Hash-tree-root as summary of the data field
     data_root: Root
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
+    # fee payment fields (EIP 1559 like)
+    # TODO: express in MWei instead?
+    max_priority_fee_per_sample: Gwei
+    max_fee_per_sample: Gwei
+```
+
+### `ShardBlob`
+
+`ShardBlobBody` wrapped with the header data that is unique to the shard blob proposal.
+
+```python
+class ShardBlob(Container):
+    slot: Slot
+    shard: Shard
+    # Builder of the data, pays data-fee to proposer
+    builder_index: BuilderIndex
+    # Proposer of the shard-blob
+    proposer_index: ValidatorIndex
+    # Blob contents
+    body: ShardBlobBody
 ```
 
 ### `ShardBlobHeader`
 
+Header version of `ShardBlob`.
+
 ```python
 class ShardBlobHeader(Container):
-    # Slot and shard that this header is intended for
     slot: Slot
     shard: Shard
-    # SSZ-summary of ShardBlobBody
-    body_summary: ShardBlobBodySummary
+    # Builder of the data, pays data-fee to proposer
+    builder_index: BuilderIndex
     # Proposer of the shard-blob
     proposer_index: ValidatorIndex
+    # Blob contents, without the full data
+    body_summary: ShardBlobBodySummary
+```
+
+### `SignedShardBlob`
+
+Full blob data, signed by the shard builder (ensuring fee payment) and shard proposer (ensuring a single proposal).
+
+```python
+class SignedShardBlob(Container):
+    message: ShardBlob
+    signature: BLSSignature
 ```
 
 ### `SignedShardBlobHeader`
 
+Header of the blob, the signature is equally applicable to `SignedShardBlob`.
+Shard proposers can accept `SignedShardBlobHeader` as a data-transaction by co-signing the header.
+
 ```python
 class SignedShardBlobHeader(Container):
     message: ShardBlobHeader
+    # Signature by builder.
+    # Once accepted by proposer, the signatures is the aggregate of both.
     signature: BLSSignature
 ```
 
@@ -244,10 +360,8 @@ class SignedShardBlobHeader(Container):
 
 ```python
 class PendingShardHeader(Container):
-    # KZG10 commitment to the data
-    commitment: DataCommitment
-    # hash_tree_root of the ShardHeader (stored so that attestations can be checked against it)
-    root: Root
+    # The commitment that is attested
+    attested: AttestedDataCommitment
     # Who voted for the header
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Sum of effective balances of votes
@@ -258,41 +372,43 @@ class PendingShardHeader(Container):
 
 ### `ShardBlobReference`
 
+Reference version of `ShardBlobHeader`, substituting the body for just a hash-tree-root.
+
 ```python
 class ShardBlobReference(Container):
-    # Slot and shard that this reference is intended for
     slot: Slot
     shard: Shard
-    # Hash-tree-root of ShardBlobBody
-    body_root: Root
+    # Builder of the data
+    builder_index: BuilderIndex
     # Proposer of the shard-blob
     proposer_index: ValidatorIndex
-```
-
-### `SignedShardBlobReference`
-
-```python
-class SignedShardBlobReference(Container):
-    message: ShardBlobReference
-    signature: BLSSignature
+    # Blob hash-tree-root for slashing reference
+    body_root: Root
 ```
 
 ### `ShardProposerSlashing`
 
 ```python
 class ShardProposerSlashing(Container):
-    signed_reference_1: SignedShardBlobReference
-    signed_reference_2: SignedShardBlobReference
+    slot: Slot
+    shard: Shard
+    proposer_index: ValidatorIndex
+    builder_index_1: BuilderIndex
+    builder_index_2: BuilderIndex
+    body_root_1: Root
+    body_root_2: Root
+    signature_1: BLSSignature
+    signature_2: BLSSignature
 ```
 
 ### `ShardWork`
 
 ```python
 class ShardWork(Container):
-    #  Upon confirmation the data is reduced to just the header.
+    # Upon confirmation the data is reduced to just the commitment.
     status: Union[                                                   # See Shard Work Status enum
               None,                                                  # SHARD_WORK_UNCONFIRMED
-              DataCommitment,                                        # SHARD_WORK_CONFIRMED
+              AttestedDataCommitment,                                # SHARD_WORK_CONFIRMED
               List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD]  # SHARD_WORK_PENDING
             ]
 ```
@@ -318,18 +434,17 @@ def compute_previous_slot(slot: Slot) -> Slot:
         return Slot(0)
 ```
 
-#### `compute_updated_gasprice`
+#### `compute_updated_sample_price`
 
 ```python
-def compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: uint64, adjustment_quotient: uint64) -> Gwei:
-    if shard_block_length > TARGET_SAMPLES_PER_BLOCK:
-        delta = max(1, prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
-                       // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
-        return min(prev_gasprice + delta, MAX_GASPRICE)
+def compute_updated_sample_price(prev_price: Gwei, samples_length: uint64, active_shards: uint64) -> Gwei:
+    adjustment_quotient = active_shards * SLOTS_PER_EPOCH * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT
+    if samples_length > TARGET_SAMPLES_PER_BLOB:
+        delta = max(1, prev_price * (samples_length - TARGET_SAMPLES_PER_BLOB) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
+        return min(prev_price + delta, MAX_SAMPLE_PRICE)
     else:
-        delta = max(1, prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
-                       // TARGET_SAMPLES_PER_BLOCK // adjustment_quotient)
-        return max(prev_gasprice, MIN_GASPRICE + delta) - delta
+        delta = max(1, prev_price * (TARGET_SAMPLES_PER_BLOB - samples_length) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
+        return max(prev_price, MIN_SAMPLE_PRICE + delta) - delta
 ```
 
 #### `compute_committee_source_epoch`
@@ -343,6 +458,20 @@ def compute_committee_source_epoch(epoch: Epoch, period: uint64) -> Epoch:
     if source_epoch >= period:
         source_epoch -= period  # `period` epochs lookahead
     return source_epoch
+```
+
+#### `batch_apply_participation_flag`
+
+```python
+def batch_apply_participation_flag(state: BeaconState, bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE],
+                                   epoch: Epoch, full_committee: Sequence[ValidatorIndex], flag_index: int):
+    if epoch == get_current_epoch(state):
+        epoch_participation = state.current_epoch_participation
+    else:
+        epoch_participation = state.previous_epoch_participation
+    for bit, index in zip(bits, full_committee):
+        if bit:
+            epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 ```
 
 ### Beacon state accessors
@@ -371,52 +500,6 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
     return INITIAL_ACTIVE_SHARDS
 ```
 
-#### `get_shard_committee`
-
-```python
-def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -> Sequence[ValidatorIndex]:
-    """
-    Return the shard committee of the given ``epoch`` of the given ``shard``.
-    """
-    source_epoch = compute_committee_source_epoch(epoch, SHARD_COMMITTEE_PERIOD)
-    active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
-    seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    return compute_committee(
-        indices=active_validator_indices,
-        seed=seed,
-        index=shard,
-        count=get_active_shard_count(beacon_state, epoch),
-    )
-```
-
-#### `compute_proposer_index`
-
-Updated version to get a proposer index that will only allow proposers with a certain minimum balance,
-ensuring that the balance is always sufficient to cover gas costs.
-
-```python
-def compute_proposer_index(beacon_state: BeaconState,
-                           indices: Sequence[ValidatorIndex],
-                           seed: Bytes32,
-                           min_effective_balance: Gwei = Gwei(0)) -> ValidatorIndex:
-    """
-    Return from ``indices`` a random index sampled by effective balance.
-    """
-    assert len(indices) > 0
-    MAX_RANDOM_BYTE = 2**8 - 1
-    i = uint64(0)
-    total = uint64(len(indices))
-    while True:
-        candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
-        effective_balance = beacon_state.validators[candidate_index].effective_balance
-        if effective_balance <= min_effective_balance:
-            continue
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            return candidate_index
-        i += 1
-```
-
 #### `get_shard_proposer_index`
 
 ```python
@@ -425,19 +508,9 @@ def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard
     Return the proposer's index of shard block at ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    committee = get_shard_committee(beacon_state, epoch, shard)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER) + uint_to_bytes(slot))
-
-    # Proposer must have sufficient balance to pay for worst case fee burn
-    EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION = (
-        EFFECTIVE_BALANCE_INCREMENT - EFFECTIVE_BALANCE_INCREMENT
-        * HYSTERESIS_DOWNWARD_MULTIPLIER // HYSTERESIS_QUOTIENT
-    )
-    min_effective_balance = (
-        beacon_state.shard_gasprice * MAX_SAMPLES_PER_BLOCK // TARGET_SAMPLES_PER_BLOCK
-        + EFFECTIVE_BALANCE_MAX_DOWNWARD_DEVIATION
-    )
-    return compute_proposer_index(beacon_state, committee, seed, min_effective_balance)
+    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_BLOB) + uint_to_bytes(slot) + uint_to_bytes(shard))
+    indices = get_active_validator_indices(state, epoch)
+    return compute_proposer_index(beacon_state, indices, seed)
 ```
 
 #### `get_start_shard`
@@ -447,22 +520,10 @@ def get_start_shard(state: BeaconState, slot: Slot) -> Shard:
     """
     Return the start shard at ``slot``.
     """
-    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
-    shard = state.current_epoch_start_shard
-    if slot > current_epoch_start_slot:
-        # Current epoch or the next epoch lookahead
-        for _slot in range(current_epoch_start_slot, slot):
-            committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(_slot)))
-            active_shard_count = get_active_shard_count(state, compute_epoch_at_slot(Slot(_slot)))
-            shard = (shard + committee_count) % active_shard_count
-    elif slot < current_epoch_start_slot:
-        # Previous epoch
-        for _slot in list(range(slot, current_epoch_start_slot))[::-1]:
-            committee_count = get_committee_count_per_slot(state, compute_epoch_at_slot(Slot(_slot)))
-            active_shard_count = get_active_shard_count(state, compute_epoch_at_slot(Slot(_slot)))
-            # Ensure positive
-            shard = (shard + active_shard_count - committee_count) % active_shard_count
-    return Shard(shard)
+    epoch = compute_epoch_at_slot(Slot(_slot))
+    committee_count = get_committee_count_per_slot(state, epoch)
+    active_shard_count = get_active_shard_count(state, epoch)
+    return committee_count * slot % active_shard_count 
 ```
 
 #### `compute_shard_from_committee_index`
@@ -494,9 +555,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Sharding]
-    # Pre-merge, skip execution payload processing
-    if is_execution_enabled(state, block):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
+    process_sync_aggregate(state, block.body.sync_aggregate)
+    # is_execution_enabled is omitted, execution is enabled by default. 
+    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
 ```
 
 #### Operations
@@ -514,45 +575,67 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attester_slashings, process_attester_slashing)
     # New shard proposer slashing processing
     for_ops(body.shard_proposer_slashings, process_shard_proposer_slashing)
-    # Limit is dynamic based on active shard count
+
+    # Limit is dynamic: based on active shard count
     assert len(body.shard_headers) <= MAX_SHARD_HEADERS_PER_SHARD * get_active_shard_count(state, get_current_epoch(state))
     for_ops(body.shard_headers, process_shard_header)
+
     # New attestation processing
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
+
+    # TODO: to avoid parallel shards racing, and avoid inclusion-order problems,
+    #  update the fee price per slot, instead of per header.
+    # state.shard_sample_price = compute_updated_sample_price(state.shard_sample_price, ?, shard_count)
 ```
 
 ##### Extended Attestation processing
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
-    phase0.process_attestation(state, attestation)
-    update_pending_shard_work(state, attestation)
+    altair.process_attestation(state, attestation)
+    process_attested_shard_work(state, attestation)
 ```
 
 ```python
-def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> None:
+def process_attested_shard_work(state: BeaconState, attestation: Attestation) -> None:
     attestation_shard = compute_shard_from_committee_index(
         state,
         attestation.data.slot,
         attestation.data.index,
     )
+    full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+
     buffer_index = attestation.data.slot % SHARD_STATE_MEMORY_SLOTS
     committee_work = state.shard_buffer[buffer_index][attestation_shard]
 
     # Skip attestation vote accounting if the header is not pending
     if committee_work.status.selector != SHARD_WORK_PENDING:
-        # TODO In Altair: set participation bit flag, if attestation matches winning header.
+        # If the data was already confirmed, check if this matches, to apply the flag to the attesters.
+        if committee_work.status.selector == SHARD_WORK_CONFIRMED:
+            attested: AttestedDataCommitment = committee_work.status.value
+            if attested.root == attestation.data.shard_blob_root:
+                batch_apply_participation_flag(state, attestation.aggregation_bits,
+                                               attestation.data.target.epoch,
+                                               full_committee, TIMELY_SHARD_FLAG_INDEX)
         return
 
     current_headers: Sequence[PendingShardHeader] = committee_work.status.value
 
     # Find the corresponding header, abort if it cannot be found
-    header_index = [header.root for header in current_headers].index(attestation.data.shard_header_root)
+    header_index = len(current_headers)
+    for i, header in enumerate(current_headers):
+        if attestation.data.shard_blob_root == header.attested.root:
+            header_index = i
+            break
+
+    # Attestations for an unknown header do not count towards shard confirmations, but can otherwise be valid.
+    if header_index == len(current_headers):
+        # Note: Attestations may be re-included if headers are included late.
+        return
 
     pending_header: PendingShardHeader = current_headers[header_index]
-    full_committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
 
     # The weight may be outdated if it is not the initial weight, and from a previous epoch
     if pending_header.weight != 0 and compute_epoch_at_slot(pending_header.update_slot) < get_current_epoch(state):
@@ -573,8 +656,11 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
 
     # Check if the PendingShardHeader is eligible for expedited confirmation, requiring 2/3 of balance attesting
     if pending_header.weight * 3 >= full_committee_balance * 2:
-        # TODO In Altair: set participation bit flag for voters of this early winning header
-        if pending_header.commitment == DataCommitment():
+        # participants of the winning header are remembered with participation flags
+        batch_apply_participation_flag(state, pending_header.votes, attestation.data.target.epoch,
+                                       full_committee, TIMELY_SHARD_FLAG_INDEX)
+
+        if pending_header.attested.commitment == DataCommitment():
             # The committee voted to not confirm anything
             state.shard_buffer[buffer_index][attestation_shard].status.change(
                 selector=SHARD_WORK_UNCONFIRMED,
@@ -583,7 +669,7 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
         else:
             state.shard_buffer[buffer_index][attestation_shard].status.change(
                 selector=SHARD_WORK_CONFIRMED,
-                value=pending_header.commitment,
+                value=pending_header.attested,
             )
 ```
 
@@ -591,49 +677,89 @@ def update_pending_shard_work(state: BeaconState, attestation: Attestation) -> N
 
 ```python
 def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeader) -> None:
-    header = signed_header.message
+    header: ShardBlobHeader = signed_header.message
+    slot = header.slot
+    shard = header.shard
+
     # Verify the header is not 0, and not from the future.
-    assert Slot(0) < header.slot <= state.slot
-    header_epoch = compute_epoch_at_slot(header.slot)
+    assert Slot(0) < slot <= state.slot
+    header_epoch = compute_epoch_at_slot(slot)
     # Verify that the header is within the processing time window
     assert header_epoch in [get_previous_epoch(state), get_current_epoch(state)]
-    # Verify that the shard is active
-    assert header.shard < get_active_shard_count(state, header_epoch)
+    # Verify that the shard is valid
+    shard_count = get_active_shard_count(state, header_epoch)
+    assert shard < shard_count
+    # Verify that a committee is able to attest this (slot, shard)
+    start_shard = get_start_shard(state, slot)
+    committee_index = (shard_count + shard - start_shard) % shard_count    
+    committees_per_slot = get_committee_count_per_slot(state, header_epoch)
+    assert committee_index <= committees_per_slot
+
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.slot - 1)
+    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, slot - 1)
 
     # Check that this data is still pending
-    committee_work = state.shard_buffer[header.slot % SHARD_STATE_MEMORY_SLOTS][header.shard]
+    committee_work = state.shard_buffer[slot % SHARD_STATE_MEMORY_SLOTS][shard]
     assert committee_work.status.selector == SHARD_WORK_PENDING
 
     # Check that this header is not yet in the pending list
     current_headers: List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD] = committee_work.status.value
     header_root = hash_tree_root(header)
-    assert header_root not in [pending_header.root for pending_header in current_headers]
+    assert header_root not in [pending_header.attested.root for pending_header in current_headers]
 
-    # Verify proposer
-    assert header.proposer_index == get_shard_proposer_index(state, header.slot, header.shard)
-    # Verify signature
-    signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_PROPOSER))
-    assert bls.Verify(state.validators[header.proposer_index].pubkey, signing_root, signed_header.signature)
+    # Verify proposer matches
+    assert header.proposer_index == get_shard_proposer_index(state, slot, shard)
+
+    # Verify builder and proposer aggregate signature
+    blob_signing_root = compute_signing_root(header, get_domain(state, DOMAIN_SHARD_BLOB))
+    builder_pubkey = state.blob_builders[header.builder_index].pubkey
+    proposer_pubkey = state.validators[header.proposer_index].pubkey
+    assert bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_header.signature)
 
     # Verify the length by verifying the degree.
     body_summary = header.body_summary
-    if body_summary.commitment.length == 0:
+    points_count = body_summary.commitment.samples_count * POINTS_PER_SAMPLE
+    if points_count == 0:
         assert body_summary.degree_proof == G1_SETUP[0]
     assert (
         bls.Pairing(body_summary.degree_proof, G2_SETUP[0])
-        == bls.Pairing(body_summary.commitment.point, G2_SETUP[-body_summary.commitment.length])
+        == bls.Pairing(body_summary.commitment.point, G2_SETUP[-points_count])
     )
 
+    # Charge EIP 1559 fee, builder pays for opportunity, and is responsible for later availability,
+    # or fail to publish at their own expense.
+    samples = body_summary.commitment.samples_count
+    # TODO: overflows, need bigger int type
+    max_fee = body_summary.max_fee_per_sample * samples
+
+    # Builder must have sufficient balance, even if max_fee is not completely utilized
+    assert state.blob_builder_balances[header.builder_index] >= max_fee
+
+    base_fee = state.shard_sample_price * samples
+    # Base fee must be paid
+    assert max_fee >= base_fee
+
+    # Remaining fee goes towards proposer for prioritizing, up to a maximum
+    max_priority_fee = body_summary.max_priority_fee_per_sample * samples
+    priority_fee = min(max_fee - base_fee, max_priority_fee)
+
+    # Burn base fee, take priority fee
+    # priority_fee <= max_fee - base_fee, thus priority_fee + base_fee <= max_fee, thus sufficient balance.
+    state.blob_builder_balances[header.builder_index] -= base_fee + priority_fee
+    # Pay out priority fee
+    increase_balance(state, header.proposer_index, priority_fee)
+
     # Initialize the pending header
-    index = compute_committee_index_from_shard(state, header.slot, header.shard)
-    committee_length = len(get_beacon_committee(state, header.slot, index))
+    index = compute_committee_index_from_shard(state, slot, shard)
+    committee_length = len(get_beacon_committee(state, slot, index))
     initial_votes = Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length)
     pending_header = PendingShardHeader(
-        commitment=body_summary.commitment,
-        root=header_root,
+        attested=AttestedDataCommitment(
+            commitment=body_summary.commitment,
+            root=header_root,
+            includer_index=get_beacon_proposer_index(state),
+        )
         votes=initial_votes,
         weight=0,
         update_slot=state.slot,
@@ -652,27 +778,36 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 
 ```python
 def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: ShardProposerSlashing) -> None:
-    reference_1 = proposer_slashing.signed_reference_1.message
-    reference_2 = proposer_slashing.signed_reference_2.message
+    slot = proposer_slashing.slot
+    shard = proposer_slashing.shard
+    proposer_index = proposer_slashing.proposer_index
 
-    # Verify header slots match
-    assert reference_1.slot == reference_2.slot
-    # Verify header shards match
-    assert reference_1.shard == reference_2.shard
-    # Verify header proposer indices match
-    assert reference_1.proposer_index == reference_2.proposer_index
-    # Verify the headers are different (i.e. different body)
+    reference_1 = ShardBlobReference(slot=slot, shard=shard,
+                                     proposer_index=proposer_index,
+                                     builder_index=proposer_slashing.builder_index_1,
+                                     body_root=proposer_slashing.body_root_1)
+    reference_2 = ShardBlobReference(slot=slot, shard=shard,
+                                     proposer_index=proposer_index,
+                                     builder_index=proposer_slashing.builder_index_2,
+                                     body_root=proposer_slashing.body_root_2)
+
+    # Verify the signed messages are different
     assert reference_1 != reference_2
-    # Verify the proposer is slashable
-    proposer = state.validators[reference_1.proposer_index]
-    assert is_slashable_validator(proposer, get_current_epoch(state))
-    # Verify signatures
-    for signed_header in (proposer_slashing.signed_reference_1, proposer_slashing.signed_reference_2):
-        domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        signing_root = compute_signing_root(signed_header.message, domain)
-        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, reference_1.proposer_index)
+    # Verify the proposer is slashable
+    proposer = state.validators[proposer_index]
+    assert is_slashable_validator(proposer, get_current_epoch(state))
+
+    # The builders are not slashed, the proposer co-signed with them
+    builder_pubkey_1 = state.blob_builders[proposer_slashing.builder_index_1].pubkey
+    builder_pubkey_2 = state.blob_builders[proposer_slashing.builder_index_2].pubkey
+    domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_at_slot(slot))
+    signing_root_1 = compute_signing_root(reference_1, domain)
+    signing_root_2 = compute_signing_root(reference_2, domain)
+    assert bls.FastAggregateVerify([builder_pubkey_1, proposer.pubkey], signing_root_1, proposer_slashing.signature_1)
+    assert bls.FastAggregateVerify([builder_pubkey_2, proposer.pubkey], signing_root_2, proposer_slashing.signature_2)
+
+    slash_validator(state, proposer_index)
 ```
 
 ### Epoch transition
@@ -681,26 +816,23 @@ This epoch transition overrides the Merge epoch transition:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    # Sharding
+    # Sharding pre-processing
     process_pending_shard_confirmations(state)
-    charge_confirmed_shard_fees(state)
     reset_pending_shard_work(state)
 
-    # Phase0
+    # Base functionality
     process_justification_and_finalization(state)
-    process_rewards_and_penalties(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)  # Note: modified, see new TIMELY_SHARD_FLAG_INDEX
     process_registry_updates(state)
     process_slashings(state)
-
-    # Final updates
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
-    process_participation_record_updates(state)
-
-    process_shard_epoch_increment(state)
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
 ```
 
 #### `process_pending_shard_confirmations`
@@ -722,46 +854,10 @@ def process_pending_shard_confirmations(state: BeaconState) -> None:
             committee_work = state.shard_buffer[buffer_index][shard_index]
             if committee_work.status.selector == SHARD_WORK_PENDING:
                 winning_header = max(committee_work.status.value, key=lambda header: header.weight)
-                # TODO In Altair: set participation bit flag of voters for winning header
-                if winning_header.commitment == DataCommitment():
+                if winning_header.attested.commitment == DataCommitment():
                     committee_work.status.change(selector=SHARD_WORK_UNCONFIRMED, value=None)
                 else:
-                    committee_work.status.change(selector=SHARD_WORK_CONFIRMED, value=winning_header.commitment)
-```
-
-#### `charge_confirmed_shard_fees`
-
-```python
-def charge_confirmed_shard_fees(state: BeaconState) -> None:
-    new_gasprice = state.shard_gasprice
-    previous_epoch = get_previous_epoch(state)
-    previous_epoch_start_slot = compute_start_slot_at_epoch(previous_epoch)
-    adjustment_quotient = (
-        get_active_shard_count(state, previous_epoch)
-        * SLOTS_PER_EPOCH * GASPRICE_ADJUSTMENT_COEFFICIENT
-    )
-    # Iterate through confirmed shard-headers
-    for slot in range(previous_epoch_start_slot, previous_epoch_start_slot + SLOTS_PER_EPOCH):
-        buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
-        for shard_index in range(len(state.shard_buffer[buffer_index])):
-            committee_work = state.shard_buffer[buffer_index][shard_index]
-            if committee_work.status.selector == SHARD_WORK_CONFIRMED:
-                commitment: DataCommitment = committee_work.status.value
-                # Charge EIP 1559 fee
-                proposer = get_shard_proposer_index(state, slot, Shard(shard_index))
-                fee = (
-                    (state.shard_gasprice * commitment.length)
-                    // TARGET_SAMPLES_PER_BLOCK
-                )
-                decrease_balance(state, proposer, fee)
-
-                # Track updated gas price
-                new_gasprice = compute_updated_gasprice(
-                    new_gasprice,
-                    commitment.length,
-                    adjustment_quotient,
-                )
-    state.shard_gasprice = new_gasprice
+                    committee_work.status.change(selector=SHARD_WORK_CONFIRMED, value=winning_header.attested)
 ```
 
 #### `reset_pending_shard_work`
@@ -789,8 +885,7 @@ def reset_pending_shard_work(state: BeaconState) -> None:
                 selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                     PendingShardHeader(
-                        commitment=DataCommitment(),
-                        root=Root(),
+                        attested=AttestedDataCommitment()
                         votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
                         weight=0,
                         update_slot=slot,
@@ -798,12 +893,4 @@ def reset_pending_shard_work(state: BeaconState) -> None:
                 )
             )
         # a shard without committee available defaults to SHARD_WORK_UNCONFIRMED.
-```
-
-#### `process_shard_epoch_increment`
-
-```python
-def process_shard_epoch_increment(state: BeaconState) -> None:
-    # Update current_epoch_start_shard
-    state.current_epoch_start_shard = get_start_shard(state, Slot(state.slot + 1))
 ```

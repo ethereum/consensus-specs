@@ -4,9 +4,6 @@ MERGE_FORK_TEST_META_TAGS = {
 
 
 def run_fork_test(post_spec, pre_state):
-    # Clean up state to be more realistic
-    pre_state.current_epoch_attestations = []
-
     yield 'pre', pre_state
 
     post_state = post_spec.upgrade_to_merge(pre_state)
@@ -24,10 +21,14 @@ def run_fork_test(post_spec, pre_state):
         'randao_mixes',
         # Slashings
         'slashings',
-        # Attestations
-        'previous_epoch_attestations', 'current_epoch_attestations',
+        # Participation
+        'previous_epoch_participation', 'current_epoch_participation',
         # Finality
         'justification_bits', 'previous_justified_checkpoint', 'current_justified_checkpoint', 'finalized_checkpoint',
+        # Inactivity
+        'inactivity_scores',
+        # Sync
+        'current_sync_committee', 'next_sync_committee'
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)

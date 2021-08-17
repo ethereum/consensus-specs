@@ -354,7 +354,7 @@ def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
 
 If a validator is selected to aggregate the `SyncCommitteeMessage`s produced on a subnet during a given `slot`, they construct an aggregated `SyncCommitteeContribution`.
 
-Given all of the (valid) collected `sync_committee_messages: Set[SyncCommitteeMessage]` from the `sync_committee_{subnet_id}` gossip during the selected `slot` with an equivalent `beacon_block_root` to that of the aggregator, the aggregator creates a `contribution: SyncCommitteeContribution` with the following fields:
+Collect all of the (valid) `sync_committee_messages: Set[SyncCommitteeMessage]` from the `sync_committee_{subnet_id}` gossip during the selected `slot` with an equivalent `beacon_block_root` to that of the aggregator. If `len(sync_committee_messages) > 0`, the aggregator creates a `contribution: SyncCommitteeContribution` with the following fields:
 
 ###### Slot
 

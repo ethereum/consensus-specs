@@ -28,7 +28,11 @@ The steps to execute in sequence. There may be multiple items of the following t
 The parameter that is required for executing `on_tick(store, time)`.
 
 ```yaml
-{ tick: int }  --  to execute `on_tick(store, time)`
+{
+    tick: int       -- to execute `on_tick(store, time)`.
+    valid: bool     -- optional, default to `true`.
+                       If it's `false`, this execution step is expected to be invalid.
+}
 ```
 
 After this step, the `store` object may have been updated.
@@ -38,7 +42,12 @@ After this step, the `store` object may have been updated.
 The parameter that is required for executing `on_attestation(store, attestation)`.
 
 ```yaml
-{ attestation: string }  -- the name of the `attestation_<32-byte-root>.ssz_snappy` file. To execute `on_attestation(store, attestation)` with the given attestation.
+{
+    attestation: string  -- the name of the `attestation_<32-byte-root>.ssz_snappy` file.
+                            To execute `on_attestation(store, attestation)` with the given attestation.
+    valid: bool          -- optional, default to `true`.
+                            If it's `false`, this execution step is expected to be invalid.
+}
 ```
 The file is located in the same folder (see below).
 
@@ -49,7 +58,12 @@ After this step, the `store` object may have been updated.
 The parameter that is required for executing `on_block(store, block)`.
 
 ```yaml
-{ block: string }  -- the name of the `block_<32-byte-root>.ssz_snappy` file. To execute `on_block(store, block)` with the given attestation.
+{
+    block: string  -- the name of the `block_<32-byte-root>.ssz_snappy` file.
+                      To execute `on_block(store, block)` with the given attestation.
+    valid: bool    -- optional, default to `true`.
+                      If it's `false`, this execution step is expected to be invalid.
+}  
 ```
 The file is located in the same folder (see below).
 
