@@ -1,5 +1,6 @@
 from random import Random
 
+from eth2spec.test.context import is_post_altair
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
@@ -15,6 +16,8 @@ def mock_deposit(spec, state, index):
     state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
     state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
     state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    if is_post_altair(spec):
+        state.inactivity_scores[index] = 0
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
 
