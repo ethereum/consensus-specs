@@ -1,10 +1,15 @@
 from collections import Counter
 
+from eth2spec.test.context import (
+    expect_assertion_error,
+)
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth2spec.test.helpers.block_processing import run_block_processing_to
 from eth2spec.utils import bls
+from eth2spec.utils.hash_function import hash
 
 
 def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None, domain_type=None):
@@ -75,5 +80,104 @@ def compute_committee_indices(spec, state, committee):
     Given a ``committee``, calculate and return the related indices
     """
     all_pubkeys = [v.pubkey for v in state.validators]
-    committee_indices = [all_pubkeys.index(pubkey) for pubkey in committee.pubkeys]
-    return committee_indices
+    return [all_pubkeys.index(pubkey) for pubkey in committee.pubkeys]
+
+
+def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indices, committee_bits, proposer_index):
+    for index in range(len(post_state.validators)):
+        reward = 0
+        penalty = 0
+        if index in committee_indices:
+            _reward, _penalty = compute_sync_committee_participant_reward_and_penalty(
+                spec,
+                pre_state,
+                index,
+                committee_indices,
+                committee_bits,
+            )
+            reward += _reward
+            penalty += _penalty
+
+        if proposer_index == index:
+            reward += compute_sync_committee_proposer_reward(
+                spec,
+                pre_state,
+                committee_indices,
+                committee_bits,
+            )
+
+        assert post_state.balances[index] == pre_state.balances[index] + reward - penalty
+
+
+def run_sync_committee_processing(spec, state, block, expect_exception=False):
+    """
+    Processes everything up to the sync committee work, then runs the sync committee work in isolation, and
+    produces a pre-state and post-state (None if exception) specifically for sync-committee processing changes.
+    """
+    pre_state = state.copy()
+    # process up to the sync committee work
+    call = run_block_processing_to(spec, state, block, 'process_sync_aggregate')
+    yield 'pre', state
+    yield 'sync_aggregate', block.body.sync_aggregate
+    if expect_exception:
+        expect_assertion_error(lambda: call(state, block))
+        yield 'post', None
+    else:
+        call(state, block)
+        yield 'post', state
+    if expect_exception:
+        assert pre_state.balances == state.balances
+    else:
+        committee_indices = compute_committee_indices(
+            spec,
+            state,
+            state.current_sync_committee,
+        )
+        committee_bits = block.body.sync_aggregate.sync_committee_bits
+        validate_sync_committee_rewards(
+            spec,
+            pre_state,
+            state,
+            committee_indices,
+            committee_bits,
+            block.proposer_index
+        )
+
+
+def _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits):
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.sync_aggregate = spec.SyncAggregate(
+        sync_committee_bits=committee_bits,
+        sync_committee_signature=compute_aggregate_sync_committee_signature(
+            spec,
+            state,
+            block.slot - 1,
+            [index for index, bit in zip(committee_indices, committee_bits) if bit],
+        )
+    )
+    return block
+
+
+def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
+    block = _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits)
+    yield from run_sync_committee_processing(spec, state, block)
+
+
+def get_committee_indices(spec, state, duplicates=False):
+    """
+    This utility function allows the caller to ensure there are or are not
+    duplicate validator indices in the returned committee based on
+    the boolean ``duplicates``.
+    """
+    state = state.copy()
+    current_epoch = spec.get_current_epoch(state)
+    randao_index = (current_epoch + 1) % spec.EPOCHS_PER_HISTORICAL_VECTOR
+    while True:
+        committee = spec.get_next_sync_committee_indices(state)
+        if duplicates:
+            if len(committee) != len(set(committee)):
+                return committee
+        else:
+            if len(committee) == len(set(committee)):
+                return committee
+        state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
