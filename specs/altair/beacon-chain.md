@@ -1,4 +1,4 @@
-# Ethereum 2.0 Altair Beacon chain changes
+# Altair -- The Beacon Chain
 
 ## Table of contents
 

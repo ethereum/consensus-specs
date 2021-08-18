@@ -1,4 +1,4 @@
-# Ethereum 2.0 Data Availability Sampling -- Network specification
+# Data Availability Sampling -- Networking
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 0 -- Weak Subjectivity Guide
+# Phase 0 -- Weak Subjectivity Guide
 
 ## Table of contents
 
@@ -26,11 +26,11 @@
 
 ## Introduction
 
-This document is a guide for implementing the Weak Subjectivity protections in Phase 0 of Ethereum 2.0.
+This document is a guide for implementing the Weak Subjectivity protections in Phase 0.
 This document is still a work-in-progress, and is subject to large changes.
 For more information about weak subjectivity and why it is required, please refer to:
 
-- [Weak Subjectivity in Eth2.0](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
+- [Weak Subjectivity in Ethereum Proof-of-Stake](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
 - [Proof of Stake: How I Learned to Love Weak Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)
 
 ## Prerequisites
@@ -77,7 +77,7 @@ a safety margin of at least `1/3 - SAFETY_DECAY/100`.
 
 A detailed analysis of the calculation of the weak subjectivity period is made in [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf).
 
-*Note*: The expressions in the report use fractions, whereas eth2.0-specs uses only `uint64` arithmetic. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
+*Note*: The expressions in the report use fractions, whereas the consensus-specs only use `uint64` arithmetic. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
 
 *Note*: The calculations here use `Ether` instead of `Gwei`, because the large magnitude of balances in `Gwei` can cause an overflow while computing using `uint64` arithmetic operations. Using `Ether` reduces the magnitude of the multiplicative factors by an order of `ETH_TO_GWEI` (`= 10**9`) and avoid the scope for overflows in `uint64`.
 

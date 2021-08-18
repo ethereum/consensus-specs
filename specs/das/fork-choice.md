@@ -1,4 +1,4 @@
-# Ethereum 2.0 Data Availability Sampling -- Fork Choice
+# Data Availability Sampling -- Fork Choice
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document is the beacon chain fork choice spec for Ethereum 2.0 Data Availability Sampling. The only change that we add from phase 0 is that we add a concept of "data dependencies";
+This document is the beacon chain fork choice spec for Data Availability Sampling. The only change that we add from phase 0 is that we add a concept of "data dependencies";
 a block is only eligible for consideration in the fork choice after a data availability test has been successfully completed for all dependencies.
 The "root" of a shard block for data dependency purposes is considered to be a `DataCommitment` object, which is a pair of a Kate commitment and a length.
 

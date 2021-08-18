@@ -1,4 +1,4 @@
-# Ethereum 2.0 Altair fork
+# Altair -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document describes the process of the first upgrade of Ethereum 2.0: the Altair hard fork, introducing light client support and other improvements.
+This document describes the process of the first upgrade of the eacon chain: the Altair hard fork, introducing light client support and other improvements.
 
 ## Configuration
 

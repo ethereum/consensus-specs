@@ -1,4 +1,4 @@
-# Ethereum 2.0 Sharding -- Network specification
+# Sharding -- Networking
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

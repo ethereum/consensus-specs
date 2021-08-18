@@ -1,4 +1,4 @@
-# Ethereum 2.0 Custody Game -- Beacon Chain
+# Custody Game -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -57,7 +57,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of Ethereum 2.0 to support the shard data custody game,
+This document details the beacon chain additions and changes of to support the shard data custody game,
 building upon the [Sharding](../sharding/beacon-chain.md) specification.
 
 ## Constants

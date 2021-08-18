@@ -1,6 +1,6 @@
-# Ethereum 2.0 Altair -- Honest Validator
+# Altair -- Honest Validator
 
-This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
+This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
 
 ## Table of contents
 

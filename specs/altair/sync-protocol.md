@@ -1,4 +1,4 @@
-# Minimal Light Client
+# Altair -- Minimal Light Client
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -28,8 +28,8 @@
 
 ## Introduction
 
-Eth2 is designed to be light client friendly for constrained environments to
-access Eth2 with reasonable safety and liveness.
+The beacon chain is designed to be light client friendly for constrained environments to
+access Ethereum with reasonable safety and liveness.
 Such environments include resource-constrained devices (e.g. phones for trust-minimised wallets)
 and metered VMs (e.g. blockchain VMs for cross-chain bridges).
 
@@ -184,7 +184,7 @@ def process_light_client_update(store: LightClientStore, update: LightClientUpda
     ):
         # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
         # Note that (2) means that the current light client design needs finality.
-        # It may be changed to re-organizable light client design. See the on-going issue eth2.0-specs#2182.
+        # It may be changed to re-organizable light client design. See the on-going issue consensus-specs#2182.
         apply_light_client_update(store.snapshot, update)
         store.valid_updates = set()
     elif current_slot > store.snapshot.header.slot + update_timeout:
