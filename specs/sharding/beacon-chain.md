@@ -61,6 +61,7 @@
       - [Extended Attestation processing](#extended-attestation-processing)
       - [`process_shard_header`](#process_shard_header)
       - [`process_shard_proposer_slashing`](#process_shard_proposer_slashing)
+    - [`process_shard_basefees`](#process_shard_basefees)
   - [Epoch transition](#epoch-transition)
     - [`process_pending_shard_confirmations`](#process_pending_shard_confirmations)
     - [`reset_pending_shard_work`](#reset_pending_shard_work)
@@ -92,6 +93,7 @@ We define the following Python custom types for type hinting and readability:
 | `BLSCommitment` | `Bytes48` | A G1 curve point |
 | `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 | `BuilderIndex` | `uint64` | Builder registry index |
+| `Wei` | `uint256` | An amount in Wei |
 
 ## Constants
 
@@ -152,6 +154,7 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**10)` (= 1,024) | Theoretical max shard count (used to determine data structure sizes) |
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
+| `SLOTS_PER_BASE_FEE_UPDATES` | `uint64(4)` | Cover a span of previous slots for more base-fee accuracy in case of gaps and late headers |
 | `SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Sample price may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
@@ -221,7 +224,8 @@ class BeaconState(merge.BeaconState):
     blob_builder_balances: List[Gwei, BLOB_BUILDER_REGISTRY_LIMIT]
     # A ring buffer of the latest slots, with information per active shard.
     shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
-    shard_sample_price: uint64
+    # Each shard tracks a base-fee to continually re-adjust towards target data capacity
+    shard_sample_prices: List[Wei, MAX_SHARDS]
 ```
 
 ## New containers
@@ -273,9 +277,8 @@ class ShardBlobBody(Container):
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
-    # TODO: express in MWei instead?
-    max_priority_fee_per_sample: Gwei
-    max_fee_per_sample: Gwei
+    max_priority_fee: GWei
+    max_fee: Gwei
 ```
 
 ### `ShardBlobBodySummary`
@@ -296,9 +299,8 @@ class ShardBlobBodySummary(Container):
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
-    # TODO: express in MWei instead?
-    max_priority_fee_per_sample: Gwei
-    max_fee_per_sample: Gwei
+    max_priority_fee: GWei
+    max_fee: Gwei
 ```
 
 ### `ShardBlob`
@@ -366,6 +368,8 @@ class PendingShardHeader(Container):
     votes: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     # Sum of effective balances of votes
     weight: Gwei
+    # Sum of effective balances of full committee
+    max_weight: Gwei
     # When the header was last updated, as reference for weight accuracy
     update_slot: Slot
 ```
@@ -437,13 +441,15 @@ def compute_previous_slot(slot: Slot) -> Slot:
 #### `compute_updated_sample_price`
 
 ```python
-def compute_updated_sample_price(prev_price: Gwei, samples_length: uint64, active_shards: uint64) -> Gwei:
-    adjustment_quotient = active_shards * SLOTS_PER_EPOCH * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT
+def compute_updated_sample_price(prev_price: Wei, samples_length: uint64) -> Wei:
+    # Per epoch an adjustment is targeted, but since capacity may be delayed,
+    #  it is split into SLOTS_PER_BASE_FEE_UPDATES smaller adjustments.
+    adjustment_quotient = Wei(SLOTS_PER_EPOCH * SLOTS_PER_BASE_FEE_UPDATES * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT)
     if samples_length > TARGET_SAMPLES_PER_BLOB:
-        delta = max(1, prev_price * (samples_length - TARGET_SAMPLES_PER_BLOB) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
+        delta = max(1, prev_price * Wei(samples_length - TARGET_SAMPLES_PER_BLOB) // Wei(TARGET_SAMPLES_PER_BLOB) // adjustment_quotient)
         return min(prev_price + delta, MAX_SAMPLE_PRICE)
     else:
-        delta = max(1, prev_price * (TARGET_SAMPLES_PER_BLOB - samples_length) // TARGET_SAMPLES_PER_BLOB // adjustment_quotient)
+        delta = max(1, prev_price * Wei(TARGET_SAMPLES_PER_BLOB - samples_length) // Wei(TARGET_SAMPLES_PER_BLOB) // adjustment_quotient)
         return max(prev_price, MIN_SAMPLE_PRICE + delta) - delta
 ```
 
@@ -558,6 +564,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
     # is_execution_enabled is omitted, execution is enabled by default. 
     process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
+    process_shard_basefee_updates(state)
 ```
 
 #### Operations
@@ -584,10 +591,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
-
-    # TODO: to avoid parallel shards racing, and avoid inclusion-order problems,
-    #  update the fee price per slot, instead of per header.
-    # state.shard_sample_price = compute_updated_sample_price(state.shard_sample_price, ?, shard_count)
 ```
 
 ##### Extended Attestation processing
@@ -641,21 +644,20 @@ def process_attested_shard_work(state: BeaconState, attestation: Attestation) ->
     if pending_header.weight != 0 and compute_epoch_at_slot(pending_header.update_slot) < get_current_epoch(state):
         pending_header.weight = sum(state.validators[index].effective_balance for index, bit
                                     in zip(full_committee, pending_header.votes) if bit)
+        pending_header.max_weight = sum(state.validators[index].effective_balance for index in full_committee)
 
     pending_header.update_slot = state.slot
 
-    full_committee_balance = Gwei(0)
     # Update votes bitfield in the state, update weights
     for i, bit in enumerate(attestation.aggregation_bits):
         weight = state.validators[full_committee[i]].effective_balance
-        full_committee_balance += weight
         if bit:
             if not pending_header.votes[i]:
                 pending_header.weight += weight
                 pending_header.votes[i] = True
 
     # Check if the PendingShardHeader is eligible for expedited confirmation, requiring 2/3 of balance attesting
-    if pending_header.weight * 3 >= full_committee_balance * 2:
+    if pending_header.weight * 3 >= pending_header.max_weight * 2:
         # participants of the winning header are remembered with participation flags
         batch_apply_participation_flag(state, pending_header.votes, attestation.data.target.epoch,
                                        full_committee, TIMELY_SHARD_FLAG_INDEX)
@@ -730,19 +732,17 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     # Charge EIP 1559 fee, builder pays for opportunity, and is responsible for later availability,
     # or fail to publish at their own expense.
     samples = body_summary.commitment.samples_count
-    # TODO: overflows, need bigger int type
-    max_fee = body_summary.max_fee_per_sample * samples
 
     # Builder must have sufficient balance, even if max_fee is not completely utilized
-    assert state.blob_builder_balances[header.builder_index] >= max_fee
+    assert state.blob_builder_balances[header.builder_index] >= body_summary.max_fee
 
-    base_fee = state.shard_sample_price * samples
+    # Round down, < 1 gwei is ok to not burn.
+    base_fee = Gwei((state.shard_sample_prices[shard] * Wei(samples)) / Wei(1000_000_000))
     # Base fee must be paid
-    assert max_fee >= base_fee
+    assert body_summary.max_fee >= base_fee
 
     # Remaining fee goes towards proposer for prioritizing, up to a maximum
-    max_priority_fee = body_summary.max_priority_fee_per_sample * samples
-    priority_fee = min(max_fee - base_fee, max_priority_fee)
+    priority_fee = min(body_summary.max_fee - base_fee, body_summary.max_priority_fee)
 
     # Burn base fee, take priority fee
     # priority_fee <= max_fee - base_fee, thus priority_fee + base_fee <= max_fee, thus sufficient balance.
@@ -808,6 +808,38 @@ def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: Shard
     assert bls.FastAggregateVerify([builder_pubkey_2, proposer.pubkey], signing_root_2, proposer_slashing.signature_2)
 
     slash_validator(state, proposer_index)
+```
+
+#### `process_shard_basefees`
+
+```python
+def process_shard_basefee_updates(state: BeaconState) -> None:
+    if state.slot < SLOTS_PER_BASE_FEE_UPDATES:  # no base fee processing on initial stage
+        return
+    
+    # The last SLOTS_PER_BASE_FEE_UPDATES slots are considered in the adjustment.
+    # Since inclusion can be late and out of order, and missing beacon blocks should not affect shard capacity as much.
+
+    start_slot = state.slot - SLOTS_PER_BASE_FEE_UPDATES
+    for slot in range(start_slot, state.slot):
+      buffer_index = slot % SHARD_STATE_MEMORY_SLOTS
+      shard_count = len(state.shard_buffer[buffer_index])
+      for shard_index in range(shard_count):
+          committee_work = state.shard_buffer[buffer_index][shard_index]
+  
+          samples_count = 0
+          if committee_work.status.selector == SHARD_WORK_CONFIRMED:
+              attested: AttestedDataCommitment = committee_work.status.value
+              samples_count = attested.commitment.samples_count
+          elif committee_work.status.selector == SHARD_WORK_PENDING:
+              pending: List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD] = committee_work.status.value
+              # Conflicting headers add up to relieve network stress.
+              samples_count = sum(header.attested.commitment.samples_count for header in pending)
+          else:
+              continue  # shard is not active this slot (not enough committees, work started as SHARD_WORK_UNCONFIRMED
+  
+          state.shard_sample_prices[shard_index] = compute_updated_sample_price(
+              state.shard_sample_prices[shard_index], samples_count)
 ```
 
 ### Epoch transition
@@ -880,14 +912,16 @@ def reset_pending_shard_work(state: BeaconState) -> None:
         for committee_index in range(committees_per_slot):
             shard = (start_shard + committee_index) % active_shards
             # a committee is available, initialize a pending shard-header list
-            committee_length = len(get_beacon_committee(state, slot, CommitteeIndex(committee_index)))
+            full_committee = get_beacon_committee(state, slot, CommitteeIndex(committee_index))
+            max_weight = sum(state.validators[index].effective_balance for index in full_committee)
             state.shard_buffer[buffer_index][shard].status.change(
                 selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                     PendingShardHeader(
-                        attested=AttestedDataCommitment(),
-                        votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
+                        attested=AttestedDataCommitment()
+                        votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * len(full_committee)),
                         weight=0,
+                        max_weight=max_weight,
                         update_slot=slot,
                     )
                 )
