@@ -752,8 +752,9 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Initialize the pending header
     index = compute_committee_index_from_shard(state, slot, shard)
-    committee_length = len(get_beacon_committee(state, slot, index))
-    initial_votes = Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length)
+    full_committee = get_beacon_committee(state, slot, index)
+    initial_votes = Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * len(full_committee))
+    max_weight = sum(state.validators[index].effective_balance for index in full_committee)
     pending_header = PendingShardHeader(
         attested=AttestedDataCommitment(
             commitment=body_summary.commitment,
@@ -762,6 +763,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
         ),
         votes=initial_votes,
         weight=0,
+        max_weight=max_weight,
         update_slot=state.slot,
     )
 
