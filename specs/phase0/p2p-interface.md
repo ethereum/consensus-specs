@@ -19,7 +19,7 @@ It consists of four main sections:
   - [Encryption and identification](#encryption-and-identification)
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
-- [Consensus layer network interaction domains](#consensus-layer-network-interaction-domains)
+- [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Configuration](#configuration)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -113,7 +113,7 @@ It consists of four main sections:
 
 # Network fundamentals
 
-This section outlines the specification for the networking stack in Ethereum consensus layer clients.
+This section outlines the specification for the networking stack in Ethereum consensus-layer clients.
 
 ## Transport
 
@@ -163,7 +163,7 @@ and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
 If both are supported by the client, yamux MUST take precedence during negotiation.
 See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
-# Consensus layer network interaction domains
+# Consensus-layer network interaction domains
 
 ## Configuration
 
@@ -1476,8 +1476,8 @@ discv5 supports self-certified, flexible peer records (ENRs) and topic-based adv
 On the other hand, libp2p Kademlia DHT is a fully-fledged DHT protocol/implementations
 with content routing and storage capabilities, both of which are irrelevant in this context.
 
-Eth 1.0 nodes will evolve to support discv5.
-By sharing the discovery network between Eth consensus-layer and execution-layer clients,
+Ethereum execution-layer nodes will evolve to support discv5.
+By sharing the discovery network between Ethereum consensus-layer and execution-layer clients,
 we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks,
 to which smaller networks are more vulnerable.
 It should also help light clients of both networks find nodes with specific capabilities.
@@ -1502,7 +1502,7 @@ discv5 uses ENRs and we will presumably need to:
 
 1. Add `multiaddr` to the dictionary, so that nodes can advertise their multiaddr under a reserved namespace in ENRs. – and/or –
 2. Define a bi-directional conversion function between multiaddrs and the corresponding denormalized fields in an ENR
-  (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Eth 1.0 nodes).
+  (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Ethereum execution-layer nodes).
 
 ### Why do we not form ENRs and find peers until genesis block/state is known?
 
