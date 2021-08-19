@@ -904,7 +904,7 @@ This integration enables the libp2p stack to subsequently form connections and s
 
 ### ENR structure
 
-The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the following entries
+The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the following entries
 (exclusive of the sequence number and signature, which MUST be present in an ENR):
 
 -  The compressed secp256k1 publickey, 33 bytes (`secp256k1` field).
@@ -1477,7 +1477,7 @@ On the other hand, libp2p Kademlia DHT is a fully-fledged DHT protocol/implement
 with content routing and storage capabilities, both of which are irrelevant in this context.
 
 Eth 1.0 nodes will evolve to support discv5.
-By sharing the discovery network between Eth 1.0 and 2.0,
+By sharing the discovery network between Eth consensus-layer and execution-layer clients,
 we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks,
 to which smaller networks are more vulnerable.
 It should also help light clients of both networks find nodes with specific capabilities.
