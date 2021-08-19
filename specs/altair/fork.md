@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document describes the process of the first upgrade of the eacon chain: the Altair hard fork, introducing light client support and other improvements.
+This document describes the process of the first upgrade of the beacon chain: the Altair hard fork, introducing light client support and other improvements.
 
 ## Configuration
 
