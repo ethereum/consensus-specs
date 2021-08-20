@@ -1,4 +1,4 @@
-# Ethereum 2.0 Data Availability Sampling
+# Data Availability Sampling -- Sampling
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

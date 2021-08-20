@@ -1,8 +1,8 @@
-# Ethereum 2.0 Custody Game -- Honest Validator
+# Custody Game -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
-This is an accompanying document to the [Ethereum 2.0 Custody Game](./), which describes the expected actions of a "validator"
-participating in the Ethereum 2.0 Custody Game.
+This is an accompanying document to the [Custody Game](./), which describes the expected actions of a "validator"
+participating in the shard data Custody Game.
 
 ## Table of contents
 

@@ -1,4 +1,4 @@
-# Ethereum 2.0 Altair BLS extensions
+# Altair -- BLS extensions
 
 ## Table of contents
 

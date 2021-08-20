@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 0 -- Deposit Contract
+# Phase 0 -- Deposit Contract
 
 ## Table of contents
 <!-- TOC -->
@@ -8,7 +8,7 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
 - [Configuration](#configuration)
-- [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
+- [Staking deposit contract](#staking-deposit-contract)
   - [`deposit` function](#deposit-function)
     - [Deposit amount](#deposit-amount)
     - [Withdrawal credentials](#withdrawal-credentials)
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document represents the specification for the beacon chain deposit contract, part of Ethereum 2.0 Phase 0.
+This document represents the specification for the beacon chain deposit contract, part of Phase 0.
 
 ## Constants
 
@@ -42,9 +42,9 @@ These configurations are updated for releases and may be out of sync during `dev
 | `DEPOSIT_NETWORK_ID` | `1` |
 | `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
 
-## Ethereum 1.0 deposit contract
+## Staking deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum 1.0 chain defined by the [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2.
+The initial deployment phases of Ethereum proof-of-stake are implemented without consensus changes to the existing Ethereum proof-of-work chain. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum proof-of-work chain defined by the [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the execution-layer in a followup fork after the Merge.
 
 _Note_: See [here](https://chainid.network/) for a comprehensive list of public Ethereum chain chain-id's and network-id's.
 
@@ -54,7 +54,7 @@ The deposit contract has a public `deposit` function to make deposits. It takes 
 
 #### Deposit amount
 
-The amount of ETH (rounded down to the closest Gwei) sent to the deposit contract is the deposit amount, which must be of size at least `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no longer usable on Ethereum 1.0.
+The amount of ETH (rounded down to the closest Gwei) sent to the deposit contract is the deposit amount, which must be of size at least `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no longer usable on the execution-layer until sometime after the Merge.
 
 #### Withdrawal credentials
 
@@ -68,7 +68,7 @@ Support for new withdrawal prefixes can be added without modifying the deposit c
 
 #### `DepositEvent` log
 
-Every Ethereum 1.0 deposit emits a `DepositEvent` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every deposit emits a `DepositEvent` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ## Solidity code
 

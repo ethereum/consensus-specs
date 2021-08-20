@@ -1,4 +1,4 @@
-# Ethereum 2.0 Sharding -- Beacon Chain changes 
+# Sharding -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

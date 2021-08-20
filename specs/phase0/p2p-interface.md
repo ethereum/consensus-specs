@@ -1,13 +1,13 @@
-# Ethereum 2.0 networking specification
+# Phase 0 -- Networking
 
-This document contains the networking specification for Ethereum 2.0 clients.
+This document contains the networking specification for Phase 0.
 
 It consists of four main sections:
 
 1. A specification of the network fundamentals.
-2. A specification of the three network interaction *domains* of Eth2: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
 3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
 
 ## Table of contents
 <!-- TOC -->
@@ -19,7 +19,7 @@ It consists of four main sections:
   - [Encryption and identification](#encryption-and-identification)
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
-- [Eth2 network interaction domains](#eth2-network-interaction-domains)
+- [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Configuration](#configuration)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -113,7 +113,7 @@ It consists of four main sections:
 
 # Network fundamentals
 
-This section outlines the specification for the networking stack in Ethereum 2.0 clients.
+This section outlines the specification for the networking stack in Ethereum consensus-layer clients.
 
 ## Transport
 
@@ -163,7 +163,7 @@ and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
 If both are supported by the client, yamux MUST take precedence during negotiation.
 See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
-# Eth2 network interaction domains
+# Consensus-layer network interaction domains
 
 ## Configuration
 
@@ -435,7 +435,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 Attestation broadcasting is grouped into subnets defined by a topic.
 The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`.
 The correct subnet for an attestation can be calculated with `compute_subnet_for_attestation`.
-`beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees (future Eth2 upgrade).
+`beacon_attestation_{subnet_id}` topics, are rotated through throughout the epoch in a similar fashion to rotating through shards in committees (future beacon chain upgrade).
 The subnets are rotated through with `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)` subnets per slot.
 
 Unaggregated attestations are sent as `Attestation`s to the subnet topic,
@@ -904,7 +904,7 @@ This integration enables the libp2p stack to subsequently form connections and s
 
 ### ENR structure
 
-The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the following entries
+The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the following entries
 (exclusive of the sequence number and signature, which MUST be present in an ENR):
 
 -  The compressed secp256k1 publickey, 33 bytes (`secp256k1` field).
@@ -933,7 +933,7 @@ If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally 
 #### `eth2` field
 
 ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork digest, next fork version,
-and next fork epoch to ensure connections are made with peers on the intended eth2 network.
+and next fork epoch to ensure connections are made with peers on the intended Ethereum network.
 
 | Key          | Value               |
 |:-------------|:--------------------|
@@ -998,7 +998,7 @@ The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in sectio
 of the [QUIC protocol specification](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7)
 and the accompanying [QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-quic-tls-22).
 
-The usage of one handshake procedure or the other shall be transparent to the Eth2 application layer,
+The usage of one handshake procedure or the other shall be transparent to the application layer,
 once the libp2p Host/Node object has been configured appropriately.
 
 ### What are the advantages of using TCP/QUIC/Websockets?
@@ -1019,7 +1019,7 @@ Provided that we use the same port numbers and encryption mechanisms as HTTP/3, 
 and we may only become subject to standard IP-based firewall filtering—something we can counteract via other mechanisms.
 
 WebSockets and/or WebRTC transports are necessary for interaction with browsers,
-and will become increasingly important as we incorporate browser-based light clients to the Eth2 network.
+and will become increasingly important as we incorporate browser-based light clients to the Ethereum network.
 
 ### Why do we not just support a single transport?
 
@@ -1186,7 +1186,7 @@ Enforcing hashes for topic names would preclude us from leveraging such features
 No security or privacy guarantees are lost as a result of choosing plaintext topic names,
 since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
-Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash),
+Furthermore, the topic names are shorter than their digest equivalents (assuming SHA-256 hash),
 so hashing topics would bloat messages unnecessarily.
 
 ### Why are we using the `StrictNoSign` signature policy?
@@ -1211,7 +1211,7 @@ Some examples of where messages could be duplicated:
 ### Why are these specific gossip parameters chosen?
 
 - `D`, `D_low`, `D_high`, `D_lazy`: recommended defaults.
-- `heartbeat_interval`: 0.7 seconds, recommended for eth2 in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
+- `heartbeat_interval`: 0.7 seconds, recommended for the beacon chain in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
 - `fanout_ttl`: 60 seconds, recommended default.
   Fanout is primarily used by committees publishing attestations to subnets.
   This happens once per epoch per validator and the subnet changes each epoch
@@ -1285,7 +1285,7 @@ due to not being fully synced to ensure that such (amplified) DOS attacks are no
 
 In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
 
-Although this method will be sufficient for early phases of Eth2, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future.
+Although this method will be sufficient for early upgrade of the beacon chain, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future.
 ENRs should ultimately not be used for this purpose.
 They are best suited to store identity, location, and capability information, rather than more volatile advertisements.
 
@@ -1319,7 +1319,7 @@ Requests are segregated by protocol ID to:
 4. Enable flexibility and agility for clients adopting spec changes that impact the request, by signalling to peers exactly which subset of new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request granularity.
   Without this, clients would be forced to support entire versions of the coarser request protocol.
-6. Parallelise RFCs (or Eth2 EIPs).
+6. Parallelise RFCs (or EIPs).
   By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently
   without relying on a synchronization point to version the general top-level protocol.
    1. This has the benefit that clients can explicitly choose which RFCs to deploy
@@ -1476,8 +1476,8 @@ discv5 supports self-certified, flexible peer records (ENRs) and topic-based adv
 On the other hand, libp2p Kademlia DHT is a fully-fledged DHT protocol/implementations
 with content routing and storage capabilities, both of which are irrelevant in this context.
 
-Eth 1.0 nodes will evolve to support discv5.
-By sharing the discovery network between Eth 1.0 and 2.0,
+Ethereum execution-layer nodes will evolve to support discv5.
+By sharing the discovery network between Ethereum consensus-layer and execution-layer clients,
 we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks,
 to which smaller networks are more vulnerable.
 It should also help light clients of both networks find nodes with specific capabilities.
@@ -1502,17 +1502,17 @@ discv5 uses ENRs and we will presumably need to:
 
 1. Add `multiaddr` to the dictionary, so that nodes can advertise their multiaddr under a reserved namespace in ENRs. – and/or –
 2. Define a bi-directional conversion function between multiaddrs and the corresponding denormalized fields in an ENR
-  (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Eth 1.0 nodes).
+  (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Ethereum execution-layer nodes).
 
 ### Why do we not form ENRs and find peers until genesis block/state is known?
 
-Although client software might very well be running locally prior to the solidification of the eth2 genesis state and block,
+Although client software might very well be running locally prior to the solidification of the beacon chain genesis state and block,
 clients cannot form valid ENRs prior to this point.
 ENRs contain `fork_digest` which utilizes the `genesis_validators_root` for a cleaner separation between chains
 so prior to knowing genesis, we cannot use `fork_digest` to cleanly find peers on our intended chain.
 Once genesis data is known, we can then form ENRs and safely find peers.
 
-When using an eth1 deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (7 days in mainnet configuration) before `genesis_time`,
+When using a proof-of-work deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (7 days in mainnet configuration) before `genesis_time`,
 providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
 
 ## Compression/Encoding
@@ -1586,4 +1586,4 @@ It is advisable to derive these lengths from the SSZ type definitions in use, to
 # libp2p implementations matrix
 
 This section will soon contain a matrix showing the maturity/state of the libp2p features required
-by this spec across the languages in which Eth2 clients are being developed.
+by this spec across the languages in which clients are being developed.

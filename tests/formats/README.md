@@ -1,6 +1,6 @@
 # General test format
 
-This document defines the YAML format and structure used for Eth2 testing.
+This document defines the YAML format and structure used for consensus spec testing.
 
 ## Table of contents
 <!-- TOC -->
@@ -151,7 +151,7 @@ Between all types of tests, a few formats are common:
 - **`.yaml`**: A YAML file containing structured data to describe settings or test contents.
 - **`.ssz`**: A file containing raw SSZ-encoded data. Previously widely used in tests, but replaced with compressed variant.
 - **`.ssz_snappy`**: Like `.ssz`, but compressed with Snappy block compression.
-  Snappy block compression is already applied to SSZ in Eth2 gossip, available in client implementations, and thus chosen as compression method.
+  Snappy block compression is already applied to SSZ in consensus-layer gossip, available in client implementations, and thus chosen as compression method.
 
 
 #### Special output parts

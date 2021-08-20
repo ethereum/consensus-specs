@@ -1,17 +1,17 @@
-# Ethereum 2.0 Specifications
+# Ethereum Proof-of-Stake Consensus Specifications
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://eth.wiki/sharding/Sharding-FAQs) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
+To learn more about proof-of-stake and sharding, see the [PoS FAQ](https://eth.wiki/en/concepts/proof-of-stake-faqs), [sharding FAQ](https://eth.wiki/sharding/Sharding-FAQs) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
-This repository hosts the current Eth2 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
+This repository hosts the current Ethereum proof-of-stake specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
 
 ## Specs
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
 
-Core specifications for Eth2 clients can be found in [specs](specs/). These are divided into features.
+Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs/). These are divided into features.
 Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
 
 The current features are:
@@ -73,13 +73,12 @@ Sharding follows the merge, and is divided into three parts:
 
 Additional specifications and standards outside of requisite client functionality can be found in the following repos:
 
-* [Eth2 APIs](https://github.com/ethereum/eth2.0-apis)
-* [Eth2 Metrics](https://github.com/ethereum/eth2.0-metrics/)
-* [Interop Standards in Eth2 PM](https://github.com/ethereum/eth2.0-pm/tree/master/interop)
+* [Beacon APIs](https://github.com/ethereum/beacon-apis)
+* [Beacon Metrics](https://github.com/ethereum/beacon-metrics/)
 
 ## Design goals
 
-The following are the broad design goals for Ethereum 2.0:
+The following are the broad design goals for the Ethereum proof-of-stake consensus specifications:
 * to minimize complexity, even at the cost of some losses in efficiency
 * to remain live through major network partitions and when very large portions of nodes go offline
 * to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
@@ -97,3 +96,7 @@ The following are the broad design goals for Ethereum 2.0:
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
+
+## Consensus spec tests
+
+Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).

@@ -9,7 +9,7 @@ build/
 output/
 dist/
 
-eth2.0-spec-tests/
+consensus-spec-tests/
 
 .pytest_cache
 .mypy_cache

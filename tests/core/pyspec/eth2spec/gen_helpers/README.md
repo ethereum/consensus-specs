@@ -1,4 +1,4 @@
-# Eth2 test generator helpers
+# Consensus test generator helpers
 
 ## `gen_base`
 
