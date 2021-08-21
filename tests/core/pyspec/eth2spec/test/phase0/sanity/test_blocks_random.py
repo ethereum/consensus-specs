@@ -186,7 +186,6 @@ def _generate_randomized_scenarios():
     the slot transitions are offset by -1 to target certain boundaries.
     """
     rng = Random(1336)
-    leak_transitions = (_no_op_transition, _transition_to_leaking)
 
     # go forward 0 or 1 epochs
     epochs_set = (_epoch_transition(n=0), _epoch_transition(n=1))
@@ -209,6 +208,7 @@ def _generate_randomized_scenarios():
 
     # and preface each block transition with the possible leak transitions
     # (... either no leak or transition to a leak before applying the block transition)
+    leak_transitions = (_no_op_transition, _transition_to_leaking)
     scenarios = [
         {"transitions": list(t)}
         for t in itertools.product(leak_transitions, block_transitions)
