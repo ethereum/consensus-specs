@@ -1,7 +1,7 @@
 import itertools
 from random import Random
 from typing import Callable
-from tests.core.pyspec.eth2spec.test.context import default_activation_threshold
+from tests.core.pyspec.eth2spec.test.context import default_activation_threshold, misc_balances_in_default_range
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state,
 )
@@ -272,7 +272,7 @@ def _iter_temporal(spec, callable_or_int):
 
 @pytest_generate_tests_adapter
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@with_custom_state(balances_fn=misc_balances_in_default_range, threshold_fn=default_activation_threshold)
 @spec_test
 @single_phase
 @always_bls
