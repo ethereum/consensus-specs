@@ -5,6 +5,7 @@ from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
 if __name__ == "__main__":
     phase_0_mods = {key: 'eth2spec.test.phase0.sanity.test_' + key for key in [
         'blocks',
+        'blocks_random',
         'slots',
     ]}
     altair_mods = {**{key: 'eth2spec.test.altair.sanity.test_' + key for key in [
