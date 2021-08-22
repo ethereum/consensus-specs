@@ -124,7 +124,18 @@ def _validate_is_leaking(spec, state):
     return spec.is_in_inactivity_leak(state)
 
 
+def _validate_is_not_leaking(spec, state):
+    return not _validate_is_leaking(spec, state)
+
+
 # transitions
+
+def _with_validation(transition, validation):
+    if isinstance(transition, Callable):
+        transition = transition()
+    transition["validation"] = validation
+    return transition
+
 
 def _no_op_transition():
     return {}
@@ -264,8 +275,9 @@ def _generate_randomized_scenarios():
 
     # and preface each block transition with the possible leak transitions
     # (... either no leak or transition to a leak before applying the block transition)
+    _transition_without_leak = _with_validation(_no_op_transition, _validate_is_not_leaking)
     leak_transitions = (
-        _no_op_transition,
+        _transition_without_leak,
         _transition_to_leaking,
     )
     scenarios = [
