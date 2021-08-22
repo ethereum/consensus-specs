@@ -30,6 +30,8 @@ from eth2spec.test.context import (
     misc_balances,
 )
 
+rng = random.Random(1337)
+
 def _warn_if_empty_operations(block):
     if len(block.body.deposits) == 0:
         warnings.warn(f"deposits missing in block at slot {block.slot}")
@@ -101,7 +103,7 @@ def _random_block(spec, state, _signed_blocks):
     to produce a block over ``BLOCK_ATTEMPTS`` slots in order
     to find a valid block in the event that the proposer has already been slashed.
     """
-    block = build_random_block_from_state(spec, state)
+    block = build_random_block_from_state(spec, state, rng)
     for _ in range(BLOCK_ATTEMPTS):
         proposer = state.validators[block.proposer_index]
         if proposer.slashed:
@@ -276,8 +278,6 @@ def _generate_randomized_scenarios():
     NOTE: the main block driver builds a block for the **next** slot, so
     the slot transitions are offset by -1 to target certain boundaries.
     """
-    rng = random.Random(1336)
-
     # go forward 0 or 1 epochs
     epochs_set = (
         _epoch_transition(n=0),
@@ -377,7 +377,6 @@ def _iter_temporal(spec, callable_or_int):
 @single_phase
 @always_bls
 def test_harness_for_randomized_blocks(spec, state, test_description):
-    random.seed(1337)
     for mutation, validation in test_description["setup"]:
         mutation(spec, state)
         validation(spec, state)
