@@ -160,6 +160,8 @@ def _transition_to_leaking():
     }
 
 
+_transition_without_leak = _with_validation(_no_op_transition, _validate_is_not_leaking)
+
 ## block transitions
 
 def _transition_with_random_block(epochs=None, slots=None):
@@ -300,7 +302,6 @@ def _generate_randomized_scenarios():
 
     # and preface each block transition with the possible leak transitions
     # (... either no leak or transition to a leak before applying the block transition)
-    _transition_without_leak = _with_validation(_no_op_transition, _validate_is_not_leaking)
     leak_transitions = (
         _transition_without_leak,
         _transition_to_leaking,
