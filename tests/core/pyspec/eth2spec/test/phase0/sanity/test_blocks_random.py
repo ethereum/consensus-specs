@@ -1,6 +1,6 @@
 import itertools
 import warnings
-from random import Random
+import random
 from tests.core.pyspec.eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from typing import Callable
 from tests.core.pyspec.eth2spec.test.context import (
@@ -276,7 +276,7 @@ def _generate_randomized_scenarios():
     NOTE: the main block driver builds a block for the **next** slot, so
     the slot transitions are offset by -1 to target certain boundaries.
     """
-    rng = Random(1336)
+    rng = random.Random(1336)
 
     # go forward 0 or 1 epochs
     epochs_set = (
@@ -377,6 +377,7 @@ def _iter_temporal(spec, callable_or_int):
 @single_phase
 @always_bls
 def test_harness_for_randomized_blocks(spec, state, test_description):
+    random.seed(1337)
     for mutation, validation in test_description["setup"]:
         mutation(spec, state)
         validation(spec, state)
