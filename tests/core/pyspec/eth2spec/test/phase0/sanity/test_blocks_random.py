@@ -197,10 +197,35 @@ def _randomized_scenario_setup():
             state.slot += slots_to_skip
         return f
 
+    def _simulate_honest_execution(spec, state):
+        """
+        Want to start tests not in a leak state; the finality data
+        may not reflect this condition with prior (arbitrary) mutations,
+        so this mutator addresses that fact.
+        """
+        state.justification_bits = (True, True, True, True)
+        previous_epoch = spec.get_previous_epoch(state)
+        previous_root = spec.get_block_root(state, previous_epoch)
+        previous_previous_epoch = max(spec.GENESIS_EPOCH, spec.Epoch(previous_epoch - 1))
+        previous_previous_root = spec.get_block_root(state, previous_previous_epoch)
+        state.previous_justified_checkpoint = spec.Checkpoint(
+            epoch=previous_previous_epoch,
+            root=previous_previous_root,
+        )
+        state.current_justified_checkpoint = spec.Checkpoint(
+            epoch=previous_epoch,
+            root=previous_root,
+        )
+        state.finalized_checkpoint = spec.Checkpoint(
+            epoch=previous_previous_epoch,
+            root=previous_previous_root,
+        )
+
     return (
         # NOTE: the block randomization function assumes at least 1 shard committee period
         # so advance the state before doing anything else.
         (_skip_epochs(_epochs_for_shard_committee_period), _no_op_validation),
+        (_simulate_honest_execution, _no_op_validation),
         (_randomize_state, ensure_state_has_validators_across_lifecycle),
     )
 
