@@ -152,12 +152,13 @@ def misc_balances(spec):
     return balances
 
 
-def misc_balances_in_default_range(spec):
+def misc_balances_in_default_range_with_many_validators(spec):
     """
     Helper method to create a series of balances that includes some misc. balances but
     none that are below the ``EJECTION_BALANCE``.
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    # Double validators to facilitate randomized testing
+    num_validators = spec.SLOTS_PER_EPOCH * 8 * 2
     floor = spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     balances = [
         max(spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators, floor) for i in range(num_validators)

@@ -3,7 +3,11 @@ import warnings
 from random import Random
 from tests.core.pyspec.eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from typing import Callable
-from tests.core.pyspec.eth2spec.test.context import misc_balances_in_default_range, with_phases, zero_activation_threshold
+from tests.core.pyspec.eth2spec.test.context import (
+    misc_balances_in_default_range_with_many_validators,
+    with_phases,
+    zero_activation_threshold,
+)
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state,
 )
@@ -323,7 +327,10 @@ def _iter_temporal(spec, callable_or_int):
 
 @pytest_generate_tests_adapter
 @with_phases([PHASE0, ALTAIR])
-@with_custom_state(balances_fn=misc_balances_in_default_range, threshold_fn=zero_activation_threshold)
+@with_custom_state(
+    balances_fn=misc_balances_in_default_range_with_many_validators,
+    threshold_fn=zero_activation_threshold
+)
 @spec_test
 @single_phase
 @always_bls
