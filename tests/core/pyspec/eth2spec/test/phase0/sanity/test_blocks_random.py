@@ -1,4 +1,5 @@
 import itertools
+import warnings
 from random import Random
 from typing import Callable
 from tests.core.pyspec.eth2spec.test.context import misc_balances_in_default_range, zero_activation_threshold
@@ -23,6 +24,23 @@ from eth2spec.test.context import (
     single_phase,
     misc_balances,
 )
+
+def _warn_if_empty_operations(block):
+    if len(block.body.deposits) == 0:
+        warnings.warn(f"deposits missing in block at slot {block.slot}")
+
+    if len(block.body.proposer_slashings) == 0:
+        warnings.warn(f"proposer slashings missing in block at slot {block.slot}")
+
+    if len(block.body.attester_slashings) == 0:
+        warnings.warn(f"attester slashings missing in block at slot {block.slot}")
+
+    if len(block.body.attestations) == 0:
+        warnings.warn(f"attestations missing in block at slot {block.slot}")
+
+    if len(block.body.voluntary_exits) == 0:
+        warnings.warn(f"voluntary exits missing in block at slot {block.slot}")
+
 
 # May need to make several attempts to find a block that does not correspond to a slashed
 # proposer with the randomization helpers...
@@ -81,6 +99,7 @@ def _random_block(spec, state, _signed_blocks):
             next_slot(spec, state)
             block = build_random_block_from_state(spec, state)
         else:
+            _warn_if_empty_operations(block)
             return block
     else:
         raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
