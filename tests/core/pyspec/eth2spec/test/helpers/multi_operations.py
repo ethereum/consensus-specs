@@ -125,12 +125,24 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
     return deposits
 
 
+def _eligible_for_exit(spec, state, index):
+    validator = state.validators[index]
+
+    not_slashed = not validator.slashed
+
+    current_epoch = spec.get_current_epoch(state)
+    activation_epoch = validator.activation_epoch
+    active_for_long_enough = current_epoch >= activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
+
+    return not_slashed and active_for_long_enough
+
+
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     num_exits = rng.randrange(spec.MAX_VOLUNTARY_EXITS)
     active_indices = set(spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy())
     indices = set(
         index for index in active_indices
-        if not state.validators[index].slashed
+        if _eligible_for_exit(spec, state, index)
     )
     eligible_indices = indices - to_be_slashed_indices
     indices_count = min(num_exits, len(eligible_indices))
