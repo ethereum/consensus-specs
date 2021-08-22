@@ -61,7 +61,11 @@ def _randomize_state(spec, state):
 ## epochs
 
 def _epochs_until_leak(spec):
-    return spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY
+    """
+    State is "leaking" if the current epoch is at least
+    this value after the last finalized epoch.
+    """
+    return spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 1
 
 
 def _epochs_for_shard_committee_period(spec):
