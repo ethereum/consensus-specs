@@ -45,7 +45,11 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 
 def get_random_proposer_slashings(spec, state, rng):
     num_slashings = rng.randrange(spec.MAX_PROPOSER_SLASHINGS)
-    indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
+    indices = [
+        index for index in active_indices
+        if not state.validators[index].slashed
+    ]
     slashings = [
         get_valid_proposer_slashing(
             spec, state,
@@ -58,7 +62,11 @@ def get_random_proposer_slashings(spec, state, rng):
 
 def get_random_attester_slashings(spec, state, rng):
     num_slashings = rng.randrange(spec.MAX_ATTESTER_SLASHINGS)
-    indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
+    indices = [
+        index for index in active_indices
+        if not state.validators[index].slashed
+    ]
     slot_range = list(range(state.slot - spec.SLOTS_PER_HISTORICAL_ROOT + 1, state.slot))
     slashings = [
         get_valid_attester_slashing_by_indices(
@@ -119,9 +127,14 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     num_exits = rng.randrange(spec.MAX_VOLUNTARY_EXITS)
-    indices = set(spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy())
+    active_indices = set(spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy())
+    indices = set(
+        index for index in active_indices
+        if not state.validators[index].slashed
+    )
     eligible_indices = indices - to_be_slashed_indices
-    exit_indices = [eligible_indices.pop() for _ in range(num_exits)]
+    indices_count = min(num_exits, len(eligible_indices))
+    exit_indices = [eligible_indices.pop() for _ in range(indices_count)]
     return prepare_signed_exits(spec, state, exit_indices)
 
 
