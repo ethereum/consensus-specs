@@ -70,9 +70,9 @@ def _last_slot_in_epoch(spec):
 
 
 def _random_slot_in_epoch(rng):
-    def f(spec):
+    def _a_slot_in_epoch(spec):
         return rng.randrange(1, spec.SLOTS_PER_EPOCH - 2)
-    return f
+    return _a_slot_in_epoch
 
 
 def _penultimate_slot_in_epoch(spec):
