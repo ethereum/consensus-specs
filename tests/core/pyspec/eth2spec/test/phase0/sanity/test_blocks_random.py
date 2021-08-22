@@ -1,7 +1,7 @@
 import itertools
 from random import Random
 from typing import Callable
-from tests.core.pyspec.eth2spec.test.context import default_activation_threshold, misc_balances_in_default_range
+from tests.core.pyspec.eth2spec.test.context import misc_balances_in_default_range, zero_activation_threshold
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state,
 )
@@ -24,7 +24,17 @@ from eth2spec.test.context import (
     misc_balances,
 )
 
+# May need to make several attempts to find a block that does not correspond to a slashed
+# proposer with the randomization helpers...
+BLOCK_ATTEMPTS = 32
+
 # primitives
+## state
+
+def _randomize_state(spec, state):
+    return randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1)
+
+
 ## epochs
 
 def _epochs_until_leak(spec):
@@ -57,8 +67,23 @@ def _no_block(_spec, _pre_state, _signed_blocks):
     return None
 
 
-def _random_block_for_next_slot(spec, pre_state, _signed_blocks):
-    return build_random_block_from_state(spec, pre_state)
+def _random_block(spec, state, _signed_blocks):
+    """
+    Produce a random block.
+    NOTE: this helper may mutate state, as it will attempt
+    to produce a block over ``BLOCK_ATTEMPTS`` slots in order
+    to find a valid block in the event that the proposer has already been slashed.
+    """
+    block = build_random_block_from_state(spec, state)
+    for _ in range(BLOCK_ATTEMPTS):
+        proposer = state.validators[block.proposer_index]
+        if proposer.slashed:
+            next_slot(spec, state)
+            block = build_random_block_from_state(spec, state)
+        else:
+            return block
+    else:
+        raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
 
 
 ## validations
@@ -105,7 +130,7 @@ def _transition_with_random_block(epochs=None, slots=None):
     number of epochs or slots before applying the random block.
     """
     transition = {
-        "block_producer": _random_block_for_next_slot,
+        "block_producer": _random_block,
     }
     if epochs:
         transition.update(epochs)
@@ -137,7 +162,7 @@ def _randomized_scenario_setup():
         # NOTE: the block randomization function assumes at least 1 shard committee period
         # so advance the state before doing anything else.
         (_skip_epochs(_epochs_for_shard_committee_period), _no_op_validation),
-        (randomize_state, ensure_state_has_validators_across_lifecycle),
+        (_randomize_state, ensure_state_has_validators_across_lifecycle),
     )
 
 
@@ -272,7 +297,7 @@ def _iter_temporal(spec, callable_or_int):
 
 @pytest_generate_tests_adapter
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances_in_default_range, threshold_fn=default_activation_threshold)
+@with_custom_state(balances_fn=misc_balances_in_default_range, threshold_fn=zero_activation_threshold)
 @spec_test
 @single_phase
 @always_bls
