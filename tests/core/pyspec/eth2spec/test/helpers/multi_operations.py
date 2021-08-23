@@ -61,7 +61,9 @@ def get_random_proposer_slashings(spec, state, rng):
 
 
 def get_random_attester_slashings(spec, state, rng):
-    num_slashings = rng.randrange(spec.MAX_ATTESTER_SLASHINGS)
+    # ensure at least one attester slashing, the max count
+    # is small so not much room for random inclusion
+    num_slashings = max(1, rng.randrange(spec.MAX_ATTESTER_SLASHINGS))
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index for index in active_indices
