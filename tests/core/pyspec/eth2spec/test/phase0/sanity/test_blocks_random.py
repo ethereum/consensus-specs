@@ -52,6 +52,8 @@ def _warn_if_empty_operations(block):
 # May need to make several attempts to find a block that does not correspond to a slashed
 # proposer with the randomization helpers...
 BLOCK_ATTEMPTS = 32
+# Ensure this many blocks are present in *each* randomized scenario
+BLOCK_TRANSITIONS_COUNT = 2
 
 # primitives
 ## state
@@ -269,6 +271,15 @@ def _normalize_scenarios(scenarios):
             transitions[i] = _normalize_transition(transition)
 
 
+def _flatten(t):
+    leak_transition = t[0]
+    result = [leak_transition]
+    for transition_batch in t[1]:
+        for transition in transition_batch:
+            result.append(transition)
+    return result
+
+
 def _generate_randomized_scenarios():
     """
     Generates a set of randomized testing scenarios.
@@ -297,20 +308,24 @@ def _generate_randomized_scenarios():
         # the last slot in an epoch (see note in docstring about offsets...)
         _slot_transition(_penultimate_slot_in_epoch),
     )
-    # build a set of block transitions from combinations of sub-transitions
-    block_transitions = list(
-        _transition_with_random_block(epochs=epochs, slots=slots)
-        for epochs, slots in itertools.product(epochs_set, slots_set)
+    # and produce a block...
+    blocks_set = (
+        _transition_with_random_block,
     )
+    # build a set of block transitions from combinations of sub-transitions
+    transitions_generator = (
+        itertools.product(epochs_set, slots_set, blocks_set) for
+        _ in range(BLOCK_TRANSITIONS_COUNT)
+    )
+    block_transitions = zip(*transitions_generator)
 
-    # and preface each block transition with the possible leak transitions
-    # (... either no leak or transition to a leak before applying the block transition)
+    # and preface each set of block transitions with the possible leak transitions
     leak_transitions = (
         _transition_without_leak,
         _transition_to_leaking,
     )
     scenarios = [
-        {"transitions": list(t)}
+        {"transitions": _flatten(t)}
         for t in itertools.product(leak_transitions, block_transitions)
     ]
     _normalize_scenarios(scenarios)
