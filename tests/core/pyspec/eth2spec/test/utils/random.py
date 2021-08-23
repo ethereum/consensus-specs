@@ -21,6 +21,7 @@ from eth2spec.test.helpers.random import (
 
 rng = random.Random(1337)
 
+
 def _warn_if_empty_operations(block):
     if len(block.body.deposits) == 0:
         warnings.warn(f"deposits missing in block at slot {block.slot}")
@@ -45,13 +46,14 @@ BLOCK_ATTEMPTS = 32
 BLOCK_TRANSITIONS_COUNT = 2
 
 # primitives
-## state
+# state
+
 
 def randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1):
     randomize_state_helper(spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
 
 
-## epochs
+# epochs
 
 def _epochs_until_leak(spec):
     """
@@ -65,7 +67,7 @@ def _epochs_for_shard_committee_period(spec):
     return spec.config.SHARD_COMMITTEE_PERIOD
 
 
-## slots
+# slots
 
 def _last_slot_in_epoch(spec):
     return spec.SLOTS_PER_EPOCH - 1
@@ -81,7 +83,7 @@ def _penultimate_slot_in_epoch(spec):
     return spec.SLOTS_PER_EPOCH - 2
 
 
-## blocks
+# blocks
 
 def _no_block(_spec, _pre_state, _signed_blocks):
     return None
@@ -110,7 +112,7 @@ def random_block(spec, state, _signed_blocks):
         raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
 
 
-## validations
+# validations
 
 def _no_op_validation(spec, state):
     return True
@@ -158,7 +160,8 @@ def _transition_to_leaking():
 
 _transition_without_leak = _with_validation(_no_op_transition, _validate_is_not_leaking)
 
-## block transitions
+# block transitions
+
 
 def _transition_with_random_block(block_randomizer):
     """
@@ -172,6 +175,7 @@ def _transition_with_random_block(block_randomizer):
 
 
 # setup and test gen
+
 
 def _randomized_scenario_setup(state_randomizer):
     """
@@ -337,6 +341,7 @@ def _id_from_scenario(test_description):
 
 # Generate a series of randomized block tests:
 
+
 def generate_randomized_tests(metafunc, state_randomizer=randomize_state, block_randomizer=random_block):
     """
     Pytest hook to generate test cases from dynamically computed data
@@ -357,6 +362,7 @@ def pytest_generate_tests_adapter(f):
     return wrapper
 
 # Run the generated tests:
+
 
 def _iter_temporal(spec, callable_or_int):
     """

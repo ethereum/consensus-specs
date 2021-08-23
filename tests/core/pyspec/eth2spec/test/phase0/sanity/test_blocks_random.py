@@ -16,6 +16,7 @@ from eth2spec.test.utils.random import (
     run_generated_randomized_test,
 )
 
+
 def pytest_generate_tests(metafunc):
     """
     Pytest hook to generate test cases from dynamically computed data

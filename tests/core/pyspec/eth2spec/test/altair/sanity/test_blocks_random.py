@@ -26,6 +26,7 @@ from eth2spec.test.utils.random import (
 
 SYNC_AGGREGATE_PARTICIPATION_BUCKETS = 4
 
+
 def _randomize_altair_state(spec, state):
     randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1)
     randomize_inactivity_scores(spec, state)
