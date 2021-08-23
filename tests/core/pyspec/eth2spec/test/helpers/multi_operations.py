@@ -7,6 +7,10 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth2spec.test.helpers.sync_committee import (
+    compute_committee_indices,
+    compute_aggregate_sync_committee_signature,
+)
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing_by_indices
 from eth2spec.test.helpers.attestations import get_valid_attestation
@@ -192,3 +196,19 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
 
     yield 'blocks', [signed_block]
     yield 'post', state
+
+
+def get_random_sync_aggregate(spec, state, fraction_participated=1.0, rng=Random(2099)):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    participant_count = int(len(committee_indices) * fraction_participated)
+    participants = rng.sample(committee_indices, participant_count)
+    signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        state.slot,
+        participants,
+    )
+    return spec.SyncAggregate(
+        sync_committee_bits=[index in participants for index in committee_indices],
+        sync_committee_signature=signature,
+    )

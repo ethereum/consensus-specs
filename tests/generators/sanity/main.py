@@ -10,6 +10,7 @@ if __name__ == "__main__":
     ]}
     altair_mods = {**{key: 'eth2spec.test.altair.sanity.test_' + key for key in [
         'blocks',
+        'blocks_random',
     ]}, **phase_0_mods}  # also run the previous phase 0 tests
 
     # Altair-specific test cases are ignored, but should be included after the Merge is rebased onto Altair work.

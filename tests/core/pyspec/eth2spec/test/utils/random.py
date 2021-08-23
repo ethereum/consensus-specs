@@ -47,8 +47,8 @@ BLOCK_TRANSITIONS_COUNT = 2
 # primitives
 ## state
 
-def randomize_state(spec, state):
-    randomize_state_helper(spec, state, exit_fraction=0.1, slash_fraction=0.1)
+def randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1):
+    randomize_state_helper(spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
 
 
 ## epochs
