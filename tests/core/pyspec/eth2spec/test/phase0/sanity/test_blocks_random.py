@@ -9,7 +9,7 @@ from tests.core.pyspec.eth2spec.test.context import (
     zero_activation_threshold,
 )
 from eth2spec.test.helpers.multi_operations import (
-    build_random_block_from_state,
+    build_random_block_from_state_for_next_slot,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -103,13 +103,16 @@ def _random_block(spec, state, _signed_blocks):
     to produce a block over ``BLOCK_ATTEMPTS`` slots in order
     to find a valid block in the event that the proposer has already been slashed.
     """
-    block = build_random_block_from_state(spec, state, rng)
+    temp_state = state.copy()
+    next_slot(spec, temp_state)
     for _ in range(BLOCK_ATTEMPTS):
-        proposer = state.validators[block.proposer_index]
+        proposer_index = spec.get_beacon_proposer_index(temp_state)
+        proposer = state.validators[proposer_index]
         if proposer.slashed:
             next_slot(spec, state)
-            block = build_random_block_from_state(spec, state)
+            next_slot(spec, temp_state)
         else:
+            block = build_random_block_from_state_for_next_slot(spec, state)
             _warn_if_empty_operations(block)
             return block
     else:

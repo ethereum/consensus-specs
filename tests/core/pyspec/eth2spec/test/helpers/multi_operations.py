@@ -150,7 +150,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     return prepare_signed_exits(spec, state, exit_indices)
 
 
-def build_random_block_from_state(spec, state, rng=Random(2188)):
+def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188)):
     # prepare state for deposits before building block
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)
 
@@ -177,7 +177,7 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    block = build_random_block_from_state(spec, state, rng)
+    block = build_random_block_from_state_for_next_slot(spec, state, rng)
 
     yield 'pre', state
 
