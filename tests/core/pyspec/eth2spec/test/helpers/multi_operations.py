@@ -136,7 +136,9 @@ def _eligible_for_exit(spec, state, index):
     activation_epoch = validator.activation_epoch
     active_for_long_enough = current_epoch >= activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
 
-    return not_slashed and active_for_long_enough
+    not_exited = validator.exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    return not_slashed and active_for_long_enough and not_exited
 
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
