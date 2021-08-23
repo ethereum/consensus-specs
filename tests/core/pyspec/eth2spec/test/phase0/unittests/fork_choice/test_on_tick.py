@@ -46,7 +46,7 @@ def test_update_justified_single_on_store_finalized_chain(spec, state):
     store.block_states[block.hash_tree_root()] = state.copy()
     parent_block = block.copy()
     # To make compute_slots_since_epoch_start(current_slot) == 0, transition to the end of the epoch
-    slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot + spec.SLOTS_PER_EPOCH) % spec.SLOTS_PER_EPOCH - 1
+    slot = state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH - 1
     transition_to(spec, state, slot)
     # Create a block at the start of epoch 2
     block = build_empty_block_for_next_slot(spec, state)
@@ -100,7 +100,7 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     store.block_states[block.hash_tree_root()] = state.copy()
     parent_block = block.copy()
     # To make compute_slots_since_epoch_start(current_slot) == 0, transition to the end of the epoch
-    slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot + spec.SLOTS_PER_EPOCH) % spec.SLOTS_PER_EPOCH - 1
+    slot = state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH - 1
     transition_to(spec, state, slot)
     # Create a block at the start of epoch 2
     block = build_empty_block_for_next_slot(spec, state)
