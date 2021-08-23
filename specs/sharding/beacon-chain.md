@@ -257,7 +257,7 @@ class AttestedDataCommitment(Container):
     includer_index: ValidatorIndex
 ```
 
-### ShardBlobBody
+### `ShardBlobBody`
 
 Unsigned shard data, bundled by a shard-builder.
 Unique, signing different bodies as shard proposer for the same `(slot, shard)` is slashable.
@@ -759,7 +759,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
             commitment=body_summary.commitment,
             root=header_root,
             includer_index=get_beacon_proposer_index(state),
-        )
+        ),
         votes=initial_votes,
         weight=0,
         update_slot=state.slot,
@@ -885,7 +885,7 @@ def reset_pending_shard_work(state: BeaconState) -> None:
                 selector=SHARD_WORK_PENDING,
                 value=List[PendingShardHeader, MAX_SHARD_HEADERS_PER_SHARD](
                     PendingShardHeader(
-                        attested=AttestedDataCommitment()
+                        attested=AttestedDataCommitment(),
                         votes=Bitlist[MAX_VALIDATORS_PER_COMMITTEE]([0] * committee_length),
                         weight=0,
                         update_slot=slot,
