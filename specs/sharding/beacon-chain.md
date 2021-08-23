@@ -503,14 +503,14 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
 #### `get_shard_proposer_index`
 
 ```python
-def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard) -> ValidatorIndex:
+def get_shard_proposer_index(state: BeaconState, slot: Slot, shard: Shard) -> ValidatorIndex:
     """
     Return the proposer's index of shard block at ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    seed = hash(get_seed(beacon_state, epoch, DOMAIN_SHARD_BLOB) + uint_to_bytes(slot) + uint_to_bytes(shard))
+    seed = hash(get_seed(state, epoch, DOMAIN_SHARD_BLOB) + uint_to_bytes(slot) + uint_to_bytes(shard))
     indices = get_active_validator_indices(state, epoch)
-    return compute_proposer_index(beacon_state, indices, seed)
+    return compute_proposer_index(state, indices, seed)
 ```
 
 #### `get_start_shard`
