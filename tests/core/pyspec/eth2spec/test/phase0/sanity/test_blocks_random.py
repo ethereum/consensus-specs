@@ -1,5 +1,5 @@
-from tests.core.pyspec.eth2spec.test.helpers.constants import PHASE0
-from tests.core.pyspec.eth2spec.test.context import (
+from eth2spec.test.helpers.constants import PHASE0
+from eth2spec.test.context import (
     misc_balances_in_default_range_with_many_validators,
     with_phases,
     zero_activation_threshold,
