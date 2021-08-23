@@ -16,7 +16,7 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth2spec.test.helpers.random import (
-    randomize_state,
+    randomize_state as randomize_state_helper,
 )
 
 rng = random.Random(1337)
@@ -47,8 +47,8 @@ BLOCK_TRANSITIONS_COUNT = 2
 # primitives
 ## state
 
-def _randomize_state(spec, state):
-    return randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1)
+def randomize_state(spec, state):
+    randomize_state_helper(spec, state, exit_fraction=0.1, slash_fraction=0.1)
 
 
 ## epochs
@@ -87,7 +87,7 @@ def _no_block(_spec, _pre_state, _signed_blocks):
     return None
 
 
-def _random_block(spec, state, _signed_blocks):
+def random_block(spec, state, _signed_blocks):
     """
     Produce a random block.
     NOTE: this helper may mutate state, as it will attempt
@@ -337,7 +337,7 @@ def _id_from_scenario(test_description):
 
 # Generate a series of randomized block tests:
 
-def generate_randomized_tests(metafunc, state_randomizer=_randomize_state, block_randomizer=_random_block):
+def generate_randomized_tests(metafunc, state_randomizer=randomize_state, block_randomizer=random_block):
     """
     Pytest hook to generate test cases from dynamically computed data
     """
