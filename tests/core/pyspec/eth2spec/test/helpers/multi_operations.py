@@ -103,6 +103,7 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
     deposits = []
 
     # First build deposit data leaves
+    root = None
     for i in range(num_deposits):
         index = len(state.validators) + i
         _, root, deposit_data_leaves = build_deposit(
@@ -115,7 +116,9 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
             signed=True,
         )
 
-    state.eth1_data.deposit_root = root
+    if root:
+        # NOTE: if ``num_deposits == 0``, ``root`` is never assigned to
+        state.eth1_data.deposit_root = root
     state.eth1_data.deposit_count += num_deposits
 
     # Then for that context, build deposits/proofs
