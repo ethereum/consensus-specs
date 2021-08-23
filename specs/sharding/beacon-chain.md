@@ -32,7 +32,7 @@
   - [`Builder`](#builder)
   - [`DataCommitment`](#datacommitment)
   - [`AttestedDataCommitment`](#attesteddatacommitment)
-  - [ShardBlobBody](#shardblobbody)
+  - [`ShardBlobBody`](#shardblobbody)
   - [`ShardBlobBodySummary`](#shardblobbodysummary)
   - [`ShardBlob`](#shardblob)
   - [`ShardBlobHeader`](#shardblobheader)
