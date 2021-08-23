@@ -44,7 +44,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 
 
 def get_random_proposer_slashings(spec, state, rng):
-    num_slashings = rng.randrange(spec.MAX_PROPOSER_SLASHINGS)
+    num_slashings = max(1, rng.randrange(spec.MAX_PROPOSER_SLASHINGS))
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index for index in active_indices
