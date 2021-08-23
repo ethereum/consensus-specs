@@ -327,9 +327,13 @@ def on_tick(store: Store, time: uint64) -> None:
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
-    # Update store.justified_checkpoint if a better checkpoint is known
+
+    # Update store.justified_checkpoint if a better checkpoint on the store.finalized_checkpoint chain
     if store.best_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        store.justified_checkpoint = store.best_justified_checkpoint
+        finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)    
+        ancestor_at_finalized_slot = get_ancestor(store, store.best_justified_checkpoint.root, finalized_slot)
+        if ancestor_at_finalized_slot == store.finalized_checkpoint.root:
+            store.justified_checkpoint = store.best_justified_checkpoint
 ```
 
 #### `on_block`
