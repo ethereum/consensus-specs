@@ -64,20 +64,33 @@ def get_random_proposer_slashings(spec, state, rng):
     return slashings
 
 
-def get_random_attester_slashings(spec, state, rng):
+def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
+    """
+    Caller can supply ``slashed_indices`` if they are aware of other indices
+    that will be slashed by other operations in the same block as the one that
+    contains the output of this function.
+    """
     # ensure at least one attester slashing, the max count
     # is small so not much room for random inclusion
     num_slashings = max(1, rng.randrange(spec.MAX_ATTESTER_SLASHINGS))
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index for index in active_indices
-        if not state.validators[index].slashed
+        if (
+            not state.validators[index].slashed
+            and index not in slashed_indices
+        )
     ]
+    sample_upper_bound = 4
+    max_slashed_count = num_slashings * sample_upper_bound - 1
+    if len(indices) < max_slashed_count:
+        return []
+
     slot_range = list(range(state.slot - spec.SLOTS_PER_HISTORICAL_ROOT + 1, state.slot))
     slashings = [
         get_valid_attester_slashing_by_indices(
             spec, state,
-            sorted([indices.pop(rng.randrange(len(indices))) for _ in range(rng.randrange(1, 4))]),
+            sorted([indices.pop(rng.randrange(len(indices))) for _ in range(rng.randrange(1, sample_upper_bound))]),
             slot=slot_range.pop(rng.randrange(len(slot_range))),
             signed_1=True, signed_2=True,
         )
@@ -164,8 +177,13 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188)):
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.proposer_slashings = get_random_proposer_slashings(spec, state, rng)
-    block.body.attester_slashings = get_random_attester_slashings(spec, state, rng)
+    proposer_slashings = get_random_proposer_slashings(spec, state, rng)
+    block.body.proposer_slashings = proposer_slashings
+    slashed_indices = [
+        slashing.signed_header_1.message.proposer_index
+        for slashing in proposer_slashings
+    ]
+    block.body.attester_slashings = get_random_attester_slashings(spec, state, rng, slashed_indices)
     block.body.attestations = get_random_attestations(spec, state, rng)
     block.body.deposits = deposits
 
