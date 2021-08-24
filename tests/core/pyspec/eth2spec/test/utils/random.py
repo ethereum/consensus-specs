@@ -249,6 +249,7 @@ def _randomized_scenario_setup(state_randomizer):
 # to resolve this references at runtime, we need a reference to this module:
 _this_module = sys.modules[__name__]
 
+
 def _resolve_ref(ref):
     if isinstance(ref, str):
         return getattr(_this_module, ref)

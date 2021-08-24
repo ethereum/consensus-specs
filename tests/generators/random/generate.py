@@ -180,7 +180,7 @@ test_template = """
 def test_randomized_{index}(spec, state):
     # scenario as high-level, informal text:
 {name_as_comment}
-    scenario = {scenario}
+    scenario = {scenario}  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
