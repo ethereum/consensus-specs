@@ -157,6 +157,7 @@ from eth2spec.test.context import (
     misc_balances_in_default_range_with_many_validators,
     with_phases,
     zero_activation_threshold,
+    only_generator,
 )
 from eth2spec.test.context import (
     always_bls,
@@ -169,6 +170,7 @@ from eth2spec.test.utils.random import (
 )"""
 
 test_template = """
+@only_generator(\"randomized test for broad coverage, not point-to-point CI\")
 @with_phases([{phase}])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,

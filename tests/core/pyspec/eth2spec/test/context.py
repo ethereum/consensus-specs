@@ -456,6 +456,17 @@ with_altair_and_later = with_phases([ALTAIR, MERGE])
 with_merge_and_later = with_phases([MERGE])  # TODO: include sharding when spec stabilizes.
 
 
+def only_generator(reason):
+    def _decorator(inner):
+        def _wrapper(*args, **kwargs):
+            if is_pytest:
+                dump_skipping_message(reason)
+                return None
+            return inner(*args, **kwargs)
+        return _wrapper
+    return _decorator
+
+
 def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):
     """
     A decorator to construct a "transition" test from one fork of the eth2 spec
