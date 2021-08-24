@@ -217,14 +217,18 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
 def get_random_sync_aggregate(spec, state, fraction_participated=1.0, rng=Random(2099)):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     participant_count = int(len(committee_indices) * fraction_participated)
-    participants = rng.sample(committee_indices, participant_count)
+    participant_indices = rng.sample(range(len(committee_indices)), participant_count)
+    participants = [
+        committee_indices[index]
+        for index in participant_indices
+    ]
     signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
-        state.slot,
+        state.slot - 1,
         participants,
     )
     return spec.SyncAggregate(
-        sync_committee_bits=[index in participants for index in committee_indices],
+        sync_committee_bits=[index in participant_indices for index in range(len(committee_indices))],
         sync_committee_signature=signature,
     )
