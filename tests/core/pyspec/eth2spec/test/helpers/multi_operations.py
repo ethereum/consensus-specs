@@ -87,7 +87,7 @@ def get_random_attester_slashings(spec, state, rng):
 
 
 def get_random_attestations(spec, state, rng):
-    num_attestations = rng.randrange(spec.MAX_ATTESTATIONS)
+    num_attestations = max(1, rng.randrange(spec.MAX_ATTESTATIONS))
 
     attestations = [
         get_valid_attestation(
@@ -101,13 +101,12 @@ def get_random_attestations(spec, state, rng):
 
 
 def prepare_state_and_get_random_deposits(spec, state, rng):
-    num_deposits = rng.randrange(spec.MAX_DEPOSITS)
+    num_deposits = max(1, rng.randrange(spec.MAX_DEPOSITS))
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
     deposits = []
 
     # First build deposit data leaves
-    root = None
     for i in range(num_deposits):
         index = len(state.validators) + i
         _, root, deposit_data_leaves = build_deposit(
@@ -120,9 +119,8 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
             signed=True,
         )
 
-    if root:
-        # NOTE: if ``num_deposits == 0``, ``root`` is never assigned to
-        state.eth1_data.deposit_root = root
+    # NOTE: if ``num_deposits == 0``, ``root`` is never assigned to
+    state.eth1_data.deposit_root = root
     state.eth1_data.deposit_count += num_deposits
 
     # Then for that context, build deposits/proofs
@@ -149,7 +147,7 @@ def _eligible_for_exit(spec, state, index):
 
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
-    num_exits = rng.randrange(spec.MAX_VOLUNTARY_EXITS)
+    num_exits = max(1, rng.randrange(spec.MAX_VOLUNTARY_EXITS))
     active_indices = set(spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy())
     indices = set(
         index for index in active_indices
