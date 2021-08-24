@@ -1,4 +1,5 @@
 all:
+	if ! test -d venv; then python3 -m venv venv; fi;
 	. ./venv/bin/activate
 	pip install -r requirements.txt
 	rm -f ../../core/pyspec/eth2spec/test/phase0/random/test_random.py
