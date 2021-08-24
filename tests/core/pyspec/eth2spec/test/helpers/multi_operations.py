@@ -132,7 +132,6 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
             signed=True,
         )
 
-    # NOTE: if ``num_deposits == 0``, ``root`` is never assigned to
     state.eth1_data.deposit_root = root
     state.eth1_data.deposit_count += num_deposits
 
