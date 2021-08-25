@@ -16,7 +16,9 @@ The generated files are committed to the repo so you should not need to do this.
 
 # To run tests
 
-Use the usual `pytest` mechanics used elsewhere in this repo.
+Each of the generated test does produce a `pytest` test instance but by default is
+currently skipped. Running the test via the generator (see next) will trigger any errors
+that would arise during the running of `pytest`.
 
 # To generate spec tests (from the generated files)
 
