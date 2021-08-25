@@ -39,7 +39,7 @@ def randomize_state_altair(spec, state):
 
 # epochs
 
-def _epochs_until_leak(spec):
+def epochs_until_leak(spec):
     """
     State is "leaking" if the current epoch is at least
     this value after the last finalized epoch.
@@ -47,7 +47,7 @@ def _epochs_until_leak(spec):
     return spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY + 1
 
 
-def _epochs_for_shard_committee_period(spec):
+def epochs_for_shard_committee_period(spec):
     return spec.config.SHARD_COMMITTEE_PERIOD
 
 
@@ -147,24 +147,24 @@ def no_op_validation(spec, state):
     return True
 
 
-def _validate_is_leaking(spec, state):
+def validate_is_leaking(spec, state):
     return spec.is_in_inactivity_leak(state)
 
 
-def _validate_is_not_leaking(spec, state):
-    return not _validate_is_leaking(spec, state)
+def validate_is_not_leaking(spec, state):
+    return not validate_is_leaking(spec, state)
 
 
 # transitions
 
-def _with_validation(transition, validation):
+def with_validation(transition, validation):
     if isinstance(transition, Callable):
         transition = transition()
     transition["validation"] = validation
     return transition
 
 
-def _no_op_transition():
+def no_op_transition():
     return {}
 
 
@@ -182,12 +182,12 @@ def slot_transition(n=0):
 
 def transition_to_leaking():
     return {
-        "epochs_to_skip": _epochs_until_leak,
-        "validation": _validate_is_leaking,
+        "epochs_to_skip": epochs_until_leak,
+        "validation": validate_is_leaking,
     }
 
 
-transition_without_leak = _with_validation(_no_op_transition, _validate_is_not_leaking)
+transition_without_leak = with_validation(no_op_transition, validate_is_not_leaking)
 
 # block transitions
 
@@ -250,7 +250,7 @@ def _randomized_scenario_setup(state_randomizer):
     return (
         # NOTE: the block randomization function assumes at least 1 shard committee period
         # so advance the state before doing anything else.
-        (_skip_epochs(_epochs_for_shard_committee_period), no_op_validation),
+        (_skip_epochs(epochs_for_shard_committee_period), no_op_validation),
         (_simulate_honest_execution, no_op_validation),
         (state_randomizer, ensure_state_has_validators_across_lifecycle),
     )
