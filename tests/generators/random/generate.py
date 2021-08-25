@@ -13,7 +13,7 @@ import warnings
 from typing import Callable
 import itertools
 
-from eth2spec.test.utils.random import (
+from eth2spec.test.utils.randomized_block_tests import (
     no_block,
     no_op_validation,
     randomize_state,
@@ -165,7 +165,7 @@ from eth2spec.test.context import (
     with_custom_state,
     single_phase,
 )
-from eth2spec.test.utils.random import (
+from eth2spec.test.utils.randomized_block_tests import (
     run_generated_randomized_test,
 )"""
 
