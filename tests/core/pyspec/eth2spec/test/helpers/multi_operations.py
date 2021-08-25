@@ -48,7 +48,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 
 
 def get_random_proposer_slashings(spec, state, rng):
-    num_slashings = max(1, rng.randrange(spec.MAX_PROPOSER_SLASHINGS))
+    num_slashings = rng.randrange(1, spec.MAX_PROPOSER_SLASHINGS)
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index for index in active_indices
@@ -72,7 +72,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     """
     # ensure at least one attester slashing, the max count
     # is small so not much room for random inclusion
-    num_slashings = max(1, rng.randrange(spec.MAX_ATTESTER_SLASHINGS))
+    num_slashings = rng.randrange(1, spec.MAX_ATTESTER_SLASHINGS)
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index for index in active_indices
@@ -100,7 +100,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
 
 
 def get_random_attestations(spec, state, rng):
-    num_attestations = max(1, rng.randrange(spec.MAX_ATTESTATIONS))
+    num_attestations = rng.randrange(1, spec.MAX_ATTESTATIONS)
 
     attestations = [
         get_valid_attestation(
@@ -114,7 +114,7 @@ def get_random_attestations(spec, state, rng):
 
 
 def prepare_state_and_get_random_deposits(spec, state, rng):
-    num_deposits = max(1, rng.randrange(spec.MAX_DEPOSITS))
+    num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
     deposits = []
