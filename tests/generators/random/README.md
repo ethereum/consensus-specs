@@ -1,6 +1,6 @@
 # Randomized tests
 
-Randomized tests in the format of `sanity` tests, with randomized operations.
+Randomized tests in the format of `sanity` blocks tests, with randomized operations.
 
 Information on the format of the tests can be found in the [sanity test formats documentation](../../formats/sanity/README.md).
 
