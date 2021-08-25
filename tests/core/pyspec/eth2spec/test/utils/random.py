@@ -100,6 +100,15 @@ def random_block(spec, state, _signed_blocks):
     to produce a block over ``BLOCK_ATTEMPTS`` slots in order
     to find a valid block in the event that the proposer has already been slashed.
     """
+    # NOTE: ``state`` has been "randomized" at this point and so will likely
+    # contain a large number of slashed validators. This function needs to return
+    # a valid block so it needs to check that the proposer of the next slot is not
+    # slashed.
+    # To do this, generate a ``temp_state`` to use for checking the propser in the next slot.
+    # This ensures no accidental mutations happen to the ``state`` the caller expects to get back
+    # after this function returns.
+    # Using a copy of the state for proposer sampling is also sound as any inputs used for the
+    # shuffling are fixed a few epochs prior to ``spec.get_current_epoch(state)``.
     temp_state = state.copy()
     next_slot(spec, temp_state)
     for _ in range(BLOCK_ATTEMPTS):
