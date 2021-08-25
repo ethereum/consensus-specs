@@ -112,6 +112,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
             if case_dir.exists():
                 if not args.force and not incomplete_tag_file.exists():
+                    skipped_test_count += 1
                     print(f'Skipping already existing test: {case_dir}')
                     continue
                 else:
