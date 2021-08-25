@@ -208,7 +208,7 @@ def transition_with_random_block(block_randomizer):
 
 def _randomized_scenario_setup(state_randomizer):
     """
-    Return a sequence of pairs of ("mutator", "validator"),
+    Return a sequence of pairs of ("mutation", "validation"),
     a function that accepts (spec, state) arguments and performs some change
     and a function that accepts (spec, state) arguments and validates some change was made.
     """
