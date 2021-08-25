@@ -123,7 +123,12 @@ def random_block_altair(spec, state, signed_blocks):
     block = random_block(spec, state, signed_blocks)
     fraction_missed = len(signed_blocks) / SYNC_AGGREGATE_PARTICIPATION_BUCKETS
     fraction_participated = 1.0 - fraction_missed
-    block.body.sync_aggregate = get_random_sync_aggregate(spec, state, fraction_participated=fraction_participated)
+    block.body.sync_aggregate = get_random_sync_aggregate(
+        spec,
+        state,
+        block.slot - 1,
+        fraction_participated=fraction_participated,
+    )
     return block
 
 
