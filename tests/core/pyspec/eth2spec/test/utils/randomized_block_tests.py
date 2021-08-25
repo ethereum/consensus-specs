@@ -283,19 +283,19 @@ def _iter_temporal(spec, description):
         yield i
 
 
-def run_generated_randomized_test(spec, state, test_description):
-    if "setup" not in test_description:
-        state_randomizer = _resolve_ref(test_description.get("state_randomizer", randomize_state))
-        test_description["setup"] = _randomized_scenario_setup(state_randomizer)
+def run_generated_randomized_test(spec, state, scenario):
+    if "setup" not in scenario:
+        state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state))
+        scenario["setup"] = _randomized_scenario_setup(state_randomizer)
 
-    for mutation, validation in test_description["setup"]:
+    for mutation, validation in scenario["setup"]:
         mutation(spec, state)
         validation(spec, state)
 
     yield "pre", state
 
     blocks = []
-    for transition in test_description["transitions"]:
+    for transition in scenario["transitions"]:
         epochs_to_skip = _iter_temporal(spec, transition["epochs_to_skip"])
         for _ in epochs_to_skip:
             next_epoch(spec, state)
