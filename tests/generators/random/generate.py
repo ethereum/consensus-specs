@@ -9,6 +9,7 @@ NOTE: To add additional scenarios, add test cases below in ``_generate_randomize
 """
 
 import sys
+import random
 import warnings
 from typing import Callable
 import itertools
@@ -70,7 +71,11 @@ def _flatten(t):
     result = [leak_transition]
     for transition_batch in t[1]:
         for transition in transition_batch:
-            result.append(transition)
+            if isinstance(transition, tuple):
+                for subtransition in transition:
+                    result.append(subtransition)
+            else:
+                result.append(transition)
     return result
 
 
@@ -106,10 +111,18 @@ def _generate_randomized_scenarios(block_randomizer):
     blocks_set = (
         transition_with_random_block(block_randomizer),
     )
+
+    rng = random.Random(1447)
+    all_skips = list(itertools.product(epochs_set, slots_set))
+    randomized_skips = (
+        rng.sample(all_skips, len(all_skips))
+        for _ in range(BLOCK_TRANSITIONS_COUNT)
+    )
+
     # build a set of block transitions from combinations of sub-transitions
     transitions_generator = (
-        itertools.product(epochs_set, slots_set, blocks_set) for
-        _ in range(BLOCK_TRANSITIONS_COUNT)
+        itertools.product(prefix, blocks_set)
+        for prefix in randomized_skips
     )
     block_transitions = zip(*transitions_generator)
 
