@@ -159,7 +159,7 @@ def _eligible_for_exit(spec, state, index):
 
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
-    num_exits = max(1, rng.randrange(spec.MAX_VOLUNTARY_EXITS))
+    num_exits = rng.randrange(1, spec.MAX_VOLUNTARY_EXITS)
     active_indices = set(spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy())
     indices = set(
         index for index in active_indices
