@@ -171,6 +171,26 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     return prepare_signed_exits(spec, state, exit_indices)
 
 
+def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=Random(2099)):
+    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    participant_count = int(len(committee_indices) * fraction_participated)
+    participant_indices = rng.sample(range(len(committee_indices)), participant_count)
+    participants = [
+        committee_indices[index]
+        for index in participant_indices
+    ]
+    signature = compute_aggregate_sync_committee_signature(
+        spec,
+        state,
+        slot,
+        participants,
+    )
+    return spec.SyncAggregate(
+        sync_committee_bits=[index in participant_indices for index in range(len(committee_indices))],
+        sync_committee_signature=signature,
+    )
+
+
 def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188)):
     # prepare state for deposits before building block
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)
@@ -211,23 +231,3 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
 
     yield 'blocks', [signed_block]
     yield 'post', state
-
-
-def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=Random(2099)):
-    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
-    participant_count = int(len(committee_indices) * fraction_participated)
-    participant_indices = rng.sample(range(len(committee_indices)), participant_count)
-    participants = [
-        committee_indices[index]
-        for index in participant_indices
-    ]
-    signature = compute_aggregate_sync_committee_signature(
-        spec,
-        state,
-        slot,
-        participants,
-    )
-    return spec.SyncAggregate(
-        sync_committee_bits=[index in participant_indices for index in range(len(committee_indices))],
-        sync_committee_signature=signature,
-    )
