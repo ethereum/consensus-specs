@@ -141,7 +141,7 @@ def _generate_randomized_scenarios(block_randomizer):
 
 def _id_from_scenario(test_description):
     """
-    Construct a test name for ``pytest`` infra.
+    Construct a name for the scenario based its data.
     """
     def _to_id_part(prefix, x):
         suffix = str(x)
