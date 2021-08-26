@@ -152,6 +152,22 @@ def misc_balances(spec):
     return balances
 
 
+def misc_balances_in_default_range_with_many_validators(spec):
+    """
+    Helper method to create a series of balances that includes some misc. balances but
+    none that are below the ``EJECTION_BALANCE``.
+    """
+    # Double validators to facilitate randomized testing
+    num_validators = spec.SLOTS_PER_EPOCH * 8 * 2
+    floor = spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+    balances = [
+        max(spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators, floor) for i in range(num_validators)
+    ]
+    rng = Random(1234)
+    rng.shuffle(balances)
+    return balances
+
+
 def low_single_balance(spec):
     """
     Helper method to create a single of balance of 1 Gwei.
@@ -438,6 +454,17 @@ def is_post_merge(spec):
 
 with_altair_and_later = with_phases([ALTAIR, MERGE])
 with_merge_and_later = with_phases([MERGE])  # TODO: include sharding when spec stabilizes.
+
+
+def only_generator(reason):
+    def _decorator(inner):
+        def _wrapper(*args, **kwargs):
+            if is_pytest:
+                dump_skipping_message(reason)
+                return None
+            return inner(*args, **kwargs)
+        return _wrapper
+    return _decorator
 
 
 def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):

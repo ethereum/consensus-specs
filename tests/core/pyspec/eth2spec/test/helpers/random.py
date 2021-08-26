@@ -20,16 +20,20 @@ def set_some_new_deposits(spec, state, rng):
                 state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
 
 
-def exit_random_validators(spec, state, rng):
+def exit_random_validators(spec, state, rng, fraction=None):
+    if fraction is None:
+        # Exit ~1/2
+        fraction = 0.5
+
     if spec.get_current_epoch(state) < 5:
         # Move epochs forward to allow for some validators already exited/withdrawable
         for _ in range(5):
             next_epoch(spec, state)
 
     current_epoch = spec.get_current_epoch(state)
-    # Exit ~1/2 of validators
     for index in spec.get_active_validator_indices(state, current_epoch):
-        if rng.choice([True, False]):
+        sampled = rng.random() < fraction
+        if not sampled:
             continue
 
         validator = state.validators[index]
@@ -41,11 +45,15 @@ def exit_random_validators(spec, state, rng):
             validator.withdrawable_epoch = current_epoch + 1
 
 
-def slash_random_validators(spec, state, rng):
-    # Slash ~1/2 of validators
+def slash_random_validators(spec, state, rng, fraction=None):
+    if fraction is None:
+        # Slash ~1/2 of validators
+        fraction = 0.5
+
     for index in range(len(state.validators)):
         # slash at least one validator
-        if index == 0 or rng.choice([True, False]):
+        sampled = rng.random() < fraction
+        if index == 0 or sampled:
             spec.slash_validator(state, index)
 
 
@@ -115,8 +123,8 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(spec, state, rng=Random(8020)):
+def randomize_state(spec, state, rng=Random(8020), exit_fraction=None, slash_fraction=None):
     set_some_new_deposits(spec, state, rng)
-    exit_random_validators(spec, state, rng)
-    slash_random_validators(spec, state, rng)
+    exit_random_validators(spec, state, rng, fraction=exit_fraction)
+    slash_random_validators(spec, state, rng, fraction=slash_fraction)
     randomize_attestation_participation(spec, state, rng)
