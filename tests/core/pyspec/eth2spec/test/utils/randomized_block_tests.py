@@ -10,6 +10,7 @@ from typing import Callable
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state_for_next_slot,
     get_random_sync_aggregate,
+    prepare_state_and_get_random_deposits,
 )
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -28,13 +29,35 @@ from eth2spec.test.helpers.state import (
 # state
 
 
-def randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1):
+def _randomize_deposit_state(spec, state, stats):
+    """
+    To introduce valid, randomized deposits, the ``state`` deposit sub-state
+    must be coordinated with the data that will ultimately go into blocks.
+
+    This function randomizes the ``state`` in a way that can signal downstream to
+    the block constructors how they should (or should not) make some randomized deposits.
+    """
+    rng = Random(999)
+    block_count = stats.get("block_count", 0)
+    deposits = []
+    if block_count > 0:
+        num_deposits = rng.randrange(1, block_count * spec.MAX_DEPOSITS)
+        deposits = prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=num_deposits)
+    return {
+        "deposits": deposits,
+    }
+
+
+def randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     randomize_state_helper(spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
+    scenario_state = _randomize_deposit_state(spec, state, stats)
+    return scenario_state
 
 
-def randomize_state_altair(spec, state):
-    randomize_state(spec, state, exit_fraction=0.1, slash_fraction=0.1)
+def randomize_state_altair(spec, state, stats):
+    scenario_state = randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1)
     randomize_inactivity_scores(spec, state)
+    return scenario_state
 
 
 # epochs
@@ -67,7 +90,7 @@ def penultimate_slot_in_epoch(spec):
 
 # blocks
 
-def no_block(_spec, _pre_state, _signed_blocks):
+def no_block(_spec, _pre_state, _signed_blocks, _scenario_state):
     return None
 
 
@@ -77,9 +100,10 @@ BLOCK_ATTEMPTS = 32
 
 
 def _warn_if_empty_operations(block):
-    if len(block.body.deposits) == 0:
-        warnings.warn(f"deposits missing in block at slot {block.slot}")
-
+    """
+    NOTE: a block may be missing deposits depending on how many were created
+    and already inserted into existing blocks in a given scenario.
+    """
     if len(block.body.proposer_slashings) == 0:
         warnings.warn(f"proposer slashings missing in block at slot {block.slot}")
 
@@ -93,7 +117,13 @@ def _warn_if_empty_operations(block):
         warnings.warn(f"voluntary exits missing in block at slot {block.slot}")
 
 
-def random_block(spec, state, _signed_blocks):
+def _pull_deposits_from_scenario_state(spec, scenario_state, existing_block_count):
+    all_deposits = scenario_state.get("deposits", [])
+    start = existing_block_count * spec.MAX_DEPOSITS
+    return all_deposits[start:start + spec.MAX_DEPOSITS]
+
+
+def random_block(spec, state, signed_blocks, scenario_state):
     """
     Produce a random block.
     NOTE: this helper may mutate state, as it will attempt
@@ -118,7 +148,8 @@ def random_block(spec, state, _signed_blocks):
             next_slot(spec, state)
             next_slot(spec, temp_state)
         else:
-            block = build_random_block_from_state_for_next_slot(spec, state)
+            deposits_for_block = _pull_deposits_from_scenario_state(spec, scenario_state, len(signed_blocks))
+            block = build_random_block_from_state_for_next_slot(spec, state, deposits=deposits_for_block)
             _warn_if_empty_operations(block)
             return block
     else:
@@ -130,8 +161,9 @@ SYNC_AGGREGATE_PARTICIPATION_BUCKETS = 4
 
 def random_block_altair_with_cycling_sync_committee_participation(spec,
                                                                   state,
-                                                                  signed_blocks):
-    block = random_block(spec, state, signed_blocks)
+                                                                  signed_blocks,
+                                                                  scenario_state):
+    block = random_block(spec, state, signed_blocks, scenario_state)
     block_index = len(signed_blocks) % SYNC_AGGREGATE_PARTICIPATION_BUCKETS
     fraction_missed = block_index * (1 / SYNC_AGGREGATE_PARTICIPATION_BUCKETS)
     fraction_participated = 1.0 - fraction_missed
@@ -146,7 +178,7 @@ def random_block_altair_with_cycling_sync_committee_participation(spec,
 
 # validations
 
-def no_op_validation(spec, state):
+def no_op_validation(_spec, _state):
     return True
 
 
@@ -211,12 +243,20 @@ def transition_with_random_block(block_randomizer):
 
 def _randomized_scenario_setup(state_randomizer):
     """
-    Return a sequence of pairs of ("mutation", "validation"),
-    a function that accepts (spec, state) arguments and performs some change
-    and a function that accepts (spec, state) arguments and validates some change was made.
+    Return a sequence of pairs of ("mutation", "validation").
+    A "mutation" is a function that accepts (``spec``, ``state``, ``stats``) arguments and
+    allegedly performs some change to the state.
+    A "validation" is a function that accepts (spec, state) arguments and validates some change was made.
+
+    The "mutation" may return some state that should be available to any down-stream transitions
+    across the **entire** scenario.
+
+    The ``stats`` parameter reflects a summary of actions in a given scenario like
+    how many blocks will be produced. This data can be useful to construct a valid
+    pre-state and so is provided at the setup stage.
     """
     def _skip_epochs(epoch_producer):
-        def f(spec, state):
+        def f(spec, state, _stats):
             """
             The unoptimized spec implementation is too slow to advance via ``next_epoch``.
             Instead, just overwrite the ``state.slot`` and continue...
@@ -226,7 +266,7 @@ def _randomized_scenario_setup(state_randomizer):
             state.slot += slots_to_skip
         return f
 
-    def _simulate_honest_execution(spec, state):
+    def _simulate_honest_execution(spec, state, _stats):
         """
         Want to start tests not in a leak state; the finality data
         may not reflect this condition with prior (arbitrary) mutations,
@@ -286,14 +326,29 @@ def _iter_temporal(spec, description):
         yield i
 
 
+def _compute_statistics(scenario):
+    block_count = 0
+    for transition in scenario["transitions"]:
+        block_producer = _resolve_ref(transition.get("block_producer", None))
+        if block_producer and block_producer != no_block:
+            block_count += 1
+    return {
+        "block_count": block_count,
+    }
+
+
 def run_generated_randomized_test(spec, state, scenario):
+    stats = _compute_statistics(scenario)
     if "setup" not in scenario:
         state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state))
         scenario["setup"] = _randomized_scenario_setup(state_randomizer)
 
+    scenario_state = {}
     for mutation, validation in scenario["setup"]:
-        mutation(spec, state)
+        additional_state = mutation(spec, state, stats)
         validation(spec, state)
+        if additional_state:
+            scenario_state.update(additional_state)
 
     yield "pre", state
 
@@ -307,7 +362,7 @@ def run_generated_randomized_test(spec, state, scenario):
             next_slot(spec, state)
 
         block_producer = _resolve_ref(transition["block_producer"])
-        block = block_producer(spec, state, blocks)
+        block = block_producer(spec, state, blocks, scenario_state)
         if block:
             signed_block = state_transition_and_sign_block(spec, state, block)
             blocks.append(signed_block)
