@@ -128,9 +128,12 @@ def random_block(spec, state, _signed_blocks):
 SYNC_AGGREGATE_PARTICIPATION_BUCKETS = 4
 
 
-def random_block_altair(spec, state, signed_blocks):
+def random_block_altair_with_cycling_sync_committee_participation(spec,
+                                                                  state,
+                                                                  signed_blocks):
     block = random_block(spec, state, signed_blocks)
-    fraction_missed = len(signed_blocks) / SYNC_AGGREGATE_PARTICIPATION_BUCKETS
+    block_index = len(signed_blocks) % SYNC_AGGREGATE_PARTICIPATION_BUCKETS
+    fraction_missed = block_index * (1 / SYNC_AGGREGATE_PARTICIPATION_BUCKETS)
     fraction_participated = 1.0 - fraction_missed
     block.body.sync_aggregate = get_random_sync_aggregate(
         spec,

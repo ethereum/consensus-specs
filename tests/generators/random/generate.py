@@ -20,7 +20,7 @@ from eth2spec.test.utils.randomized_block_tests import (
     randomize_state,
     randomize_state_altair,
     random_block,
-    random_block_altair,
+    random_block_altair_with_cycling_sync_committee_participation,
     last_slot_in_epoch,
     random_slot_in_epoch,
     penultimate_slot_in_epoch,
@@ -252,7 +252,7 @@ if __name__ == "__main__":
         run_generate_tests_to_std_out(
             ALTAIR,
             state_randomizer=randomize_state_altair,
-            block_randomizer=random_block_altair,
+            block_randomizer=random_block_altair_with_cycling_sync_committee_participation,
         )
     if not did_generate:
         warnings.warn("no phase given for test generation")
