@@ -1051,25 +1051,25 @@ def test_eth1_data_votes_no_consensus(spec, state):
     yield 'post', state
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_full_random_operations_0(spec, state):
     yield from run_test_full_random_operations(spec, state, rng=Random(2020))
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_full_random_operations_1(spec, state):
     yield from run_test_full_random_operations(spec, state, rng=Random(2021))
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_full_random_operations_2(spec, state):
     yield from run_test_full_random_operations(spec, state, rng=Random(2022))
 
 
-@with_phases([PHASE0])
+@with_all_phases
 @spec_state_test
 def test_full_random_operations_3(spec, state):
     yield from run_test_full_random_operations(spec, state, rng=Random(2023))

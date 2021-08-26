@@ -96,6 +96,8 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if len(presets) != 0:
         print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
 
+    generated_test_count = 0
+    skipped_test_count = 0
     for tprov in test_providers:
         # runs anything that we don't want to repeat for every test case.
         tprov.prepare()
@@ -110,6 +112,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
             if case_dir.exists():
                 if not args.force and not incomplete_tag_file.exists():
+                    skipped_test_count += 1
                     print(f'Skipping already existing test: {case_dir}')
                     continue
                 else:
@@ -149,6 +152,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                             output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
                 except SkippedTest as e:
                     print(e)
+                    skipped_test_count += 1
                     shutil.rmtree(case_dir)
                     continue
 
@@ -172,10 +176,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 if not written_part:
                     shutil.rmtree(case_dir)
                 else:
+                    generated_test_count += 1
                     # Only remove `INCOMPLETE` tag file
                     os.remove(incomplete_tag_file)
 
-    print(f"completed {generator_name}")
+    summary_message = f"completed generation of {generator_name} with {generated_test_count} tests"
+    summary_message += f" ({skipped_test_count} skipped tests)"
+    print(summary_message)
 
 
 def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):

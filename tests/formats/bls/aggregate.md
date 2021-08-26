@@ -14,6 +14,8 @@ output: BLS Signature -- expected output, single BLS signature or empty.
 - `BLS Signature` here is encoded as a string: hexadecimal encoding of 96 bytes (192 nibbles), prefixed with `0x`.
 - No output value if the input is invalid.
 
+All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
+
 ## Condition
 
 The `aggregate` handler should aggregate the signatures in the `input`, and the result should match the expected `output`.

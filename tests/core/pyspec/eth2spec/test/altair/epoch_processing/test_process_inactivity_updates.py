@@ -3,9 +3,14 @@ from random import Random
 from eth2spec.test.context import spec_state_test, with_altair_and_later
 from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores, zero_inactivity_scores
 from eth2spec.test.helpers.state import (
+    next_epoch,
     next_epoch_via_block,
     set_full_participation,
     set_empty_participation,
+)
+from eth2spec.test.helpers.voluntary_exits import (
+    exit_validators,
+    get_exited_validators
 )
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with
@@ -13,6 +18,7 @@ from eth2spec.test.helpers.epoch_processing import (
 from eth2spec.test.helpers.random import (
     randomize_attestation_participation,
     randomize_previous_epoch_participation,
+    randomize_state,
 )
 from eth2spec.test.helpers.rewards import leaking
 
@@ -264,5 +270,110 @@ def test_some_slashed_full_random_leaking(spec, state):
         randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,
     )
 
+    # Check still in leak
+    assert spec.is_in_inactivity_leak(state)
+
+
+@with_altair_and_later
+@spec_state_test
+@leaking()
+def test_some_exited_full_random_leaking(spec, state):
+    rng = Random(1102233)
+
+    exit_count = 3
+
+    # randomize ahead of time to check exited validators do not have
+    # mutations applied to their inactivity scores
+    randomize_inactivity_scores(spec, state, rng=rng)
+
+    assert not any(get_exited_validators(spec, state))
+    exited_indices = exit_validators(spec, state, exit_count, rng=rng)
+    assert not any(get_exited_validators(spec, state))
+
+    # advance the state to effect the exits
+    target_epoch = max(state.validators[index].exit_epoch for index in exited_indices)
+    # validators that have exited in the previous epoch or earlier will not
+    # have their inactivity scores modified, the test advances the state past this point
+    # to confirm this invariant:
+    previous_epoch = spec.get_previous_epoch(state)
+    for _ in range(target_epoch - previous_epoch):
+        next_epoch(spec, state)
+    assert len(get_exited_validators(spec, state)) == exit_count
+
+    previous_scores = state.inactivity_scores.copy()
+
+    yield from run_inactivity_scores_test(
+        spec, state,
+        randomize_previous_epoch_participation, rng=rng,
+    )
+
+    # ensure exited validators have their score "frozen" at exit
+    # but otherwise there was a change
+    some_changed = False
+    for index in range(len(state.validators)):
+        if index in exited_indices:
+            assert previous_scores[index] == state.inactivity_scores[index]
+        else:
+            previous_score = previous_scores[index]
+            current_score = state.inactivity_scores[index]
+            if previous_score != current_score:
+                some_changed = True
+    assert some_changed
+
+    # Check still in leak
+    assert spec.is_in_inactivity_leak(state)
+
+
+def _run_randomized_state_test_for_inactivity_updates(spec, state, rng=Random(13377331)):
+    randomize_inactivity_scores(spec, state, rng=rng)
+    randomize_state(spec, state, rng=rng)
+
+    exited_validators = get_exited_validators(spec, state)
+    exited_but_not_slashed = []
+    for index in exited_validators:
+        validator = state.validators[index]
+        if validator.slashed:
+            continue
+        exited_but_not_slashed.append(index)
+
+    assert len(exited_but_not_slashed) > 0
+
+    some_exited_validator = exited_but_not_slashed[0]
+
+    pre_score_for_exited_validator = state.inactivity_scores[some_exited_validator]
+
+    assert pre_score_for_exited_validator != 0
+
+    assert len(set(state.inactivity_scores)) > 1
+
+    yield from run_inactivity_scores_test(spec, state)
+
+    post_score_for_exited_validator = state.inactivity_scores[some_exited_validator]
+    assert pre_score_for_exited_validator == post_score_for_exited_validator
+
+
+@with_altair_and_later
+@spec_state_test
+def test_randomized_state(spec, state):
+    """
+    This test ensures that once a validator has exited,
+    their inactivity score does not change.
+    """
+    rng = Random(10011001)
+    _run_randomized_state_test_for_inactivity_updates(spec, state, rng=rng)
+
+
+@with_altair_and_later
+@spec_state_test
+@leaking()
+def test_randomized_state_leaking(spec, state):
+    """
+    This test ensures that once a validator has exited,
+    their inactivity score does not change, even during a leak.
+    Note that slashed validators are still subject to mutations
+    (refer ``get_eligible_validator_indices`).
+    """
+    rng = Random(10011002)
+    _run_randomized_state_test_for_inactivity_updates(spec, state, rng=rng)
     # Check still in leak
     assert spec.is_in_inactivity_leak(state)

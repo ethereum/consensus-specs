@@ -1,4 +1,4 @@
-# Ethereum 2.0 The Merge
+# The Merge -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,6 +12,8 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Configuration](#configuration)
+  - [Genesis testing settings](#genesis-testing-settings)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -31,6 +33,7 @@
     - [`on_payload`](#on_payload)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
+    - [`is_valid_gas_limit`](#is_valid_gas_limit)
     - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
 
@@ -59,6 +62,19 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
+| `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
+| `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
+
+## Configuration
+
+### Genesis testing settings
+
+*Note*: These configuration settings do not apply to the mainnet and are utilized only by pure Merge testing.
+
+| Name | Value |
+| - | - |
+| `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
+| `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000')` (= 1,000,000,000) |
 
 ## Containers
 
@@ -128,6 +144,8 @@ class BeaconState(Container):
 
 #### `ExecutionPayload`
 
+*Note*: The `base_fee_per_gas` field is serialized in little-endian.
+
 ```python
 class ExecutionPayload(Container):
     # Execution block header fields
@@ -141,6 +159,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
+    base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559, little-endian serialized
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -161,6 +180,7 @@ class ExecutionPayloadHeader(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
+    base_fee_per_gas: Bytes32
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
@@ -239,17 +259,41 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ### Execution payload processing
 
+#### `is_valid_gas_limit`
+
+```python
+def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> bool:
+    parent_gas_limit = parent.gas_limit
+
+    # Check if the payload used too much gas
+    if payload.gas_used > payload.gas_limit:
+        return False
+
+    # Check if the payload changed the gas limit too much
+    if payload.gas_limit >= parent_gas_limit + parent_gas_limit // GAS_LIMIT_DENOMINATOR:
+        return False
+    if payload.gas_limit <= parent_gas_limit - parent_gas_limit // GAS_LIMIT_DENOMINATOR:
+        return False
+
+    # Check if the gas limit is at least the minimum gas limit
+    if payload.gas_limit < MIN_GAS_LIMIT:
+        return False
+
+    return True
+```
+
 #### `process_execution_payload`
 
 *Note:* This function depends on `process_randao` function call as it retrieves the most recent randao mix from the `state`. Implementations that are considering parallel processing of execution payload with respect to beacon chain state transition function should work around this dependency.
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash, block number and random
+    # Verify consistency of the parent hash, block number, random, base fee per gas and gas limit
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
         assert payload.random == get_randao_mix(state, get_current_epoch(state))
+        assert is_valid_gas_limit(payload, state.latest_execution_payload_header)
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
@@ -266,6 +310,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         gas_limit=payload.gas_limit,
         gas_used=payload.gas_used,
         timestamp=payload.timestamp,
+        base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
     )
@@ -321,6 +366,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     state.latest_execution_payload_header.block_hash = eth1_block_hash
     state.latest_execution_payload_header.timestamp = eth1_timestamp
     state.latest_execution_payload_header.random = eth1_block_hash
+    state.latest_execution_payload_header.gas_limit = GENESIS_GAS_LIMIT
+    state.latest_execution_payload_header.base_fee_per_gas = GENESIS_BASE_FEE_PER_GAS
 
     return state
 ```

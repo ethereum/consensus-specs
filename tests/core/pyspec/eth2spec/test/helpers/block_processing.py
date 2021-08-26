@@ -48,11 +48,9 @@ def run_block_processing_to(spec, state, block, process_name: str):
     A test prepares a pre-state by calling this function, output the pre-state,
      and it can then proceed to run the returned callable, and output a post-state.
     """
-    print(f"state.slot {state.slot} block.slot {block.slot}")
     # transition state to slot before block state transition
     if state.slot < block.slot:
         spec.process_slots(state, block.slot)
-    print(f"state.slot {state.slot} block.slot {block.slot}  A")
 
     # process components of block transition
     for name, call in get_process_calls(spec).items():

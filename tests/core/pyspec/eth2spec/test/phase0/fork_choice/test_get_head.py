@@ -11,12 +11,12 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.fork_choice import (
     tick_and_run_on_attestation,
-    tick_and_run_on_block,
+    tick_and_add_block,
     get_anchor_root,
     get_genesis_forkchoice_store_and_block,
     get_formatted_head_output,
     on_tick_and_append_step,
-    run_on_block,
+    add_block,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -68,12 +68,12 @@ def test_chain_no_attestations(spec, state):
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block_1 = build_empty_block_for_next_slot(spec, state)
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
-    yield from tick_and_run_on_block(spec, store, signed_block_1, test_steps)
+    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
 
     # On receiving a block of next epoch
     block_2 = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
-    yield from tick_and_run_on_block(spec, store, signed_block_2, test_steps)
+    yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
 
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
     test_steps.append({
@@ -107,14 +107,14 @@ def test_split_tie_breaker_no_attestations(spec, state):
     block_1_state = genesis_state.copy()
     block_1 = build_empty_block_for_next_slot(spec, block_1_state)
     signed_block_1 = state_transition_and_sign_block(spec, block_1_state, block_1)
-    yield from tick_and_run_on_block(spec, store, signed_block_1, test_steps)
+    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
 
     # additional block at slot 1
     block_2_state = genesis_state.copy()
     block_2 = build_empty_block_for_next_slot(spec, block_2_state)
     block_2.body.graffiti = b'\x42' * 32
     signed_block_2 = state_transition_and_sign_block(spec, block_2_state, block_2)
-    yield from tick_and_run_on_block(spec, store, signed_block_2, test_steps)
+    yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
 
     highest_root = max(spec.hash_tree_root(block_1), spec.hash_tree_root(block_2))
     assert spec.get_head(store) == highest_root
@@ -150,14 +150,14 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     for _ in range(3):
         long_block = build_empty_block_for_next_slot(spec, long_state)
         signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
-        yield from tick_and_run_on_block(spec, store, signed_long_block, test_steps)
+        yield from tick_and_add_block(spec, store, signed_long_block, test_steps)
 
     # build short tree
     short_state = genesis_state.copy()
     short_block = build_empty_block_for_next_slot(spec, short_state)
     short_block.body.graffiti = b'\x42' * 32
     signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
-    yield from tick_and_run_on_block(spec, store, signed_short_block, test_steps)
+    yield from tick_and_add_block(spec, store, signed_short_block, test_steps)
 
     short_attestation = get_valid_attestation(spec, short_state, short_block.slot, signed=True)
     yield from tick_and_run_on_attestation(spec, store, short_attestation, test_steps)
@@ -200,7 +200,7 @@ def test_filtered_block_tree(spec, state):
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     for signed_block in signed_blocks:
-        yield from run_on_block(spec, store, signed_block, test_steps)
+        yield from add_block(spec, store, signed_block, test_steps)
 
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
@@ -247,7 +247,7 @@ def test_filtered_block_tree(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # include rogue block and associated attestations in the store
-    yield from run_on_block(spec, store, signed_rogue_block, test_steps)
+    yield from add_block(spec, store, signed_rogue_block, test_steps)
 
     for attestation in attestations:
         yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)

@@ -12,8 +12,9 @@ if __name__ == "__main__":
         'voluntary_exit',
     ]}
     altair_mods = {
-        **{key: 'eth2spec.test.altair.block_processing.test_process_' + key for key in [
+        **{key: 'eth2spec.test.altair.block_processing.sync_aggregate.test_process_' + key for key in [
             'sync_aggregate',
+            'sync_aggregate_random',
         ]},
         **phase_0_mods,
     }  # also run the previous phase 0 tests

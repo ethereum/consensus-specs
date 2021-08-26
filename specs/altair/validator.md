@@ -1,6 +1,6 @@
-# Ethereum 2.0 Altair -- Honest Validator
+# Altair -- Honest Validator
 
-This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
+This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 
 ## Table of contents
 
@@ -49,8 +49,8 @@ This is an accompanying document to [Ethereum 2.0 Altair -- The Beacon Chain](./
 
 ## Introduction
 
-This document represents the expected behavior of an "honest validator" with respect to the Altair upgrade of the Ethereum 2.0 protocol.
-It builds on the [previous document for the behavior of an "honest validator" from Phase 0](../phase0/validator.md) of the Ethereum 2.0 protocol.
+This document represents the expected behavior of an "honest validator" with respect to the Altair upgrade of the Ethereum proof-of-stake protocol.
+It builds on the [previous document for the behavior of an "honest validator" from Phase 0](../phase0/validator.md) of the Ethereum proof-of-stake protocol.
 This previous document is referred to below as the "Phase 0 document".
 
 Altair introduces a new type of committee: the sync committee. Sync committees are responsible for signing each block of the canonical chain and there exists an efficient algorithm for light clients to sync the chain using the output of the sync committees.

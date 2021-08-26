@@ -1,4 +1,4 @@
-# Ethereum 2.0 The Merge
+# The Merge -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

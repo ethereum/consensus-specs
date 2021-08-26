@@ -306,7 +306,7 @@ def test_att1_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
     attester_slashing.attestation_1.attesting_indices = []
-    attester_slashing.attestation_1.signature = spec.bls.Z2_SIGNATURE
+    attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
@@ -318,7 +318,7 @@ def test_att2_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
     attester_slashing.attestation_2.attesting_indices = []
-    attester_slashing.attestation_2.signature = spec.bls.Z2_SIGNATURE
+    attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
@@ -330,10 +330,10 @@ def test_all_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
 
     attester_slashing.attestation_1.attesting_indices = []
-    attester_slashing.attestation_1.signature = spec.bls.Z2_SIGNATURE
+    attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
 
     attester_slashing.attestation_2.attesting_indices = []
-    attester_slashing.attestation_2.signature = spec.bls.Z2_SIGNATURE
+    attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 

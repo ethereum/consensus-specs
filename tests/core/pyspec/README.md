@@ -1,6 +1,6 @@
-# Eth2 Executable Python Spec (PySpec)
+# Executable Python Spec (PySpec)
 
-The executable Python spec is built from the Eth2 specification, 
+The executable Python spec is built from the consensus specifications,
  complemented with the necessary helper functions for hashing, BLS, and more.
 
 With this executable spec,
@@ -27,7 +27,7 @@ to enable debuggers to navigate between packages and generated code, without fra
 By default, when installing the `eth2spec` as package in non-develop mode,
 the distutils implementation of the `setup` runs `build`, which is extended to run the same `pyspec` work,
 but outputs into the standard `./build/lib` output.
-This enables the `eth2.0-specs` repository to be installed like any other python package.
+This enables the `consensus-specs` repository to be installed like any other python package.
 
 
 ## Py-tests

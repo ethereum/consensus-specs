@@ -1,9 +1,9 @@
-# Eth2 test generators
+# Consensus test generators
 
-This directory contains all the generators for tests, consumed by Eth2 client implementations.
+This directory contains all the generators for tests, consumed by consensus-layer client implementations.
 
 Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs,
- here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
+ here: [ethereum/consensus-spec-tests](https://github.com/ethereum/consensus-spec-tests).
 
 On releases, test generators are run by the release manager. Test-generation of mainnet tests can take a significant amount of time, and is better left out of a CI setup.
 
@@ -36,7 +36,7 @@ Prerequisites:
 
 ### Cleaning
 
-This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../eth2.0-spec-tests/tests`).
+This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../consensus-spec-tests/tests`).
 
 ```bash
 make clean 
@@ -226,5 +226,5 @@ Do note that generators should be easy to maintain, lean, and based on the spec.
 If a test generator is not needed anymore, undo the steps described above and make a new release:
 
 1. Remove the generator directory.
-2. Remove the generated tests in the [`eth2.0-spec-tests`](https://github.com/ethereum/eth2.0-spec-tests) repository by opening a pull request there.
+2. Remove the generated tests in the [`consensus-spec-tests`](https://github.com/ethereum/consensus-spec-tests) repository by opening a pull request there.
 3. Make a new release.
