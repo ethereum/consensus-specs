@@ -171,7 +171,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     return prepare_signed_exits(spec, state, exit_indices)
 
 
-def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=Random(2099)):
+def get_random_sync_aggregate(spec, state, slot, block_root=None, fraction_participated=1.0, rng=Random(2099)):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     participant_count = int(len(committee_indices) * fraction_participated)
     participant_indices = rng.sample(range(len(committee_indices)), participant_count)
@@ -184,6 +184,7 @@ def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=
         state,
         slot,
         participants,
+        block_root=block_root,
     )
     return spec.SyncAggregate(
         sync_committee_bits=[index in participant_indices for index in range(len(committee_indices))],

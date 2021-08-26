@@ -135,10 +135,12 @@ def random_block_altair_with_cycling_sync_committee_participation(spec,
     block_index = len(signed_blocks) % SYNC_AGGREGATE_PARTICIPATION_BUCKETS
     fraction_missed = block_index * (1 / SYNC_AGGREGATE_PARTICIPATION_BUCKETS)
     fraction_participated = 1.0 - fraction_missed
+    previous_root = block.parent_root
     block.body.sync_aggregate = get_random_sync_aggregate(
         spec,
         state,
         block.slot - 1,
+        block_root=previous_root,
         fraction_participated=fraction_participated,
     )
     return block
