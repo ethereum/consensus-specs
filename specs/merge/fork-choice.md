@@ -73,7 +73,7 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
 ```python
 @dataclass
 class TransitionStore(object):
-    transition_total_difficulty: uint256
+    terminal_total_difficulty: uint256
 ```
 
 ### `PowBlock`
@@ -101,8 +101,8 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
-    is_total_difficulty_reached = block.total_difficulty >= transition_store.transition_total_difficulty
-    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.transition_total_difficulty
+    is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
+    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
     return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
