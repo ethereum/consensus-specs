@@ -483,7 +483,8 @@ def test_new_justified_is_later_than_store_justified(spec, state):
     assert fork_2_state.finalized_checkpoint.epoch == 0
     assert fork_2_state.current_justified_checkpoint.epoch == 5
     # Check SAFE_SLOTS_TO_UPDATE_JUSTIFIED
-    spec.on_tick(store, store.genesis_time + fork_2_state.slot * spec.config.SECONDS_PER_SLOT)
+    time = store.genesis_time + fork_2_state.slot * spec.config.SECONDS_PER_SLOT
+    on_tick_and_append_step(spec, store, time, test_steps)
     assert spec.compute_slots_since_epoch_start(spec.get_current_slot(store)) >= spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
     # Run on_block
     yield from add_block(spec, store, signed_block, test_steps)
@@ -526,7 +527,8 @@ def test_new_justified_is_later_than_store_justified(spec, state):
     # # Apply blocks of `fork_3_state` to `store`
     # for block in all_blocks:
     #     if store.time < spec.compute_time_at_slot(fork_2_state, block.message.slot):
-    #         spec.on_tick(store, store.genesis_time + block.message.slot * spec.config.SECONDS_PER_SLOT)
+    #         time = store.genesis_time + block.message.slot * spec.config.SECONDS_PER_SLOT
+    #         on_tick_and_append_step(spec, store, time, test_steps)
     #     # valid_attestations=False because the attestations are outdated (older than previous epoch)
     #     yield from add_block(spec, store, block, test_steps, allow_invalid_attestations=False)
 
@@ -643,7 +645,6 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
 
     # Process state
     next_epoch(spec, state)
-    spec.on_tick(store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT)
 
     state, store, _ = yield from apply_next_epoch_with_attestations(
         spec, state, store, False, True, test_steps=test_steps)
