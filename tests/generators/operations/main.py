@@ -23,7 +23,7 @@ if __name__ == "__main__":
         **{key: 'eth2spec.test.merge.block_processing.test_process_' + key for key in [
             'execution_payload',
         ]},
-        **phase_0_mods,  # TODO: runs phase0 tests. Rebase to include `altair_mods` testing later.
+        **altair_mods,
     }
 
     # TODO Custody Game testgen is disabled for now

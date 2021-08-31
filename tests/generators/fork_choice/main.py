@@ -9,8 +9,8 @@ if __name__ == "__main__":
     ]}
     # No additional Altair specific finality tests, yet.
     altair_mods = phase_0_mods
-    # No specific Merge tests yet. TODO: rebase onto Altair testing later.
-    merge_mods = phase_0_mods
+    # No specific Merge tests yet.
+    merge_mods = altair_mods
 
     all_mods = {
         PHASE0: phase_0_mods,
