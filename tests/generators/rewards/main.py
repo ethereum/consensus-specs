@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # No additional merge specific rewards tests, yet.
     # Note: Block rewards are non-epoch rewards and are tested as part of block processing tests.
     # Transaction fees are part of the execution-layer.
-    merge_mods = phase_0_mods
+    merge_mods = altair_mods
 
     all_mods = {
         PHASE0: phase_0_mods,

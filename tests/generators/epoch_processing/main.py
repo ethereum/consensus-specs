@@ -25,8 +25,7 @@ if __name__ == "__main__":
     }  # also run the previous phase 0 tests
 
     # No epoch-processing changes in Merge and previous testing repeats with new types, so no additional tests required.
-    # TODO: rebase onto Altair testing later.
-    merge_mods = phase_0_mods
+    merge_mods = altair_mods
 
     # TODO Custody Game testgen is disabled for now
     # custody_game_mods = {**{key: 'eth2spec.test.custody_game.epoch_processing.test_process_' + key for key in [
