@@ -9,6 +9,7 @@ from eth2spec.test.context import (
     low_balances, misc_balances,
 )
 import eth2spec.test.helpers.rewards as rewards_helpers
+from eth2spec.test.helpers.random import randomize_state, patch_state_to_non_leaking
 
 
 @with_all_phases
@@ -57,3 +58,14 @@ def test_full_random_low_balances_1(spec, state):
 @single_phase
 def test_full_random_misc_balances(spec, state):
     yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(7070))
+
+
+@with_all_phases
+@spec_state_test
+def test_full_random_without_leak_0(spec, state):
+    rng = Random(1010)
+    randomize_state(spec, state, rng)
+    assert spec.is_in_inactivity_leak(state)
+    patch_state_to_non_leaking(spec, state)
+    assert not spec.is_in_inactivity_leak(state)
+    yield from rewards_helpers.run_deltas(spec, state)
