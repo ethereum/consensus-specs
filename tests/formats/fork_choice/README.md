@@ -80,26 +80,34 @@ checks: {<store_attibute>: value}  -- the assertions.
 `<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. Currently, the possible fields included:
 
 ```yaml
-head: {                                     -- Encoded 32-byte value from get_head(store)
-    slot: slot,
-    root: string,
+head: {
+    slot: int,
+    root: string,             -- Encoded 32-byte value from get_head(store)
 }
-time: int                                   -- store.time
-genesis_time: int                           -- store.genesis_time
-justified_checkpoint_root: string           -- Encoded 32-byte value from store.justified_checkpoint.root
-finalized_checkpoint_root: string           -- Encoded 32-byte value from store.finalized_checkpoint.root
-best_justified_checkpoint_root: string      -- Encoded 32-byte value from store.best_justified_checkpoint.root
+time: int                     -- store.time
+genesis_time: int             -- store.genesis_time
+justified_checkpoint: {
+    epoch: int,               -- Integer value from store.justified_checkpoint.epoch
+    root: string,             -- Encoded 32-byte value from store.justified_checkpoint.root
+}
+finalized_checkpoint: {
+    epoch: int,               -- Integer value from store.finalized_checkpoint.epoch
+    root: string,             -- Encoded 32-byte value from store.finalized_checkpoint.root
+}
+best_justified_checkpoint: {
+    epoch: int,               -- Integer value from store.best_justified_checkpoint.epoch
+    root: string,             -- Encoded 32-byte value from store.best_justified_checkpoint.root
+}
 ```
 
 For example:
 ```yaml
 - checks:
-    time: 144
-    genesis_time: 0
-    head: {slot: 17, root: '0xd2724c86002f7e1f8656ab44a341a409ad80e6e70a5225fd94835566deebb66f'}
-    justified_checkpoint_root: '0xcea6ecd3d3188e32ebf611f960eebd45b6c6f477a7cff242fa567a42653bfc7c'
-    finalized_checkpoint_root: '0xcea6ecd3d3188e32ebf611f960eebd45b6c6f477a7cff242fa567a42653bfc7c'
-    best_justified_checkpoint: '0xcea6ecd3d3188e32ebf611f960eebd45b6c6f477a7cff242fa567a42653bfc7c'
+    time: 192
+    head: {slot: 32, root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'}
+    justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
+    finalized_checkpoint: {epoch: 2, root: '0x40d32d6283ec11c53317a46808bc88f55657d93b95a1af920403187accf48f4f'}
+    best_justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
 ```
 
 *Note*: Each `checks` step may include one or multiple items. Each item has to be checked against the current store.

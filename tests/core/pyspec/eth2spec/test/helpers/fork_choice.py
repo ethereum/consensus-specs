@@ -156,9 +156,18 @@ def add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_a
         'checks': {
             'time': int(store.time),
             'head': get_formatted_head_output(spec, store),
-            'justified_checkpoint_root': encode_hex(store.justified_checkpoint.root),
-            'finalized_checkpoint_root': encode_hex(store.finalized_checkpoint.root),
-            'best_justified_checkpoint': encode_hex(store.best_justified_checkpoint.root),
+            'justified_checkpoint': {
+                'epoch': int(store.justified_checkpoint.epoch),
+                'root': encode_hex(store.justified_checkpoint.root),
+            },
+            'finalized_checkpoint': {
+                'epoch': int(store.finalized_checkpoint.epoch),
+                'root': encode_hex(store.finalized_checkpoint.root),
+            },
+            'best_justified_checkpoint': {
+                'epoch': int(store.best_justified_checkpoint.epoch),
+                'root': encode_hex(store.best_justified_checkpoint.root),
+            },
         }
     })
 
