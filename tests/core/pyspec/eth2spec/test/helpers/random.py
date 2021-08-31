@@ -128,3 +128,33 @@ def randomize_state(spec, state, rng=Random(8020), exit_fraction=None, slash_fra
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)
     randomize_attestation_participation(spec, state, rng)
+
+
+def patch_state_to_non_leaking(spec, state):
+    """
+    This function performs an irregular state transition so that:
+    1. the current justified checkpoint references the previous epoch
+    2. the previous justified checkpoint references the epoch before previous
+    3. the finalized checkpoint matches the previous justified checkpoint
+
+    The effects of this function are intended to offset randomization side effects
+    performed by other functionality in this module so that if the ``state`` was leaking,
+    then the ``state`` is not leaking after.
+    """
+    state.justification_bits = (True, True, True, True)
+    previous_epoch = spec.get_previous_epoch(state)
+    previous_root = spec.get_block_root(state, previous_epoch)
+    previous_previous_epoch = max(spec.GENESIS_EPOCH, spec.Epoch(previous_epoch - 1))
+    previous_previous_root = spec.get_block_root(state, previous_previous_epoch)
+    state.previous_justified_checkpoint = spec.Checkpoint(
+        epoch=previous_previous_epoch,
+        root=previous_previous_root,
+    )
+    state.current_justified_checkpoint = spec.Checkpoint(
+        epoch=previous_epoch,
+        root=previous_root,
+    )
+    state.finalized_checkpoint = spec.Checkpoint(
+        epoch=previous_previous_epoch,
+        root=previous_previous_root,
+    )
