@@ -210,6 +210,9 @@ def test_on_block_finalized_skip_slots(spec, state):
     # Skip the rest slots of epoch 1 and the first slot of epoch 2
     next_slots(spec, state, spec.SLOTS_PER_EPOCH)
 
+    # The state after the skipped slots
+    target_state = state.copy()
+
     # Fill epoch 3 and 4
     for _ in range(2):
         state, store, _ = yield from apply_next_epoch_with_attestations(
@@ -223,8 +226,8 @@ def test_on_block_finalized_skip_slots(spec, state):
 
     # Now build a block at later slot than finalized *epoch*
     # Includes finalized block in chain and the skipped slots
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    block = build_empty_block_for_next_slot(spec, target_state)
+    signed_block = state_transition_and_sign_block(spec, target_state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
     yield 'steps', test_steps
