@@ -75,17 +75,12 @@ def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequ
     return None
 
 
-def compute_randao_mix(state: BeaconState, randao_reveal: BLSSignature) -> Bytes32:
-    epoch = get_current_epoch(state)
-    return xor(get_randao_mix(state, epoch), hash(randao_reveal))
-
-
 def produce_execution_payload(state: BeaconState,
                               parent_hash: Hash32,
                               randao_reveal: BLSSignature,
                               execution_engine: ExecutionEngine) -> ExecutionPayload:
     timestamp = compute_timestamp_at_slot(state, state.slot)
-    randao_mix = compute_randao_mix(state, randao_reveal)
+    randao_mix = get_randao_mix(state, get_current_epoch(state))
     return execution_engine.assemble_block(parent_hash, timestamp, randao_mix)
 
 

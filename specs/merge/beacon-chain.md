@@ -246,15 +246,17 @@ The above function is accessed through the `EXECUTION_ENGINE` module which insta
 
 ### Block processing
 
+*Note*: The call to the `process_execution_payload` must happen before the call to `process_randao` as the former depends on the `randao_mix` computed with the reveal of the previous block.
+
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
+    if is_execution_enabled(state, block.body):
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 ### Execution payload processing
@@ -283,8 +285,6 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
 ```
 
 #### `process_execution_payload`
-
-*Note:* This function depends on `process_randao` function call as it retrieves the most recent randao mix from the `state`. Implementations that are considering parallel processing of execution payload with respect to beacon chain state transition function should work around this dependency.
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
