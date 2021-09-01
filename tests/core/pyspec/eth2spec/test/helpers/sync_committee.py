@@ -9,7 +9,6 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.block_processing import run_block_processing_to
 from eth2spec.utils import bls
-from eth2spec.utils.hash_function import hash
 
 
 def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None, domain_type=None):
@@ -75,10 +74,12 @@ def compute_sync_committee_proposer_reward(spec, state, committee_indices, commi
     return spec.Gwei(participant_reward * participant_number)
 
 
-def compute_committee_indices(spec, state, committee):
+def compute_committee_indices(spec, state, committee=None):
     """
     Given a ``committee``, calculate and return the related indices
     """
+    if committee is None:
+        committee = state.current_sync_committee
     all_pubkeys = [v.pubkey for v in state.validators]
     return [all_pubkeys.index(pubkey) for pubkey in committee.pubkeys]
 
@@ -153,6 +154,7 @@ def _build_block_for_next_slot_with_sync_participation(spec, state, committee_in
             state,
             block.slot - 1,
             [index for index, bit in zip(committee_indices, committee_bits) if bit],
+            block_root=block.parent_root,
         )
     )
     return block
@@ -161,23 +163,3 @@ def _build_block_for_next_slot_with_sync_participation(spec, state, committee_in
 def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
     block = _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits)
     yield from run_sync_committee_processing(spec, state, block)
-
-
-def get_committee_indices(spec, state, duplicates=False):
-    """
-    This utility function allows the caller to ensure there are or are not
-    duplicate validator indices in the returned committee based on
-    the boolean ``duplicates``.
-    """
-    state = state.copy()
-    current_epoch = spec.get_current_epoch(state)
-    randao_index = (current_epoch + 1) % spec.EPOCHS_PER_HISTORICAL_VECTOR
-    while True:
-        committee = spec.get_next_sync_committee_indices(state)
-        if duplicates:
-            if len(committee) != len(set(committee)):
-                return committee
-        else:
-            if len(committee) == len(set(committee)):
-                return committee
-        state.randao_mixes[randao_index] = hash(state.randao_mixes[randao_index])
