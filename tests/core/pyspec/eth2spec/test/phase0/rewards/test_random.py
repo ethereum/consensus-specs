@@ -38,6 +38,20 @@ def test_full_random_3(spec, state):
 
 
 @with_all_phases
+@spec_state_test
+def test_full_random_4(spec, state):
+    """
+    Ensure a rewards test with some exited (but not slashed) validators.
+    """
+    rng = Random(5050)
+    randomize_state(spec, state, rng)
+    assert spec.is_in_inactivity_leak(state)
+    target_validators = get_unslashed_exited_validators(spec, state)
+    assert len(target_validators) != 0
+    yield from rewards_helpers.run_deltas(spec, state)
+
+
+@with_all_phases
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
