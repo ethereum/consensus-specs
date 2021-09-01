@@ -155,3 +155,15 @@ def ensure_state_has_validators_across_lifecycle(spec, state):
     has_slashed = any(filter(lambda v: v.slashed, state.validators))
 
     return has_pending and has_active and has_exited and has_slashed
+
+
+def has_active_balance_differential(spec, state):
+    """
+    Ensure there is a difference between the total balance of
+    all _active_ validators and _all_ validators.
+    """
+    epoch = spec.get_current_epoch(state)
+    active_indices = spec.get_active_validator_indices(state, epoch)
+    active_balance = spec.get_total_balance(state, set(active_indices))
+    total_balance = spec.get_total_balance(state, set(range(len(state.validators))))
+    return active_balance // spec.EFFECTIVE_BALANCE_INCREMENT != total_balance // spec.EFFECTIVE_BALANCE_INCREMENT
