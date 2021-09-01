@@ -246,7 +246,7 @@ The above function is accessed through the `EXECUTION_ENGINE` module which insta
 
 ### Block processing
 
-*Note*: The call to the `process_execution_payload` must happen before the call to `process_randao` as the former depends on the `randao_mix` computed with the reveal of the previous block.
+*Note*: The call to the `process_execution_payload` must happen before the call to the `process_randao` as the former depends on the `randao_mix` computed with the reveal of the previous block.
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
