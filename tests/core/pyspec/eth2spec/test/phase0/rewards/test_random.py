@@ -10,6 +10,7 @@ from eth2spec.test.context import (
 )
 import eth2spec.test.helpers.rewards as rewards_helpers
 from eth2spec.test.helpers.random import randomize_state, patch_state_to_non_leaking
+from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 
 @with_all_phases
@@ -68,4 +69,6 @@ def test_full_random_without_leak_0(spec, state):
     assert spec.is_in_inactivity_leak(state)
     patch_state_to_non_leaking(spec, state)
     assert not spec.is_in_inactivity_leak(state)
+    target_validators = get_unslashed_exited_validators(spec, state)
+    assert len(target_validators) != 0
     yield from rewards_helpers.run_deltas(spec, state)
