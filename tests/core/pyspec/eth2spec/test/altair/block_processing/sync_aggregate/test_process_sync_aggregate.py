@@ -33,7 +33,7 @@ def test_invalid_signature_bad_domain(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits= committee_indices,
+        sync_committee_bits=committee_indices,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
