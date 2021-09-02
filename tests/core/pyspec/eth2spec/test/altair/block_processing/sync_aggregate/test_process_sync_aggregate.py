@@ -23,7 +23,6 @@ from eth2spec.test.context import (
     always_bls,
 )
 
-
 @with_altair_and_later
 @spec_state_test
 @always_bls
@@ -33,9 +32,8 @@ def test_invalid_signature_bad_domain(spec, state):
     random_participant = rng.choice(committee_indices)
 
     block = build_empty_block_for_next_slot(spec, state)
-    # Exclude one participant whose signature was included.
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[index != random_participant for index in committee_indices],
+        sync_committee_bits= committee_indices,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
