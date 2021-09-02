@@ -141,7 +141,8 @@ def patch_state_to_non_leaking(spec, state):
     performed by other functionality in this module so that if the ``state`` was leaking,
     then the ``state`` is not leaking after.
     """
-    state.justification_bits = (True, True, True, True)
+    state.justification_bits[0] = True
+    state.justification_bits[1] = True
     previous_epoch = spec.get_previous_epoch(state)
     previous_root = spec.get_block_root(state, previous_epoch)
     previous_previous_epoch = max(spec.GENESIS_EPOCH, spec.Epoch(previous_epoch - 1))
