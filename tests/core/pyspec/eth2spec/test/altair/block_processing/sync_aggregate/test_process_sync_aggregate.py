@@ -29,8 +29,6 @@ from eth2spec.test.context import (
 @always_bls
 def test_invalid_signature_bad_domain(spec, state):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
-    rng = random.Random(2020)
-    random_participant = rng.choice(committee_indices)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
