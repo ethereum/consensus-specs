@@ -974,12 +974,9 @@ def test_historical_batch(spec, state):
 
 
 @with_all_phases
+@with_presets([MINIMAL], reason="suffices to test eth1 data voting without long voting period")
 @spec_state_test
 def test_eth1_data_votes_consensus(spec, state):
-    if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
-        return dump_skipping_message("Skip test if config with longer `EPOCHS_PER_ETH1_VOTING_PERIOD` for saving time."
-                                     " Minimal config suffice to cover the target-of-test.")
-
     voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
 
     offset_block = build_empty_block(spec, state, slot=voting_period_slots - 1)
@@ -1018,12 +1015,9 @@ def test_eth1_data_votes_consensus(spec, state):
 
 
 @with_all_phases
+@with_presets([MINIMAL], reason="suffices to test eth1 data voting without long voting period")
 @spec_state_test
 def test_eth1_data_votes_no_consensus(spec, state):
-    if spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 2:
-        return dump_skipping_message("Skip test if config with longer `EPOCHS_PER_ETH1_VOTING_PERIOD` for saving time."
-                                     " Minimal config suffice to cover the target-of-test.")
-
     voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
 
     pre_eth1_hash = state.eth1_data.block_hash
