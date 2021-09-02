@@ -23,6 +23,7 @@ from eth2spec.test.context import (
     always_bls,
 )
 
+
 @with_altair_and_later
 @spec_state_test
 @always_bls
