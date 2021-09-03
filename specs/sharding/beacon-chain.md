@@ -31,6 +31,7 @@
 - [New containers](#new-containers)
   - [`Builder`](#builder)
   - [`DataCommitment`](#datacommitment)
+  - [`DataCommitmentPoints`](#datacommitmentpoints)
   - [`AttestedDataCommitment`](#attesteddatacommitment)
   - [ShardBlobBody](#shardblobbody)
   - [`ShardBlobBodySummary`](#shardblobbodysummary)
@@ -245,6 +246,26 @@ class DataCommitment(Container):
     samples_count: uint64
 ```
 
+### `DataCommitmentPoints`
+
+```python
+class DataCommitmentPoints(CommitmentContainer):
+    commitment: BLSCommitment
+    points: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOB]
+
+    def verify_commitment(self) -> bool:
+        if len(self.points) % POINTS_PER_SAMPLE != 0:
+            return False
+        # verifying the commitment is faster than recomputing it
+        return verify_data_commitment(self.points, self.commitment)
+
+    def hash_tree_root(self) -> Root:
+        return hash_tree_root(DataCommitment(
+            point=self.commitment,
+            samples_count=len(self.points) // POINTS_PER_SAMPLE
+        ))
+```
+
 ### `AttestedDataCommitment`
 
 ```python
@@ -264,12 +285,10 @@ Unique, signing different bodies as shard proposer for the same `(slot, shard)` 
 
 ```python
 class ShardBlobBody(Container):
-    # The actual data commitment
-    commitment: DataCommitment
-    # Proof that the degree < commitment.samples_count * POINTS_PER_SAMPLE
+    # Contents of the blob and cached commitment
+    data: DataCommitmentPoints
+    # Proof that the degree < len(data.points)
     degree_proof: BLSCommitment
-    # The actual data. Should match the commitment and degree proof.
-    data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOB]
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
@@ -291,8 +310,6 @@ class ShardBlobBodySummary(Container):
     commitment: DataCommitment
     # Proof that the degree < commitment.samples_count * POINTS_PER_SAMPLE
     degree_proof: BLSCommitment
-    # Hash-tree-root as summary of the data field
-    data_root: Root
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
@@ -432,6 +449,12 @@ def compute_previous_slot(slot: Slot) -> Slot:
         return Slot(slot - 1)
     else:
         return Slot(0)
+```
+
+```python
+def verify_data_commitment(data_as_poly: Sequence[BLSPoint], commitment: BLSCommitment) -> bool:
+    # TODO
+    return True
 ```
 
 #### `compute_updated_sample_price`
