@@ -34,6 +34,13 @@ def get_exited_validators(spec, state):
     return [index for (index, validator) in enumerate(state.validators) if validator.exit_epoch <= current_epoch]
 
 
+def get_unslashed_exited_validators(spec, state):
+    return [
+        index for index in get_exited_validators(spec, state)
+        if not state.validators[index].slashed
+    ]
+
+
 def exit_validators(spec, state, validator_count, rng=None):
     if rng is None:
         rng = Random(1337)

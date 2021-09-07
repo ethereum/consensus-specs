@@ -17,6 +17,7 @@ from eth2spec.test.helpers.inactivity_scores import (
 )
 from eth2spec.test.helpers.random import (
     randomize_state as randomize_state_helper,
+    patch_state_to_non_leaking,
 )
 from eth2spec.test.helpers.state import (
     next_slot,
@@ -274,23 +275,7 @@ def _randomized_scenario_setup(state_randomizer):
         may not reflect this condition with prior (arbitrary) mutations,
         so this mutator addresses that fact.
         """
-        state.justification_bits = (True, True, True, True)
-        previous_epoch = spec.get_previous_epoch(state)
-        previous_root = spec.get_block_root(state, previous_epoch)
-        previous_previous_epoch = max(spec.GENESIS_EPOCH, spec.Epoch(previous_epoch - 1))
-        previous_previous_root = spec.get_block_root(state, previous_previous_epoch)
-        state.previous_justified_checkpoint = spec.Checkpoint(
-            epoch=previous_previous_epoch,
-            root=previous_previous_root,
-        )
-        state.current_justified_checkpoint = spec.Checkpoint(
-            epoch=previous_epoch,
-            root=previous_root,
-        )
-        state.finalized_checkpoint = spec.Checkpoint(
-            epoch=previous_previous_epoch,
-            root=previous_previous_root,
-        )
+        patch_state_to_non_leaking(spec, state)
 
     return (
         # NOTE: the block randomization function assumes at least 1 shard committee period
