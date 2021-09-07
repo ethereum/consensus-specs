@@ -330,6 +330,7 @@ def test_balance_threshold_with_exited_validators(spec, state):
         validator = state.validators[index]
         validator.exit_epoch = epoch
         validator.withdrawable_epoch = epoch + 1
+        validator.withdrawable_epoch = validator.exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 
     exited_validators = get_unslashed_exited_validators(spec, state)
     assert len(exited_validators) != 0
