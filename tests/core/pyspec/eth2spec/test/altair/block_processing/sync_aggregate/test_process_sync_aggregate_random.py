@@ -3,7 +3,7 @@ from eth2spec.test.helpers.constants import (
     MAINNET, MINIMAL,
 )
 from eth2spec.test.helpers.random import (
-    randomize_state
+    randomize_state,
 )
 from eth2spec.test.helpers.state import (
     has_active_balance_differential,
