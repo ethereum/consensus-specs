@@ -19,6 +19,7 @@ from eth2spec.test.helpers.attester_slashings import (
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
@@ -38,6 +39,7 @@ from eth2spec.test.context import (
     with_custom_state,
     large_validator_set,
     is_post_altair,
+    is_post_merge,
 )
 
 
@@ -146,6 +148,11 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     spec.process_randao(state, block.body)
     spec.process_eth1_data(state, block.body)
     spec.process_operations(state, block.body)
+    if is_post_altair(spec):
+        spec.process_sync_aggregate(state, block.body.sync_aggregate)
+    if is_post_merge(spec):
+        if spec.is_execution_enabled(state, block.body):
+            spec.process_execution_payload(state, block.body.execution_payload, spec.EXECUTION_ENGINE)
 
     # Insert post-state rot
     block.state_root = state.hash_tree_root()
@@ -187,6 +194,10 @@ def test_parent_from_same_slot(spec, state):
 
     child_block = parent_block.copy()
     child_block.parent_root = state.latest_block_header.hash_tree_root()
+
+    if is_post_merge(spec):
+        randao_mix = spec.compute_randao_mix(state, child_block.body.randao_reveal)
+        child_block.body.execution_payload = build_empty_execution_payload(spec, state, randao_mix)
 
     # Show that normal path through transition fails
     failed_state = state.copy()
