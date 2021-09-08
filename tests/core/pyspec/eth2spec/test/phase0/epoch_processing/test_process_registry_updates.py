@@ -302,7 +302,7 @@ def test_activation_queue_activation_and_ejection__1(spec, state):
 @with_all_phases
 @spec_state_test
 def test_activation_queue_activation_and_ejection__churn_limit(spec, state):
-    num_validators_per_status= spec.get_validator_churn_limit(state)
+    num_validators_per_status = spec.get_validator_churn_limit(state)
     yield from run_test_activation_queue_activation_and_ejection(spec, state, num_validators_per_status)
 
 
