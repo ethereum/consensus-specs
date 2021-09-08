@@ -12,3 +12,6 @@ should have a setting `--terminal-total-difficulty-override`.
 If `TransitionStore` has already been initialized, this just changes the value of
 `TransitionStore.terminal_total_difficulty`, otherwise it initializes `TransitionStore` with the specified
 `terminal_total_difficulty`.
+
+By default, this setting is expected to not be used and `terminal_total_difficulty` will be set as defined
+[here](specs/merge/fork.md#initializing-transition-store).
