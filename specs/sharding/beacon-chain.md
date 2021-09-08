@@ -93,7 +93,6 @@ We define the following Python custom types for type hinting and readability:
 | `BLSCommitment` | `Bytes48` | A G1 curve point |
 | `BLSPoint` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 | `BuilderIndex` | `uint64` | Builder registry index |
-| `Wei` | `uint256` | An amount in Wei |
 
 ## Constants
 
@@ -225,7 +224,7 @@ class BeaconState(merge.BeaconState):
     # A ring buffer of the latest slots, with information per active shard.
     shard_buffer: Vector[List[ShardWork, MAX_SHARDS], SHARD_STATE_MEMORY_SLOTS]
     # Each shard tracks a base-fee to continually re-adjust towards target data capacity
-    shard_sample_prices: List[Wei, MAX_SHARDS]
+    shard_sample_prices: List[Gwei, MAX_SHARDS]
 ```
 
 ## New containers
@@ -277,7 +276,7 @@ class ShardBlobBody(Container):
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
-    max_priority_fee: GWei
+    max_priority_fee: Gwei
     max_fee: Gwei
 ```
 
@@ -299,7 +298,7 @@ class ShardBlobBodySummary(Container):
     # Latest block root of the Beacon Chain, before shard_blob.slot
     beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
-    max_priority_fee: GWei
+    max_priority_fee: Gwei
     max_fee: Gwei
 ```
 
@@ -441,16 +440,21 @@ def compute_previous_slot(slot: Slot) -> Slot:
 #### `compute_updated_sample_price`
 
 ```python
-def compute_updated_sample_price(prev_price: Wei, samples_length: uint64) -> Wei:
+def compute_updated_sample_price(prev_price: Gwei, samples_length: uint64) -> Gwei:
+    if samples_length == TARGET_SAMPLES_PER_BLOB:
+        return prev_price
+
     # Per epoch an adjustment is targeted, but since capacity may be delayed,
     #  it is split into SLOTS_PER_BASE_FEE_UPDATES smaller adjustments.
-    adjustment_quotient = Wei(SLOTS_PER_EPOCH * SLOTS_PER_BASE_FEE_UPDATES * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT)
+    adjustment_quotient = SLOTS_PER_EPOCH * SLOTS_PER_BASE_FEE_UPDATES * SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT
     if samples_length > TARGET_SAMPLES_PER_BLOB:
-        delta = max(1, prev_price * Wei(samples_length - TARGET_SAMPLES_PER_BLOB) // Wei(TARGET_SAMPLES_PER_BLOB) // adjustment_quotient)
-        return min(prev_price + delta, MAX_SAMPLE_PRICE)
+        sample_delta = samples_length - TARGET_SAMPLES_PER_BLOB
+        fee_delta = Gwei(max(1, prev_price * sample_delta // TARGET_SAMPLES_PER_BLOB // adjustment_quotient))
+        return min(prev_price + fee_delta), MAX_SAMPLE_PRICE)
     else:
-        delta = max(1, prev_price * Wei(TARGET_SAMPLES_PER_BLOB - samples_length) // Wei(TARGET_SAMPLES_PER_BLOB) // adjustment_quotient)
-        return max(prev_price, MIN_SAMPLE_PRICE + delta) - delta
+        sample_delta = TARGET_SAMPLES_PER_BLOB - samples_length
+        fee_delta = Gwei(max(1, prev_price * sample_delta // TARGET_SAMPLES_PER_BLOB // adjustment_quotient))
+        return max(prev_price, MIN_SAMPLE_PRICE + fee_delta) - fee_delta
 ```
 
 #### `compute_committee_source_epoch`
@@ -736,8 +740,8 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     # Builder must have sufficient balance, even if max_fee is not completely utilized
     assert state.blob_builder_balances[header.builder_index] >= body_summary.max_fee
 
-    # Round down, < 1 gwei is ok to not burn.
-    base_fee = Gwei((state.shard_sample_prices[shard] * Wei(samples)) / Wei(1000_000_000))
+    # Safe, max 33 + 11 = 44 bits with default presets.
+    base_fee = Gwei(uint64(state.shard_sample_prices[shard]) * samples)
     # Base fee must be paid
     assert body_summary.max_fee >= base_fee
 
@@ -762,7 +766,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
             includer_index=get_beacon_proposer_index(state),
         ),
         votes=initial_votes,
-        weight=0,
+        weight=Gwei(0),
         max_weight=max_weight,
         update_slot=state.slot,
     )
