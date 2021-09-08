@@ -1,24 +1,43 @@
 # Getting Started with Consensus Spec Tests
 
-## The environment
+## Creating the environment
 
 Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
 
+1. Install the packages you need:
+   ```sh
+   sudo apt install -y make git wget python3-venv gcc python3-dev
+   ```
+1. Download the latest [consensus specs](https://github.com/ethereum/consensus-specs)
+   ```sh
+   git clone https://github.com/ethereum/consensus-specs.git
+   cd consensus-specs
+   ```
+1. Create the specifications and tests:   
+   ```sh
+   make install_test
+   make pyspec
+   ```
 
-```sh
-sudo apt install -y make git wget python3-venv gcc python3-dev
-git clone https://github.com/ethereum/consensus-specs.git
-cd consensus-specs
-. venv/bin/activate
-pip install ruamel.yaml==0.16.5
-make install_test
+## Running your first test
 
-make test
-```
 
-. venv/bin/activate
-cd tests/core/pyspec/
-python3 -m pytest -k {search_str} eth2spec/
+1. Enter the virtual Python environment:
+   ```sh
+   cd ~/consensus-specs
+   . venv/bin/activate
+   ```
+2. Run a sanity check test:
+   ```sh 
+   cd tests/core/pyspec/
+   python -m pytest --preset=minimal ./eth2spec/test/merge/sanity/test_blocks.py 
+   ```
+
+
+https://ethos.dev/beacon-chain/
+
+
+
 
 
 
