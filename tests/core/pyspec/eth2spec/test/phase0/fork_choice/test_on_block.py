@@ -218,7 +218,7 @@ def test_on_block_finalized_skip_slots(spec, state):
         state, store, _ = yield from apply_next_epoch_with_attestations(
             spec, state, store, True, True, test_steps=test_steps)
 
-    # Now we get finalized epoch 1, where compute_start_slot_at_epoch(1) is a skipped slot
+    # Now we get finalized epoch 2, where `compute_start_slot_at_epoch(2)` is a skipped slot
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert store.finalized_checkpoint.root == spec.get_block_root(state, 1) == spec.get_block_root(state, 2)
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -262,7 +262,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
         state, store, _ = yield from apply_next_epoch_with_attestations(
             spec, state, store, True, True, test_steps=test_steps)
 
-    # Now we get finalized epoch 1, where compute_start_slot_at_epoch(1) is a skipped slot
+    # Now we get finalized epoch 2, where `compute_start_slot_at_epoch(2)` is a skipped slot
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert store.finalized_checkpoint.root == spec.get_block_root(state, 1) == spec.get_block_root(state, 2)
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
