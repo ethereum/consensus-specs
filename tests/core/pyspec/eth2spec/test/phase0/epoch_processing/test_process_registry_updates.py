@@ -1,9 +1,10 @@
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch, next_slots
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     spec_test, spec_state_test,
     with_all_phases, single_phase,
-    with_custom_state,
+    with_custom_state, with_presets,
     scaled_churn_balances,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
@@ -160,6 +161,8 @@ def test_activation_queue_efficiency_min(spec, state):
 
 
 @with_all_phases
+@with_presets([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=scaled_churn_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
@@ -221,6 +224,8 @@ def test_ejection_past_churn_limit_min(spec, state):
 
 
 @with_all_phases
+@with_presets([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=scaled_churn_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
@@ -314,6 +319,8 @@ def test_activation_queue_activation_and_ejection__exceed_churn_limit(spec, stat
 
 
 @with_all_phases
+@with_presets([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=scaled_churn_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
@@ -324,6 +331,8 @@ def test_activation_queue_activation_and_ejection__scaled_churn_limit(spec, stat
 
 
 @with_all_phases
+@with_presets([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
 @with_custom_state(balances_fn=scaled_churn_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
