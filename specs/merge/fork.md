@@ -129,4 +129,4 @@ def initialize_transition_store(state: BeaconState) -> TransitionStore:
 ```
 
 Note that transition store can also be initialized at client startup by [overriding terminal total
-difficulty](specs/merge/client_settings.md#override-terminal-total-difficulty).
+difficulty](client_settings.md#override-terminal-total-difficulty).
