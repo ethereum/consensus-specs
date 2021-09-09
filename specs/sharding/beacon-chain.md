@@ -441,7 +441,7 @@ def compute_previous_slot(slot: Slot) -> Slot:
 ```python
 def compute_previous_slots(slot: Slot, max_distance: int) -> [Slot]:
     from = slot - max_distance if slot > max_distance else 0
-    return range(from, slot)
+    return [Slot(s) for s in range(from, slot)]
 ```
 
 #### `compute_updated_sample_price`
