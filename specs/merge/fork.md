@@ -128,5 +128,5 @@ def initialize_transition_store(state: BeaconState) -> TransitionStore:
     return get_transition_store(pow_block)
 ```
 
-Note that transition store can also be initialized at client startup by [overriding terminal total
+*Note*: Transition store can also be initialized at client startup by [overriding terminal total
 difficulty](client_settings.md#override-terminal-total-difficulty).
