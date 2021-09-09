@@ -9,8 +9,12 @@ from eth2spec.test.context import (
     low_balances, misc_balances,
 )
 import eth2spec.test.helpers.rewards as rewards_helpers
-from eth2spec.test.helpers.random import randomize_state, patch_state_to_non_leaking
-from eth2spec.test.helpers.state import has_active_balance_differential
+from eth2spec.test.helpers.random import (
+    randomize_state,
+    patch_state_to_non_leaking,
+    randomize_attestation_participation,
+)
+from eth2spec.test.helpers.state import has_active_balance_differential, next_epoch
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 
@@ -87,5 +91,40 @@ def test_full_random_without_leak_0(spec, state):
     assert not spec.is_in_inactivity_leak(state)
     target_validators = get_unslashed_exited_validators(spec, state)
     assert len(target_validators) != 0
+    assert has_active_balance_differential(spec, state)
+    yield from rewards_helpers.run_deltas(spec, state)
+
+
+@with_all_phases
+@spec_state_test
+def test_full_random_without_leak_and_current_exit_0(spec, state):
+    """
+    This test specifically ensures a validator exits in the current epoch
+    to ensure rewards are handled properly in this case.
+    """
+    rng = Random(1011)
+    randomize_state(spec, state, rng)
+    assert spec.is_in_inactivity_leak(state)
+    patch_state_to_non_leaking(spec, state)
+    assert not spec.is_in_inactivity_leak(state)
+    target_validators = get_unslashed_exited_validators(spec, state)
+    assert len(target_validators) != 0
+
+    # move forward some epochs to process attestations added
+    # by ``randomize_state`` before we exit validators in
+    # what will be the current epoch
+    for _ in range(2):
+        next_epoch(spec, state)
+
+    current_epoch = spec.get_current_epoch(state)
+    for index in target_validators:
+        # patch exited validators to exit in the current epoch
+        validator = state.validators[index]
+        validator.exit_epoch = current_epoch
+        validator.withdrawable_epoch = current_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
+    # re-randomize attestation participation for the current epoch
+    randomize_attestation_participation(spec, state, rng)
+
     assert has_active_balance_differential(spec, state)
     yield from rewards_helpers.run_deltas(spec, state)
