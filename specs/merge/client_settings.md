@@ -7,7 +7,7 @@ This document specifies configurable settings that merge clients are expected to
 ### Override terminal total difficulty
 
 To coordinate changes to [`terminal_total_difficulty`](fork-choice.md#transitionstore), clients
-should have a setting `--terminal-total-difficulty-override`.
+must provide `--terminal-total-difficulty-override` as a configurable setting.
 
 If `TransitionStore` has already [been initialized](./fork.md#initializing-transition-store), this alters the previously initialized value of
 `TransitionStore.terminal_total_difficulty`, otherwise it initializes `TransitionStore` with the specified
