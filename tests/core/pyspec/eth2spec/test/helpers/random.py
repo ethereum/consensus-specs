@@ -37,8 +37,8 @@ def exit_random_validators(spec, state, rng, fraction=None):
             continue
 
         validator = state.validators[index]
-        validator.exit_epoch = rng.choice([current_epoch - 1, current_epoch - 2, current_epoch - 3])
-        # ~1/2 are withdrawable
+        validator.exit_epoch = rng.choice([current_epoch, current_epoch - 1, current_epoch - 2, current_epoch - 3])
+        # ~1/2 are withdrawable (note, unnatural span between exit epoch and withdrawable epoch)
         if rng.choice([True, False]):
             validator.withdrawable_epoch = current_epoch
         else:
