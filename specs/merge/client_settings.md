@@ -13,5 +13,5 @@ If `TransitionStore` has already [been initialized](./fork.md#initializing-trans
 `TransitionStore.terminal_total_difficulty`, otherwise it initializes `TransitionStore` with the specified
 `terminal_total_difficulty`.
 
-By default, this setting is expected to not be used and `terminal_total_difficulty` will be set as defined
+Except under exceptional scenarios, this setting is expected to not be used, and `terminal_total_difficulty` will operate with [default functionality](./fork.md#initializing-transition-store). Sufficient warning to the user about this exceptional configurable setting should be provided.
 [here](fork.md#initializing-transition-store).
