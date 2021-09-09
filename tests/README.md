@@ -1,6 +1,8 @@
 # Getting Started with Consensus Spec Tests
 
-## Creating the environment
+## Getting Started
+
+### Creating the environment
 
 Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
 
@@ -19,7 +21,7 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    make pyspec
    ```
 
-## Running your first test
+### Running your first test
 
 
 1. Enter the virtual Python environment:
@@ -30,14 +32,22 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
 2. Run a sanity check test:
    ```sh 
    cd tests/core/pyspec/
-   python -m pytest --preset=minimal ./eth2spec/test/merge/sanity/test_blocks.py 
+   python -m pytest --preset=minimal -k test_empty_block_transition
    ```
+
+## What is this test?
+
+cd ~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity
+test_blocks.py
 
 
 https://ethos.dev/beacon-chain/
 
 
+Beacon chain has operations (such as attestation, deposit). It deals with core consensus
 
+
+See if I can rename single_phase
 
 
 
