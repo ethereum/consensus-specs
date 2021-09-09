@@ -2,7 +2,7 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
-This document specifies configurable settings that merge clients are expected to ship with.
+This document specifies configurable settings that clients must implement for the Merge.
 
 ### Override terminal total difficulty
 
