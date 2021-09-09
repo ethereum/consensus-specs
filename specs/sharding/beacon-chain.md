@@ -46,6 +46,7 @@
   - [Misc](#misc-3)
     - [`next_power_of_two`](#next_power_of_two)
     - [`compute_previous_slot`](#compute_previous_slot)
+    - [`compute_previous_slots`](#compute_previous_slots)
     - [`compute_updated_sample_price`](#compute_updated_sample_price)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
     - [`batch_apply_participation_flag`](#batch_apply_participation_flag)
@@ -435,6 +436,14 @@ def compute_previous_slot(slot: Slot) -> Slot:
         return Slot(0)
 ```
 
+#### `compute_previous_slots`
+
+```python
+def compute_previous_slots(slot: Slot, max_distance: int) -> [Slot]:
+    from = slot - max_distance if slot > max_distance else 0
+    return range(from, slot)
+```
+
 #### `compute_updated_sample_price`
 
 ```python
@@ -698,9 +707,8 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    from_slot = slot > MAX_BLOB_BLOCK_ROOT_DISTANCE ? slot - MAX_BLOB_BLOCK_ROOT_DISTANCE : 0 
     assert header.body_summary.beacon_block_root in 
-        [get_block_root_at_slot(state, s) for s in range(from_slot, slot)]
+        [get_block_root_at_slot(state, s) for s in compute_previous_slots(slot, MAX_BLOB_BLOCK_ROOT_DISTANCE)]
 
     # Check that this data is still pending
     committee_work = state.shard_buffer[slot % SHARD_STATE_MEMORY_SLOTS][shard]
