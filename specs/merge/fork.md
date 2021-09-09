@@ -97,13 +97,13 @@ def upgrade_to_merge(pre: altair.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=ExecutionPayloadHeader(),
     )
-    
+
     return post
 ```
 
 ### Initializing transition store
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, a transition store is initialized to be further utilized by the transition process of the Merge.
+If `state.slot % SLOTS_PER_EPOCH == 0`, `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, and the transition store has not already been initialized, a transition store is initialized to be further utilized by the transition process of the Merge.
 
 Transition store initialization occurs after the state has been modified by corresponding `upgrade_to_merge` function.
 
@@ -127,3 +127,6 @@ def initialize_transition_store(state: BeaconState) -> TransitionStore:
     pow_block = get_pow_block(state.eth1_data.block_hash)
     return get_transition_store(pow_block)
 ```
+
+*Note*: Transition store can also be initialized at client startup by [overriding terminal total
+difficulty](client_settings.md#override-terminal-total-difficulty).
