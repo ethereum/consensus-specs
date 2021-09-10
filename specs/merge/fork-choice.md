@@ -83,8 +83,6 @@ class TransitionStore(object):
 class PowBlock(object):
     block_hash: Hash32
     parent_hash: Hash32
-    is_processed: boolean
-    is_valid: boolean
     total_difficulty: uint256
     difficulty: uint256
 ```
@@ -93,7 +91,7 @@ class PowBlock(object):
 
 Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
 
-*Note*: The `eth_getBlockByHash` JSON-RPC method does not distinguish invalid blocks from blocks that haven't been processed yet. Either extending this existing method or implementing a new one is required.
+*Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this information from an execution client.
 
 ### `is_valid_terminal_pow_block`
 
@@ -103,7 +101,7 @@ Used by fork-choice handler, `on_block`.
 def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
     is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
     is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
-    return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
+    return is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
 ## Updated fork-choice handlers
@@ -128,17 +126,16 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
-    # [New in Merge]
-    if (transition_store is not None) and is_merge_block(pre_state, block.body):
-        # Delay consideration of block until PoW block is processed by the PoW node
-        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
-        pow_parent = get_pow_block(pow_block.parent_hash)
-        assert pow_block.is_processed
-        assert is_valid_terminal_pow_block(transition_store, pow_block, pow_parent)
-
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
     state_transition(state, signed_block, True)
+
+    # [New in Merge]
+    if (transition_store is not None) and is_merge_block(pre_state, block.body):
+        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
+        pow_parent = get_pow_block(pow_block.parent_hash)
+        assert is_valid_terminal_pow_block(transition_store, pow_block, pow_parent)
+
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
