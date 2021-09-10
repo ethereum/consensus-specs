@@ -45,6 +45,7 @@ The merge is still actively in development. The exact specification has not been
   * [Merge fork](specs/merge/fork.md)
   * [Fork Choice changes](specs/merge/fork-choice.md)
   * [Validator additions](specs/merge/validator.md)
+  * [Client settings](specs/merge/client_settings.md)
 
 ### Sharding
 
@@ -53,7 +54,7 @@ Sharding follows the merge, and is divided into three parts:
 * Sharding base functionality - In early engineering phase
   * [Beacon Chain changes](specs/sharding/beacon-chain.md)
   * [P2P Network changes](specs/sharding/p2p-interface.md)
-* Custody Game - Ready, dependent on sharding 
+* Custody Game - Ready, dependent on sharding
   * [Beacon Chain changes](specs/custody_game/beacon-chain.md)
   * [Validator custody work](specs/custody_game/validator.md)
 * Data Availability Sampling - In active R&D

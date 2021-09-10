@@ -97,18 +97,18 @@ def upgrade_to_merge(pre: altair.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=ExecutionPayloadHeader(),
     )
-    
+
     return post
 ```
 
 ### Initializing transition store
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, a transition store is initialized to be further utilized by the transition process of the Merge.
+If `state.slot % SLOTS_PER_EPOCH == 0`, `compute_epoch_at_slot(state.slot) == MERGE_FORK_EPOCH`, and the transition store has not already been initialized, a transition store is initialized to be further utilized by the transition process of the Merge.
 
 Transition store initialization occurs after the state has been modified by corresponding `upgrade_to_merge` function.
 
 ```python
-def compute_transition_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
+def compute_terminal_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
     seconds_per_voting_period = EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH * SECONDS_PER_SLOT
     pow_blocks_per_voting_period = seconds_per_voting_period // SECONDS_PER_ETH1_BLOCK
     pow_blocks_to_merge = TARGET_SECONDS_TO_MERGE // SECONDS_PER_ETH1_BLOCK
@@ -119,11 +119,14 @@ def compute_transition_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
 
 
 def get_transition_store(anchor_pow_block: PowBlock) -> TransitionStore:
-    transition_total_difficulty = compute_transition_total_difficulty(anchor_pow_block)
-    return TransitionStore(transition_total_difficulty=transition_total_difficulty)
+    terminal_total_difficulty = compute_terminal_total_difficulty(anchor_pow_block)
+    return TransitionStore(terminal_total_difficulty=terminal_total_difficulty)
 
 
 def initialize_transition_store(state: BeaconState) -> TransitionStore:
     pow_block = get_pow_block(state.eth1_data.block_hash)
     return get_transition_store(pow_block)
 ```
+
+*Note*: Transition store can also be initialized at client startup by [overriding terminal total
+difficulty](client_settings.md#override-terminal-total-difficulty).

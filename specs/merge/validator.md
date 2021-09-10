@@ -95,7 +95,7 @@ def get_execution_payload(state: BeaconState,
                           execution_engine: ExecutionEngine,
                           pow_chain: Sequence[PowBlock]) -> ExecutionPayload:
     if not is_merge_complete(state):
-        terminal_pow_block = get_pow_block_at_total_difficulty(transition_store.transition_total_difficulty, pow_chain)
+        terminal_pow_block = get_pow_block_at_total_difficulty(transition_store.terminal_total_difficulty, pow_chain)
         if terminal_pow_block is None:
             # Pre-merge, empty payload
             return ExecutionPayload()

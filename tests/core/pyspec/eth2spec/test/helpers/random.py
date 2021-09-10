@@ -20,32 +20,40 @@ def set_some_new_deposits(spec, state, rng):
                 state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
 
 
-def exit_random_validators(spec, state, rng):
+def exit_random_validators(spec, state, rng, fraction=None):
+    if fraction is None:
+        # Exit ~1/2
+        fraction = 0.5
+
     if spec.get_current_epoch(state) < 5:
         # Move epochs forward to allow for some validators already exited/withdrawable
         for _ in range(5):
             next_epoch(spec, state)
 
     current_epoch = spec.get_current_epoch(state)
-    # Exit ~1/2 of validators
     for index in spec.get_active_validator_indices(state, current_epoch):
-        if rng.choice([True, False]):
+        sampled = rng.random() < fraction
+        if not sampled:
             continue
 
         validator = state.validators[index]
-        validator.exit_epoch = rng.choice([current_epoch - 1, current_epoch - 2, current_epoch - 3])
-        # ~1/2 are withdrawable
+        validator.exit_epoch = rng.choice([current_epoch, current_epoch - 1, current_epoch - 2, current_epoch - 3])
+        # ~1/2 are withdrawable (note, unnatural span between exit epoch and withdrawable epoch)
         if rng.choice([True, False]):
             validator.withdrawable_epoch = current_epoch
         else:
             validator.withdrawable_epoch = current_epoch + 1
 
 
-def slash_random_validators(spec, state, rng):
-    # Slash ~1/2 of validators
+def slash_random_validators(spec, state, rng, fraction=None):
+    if fraction is None:
+        # Slash ~1/2 of validators
+        fraction = 0.5
+
     for index in range(len(state.validators)):
         # slash at least one validator
-        if index == 0 or rng.choice([True, False]):
+        sampled = rng.random() < fraction
+        if index == 0 or sampled:
             spec.slash_validator(state, index)
 
 
@@ -115,8 +123,39 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(spec, state, rng=Random(8020)):
+def randomize_state(spec, state, rng=Random(8020), exit_fraction=None, slash_fraction=None):
     set_some_new_deposits(spec, state, rng)
-    exit_random_validators(spec, state, rng)
-    slash_random_validators(spec, state, rng)
+    exit_random_validators(spec, state, rng, fraction=exit_fraction)
+    slash_random_validators(spec, state, rng, fraction=slash_fraction)
     randomize_attestation_participation(spec, state, rng)
+
+
+def patch_state_to_non_leaking(spec, state):
+    """
+    This function performs an irregular state transition so that:
+    1. the current justified checkpoint references the previous epoch
+    2. the previous justified checkpoint references the epoch before previous
+    3. the finalized checkpoint matches the previous justified checkpoint
+
+    The effects of this function are intended to offset randomization side effects
+    performed by other functionality in this module so that if the ``state`` was leaking,
+    then the ``state`` is not leaking after.
+    """
+    state.justification_bits[0] = True
+    state.justification_bits[1] = True
+    previous_epoch = spec.get_previous_epoch(state)
+    previous_root = spec.get_block_root(state, previous_epoch)
+    previous_previous_epoch = max(spec.GENESIS_EPOCH, spec.Epoch(previous_epoch - 1))
+    previous_previous_root = spec.get_block_root(state, previous_previous_epoch)
+    state.previous_justified_checkpoint = spec.Checkpoint(
+        epoch=previous_previous_epoch,
+        root=previous_previous_root,
+    )
+    state.current_justified_checkpoint = spec.Checkpoint(
+        epoch=previous_epoch,
+        root=previous_root,
+    )
+    state.finalized_checkpoint = spec.Checkpoint(
+        epoch=previous_previous_epoch,
+        root=previous_previous_root,
+    )

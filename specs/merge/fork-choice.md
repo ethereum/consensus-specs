@@ -73,7 +73,7 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
 ```python
 @dataclass
 class TransitionStore(object):
-    transition_total_difficulty: uint256
+    terminal_total_difficulty: uint256
 ```
 
 ### `PowBlock`
@@ -101,8 +101,8 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
-    is_total_difficulty_reached = block.total_difficulty >= transition_store.transition_total_difficulty
-    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.transition_total_difficulty
+    is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
+    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
     return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
@@ -129,7 +129,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
     # [New in Merge]
-    if (transition_store is not None) and is_merge_block(pre_state, block):
+    if (transition_store is not None) and is_merge_block(pre_state, block.body):
         # Delay consideration of block until PoW block is processed by the PoW node
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         pow_parent = get_pow_block(pow_block.parent_hash)

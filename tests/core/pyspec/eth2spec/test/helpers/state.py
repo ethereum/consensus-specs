@@ -1,5 +1,6 @@
 from eth2spec.test.context import expect_assertion_error, is_post_altair
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
+from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 
 def get_balance(state, index):
@@ -133,3 +134,34 @@ def _set_empty_participation(spec, state, current=True, previous=True):
 
 def set_empty_participation(spec, state, rng=None):
     _set_empty_participation(spec, state)
+
+
+def ensure_state_has_validators_across_lifecycle(spec, state):
+    """
+    Scan the validator registry to ensure there is at least 1 validator
+    for each of the following lifecycle states:
+        1. Pending / deposited
+        2. Active
+        3. Exited (but not slashed)
+        4. Slashed
+    """
+    has_pending = any(filter(spec.is_eligible_for_activation_queue, state.validators))
+
+    current_epoch = spec.get_current_epoch(state)
+    has_active = any(filter(lambda v: spec.is_active_validator(v, current_epoch), state.validators))
+
+    has_exited = any(get_unslashed_exited_validators(spec, state))
+
+    has_slashed = any(filter(lambda v: v.slashed, state.validators))
+
+    return has_pending and has_active and has_exited and has_slashed
+
+
+def has_active_balance_differential(spec, state):
+    """
+    Ensure there is a difference between the total balance of
+    all _active_ validators and _all_ validators.
+    """
+    active_balance = spec.get_total_active_balance(state)
+    total_balance = spec.get_total_balance(state, set(range(len(state.validators))))
+    return active_balance // spec.EFFECTIVE_BALANCE_INCREMENT != total_balance // spec.EFFECTIVE_BALANCE_INCREMENT
