@@ -16,6 +16,8 @@ MAX_SHARD_HEADERS_PER_SHARD: 4
 SHARD_STATE_MEMORY_SLOTS: 256
 # 2**40 (= 1,099,511,627,776)
 BLOB_BUILDER_REGISTRY_LIMIT: 1099511627776
+# 2**5 (= 32)
+MAX_BLOB_BLOCK_ROOT_DISTANCE: 32
 
 # Shard blob samples
 # ---------------------------------------------------------------
