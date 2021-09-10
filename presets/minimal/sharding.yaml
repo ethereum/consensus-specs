@@ -18,7 +18,7 @@ SHARD_STATE_MEMORY_SLOTS: 256
 # 2**40 (= 1,099,511,627,776)
 BLOB_BUILDER_REGISTRY_LIMIT: 1099511627776
 # [customized] reduced for testing, match epoch length
-MAX_BLOB_BLOCK_ROOT_DISTANCE: 8
+MAX_BLOB_ANCHOR_DISTANCE: 8
 
 # Shard blob samples
 # ---------------------------------------------------------------

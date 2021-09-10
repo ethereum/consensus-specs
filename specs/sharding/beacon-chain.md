@@ -157,7 +157,7 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
 | `BLOB_BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | shard blob builders |
-| `MAX_BLOB_BLOCK_ROOT_DISTANCE` | `32` | Maximum distance of the block, referred to by `ShardBlob.body.beacon_block_slot` from the blob slot |   
+| `MAX_BLOB_ANCHOR_DISTANCE` | `32` | Maximum distance of the block, referred to by `ShardBlob.body.beacon_block_slot` from the blob slot |   
 
 ### Shard blob samples
 
@@ -700,7 +700,7 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    lower = max(MAX_BLOB_BLOCK_ROOT_DISTANCE, slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE
+    lower = max(MAX_BLOB_ANCHOR_DISTANCE, slot) - MAX_BLOB_ANCHOR_DISTANCE
     assert lower <= header.body_summary.beacon_block_slot < slot
     assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)
 

@@ -88,7 +88,7 @@ on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.m
 - _[REJECT]_ The shard blob is for an active shard --
   i.e. `blob.shard < get_active_shard_count(state, compute_epoch_at_slot(blob.slot))`
 - _[REJECT]_ The header anchor slot is not out of bounds --
-  i.e. `(max(MAX_BLOB_BLOCK_ROOT_DISTANCE, header.slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
+  i.e. `(max(MAX_BLOB_ANCHOR_DISTANCE, header.slot) - MAX_BLOB_ANCHOR_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
 - _[IGNORE]_ The header anchor `beacon_block_root` is canonical w.r.t. the current head --
   i.e. `header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)`
 - _[REJECT]_ The `blob.shard` MUST have a committee at the `blob.slot` --
@@ -133,7 +133,7 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
   i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error.
 - _[REJECT]_ The header anchor slot is not out of bounds --
-  i.e. `(max(MAX_BLOB_BLOCK_ROOT_DISTANCE, header.slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
+  i.e. `(max(MAX_BLOB_ANCHOR_DISTANCE, header.slot) - MAX_BLOB_ANCHOR_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
 - _[IGNORE]_ The header anchor `beacon_block_root` is canonical w.r.t. the current head --
   i.e. `header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)`
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
@@ -163,7 +163,7 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
   i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error.
 - _[IGNORE]_ The header is not stale -- i.e. the corresponding shard proposer has not already selected a header for `(header.slot, header.shard)`.
 - _[REJECT]_ The header anchor slot is not out of bounds --
-  i.e. `(max(MAX_BLOB_BLOCK_ROOT_DISTANCE, header.slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
+  i.e. `(max(MAX_BLOB_ANCHOR_DISTANCE, header.slot) - MAX_BLOB_ANCHOR_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
 - _[IGNORE]_ The header anchor `beacon_block_root` is canonical w.r.t. the current head --
   i.e. `header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)`
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.builder_index, header.slot, header.shard)` combination.
