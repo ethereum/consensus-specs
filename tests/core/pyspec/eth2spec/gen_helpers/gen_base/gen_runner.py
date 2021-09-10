@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import argparse
 from pathlib import Path
@@ -20,6 +21,9 @@ from .gen_typing import TestProvider
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
+
+
+TIME_THRESHOLD_TO_PRINT = 1.0  # seconds
 
 
 def validate_output_dir(path_str):
@@ -73,6 +77,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         required=False,
         help="specify presets to run with. Allows all if no preset names are specified.",
     )
+    parser.add_argument(
+        "-c",
+        "--collect-only",
+        action="store_true",
+        default=False,
+        help="if set only print tests to generate, do not actually run the test and dump the target data",
+    )
 
     args = parser.parse_args()
     output_dir = args.output_dir
@@ -96,11 +107,15 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if len(presets) != 0:
         print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
 
+    collect_only = args.collect_only
+    collected_test_count = 0
     generated_test_count = 0
     skipped_test_count = 0
+    provider_start = time.time()
     for tprov in test_providers:
-        # runs anything that we don't want to repeat for every test case.
-        tprov.prepare()
+        if not collect_only:
+            # runs anything that we don't want to repeat for every test case.
+            tprov.prepare()
 
         for test_case in tprov.make_cases():
             case_dir = (
@@ -109,6 +124,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 / Path(test_case.suite_name) / Path(test_case.case_name)
             )
             incomplete_tag_file = case_dir / "INCOMPLETE"
+
+            collected_test_count += 1
+            if collect_only:
+                print(f"Collected test at: {case_dir}")
+                continue
 
             if case_dir.exists():
                 if not args.force and not incomplete_tag_file.exists():
@@ -122,6 +142,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     shutil.rmtree(case_dir)
 
             print(f'Generating test: {case_dir}')
+            test_start = time.time()
 
             written_part = False
 
@@ -179,10 +200,22 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     generated_test_count += 1
                     # Only remove `INCOMPLETE` tag file
                     os.remove(incomplete_tag_file)
+            test_end = time.time()
+            span = round(test_end - test_start, 2)
+            if span > TIME_THRESHOLD_TO_PRINT:
+                print(f'    - generated in {span} seconds')
 
-    summary_message = f"completed generation of {generator_name} with {generated_test_count} tests"
-    summary_message += f" ({skipped_test_count} skipped tests)"
-    print(summary_message)
+    provider_end = time.time()
+    span = round(provider_end - provider_start, 2)
+
+    if collect_only:
+        print(f"Collected {collected_test_count} tests in total")
+    else:
+        summary_message = f"completed generation of {generator_name} with {generated_test_count} tests"
+        summary_message += f" ({skipped_test_count} skipped tests)"
+        if span > TIME_THRESHOLD_TO_PRINT:
+            summary_message += f" in {span} seconds"
+        print(summary_message)
 
 
 def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):

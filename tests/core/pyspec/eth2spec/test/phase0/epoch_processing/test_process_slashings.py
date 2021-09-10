@@ -1,7 +1,11 @@
+from random import Random
 from eth2spec.test.context import spec_state_test, with_all_phases, is_post_altair
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with, run_epoch_processing_to
 )
+from eth2spec.test.helpers.random import randomize_state
+from eth2spec.test.helpers.state import has_active_balance_differential
+from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth2spec.test.helpers.state import next_epoch
 
 
@@ -22,6 +26,9 @@ def slash_validators(spec, state, indices, out_epochs):
         spec.get_current_epoch(state) % spec.EPOCHS_PER_SLASHINGS_VECTOR
     ] = total_slashed_balance
 
+    # verify some slashings happened...
+    assert total_slashed_balance != 0
+
 
 def get_slashing_multiplier(spec):
     if is_post_altair(spec):
@@ -30,9 +37,7 @@ def get_slashing_multiplier(spec):
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER
 
 
-@with_all_phases
-@spec_state_test
-def test_max_penalties(spec, state):
+def _setup_process_slashings_test(spec, state, not_slashable_set=set()):
     # Slashed count to ensure that enough validators are slashed to induce maximum penalties
     slashed_count = min(
         (len(state.validators) // get_slashing_multiplier(spec)) + 1,
@@ -41,13 +46,22 @@ def test_max_penalties(spec, state):
     )
     out_epoch = spec.get_current_epoch(state) + (spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
 
-    slashed_indices = list(range(slashed_count))
-    slash_validators(spec, state, slashed_indices, [out_epoch] * slashed_count)
+    eligible_indices = set(range(slashed_count))
+    slashed_indices = eligible_indices.difference(not_slashable_set)
+    slash_validators(spec, state, sorted(slashed_indices), [out_epoch] * slashed_count)
 
     total_balance = spec.get_total_active_balance(state)
     total_penalties = sum(state.slashings)
 
     assert total_balance // get_slashing_multiplier(spec) <= total_penalties
+
+    return slashed_indices
+
+
+@with_all_phases
+@spec_state_test
+def test_max_penalties(spec, state):
+    slashed_indices = _setup_process_slashings_test(spec, state)
 
     yield from run_process_slashings(spec, state)
 
@@ -171,3 +185,28 @@ def test_scaled_penalties(spec, state):
             * spec.EFFECTIVE_BALANCE_INCREMENT
         )
         assert state.balances[i] == pre_slash_balances[i] - expected_penalty
+
+
+@with_all_phases
+@spec_state_test
+def test_slashings_with_random_state(spec, state):
+    rng = Random(9998)
+    randomize_state(spec, state, rng)
+
+    pre_balances = state.balances.copy()
+
+    target_validators = get_unslashed_exited_validators(spec, state)
+    assert len(target_validators) != 0
+    assert has_active_balance_differential(spec, state)
+
+    slashed_indices = _setup_process_slashings_test(spec, state, not_slashable_set=target_validators)
+
+    # ensure no accidental slashings of protected set...
+    current_target_validators = get_unslashed_exited_validators(spec, state)
+    assert len(current_target_validators) != 0
+    assert current_target_validators == target_validators
+
+    yield from run_process_slashings(spec, state)
+
+    for i in slashed_indices:
+        assert state.balances[i] < pre_balances[i]

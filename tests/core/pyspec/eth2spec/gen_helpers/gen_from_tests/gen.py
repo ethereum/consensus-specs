@@ -1,6 +1,6 @@
 from importlib import import_module
 from inspect import getmembers, isfunction
-from typing import Any, Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional, List, Union
 
 from eth2spec.utils import bls
 from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
@@ -59,8 +59,10 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
 def get_provider(create_provider_fn: Callable[[SpecForkName, PresetBaseName, str, str], TestProvider],
                  fork_name: SpecForkName,
                  preset_name: PresetBaseName,
-                 all_mods: Dict[str, Dict[str, str]]) -> Iterable[TestProvider]:
+                 all_mods: Dict[str, Dict[str, Union[List[str], str]]]) -> Iterable[TestProvider]:
     for key, mod_name in all_mods[fork_name].items():
+        if not isinstance(mod_name, List):
+            mod_name = [mod_name]
         yield create_provider_fn(
             fork_name=fork_name,
             preset_name=preset_name,
@@ -75,16 +77,17 @@ def get_create_provider_fn(runner_name: str) -> Callable[[SpecForkName, str, str
         return
 
     def create_provider(fork_name: SpecForkName, preset_name: PresetBaseName,
-                        handler_name: str, tests_src_mod_name: str) -> TestProvider:
+                        handler_name: str, tests_src_mod_name: List[str]) -> TestProvider:
         def cases_fn() -> Iterable[TestCase]:
-            tests_src = import_module(tests_src_mod_name)
-            return generate_from_tests(
-                runner_name=runner_name,
-                handler_name=handler_name,
-                src=tests_src,
-                fork_name=fork_name,
-                preset_name=preset_name,
-            )
+            for mod_name in tests_src_mod_name:
+                tests_src = import_module(mod_name)
+                yield from generate_from_tests(
+                    runner_name=runner_name,
+                    handler_name=handler_name,
+                    src=tests_src,
+                    fork_name=fork_name,
+                    preset_name=preset_name,
+                )
 
         return TestProvider(prepare=prepare_fn, make_cases=cases_fn)
     return create_provider

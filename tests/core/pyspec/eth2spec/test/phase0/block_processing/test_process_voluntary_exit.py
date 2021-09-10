@@ -1,4 +1,10 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.context import (
+    spec_state_test, expect_assertion_error,
+    always_bls, with_all_phases, with_presets,
+    spec_test, single_phase,
+    with_custom_state, scaled_churn_balances,
+)
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import sign_voluntary_exit
 
@@ -68,9 +74,7 @@ def test_invalid_signature(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, False)
 
 
-@with_all_phases
-@spec_state_test
-def test_success_exit_queue(spec, state):
+def run_test_success_exit_queue(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -106,10 +110,29 @@ def test_success_exit_queue(spec, state):
     #  when processing an additional exit, it results in an exit in a later epoch
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    assert (
-        state.validators[validator_index].exit_epoch ==
-        state.validators[initial_indices[0]].exit_epoch + 1
-    )
+    for index in initial_indices:
+        assert (
+            state.validators[validator_index].exit_epoch ==
+            state.validators[index].exit_epoch + 1
+        )
+
+
+@with_all_phases
+@spec_state_test
+def test_success_exit_queue__min_churn(spec, state):
+    yield from run_test_success_exit_queue(spec, state)
+
+
+@with_all_phases
+@with_presets([MINIMAL],
+              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@spec_test
+@with_custom_state(balances_fn=scaled_churn_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@single_phase
+def test_success_exit_queue__scaled_churn(spec, state):
+    churn_limit = spec.get_validator_churn_limit(state)
+    assert churn_limit > spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    yield from run_test_success_exit_queue(spec, state)
 
 
 @with_all_phases

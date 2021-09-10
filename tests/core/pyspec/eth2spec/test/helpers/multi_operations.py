@@ -113,8 +113,12 @@ def get_random_attestations(spec, state, rng):
     return attestations
 
 
-def prepare_state_and_get_random_deposits(spec, state, rng):
-    num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
+def get_random_deposits(spec, state, rng, num_deposits=None):
+    if not num_deposits:
+        num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
+
+    if num_deposits == 0:
+        return [], b"\x00" * 32
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
     deposits = []
@@ -132,15 +136,19 @@ def prepare_state_and_get_random_deposits(spec, state, rng):
             signed=True,
         )
 
-    state.eth1_data.deposit_root = root
-    state.eth1_data.deposit_count += num_deposits
-
     # Then for that context, build deposits/proofs
     for i in range(num_deposits):
         index = len(state.validators) + i
         deposit, _, _ = deposit_from_context(spec, deposit_data_leaves, index)
         deposits.append(deposit)
 
+    return deposits, root
+
+
+def prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=None):
+    deposits, root = get_random_deposits(spec, state, rng, num_deposits=num_deposits)
+    state.eth1_data.deposit_root = root
+    state.eth1_data.deposit_count += len(deposits)
     return deposits
 
 
@@ -171,7 +179,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     return prepare_signed_exits(spec, state, exit_indices)
 
 
-def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=Random(2099)):
+def get_random_sync_aggregate(spec, state, slot, block_root=None, fraction_participated=1.0, rng=Random(2099)):
     committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
     participant_count = int(len(committee_indices) * fraction_participated)
     participant_indices = rng.sample(range(len(committee_indices)), participant_count)
@@ -184,6 +192,7 @@ def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=
         state,
         slot,
         participants,
+        block_root=block_root,
     )
     return spec.SyncAggregate(
         sync_committee_bits=[index in participant_indices for index in range(len(committee_indices))],
@@ -191,10 +200,7 @@ def get_random_sync_aggregate(spec, state, slot, fraction_participated=1.0, rng=
     )
 
 
-def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188)):
-    # prepare state for deposits before building block
-    deposits = prepare_state_and_get_random_deposits(spec, state, rng)
-
+def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188), deposits=None):
     block = build_empty_block_for_next_slot(spec, state)
     proposer_slashings = get_random_proposer_slashings(spec, state, rng)
     block.body.proposer_slashings = proposer_slashings
@@ -204,7 +210,8 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188)):
     ]
     block.body.attester_slashings = get_random_attester_slashings(spec, state, rng, slashed_indices)
     block.body.attestations = get_random_attestations(spec, state, rng)
-    block.body.deposits = deposits
+    if deposits:
+        block.body.deposits = deposits
 
     # cannot include to be slashed indices as exits
     slashed_indices = set([
@@ -223,7 +230,9 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    block = build_random_block_from_state_for_next_slot(spec, state, rng)
+    # prepare state for deposits before building block
+    deposits = prepare_state_and_get_random_deposits(spec, state, rng)
+    block = build_random_block_from_state_for_next_slot(spec, state, rng, deposits=deposits)
 
     yield 'pre', state
 

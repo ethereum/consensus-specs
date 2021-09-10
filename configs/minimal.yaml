@@ -58,8 +58,8 @@ INACTIVITY_SCORE_RECOVERY_RATE: 16
 EJECTION_BALANCE: 16000000000
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
-# 2**16 (= 65,536)
-CHURN_LIMIT_QUOTIENT: 65536
+# [customized] scale queue churn at much lower validator counts for testing
+CHURN_LIMIT_QUOTIENT: 32
 
 
 # Deposit contract
