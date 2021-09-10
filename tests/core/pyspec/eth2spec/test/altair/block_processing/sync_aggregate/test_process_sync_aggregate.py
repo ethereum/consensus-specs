@@ -41,6 +41,7 @@ def test_invalid_signature_bad_domain(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # full committee signs
+            block_root=block.parent_root,
             domain_type=spec.DOMAIN_BEACON_ATTESTER,  # Incorrect domain
         )
     )
@@ -64,6 +65,7 @@ def test_invalid_signature_missing_participant(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # full committee signs
+            block_root=block.parent_root,
         )
     )
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
@@ -127,6 +129,7 @@ def test_invalid_signature_extra_participant(spec, state):
             state,
             block.slot - 1,
             [index for index in committee_indices if index != random_participant],
+            block_root=block.parent_root,
         )
     )
 
@@ -236,6 +239,7 @@ def test_invalid_signature_past_block(spec, state):
                 state,
                 block.slot - 1,
                 committee_indices,
+                block_root=block.parent_root,
             )
         )
 
@@ -286,6 +290,7 @@ def test_invalid_signature_previous_committee(spec, state):
             state,
             block.slot - 1,
             committee_indices,
+            block_root=block.parent_root,
         )
     )
 
@@ -327,6 +332,7 @@ def test_valid_signature_future_committee(spec, state):
             state,
             block.slot - 1,
             committee_indices,
+            block_root=block.parent_root,
         )
     )
 
@@ -360,6 +366,7 @@ def test_proposer_in_committee_without_participation(spec, state):
                 state,
                 block.slot - 1,
                 participants,
+                block_root=block.parent_root,
             )
         )
 
@@ -396,6 +403,7 @@ def test_proposer_in_committee_with_participation(spec, state):
                 state,
                 block.slot - 1,
                 committee_indices,
+                block_root=block.parent_root,
             )
         )
 
@@ -465,6 +473,7 @@ def test_sync_committee_with_participating_exited_member(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # full committee signs
+            block_root=block.parent_root,
         )
     )
     yield from run_sync_committee_processing(spec, state, block)
@@ -499,7 +508,7 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
     exited_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
     block = build_empty_block_for_next_slot(spec, state)
     committee_bits = [i != exited_committee_index for i in committee_indices]
-    committee_indices.remove(exited_committee_index)
+    committee_indices = [index for index in committee_indices if index != exited_committee_index]
     block.body.sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=committee_bits,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
@@ -507,6 +516,7 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # with exited validator removed
+            block_root=block.parent_root,
         )
     )
     yield from run_sync_committee_processing(spec, state, block)
@@ -545,6 +555,7 @@ def test_sync_committee_with_participating_withdrawable_member(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # full committee signs
+            block_root=block.parent_root,
         )
     )
     yield from run_sync_committee_processing(spec, state, block)
@@ -579,7 +590,7 @@ def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
     target_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
     block = build_empty_block_for_next_slot(spec, state)
     committee_bits = [i != target_committee_index for i in committee_indices]
-    committee_indices.remove(target_committee_index)
+    committee_indices = [index for index in committee_indices if index != target_committee_index]
     block.body.sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=committee_bits,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
@@ -587,6 +598,7 @@ def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
             state,
             block.slot - 1,
             committee_indices,  # with withdrawable validator removed
+            block_root=block.parent_root,
         )
     )
     yield from run_sync_committee_processing(spec, state, block)
