@@ -46,7 +46,6 @@
   - [Misc](#misc-3)
     - [`next_power_of_two`](#next_power_of_two)
     - [`compute_previous_slot`](#compute_previous_slot)
-    - [`compute_previous_slots`](#compute_previous_slots)
     - [`compute_updated_sample_price`](#compute_updated_sample_price)
     - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
     - [`batch_apply_participation_flag`](#batch_apply_participation_flag)
@@ -158,7 +157,7 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 | `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
 | `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
 | `BLOB_BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | shard blob builders |
-| `MAX_BLOB_BLOCK_ROOT_DISTANCE` | `32` | Maximum distance of the block referred by `ShardBlob.body.beacon_block_root` from the blob slot |   
+| `MAX_BLOB_BLOCK_ROOT_DISTANCE` | `32` | Maximum distance of the block, referred to by `ShardBlob.body.beacon_block_slot` from the blob slot |   
 
 ### Shard blob samples
 
@@ -272,8 +271,9 @@ class ShardBlobBody(Container):
     degree_proof: BLSCommitment
     # The actual data. Should match the commitment and degree proof.
     data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOB]
-    # Latest block root of the Beacon Chain, before shard_blob.slot
+    # Beacon Chain anchor, protect against blob replay to reorged beacon chain
     beacon_block_root: Root
+    beacon_block_slot: Slot
     # fee payment fields (EIP 1559 like)
     # TODO: express in MWei instead?
     max_priority_fee_per_sample: Gwei
@@ -295,8 +295,9 @@ class ShardBlobBodySummary(Container):
     degree_proof: BLSCommitment
     # Hash-tree-root as summary of the data field
     data_root: Root
-    # Latest block root of the Beacon Chain, before shard_blob.slot
+    # Beacon Chain anchor, protect against blob replay to reorged beacon chain
     beacon_block_root: Root
+    beacon_block_slot: Slot
     # fee payment fields (EIP 1559 like)
     # TODO: express in MWei instead?
     max_priority_fee_per_sample: Gwei
@@ -434,14 +435,6 @@ def compute_previous_slot(slot: Slot) -> Slot:
         return Slot(slot - 1)
     else:
         return Slot(0)
-```
-
-#### `compute_previous_slots`
-
-```python
-def compute_previous_slots(slot: Slot, max_distance: int) -> [Slot]:
-    from_slot = slot - max_distance if slot > max_distance else 0
-    return [Slot(s) for s in range(from_slot, slot)]
 ```
 
 #### `compute_updated_sample_price`
@@ -707,8 +700,9 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
 
     # Verify that the block root matches,
     # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.body_summary.beacon_block_root in 
-        [get_block_root_at_slot(state, s) for s in compute_previous_slots(slot, MAX_BLOB_BLOCK_ROOT_DISTANCE)]
+    lower = max(MAX_BLOB_BLOCK_ROOT_DISTANCE, slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE
+    assert lower <= header.body_summary.beacon_block_slot < slot
+    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)
 
     # Check that this data is still pending
     committee_work = state.shard_buffer[slot % SHARD_STATE_MEMORY_SLOTS][shard]

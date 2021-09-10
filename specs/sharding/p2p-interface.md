@@ -87,6 +87,10 @@ on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.m
   i.e. validate that `compute_epoch_at_slot(blob.slot) >= get_previous_epoch(state)`
 - _[REJECT]_ The shard blob is for an active shard --
   i.e. `blob.shard < get_active_shard_count(state, compute_epoch_at_slot(blob.slot))`
+- _[REJECT]_ The header anchor slot is not out of bounds --
+  i.e. `(max(MAX_BLOB_BLOCK_ROOT_DISTANCE, header.slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
+- _[IGNORE]_ The header anchor `beacon_block_root` is canonical w.r.t. the current head --
+  i.e. `header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)`
 - _[REJECT]_ The `blob.shard` MUST have a committee at the `blob.slot` --
   i.e. validate that `compute_committee_index_from_shard(state, blob.slot, blob.shard)` doesn't raise an error
 - _[REJECT]_ The shard blob is for the correct subnet --
@@ -97,8 +101,8 @@ on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.m
 - _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
 - _[REJECT]_ The blob signature, `signed_blob.signature`, is valid for the aggregate of proposer and builder --
   i.e. `bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_blob.signature)`.
-- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's `slot` and `shard`,
-  in the context of the current shuffling (defined by `blob.body.beacon_block_root`/`slot`).
+- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's `blob.slot` and `blob.shard`,
+  in the context of the current shuffling (defined by `blob.body.beacon_block_root`/`blob.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the blob MAY be queued for later processing while proposers for the blob's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
@@ -128,12 +132,16 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
   i.e. `header.shard < get_active_shard_count(state, compute_epoch_at_slot(header.slot))`
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
   i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error.
+- _[REJECT]_ The header anchor slot is not out of bounds --
+  i.e. `(max(MAX_BLOB_BLOCK_ROOT_DISTANCE, header.slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
+- _[IGNORE]_ The header anchor `beacon_block_root` is canonical w.r.t. the current head --
+  i.e. `header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)`
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.proposer_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
 - _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for the aggregate of proposer and builder --
   i.e. `bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_blob_header.signature)`.
 - _[REJECT]_ The header is proposed by the expected `proposer_index` for the blob's `header.slot` and `header.shard`
-  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
+  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the blob MAY be queued for later processing while proposers for the blob's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
@@ -154,6 +162,10 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[REJECT]_ The `header.shard` MUST have a committee at the `header.slot` --
   i.e. validate that `compute_committee_index_from_shard(state, header.slot, header.shard)` doesn't raise an error.
 - _[IGNORE]_ The header is not stale -- i.e. the corresponding shard proposer has not already selected a header for `(header.slot, header.shard)`.
+- _[REJECT]_ The header anchor slot is not out of bounds --
+  i.e. `(max(MAX_BLOB_BLOCK_ROOT_DISTANCE, header.slot) - MAX_BLOB_BLOCK_ROOT_DISTANCE) <= header.body_summary.beacon_block_slot < header.slot`
+- _[IGNORE]_ The header anchor `beacon_block_root` is canonical w.r.t. the current head --
+  i.e. `header.body_summary.beacon_block_root == get_block_root_at_slot(state, header.body_summary.beacon_block_slot)`
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.builder_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The blob builder, define by `header.builder_index`, exists and has sufficient balance to back the fee payment.
 - _[IGNORE]_ The header fee SHOULD be higher than previously seen headers for `(header.slot, header.shard)`, from any builder.
@@ -161,7 +173,7 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for ONLY the builder --
   i.e. `bls.Verify(builder_pubkey, blob_signing_root, signed_blob_header.signature)`. The signature is not an aggregate with the proposer.
 - _[REJECT]_ The header is designated for proposal by the expected `proposer_index` for the blob's `header.slot` and `header.shard`
-  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
+  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling,
   the blob MAY be queued for later processing while proposers for the blob's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
