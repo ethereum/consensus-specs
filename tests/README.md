@@ -29,16 +29,38 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    cd ~/consensus-specs
    . venv/bin/activate
    ```
-2. Run a sanity check test:
+1. Run a sanity check test:
    ```sh 
    cd tests/core/pyspec/
-   python -m pytest --preset=minimal -k test_empty_block_transition
+   python -m pytest -k test_empty_block_transition
    ```
+1. The output should be similar to:
+   ```
+   (venv) qbzzt1@beacon-tests:~/consensus-specs/tests/core/pyspec$ python -m pytest -k test_empt
+   y_block_transition
+   ==================================== test session starts ====================================
+   platform linux -- Python 3.9.2, pytest-6.2.5, py-1.10.0, pluggy-1.0.0
+   rootdir: /home/qbzzt1/consensus-specs
+   plugins: cov-2.12.1, forked-1.3.0, xdist-2.3.0
+   collected 629 items / 626 deselected / 3 selected                                           
+
+   eth2spec/test/merge/sanity/test_blocks.py .                                           [ 33%]
+   eth2spec/test/phase0/sanity/test_blocks.py ..                                         [100%]
+
+   ===================================== warnings summary ======================================
+   ../../../venv/lib/python3.9/site-packages/cytoolz/compatibility.py:2
+     /home/qbzzt1/consensus-specs/venv/lib/python3.9/site-packages/cytoolz/compatibility.py:2: DeprecationWarning: The toolz.compatibility module is no longer needed in Python 3 and has been deprecated. Please import these utilities directly from the standard library. This module will be removed in a future release.
+       warnings.warn("The toolz.compatibility module is no longer "
+
+   -- Docs: https://docs.pytest.org/en/stable/warnings.html
+   ======================= 3 passed, 626 deselected, 1 warning in 16.86s =======================   
+   ```
+
 
 ## What is this test?
 
-cd ~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity
-test_blocks.py
+The `test_empty_block_transition` test is at 
+`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`. 
 
 
 https://ethos.dev/beacon-chain/
