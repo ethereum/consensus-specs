@@ -101,9 +101,20 @@ when no block is proposed during a slot.
     pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     yield 'pre', state
+```
 
+In Python `yield` is used by [generators](https://wiki.python.org/moin/Generators). However, for our purposes
+we can treat it as a partial return statement that doesn't stop the function's processing, only adds to a list
+of return values. Here we add two values, the string `'pre'` and the initial state.
+
+```python
     block = build_empty_block_for_next_slot(spec, state)
+```
 
+The state contains the last block, which is necessary for building up the next block (every block needs to
+have the hash of the previous one in a blockchain).
+
+```python
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
