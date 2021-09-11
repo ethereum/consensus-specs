@@ -97,15 +97,20 @@ A slot is a unit of time (every 12 seconds in mainnet), for which a randomly cho
 The proposer can choose to propose a block during that slot. There are cases, such as the proposer being offline,
 when no block is proposed during a slot.
 
+```python
     pre_eth1_votes = len(state.eth1_data_votes)
     pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+```
 
+Store some values to check later that certain updates happened.
+
+```python
     yield 'pre', state
 ```
 
 In Python `yield` is used by [generators](https://wiki.python.org/moin/Generators). However, for our purposes
 we can treat it as a partial return statement that doesn't stop the function's processing, only adds to a list
-of return values. Here we add two values, the string `'pre'` and the initial state.
+of return values. Here we add two values, the string `'pre'` and the initial state, to the list of return values.
 
 ```python
     block = build_empty_block_for_next_slot(spec, state)
@@ -113,6 +118,8 @@ of return values. Here we add two values, the string `'pre'` and the initial sta
 
 The state contains the last block, which is necessary for building up the next block (every block needs to
 have the hash of the previous one in a blockchain).
+
+# 17:30 in the video.
 
 ```python
     signed_block = state_transition_and_sign_block(spec, state, block)
