@@ -60,15 +60,43 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
 
 ## Simple Test
 
-The `test_empty_block_transition` test is at 
-`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`. 
-It is implemented by this function:
+The `test_empty_block_transition` test is implemented by a function with the same
+name located in `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`.
+To learn how consensus spec tests are written, let's go over the code:
 
 ```python
 @with_all_phases
+```
+
+This [decorator](https://book.pythontips.com/en/latest/decorators.html) specifies that this test
+is applicable to all the phases of the ETH 2.0 project. These phases are equivalent to forks (Istanbul,
+Berlin, London, etc.) in the execution blockchain. If you are interested, [you can see the definition of
+this decorator here](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L331-L335).
+
+```python
 @spec_state_test
+```
+
+[This decorator](https://github.com/qbzzt/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L232-L234) specifies
+that this test is a state transition test, and that it does not include a transition between different forks.
+
+```python
 def test_empty_block_transition(spec, state):
+```
+
+This type of test receives two parameters:
+
+* `specs`: The protocol specifications
+* `state`: The genesis state before the test
+
+```python
     pre_slot = state.slot
+```    
+
+A slot is a unit of time (every 12 seconds in mainnet), for which a randomly chosen beacon node is a proposer. 
+The proposer can choose to propose a block during that slot. There are cases, such as the proposer being offline,
+when no block is proposed during a slot.
+
     pre_eth1_votes = len(state.eth1_data_votes)
     pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
