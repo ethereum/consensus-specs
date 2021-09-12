@@ -58,9 +58,9 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    ```
 
 
-## Simple Test
+## The "Hello, World" of Consensus Spec Tests
 
-The `test_empty_block_transition` test is implemented by a function with the same
+One of the `test_empty_block_transition` tests is implemented by a function with the same
 name located in `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`.
 To learn how consensus spec tests are written, let's go over the code:
 
@@ -93,9 +93,8 @@ This type of test receives two parameters:
     pre_slot = state.slot
 ```    
 
-A slot is a unit of time (every 12 seconds in mainnet), for which a randomly chosen beacon node is a proposer. 
-The proposer can choose to propose a block during that slot. There are cases, such as the proposer being offline,
-when no block is proposed during a slot.
+A slot is a unit of time (every 12 seconds in mainnet), for which a beacon node (selected randomly but in a
+deterministic manner) is a proposer. The proposer can propose a block during that slot. 
 
 ```python
     pre_eth1_votes = len(state.eth1_data_votes)
@@ -158,6 +157,61 @@ Finally we assertions that test the transition was legitimate. In this case we h
 2. The new block's `parent_root` is the same as the block in the previous location
 3. The random data that every block includes was changed. 
 
+
+## New Tests
+
+The easiest way to write a new test is to copy and modify an existing one. For example,
+lets write a test where the first slot of the beacon chain is empty (because the assigned 
+proposer is offline, for example), and then there's an empty block in the second slot.
+
+We already know how to accomplish most of what we need for this test, but the only way we know 
+to advance the state is `state_transition_and_sign_block`, a function that also puts a block
+into the slot. So let's see if the function's definition tells us how to advance the state without
+a block.
+
+First, we need to find out where the function is located. Run:
+
+```sh
+find . -name '*.py' -exec grep 'def state_transition_and_sign_block' {} \; -print
+```
+
+And you'll find that the function is defined in `eth2spec/test/helpers/state.py`. Looking
+in that file, we see that the second function is:
+
+```python
+def next_slot(spec, state):
+    """
+    Transition to the next slot.
+    """
+    spec.process_slots(state, state.slot + 1)
+```
+
+This looks like exactly what we need. So we add this call before we create the empty block:
+
+
+```python
+.
+.
+.
+    yield 'pre', state
+
+    next_slot(spec, state)
+
+    block = build_empty_block_for_next_slot(spec, state)
+.
+.
+.
+```
+
+That's it. Our new test works (copy `test_empty_block_transition`, add the `next_slot` call, and then run it to 
+verify this).
+
+
+
+## Tests Designed to Fail
+
+
+## How are These Tests Used?
 
 
 
