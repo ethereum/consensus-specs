@@ -119,24 +119,46 @@ of return values. Here we add two values, the string `'pre'` and the initial sta
 The state contains the last block, which is necessary for building up the next block (every block needs to
 have the hash of the previous one in a blockchain).
 
-# 17:30 in the video.
-
 ```python
     signed_block = state_transition_and_sign_block(spec, state, block)
+```
 
+Create a block signed the the appropriate proposer and advance the state
+
+```python
     yield 'blocks', [signed_block]
     yield 'post', state
+```
 
+More `yield` statements. The output of a consensus test is:
+
+1. `'pre'`
+2. The state before the test was run
+3. `'blocks'`
+4. A list of signed blocks
+5. `'post'`
+6. The state after the test
+
+
+
+```python
     # One vote for the eth1
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
 
     # Check that the new parent root is correct
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
-
-
+    
     # Random data changed
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 ```
+
+Finally we assertions that test the transition was legitimate. In this case we have three assertions:
+
+1. One items was added to `eth1_data_votes`
+2. The new block's `parent_root` is the same as the root in the previous location
+3. The random data that every block includes was changed. 
+
+
 
 
 https://ethos.dev/beacon-chain/
