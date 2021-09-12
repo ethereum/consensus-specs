@@ -155,10 +155,13 @@ More `yield` statements. The output of a consensus test is:
 Finally we assertions that test the transition was legitimate. In this case we have three assertions:
 
 1. One items was added to `eth1_data_votes`
-2. The new block's `parent_root` is the same as the root in the previous location
+2. The new block's `parent_root` is the same as the block in the previous location
 3. The random data that every block includes was changed. 
 
 
+
+
+<!--
 
 
 https://ethos.dev/beacon-chain/
@@ -177,4 +180,4 @@ the --preset flag
 and running all the tests against mainnet config takes much longer... like 30+ minutes instead of 4 or 5
 
 
-
+-->
