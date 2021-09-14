@@ -1,8 +1,8 @@
-from eth2spec.utils.ssz.ssz_typing import uint64, uint256
+from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.block import (
     prepare_empty_pow_block
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_merge_and_later
+from eth2spec.test.context import spec_state_test, with_merge_and_later
 
 
 def create_transition_store(spec):
@@ -139,7 +139,8 @@ def test_process_merge_execution_payload_fail_block_lookup(spec, state):
     block.total_difficulty = transition_store.terminal_total_difficulty
     payload = spec.ExecutionPayload()
     payload.parent_hash = spec.Hash32(spec.hash(b'02'))
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload, block_lookup_success=False)
+    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload,
+                                                   block_lookup_success=False)
 
 
 @with_merge_and_later
@@ -155,7 +156,8 @@ def test_process_merge_execution_payload_fail_parent_block_lookup(spec, state):
     block.total_difficulty = transition_store.terminal_total_difficulty
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload, block_lookup_success=False)
+    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload,
+                                                   block_lookup_success=False)
 
 
 @with_merge_and_later

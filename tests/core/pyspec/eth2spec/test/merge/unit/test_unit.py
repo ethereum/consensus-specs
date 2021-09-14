@@ -1,4 +1,4 @@
-from eth2spec.utils.ssz.ssz_typing import uint64, uint256
+from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_state_with_incomplete_transition,
@@ -7,7 +7,7 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.block import (
     prepare_empty_pow_block
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_merge_and_later
+from eth2spec.test.context import spec_state_test, with_merge_and_later
 
 
 @with_merge_and_later
@@ -108,7 +108,8 @@ def compute_terminal_total_difficulty_reference(spec) -> uint256:
     seconds_per_voting_period = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT
     pow_blocks_per_voting_period = seconds_per_voting_period // spec.config.SECONDS_PER_ETH1_BLOCK
     pow_blocks_to_merge = spec.TARGET_SECONDS_TO_MERGE // spec.config.SECONDS_PER_ETH1_BLOCK
-    pow_blocks_after_anchor_block = spec.config.ETH1_FOLLOW_DISTANCE + pow_blocks_per_voting_period + pow_blocks_to_merge
+    pow_blocks_after_anchor_block = spec.config.ETH1_FOLLOW_DISTANCE + pow_blocks_per_voting_period +\
+        pow_blocks_to_merge
     return spec.config.MIN_ANCHOR_POW_BLOCK_DIFFICULTY * uint256(pow_blocks_after_anchor_block)
 
 

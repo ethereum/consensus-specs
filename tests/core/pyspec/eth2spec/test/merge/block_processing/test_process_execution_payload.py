@@ -276,7 +276,7 @@ def test_gaslimit_upper_plus_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.gas_limit = execution_payload.gas_limit + \
-                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR
+        execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -291,7 +291,7 @@ def test_gaslimit_upper_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.gas_limit = execution_payload.gas_limit + \
-                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR - uint64(1)
+        execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR - uint64(1)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
@@ -306,7 +306,7 @@ def test_gaslimit_lower_minus_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.gas_limit = execution_payload.gas_limit - \
-                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR
+        execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -321,7 +321,7 @@ def test_gaslimit_lower_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.gas_limit = execution_payload.gas_limit - \
-                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR + uint64(1)
+        execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR + uint64(1)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
