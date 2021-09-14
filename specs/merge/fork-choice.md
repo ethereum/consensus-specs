@@ -17,6 +17,7 @@
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
+  - [`process_merge_execution_payload`](#process_merge_execution_payload)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -106,6 +107,19 @@ def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlo
     return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
+### `process_merge_execution_payload`
+
+Used by fork-choice handler, `on_block` to check validity of terminal block.
+
+```python
+def process_merge_execution_payload(transition_store: TransitionStore, execution_payload: ExecutionPayload) -> None:
+    # Delay consideration of block until PoW block is processed by the PoW node
+    pow_block = get_pow_block(execution_payload.parent_hash)
+    pow_parent = get_pow_block(pow_block.parent_hash)
+    assert pow_block.is_processed
+    assert is_valid_terminal_pow_block(transition_store, pow_block, pow_parent)
+```
+
 ## Updated fork-choice handlers
 
 ### `on_block`
@@ -130,11 +144,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     
     # [New in Merge]
     if (transition_store is not None) and is_merge_block(pre_state, block.body):
-        # Delay consideration of block until PoW block is processed by the PoW node
-        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
-        pow_parent = get_pow_block(pow_block.parent_hash)
-        assert pow_block.is_processed
-        assert is_valid_terminal_pow_block(transition_store, pow_block, pow_parent)
+        process_merge_execution_payload(transition_store, block.body.execution_payload)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
