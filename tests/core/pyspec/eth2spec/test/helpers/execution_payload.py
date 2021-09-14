@@ -1,3 +1,6 @@
+from remerkleable.byte_arrays import ByteVector
+
+
 def build_empty_execution_payload(spec, state, randao_mix=None):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
@@ -64,3 +67,12 @@ def build_state_with_execution_payload_header(spec, state, execution_payload_hea
     pre_state.latest_execution_payload_header = execution_payload_header
 
     return pre_state
+
+
+# damages last byte of the data by changing one bit
+def screw_up_bytes(data: ByteVector):
+    assert len(data) > 0
+    length = data.vector_length()
+    raw_data = data.encode_bytes()
+    raw_data = raw_data[0:len(raw_data) - 1] + bytes([(raw_data[len(raw_data) - 1] ^ 1)])
+    return ByteVector[length](*raw_data)

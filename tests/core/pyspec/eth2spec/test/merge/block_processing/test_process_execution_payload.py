@@ -1,8 +1,12 @@
+from remerkleable.byte_arrays import Bytes32
+from eth2spec.utils.ssz.ssz_typing import uint64
+
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     get_execution_payload_header,
     build_state_with_incomplete_transition,
     build_state_with_complete_transition,
+    screw_up_bytes
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error, with_merge_and_later
 from eth2spec.test.helpers.state import next_slot
@@ -197,5 +201,184 @@ def test_bad_timestamp_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.timestamp = execution_payload.timestamp + 1
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_bad_randao_first_payload(spec, state):
+    # pre-state
+    state = build_state_with_incomplete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    good_randao: Bytes32 = execution_payload.random
+    bad_randao = screw_up_bytes(good_randao)
+    # still valid because randao is ignored on this stage
+    execution_payload.random = bad_randao
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_bad_randao_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    good_randao: Bytes32 = execution_payload.random
+    bad_randao = screw_up_bytes(good_randao)
+    execution_payload.random = bad_randao
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_zero_first_payload(spec, state):
+    # pre-state
+    state = build_state_with_incomplete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = uint64(0)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_max_first_payload(spec, state):
+    # pre-state
+    state = build_state_with_incomplete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = uint64(2**64 - 1)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_upper_plus_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = execution_payload.gas_limit + \
+                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_upper_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = execution_payload.gas_limit + \
+                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR - uint64(1)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_lower_minus_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = execution_payload.gas_limit - \
+                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_lower_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = execution_payload.gas_limit - \
+                                  execution_payload.gas_limit // spec.GAS_LIMIT_DENOMINATOR + uint64(1)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_minimum_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+    state.latest_execution_payload_header.gas_limit = spec.MIN_GAS_LIMIT
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = execution_payload.gas_limit
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gaslimit_minimum_minus_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+    state.latest_execution_payload_header.gas_limit = spec.MIN_GAS_LIMIT
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_limit = execution_payload.gas_limit - uint64(1)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gasused_gaslimit_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_used = execution_payload.gas_limit
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_gasused_gaslimit_plus_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.gas_used = execution_payload.gas_limit + uint64(1)
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
