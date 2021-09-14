@@ -74,6 +74,7 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
 @dataclass
 class TransitionStore(object):
     terminal_total_difficulty: uint256
+    terminal_block_hash: Hash32
 ```
 
 ### `PowBlock`
@@ -101,9 +102,12 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
-    is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
-    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
-    return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
+    if transition_store.terminal_block_hash is not None:
+        return block.is_valid and block.block_hash == transition_store.terminal_block_hash
+    else:
+        is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
+        is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
+        return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
 ## Updated fork-choice handlers
@@ -127,7 +131,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
-    
+
     # [New in Merge]
     if (transition_store is not None) and is_merge_block(pre_state, block.body):
         # Delay consideration of block until PoW block is processed by the PoW node
@@ -154,7 +158,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
         store.finalized_checkpoint = state.finalized_checkpoint
-        
+
         # Potentially update justified if different from store
         if store.justified_checkpoint != state.current_justified_checkpoint:
             # Update justified if new justified is later than store justified
