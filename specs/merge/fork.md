@@ -28,7 +28,7 @@ Warning: this configuration is not definitive.
 | - | - |
 | `MERGE_FORK_VERSION` | `Version('0x02000000')` |
 | `MERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
-| `MIN_ANCHOR_POW_BLOCK_DIFFICULTY` | **TBD** |
+| `MIN_ANCHOR_POW_BLOCK_DIFFICULTY` | `uint256(2 ** 32)`  **TBD** |
 | `TARGET_SECONDS_TO_MERGE` | `uint64(7 * 86400)` = (604,800) |
 
 ## Fork to Merge
@@ -115,7 +115,7 @@ def compute_terminal_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
     pow_blocks_after_anchor_block = ETH1_FOLLOW_DISTANCE + pow_blocks_per_voting_period + pow_blocks_to_merge
     anchor_difficulty = max(MIN_ANCHOR_POW_BLOCK_DIFFICULTY, anchor_pow_block.difficulty)
 
-    return anchor_pow_block.total_difficulty + anchor_difficulty * pow_blocks_after_anchor_block
+    return anchor_pow_block.total_difficulty + anchor_difficulty * uint256(pow_blocks_after_anchor_block)
 
 
 def get_transition_store(anchor_pow_block: PowBlock) -> TransitionStore:
