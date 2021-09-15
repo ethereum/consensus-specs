@@ -211,7 +211,48 @@ verify this).
 ## Tests Designed to Fail
 
 It is important to make sure that the system rejects invalid input, so our next step is to deal with cases where the protocol
-is supposed to reject the message. 
+is supposed to reject something. To see such a test, look at `test_prev_slot_block_transition` (in the same
+file we used previously, `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`).
+
+```python
+@with_all_phases
+@spec_state_test
+def test_prev_slot_block_transition(spec, state):
+    spec.process_slots(state, state.slot + 1)
+    block = build_empty_block(spec, state, slot=state.slot)
+```
+
+Build an empty block for the current slot.
+
+```python
+    proposer_index = spec.get_beacon_proposer_index(state)
+```
+
+Get the identity of the **current** proposer, the one for this slot.
+
+```python
+    spec.process_slots(state, state.slot + 1)
+```
+
+Transition to the new slot, which naturally has a different proposer.
+
+```python
+    yield 'pre', state
+    # State is beyond block slot, but the block can still be realistic when invalid.
+    # Try the transition, and update the state root to where it is halted. Then 
+    # sign with the supposed proposer.
+    expect_assertion_error(lambda: transition_unsigned_block(spec, state, block))
+```
+
+Specify the expected error. The block will not have a valid signature, because it was signed
+by the wrong proposer.
+
+```python
+    block.state_root = state.hash_tree_root()
+    signed_block = sign_block(spec, state, block, proposer_index=proposer_index)
+    yield 'blocks', [signed_block]
+    yield 'post', None   # No post state, signifying it errors out
+```
 
 
 ## How are These Tests Used?
