@@ -9,9 +9,8 @@ This document specifies configurable settings that clients must implement for th
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [The Merge -- Client Settings](#the-merge----client-settings)
-    - [Override terminal total difficulty](#override-terminal-total-difficulty)
-    - [Override terminal block hash](#override-terminal-block-hash)
+- [Override terminal total difficulty](#override-terminal-total-difficulty)
+- [Override terminal block hash](#override-terminal-block-hash)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
