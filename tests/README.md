@@ -69,7 +69,7 @@ To learn how consensus spec tests are written, let's go over the code:
 ```
 
 This [decorator](https://book.pythontips.com/en/latest/decorators.html) specifies that this test
-is applicable to all the phases of the ETH 2.0 project. These phases are equivalent to forks (Istanbul,
+is applicable to all the phases of the ETH 2.0 project. These phases are similar to forks (Istanbul,
 Berlin, London, etc.) in the execution blockchain. If you are interested, [you can see the definition of
 this decorator here](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L331-L335).
 
@@ -93,7 +93,7 @@ This type of test receives two parameters:
     pre_slot = state.slot
 ```    
 
-A slot is a unit of time (every 12 seconds in mainnet), for which a beacon node (selected randomly but in a
+A slot is a unit of time (every 12 seconds in mainnet), for which a validator (selected randomly but in a
 deterministic manner) is a proposer. The proposer can propose a block during that slot. 
 
 ```python
@@ -209,6 +209,9 @@ verify this).
 
 
 ## Tests Designed to Fail
+
+It is important to make sure that the system rejects invalid input, so our next step is to deal with cases where the protocol
+is supposed to reject the message. 
 
 
 ## How are These Tests Used?
