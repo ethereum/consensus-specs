@@ -1,6 +1,12 @@
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.helpers.constants import MAINNET
+from eth2spec.test.context import spec_state_test, with_all_phases, with_presets
 from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
+
+from eth2spec.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+    on_tick_and_append_step,
+)
 
 
 def check_finality(spec,
@@ -176,3 +182,73 @@ def test_finality_rule_3(spec, state):
 
     yield 'blocks', blocks
     yield 'post', state
+
+
+@with_all_phases
+@with_presets([MAINNET], reason="need SLOTS_PER_EPOCH==32 for formula to work")
+@spec_state_test
+def test_weak_subjectivity_period_formula(spec, state):
+    """
+    Test that the WS period formula returns the results of the table in
+    https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/weak-subjectivity.md
+    """
+    N_VALIDATORS = 32768
+    AVG_BALANCE = 28
+
+    # Populate state with 32768 validators with 28 ETH average balance.
+    # Period should be 504 epochs according to The Table
+    validator_balances = [AVG_BALANCE] * N_VALIDATORS
+    state.balances = validator_balances
+    state.validators = []
+    for i in range(N_VALIDATORS):
+        state.validators.append(spec.Validator(
+            activation_epoch=spec.GENESIS_EPOCH,
+            exit_epoch=spec.FAR_FUTURE_EPOCH,
+            effective_balance=28000000000))
+
+    weak_subjectivity_period = spec.compute_weak_subjectivity_period(state)
+    assert(weak_subjectivity_period == 504)
+
+
+@with_all_phases
+@spec_state_test
+def test_is_within_weak_subjectivity_period(spec, state):
+    """
+    Test that is_within_weak_subjectivity_period() will deny access as intended
+    if our WS checkpoint is too old.
+    """
+    # Initialization
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    # Get weak subjectivity period so we know how long to make our chain
+    # (For current configuration, WS period is 256)
+    weak_subjectivity_period = spec.compute_weak_subjectivity_period(state)
+
+    # Let's pretend that our WS checkpoint is the genesis block #0 and let's
+    # move forward in time. While moving, we will be checking whether we are
+    # inside or outside the acceptable WS period.
+    ws_state = state
+    ws_state.slot = spec.get_current_slot(store)
+    # Also mark the genesis block as the WS checkpoint
+    ws_checkpoint = spec.Checkpoint(
+        root=ws_state.latest_block_header.state_root,
+        epoch=spec.compute_epoch_at_slot(ws_state.slot))
+
+    # First, let's pretend that the client wakes up at epoch WS_PERIOD. That
+    # should be within WS period and access should be granted
+    current_time = ((weak_subjectivity_period) * spec.SLOTS_PER_EPOCH) * spec.config.SECONDS_PER_SLOT + \
+        store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    assert spec.is_within_weak_subjectivity_period(store, ws_state, ws_checkpoint)
+
+    # Now pretend that the client woke up at epoch WS_PERIOD+1. That should be
+    # outside of WS period and access should be denied.
+    current_time = ((weak_subjectivity_period + 1) * spec.SLOTS_PER_EPOCH) * spec.config.SECONDS_PER_SLOT + \
+        store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    assert not spec.is_within_weak_subjectivity_period(store, ws_state, ws_checkpoint)
