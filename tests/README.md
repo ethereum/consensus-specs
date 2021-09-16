@@ -122,7 +122,7 @@ have the hash of the previous one in a blockchain).
     signed_block = state_transition_and_sign_block(spec, state, block)
 ```
 
-Create a block signed the the appropriate proposer and advance the state
+Create a block signed by the appropriate proposer and advance the state
 
 ```python
     yield 'blocks', [signed_block]
@@ -153,7 +153,7 @@ More `yield` statements. The output of a consensus test is:
 
 Finally we assertions that test the transition was legitimate. In this case we have three assertions:
 
-1. One items was added to `eth1_data_votes`
+1. One item was added to `eth1_data_votes`
 2. The new block's `parent_root` is the same as the block in the previous location
 3. The random data that every block includes was changed. 
 
