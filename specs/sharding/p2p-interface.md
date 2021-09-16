@@ -19,6 +19,8 @@
       - [`shard_blob_header`](#shard_blob_header)
       - [`shard_blob_tx`](#shard_blob_tx)
       - [`shard_proposer_slashing`](#shard_proposer_slashing)
+    - [Attestation subnets](#attestation-subnets)
+      - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -175,3 +177,18 @@ The following validations MUST pass before forwarding the `shard_proposer_slashi
   for the proposer with index `proposer_slashing.proposer_index`.
   The `proposer_slashing.slot` and `proposer_slashing.shard` are ignored, there are no repeated or per-shard slashings.
 - _[REJECT]_ All of the conditions within `process_shard_proposer_slashing` pass validation.
+
+#### Attestation subnets
+
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network.
+
+##### `beacon_attestation_{subnet_id}`
+
+The *type* of the payload of this topic changes to the (modified) `Attestation` found in Sharding.
+Specifically, this type changes with the addition of `shard_blob_root` to the inner `AttestationData`.
+See the Sharding [state transition document](./beacon-chain.md#attestationdata) for further details.
+
+In addition to the gossip validations for this topic from prior specifications,
+the following validations MUST pass before forwarding the attestation on the network.
+- [IGNORE] The shard blob root being voted for (`attestation.data.shard_blob_root`) has been seen
+  (a client MAY queue attestations for processing once shard blob has been seen).
