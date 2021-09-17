@@ -143,6 +143,9 @@ def process_and_sign_block_without_header_validations(spec, state, block):
         state_root=spec.Bytes32(),
         body_root=block.body.hash_tree_root(),
     )
+    if is_post_merge(spec):
+        if spec.is_execution_enabled(state, block.body):
+            spec.process_execution_payload(state, block.body.execution_payload, spec.EXECUTION_ENGINE)
 
     # Perform rest of process_block transitions
     spec.process_randao(state, block.body)
@@ -150,9 +153,6 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     spec.process_operations(state, block.body)
     if is_post_altair(spec):
         spec.process_sync_aggregate(state, block.body.sync_aggregate)
-    if is_post_merge(spec):
-        if spec.is_execution_enabled(state, block.body):
-            spec.process_execution_payload(state, block.body.execution_payload, spec.EXECUTION_ENGINE)
 
     # Insert post-state rot
     block.state_root = state.hash_tree_root()
@@ -196,8 +196,7 @@ def test_parent_from_same_slot(spec, state):
     child_block.parent_root = state.latest_block_header.hash_tree_root()
 
     if is_post_merge(spec):
-        randao_mix = spec.compute_randao_mix(state, child_block.body.randao_reveal)
-        child_block.body.execution_payload = build_empty_execution_payload(spec, state, randao_mix)
+        child_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     # Show that normal path through transition fails
     failed_state = state.copy()
