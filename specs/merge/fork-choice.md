@@ -43,25 +43,13 @@ The body of this function is implementation dependent.
 The Consensus API may be used to implement this with an external execution engine.
 
 ```python
-def set_head(self: ExecutionEngine, block_hash: Hash32) -> bool:
+HEAD_TYPE_FINALIZED_HEAD = uint64(0)
+HEAD_TYPE_SAFE_HEAD = uint64(1)
+HEAD_TYPE_UNSAFE_HEAD = uint64(2)
+
+def set_head(self: ExecutionEngine, block_hash: Hash32, head_type: unit64) -> bool:
     """
     Returns True if the ``block_hash`` was successfully set as head of the execution payload chain.
-    """
-    ...
-```
-
-#### `finalize_block`
-
-Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
-and corresponding state, up to and including `block_hash`.
-
-The body of this function is implementation dependent.
-The Consensus API may be used to implement this with an external execution engine.
-
-```python
-def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
-    """
-    Returns True if the data up to and including ``block_hash`` was successfully finalized.
     """
     ...
 ```
@@ -71,16 +59,14 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
 ### `TransitionStore`
 
 ```python
-@dataclass
-class TransitionStore(object):
+class TransitionStore(Container):
     terminal_total_difficulty: uint256
 ```
 
 ### `PowBlock`
 
 ```python
-@dataclass
-class PowBlock(object):
+class PowBlock(Container):
     block_hash: Hash32
     parent_hash: Hash32
     total_difficulty: uint256
