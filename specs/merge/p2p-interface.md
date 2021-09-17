@@ -78,8 +78,6 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
     -- i.e. `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
   - _[REJECT]_ Gas used is less than the gas limit --
     i.e. `execution_payload.gas_used <= execution_payload.gas_limit`.
-  - _[REJECT]_ The execution payload block hash is not equal to the parent hash --
-    i.e. `execution_payload.block_hash != execution_payload.parent_hash`.
   - _[REJECT]_ The execution payload transaction list data is within expected size limits,
     the data MUST NOT be larger than the SSZ list-limit,
     and a client MAY be more strict.
