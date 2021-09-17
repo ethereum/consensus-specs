@@ -291,12 +291,14 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash, block number, random, base fee per gas and gas limit
+    # Verify consistency of the parent hash, block number, base fee per gas and gas limit
+    # with respect to the previous execution payload header
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
-        assert payload.random == get_randao_mix(state, get_current_epoch(state))
         assert is_valid_gas_limit(payload, state.latest_execution_payload_header)
+    # Verify random
+    assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
