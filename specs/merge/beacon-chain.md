@@ -14,7 +14,7 @@
   - [Execution](#execution)
 - [Configuration](#configuration)
   - [Genesis testing settings](#genesis-testing-settings)
-  - [Transition](#transition)
+  - [Transition settings](#transition-settings)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
