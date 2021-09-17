@@ -1,8 +1,10 @@
+from random import Random
 from eth2spec.test.context import is_post_altair, spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
-from eth2spec.test.helpers.state import transition_to
+from eth2spec.test.helpers.state import transition_to, next_epoch_via_block, next_slot
+from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 
 def run_process_just_and_fin(spec, state):
@@ -300,3 +302,76 @@ def test_12_ok_support_messed_target(spec, state):
 @spec_state_test
 def test_12_poor_support(spec, state):
     yield from finalize_on_12(spec, state, 3, False, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_balance_threshold_with_exited_validators(spec, state):
+    """
+    This test exercises a very specific failure mode where
+    exited validators are incorrectly included in the total active balance
+    when weighing justification.
+    """
+    rng = Random(133333)
+    # move past genesis conditions
+    for _ in range(3):
+        next_epoch_via_block(spec, state)
+
+    # mock attestation helper requires last slot of epoch
+    for _ in range(spec.SLOTS_PER_EPOCH - 1):
+        next_slot(spec, state)
+
+    # Step 1: Exit ~1/2 vals in current epoch
+    epoch = spec.get_current_epoch(state)
+    for index in spec.get_active_validator_indices(state, epoch):
+        if rng.choice([True, False]):
+            continue
+
+        validator = state.validators[index]
+        validator.exit_epoch = epoch
+        validator.withdrawable_epoch = epoch + 1
+        validator.withdrawable_epoch = validator.exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
+    exited_validators = get_unslashed_exited_validators(spec, state)
+    assert len(exited_validators) != 0
+
+    source = state.current_justified_checkpoint
+    target = spec.Checkpoint(
+        epoch=epoch,
+        root=spec.get_block_root(state, epoch)
+    )
+    add_mock_attestations(
+        spec,
+        state,
+        epoch,
+        source,
+        target,
+        sufficient_support=False,
+    )
+
+    if not is_post_altair(spec):
+        current_attestations = spec.get_matching_target_attestations(state, epoch)
+        total_active_balance = spec.get_total_active_balance(state)
+        current_target_balance = spec.get_attesting_balance(state, current_attestations)
+        # Check we will not justify the current checkpoint
+        does_justify = current_target_balance * 3 >= total_active_balance * 2
+        assert not does_justify
+        # Ensure we would have justified the current checkpoint w/ the exited validators
+        current_exited_balance = spec.get_total_balance(state, exited_validators)
+        does_justify = (current_target_balance + current_exited_balance) * 3 >= total_active_balance * 2
+        assert does_justify
+    else:
+        current_indices = spec.get_unslashed_participating_indices(state, spec.TIMELY_TARGET_FLAG_INDEX, epoch)
+        total_active_balance = spec.get_total_active_balance(state)
+        current_target_balance = spec.get_total_balance(state, current_indices)
+        # Check we will not justify the current checkpoint
+        does_justify = current_target_balance * 3 >= total_active_balance * 2
+        assert not does_justify
+        # Ensure we would have justified the current checkpoint w/ the exited validators
+        current_exited_balance = spec.get_total_balance(state, exited_validators)
+        does_justify = (current_target_balance + current_exited_balance) * 3 >= total_active_balance * 2
+        assert does_justify
+
+    yield from run_process_just_and_fin(spec, state)
+
+    assert state.current_justified_checkpoint.epoch != epoch

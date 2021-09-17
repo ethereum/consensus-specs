@@ -255,7 +255,19 @@ def run_get_inactivity_penalty_deltas(spec, state):
                 else:
                     assert penalties[index] > base_penalty
         else:
-            assert penalties[index] == 0
+            if not is_post_altair(spec):
+                assert penalties[index] == 0
+                continue
+            else:
+                # post altair, this penalty is derived from the inactivity score
+                # regardless if the state is leaking or not...
+                if index in matching_attesting_indices:
+                    assert penalties[index] == 0
+                else:
+                    # copied from spec:
+                    penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+                    penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+                    assert penalties[index] == penalty_numerator // penalty_denominator
 
 
 def transition_state_to_leak(spec, state, epochs=None):

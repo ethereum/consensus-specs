@@ -126,6 +126,17 @@ def default_balances(spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
+def scaled_churn_balances(spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    See the second argument of ``max`` in ``get_validator_churn_limit``.
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (2 + spec.config.MIN_PER_EPOCH_CHURN_LIMIT)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
 with_state = with_custom_state(default_balances, default_activation_threshold)
 
 
