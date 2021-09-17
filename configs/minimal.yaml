@@ -30,9 +30,6 @@ MERGE_FORK_EPOCH: 18446744073709551615
 SHARDING_FORK_VERSION: 0x03000001
 SHARDING_FORK_EPOCH: 18446744073709551615
 
-# TBD, 2**32 is a placeholder. Merge transition approach is in active R&D.
-MIN_ANCHOR_POW_BLOCK_DIFFICULTY: 4294967296
-
 
 # Time parameters
 # ---------------------------------------------------------------

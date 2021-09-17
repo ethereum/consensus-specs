@@ -14,6 +14,7 @@
   - [Execution](#execution)
 - [Configuration](#configuration)
   - [Genesis testing settings](#genesis-testing-settings)
+  - [Transition](#transition)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -75,6 +76,12 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | - | - |
 | `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
 | `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000')` (= 1,000,000,000) |
+
+### Transition settings
+
+| Name | Value |
+| - | - |
+| `TERMINAL_TOTAL_DIFFICULTY` | `uint256(2**256 - 1)` |
 
 ## Containers
 

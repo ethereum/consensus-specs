@@ -13,7 +13,6 @@
     - [`set_head`](#set_head)
     - [`finalize_block`](#finalize_block)
 - [Helpers](#helpers)
-  - [`TransitionStore`](#transitionstore)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
@@ -68,14 +67,6 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
 
 ## Helpers
 
-### `TransitionStore`
-
-```python
-@dataclass
-class TransitionStore(object):
-    terminal_total_difficulty: uint256
-```
-
 ### `PowBlock`
 
 ```python
@@ -98,9 +89,9 @@ Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given t
 Used by fork-choice handler, `on_block`.
 
 ```python
-def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
-    is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
-    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
+def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
+    is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+    is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
     return is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
@@ -111,7 +102,7 @@ def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlo
 *Note*: The only modification is the addition of the verification of transition block conditions.
 
 ```python
-def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: TransitionStore=None) -> None:
+def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
@@ -131,10 +122,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     state_transition(state, signed_block, True)
 
     # [New in Merge]
-    if (transition_store is not None) and is_merge_block(pre_state, block.body):
+    if is_merge_block(pre_state, block.body):
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         pow_parent = get_pow_block(pow_block.parent_hash)
-        assert is_valid_terminal_pow_block(transition_store, pow_block, pow_parent)
+        assert is_valid_terminal_pow_block(pow_block, pow_parent)
 
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
