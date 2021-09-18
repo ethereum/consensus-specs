@@ -156,7 +156,8 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[IGNORE]_ The header is not stale -- i.e. the corresponding shard proposer has not already selected a header for `(header.slot, header.shard)`.
 - _[IGNORE]_ The header is the first header with valid signature received for the `(header.builder_index, header.slot, header.shard)` combination.
 - _[REJECT]_ The blob builder, define by `header.builder_index`, exists and has sufficient balance to back the fee payment.
-- _[IGNORE]_ The header fee SHOULD be higher than previously seen headers for `(header.slot, header.shard)`, from any builder.
+- _[REJECT]_ The max fee MUST be higher or equal to the max priority fee -- i.e. validate `header.body_summary.max_priority_fee <= header.body_summary.max_fee`
+- _[IGNORE]_ The `header.body_summary.max_priority_fee` SHOULD be higher than previously seen headers for `(header.slot, header.shard)`, from any builder.
   Propagating nodes MAY increase fee increments in case of spam.
 - _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for ONLY the builder --
   i.e. `bls.Verify(builder_pubkey, blob_signing_root, signed_blob_header.signature)`. The signature is not an aggregate with the proposer.
