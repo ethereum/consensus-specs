@@ -93,7 +93,7 @@ This type of test receives two parameters:
     pre_slot = state.slot
 ```    
 
-A slot is a unit of time (every 12 seconds in mainnet), for which a validator (selected randomly but in a
+A slot is a unit of time (every 12 seconds in mainnet), for which a specific validator (selected randomly but in a
 deterministic manner) is a proposer. The proposer can propose a block during that slot. 
 
 ```python
@@ -238,18 +238,34 @@ Transition to the new slot, which naturally has a different proposer.
 
 ```python
     yield 'pre', state
-    # State is beyond block slot, but the block can still be realistic when invalid.
-    # Try the transition, and update the state root to where it is halted. Then 
-    # sign with the supposed proposer.
     expect_assertion_error(lambda: transition_unsigned_block(spec, state, block))
 ```
 
-Specify the expected error. The block will not have a valid signature, because it was signed
-by the wrong proposer.
+Specify that the function `transition_unsigned_block` will cause an assertion error.
+You can see this function in `~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`,
+and one of the tests is that the block must be for this slot:
+> ```python
+> assert state.slot == block.slot
+>  ```
+
+Because we use [lambda notation](https://www.w3schools.com/python/python_lambda.asp), the test
+does not call `transition_unsigned_block` here. Instead, this is a function parameter that can
+be called later.
 
 ```python
     block.state_root = state.hash_tree_root()
+```
+
+Set the block's state root to the current state hash tree root, which identifies this block as
+belonging to this slot (even though it was created for the previous slot). 
+
+```python    
     signed_block = sign_block(spec, state, block, proposer_index=proposer_index)
+```
+
+Notice that `proposer_index` is 
+
+```python
     yield 'blocks', [signed_block]
     yield 'post', None   # No post state, signifying it errors out
 ```
