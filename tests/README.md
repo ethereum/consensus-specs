@@ -263,12 +263,17 @@ belonging to this slot (even though it was created for the previous slot).
     signed_block = sign_block(spec, state, block, proposer_index=proposer_index)
 ```
 
-Notice that `proposer_index` is 
+Notice that `proposer_index` is the variable we set earlier, *before* we advanced
+the slot with `spec.process_slots(state, state.slot + 1)`. It is not the proposer 
+for hte current state.
 
 ```python
     yield 'blocks', [signed_block]
     yield 'post', None   # No post state, signifying it errors out
 ```
+
+This is the way we specify that a test is designed to fail - failed tests have no post state,
+because the processing mechanism errors out before creating it.
 
 
 ## How are These Tests Used?
