@@ -61,7 +61,8 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
 ## The "Hello, World" of Consensus Spec Tests
 
 One of the `test_empty_block_transition` tests is implemented by a function with the same
-name located in `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`.
+name located in 
+[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py).
 To learn how consensus spec tests are written, let's go over the code:
 
 ```python
@@ -175,7 +176,8 @@ First, we need to find out where the function is located. Run:
 find . -name '*.py' -exec grep 'def state_transition_and_sign_block' {} \; -print
 ```
 
-And you'll find that the function is defined in `eth2spec/test/helpers/state.py`. Looking
+And you'll find that the function is defined in 
+[`eth2spec/test/helpers/state.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/state.py). Looking
 in that file, we see that the second function is:
 
 ```python
@@ -203,7 +205,7 @@ This looks like exactly what we need. So we add this call before we create the e
 .
 ```
 
-That's it. Our new test works (copy `test_empty_block_transition`, add the `next_slot` call, and then run it to 
+That's it. Our new test works (copy `test_empty_block_transition`, rename it, add the `next_slot` call, and then run it to 
 verify this).
 
 
@@ -212,7 +214,8 @@ verify this).
 
 It is important to make sure that the system rejects invalid input, so our next step is to deal with cases where the protocol
 is supposed to reject something. To see such a test, look at `test_prev_slot_block_transition` (in the same
-file we used previously, `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`).
+file we used previously, 
+[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py)).
 
 ```python
 @with_all_phases
@@ -228,7 +231,7 @@ Build an empty block for the current slot.
     proposer_index = spec.get_beacon_proposer_index(state)
 ```
 
-Get the identity of the **current** proposer, the one for this slot.
+Get the identity of the current proposer, the one for *this* slot.
 
 ```python
     spec.process_slots(state, state.slot + 1)
@@ -242,7 +245,8 @@ Transition to the new slot, which naturally has a different proposer.
 ```
 
 Specify that the function `transition_unsigned_block` will cause an assertion error.
-You can see this function in `~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`,
+You can see this function in 
+[`~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/block.py),
 and one of the tests is that the block must be for this slot:
 > ```python
 > assert state.slot == block.slot
