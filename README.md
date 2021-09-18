@@ -85,6 +85,7 @@ The following are the broad design goals for the Ethereum proof-of-stake consens
 * to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
 * to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
+* to increase overall data-capacity for NFTs
 
 ## Useful external resources
 
