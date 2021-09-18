@@ -146,6 +146,34 @@ def test_bad_parent_hash_regular_payload(spec, state):
 
 @with_merge_and_later
 @spec_state_test
+def test_bad_random_first_payload(spec, state):
+    # pre-state
+    state = build_state_with_incomplete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.random = b'\x42' * 32
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
+def test_bad_random_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.random = b'\x04' * 32
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_merge_and_later
+@spec_state_test
 def test_bad_number_regular_payload(spec, state):
     # pre-state
     state = build_state_with_complete_transition(spec, state)
