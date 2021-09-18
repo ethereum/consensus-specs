@@ -81,7 +81,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 
 | Name | Value |
 | - | - |
-| `TERMINAL_TOTAL_DIFFICULTY` | `uint256(2**256 - 1)` |
+| `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
 
 ## Containers
 
