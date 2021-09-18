@@ -58,7 +58,7 @@ Sharding follows the merge, and is divided into three parts:
   * [Beacon Chain changes](specs/custody_game/beacon-chain.md)
   * [Validator custody work](specs/custody_game/validator.md)
 * Data Availability Sampling - In active R&D
-  * Technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
+  * Technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)
   * [Core types and functions](specs/das/das-core.md)
   * [P2P Networking](specs/das/p2p-interface.md)
   * [Fork Choice](specs/das/fork-choice.md)
