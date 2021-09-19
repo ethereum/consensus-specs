@@ -36,6 +36,8 @@ and metered VMs (e.g. blockchain VMs for cross-chain bridges).
 This document suggests a minimal light client design for the beacon chain that
 uses sync committees introduced in [this beacon chain extension](./beacon-chain.md).
 
+- ETH2 API: https://ethereum.github.io/beacon-APIs/#/
+
 ## Constants
 
 | Name | Value |
