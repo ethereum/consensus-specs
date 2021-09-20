@@ -23,6 +23,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
+        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
         base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
         block_hash=spec.Hash32(),
         transactions=empty_txs,
@@ -45,6 +46,7 @@ def get_execution_payload_header(spec, execution_payload):
         gas_limit=execution_payload.gas_limit,
         gas_used=execution_payload.gas_used,
         timestamp=execution_payload.timestamp,
+        extra_data=execution_payload.extra_data,
         base_fee_per_gas=execution_payload.base_fee_per_gas,
         block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)

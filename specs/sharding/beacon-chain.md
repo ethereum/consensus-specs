@@ -552,12 +552,12 @@ def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Sh
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
+    # is_execution_enabled is omitted, execution is enabled by default.
+    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Sharding]
     process_sync_aggregate(state, block.body.sync_aggregate)
-    # is_execution_enabled is omitted, execution is enabled by default. 
-    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
 ```
 
 #### Operations

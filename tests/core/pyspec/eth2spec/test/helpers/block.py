@@ -100,8 +100,7 @@ def build_empty_block(spec, state, slot=None):
         empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
     if is_post_merge(spec):
-        randao_mix = spec.compute_randao_mix(state, empty_block.body.randao_reveal)
-        empty_block.body.execution_payload = build_empty_execution_payload(spec, state, randao_mix)
+        empty_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     return empty_block
 

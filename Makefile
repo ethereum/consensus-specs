@@ -173,7 +173,7 @@ define run_generator
 	echo "generator $(1) finished"
 endef
 
-# The tests dir itself is simply build by creating the directory (recursively creating deeper directories if necessary)
+# The tests dir itself is simply built by creating the directory (recursively creating deeper directories if necessary)
 $(TEST_VECTOR_DIR):
 	$(info creating test output directory, for generators: ${GENERATOR_TARGETS})
 	mkdir -p $@
