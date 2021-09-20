@@ -75,23 +75,16 @@ def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequ
     return None
 
 
-def compute_randao_mix(state: BeaconState, randao_reveal: BLSSignature) -> Bytes32:
-    epoch = get_current_epoch(state)
-    return xor(get_randao_mix(state, epoch), hash(randao_reveal))
-
-
 def produce_execution_payload(state: BeaconState,
                               parent_hash: Hash32,
-                              randao_reveal: BLSSignature,
                               execution_engine: ExecutionEngine) -> ExecutionPayload:
     timestamp = compute_timestamp_at_slot(state, state.slot)
-    randao_mix = compute_randao_mix(state, randao_reveal)
+    randao_mix = get_randao_mix(state, get_current_epoch(state))
     return execution_engine.assemble_block(parent_hash, timestamp, randao_mix)
 
 
 def get_execution_payload(state: BeaconState,
                           transition_store: TransitionStore,
-                          randao_reveal: BLSSignature,
                           execution_engine: ExecutionEngine,
                           pow_chain: Sequence[PowBlock]) -> ExecutionPayload:
     if not is_merge_complete(state):
@@ -101,9 +94,9 @@ def get_execution_payload(state: BeaconState,
             return ExecutionPayload()
         else:
             # Signify merge via producing on top of the last PoW block
-            return produce_execution_payload(state, terminal_pow_block.block_hash, randao_reveal, execution_engine)
+            return produce_execution_payload(state, terminal_pow_block.block_hash, execution_engine)
 
     # Post-merge, normal payload
     parent_hash = state.latest_execution_payload_header.block_hash
-    return produce_execution_payload(state, parent_hash, randao_reveal, execution_engine)
+    return produce_execution_payload(state, parent_hash, execution_engine)
 ```
