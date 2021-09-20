@@ -31,7 +31,8 @@
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [`on_payload`](#on_payload)
+    - [`execute_payload`](#execute_payload)
+    - [`consensus_validated`](#consensus_validated)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`is_valid_gas_limit`](#is_valid_gas_limit)
@@ -237,19 +238,31 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
-* a state transition function `self.on_payload` which mutates `self.execution_state`
+* a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
+* a method `self.consensus_validated` which notifies that the block holding the execution payload
+is valid with respect to the consensus rule set
 
-#### `on_payload`
+#### `execute_payload`
 
 ```python
-def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
     Returns ``True`` iff ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
     ...
 ```
 
-The above function is accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+#### `consensus_validated`
+
+```python
+def consensus_validated(self: ExecutionEngine, execution_payload: ExecutionPayload) -> None:
+    ...
+```
+
+The above functions are accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+
+The body of each of these functions is implementation dependent.
+The Engine API may be used to implement them with an external execution engine.
 
 ### Block processing
 
@@ -264,6 +277,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
+    if is_execution_enabled(state, block.body):
+        # Notify the block is valid with respect to the consensus state transition function
+        EXECUTION_ENGINE.consensus_validated(block.body.execution_payload)  # [New in Merge]
 ```
 
 ### Execution payload processing
@@ -304,7 +320,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.on_payload(payload)
+    assert execution_engine.execute_payload(payload)
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,

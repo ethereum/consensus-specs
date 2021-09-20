@@ -522,16 +522,23 @@ def get_pow_chain_head() -> PowBlock:
 
 class NoopExecutionEngine(ExecutionEngine):
 
-    def on_payload(self, execution_payload: ExecutionPayload) -> bool:
+    def execute_payload(self, execution_payload: ExecutionPayload) -> bool:
         return True
 
-    def set_head(self, block_hash: Hash32) -> bool:
-        return True
+    def consensus_validated(self: ExecutionEngine, execution_payload: ExecutionPayload) -> None:
+        pass
 
-    def finalize_block(self, block_hash: Hash32) -> bool:
-        return True
+    def forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
+        pass
 
-    def assemble_block(self, block_hash: Hash32, timestamp: uint64, random: Bytes32) -> ExecutionPayload:
+    def prepare_payload(self: ExecutionEngine,
+                        parent_hash: Hash32,
+                        timestamp: uint64,
+                        random: Bytes32,
+                        feeRecipient: Bytes20) -> uint64:
+        raise NotImplementedError("no default block production")
+
+    def get_payload(self: ExecutionEngine, payload_id: uint64) -> ExecutionPayload:
         raise NotImplementedError("no default block production")
 
 
