@@ -62,7 +62,7 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### Execution Payload
 
-* Set `block.body.execution_payload = get_execution_payload(state, transition_store, execution_engine, pow_chain)` where:
+* Set `block.body.execution_payload = get_execution_payload(state, execution_engine, pow_chain)` where:
 
 ```python
 def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
@@ -84,11 +84,10 @@ def produce_execution_payload(state: BeaconState,
 
 
 def get_execution_payload(state: BeaconState,
-                          transition_store: TransitionStore,
                           execution_engine: ExecutionEngine,
                           pow_chain: Sequence[PowBlock]) -> ExecutionPayload:
     if not is_merge_complete(state):
-        terminal_pow_block = get_pow_block_at_total_difficulty(transition_store.terminal_total_difficulty, pow_chain)
+        terminal_pow_block = get_pow_block_at_total_difficulty(TERMINAL_TOTAL_DIFFICULTY, pow_chain)
         if terminal_pow_block is None:
             # Pre-merge, empty payload
             return ExecutionPayload()
