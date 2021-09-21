@@ -19,7 +19,7 @@
   - [`boolean`](#boolean)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
-  - [Vectors, containers, lists](#vectors-containers-lists)
+  - [Vectors, lists, containers and commitment-containers](#vectors-lists-containers-and-commitment-containers)
   - [Union](#union)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
@@ -62,8 +62,21 @@
     * notation `Bitlist[N]`
 * **union**: union type containing one of the given subtypes
     * notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
+* **commitment-container**: a container that provides SSZ compatibility with data that requires non-SSZ commitments
+  * notation: container-like, with `hash_tree_root` override, and `verify_commitment` for authenticating the data against any embedded commitment, e.g.
+    ```python
+    class FooBar(CommitmentContainer):
+        commitment: FooBarCommitment
+        content: FooBarContents
+        def verify_commitment(self) -> bool: return verify_foo_bar(self.commitment, self.content)
+        def hash_tree_root(self) -> Root: return hash_tree_root(FooBarHashed(self.commitment, self.content.detail()))
+    ```
 
 *Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due to their different serialization requirements. Similarly, both `List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally `Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization efficiencies.
+
+*Note*: Commitment-Containers are the same as containers in all aspects, except `hash_tree_root`.
+The commitment may be embedded to avoid repeated computation: for some commitment types verification is much more optimal than recomputing on demand.
+A commitment-container that only computes the commitment on the fly, just in time for `hash_tree_root`, can implement `verify_commitment` to always return true.
 
 ### Variable-size and fixed-size
 
@@ -143,7 +156,7 @@ array[len(value) // 8] |= 1 << (len(value) % 8)
 return bytes(array)
 ```
 
-### Vectors, containers, lists
+### Vectors, lists, containers and commitment-containers
 
 ```python
 # Recursively serialize
@@ -195,6 +208,7 @@ Deserialization can be implemented using a recursive algorithm. The deserializat
   * Using the first offset, we can compute the length of the list (divide by `BYTES_PER_LENGTH_OFFSET`), as it gives us the total number of bytes in the offset data.
   * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
 * Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
+* Commitment-Containers deserialize like containers.
 * In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
 * In the case of unions, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
 
@@ -246,6 +260,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
 * `mix_in_selector(hash_tree_root(value.value), value.selector)` if `value` is of union type, and `value.value` is not `None`
 * `mix_in_selector(Bytes32(), 0)` if `value` is of union type, and `value.value` is `None`
+* `value.hash_tree_root()` if `value` is a commitment-container, i.e. execute the commitment-specific root construction. To trust the produced root, `value.verify_commitment()` must be true.
 
 ## Summaries and expansions
 
