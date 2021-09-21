@@ -97,11 +97,6 @@ on the horizontal subnet or creating samples for it. Alias `blob = signed_blob.m
 - _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
 - _[REJECT]_ The blob signature, `signed_blob.signature`, is valid for the aggregate of proposer and builder --
   i.e. `bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_blob.signature)`.
-- _[REJECT]_ The blob is proposed by the expected `proposer_index` for the blob's `slot` and `shard`,
-  in the context of the current shuffling (defined by `blob.body.beacon_block_root`/`slot`).
-  If the `proposer_index` cannot immediately be verified against the expected shuffling,
-  the blob MAY be queued for later processing while proposers for the blob's branch are calculated --
-  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 #### Global topics
 
@@ -132,11 +127,6 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
 - _[REJECT]_ The blob builder defined by `blob.builder_index` exists and has sufficient balance to back the fee payment.
 - _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for the aggregate of proposer and builder --
   i.e. `bls.FastAggregateVerify([builder_pubkey, proposer_pubkey], blob_signing_root, signed_blob_header.signature)`.
-- _[REJECT]_ The header is proposed by the expected `proposer_index` for the blob's `header.slot` and `header.shard`
-  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
-  If the `proposer_index` cannot immediately be verified against the expected shuffling,
-  the blob MAY be queued for later processing while proposers for the blob's branch are calculated --
-  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ##### `shard_blob_tx`
 
@@ -160,11 +150,6 @@ The following validations MUST pass before forwarding the `signed_blob_header` o
   Propagating nodes MAY increase fee increments in case of spam.
 - _[REJECT]_ The header signature, `signed_blob_header.signature`, is valid for ONLY the builder --
   i.e. `bls.Verify(builder_pubkey, blob_signing_root, signed_blob_header.signature)`. The signature is not an aggregate with the proposer.
-- _[REJECT]_ The header is designated for proposal by the expected `proposer_index` for the blob's `header.slot` and `header.shard`
-  in the context of the current shuffling (defined by `header.body_summary.beacon_block_root`/`slot`).
-  If the `proposer_index` cannot immediately be verified against the expected shuffling,
-  the blob MAY be queued for later processing while proposers for the blob's branch are calculated --
-  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ##### `shard_proposer_slashing`
 
