@@ -247,7 +247,7 @@ def test_bad_randao_first_payload(spec, state):
     # still valid because randao is ignored on this stage
     execution_payload.random = bad_randao
 
-    yield from run_execution_payload_processing(spec, state, execution_payload)
+    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
 
 @with_merge_and_later

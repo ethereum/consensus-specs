@@ -5,21 +5,21 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.context import spec_state_test, with_merge_and_later
 
 
-def create_transition_store(spec):
-    anchor_block = prepare_empty_pow_block(spec)
-    transition_store = spec.get_transition_store(anchor_block)
-    return transition_store
-
-
 class BlockNotFoundException(Exception):
     pass
 
 
-def run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload,
+# Copy of conditional merge part of `on_block(store: Store, signed_block: SignedBeaconBlock)` handler
+def process_merge_execution_payload(spec, execution_payload):
+    pow_block = spec.get_pow_block(execution_payload.parent_hash)
+    pow_parent = spec.get_pow_block(pow_block.parent_hash)
+    assert spec.is_valid_terminal_pow_block(pow_block, pow_parent)
+
+
+def run_process_merge_execution_payload(spec, block, parent_block, payload,
                                         valid=True, block_lookup_success=True):
     """
     Run ``process_merge_execution_payload``, yielding:
-      - transition store ('transition_store')
       - current block ('block')
       - parent block ('parent_block')
       - execution payload ('payload')
@@ -27,7 +27,6 @@ def run_process_merge_execution_payload(spec, transition_store, block, parent_bl
     If ``block_lookup_success == False``, run expecting ``BlockNotFoundException``
     """
 
-    yield 'transition_store', transition_store
     yield 'block', block
     yield 'parent_block', parent_block
     yield 'payload', payload
@@ -46,7 +45,7 @@ def run_process_merge_execution_payload(spec, transition_store, block, parent_bl
     exception_caught = False
     block_not_found_exception_caught = False
     try:
-        spec.process_merge_execution_payload(transition_store, payload)
+        process_merge_execution_payload(spec, payload)
     except BlockNotFoundException:
         block_not_found_exception_caught = True
     except AssertionError:
@@ -68,109 +67,93 @@ def run_process_merge_execution_payload(spec, transition_store, block, parent_bl
 
 @with_merge_and_later
 @spec_state_test
-def test_valid_terminal_pow_block_success_valid_fail_invalid(spec, state):
-    transition_store = create_transition_store(spec)
+def test_valid_terminal_pow_block_success_valid(spec, state):
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty - uint256(1)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
-    block.total_difficulty = transition_store.terminal_total_difficulty
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
 
-    assert spec.is_valid_terminal_pow_block(transition_store, block, parent_block)
-
-    block.is_valid = False
-    assert not spec.is_valid_terminal_pow_block(transition_store, block, parent_block)
+    assert spec.is_valid_terminal_pow_block(block, parent_block)
 
 
 @with_merge_and_later
 @spec_state_test
 def test_valid_terminal_pow_block_fail_before_terminal(spec, state):
-    transition_store = create_transition_store(spec)
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty - uint256(2)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
-    block.total_difficulty = transition_store.terminal_total_difficulty - uint256(1)
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
 
-    assert not spec.is_valid_terminal_pow_block(transition_store, block, parent_block)
+    assert not spec.is_valid_terminal_pow_block(block, parent_block)
 
 
 @with_merge_and_later
 @spec_state_test
 def test_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
-    transition_store = create_transition_store(spec)
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
-    block.total_difficulty = transition_store.terminal_total_difficulty + uint256(1)
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
 
-    assert not spec.is_valid_terminal_pow_block(transition_store, block, parent_block)
+    assert not spec.is_valid_terminal_pow_block(block, parent_block)
 
 
 @with_merge_and_later
 @spec_state_test
 def test_process_merge_execution_payload_success(spec, state):
-    transition_store = create_transition_store(spec)
     parent_block = prepare_empty_pow_block(spec)
     parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty - uint256(1)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
-    block.is_processed = True
-    block.total_difficulty = transition_store.terminal_total_difficulty
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload)
-    block.is_processed = False
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload, valid=False)
+    yield from run_process_merge_execution_payload(spec, block, parent_block, payload)
 
 
 @with_merge_and_later
 @spec_state_test
 def test_process_merge_execution_payload_fail_block_lookup(spec, state):
-    transition_store = create_transition_store(spec)
     parent_block = prepare_empty_pow_block(spec)
     parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty - uint256(1)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
-    block.is_processed = True
-    block.total_difficulty = transition_store.terminal_total_difficulty
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = spec.Hash32(spec.hash(b'02'))
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload,
+    yield from run_process_merge_execution_payload(spec, block, parent_block, payload,
                                                    block_lookup_success=False)
 
 
 @with_merge_and_later
 @spec_state_test
 def test_process_merge_execution_payload_fail_parent_block_lookup(spec, state):
-    transition_store = create_transition_store(spec)
     parent_block = prepare_empty_pow_block(spec)
     parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty - uint256(1)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = spec.Hash32(spec.hash(b'00'))
-    block.is_processed = True
-    block.total_difficulty = transition_store.terminal_total_difficulty
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload,
+    yield from run_process_merge_execution_payload(spec, block, parent_block, payload,
                                                    block_lookup_success=False)
 
 
 @with_merge_and_later
 @spec_state_test
 def test_process_merge_execution_payload_fail_after_terminal(spec, state):
-    transition_store = create_transition_store(spec)
     parent_block = prepare_empty_pow_block(spec)
     parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
-    parent_block.total_difficulty = transition_store.terminal_total_difficulty
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
-    block.is_processed = True
-    block.total_difficulty = transition_store.terminal_total_difficulty + 1
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + 1
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, transition_store, block, parent_block, payload, valid=False)
+    yield from run_process_merge_execution_payload(spec, block, parent_block, payload, valid=False)

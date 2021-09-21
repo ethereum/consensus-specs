@@ -128,8 +128,6 @@ def prepare_empty_pow_block(spec):
     return spec.PowBlock(
         block_hash=spec.Hash32(),
         parent_hash=spec.Hash32(),
-        is_processed=False,
-        is_valid=True,
         total_difficulty=uint256(0),
         difficulty=uint256(0)
     )
