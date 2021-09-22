@@ -45,7 +45,7 @@ The merge is still actively in development. The exact specification has not been
   * [Merge fork](specs/merge/fork.md)
   * [Fork Choice changes](specs/merge/fork-choice.md)
   * [Validator additions](specs/merge/validator.md)
-  * [Client settings](specs/merge/client_settings.md)
+  * [Client settings](specs/merge/client-settings.md)
 
 ### Sharding
 

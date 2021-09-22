@@ -66,6 +66,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
+| `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
 
 ## Configuration
 
@@ -167,6 +168,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559, little-endian serialized
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
@@ -188,6 +190,7 @@ class ExecutionPayloadHeader(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: Bytes32
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
@@ -311,12 +314,14 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash, block number, random, base fee per gas and gas limit
+    # Verify consistency of the parent hash, block number, base fee per gas and gas limit
+    # with respect to the previous execution payload header
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
-        assert payload.random == get_randao_mix(state, get_current_epoch(state))
         assert is_valid_gas_limit(payload, state.latest_execution_payload_header)
+    # Verify random
+    assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
@@ -333,6 +338,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         gas_limit=payload.gas_limit,
         gas_used=payload.gas_used,
         timestamp=payload.timestamp,
+        extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
