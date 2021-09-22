@@ -286,6 +286,14 @@ because the processing mechanism errors out before creating it.
 
 <!--
 
+Attestation:
+
+Success: https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26
+
+Failure: https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L98
+
+And the conditions in process_attestation for these cases are pretty clear to reference and reason about for a new contributor
+And obviously, one of our goals to directly test all of these boundaries so can be a good just general testing approach discussion there too
 
 https://ethos.dev/beacon-chain/
 
