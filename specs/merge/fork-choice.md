@@ -35,6 +35,7 @@ The following methods are added to the `ExecutionEngine` protocol for use in the
 
 #### `forkchoice_updated`
 
+This method performs two actions *atomically*:
 * Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
 * Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
 and corresponding state, up to and including `finalized_block_hash`.

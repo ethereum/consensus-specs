@@ -239,7 +239,7 @@ The implementation-dependent `ExecutionEngine` protocol encapsulates the executi
 
 * a state object `self.execution_state` of type `ExecutionState`
 * a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
-* a method `self.consensus_validated` which notifies that the block holding the execution payload
+* a method `self.consensus_validated` which signals that the beacon block containing the execution payload
 is valid with respect to the consensus rule set
 
 #### `execute_payload`

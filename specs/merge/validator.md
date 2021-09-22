@@ -42,7 +42,7 @@ The following methods are added to the `ExecutionEngine` protocol for use as a v
 
 #### `prepare_payload`
 
-Given the set of execution payload attributes initiates a process of building an execution payload
+Given the set of execution payload attributes, `prepare_payload` initiates a process of building an execution payload
 on top of the execution chain tip identified by `parent_hash`.
 
 ```python
@@ -59,7 +59,7 @@ def prepare_payload(self: ExecutionEngine,
 
 #### `get_payload`
 
-Given the `payload_id` returns the most recent version of the execution payload that
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
 has been built since the corresponding call to `prepare_payload` method.
 
 ```python
@@ -83,7 +83,7 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### ExecutionPayload
 
-To obtain an execution payload a proposer of a block must take the following actions:
+To obtain an execution payload, the proposer of a block must take the following actions:
 
 1. Set `payload_id = prepare_execution_payload(state, pow_chain, fee_recipient, execution_engine)`, where:
     * `state` is the state for which `is_proposer(state, validator_index)` returns `True`
