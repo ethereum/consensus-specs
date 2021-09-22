@@ -31,11 +31,14 @@ This is the modification of the fork choice according to the executable beacon c
 
 ### `ExecutionEngine`
 
-The following methods are added to the `ExecutionEngine` protocol for use in the fork choice:
+*Note*: The `forkchoice_updated` function is added to the `ExecutionEngine` protocol to signal the fork choice updates.
+
+The body of this function is implementation dependent.
+The Engine API may be used to implement it with an external execution engine.
 
 #### `forkchoice_updated`
 
-This method performs two actions *atomically*:
+This function performs two actions *atomically*:
 * Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
 * Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
 and corresponding state, up to and including `finalized_block_hash`.
@@ -44,9 +47,6 @@ and corresponding state, up to and including `finalized_block_hash`.
 def forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
     ...
 ```
-
-The body of this function is implementation dependent.
-The Engine API may be used to implement this with an external execution engine.
 
 ## Helpers
 

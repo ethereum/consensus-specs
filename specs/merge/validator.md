@@ -38,7 +38,10 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### `ExecutionEngine`
 
-The following methods are added to the `ExecutionEngine` protocol for use as a validator:
+*Note*: `prepare_payload` and `get_payload` functions are added to the `ExecutionEngine` protocol for use as a validator.
+
+The body of each of these functions is implementation dependent.
+The Engine API may be used to implement them with an external execution engine.
 
 #### `prepare_payload`
 
@@ -69,9 +72,6 @@ def get_payload(self: ExecutionEngine, payload_id: uint64) -> ExecutionPayload:
     """
     ...
 ```
-
-The body of each of these functions is implementation dependent.
-The Engine API may be used to implement them with an external execution engine.
 
 ## Beacon chain responsibilities
 
@@ -134,4 +134,4 @@ def get_execution_payload(payload_id: Optional[uint64], execution_engine: Execut
 ```
 
 *Note*: It is recommended for a validator to call `prepare_execution_payload` as soon as input parameters become known,
-and make subsequent calls to this function if any of these parameters has been updated.
+and make subsequent calls to this function when any of these parameters gets updated.

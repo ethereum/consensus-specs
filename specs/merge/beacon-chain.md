@@ -242,8 +242,13 @@ The implementation-dependent `ExecutionEngine` protocol encapsulates the executi
 
 * a state object `self.execution_state` of type `ExecutionState`
 * a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
-* a method `self.consensus_validated` which signals that the beacon block containing the execution payload
+* a function `self.consensus_validated` which signals that the beacon block containing the execution payload
 is valid with respect to the consensus rule set
+
+*Note*: `execute_payload` and `consensus_validated` are functions accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+
+The body of each of these functions is implementation dependent.
+The Engine API may be used to implement them with an external execution engine.
 
 #### `execute_payload`
 
@@ -261,11 +266,6 @@ def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) 
 def consensus_validated(self: ExecutionEngine, execution_payload: ExecutionPayload) -> None:
     ...
 ```
-
-The above functions are accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
-
-The body of each of these functions is implementation dependent.
-The Engine API may be used to implement them with an external execution engine.
 
 ### Block processing
 
