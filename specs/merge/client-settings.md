@@ -19,3 +19,9 @@ To coordinate manual overrides to [`TERMINAL_TOTAL_DIFFICULTY`](./beacon-chain.m
 
 Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
 
+### Override terminal block hash
+
+To allow for fork coordination around a specific PoW block, clients must also provide `--terminal-block-hash-override` as a configurable setting.
+The value provided by this setting takes precedence over the pre-configured `TERMINAL_BLOCK_HASH` parameter.
+
+Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
