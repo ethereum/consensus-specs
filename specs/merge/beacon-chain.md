@@ -263,9 +263,14 @@ def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) 
 #### `consensus_validated`
 
 ```python
-def consensus_validated(self: ExecutionEngine, execution_payload: ExecutionPayload) -> None:
+def consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
     ...
 ```
+
+The call of this function depends on the result of the state transition and must be done when call to the [`state_transition`](../phase0/beacon-chain.md#beacon-chain-state-transition-function) function finishes. The value of the `valid` parameter must be set as follows:
+
+* `True` if `state_transition` function call succeedes
+* `False` if `state_transition` function call fails
 
 ### Block processing
 
@@ -280,9 +285,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    if is_execution_enabled(state, block.body):
-        # Notify the block is valid with respect to the consensus state transition function
-        EXECUTION_ENGINE.consensus_validated(block.body.execution_payload)  # [New in Merge]
 ```
 
 ### Execution payload processing
