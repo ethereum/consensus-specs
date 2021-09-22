@@ -102,12 +102,12 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
-    if transition_store.terminal_block_hash is not None:
-        return block.is_valid and block.block_hash == transition_store.terminal_block_hash
-    else:
-        is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
-        is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
-        return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
+    if block.block_hash == transition_store.terminal_block_hash:
+        return True
+
+    is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
+    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
+    return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
 ## Updated fork-choice handlers
