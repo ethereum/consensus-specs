@@ -68,7 +68,7 @@ has been built since the corresponding call to `prepare_payload` method.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: uint64) -> ExecutionPayload:
     """
-    Returns ``execution_payload`` object.
+    Return ``execution_payload`` object.
     """
     ...
 ```
