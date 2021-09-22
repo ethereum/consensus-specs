@@ -269,7 +269,7 @@ def consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) 
 
 The call of this function depends on the result of the state transition and must be done when call to the [`state_transition`](../phase0/beacon-chain.md#beacon-chain-state-transition-function) function finishes. The value of the `valid` parameter must be set as follows:
 
-* `True` if `state_transition` function call succeedes
+* `True` if `state_transition` function call succeeds
 * `False` if `state_transition` function call fails
 
 ### Block processing
