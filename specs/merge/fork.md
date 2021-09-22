@@ -120,7 +120,7 @@ def compute_terminal_total_difficulty(anchor_pow_block: PowBlock) -> uint256:
 
 def get_transition_store(anchor_pow_block: PowBlock) -> TransitionStore:
     terminal_total_difficulty = compute_terminal_total_difficulty(anchor_pow_block)
-    return TransitionStore(terminal_total_difficulty=terminal_total_difficulty, terminal_block_hash=None)
+    return TransitionStore(terminal_total_difficulty=terminal_total_difficulty, terminal_block_hash=Hash32())
 
 
 def initialize_transition_store(state: BeaconState) -> TransitionStore:
