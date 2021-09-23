@@ -1,4 +1,5 @@
 from eth_utils import encode_hex
+from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
     next_slots_with_attestations,
@@ -227,3 +228,12 @@ def apply_next_slots_with_attestations(spec,
     assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
+
+
+def prepare_empty_pow_block(spec):
+    return spec.PowBlock(
+        block_hash=spec.Hash32(),
+        parent_hash=spec.Hash32(),
+        total_difficulty=uint256(0),
+        difficulty=uint256(0)
+    )

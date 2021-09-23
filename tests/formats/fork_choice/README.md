@@ -69,6 +69,14 @@ The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
 
+#### `on_merge_block` execution
+
+Adds `PowBlock` data which is required for executing `on_block(store, block)`. 
+Number of blocks is stored in `meta.yaml`, block file names are `pow_block_<number>.ssz_snappy`.
+The file is located in the same folder.
+PowBlocks should be used as return values for `get_pow_block(hash: Hash32) -> PowBlock` function if hashes match.
+
+
 #### Checks step
 
 The checks to verify the current status of `store`.

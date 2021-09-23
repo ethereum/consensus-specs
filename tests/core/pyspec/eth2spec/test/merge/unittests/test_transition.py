@@ -22,7 +22,7 @@ def test_success_merge_complete(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_fail_merge_block_false_false(spec, state):
+def test_fail_merge_block(spec, state):
     state = build_state_with_complete_transition(spec, state)
     execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
@@ -32,7 +32,7 @@ def test_fail_merge_block_false_false(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_fail_merge_block_false_true(spec, state):
+def test_fail_merge_block_complete_transition(spec, state):
     state = build_state_with_complete_transition(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()
@@ -42,7 +42,7 @@ def test_fail_merge_block_false_true(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_fail_merge_block_true_false(spec, state):
+def test_fail_merge_block_no_execution_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
@@ -62,7 +62,7 @@ def test_success_merge_block(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_fail_execution_enabled_false_false(spec, state):
+def test_failed_execution_enabled(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
@@ -72,7 +72,7 @@ def test_fail_execution_enabled_false_false(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_success_execution_enabled_true_false(spec, state):
+def test_success_execution_enabled_before_terminal(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()
@@ -82,7 +82,7 @@ def test_success_execution_enabled_true_false(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_success_execution_enabled_false_true(spec, state):
+def test_success_execution_enabled_no_execution_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
@@ -92,7 +92,7 @@ def test_success_execution_enabled_false_true(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_success_execution_enabled_true_true(spec, state):
+def test_success_execution_enabled(spec, state):
     state = build_state_with_complete_transition(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()

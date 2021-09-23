@@ -11,7 +11,7 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth2spec.test.helpers.block import (
+from eth2spec.test.helpers.fork_choice import (
     prepare_empty_pow_block
 )
 

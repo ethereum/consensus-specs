@@ -1,16 +1,13 @@
+from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.utils.ssz.ssz_typing import uint256
-from eth2spec.test.helpers.block import (
+from eth2spec.test.helpers.fork_choice import (
     prepare_empty_pow_block
 )
 from eth2spec.test.context import spec_state_test, with_merge_and_later
 
 
-class BlockNotFoundException(Exception):
-    pass
-
-
 # Copy of conditional merge part of `on_block(store: Store, signed_block: SignedBeaconBlock)` handler
-def process_merge_execution_payload(spec, execution_payload):
+def validate_transition_execution_payload(spec, execution_payload):
     pow_block = spec.get_pow_block(execution_payload.parent_hash)
     pow_parent = spec.get_pow_block(pow_block.parent_hash)
     assert spec.is_valid_terminal_pow_block(pow_block, pow_parent)
@@ -45,7 +42,7 @@ def run_process_merge_execution_payload(spec, block, parent_block, payload,
     exception_caught = False
     block_not_found_exception_caught = False
     try:
-        process_merge_execution_payload(spec, payload)
+        validate_transition_execution_payload(spec, payload)
     except BlockNotFoundException:
         block_not_found_exception_caught = True
     except AssertionError:

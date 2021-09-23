@@ -4,7 +4,6 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.ssz.ssz_typing import uint256
 
 
 def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
@@ -122,12 +121,3 @@ def get_state_and_beacon_parent_root_at_slot(spec, state, slot):
         previous_block_header.state_root = hash_tree_root(state)
     beacon_parent_root = hash_tree_root(previous_block_header)
     return state, beacon_parent_root
-
-
-def prepare_empty_pow_block(spec):
-    return spec.PowBlock(
-        block_hash=spec.Hash32(),
-        parent_hash=spec.Hash32(),
-        total_difficulty=uint256(0),
-        difficulty=uint256(0)
-    )
