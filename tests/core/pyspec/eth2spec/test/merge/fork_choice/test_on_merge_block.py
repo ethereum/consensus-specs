@@ -83,7 +83,6 @@ def test_block_lookup_failed(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-
     parent_block = prepare_empty_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_blocks = [parent_block]
