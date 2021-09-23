@@ -89,7 +89,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
 
 ### Transitioning the gossip
 
-See gossip transition details found in the [Altair document](../altair/p2p) for
+See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics for the Merge.
 
 ## The Req/Resp domain
