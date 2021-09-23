@@ -55,7 +55,7 @@ def prepare_payload(self: ExecutionEngine,
                     random: Bytes32,
                     fee_recipient: Bytes20) -> uint64:
     """
-    Returns ``payload_id`` that is used to obtain the execution payload in a subsequent ``get_payload`` call.
+    Return ``payload_id`` that is used to obtain the execution payload in a subsequent ``get_payload`` call.
     """
     ...
 ```
