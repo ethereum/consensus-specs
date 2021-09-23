@@ -45,8 +45,8 @@ MESSAGES = [
 SAMPLE_MESSAGE = b'\x12' * 32
 
 PRIVKEYS = [
-    # Curve order is 256 so private keys are 32 bytes at most.
-    # Also not all integers is a valid private key, so using pre-generated keys
+    # Curve order is 256, so private keys use 32 bytes at most.
+    # Also, not all integers are valid private keys. Therefore, using pre-generated keys.
     hex_to_int('0x00000000000000000000000000000000263dbd792f5b1be47ed85f8938c0f29586af0d3ac7b977f21c278fe1462040e3'),
     hex_to_int('0x0000000000000000000000000000000047b8192d77bf871b62e87859d653922725724a5c031afeabc60bcef5ff665138'),
     hex_to_int('0x00000000000000000000000000000000328388aff0d4a5b7dc9205abd374e7e98f3cd9f3418edb4eafda5fb16473d216'),

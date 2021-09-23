@@ -9,9 +9,6 @@ from eth2spec.test.helpers.merkle import build_proof
 @with_phases([ALTAIR])
 @spec_state_test
 def test_next_sync_committee_tree(spec, state):
-    state.next_sync_committee: object = spec.SyncCommittee(
-        pubkeys=[state.validators[i]for i in range(spec.SYNC_COMMITTEE_SIZE)]
-    )
     next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
     assert spec.is_valid_merkle_branch(
         leaf=state.next_sync_committee.hash_tree_root(),
