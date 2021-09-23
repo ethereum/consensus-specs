@@ -1,7 +1,7 @@
 from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.fork_choice import (
-    prepare_empty_pow_block
+    prepare_empty_pow_block,
 )
 from eth2spec.test.context import spec_state_test, with_merge_and_later
 
