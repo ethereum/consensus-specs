@@ -32,7 +32,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [`execute_payload`](#execute_payload)
-    - [`consensus_validated`](#consensus_validated)
+    - [`notify_consensus_validated`](#notify_consensus_validated)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`is_valid_gas_limit`](#is_valid_gas_limit)
@@ -242,10 +242,10 @@ The implementation-dependent `ExecutionEngine` protocol encapsulates the executi
 
 * a state object `self.execution_state` of type `ExecutionState`
 * a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
-* a function `self.consensus_validated` which signals that the beacon block containing the execution payload
+* a function `self.notify_consensus_validated` which signals that the beacon block containing the execution payload
 is valid with respect to the consensus rule set
 
-*Note*: `execute_payload` and `consensus_validated` are functions accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+*Note*: `execute_payload` and `notify_consensus_validated` are functions accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
 
 The body of each of these functions is implementation dependent.
 The Engine API may be used to implement them with an external execution engine.
@@ -260,14 +260,14 @@ def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) 
     ...
 ```
 
-#### `consensus_validated`
+#### `notify_consensus_validated`
 
 ```python
-def consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
+def notify_consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
     ...
 ```
 
-The inputs to this function depend on the result of the state transition. A call to `consensus_validated` must be made after the [`state_transition`](../phase0/beacon-chain.md#beacon-chain-state-transition-function) function finishes. The value of the `valid` parameter must be set as follows:
+The inputs to this function depend on the result of the state transition. A call to `notify_consensus_validated` must be made after the [`state_transition`](../phase0/beacon-chain.md#beacon-chain-state-transition-function) function finishes. The value of the `valid` parameter must be set as follows:
 
 * `True` if `state_transition` function call succeeds
 * `False` if `state_transition` function call fails

@@ -525,10 +525,10 @@ class NoopExecutionEngine(ExecutionEngine):
     def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
         return True
 
-    def consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
+    def notify_consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
         pass
 
-    def forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
+    def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
         pass
 
     def prepare_payload(self: ExecutionEngine,

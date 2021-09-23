@@ -10,7 +10,7 @@
 - [Introduction](#introduction)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`forkchoice_updated`](#forkchoice_updated)
+    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
@@ -31,12 +31,12 @@ This is the modification of the fork choice according to the executable beacon c
 
 ### `ExecutionEngine`
 
-*Note*: The `forkchoice_updated` function is added to the `ExecutionEngine` protocol to signal the fork choice updates.
+*Note*: The `notify_forkchoice_updated` function is added to the `ExecutionEngine` protocol to signal the fork choice updates.
 
 The body of this function is implementation dependent.
 The Engine API may be used to implement it with an external execution engine.
 
-#### `forkchoice_updated`
+#### `notify_forkchoice_updated`
 
 This function performs two actions *atomically*:
 * Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
@@ -44,7 +44,7 @@ This function performs two actions *atomically*:
 and corresponding state, up to and including `finalized_block_hash`.
 
 ```python
-def forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
+def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
     ...
 ```
 
