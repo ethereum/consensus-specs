@@ -54,6 +54,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
 | `Transaction` | `Union[OpaqueTransaction]` | a transaction |
+| `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
 
 ## Constants
 
@@ -159,7 +160,7 @@ class BeaconState(Container):
 class ExecutionPayload(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20  # 'beneficiary' in the yellow paper
+    coinbase: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
     receipt_root: Bytes32  # 'receipts root' in the yellow paper
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -181,7 +182,7 @@ class ExecutionPayload(Container):
 class ExecutionPayloadHeader(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20
+    coinbase: ExecutionAddress
     state_root: Bytes32
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]

@@ -53,7 +53,7 @@ def prepare_payload(self: ExecutionEngine,
                     parent_hash: Hash32,
                     timestamp: uint64,
                     random: Bytes32,
-                    fee_recipient: Bytes20) -> uint64:
+                    fee_recipient: ExecutionAddress) -> uint64:
     """
     Return ``payload_id`` that is used to obtain the execution payload in a subsequent ``get_payload`` call.
     """
@@ -103,7 +103,7 @@ def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequ
 
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Sequence[PowBlock],
-                              fee_recipient: Bytes20,
+                              fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[uint64]:
     if not is_merge_complete(state):
         terminal_pow_block = get_pow_block_at_total_difficulty(TERMINAL_TOTAL_DIFFICULTY, pow_chain)
