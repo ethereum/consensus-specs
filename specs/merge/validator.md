@@ -65,22 +65,25 @@ All validator responsibilities remain unchanged other than those noted below. Na
 * Set `block.body.execution_payload = get_execution_payload(state, execution_engine, pow_chain)` where:
 
 ```python
-def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain:
         parent = get_pow_block(block.parent_hash)
-        if block.total_difficulty >= total_difficulty and parent.total_difficulty < total_difficulty:
+        if block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY and parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY:
             return block
 
     return None
 
-def get_terminal_pow_block(total_difficulty: uint256, block_hash_override: Hash32, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
-    # check block hash override prior to total difficulty
-    pow_block_overrides = [pow_block for pow_block in pow_chain if pow_block.block_hash == block_hash_override]
-    if len(pow_block_overrides) != 0:
-        return pow_block_overrides[0]
+def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # Check block hash override prior to total difficulty
+        pow_block_overrides = [pow_block for pow_block in pow_chain if pow_block.block_hash == TERMINAL_BLOCK_HASH]
+        if len(pow_block_overrides) != 0:
+            return pow_block_overrides[0]
+        else:
+            return None
 
-    return get_pow_block_at_total_difficulty(total_difficulty, pow_chain)
+    return get_pow_block_at_terminal_total_difficulty(pow_chain)
 
 
 def produce_execution_payload(state: BeaconState,
@@ -95,7 +98,7 @@ def get_execution_payload(state: BeaconState,
                           execution_engine: ExecutionEngine,
                           pow_chain: Sequence[PowBlock]) -> ExecutionPayload:
     if not is_merge_complete(state):
-        terminal_pow_block = get_terminal_pow_block(TERMINAL_TOTAL_DIFFICULTY, TERMINAL_BLOCK_HASH, pow_chain)
+        terminal_pow_block = get_terminal_pow_block(pow_chain)
         if terminal_pow_block is None:
             # Pre-merge, empty payload
             return ExecutionPayload()
