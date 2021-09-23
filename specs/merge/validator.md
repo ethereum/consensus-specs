@@ -90,7 +90,7 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 ##### ExecutionPayload
 
-To obtain an execution payload, a block proposer bulding a block on top of a `state` must take the following actions:
+To obtain an execution payload, a block proposer building a block on top of a `state` must take the following actions:
 
 1. Set `payload_id = prepare_execution_payload(state, pow_chain, fee_recipient, execution_engine)`, where:
     * `state` is the state object after applying `process_slots(state, slot)` transition to the resulting state of the parent block processing
