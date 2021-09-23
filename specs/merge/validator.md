@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Custom types](#custom-types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`prepare_payload`](#prepare_payload)
@@ -34,6 +35,12 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `PayloadId` | `uint64` | Identifier of a payload building process |
+
 ## Protocols
 
 ### `ExecutionEngine`
@@ -53,7 +60,7 @@ def prepare_payload(self: ExecutionEngine,
                     parent_hash: Hash32,
                     timestamp: uint64,
                     random: Bytes32,
-                    fee_recipient: ExecutionAddress) -> uint64:
+                    fee_recipient: ExecutionAddress) -> PayloadId:
     """
     Return ``payload_id`` that is used to obtain the execution payload in a subsequent ``get_payload`` call.
     """
@@ -66,7 +73,7 @@ Given the `payload_id`, `get_payload` returns the most recent version of the exe
 has been built since the corresponding call to `prepare_payload` method.
 
 ```python
-def get_payload(self: ExecutionEngine, payload_id: uint64) -> ExecutionPayload:
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
     """
     Return ``execution_payload`` object.
     """
@@ -104,7 +111,7 @@ def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequ
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Sequence[PowBlock],
                               fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[uint64]:
+                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     if not is_merge_complete(state):
         terminal_pow_block = get_pow_block_at_total_difficulty(TERMINAL_TOTAL_DIFFICULTY, pow_chain)
         if terminal_pow_block is None:
@@ -125,7 +132,7 @@ def prepare_execution_payload(state: BeaconState,
 2. Set `block.body.execution_payload = get_execution_payload(payload_id, execution_engine)`, where:
 
 ```python
-def get_execution_payload(payload_id: Optional[uint64], execution_engine: ExecutionEngine) -> ExecutionPayload:
+def get_execution_payload(payload_id: Optional[PayloadId], execution_engine: ExecutionEngine) -> ExecutionPayload:
     if payload_id is None:
         # Pre-merge, empty payload
         return ExecutionPayload()
