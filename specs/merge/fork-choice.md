@@ -70,8 +70,7 @@ def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
 ### `PowBlock`
 
 ```python
-@dataclass
-class PowBlock(object):
+class PowBlock(Container):
     block_hash: Hash32
     parent_hash: Hash32
     total_difficulty: uint256
