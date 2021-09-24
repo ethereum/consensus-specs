@@ -31,7 +31,8 @@
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [`on_payload`](#on_payload)
+    - [`execute_payload`](#execute_payload)
+    - [`notify_consensus_validated`](#notify_consensus_validated)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`is_valid_gas_limit`](#is_valid_gas_limit)
@@ -53,6 +54,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
 | `Transaction` | `Union[OpaqueTransaction]` | a transaction |
+| `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
 
 ## Constants
 
@@ -158,7 +160,7 @@ class BeaconState(Container):
 class ExecutionPayload(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20  # 'beneficiary' in the yellow paper
+    coinbase: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
     receipt_root: Bytes32  # 'receipts root' in the yellow paper
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -180,7 +182,7 @@ class ExecutionPayload(Container):
 class ExecutionPayloadHeader(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20
+    coinbase: ExecutionAddress
     state_root: Bytes32
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -240,19 +242,38 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
-* a state transition function `self.on_payload` which mutates `self.execution_state`
+* a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
+* a function `self.notify_consensus_validated` which signals that the beacon block containing the execution payload
+is valid with respect to the consensus rule set
 
-#### `on_payload`
+*Note*: `execute_payload` and `notify_consensus_validated` are functions accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+
+The body of each of these functions is implementation dependent.
+The Engine API may be used to implement them with an external execution engine.
+
+#### `execute_payload`
 
 ```python
-def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
     Returns ``True`` iff ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
     ...
 ```
 
-The above function is accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+#### `notify_consensus_validated`
+
+```python
+def notify_consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
+    ...
+```
+
+The inputs to this function depend on the result of the state transition. A call to `notify_consensus_validated` must be made after the [`state_transition`](../phase0/beacon-chain.md#beacon-chain-state-transition-function) function finishes. The value of the `valid` parameter must be set as follows:
+
+* `True` if `state_transition` function call succeeds
+* `False` if `state_transition` function call fails
+
+*Note*: The call of the `notify_consensus_validated` function with `valid = True` maps on the `POS_CONSENSUS_VALIDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
 
 ### Block processing
 
@@ -309,7 +330,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.on_payload(payload)
+    assert execution_engine.execute_payload(payload)
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,

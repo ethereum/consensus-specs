@@ -10,8 +10,7 @@
 - [Introduction](#introduction)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`set_head`](#set_head)
-    - [`finalize_block`](#finalize_block)
+    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
@@ -32,38 +31,24 @@ This is the modification of the fork choice according to the executable beacon c
 
 ### `ExecutionEngine`
 
-The following methods are added to the `ExecutionEngine` protocol for use in the fork choice:
-
-#### `set_head`
-
-Re-organizes the execution payload chain and corresponding state to make `block_hash` the head.
+*Note*: The `notify_forkchoice_updated` function is added to the `ExecutionEngine` protocol to signal the fork choice updates.
 
 The body of this function is implementation dependent.
-The Consensus API may be used to implement this with an external execution engine.
+The Engine API may be used to implement it with an external execution engine.
+
+#### `notify_forkchoice_updated`
+
+This function performs two actions *atomically*:
+* Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
+* Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
+and corresponding state, up to and including `finalized_block_hash`.
 
 ```python
-def set_head(self: ExecutionEngine, block_hash: Hash32) -> bool:
-    """
-    Returns True if the ``block_hash`` was successfully set as head of the execution payload chain.
-    """
+def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
     ...
 ```
 
-#### `finalize_block`
-
-Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
-and corresponding state, up to and including `block_hash`.
-
-The body of this function is implementation dependent.
-The Consensus API may be used to implement this with an external execution engine.
-
-```python
-def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
-    """
-    Returns True if the data up to and including ``block_hash`` was successfully finalized.
-    """
-    ...
-```
+*Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
 
 ## Helpers
 
