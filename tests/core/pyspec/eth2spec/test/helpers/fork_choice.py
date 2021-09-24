@@ -1,3 +1,4 @@
+from random import Random
 from eth_utils import encode_hex
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.attestations import (
@@ -23,9 +24,12 @@ def add_block_to_store(spec, store, signed_block):
     spec.on_block(store, signed_block)
 
 
-def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False):
+def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False,
+                       merge_block=False):
     pre_state = store.block_states[signed_block.message.parent_root]
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
+    if merge_block:
+        assert spec.is_merge_block(pre_state, signed_block.message.body)
 
     if store.time < block_time:
         on_tick_and_append_step(spec, store, block_time, test_steps)
@@ -230,10 +234,10 @@ def apply_next_slots_with_attestations(spec,
     return post_state, store, last_signed_block
 
 
-def prepare_empty_pow_block(spec):
+def prepare_empty_pow_block(spec, rng=Random(3131)):
     return spec.PowBlock(
-        block_hash=spec.Hash32(),
-        parent_hash=spec.Hash32(),
+        block_hash=spec.Hash32(spec.hash(rng.randbytes(32))),
+        parent_hash=spec.Hash32(spec.hash(rng.randbytes(32))),
         total_difficulty=uint256(0),
         difficulty=uint256(0)
     )

@@ -102,7 +102,6 @@ def test_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
 @spec_state_test
 def test_process_merge_execution_payload_success(spec, state):
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
@@ -116,13 +115,11 @@ def test_process_merge_execution_payload_success(spec, state):
 @spec_state_test
 def test_process_merge_execution_payload_fail_block_lookup(spec, state):
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
-    payload.parent_hash = spec.Hash32(spec.hash(b'02'))
     yield from run_process_merge_execution_payload(spec, block, parent_block, payload,
                                                    block_lookup_success=False)
 
@@ -131,10 +128,8 @@ def test_process_merge_execution_payload_fail_block_lookup(spec, state):
 @spec_state_test
 def test_process_merge_execution_payload_fail_parent_block_lookup(spec, state):
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
-    block.parent_hash = spec.Hash32(spec.hash(b'00'))
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
@@ -146,7 +141,6 @@ def test_process_merge_execution_payload_fail_parent_block_lookup(spec, state):
 @spec_state_test
 def test_process_merge_execution_payload_fail_after_terminal(spec, state):
     parent_block = prepare_empty_pow_block(spec)
-    parent_block.block_hash = spec.Hash32(spec.hash(b'01'))
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
