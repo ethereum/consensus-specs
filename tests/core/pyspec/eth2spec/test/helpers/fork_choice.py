@@ -1,5 +1,6 @@
 from random import Random
 from eth_utils import encode_hex
+from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
@@ -25,7 +26,7 @@ def add_block_to_store(spec, store, signed_block):
 
 
 def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False,
-                       merge_block=False):
+                       merge_block=False, block_not_found=False):
     pre_state = store.block_states[signed_block.message.parent_root]
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     if merge_block:
@@ -35,7 +36,8 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_
         on_tick_and_append_step(spec, store, block_time, test_steps)
 
     post_state = yield from add_block(
-        spec, store, signed_block, test_steps, valid=valid, allow_invalid_attestations=allow_invalid_attestations)
+        spec, store, signed_block, test_steps, valid=valid, allow_invalid_attestations=allow_invalid_attestations,
+        block_not_found=block_not_found)
 
     return post_state
 
@@ -123,7 +125,8 @@ def run_on_block(spec, store, signed_block, valid=True):
     assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
 
 
-def add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False):
+def add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False,
+              block_not_found=False):
     """
     Run on_block and on_attestation
     """
@@ -132,7 +135,9 @@ def add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_a
     if not valid:
         try:
             run_on_block(spec, store, signed_block, valid=True)
-        except AssertionError:
+        except (AssertionError, BlockNotFoundException) as e:
+            if isinstance(e, BlockNotFoundException) and not block_not_found:
+                assert False
             test_steps.append({
                 'block': get_block_file_name(signed_block),
                 'valid': False,
@@ -241,3 +246,12 @@ def prepare_empty_pow_block(spec, rng=Random(3131)):
         total_difficulty=uint256(0),
         difficulty=uint256(0)
     )
+
+
+def get_pow_block_file_name(pow_block):
+    return f"pow_block_{encode_hex(pow_block.block_hash)}"
+
+
+def add_pow_block(spec, store, pow_block, test_steps):
+    yield get_pow_block_file_name(pow_block), pow_block
+    test_steps.append({'pow_block': get_pow_block_file_name(pow_block)})
