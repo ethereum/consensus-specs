@@ -69,15 +69,18 @@ def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) ->
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain:
         parent = get_pow_block(block.parent_hash)
-        if block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY and parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY:
+        block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+        parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+        if block_reached_ttd and not parent_reached_ttd:
             return block
 
     return None
 
+
 def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
     if TERMINAL_BLOCK_HASH != Hash32():
         # Terminal lock hash override takes precedence over terminal total difficulty
-        pow_block_overrides = [pow_block for pow_block in pow_chain if pow_block.block_hash == TERMINAL_BLOCK_HASH]
+        pow_block_overrides = [block for block in pow_chain if block.block_hash == TERMINAL_BLOCK_HASH]
         if len(pow_block_overrides) != 0:
             return pow_block_overrides[0]
         else:
