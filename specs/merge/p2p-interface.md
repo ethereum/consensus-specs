@@ -71,7 +71,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
 - If the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`
   then validate the following:
   - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
-    -- i.e. `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
+    -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
   - _[REJECT]_ Gas used is less than the gas limit --
     i.e. `execution_payload.gas_used <= execution_payload.gas_limit`.
   - _[REJECT]_ The execution payload block hash is not equal to the parent hash --
