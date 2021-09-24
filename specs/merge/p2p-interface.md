@@ -68,10 +68,6 @@ See the Merge [state transition document](./beacon-chain.md#beaconblockbody) for
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
-- If the merge is complete with respect to the head state -- i.e. `is_merge_complete(state)` --
-  then validate the following:
-  - _[REJECT]_ The block's execution payload must be non-empty --
-    i.e. `execution_payload != ExecutionPayload()`
 - If the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`
   then validate the following:
   - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
