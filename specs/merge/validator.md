@@ -76,7 +76,7 @@ def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) ->
 
 def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
     if TERMINAL_BLOCK_HASH != Hash32():
-        # Check block hash override prior to total difficulty
+        # Terminal lock hash override takes precedence over terminal total difficulty
         pow_block_overrides = [pow_block for pow_block in pow_chain if pow_block.block_hash == TERMINAL_BLOCK_HASH]
         if len(pow_block_overrides) != 0:
             return pow_block_overrides[0]
