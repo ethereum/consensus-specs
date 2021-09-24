@@ -32,7 +32,7 @@ except ImportError:
 from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
 from marko.inline import CodeSpan
 from marko.ext.gfm import gfm
-from marko.ext.gfm.elements import Table, Paragraph
+from marko.ext.gfm.elements import Table
 
 
 # Definitions in context.py
