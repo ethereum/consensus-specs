@@ -273,6 +273,8 @@ The inputs to this function depend on the result of the state transition. A call
 * `True` if `state_transition` function call succeeds
 * `False` if `state_transition` function call fails
 
+*Note*: The call of the `notify_consensus_validated` function with `valid = True` maps on the `POS_CONSENSUS_VALIDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
+
 ### Block processing
 
 *Note*: The call to the `process_execution_payload` must happen before the call to the `process_randao` as the former depends on the `randao_mix` computed with the reveal of the previous block.

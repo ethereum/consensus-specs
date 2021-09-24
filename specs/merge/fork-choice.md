@@ -48,6 +48,8 @@ def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, fi
     ...
 ```
 
+*Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
+
 ## Helpers
 
 ### `PowBlock`
