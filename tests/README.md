@@ -280,11 +280,14 @@ This is the way we specify that a test is designed to fail - failed tests have n
 because the processing mechanism errors out before creating it.
 
 
-## How are These Tests Used?
+## Attestation Tests
 
+In addition the proposer, every block has a number of validators that are supposed to vote on whether it 
+is valid or not. Those votes are called [attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
 
 
 <!--
+
 
 Attestation:
 
@@ -297,6 +300,11 @@ And obviously, one of our goals to directly test all of these boundaries so can 
 
 https://ethos.dev/beacon-chain/
 
+-->
+
+## How are These Tests Used?
+
+<!--
 
 Beacon chain has operations (such as attestation, deposit). It deals with core consensus
 
