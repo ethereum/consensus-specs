@@ -241,8 +241,8 @@ def apply_next_slots_with_attestations(spec,
 
 def prepare_empty_pow_block(spec, rng=Random(3131)):
     return spec.PowBlock(
-        block_hash=spec.Hash32(spec.hash(rng.randbytes(32))),
-        parent_hash=spec.Hash32(spec.hash(rng.randbytes(32))),
+        block_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
+        parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
         total_difficulty=uint256(0),
         difficulty=uint256(0)
     )
