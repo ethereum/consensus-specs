@@ -270,8 +270,6 @@ class ShardBlobBody(Container):
     degree_proof: BLSCommitment
     # The actual data. Should match the commitment and degree proof.
     data: List[BLSPoint, POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOB]
-    # Latest block root of the Beacon Chain, before shard_blob.slot
-    beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
     # TODO: express in MWei instead?
     max_priority_fee_per_sample: Gwei
@@ -293,8 +291,6 @@ class ShardBlobBodySummary(Container):
     degree_proof: BLSCommitment
     # Hash-tree-root as summary of the data field
     data_root: Root
-    # Latest block root of the Beacon Chain, before shard_blob.slot
-    beacon_block_root: Root
     # fee payment fields (EIP 1559 like)
     # TODO: express in MWei instead?
     max_priority_fee_per_sample: Gwei
@@ -552,12 +548,12 @@ def compute_committee_index_from_shard(state: BeaconState, slot: Slot, shard: Sh
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
+    # is_execution_enabled is omitted, execution is enabled by default.
+    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Sharding]
     process_sync_aggregate(state, block.body.sync_aggregate)
-    # is_execution_enabled is omitted, execution is enabled by default. 
-    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
 ```
 
 #### Operations
@@ -694,10 +690,6 @@ def process_shard_header(state: BeaconState, signed_header: SignedShardBlobHeade
     committee_index = (shard_count + shard - start_shard) % shard_count    
     committees_per_slot = get_committee_count_per_slot(state, header_epoch)
     assert committee_index <= committees_per_slot
-
-    # Verify that the block root matches,
-    # to ensure the header will only be included in this specific Beacon Chain sub-tree.
-    assert header.body_summary.beacon_block_root == get_block_root_at_slot(state, slot - 1)
 
     # Check that this data is still pending
     committee_work = state.shard_buffer[slot % SHARD_STATE_MEMORY_SLOTS][shard]

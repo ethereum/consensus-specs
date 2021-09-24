@@ -68,14 +68,10 @@ See the Merge [state transition document](./beacon-chain.md#beaconblockbody) for
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
-- If the merge is complete with respect to the head state -- i.e. `is_merge_complete(state)` --
-  then validate the following:
-  - _[REJECT]_ The block's execution payload must be non-empty --
-    i.e. `execution_payload != ExecutionPayload()`
 - If the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`
   then validate the following:
   - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
-    -- i.e. `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
+    -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
   - _[REJECT]_ Gas used is less than the gas limit --
     i.e. `execution_payload.gas_used <= execution_payload.gas_limit`.
   - _[REJECT]_ The execution payload block hash is not equal to the parent hash --
@@ -89,7 +85,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
 
 ### Transitioning the gossip
 
-See gossip transition details found in the [Altair document](../altair/p2p) for
+See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics for the Merge.
 
 ## The Req/Resp domain

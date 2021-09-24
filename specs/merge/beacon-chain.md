@@ -14,6 +14,7 @@
   - [Execution](#execution)
 - [Configuration](#configuration)
   - [Genesis testing settings](#genesis-testing-settings)
+  - [Transition settings](#transition-settings)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -30,7 +31,8 @@
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [`on_payload`](#on_payload)
+    - [`execute_payload`](#execute_payload)
+    - [`notify_consensus_validated`](#notify_consensus_validated)
   - [Block processing](#block-processing)
   - [Execution payload processing](#execution-payload-processing)
     - [`is_valid_gas_limit`](#is_valid_gas_limit)
@@ -52,6 +54,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | - | - | - |
 | `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
 | `Transaction` | `Union[OpaqueTransaction]` | a transaction |
+| `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
 
 ## Constants
 
@@ -64,6 +67,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
+| `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
 
 ## Configuration
 
@@ -75,6 +79,12 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | - | - |
 | `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
 | `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000')` (= 1,000,000,000) |
+
+### Transition settings
+
+| Name | Value |
+| - | - |
+| `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
 
 ## Containers
 
@@ -150,7 +160,7 @@ class BeaconState(Container):
 class ExecutionPayload(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20  # 'beneficiary' in the yellow paper
+    coinbase: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
     receipt_root: Bytes32  # 'receipts root' in the yellow paper
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -159,6 +169,7 @@ class ExecutionPayload(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559, little-endian serialized
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
@@ -171,7 +182,7 @@ class ExecutionPayload(Container):
 class ExecutionPayloadHeader(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: Bytes20
+    coinbase: ExecutionAddress
     state_root: Bytes32
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -180,6 +191,7 @@ class ExecutionPayloadHeader(Container):
     gas_limit: uint64
     gas_used: uint64
     timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: Bytes32
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
@@ -230,31 +242,52 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
-* a state transition function `self.on_payload` which mutates `self.execution_state`
+* a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
+* a function `self.notify_consensus_validated` which signals that the beacon block containing the execution payload
+is valid with respect to the consensus rule set
 
-#### `on_payload`
+*Note*: `execute_payload` and `notify_consensus_validated` are functions accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+
+The body of each of these functions is implementation dependent.
+The Engine API may be used to implement them with an external execution engine.
+
+#### `execute_payload`
 
 ```python
-def on_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
     Returns ``True`` iff ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
     ...
 ```
 
-The above function is accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+#### `notify_consensus_validated`
+
+```python
+def notify_consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
+    ...
+```
+
+The inputs to this function depend on the result of the state transition. A call to `notify_consensus_validated` must be made after the [`state_transition`](../phase0/beacon-chain.md#beacon-chain-state-transition-function) function finishes. The value of the `valid` parameter must be set as follows:
+
+* `True` if `state_transition` function call succeeds
+* `False` if `state_transition` function call fails
+
+*Note*: The call of the `notify_consensus_validated` function with `valid = True` maps on the `POS_CONSENSUS_VALIDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
 
 ### Block processing
+
+*Note*: The call to the `process_execution_payload` must happen before the call to the `process_randao` as the former depends on the `randao_mix` computed with the reveal of the previous block.
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
+    if is_execution_enabled(state, block.body):
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
 ```
 
 ### Execution payload processing
@@ -284,20 +317,20 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
 
 #### `process_execution_payload`
 
-*Note:* This function depends on `process_randao` function call as it retrieves the most recent randao mix from the `state`. Implementations that are considering parallel processing of execution payload with respect to beacon chain state transition function should work around this dependency.
-
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash, block number, random, base fee per gas and gas limit
+    # Verify consistency of the parent hash, block number, base fee per gas and gas limit
+    # with respect to the previous execution payload header
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
-        assert payload.random == get_randao_mix(state, get_current_epoch(state))
         assert is_valid_gas_limit(payload, state.latest_execution_payload_header)
+    # Verify random
+    assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.on_payload(payload)
+    assert execution_engine.execute_payload(payload)
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -310,6 +343,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         gas_limit=payload.gas_limit,
         gas_used=payload.gas_used,
         timestamp=payload.timestamp,
+        extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),

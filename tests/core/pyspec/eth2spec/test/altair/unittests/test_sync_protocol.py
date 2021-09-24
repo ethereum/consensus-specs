@@ -52,7 +52,7 @@ def test_process_light_client_update_not_updated(spec, state):
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         state,
-        block.slot,
+        block_header.slot,
         committee,
     )
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]

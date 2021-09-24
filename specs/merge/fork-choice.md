@@ -10,10 +10,8 @@
 - [Introduction](#introduction)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`set_head`](#set_head)
-    - [`finalize_block`](#finalize_block)
+    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
-  - [`TransitionStore`](#transitionstore)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
@@ -33,48 +31,26 @@ This is the modification of the fork choice according to the executable beacon c
 
 ### `ExecutionEngine`
 
-The following methods are added to the `ExecutionEngine` protocol for use in the fork choice:
-
-#### `set_head`
-
-Re-organizes the execution payload chain and corresponding state to make `block_hash` the head.
+*Note*: The `notify_forkchoice_updated` function is added to the `ExecutionEngine` protocol to signal the fork choice updates.
 
 The body of this function is implementation dependent.
-The Consensus API may be used to implement this with an external execution engine.
+The Engine API may be used to implement it with an external execution engine.
+
+#### `notify_forkchoice_updated`
+
+This function performs two actions *atomically*:
+* Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
+* Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
+and corresponding state, up to and including `finalized_block_hash`.
 
 ```python
-def set_head(self: ExecutionEngine, block_hash: Hash32) -> bool:
-    """
-    Returns True if the ``block_hash`` was successfully set as head of the execution payload chain.
-    """
+def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
     ...
 ```
 
-#### `finalize_block`
-
-Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
-and corresponding state, up to and including `block_hash`.
-
-The body of this function is implementation dependent.
-The Consensus API may be used to implement this with an external execution engine.
-
-```python
-def finalize_block(self: ExecutionEngine, block_hash: Hash32) -> bool:
-    """
-    Returns True if the data up to and including ``block_hash`` was successfully finalized.
-    """
-    ...
-```
+*Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
 
 ## Helpers
-
-### `TransitionStore`
-
-```python
-@dataclass
-class TransitionStore(object):
-    terminal_total_difficulty: uint256
-```
 
 ### `PowBlock`
 
@@ -83,8 +59,6 @@ class TransitionStore(object):
 class PowBlock(object):
     block_hash: Hash32
     parent_hash: Hash32
-    is_processed: boolean
-    is_valid: boolean
     total_difficulty: uint256
     difficulty: uint256
 ```
@@ -93,17 +67,17 @@ class PowBlock(object):
 
 Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
 
-*Note*: The `eth_getBlockByHash` JSON-RPC method does not distinguish invalid blocks from blocks that haven't been processed yet. Either extending this existing method or implementing a new one is required.
+*Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this information from an execution client.
 
 ### `is_valid_terminal_pow_block`
 
 Used by fork-choice handler, `on_block`.
 
 ```python
-def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlock, parent: PowBlock) -> bool:
-    is_total_difficulty_reached = block.total_difficulty >= transition_store.terminal_total_difficulty
-    is_parent_total_difficulty_valid = parent.total_difficulty < transition_store.terminal_total_difficulty
-    return block.is_valid and is_total_difficulty_reached and is_parent_total_difficulty_valid
+def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
+    is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+    is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
+    return is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
 ## Updated fork-choice handlers
@@ -113,7 +87,7 @@ def is_valid_terminal_pow_block(transition_store: TransitionStore, block: PowBlo
 *Note*: The only modification is the addition of the verification of transition block conditions.
 
 ```python
-def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: TransitionStore=None) -> None:
+def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
@@ -128,17 +102,16 @@ def on_block(store: Store, signed_block: SignedBeaconBlock, transition_store: Tr
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
     
-    # [New in Merge]
-    if (transition_store is not None) and is_merge_block(pre_state, block.body):
-        # Delay consideration of block until PoW block is processed by the PoW node
-        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
-        pow_parent = get_pow_block(pow_block.parent_hash)
-        assert pow_block.is_processed
-        assert is_valid_terminal_pow_block(transition_store, pow_block, pow_parent)
-
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
     state_transition(state, signed_block, True)
+
+    # [New in Merge]
+    if is_merge_block(pre_state, block.body):
+        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
+        pow_parent = get_pow_block(pow_block.parent_hash)
+        assert is_valid_terminal_pow_block(pow_block, pow_parent)
+
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
