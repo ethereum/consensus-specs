@@ -282,7 +282,10 @@ because the processing mechanism errors out before creating it.
 
 ## Attestation Tests
 
-In addition the proposer, every block has a number of validators that are supposed to vote on whether it 
+In addition the proposer, every block has a [committee](https://ethos.dev/beacon-chain/), a randomly 
+chosen group of validators responsible for deciding whether the block is legitimate or not. 
+
+a validator that are supposed to vote on whether it 
 is valid or not. Those votes are called [attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
 
 
