@@ -282,6 +282,12 @@ because the processing mechanism errors out before creating it.
 
 ## Attestation Tests
 
+The [beacon chain](https://ethereum.org/en/eth2/beacon-chain/) doesn't provide any direct value. It does
+not execute EVM programs or stores user data. 
+
+
+https://ethereum.org/en/eth2/shard-chains/
+
 In addition the proposer, every block has a [committee](https://ethos.dev/beacon-chain/), a randomly 
 chosen group of validators responsible for deciding whether the block is legitimate or not. 
 
