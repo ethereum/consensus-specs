@@ -287,9 +287,38 @@ not execute EVM programs or store user data. The reason it exists at all is to p
 information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
 which do provide storage, and possibly execution, services.
 
-The way this works is that in addition to the proposer every block has a committee. The committee members vote
-on what is the latest block hash of the shard the committee is in charge of. These votes are called 
-[attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
+The block proposed by the proposer includes the hash for the latest block in the shard for which the proposer is
+responsible. Then there's a randomly selected committee of validators that needs to vote whether that is really
+a valid hash for that shard at that point in time. 2/3's of the validators on the committee need to vote to 
+approve the proposal for that hash to be accepted for that shard. The result of this vote is called an 
+[attestation](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
+
+[You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26-L30):
+Lets go over it line by line.
+
+
+```python
+@with_all_phases
+@spec_state_test
+def test_success(spec, state):
+    attestation = get_valid_attestation(spec, state, signed=True)
+```
+
+This function creates a valid attestation (which can then be modified to make it invalid if needed).
+[You can see this function here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120).
+To see an attestion "from the inside" we need to follow this function.
+
+   ```python
+   blah
+   ```
+
+```python
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    yield from run_attestation_processing(spec, state, attestation)
+```
+
+
 
 
 <!--
