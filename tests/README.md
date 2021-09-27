@@ -308,9 +308,72 @@ This function creates a valid attestation (which can then be modified to make it
 [You can see this function here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120).
 To see an attestion "from the inside" we need to follow this function.
 
-   ```python
-   blah
-   ```
+
+> ```python
+>  def get_valid_attestation(spec,
+>                           state,
+>                           slot=None,
+>                           index=None,
+>                           filter_participant_set=None,
+>                           signed=False):
+> ```
+>
+> Only two parameters, `spec` and `state` are required. However, there are four other parameters that can affect
+> the attestation created by this function. 
+> 
+>
+> ```python
+>     # If filter_participant_set filters everything, the attestation has 0 participants, and cannot be signed.
+>     # Thus strictly speaking invalid when no participant is added later.
+>     if slot is None:
+>         slot = state.slot
+>     if index is None:
+>         index = 0
+> ```
+>
+> Default values. Normally we want to choose the current slot, and out of the proposers and committees that it can have,
+> we want the first one.
+>
+> ```python
+>     attestation_data = build_attestation_data(
+>         spec, state, slot=slot, index=index
+>     )
+> ```   
+>
+> Build the actual attestation. You can see this function [here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L53-L85) to
+> see the exact data in an attestation.
+>
+>  ```python
+>     beacon_committee = spec.get_beacon_committee(
+>         state,
+>         attestation_data.slot,
+>         attestation_data.index,
+>     )
+> ```
+> 
+> This is the committee that is supposed to approve or reject the proposed block.
+> 
+> ```python    
+> 
+>     committee_size = len(beacon_committee)
+>     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
+> ```
+> 
+> There's a bit for every committee member to see if it approves or not.
+> 
+> ```python
+>     attestation = spec.Attestation(
+>         aggregation_bits=aggregation_bits,
+>         data=attestation_data,
+>     )
+>     # fill the attestation with (optionally filtered) participants, and optionally sign it
+>     fill_aggregate_attestation(spec, state, attestation, signed=signed, filter_participant_set=filter_participant_set)
+> 
+>    return attestation
+>  
+>  ```
+
+
 
 ```python
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
