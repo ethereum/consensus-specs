@@ -10,15 +10,18 @@ import textwrap
 from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar
 from abc import ABC, abstractmethod
 import ast
-
+import subprocess
+import sys
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
+def installPackage(package: str):
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+
 RUAMEL_YAML_VERSION = "ruamel.yaml==0.16.5"
 try:
     import ruamel.yaml
 except ImportError:
-    import pip
-    pip.main(["install", RUAMEL_YAML_VERSION])
+    installPackage(RUAMEL_YAML_VERSION)
 
 from ruamel.yaml import YAML
 
@@ -26,8 +29,7 @@ MARKO_VERSION = "marko==1.0.2"
 try:
     import marko
 except ImportError:
-    import pip
-    pip.main(["install", MARKO_VERSION])
+    installPackage(MARKO_VERSION)
 
 from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
 from marko.inline import CodeSpan
