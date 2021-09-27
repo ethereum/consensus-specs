@@ -1,6 +1,6 @@
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.exceptions import BlockNotFoundException
-from eth2spec.test.context import spec_state_test, with_phases, with_presets, MERGE, MINIMAL
+from eth2spec.test.context import spec_state_test, with_phases, MERGE
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -46,7 +46,6 @@ def with_pow_block_patch(spec, blocks, func):
 
 
 @with_phases([MERGE])
-@with_presets([MINIMAL], reason="mainnet `TERMINAL_TOTAL_DIFFICULTY` stub would cause overflow")
 @spec_state_test
 def test_all_valid(spec, state):
     test_steps = []
@@ -81,7 +80,6 @@ def test_all_valid(spec, state):
 
 
 @with_phases([MERGE])
-@with_presets([MINIMAL], reason="mainnet `TERMINAL_TOTAL_DIFFICULTY` stub would cause overflow")
 @spec_state_test
 def test_block_lookup_failed(spec, state):
     test_steps = []
@@ -112,7 +110,6 @@ def test_block_lookup_failed(spec, state):
 
 
 @with_phases([MERGE])
-@with_presets([MINIMAL], reason="mainnet `TERMINAL_TOTAL_DIFFICULTY` stub would cause overflow")
 @spec_state_test
 def test_too_early_for_merge(spec, state):
     test_steps = []
@@ -145,7 +142,6 @@ def test_too_early_for_merge(spec, state):
 
 
 @with_phases([MERGE])
-@with_presets([MINIMAL], reason="mainnet `TERMINAL_TOTAL_DIFFICULTY` stub would cause overflow")
 @spec_state_test
 def test_too_late_for_merge(spec, state):
     test_steps = []
