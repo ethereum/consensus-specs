@@ -36,8 +36,11 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_
         on_tick_and_append_step(spec, store, block_time, test_steps)
 
     post_state = yield from add_block(
-        spec, store, signed_block, test_steps, valid=valid, allow_invalid_attestations=allow_invalid_attestations,
-        block_not_found=block_not_found)
+        spec, store, signed_block, test_steps,
+        valid=valid,
+        allow_invalid_attestations=allow_invalid_attestations,
+        block_not_found=block_not_found,
+    )
 
     return post_state
 
@@ -125,7 +128,12 @@ def run_on_block(spec, store, signed_block, valid=True):
     assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
 
 
-def add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False,
+def add_block(spec,
+              store,
+              signed_block,
+              test_steps,
+              valid=True,
+              allow_invalid_attestations=False,
               block_not_found=False):
     """
     Run on_block and on_attestation
