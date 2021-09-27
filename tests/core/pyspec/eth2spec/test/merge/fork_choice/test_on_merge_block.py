@@ -16,6 +16,9 @@ from eth2spec.test.helpers.fork_choice import (
     prepare_empty_pow_block,
     add_pow_block,
 )
+from eth2spec.test.helpers.execution_payload import (
+    build_state_with_incomplete_transition,
+)
 
 
 def with_pow_block_patch(spec, blocks, func):
@@ -48,7 +51,7 @@ def with_pow_block_patch(spec, blocks, func):
 def test_all_valid(spec, state):
     test_steps = []
     # Initialization
-    state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
+    state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
@@ -83,7 +86,7 @@ def test_all_valid(spec, state):
 def test_block_lookup_failed(spec, state):
     test_steps = []
     # Initialization
-    state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
+    state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
@@ -114,7 +117,7 @@ def test_block_lookup_failed(spec, state):
 def test_too_early_for_merge(spec, state):
     test_steps = []
     # Initialization
-    state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
+    state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
@@ -147,7 +150,7 @@ def test_too_early_for_merge(spec, state):
 def test_too_late_for_merge(spec, state):
     test_steps = []
     # Initialization
-    state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
+    state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block

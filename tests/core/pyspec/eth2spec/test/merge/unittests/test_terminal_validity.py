@@ -14,19 +14,12 @@ def validate_transition_execution_payload(spec, execution_payload):
 
 
 def run_validate_transition_execution_payload(spec, block, parent_block, payload,
-                                        valid=True, block_lookup_success=True):
+                                              valid=True, block_lookup_success=True):
     """
-    Run ``validate_transition_execution_payload``, yielding:
-      - current block ('block')
-      - parent block ('parent_block')
-      - execution payload ('payload')
+    Run ``validate_transition_execution_payload``
     If ``valid == False``, run expecting ``AssertionError``
     If ``block_lookup_success == False``, run expecting ``BlockNotFoundException``
     """
-
-    yield 'block', block
-    yield 'parent_block', parent_block
-    yield 'payload', payload
 
     def get_pow_block(hash: spec.Bytes32) -> spec.PowBlock:
         if hash == block.block_hash:
@@ -108,20 +101,20 @@ def test_validate_transition_execution_payload_success(spec, state):
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, block, parent_block, payload)
+    run_validate_transition_execution_payload(spec, block, parent_block, payload)
 
 
 @with_merge_and_later
 @spec_state_test
-def test_process_merge_execution_payload_fail_block_lookup(spec, state):
+def test_validate_transition_execution_payload_fail_block_lookup(spec, state):
     parent_block = prepare_empty_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
-    yield from run_validate_transition_execution_payload(spec, block, parent_block, payload,
-                                                   block_lookup_success=False)
+    run_validate_transition_execution_payload(spec, block, parent_block, payload,
+                                              block_lookup_success=False)
 
 
 @with_merge_and_later
@@ -133,8 +126,8 @@ def test_validate_transition_execution_payload_fail_parent_block_lookup(spec, st
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_validate_transition_execution_payload(spec, block, parent_block, payload,
-                                                   block_lookup_success=False)
+    run_validate_transition_execution_payload(spec, block, parent_block, payload,
+                                              block_lookup_success=False)
 
 
 @with_merge_and_later
@@ -147,4 +140,4 @@ def test_validate_transition_execution_payload_fail_after_terminal(spec, state):
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + 1
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_validate_transition_execution_payload(spec, block, parent_block, payload, valid=False)
+    run_validate_transition_execution_payload(spec, block, parent_block, payload, valid=False)
