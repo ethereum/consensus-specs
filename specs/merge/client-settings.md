@@ -4,6 +4,7 @@
 
 - [The Merge -- Client Settings](#the-merge----client-settings)
     - [Override terminal total difficulty](#override-terminal-total-difficulty)
+    - [Override terminal block hash](#override-terminal-block-hash)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -19,3 +20,9 @@ To coordinate manual overrides to [`TERMINAL_TOTAL_DIFFICULTY`](./beacon-chain.m
 
 Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
 
+### Override terminal block hash
+
+To allow for transition coordination around a specific PoW block, clients must also provide `--terminal-block-hash-override` as a configurable setting.
+The value provided by this setting takes precedence over the pre-configured `TERMINAL_BLOCK_HASH` parameter.
+
+Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
