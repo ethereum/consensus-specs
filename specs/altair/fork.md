@@ -1,7 +1,5 @@
 # Altair -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -26,13 +24,13 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
-| `ALTAIR_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `ALTAIR_FORK_EPOCH` | `Epoch(74240)` (Oct 27, 2021, 10:56:23am UTC) |
 
 ## Fork to Altair
 
 ### Fork trigger
 
-TBD. Social consensus, along with state conditions such as epoch boundary, finality, deposits, active validator count, etc. may be part of the decision process to trigger the fork. For now we assume the condition will be triggered at epoch `ALTAIR_FORK_EPOCH`.
+The fork is triggered at epoch `ALTAIR_FORK_EPOCH`.
 
 Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since it starts with Altair version logic.
 
