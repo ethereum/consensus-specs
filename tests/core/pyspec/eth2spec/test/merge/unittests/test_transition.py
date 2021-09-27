@@ -34,9 +34,8 @@ def test_fail_merge_block(spec, state):
 @spec_state_test
 def test_fail_merge_block_complete_transition(spec, state):
     state = build_state_with_complete_transition(spec, state)
-    execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
+    body.execution_payload = build_empty_execution_payload(spec, state)
     assert not spec.is_merge_block(state, body)
 
 
@@ -44,9 +43,7 @@ def test_fail_merge_block_complete_transition(spec, state):
 @spec_state_test
 def test_fail_merge_block_no_execution_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
-    execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
     assert not spec.is_merge_block(state, body)
 
 
@@ -54,9 +51,8 @@ def test_fail_merge_block_no_execution_payload(spec, state):
 @spec_state_test
 def test_success_merge_block(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
-    execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
+    body.execution_payload = build_empty_execution_payload(spec, state)
     assert spec.is_merge_block(state, body)
 
 
@@ -64,9 +60,7 @@ def test_success_merge_block(spec, state):
 @spec_state_test
 def test_failed_execution_enabled(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
-    execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
     assert not spec.is_execution_enabled(state, body)
 
 
@@ -74,9 +68,8 @@ def test_failed_execution_enabled(spec, state):
 @spec_state_test
 def test_success_execution_enabled_before_terminal(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
-    execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
+    body.execution_payload = build_empty_execution_payload(spec, state)
     assert spec.is_execution_enabled(state, body)
 
 
@@ -84,9 +77,7 @@ def test_success_execution_enabled_before_terminal(spec, state):
 @spec_state_test
 def test_success_execution_enabled_no_execution_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
-    execution_payload = spec.ExecutionPayload()
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
     assert spec.is_execution_enabled(state, body)
 
 
@@ -94,7 +85,6 @@ def test_success_execution_enabled_no_execution_payload(spec, state):
 @spec_state_test
 def test_success_execution_enabled(spec, state):
     state = build_state_with_complete_transition(spec, state)
-    execution_payload = build_empty_execution_payload(spec, state)
     body = spec.BeaconBlockBody()
-    body.execution_payload = execution_payload
+    body.execution_payload = build_empty_execution_payload(spec, state)
     assert spec.is_execution_enabled(state, body)

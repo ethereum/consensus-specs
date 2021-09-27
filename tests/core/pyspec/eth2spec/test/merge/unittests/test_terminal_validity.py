@@ -13,10 +13,10 @@ def validate_transition_execution_payload(spec, execution_payload):
     assert spec.is_valid_terminal_pow_block(pow_block, pow_parent)
 
 
-def run_process_merge_execution_payload(spec, block, parent_block, payload,
+def run_validate_transition_execution_payload(spec, block, parent_block, payload,
                                         valid=True, block_lookup_success=True):
     """
-    Run ``process_merge_execution_payload``, yielding:
+    Run ``validate_transition_execution_payload``, yielding:
       - current block ('block')
       - parent block ('parent_block')
       - execution payload ('payload')
@@ -100,7 +100,7 @@ def test_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
 
 @with_merge_and_later
 @spec_state_test
-def test_process_merge_execution_payload_success(spec, state):
+def test_validate_transition_execution_payload_success(spec, state):
     parent_block = prepare_empty_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
@@ -120,26 +120,26 @@ def test_process_merge_execution_payload_fail_block_lookup(spec, state):
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
-    yield from run_process_merge_execution_payload(spec, block, parent_block, payload,
+    yield from run_validate_transition_execution_payload(spec, block, parent_block, payload,
                                                    block_lookup_success=False)
 
 
 @with_merge_and_later
 @spec_state_test
-def test_process_merge_execution_payload_fail_parent_block_lookup(spec, state):
+def test_validate_transition_execution_payload_fail_parent_block_lookup(spec, state):
     parent_block = prepare_empty_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     block = prepare_empty_pow_block(spec)
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, block, parent_block, payload,
+    yield from run_validate_transition_execution_payload(spec, block, parent_block, payload,
                                                    block_lookup_success=False)
 
 
 @with_merge_and_later
 @spec_state_test
-def test_process_merge_execution_payload_fail_after_terminal(spec, state):
+def test_validate_transition_execution_payload_fail_after_terminal(spec, state):
     parent_block = prepare_empty_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = prepare_empty_pow_block(spec)
@@ -147,4 +147,4 @@ def test_process_merge_execution_payload_fail_after_terminal(spec, state):
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + 1
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
-    yield from run_process_merge_execution_payload(spec, block, parent_block, payload, valid=False)
+    yield from run_validate_transition_execution_payload(spec, block, parent_block, payload, valid=False)
