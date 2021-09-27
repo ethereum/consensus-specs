@@ -283,16 +283,13 @@ because the processing mechanism errors out before creating it.
 ## Attestation Tests
 
 The [beacon chain](https://ethereum.org/en/eth2/beacon-chain/) doesn't provide any direct value. It does
-not execute EVM programs or stores user data. 
+not execute EVM programs or store user data. The reason it exists at all is to provide a trusted source of
+information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
+which do provide storage, and possibly execution, services.
 
-
-https://ethereum.org/en/eth2/shard-chains/
-
-In addition the proposer, every block has a [committee](https://ethos.dev/beacon-chain/), a randomly 
-chosen group of validators responsible for deciding whether the block is legitimate or not. 
-
-a validator that are supposed to vote on whether it 
-is valid or not. Those votes are called [attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
+The way this works is that in addition to the proposer every block has a committee. The committee members vote
+on what is the latest block hash of the shard the committee is in charge of. These votes are called 
+[attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
 
 
 <!--
