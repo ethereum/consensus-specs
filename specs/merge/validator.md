@@ -97,15 +97,29 @@ To obtain an execution payload, a block proposer building a block on top of a `s
     * `pow_chain` is a list that abstractly represents all blocks in the PoW chain
     * `fee_recipient` is the value suggested to be used for the `coinbase` field of the execution payload
 
+
 ```python
-def get_pow_block_at_total_difficulty(total_difficulty: uint256, pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain:
         parent = get_pow_block(block.parent_hash)
-        if block.total_difficulty >= total_difficulty and parent.total_difficulty < total_difficulty:
+        block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+        parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+        if block_reached_ttd and not parent_reached_ttd:
             return block
 
     return None
+
+
+def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # Terminal block hash override takes precedence over terminal total difficulty
+        pow_block_overrides = [block for block in pow_chain if block.block_hash == TERMINAL_BLOCK_HASH]
+        if not any(pow_block_overrides):
+            return None
+        return pow_block_overrides[0]
+
+    return get_pow_block_at_terminal_total_difficulty(pow_chain)
 
 
 def prepare_execution_payload(state: BeaconState,
@@ -113,13 +127,12 @@ def prepare_execution_payload(state: BeaconState,
                               fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     if not is_merge_complete(state):
-        terminal_pow_block = get_pow_block_at_total_difficulty(TERMINAL_TOTAL_DIFFICULTY, pow_chain)
+        terminal_pow_block = get_terminal_pow_block(pow_chain)
         if terminal_pow_block is None:
             # Pre-merge, no prepare payload call is needed
             return None
-        else:
-            # Signify merge via producing on top of the last PoW block
-            parent_hash = terminal_pow_block.block_hash
+        # Signify merge via producing on top of the terminal PoW block
+        parent_hash = terminal_pow_block.block_hash
     else:
         # Post-merge, normal payload
         parent_hash = state.latest_execution_payload_header.block_hash

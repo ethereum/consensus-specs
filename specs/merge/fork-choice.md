@@ -55,8 +55,7 @@ def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, fi
 ### `PowBlock`
 
 ```python
-@dataclass
-class PowBlock(object):
+class PowBlock(Container):
     block_hash: Hash32
     parent_hash: Hash32
     total_difficulty: uint256
@@ -75,6 +74,9 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
+    if block.block_hash == TERMINAL_BLOCK_HASH:
+        return True
+
     is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
     is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
     return is_total_difficulty_reached and is_parent_total_difficulty_valid
@@ -101,7 +103,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
-    
+
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
     state_transition(state, signed_block, True)
@@ -127,7 +129,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
         store.finalized_checkpoint = state.finalized_checkpoint
-        
+
         # Potentially update justified if different from store
         if store.justified_checkpoint != state.current_justified_checkpoint:
             # Update justified if new justified is later than store justified
