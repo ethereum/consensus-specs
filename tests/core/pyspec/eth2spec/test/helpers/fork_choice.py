@@ -263,3 +263,27 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({'pow_block': get_pow_block_file_name(pow_block)})
+
+
+def with_pow_block_patch(spec, pow_blocks, func):
+    def get_pow_block(hash: spec.Bytes32) -> spec.PowBlock:
+        for block in pow_blocks:
+            if block.block_hash == hash:
+                return block
+        raise BlockNotFoundException()
+    get_pow_block_backup = spec.get_pow_block
+    spec.get_pow_block = get_pow_block
+
+    class AtomicBoolean():
+        value = False
+    is_called = AtomicBoolean()
+
+    def wrap(flag: AtomicBoolean):
+        yield from func()
+        flag.value = True
+
+    try:
+        yield from wrap(is_called)
+    finally:
+        spec.get_pow_block = get_pow_block_backup
+    assert is_called.value

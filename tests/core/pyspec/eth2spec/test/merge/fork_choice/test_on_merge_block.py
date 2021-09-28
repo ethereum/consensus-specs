@@ -1,48 +1,22 @@
 from eth2spec.utils.ssz.ssz_typing import uint256
-from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.test.context import spec_state_test, with_phases, MERGE
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.fork_choice import (
+    add_pow_block,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
+    prepare_empty_pow_block,
     tick_and_add_block,
+    with_pow_block_patch,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth2spec.test.helpers.fork_choice import (
-    prepare_empty_pow_block,
-    add_pow_block,
-)
 from eth2spec.test.helpers.execution_payload import (
     build_state_with_incomplete_transition,
 )
-
-
-def with_pow_block_patch(spec, blocks, func):
-    def get_pow_block(hash: spec.Bytes32) -> spec.PowBlock:
-        for block in blocks:
-            if block.block_hash == hash:
-                return block
-        raise BlockNotFoundException()
-    get_pow_block_backup = spec.get_pow_block
-    spec.get_pow_block = get_pow_block
-
-    class AtomicBoolean():
-        value = False
-    is_called = AtomicBoolean()
-
-    def wrap(flag: AtomicBoolean):
-        yield from func()
-        flag.value = True
-
-    try:
-        yield from wrap(is_called)
-    finally:
-        spec.get_pow_block = get_pow_block_backup
-    assert is_called.value
 
 
 @with_phases([MERGE])
