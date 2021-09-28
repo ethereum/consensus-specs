@@ -1,7 +1,7 @@
 from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.helpers.fork_choice import (
-    prepare_empty_pow_block,
+    prepare_random_hash_pow_block,
 )
 from eth2spec.test.context import spec_state_test, with_merge_and_later
 
@@ -58,9 +58,9 @@ def run_validate_transition_execution_payload(spec, block, parent_block, payload
 @with_merge_and_later
 @spec_state_test
 def test_valid_terminal_pow_block_success_valid(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
 
@@ -70,9 +70,9 @@ def test_valid_terminal_pow_block_success_valid(spec, state):
 @with_merge_and_later
 @spec_state_test
 def test_valid_terminal_pow_block_fail_before_terminal(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
 
@@ -82,9 +82,9 @@ def test_valid_terminal_pow_block_fail_before_terminal(spec, state):
 @with_merge_and_later
 @spec_state_test
 def test_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
 
@@ -94,9 +94,9 @@ def test_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
 @with_merge_and_later
 @spec_state_test
 def test_validate_transition_execution_payload_success(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
@@ -107,9 +107,9 @@ def test_validate_transition_execution_payload_success(spec, state):
 @with_merge_and_later
 @spec_state_test
 def test_validate_transition_execution_payload_fail_block_lookup(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
@@ -120,9 +120,9 @@ def test_validate_transition_execution_payload_fail_block_lookup(spec, state):
 @with_merge_and_later
 @spec_state_test
 def test_validate_transition_execution_payload_fail_parent_block_lookup(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     payload = spec.ExecutionPayload()
     payload.parent_hash = block.block_hash
@@ -133,9 +133,9 @@ def test_validate_transition_execution_payload_fail_parent_block_lookup(spec, st
 @with_merge_and_later
 @spec_state_test
 def test_validate_transition_execution_payload_fail_after_terminal(spec, state):
-    parent_block = prepare_empty_pow_block(spec)
+    parent_block = prepare_random_hash_pow_block(spec)
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
-    block = prepare_empty_pow_block(spec)
+    block = prepare_random_hash_pow_block(spec)
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + 1
     payload = spec.ExecutionPayload()

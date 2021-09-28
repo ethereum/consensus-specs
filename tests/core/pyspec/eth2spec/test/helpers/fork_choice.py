@@ -128,6 +128,19 @@ def run_on_block(spec, store, signed_block, valid=True):
     assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
 
 
+def _handle_engine_api_events(test_steps):
+    # FIXME: Could implement class TestStepObject to handle it more gracefully
+    pending_on_block = []
+    for i in range(len(test_steps) - 1, -1, -1):
+        if '_to_next_on_block' in test_steps[i]:
+            pending_on_block.append(test_steps.pop(i))
+
+    for step in pending_on_block:
+        if 'block' not in test_steps[-1]:
+            raise Exception("Wrong sequence")
+        test_steps[-1]['block'].update(step['_to_next_on_block'])
+
+
 def add_block(spec,
               store,
               signed_block,
@@ -147,15 +160,23 @@ def add_block(spec,
             if isinstance(e, BlockNotFoundException) and not block_not_found:
                 assert False
             test_steps.append({
-                'block': get_block_file_name(signed_block),
-                'valid': False,
+                'block': {
+                    'block': get_block_file_name(signed_block),
+                    'valid': False,
+                }
             })
+            _handle_engine_api_events(test_steps)
             return
         else:
             assert False
 
     run_on_block(spec, store, signed_block, valid=True)
-    test_steps.append({'block': get_block_file_name(signed_block)})
+    test_steps.append({
+        'block': {
+            'block': get_block_file_name(signed_block)
+        }
+    })
+    _handle_engine_api_events(test_steps)
 
     # An on_block step implies receiving block's attestations
     try:
@@ -247,7 +268,7 @@ def apply_next_slots_with_attestations(spec,
     return post_state, store, last_signed_block
 
 
-def prepare_empty_pow_block(spec, rng=Random(3131)):
+def prepare_random_hash_pow_block(spec, rng=Random(3131)):
     return spec.PowBlock(
         block_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
         parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
@@ -260,6 +281,29 @@ def get_pow_block_file_name(pow_block):
     return f"pow_block_{encode_hex(pow_block.block_hash)}"
 
 
-def add_pow_block(spec, store, pow_block, test_steps):
+def add_pow_block(pow_block):
     yield get_pow_block_file_name(pow_block), pow_block
-    test_steps.append({'pow_block': get_pow_block_file_name(pow_block)})
+
+
+def with_pow_block_patch(spec, pow_blocks, func):
+    def get_pow_block(block_hash: spec.Bytes32) -> spec.PowBlock:
+        for block in pow_blocks:
+            if block.block_hash == block_hash:
+                return block
+        raise BlockNotFoundException()
+    get_pow_block_backup = spec.get_pow_block
+    spec.get_pow_block = get_pow_block
+
+    class AtomicBoolean():
+        value = False
+    is_called = AtomicBoolean()
+
+    def wrap(flag: AtomicBoolean):
+        yield from func()
+        flag.value = True
+
+    try:
+        yield from wrap(is_called)
+    finally:
+        spec.get_pow_block = get_pow_block_backup
+    assert is_called.value
