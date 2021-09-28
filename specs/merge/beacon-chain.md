@@ -257,7 +257,7 @@ The Engine API may be used to implement them with an external execution engine.
 ```python
 def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
-    Returns ``True`` if ``execution_payload`` is valid with respect to ``self.execution_state``.
+    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
     ...
 ```
