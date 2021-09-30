@@ -132,11 +132,13 @@ def _handle_engine_api_events(test_steps):
     # FIXME: Could implement class TestStepObject to handle it more gracefully
     pending_on_block = []
     for i in range(len(test_steps) - 1, -1, -1):
-        if 'on_block' in test_steps[i]:
+        if '_to_next_on_block' in test_steps[i]:
             pending_on_block.append(test_steps.pop(i))
 
     for step in pending_on_block:
-        test_steps[-1].update(step['on_block'])
+        if 'block' not in test_steps[-1]:
+            raise Exception("Wrong sequence")
+        test_steps[-1]['block'].update(step['_to_next_on_block'])
 
 
 def add_block(spec,
@@ -158,8 +160,10 @@ def add_block(spec,
             if isinstance(e, BlockNotFoundException) and not block_not_found:
                 assert False
             test_steps.append({
-                'block': get_block_file_name(signed_block),
-                'valid': False,
+                'block': {
+                    'block': get_block_file_name(signed_block),
+                    'valid': False,
+                }
             })
             _handle_engine_api_events(test_steps)
             return
@@ -167,7 +171,11 @@ def add_block(spec,
             assert False
 
     run_on_block(spec, store, signed_block, valid=True)
-    test_steps.append({'block': get_block_file_name(signed_block)})
+    test_steps.append({
+        'block': {
+            'block': get_block_file_name(signed_block)
+        }
+    })
     _handle_engine_api_events(test_steps)
 
     # An on_block step implies receiving block's attestations
@@ -276,7 +284,7 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({
-        'on_block': {
+        '_to_next_on_block': {
             'pow_block': get_pow_block_file_name(pow_block)}
     })
 

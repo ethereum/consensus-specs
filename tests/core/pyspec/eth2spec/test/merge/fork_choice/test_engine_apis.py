@@ -95,3 +95,5 @@ def test_engine_execution_payload(spec, state):
     )
 
     yield 'steps', test_steps
+    print('-------')
+    print(test_steps)

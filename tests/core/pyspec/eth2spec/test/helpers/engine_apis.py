@@ -120,11 +120,11 @@ def with_pow_blocks_and_execute_payload(
             )
             resp = to_json_rpc_response(
                 result={
-                    "status": f"{status}"
+                    "status": status.value
                 },
             )
             test_steps.append({
-                'on_block': {
+                '_to_next_on_block': {
                     'process_execution_payload': {
                         'engine_api': {
                             'request': req,
