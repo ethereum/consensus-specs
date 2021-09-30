@@ -128,6 +128,17 @@ def run_on_block(spec, store, signed_block, valid=True):
     assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
 
 
+def _handle_engine_api_events(test_steps):
+    # FIXME: Could implement class TestStepObject to handle it more gracefully
+    pending_on_block = []
+    for i in range(len(test_steps) - 1, -1, -1):
+        if 'on_block' in test_steps[i]:
+            pending_on_block.append(test_steps.pop(i))
+
+    for step in pending_on_block:
+        test_steps[-1].update(step['on_block'])
+
+
 def add_block(spec,
               store,
               signed_block,
@@ -150,12 +161,14 @@ def add_block(spec,
                 'block': get_block_file_name(signed_block),
                 'valid': False,
             })
+            _handle_engine_api_events(test_steps)
             return
         else:
             assert False
 
     run_on_block(spec, store, signed_block, valid=True)
     test_steps.append({'block': get_block_file_name(signed_block)})
+    _handle_engine_api_events(test_steps)
 
     # An on_block step implies receiving block's attestations
     try:
@@ -262,13 +275,16 @@ def get_pow_block_file_name(pow_block):
 
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
-    test_steps.append({'pow_block': get_pow_block_file_name(pow_block)})
+    test_steps.append({
+        'on_block': {
+            'pow_block': get_pow_block_file_name(pow_block)}
+    })
 
 
 def with_pow_block_patch(spec, pow_blocks, func):
-    def get_pow_block(hash: spec.Bytes32) -> spec.PowBlock:
+    def get_pow_block(block_hash: spec.Bytes32) -> spec.PowBlock:
         for block in pow_blocks:
-            if block.block_hash == hash:
+            if block.block_hash == block_hash:
                 return block
         raise BlockNotFoundException()
     get_pow_block_backup = spec.get_pow_block

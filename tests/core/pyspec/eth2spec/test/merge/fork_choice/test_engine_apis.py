@@ -1,15 +1,20 @@
 from eth2spec.test.context import (
+    MINIMAL,
     spec_state_test,
     with_merge_and_later,
+    with_presets,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.engine_apis import (
+    StatusCode,
     with_mock_engine_prepare_payload,
+    with_pow_blocks_and_execute_payload,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_state_with_incomplete_transition,
+    build_empty_execution_payload,
 )
 from eth2spec.test.helpers.fork_choice import (
     add_pow_block,
@@ -17,7 +22,6 @@ from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step,
     prepare_empty_pow_block,
     tick_and_add_block,
-    with_pow_block_patch,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -25,6 +29,7 @@ from eth2spec.test.helpers.state import (
 
 
 @with_merge_and_later
+@with_presets([MINIMAL], reason="WIP")  # FIXME: remove it later
 @spec_state_test
 def test_engine_execution_payload(spec, state):
     test_steps = []
@@ -49,7 +54,8 @@ def test_engine_execution_payload(spec, state):
     fee_recipient = b'\x12' * 20
     payload_id = spec.PayloadId(1)
 
-    def run_func():
+    # For the block proposer
+    def run_prepare_execution_payload():
         spec.prepare_execution_payload(
             state,
             pow_chain,
@@ -64,17 +70,28 @@ def test_engine_execution_payload(spec, state):
         random=spec.get_randao_mix(state, spec.get_current_epoch(state)),
         fee_recipient=fee_recipient,
         payload_id=payload_id,
-        func=run_func,
+        func=run_prepare_execution_payload,
         test_steps=test_steps,
     )
 
-    def run_func():
-        block = build_empty_block_for_next_slot(spec, state)
-        block.body.execution_payload.parent_hash = pow_block.block_hash
-        signed_block = state_transition_and_sign_block(spec, state, block)
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_payload.parent_hash = pow_block.block_hash
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # For on_block
+    def run_tick_and_add_block():
         yield from tick_and_add_block(spec, store, signed_block, test_steps, merge_block=True)
         # valid
         assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
-    yield from with_pow_block_patch(spec, pow_chain, run_func)
+    yield from with_pow_blocks_and_execute_payload(
+        spec,
+        pow_chain=pow_chain,
+        # FIXME: use `get_execution_payload` in validator guide and mock execution_engine.get_payload(payload_id)
+        status=StatusCode.VALID,
+        payload=build_empty_execution_payload(spec, state),
+        func=run_tick_and_add_block,
+        test_steps=test_steps,
+    )
+
     yield 'steps', test_steps
