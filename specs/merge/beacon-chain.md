@@ -362,7 +362,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
     fork = Fork(
-        previous_version=ALTAIR_FORK_VERSION,
+        previous_version=MERGE_FORK_VERSION,  # [Modified in Merge] for testing only
         current_version=MERGE_FORK_VERSION,  # [Modified in Merge]
         epoch=GENESIS_EPOCH,
     )
