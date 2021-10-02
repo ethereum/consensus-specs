@@ -52,12 +52,9 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps):
     next_epoch_time = block_time + spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT
 
     if store.time < next_epoch_time:
-        spec.on_tick(store, next_epoch_time)
-        test_steps.append({'tick': int(next_epoch_time)})
+        on_tick_and_append_step(spec, store, next_epoch_time, test_steps)
 
-    spec.on_attestation(store, attestation)
-    yield get_attestation_file_name(attestation), attestation
-    test_steps.append({'attestation': get_attestation_file_name(attestation)})
+    yield from add_attestation(spec, store, attestation, test_steps)
 
 
 def add_attestation(spec, store, attestation, test_steps, valid=True):
@@ -68,15 +65,21 @@ def add_attestation(spec, store, attestation, test_steps, valid=True):
             run_on_attestation(spec, store, attestation, valid=True)
         except AssertionError:
             test_steps.append({
-                'attestation': get_attestation_file_name(attestation),
-                'valid': False,
+                'on_attestation': {
+                    'attestation': get_attestation_file_name(attestation),
+                    'valid': False,
+                }
             })
             return
         else:
             assert False
 
     run_on_attestation(spec, store, attestation, valid=True)
-    test_steps.append({'attestation': get_attestation_file_name(attestation)})
+    test_steps.append({
+        'on_attestation': {
+            'attestation': get_attestation_file_name(attestation),
+        }
+    })
 
 
 def run_on_attestation(spec, store, attestation, valid=True):
@@ -112,7 +115,7 @@ def get_attestation_file_name(attestation):
 
 def on_tick_and_append_step(spec, store, time, test_steps):
     spec.on_tick(store, time)
-    test_steps.append({'tick': int(time)})
+    test_steps.append({'on_tick': {'time': int(time)}})
 
 
 def run_on_block(spec, store, signed_block, valid=True):
@@ -129,16 +132,17 @@ def run_on_block(spec, store, signed_block, valid=True):
 
 
 def _handle_engine_api_events(test_steps):
-    # FIXME: Could implement class TestStepObject to handle it more gracefully
+    # TODO: Could implement class TestStepObject to handle it more gracefully
     pending_on_block = []
     for i in range(len(test_steps) - 1, -1, -1):
         if '_to_next_on_block' in test_steps[i]:
             pending_on_block.append(test_steps.pop(i))
 
+    # Merge the previous pending output into `on_block`
     for step in pending_on_block:
-        if 'block' not in test_steps[-1]:
+        if 'on_block' not in test_steps[-1]:
             raise Exception("Wrong sequence")
-        test_steps[-1]['block'].update(step['_to_next_on_block'])
+        test_steps[-1]['on_block'].update(step['_to_next_on_block'])
 
 
 def add_block(spec,
@@ -160,7 +164,7 @@ def add_block(spec,
             if isinstance(e, BlockNotFoundException) and not block_not_found:
                 assert False
             test_steps.append({
-                'block': {
+                'on_block': {
                     'block': get_block_file_name(signed_block),
                     'valid': False,
                 }
@@ -172,7 +176,7 @@ def add_block(spec,
 
     run_on_block(spec, store, signed_block, valid=True)
     test_steps.append({
-        'block': {
+        'on_block': {
             'block': get_block_file_name(signed_block)
         }
     })

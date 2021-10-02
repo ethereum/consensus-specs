@@ -55,7 +55,7 @@ After this step, the `store` object may have been updated.
 
 #### `on_block` execution step
 
-The parameter that is required for executing `on_block(store, block)`.
+The parameters that are required for executing `on_block(store, block)`.
 
 ```yaml
 {
@@ -63,23 +63,42 @@ The parameter that is required for executing `on_block(store, block)`.
                       To execute `on_block(store, block)` with the given attestation.
     valid: bool    -- optional, default to `true`.
                       If it's `false`, this execution step is expected to be invalid.
+    get_pow_block: -- this item only exists if `get_pow_block` is called with `on_block` call
+      input: {
+          pow_chain: List[strings]   -- map to the name of the `pow_block_<32-byte-root>.ssz_snappy` file
+      }
+      output: {
+          result: string             -- map to the name of the `pow_block_<32-byte-root>.ssz_snappy` file
+      }
+    process_execution_payload:  -- this item only exists if `process_execution_payload` is called with `on_block` call
+      engine_api:
+        request:
+          method: engine_executePayload
+          params:               -- the parameters of engine_executePayload API call
+            parentHash: string
+            coinbase: string
+            stateRoot: string
+            receiptRoot: string
+            logsBloom: string
+            random: string
+            blockNumber: int
+            gasLimit: int
+            gasUsed: int
+            timestamp: int
+            extraData: string
+            baseFeePerGas: int
+            blockHash: string
+            transactions: List[string]
+        response:
+          error: bool           -- if error is True, the result would be the error code
+          result: {
+              status: string    -- VALID | INVALID | SYNCING
+          } 
 }  
 ```
 The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
-
-#### `on_merge_block` execution
-
-Adds `PowBlock` data which is required for executing `on_block(store, block)`.
-```yaml
-{
-    pow_block: string  -- the name of the `pow_block_<32-byte-root>.ssz_snappy` file.
-                          To be used in `get_pow_block` lookup
-}  
-```
-The file is located in the same folder (see below).
-PowBlocks should be used as return values for `get_pow_block(hash: Hash32) -> PowBlock` function if hashes match.
 
 #### Checks step
 
