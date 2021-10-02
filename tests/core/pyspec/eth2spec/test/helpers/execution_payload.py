@@ -1,32 +1,77 @@
-def build_empty_execution_payload(spec, state, randao_mix=None):
+def build_empty_execution_payload(spec, state):
+    """
+    Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
+    """
+    return build_execution_payload(spec, state)
+
+
+def build_execution_payload(spec, state,
+                            *,
+                            parent_hash=None,
+                            coinbase=None,
+                            state_root=None,
+                            receipt_root=None,
+                            logs_bloom=None,
+                            block_number=None,
+                            random=None,
+                            gas_limit=None,
+                            gas_used=0,
+                            timestamp=None,
+                            extra_data=None,
+                            base_fee_per_gas=None,
+                            block_hash=None,
+                            transactions=None):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
     latest = state.latest_execution_payload_header
-    timestamp = spec.compute_time_at_slot(state, state.slot)
-    empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
-
-    if randao_mix is None:
-        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+    # Default to empty transcations and use latest_execution_payload_header as parent
+    if parent_hash is None:
+        parent_hash = latest.block_hash
+    if coinbase is None:
+        coinbase = spec.ExecutionAddress()
+    if state_root is None:
+        state_root = latest.state_root
+    if receipt_root is None:
+        receipt_root = b"no receipts here" + b"\x00" * 16  # TODO: root of empty MPT may be better.
+    if logs_bloom is None:
+        logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM]()  # TODO: zeroed logs bloom for empty logs ok?
+    if block_number is None:
+        block_number = latest.block_number + 1
+    if random is None:
+        random = spec.get_randao_mix(state, spec.get_current_epoch(state))
+    if gas_limit is None:
+        gas_limit = latest.gas_limit  # retain same limit
+    if timestamp is None:
+        timestamp = spec.compute_timestamp_at_slot(state, state.slot)
+    if extra_data is None:
+        extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES]()
+    if base_fee_per_gas is None:
+        base_fee_per_gas = latest.base_fee_per_gas  # retain same base_fee
+    if transactions is None:
+        transactions = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
     payload = spec.ExecutionPayload(
-        parent_hash=latest.block_hash,
-        coinbase=spec.ExecutionAddress(),
-        state_root=latest.state_root,  # no changes to the state
-        receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
-        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
-        block_number=latest.block_number + 1,
-        random=randao_mix,
-        gas_limit=latest.gas_limit,  # retain same limit
-        gas_used=0,  # empty block, 0 gas
+        parent_hash=parent_hash,
+        coinbase=coinbase,
+        state_root=state_root,
+        receipt_root=receipt_root,
+        logs_bloom=logs_bloom,
+        block_number=block_number,
+        random=random,
+        gas_limit=gas_limit,
+        gas_used=gas_used,
         timestamp=timestamp,
-        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
-        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
-        block_hash=spec.Hash32(),
-        transactions=empty_txs,
+        extra_data=extra_data,
+        base_fee_per_gas=base_fee_per_gas,
+        transactions=transactions,
     )
+
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
-    payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))
+    payload.block_hash = (
+        block_hash if block_hash is not None
+        else spec.Hash32(spec.hash(parent_hash + b"FAKE RLP HASH"))
+    )
 
     return payload
 

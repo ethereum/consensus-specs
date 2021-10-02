@@ -7,7 +7,7 @@ from eth2spec.test.helpers.fork_choice import (
     add_pow_block,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
-    prepare_empty_pow_block,
+    prepare_random_hash_pow_block,
     tick_and_add_block,
     with_pow_block_patch,
 )
@@ -32,9 +32,9 @@ def test_all_valid(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    pow_block_parent = prepare_empty_pow_block(spec)
+    pow_block_parent = prepare_random_hash_pow_block(spec)
     pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_block = prepare_empty_pow_block(spec)
+    pow_block = prepare_random_hash_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     pow_blocks = [pow_block, pow_block_parent]
@@ -66,7 +66,7 @@ def test_block_lookup_failed(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    pow_block = prepare_empty_pow_block(spec)
+    pow_block = prepare_random_hash_pow_block(spec)
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_blocks = [pow_block]
     for pb in pow_blocks:
@@ -96,9 +96,9 @@ def test_too_early_for_merge(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    pow_block_parent = prepare_empty_pow_block(spec)
+    pow_block_parent = prepare_random_hash_pow_block(spec)
     pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
-    pow_block = prepare_empty_pow_block(spec)
+    pow_block = prepare_random_hash_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_blocks = [pow_block, pow_block_parent]
@@ -128,9 +128,9 @@ def test_too_late_for_merge(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    pow_block_parent = prepare_empty_pow_block(spec)
+    pow_block_parent = prepare_random_hash_pow_block(spec)
     pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
-    pow_block = prepare_empty_pow_block(spec)
+    pow_block = prepare_random_hash_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
     pow_blocks = [pow_block, pow_block_parent]

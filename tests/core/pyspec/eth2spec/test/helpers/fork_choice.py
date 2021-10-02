@@ -268,7 +268,7 @@ def apply_next_slots_with_attestations(spec,
     return post_state, store, last_signed_block
 
 
-def prepare_empty_pow_block(spec, rng=Random(3131)):
+def prepare_random_hash_pow_block(spec, rng=Random(3131)):
     return spec.PowBlock(
         block_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
         parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
@@ -284,8 +284,7 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({
-        '_to_next_on_block': {
-            'pow_block': get_pow_block_file_name(pow_block)}
+        'pow_block': get_pow_block_file_name(pow_block)
     })
 
 
