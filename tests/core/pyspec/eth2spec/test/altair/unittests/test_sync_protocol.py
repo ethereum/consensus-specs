@@ -1,17 +1,14 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_presets,
-    with_phases,
+    with_altair_and_later,
 )
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
 from eth2spec.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
 )
-from eth2spec.test.helpers.constants import (
-    ALTAIR,
-    MINIMAL,
-)
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.state import (
     next_slots,
     state_transition_and_sign_block,
@@ -22,7 +19,7 @@ from eth2spec.test.helpers.sync_committee import (
 from eth2spec.test.helpers.merkle import build_proof
 
 
-@with_phases([ALTAIR])
+@with_altair_and_later
 @spec_state_test
 def test_process_light_client_update_not_updated(spec, state):
     pre_snapshot = spec.LightClientSnapshot(
@@ -81,7 +78,7 @@ def test_process_light_client_update_not_updated(spec, state):
     assert store.snapshot == pre_snapshot
 
 
-@with_phases([ALTAIR])
+@with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
@@ -147,7 +144,7 @@ def test_process_light_client_update_timeout(spec, state):
     assert store.snapshot.header == update.header
 
 
-@with_phases([ALTAIR])
+@with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
