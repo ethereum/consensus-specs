@@ -365,7 +365,8 @@ Modifications include:
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader) -> BeaconState:
+                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
+                                      ) -> BeaconState:
     fork = Fork(
         previous_version=MERGE_FORK_VERSION,  # [Modified in Merge] for testing only
         current_version=MERGE_FORK_VERSION,  # [Modified in Merge]
@@ -403,6 +404,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     state.next_sync_committee = get_next_sync_committee(state)
 
     # [New in Merge] Initialize the execution payload header
+    # If empty, will initialize a chain that has not yet gone through the Merge transition
     state.latest_execution_payload_header = execution_payload_header
 
     return state

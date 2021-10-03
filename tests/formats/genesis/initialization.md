@@ -26,10 +26,15 @@ deposits_count: int    -- Amount of deposits.
 A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need to be processed in order.
 Each file is a SSZ-snappy encoded `Deposit` object.
 
+###  `execution_payload_header.ssz_snappy`
+
+*Note*: Param added only for the Merge and subsequent forks.
+
+The execution payload header that state is initialized with. An SSZ-snappy encoded `BeaconState` object.
+
 ###  `state.ssz_snappy`
 
 The expected genesis state. An SSZ-snappy encoded `BeaconState` object.
-
 
 ## Processing
 
