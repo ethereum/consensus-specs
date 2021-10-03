@@ -13,7 +13,6 @@
 - [Constants](#constants)
   - [Execution](#execution)
 - [Configuration](#configuration)
-  - [Genesis testing settings](#genesis-testing-settings)
   - [Transition settings](#transition-settings)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
@@ -70,15 +69,6 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
 
 ## Configuration
-
-### Genesis testing settings
-
-*Note*: These configuration settings do not apply to the mainnet and are utilized only by pure Merge testing.
-
-| Name | Value |
-| - | - |
-| `GENESIS_GAS_LIMIT` | `uint64(30000000)` (= 30,000,000) |
-| `GENESIS_BASE_FEE_PER_GAS` | `Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000')` (= 1,000,000,000) |
 
 ### Transition settings
 

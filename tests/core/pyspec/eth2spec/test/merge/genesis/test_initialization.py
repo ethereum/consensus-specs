@@ -10,6 +10,9 @@ from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
 )
+from eth2spec.test.helpers.genesis import (
+    get_sample_genesis_execution_payload_header,
+)
 
 
 def eth1_init_data(eth1_block_hash, eth1_timestamp):
@@ -104,20 +107,7 @@ def test_initialize_post_transition(spec):
 
     # initialize beacon_state *with* an execution_payload_header
     yield 'execution_payload_header', 'meta', True
-    genesis_execution_payload_header = spec.ExecutionPayloadHeader(
-        parent_hash=b'\x30' * 32,
-        coinbase=b'\x42' * 20,
-        state_root=b'\x20' * 32,
-        receipt_root=b'\x20' * 32,
-        logs_bloom=b'\x35' * spec.BYTES_PER_LOGS_BLOOM,
-        random=b'\x55' * 32,
-        block_number=0,
-        gas_limit=30000000,
-        base_fee_per_gas=b'\x10' * 32,
-        block_hash=b'\x99' * 32,
-        transactions_root=spec.Root(b'\x56' * 32),
-
-    )
+    genesis_execution_payload_header = get_sample_genesis_execution_payload_header(spec)
     state = spec.initialize_beacon_state_from_eth1(
         eth1_block_hash,
         eth1_timestamp,
