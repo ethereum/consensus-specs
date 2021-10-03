@@ -9,7 +9,12 @@ if __name__ == "__main__":
     ]}
     altair_mods = phase_0_mods
     # we have new unconditional lines in `initialize_beacon_state_from_eth1` and we want to test it
-    merge_mods = altair_mods
+    merge_mods = {
+        **{key: 'eth2spec.test.merge.genesis.test_' + key for key in [
+            'initialization',
+        ]},
+        **altair_mods,
+    }
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,

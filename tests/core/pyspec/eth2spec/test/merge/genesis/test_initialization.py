@@ -1,7 +1,9 @@
 from eth2spec.test.context import (
+    MERGE,
     single_phase,
     spec_test,
     with_presets,
+    with_phases,
     with_merge_and_later,
 )
 from eth2spec.test.helpers.constants import MINIMAL
@@ -17,7 +19,7 @@ def eth1_init_data(eth1_block_hash, eth1_timestamp):
     }
 
 
-@with_merge_and_later
+@with_phases([MERGE])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -37,11 +39,11 @@ def test_initialize_pre_transition_no_param(spec):
     yield 'deposits', deposits
 
     # initialize beacon_state *without* an execution_payload_header
+    yield 'execution_payload_header', 'meta', False
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert not spec.is_merge_comp(state)
+    assert not spec.is_merge_complete(state)
 
-    # yield state
     yield 'state', state
 
 
@@ -64,19 +66,20 @@ def test_initialize_pre_transition_empty_payload(spec):
     yield from eth1_init_data(eth1_block_hash, eth1_timestamp)
     yield 'deposits', deposits
 
-    # initialize beacon_state *without* an execution_payload_header
+    # initialize beacon_state *with* an *empty* execution_payload_header
+    yield 'execution_payload_header', 'meta', True
+    execution_payload_header = spec.ExecutionPayloadHeader()
     state = spec.initialize_beacon_state_from_eth1(
         eth1_block_hash,
         eth1_timestamp,
         deposits,
-        spec.ExecutionPayloadHeader()
+        execution_payload_header=execution_payload_header,
     )
 
     assert not spec.is_merge_complete(state)
 
-    yield 'execution_payload_header', spec.ExecutionPayloadHeader()
+    yield 'execution_payload_header', execution_payload_header
 
-    # yield state
     yield 'state', state
 
 
@@ -100,6 +103,7 @@ def test_initialize_post_transition(spec):
     yield 'deposits', deposits
 
     # initialize beacon_state *with* an execution_payload_header
+    yield 'execution_payload_header', 'meta', True
     genesis_execution_payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
         coinbase=b'\x42' * 20,
@@ -118,12 +122,11 @@ def test_initialize_post_transition(spec):
         eth1_block_hash,
         eth1_timestamp,
         deposits,
-        genesis_execution_payload_header,
+        execution_payload_header=genesis_execution_payload_header,
     )
 
     yield 'execution_payload_header', genesis_execution_payload_header
 
     assert spec.is_merge_complete(state)
 
-    # yield state
     yield 'state', state

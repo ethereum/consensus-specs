@@ -355,11 +355,11 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Merge testing only.
 Modifications include:
-1. Use `MERGE_FORK_VERSION` as the current fork version
-2. Utilize the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`
+1. Use `MERGE_FORK_VERSION` as the current fork version.
+2. Utilize the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`.
 3. Initialize `latest_execution_payload_header`.
   If `execution_payload_header == ExecutionPayloadHeader()`, then the Merge has not yet occurred.
-  Else, the Merge starts from genesis.
+  Else, the Merge starts from genesis and the transition is incomplete.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
