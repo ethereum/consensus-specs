@@ -354,13 +354,18 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 ## Testing
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Merge testing only.
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified: (1) using `MERGE_FORK_VERSION` as the current fork version, (2) utilizing the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`, and (3) initialize `latest_execution_payload_header`.
+Modifications include:
+1. Use `MERGE_FORK_VERSION` as the current fork version
+2. Utilize the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`
+3. Initialize `latest_execution_payload_header`.
+  If `execution_payload_header == ExecutionPayloadHeader()`, then the Merge has not yet occurred.
+  Else, the Merge starts from genesis.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit]) -> BeaconState:
+                                      deposits: Sequence[Deposit],
+                                      execution_payload_header: ExecutionPayloadHeader) -> BeaconState:
     fork = Fork(
         previous_version=MERGE_FORK_VERSION,  # [Modified in Merge] for testing only
         current_version=MERGE_FORK_VERSION,  # [Modified in Merge]
@@ -397,12 +402,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
     state.current_sync_committee = get_next_sync_committee(state)
     state.next_sync_committee = get_next_sync_committee(state)
 
-    # [New in Merge] Initialize the execution payload header (with block number set to 0)
-    state.latest_execution_payload_header.block_hash = eth1_block_hash
-    state.latest_execution_payload_header.timestamp = eth1_timestamp
-    state.latest_execution_payload_header.random = eth1_block_hash
-    state.latest_execution_payload_header.gas_limit = GENESIS_GAS_LIMIT
-    state.latest_execution_payload_header.base_fee_per_gas = GENESIS_BASE_FEE_PER_GAS
+    # [New in Merge] Initialize the execution payload header
+    state.latest_execution_payload_header = execution_payload_header
 
     return state
 ```
