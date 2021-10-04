@@ -20,6 +20,25 @@ def build_mock_validator(spec, i: int, balance: int):
     )
 
 
+def get_sample_genesis_execution_payload_header(spec,
+                                                eth1_block_hash=None):
+    if eth1_block_hash is None:
+        eth1_block_hash = b'\x55' * 32
+    return spec.ExecutionPayloadHeader(
+        parent_hash=b'\x30' * 32,
+        coinbase=b'\x42' * 20,
+        state_root=b'\x20' * 32,
+        receipt_root=b'\x20' * 32,
+        logs_bloom=b'\x35' * spec.BYTES_PER_LOGS_BLOOM,
+        random=eth1_block_hash,
+        block_number=0,
+        gas_limit=30000000,
+        base_fee_per_gas=spec.Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000'),
+        block_hash=eth1_block_hash,
+        transactions_root=spec.Root(b'\x56' * 32),
+    )
+
+
 def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
@@ -76,9 +95,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork not in FORKS_BEFORE_MERGE:
         # Initialize the execution payload header (with block number and genesis time set to 0)
-        state.latest_execution_payload_header.block_hash = eth1_block_hash
-        state.latest_execution_payload_header.random = eth1_block_hash
-        state.latest_execution_payload_header.gas_limit = spec.GENESIS_GAS_LIMIT
-        state.latest_execution_payload_header.base_fee_per_gas = spec.GENESIS_BASE_FEE_PER_GAS
+        state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
+            spec,
+            eth1_block_hash=eth1_block_hash,
+        )
 
     return state
