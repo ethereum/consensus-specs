@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    with_altair_and_later,
     spec_state_test,
+    with_altair_and_later,
 )
 from eth2spec.test.helpers.state import (
     transition_to,

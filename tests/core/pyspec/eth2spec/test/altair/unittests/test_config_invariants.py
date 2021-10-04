@@ -1,11 +1,10 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_phases,
+    with_altair_and_later,
 )
-from eth2spec.test.helpers.constants import ALTAIR
 
 
-@with_phases([ALTAIR])
+@with_altair_and_later
 @spec_state_test
 def test_weight_denominator(spec, state):
     assert (
@@ -17,7 +16,7 @@ def test_weight_denominator(spec, state):
     ) == spec.WEIGHT_DENOMINATOR
 
 
-@with_phases([ALTAIR])
+@with_altair_and_later
 @spec_state_test
 def test_inactivity_score(spec, state):
     assert spec.config.INACTIVITY_SCORE_BIAS <= spec.config.INACTIVITY_SCORE_RECOVERY_RATE

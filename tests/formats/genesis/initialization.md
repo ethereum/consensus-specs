@@ -17,8 +17,9 @@ eth1_timestamp: int       -- An integer. The timestamp of the block, in seconds.
 A yaml file to help read the deposit count:
 
 ```yaml
-description: string    -- Optional. Description of test case, purely for debugging purposes.
-deposits_count: int    -- Amount of deposits.
+description: string             -- Optional. Description of test case, purely for debugging purposes.
+deposits_count: int             -- Amount of deposits.
+execution_payload_header: bool  -- `execution_payload_header` field is filled or not. If `true`, `execution_payload_header.ssz_snappy` file exists.
 ```
 
 ### `deposits_<index>.ssz_snappy`
@@ -26,10 +27,15 @@ deposits_count: int    -- Amount of deposits.
 A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need to be processed in order.
 Each file is a SSZ-snappy encoded `Deposit` object.
 
+###  `execution_payload_header.ssz_snappy`
+
+*Note*: Param added only for the Merge and subsequent forks.
+
+The execution payload header that state is initialized with. An SSZ-snappy encoded `BeaconState` object.
+
 ###  `state.ssz_snappy`
 
 The expected genesis state. An SSZ-snappy encoded `BeaconState` object.
-
 
 ## Processing
 

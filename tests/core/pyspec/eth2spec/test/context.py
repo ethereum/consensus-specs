@@ -463,8 +463,8 @@ def is_post_merge(spec):
     return spec.fork not in FORKS_BEFORE_MERGE
 
 
-with_altair_and_later = with_phases([ALTAIR, MERGE])
-with_merge_and_later = with_phases([MERGE])  # TODO: include sharding when spec stabilizes.
+with_altair_and_later = with_all_phases_except([PHASE0])
+with_merge_and_later = with_all_phases_except([PHASE0, ALTAIR])
 
 
 def only_generator(reason):
