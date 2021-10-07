@@ -118,11 +118,11 @@ def combine_mods(dict_1, dict_2):
     # The duplicate dict_1 items would be ignored here.
     dict_3 = {**dict_1, **dict_2}
 
-    intersection = list(dict_1.keys() & dict_2.keys())
+    intersection = dict_1.keys() & dict_2.keys()
     for key in intersection:
         # To list
         if not isinstance(dict_3[key], List):
-            dict_3[key] = [dict_3[key], ]
+            dict_3[key] = [dict_3[key]]
         # Append dict_1 value to list
         if isinstance(dict_1[key], List):
             dict_3[key] += dict_1[key]
