@@ -1,11 +1,15 @@
 from eth2spec.test.context import (
     is_post_altair,
     single_phase,
+    with_phases,
     spec_test,
     with_presets,
     with_all_phases,
 )
-from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.constants import (
+    MINIMAL,
+    PHASE0
+)
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
     prepare_random_genesis_deposits,
@@ -216,3 +220,36 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
     assert spec.is_valid_genesis_state(state)
 
     yield 'state', state
+
+
+@with_phases([PHASE0])
+@spec_test
+@single_phase
+@with_presets([MINIMAL], reason="too slow")
+def test_genesis_block_creation(spec):
+    """
+    Test the get_genesis_block_from_genesis_state() function
+    """
+    # Initialize data required to make state/block
+    eth1_block_hash = b'\x12' * 32
+    eth1_timestamp = spec.config.MIN_GENESIS_TIME
+    deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    deposits, deposit_root, _ = prepare_full_genesis_deposits(
+        spec,
+        spec.MAX_EFFECTIVE_BALANCE,
+        deposit_count,
+        signed=True,
+    )
+
+    # Get genesis state
+    genesis_state = spec.initialize_beacon_state_from_eth1(
+        eth1_block_hash,
+        eth1_timestamp,
+        deposits,
+    )
+
+    # Get genesis block
+    genesis_block = spec.get_genesis_block_from_genesis_state(genesis_state)
+
+    # Check that the genesis block points to the genesis state
+    assert genesis_block.state_root == genesis_state.hash_tree_root()
