@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # PowBlock's which should be resolved by `get_pow_block(hash: Hash32) -> PowBlock` function
     _new_merge_mods = {key: 'eth2spec.test.merge.fork_choice.test_' + key for key in [
         'on_merge_block',
-    ]},
+    ]}
     merge_mods = combine_mods(_new_merge_mods, altair_mods)
 
     all_mods = {
