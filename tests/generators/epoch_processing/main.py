@@ -20,7 +20,7 @@ if __name__ == "__main__":
         'inactivity_updates',
         'participation_flag_updates',
         'sync_committee_updates',
-    ]},
+    ]}
     altair_mods = combine_mods(_new_altair_mods, phase_0_mods)
 
     # No epoch-processing changes in Merge and previous testing repeats with new types, so no additional tests required.
