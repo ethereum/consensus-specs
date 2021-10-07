@@ -107,6 +107,7 @@
 - [Genesis](#genesis)
   - [Genesis state](#genesis-state)
   - [Genesis block](#genesis-block)
+    - [`get_genesis_block_from_genesis_state`](#get_genesis_block_from_genesis_state)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
     - [Helper functions](#helper-functions-1)
@@ -1229,7 +1230,14 @@ def is_valid_genesis_state(state: BeaconState) -> bool:
 
 ### Genesis block
 
-Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
+Let `genesis_block = get_genesis_block_from_genesis_state(genesis_state)`, where:
+
+#### `get_genesis_block_from_genesis_state`
+
+```python
+def get_genesis_block_from_genesis_state(genesis_state: BeaconState) -> BeaconBlock:
+    return BeaconBlock(state_root=hash_tree_root(genesis_state))
+```
 
 ## Beacon chain state transition function
 

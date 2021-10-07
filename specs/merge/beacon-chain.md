@@ -26,6 +26,8 @@
     - [`is_merge_complete`](#is_merge_complete)
     - [`is_merge_block`](#is_merge_block)
     - [`is_execution_enabled`](#is_execution_enabled)
+  - [Genesis block](#genesis-block)
+    - [`get_genesis_block_from_genesis_state`](#get_genesis_block_from_genesis_state)
   - [Misc](#misc)
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -212,6 +214,36 @@ def is_merge_block(state: BeaconState, body: BeaconBlockBody) -> bool:
 ```python
 def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
     return is_merge_block(state, body) or is_merge_complete(state)
+```
+
+### Genesis block
+
+#### `get_genesis_block_from_genesis_state`
+
+```python
+def get_genesis_block_from_genesis_state(genesis_state: BeaconState) -> BeaconBlock:
+    genesis_execution_header = genesis_state.latest_execution_payload_header
+    genesis_execution_payload = ExecutionPayload(
+        parent_hash=genesis_execution_header.parent_hash,
+        coinbase=genesis_execution_header.coinbase,
+        state_root=genesis_execution_header.state_root,
+        receipt_root=genesis_execution_header.receipt_root,
+        logs_bloom=genesis_execution_header.logs_bloom,
+        random=genesis_execution_header.random,
+        block_number=genesis_execution_header.block_number,
+        gas_limit=genesis_execution_header.gas_limit,
+        gas_used=genesis_execution_header.gas_used,
+        timestamp=genesis_execution_header.timestamp,
+        extra_data=genesis_execution_header.extra_data,
+        base_fee_per_gas=genesis_execution_header.base_fee_per_gas,
+        block_hash=genesis_execution_header.block_hash,
+        transactions=[],
+    )
+
+    return BeaconBlock(
+        state_root=hash_tree_root(genesis_state),
+        body=BeaconBlockBody(execution_payload=genesis_execution_payload),
+    )
 ```
 
 ### Misc
