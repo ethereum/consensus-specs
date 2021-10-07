@@ -11,7 +11,7 @@ from eth2spec.test.context import (
 
 @with_merge_and_later
 @spec_state_test
-def test_empty_block_transition(spec, state):
+def test_empty_block_transition_no_tx(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)

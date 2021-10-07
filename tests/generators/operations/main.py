@@ -1,4 +1,4 @@
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MERGE
 
 
@@ -11,29 +11,26 @@ if __name__ == "__main__":
         'proposer_slashing',
         'voluntary_exit',
     ]}
-    altair_mods = {
-        **{'sync_aggregate': [
-            'eth2spec.test.altair.block_processing.sync_aggregate.test_process_' + key
-            for key in ['sync_aggregate', 'sync_aggregate_random']
-        ]},
-        **phase_0_mods,
-    }  # also run the previous phase 0 tests
+    _new_altair_mods = {'sync_aggregate': [
+        'eth2spec.test.altair.block_processing.sync_aggregate.test_process_' + key
+        for key in ['sync_aggregate', 'sync_aggregate_random']
+    ]}
+    altair_mods = combine_mods(_new_altair_mods, phase_0_mods)
 
-    merge_mods = {
-        **{key: 'eth2spec.test.merge.block_processing.test_process_' + key for key in [
-            'execution_payload',
-        ]},
-        **altair_mods,
-    }
+    _new_merge_mods = {key: 'eth2spec.test.merge.block_processing.test_process_' + key for key in [
+        'execution_payload',
+    ]}
+    merge_mods = combine_mods(_new_merge_mods, altair_mods)
 
     # TODO Custody Game testgen is disabled for now
-    # custody_game_mods = {**{key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
+    # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
     #     'attestation',
     #     'chunk_challenge',
     #     'custody_key_reveal',
     #     'custody_slashing',
     #     'early_derived_secret_reveal',
-    # ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against custody game spec)
+    # ]}
+    # custody_game_mods = combine_mods(_new_custody_game_mods, phase0_mods)
 
     all_mods = {
         PHASE0: phase_0_mods,

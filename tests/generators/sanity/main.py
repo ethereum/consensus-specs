@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MERGE
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
 
 
 if __name__ == "__main__":
@@ -7,12 +7,16 @@ if __name__ == "__main__":
         'blocks',
         'slots',
     ]}
-    altair_mods = {**{key: 'eth2spec.test.altair.sanity.test_' + key for key in [
+
+    _new_altair_mods = {key: 'eth2spec.test.altair.sanity.test_' + key for key in [
         'blocks',
-    ]}, **phase_0_mods}
-    merge_mods = {**{key: 'eth2spec.test.merge.sanity.test_' + key for key in [
+    ]}
+    altair_mods = combine_mods(_new_altair_mods, phase_0_mods)
+
+    _new_merge_mods = {key: 'eth2spec.test.merge.sanity.test_' + key for key in [
         'blocks',
-    ]}, **altair_mods}
+    ]}
+    merge_mods = combine_mods(_new_merge_mods, altair_mods)
 
     all_mods = {
         PHASE0: phase_0_mods,
