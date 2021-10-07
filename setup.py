@@ -209,7 +209,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
                 # NOTE: trim whitespace from spec
                 ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
             else:
-                raise Exception("unrecognized python code element")
+                raise Exception("unrecognized python code element: " + source)
         elif isinstance(child, Table):
             for row in child.children:
                 cells = row.children
