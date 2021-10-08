@@ -23,13 +23,19 @@ from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(454545)):
     all_pubkeys = [v.pubkey for v in state.validators]
     committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
-    participants = rng.sample(committee, int(len(committee) * fraction_full))
+    selected_indices = rng.sample(range(len(committee)), int(len(committee) * fraction_full))
+    sync_committee_bits = [i in selected_indices for i in range(len(committee))]
+    participants = [
+        validator_index
+        for i, validator_index in enumerate(committee)
+        if sync_committee_bits[i]
+    ]
 
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[index in participants for index in committee],
+        sync_committee_bits=sync_committee_bits,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
