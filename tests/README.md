@@ -340,8 +340,9 @@ To see an attestion "from the inside" we need to follow this function.
 >     )
 > ```   
 >
-> Build the actual attestation. You can see this function [here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L53-L85) to
-> see the exact data in an attestation.
+> Build the actual attestation. You can see this function 
+> [here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L53-L85) 
+> to see the exact data in an attestation.
 >
 >  ```python
 >     beacon_committee = spec.get_beacon_committee(
@@ -369,15 +370,17 @@ To see an attestion "from the inside" we need to follow this function.
 >     # fill the attestation with (optionally filtered) participants, and optionally sign it
 >     fill_aggregate_attestation(spec, state, attestation, signed=signed, filter_participant_set=filter_participant_set)
 > 
->    return attestation
->  
+>    return attestation  
 >  ```
-
-
 
 ```python
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+```
 
+Attestations have to appear after the block they attest for. The current value
+of `MIN_ATTESTATION_INCLUSION_DELAY` is one, but 
+
+```
     yield from run_attestation_processing(spec, state, attestation)
 ```
 
