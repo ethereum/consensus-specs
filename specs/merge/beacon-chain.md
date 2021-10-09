@@ -218,12 +218,9 @@ def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
 
 #### `compute_timestamp_at_slot`
 
-*Note*: This function is unsafe with respect to overflows and underflows.
-
 ```python
 def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
+    return uint64(state.genesis_time + slot * SECONDS_PER_SLOT - GENESIS_SLOT * SECONDS_PER_SLOT)
 ```
 
 ## Beacon chain state transition function
