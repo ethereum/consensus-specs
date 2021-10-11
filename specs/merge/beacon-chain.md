@@ -144,8 +144,6 @@ class BeaconState(Container):
 
 #### `ExecutionPayload`
 
-*Note*: The `base_fee_per_gas` field is serialized in little-endian.
-
 ```python
 class ExecutionPayload(Container):
     # Execution block header fields
@@ -160,7 +158,7 @@ class ExecutionPayload(Container):
     gas_used: uint64
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: Bytes32  # base fee introduced in EIP-1559, little-endian serialized
+    base_fee_per_gas: uint256
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -182,7 +180,7 @@ class ExecutionPayloadHeader(Container):
     gas_used: uint64
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: Bytes32
+    base_fee_per_gas: uint256
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
