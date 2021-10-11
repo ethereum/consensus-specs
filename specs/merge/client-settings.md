@@ -16,7 +16,7 @@ This document specifies configurable settings that clients must implement for th
 
 ### Override terminal total difficulty
 
-To coordinate manual overrides to [`TERMINAL_TOTAL_DIFFICULTY`](./beacon-chain.md#Transition-settings) parameter, clients must provide `--terminal-total-difficulty-override` as a configurable setting. The value provided by this setting must take precedence over pre-configured `TERMINAL_TOTAL_DIFFICULTY` parameter.
+To coordinate manual overrides to [`TERMINAL_TOTAL_DIFFICULTY`](./beacon-chain.md#Transition-settings) parameter, clients must provide `--terminal-total-difficulty-override` as a configurable setting. The value provided by this setting must take precedence over pre-configured `TERMINAL_TOTAL_DIFFICULTY` parameter. Clients should accept the setting as a decimal value (i.e., *not* hexadecimal).
 
 Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
 
