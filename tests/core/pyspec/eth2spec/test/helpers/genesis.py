@@ -33,7 +33,7 @@ def get_sample_genesis_execution_payload_header(spec,
         random=eth1_block_hash,
         block_number=0,
         gas_limit=30000000,
-        base_fee_per_gas=spec.Bytes32('0x00ca9a3b00000000000000000000000000000000000000000000000000000000'),
+        base_fee_per_gas=1000000000,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
