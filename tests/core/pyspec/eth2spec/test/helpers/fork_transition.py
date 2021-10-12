@@ -12,7 +12,10 @@ from eth2spec.test.helpers.block import (
 )
 
 
-def _state_transition_and_sign_block_at_slot(spec, state, deposits=None):
+def _state_transition_and_sign_block_at_slot(spec,
+                                             state,
+                                             *,
+                                             operation_dict=None):
     """
     Cribbed from ``transition_unsigned_block`` helper
     where the early parts of the state transition have already
@@ -21,9 +24,10 @@ def _state_transition_and_sign_block_at_slot(spec, state, deposits=None):
     Used to produce a block during an irregular state transition.
     """
     block = build_empty_block(spec, state)
-    # FIXME: not just passing `deposits`
-    if deposits is not None:
-        block.body.deposits = deposits
+    # we can't just pass `body` because randao_reveal and eth1_data was set in `build_empty_block`
+    if operation_dict is not None:
+        for key, value in operation_dict.items():
+            setattr(block.body, key, value)
 
     assert state.latest_block_header.slot < block.slot
     assert state.slot == block.slot
@@ -93,7 +97,7 @@ def state_transition_across_slots_with_ignoring_proposers(spec, state, to_slot, 
             next_slot(spec, state)
 
 
-def do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True, deposits=None):
+def do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=None):
     spec.process_slots(state, state.slot + 1)
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
@@ -106,7 +110,7 @@ def do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True, deposits
     assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
 
     if with_block:
-        return state, _state_transition_and_sign_block_at_slot(post_spec, state, deposits=deposits)
+        return state, _state_transition_and_sign_block_at_slot(post_spec, state, operation_dict=operation_dict)
     else:
         return state, None
 

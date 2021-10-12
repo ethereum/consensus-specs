@@ -10,6 +10,10 @@ from eth2spec.test.helpers.fork_transition import (
     transition_until_fork,
 )
 from eth2spec.test.helpers.random import set_some_new_deposits
+from eth2spec.test.helpers.state import (
+    transition_to,
+)
+from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
 #
@@ -114,6 +118,39 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(
     yield "post", state
 
 
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=260)
+def test_transition_with_voluntary_exit_at_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Create an attester slashing at the transition
+    """
+    transition_to(spec, state, spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    transition_until_fork(spec, state, fork_epoch)
+
+    yield "pre", state
+
+    validator_index = 0
+    signed_exits = prepare_signed_exits(spec, state, [validator_index])
+    operation_dict = {'voluntary_exits': signed_exits}
+
+    # irregular state transition to handle fork:
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch, operation_dict=operation_dict)
+    blocks = []
+    blocks.append(post_tag(block))
+
+    validator = state.validators[validator_index]
+    assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
+
+    # continue regular state transition with new spec into next epoch
+    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
+    blocks.extend([
+        post_tag(block) for block in
+        state_transition_across_slots(post_spec, state, to_slot)
+    ])
+
+    yield "blocks", blocks
+    yield "post", state
+
+
 #
 # Activation
 #
@@ -164,9 +201,9 @@ def test_transition_with_deposit_at_fork(state, fork_epoch, spec, post_spec, pre
     validator_index = len(state.validators)
     amount = post_spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(post_spec, state, validator_index, amount, signed=True)
-
+    operation_dict = {'deposits': [deposit]}
     # irregular state transition to handle fork:
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch, deposits=[deposit])
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch, operation_dict=operation_dict)
     blocks = []
     blocks.append(post_tag(block))
 
