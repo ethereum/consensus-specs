@@ -2,8 +2,8 @@ from eth2spec.test.context import fork_transition_test
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.fork_transition import (
     do_altair_fork,
-    state_transition_across_slots,
     transition_until_fork,
+    transition_to_next_epoch_and_append_blocks,
 )
 
 
@@ -29,11 +29,7 @@ def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pr
     assert spec.is_in_inactivity_leak(state)
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     yield "blocks", blocks
     yield "post", state
@@ -61,11 +57,7 @@ def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre
     assert spec.is_in_inactivity_leak(state)
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     yield "blocks", blocks
     yield "post", state
@@ -93,11 +85,7 @@ def test_transition_with_leaking_post_fork(state, fork_epoch, spec, post_spec, p
     assert not spec.is_in_inactivity_leak(state)
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     # check state again
     assert spec.is_in_inactivity_leak(state)

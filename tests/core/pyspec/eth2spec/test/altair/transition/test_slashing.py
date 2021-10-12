@@ -12,9 +12,9 @@ from eth2spec.test.helpers.proposer_slashings import (
 )
 from eth2spec.test.helpers.fork_transition import (
     do_altair_fork,
-    state_transition_across_slots,
     state_transition_across_slots_with_ignoring_proposers,
     transition_until_fork,
+    transition_to_next_epoch_and_append_blocks,
 )
 from eth2spec.test.helpers.inactivity_scores import (
     slash_some_validators_for_inactivity_scores_test,
@@ -98,11 +98,7 @@ def test_transition_with_attester_slashing_at_fork(state, fork_epoch, spec, post
         assert state.validators[validator_index].slashed
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     yield "blocks", blocks
     yield "post", state
@@ -131,11 +127,7 @@ def test_transition_with_proposer_slashing_at_fork(state, fork_epoch, spec, post
     assert slashed_proposer.slashed
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     yield "blocks", blocks
     yield "post", state

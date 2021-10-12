@@ -14,7 +14,6 @@ from eth2spec.test.helpers.block import (
 
 def _state_transition_and_sign_block_at_slot(spec,
                                              state,
-                                             *,
                                              operation_dict=None):
     """
     Cribbed from ``transition_unsigned_block`` helper
@@ -24,7 +23,8 @@ def _state_transition_and_sign_block_at_slot(spec,
     Used to produce a block during an irregular state transition.
     """
     block = build_empty_block(spec, state)
-    # we can't just pass `body` because randao_reveal and eth1_data was set in `build_empty_block`
+    # we can't just pass `body` and assign it because randao_reveal and eth1_data was set in `build_empty_block`
+    # thus use dict to pass operations.
     if operation_dict is not None:
         for key, value in operation_dict.items():
             setattr(block.body, key, value)
@@ -117,7 +117,7 @@ def do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True, operatio
 
 def set_validators_exit_epoch(spec, state, exit_epoch, rng=random.Random(40404040), fraction=0.25):
     """
-    Set some valdiators' exit_epoch.
+    Set some valdiators' `exit_epoch` and `withdrawable_epoch`.
     """
     selected_count = int(len(state.validators) * fraction)
     selected_indices = rng.sample(range(len(state.validators)), selected_count)
@@ -132,3 +132,11 @@ def set_validators_exit_epoch(spec, state, exit_epoch, rng=random.Random(4040404
 def transition_until_fork(spec, state, fork_epoch):
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     transition_to(spec, state, to_slot)
+
+
+def transition_to_next_epoch_and_append_blocks(spec, state, post_tag, blocks):
+    to_slot = spec.SLOTS_PER_EPOCH + state.slot
+    blocks.extend([
+        post_tag(block) for block in
+        state_transition_across_slots(spec, state, to_slot)
+    ])

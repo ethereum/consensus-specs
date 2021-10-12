@@ -11,6 +11,7 @@ from eth2spec.test.helpers.fork_transition import (
     only_at,
     skip_slots,
     state_transition_across_slots,
+    transition_to_next_epoch_and_append_blocks,
 )
 
 
@@ -37,11 +38,7 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
@@ -77,11 +74,7 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
     state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
@@ -120,11 +113,7 @@ def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_sp
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
