@@ -1,7 +1,12 @@
 from typing import Iterable
 
 from eth2spec.test.helpers.constants import ALTAIR, MINIMAL, MAINNET, PHASE0
-from eth2spec.test.altair.transition import test_transition as test_altair_transition
+from eth2spec.test.altair.transition import (
+    test_transition as test_altair_transition,
+    test_activation as test_altair_activation,
+    test_leaking as test_altair_leaking,
+    test_slashing as test_altair_slashing,
+)
 
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
@@ -25,7 +30,12 @@ def create_provider(tests_src, preset_name: str, pre_fork_name: str, post_fork_n
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
-TRANSITION_TESTS = ((PHASE0, ALTAIR, test_altair_transition),)
+TRANSITION_TESTS = (
+    (PHASE0, ALTAIR, test_altair_transition),
+    (PHASE0, ALTAIR, test_altair_activation),
+    (PHASE0, ALTAIR, test_altair_leaking),
+    (PHASE0, ALTAIR, test_altair_slashing),
+)
 
 
 if __name__ == "__main__":
