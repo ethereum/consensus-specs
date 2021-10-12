@@ -131,6 +131,11 @@ def _set_validators_exit_epoch(spec, state, exit_epoch, rng=random.Random(404040
     return selected_indices
 
 
+def _transition_until_fork(spec, state, fork_epoch):
+    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    transition_to(spec, state, to_slot)
+
+
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
 def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
@@ -494,20 +499,18 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
     1/4 validators are slashed but still active at the fork transition.
     """
     # slash 1/4 validators
-    selected_indices = slash_some_validators_for_inactivity_scores_test(
+    slashed_indices = slash_some_validators_for_inactivity_scores_test(
         spec, state, rng=random.Random(5566), fraction=0.25)
-    assert len(selected_indices) > 0
+    assert len(slashed_indices) > 0
 
     # check if some validators are slashed but still active
-    for validator_index in selected_indices:
+    for validator_index in slashed_indices:
         validator = state.validators[validator_index]
         assert validator.slashed
         assert spec.is_active_validator(validator, spec.get_current_epoch(state))
     assert not spec.is_in_inactivity_leak(state)
 
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     assert spec.get_current_epoch(state) < fork_epoch
 
@@ -518,12 +521,16 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
     state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
+    # ensure that some of the current sync committee members are the slashed
+    slashed_pubkeys = [state.validators[index].pubkey for index in slashed_indices]
+    assert any(set(slashed_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
+
     # continue regular state transition with new spec into next epoch
     to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
     # since the proposer might have been slashed, here we only create blocks with non-slashed proposers
     blocks.extend([
         post_tag(block) for block in
-        _state_transition_across_slots_with_ignoring_proposers(post_spec, state, to_slot, selected_indices)
+        _state_transition_across_slots_with_ignoring_proposers(post_spec, state, to_slot, slashed_indices)
     ])
 
     # check post state
@@ -543,9 +550,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(
     """
     exited_indices = _set_validators_exit_epoch(spec, state, exit_epoch=10, rng=random.Random(5566), fraction=0.25)
 
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     # check pre state
     assert len(exited_indices) > 0
@@ -594,9 +599,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(
     """
     exited_indices = _set_validators_exit_epoch(spec, state, exit_epoch=2, rng=random.Random(5566), fraction=0.25)
 
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     # check pre state
     assert len(exited_indices) > 0
@@ -643,9 +646,7 @@ def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pr
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
     The leaking starts before the fork transition in this case.
     """
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     assert spec.is_in_inactivity_leak(state)
     assert spec.get_current_epoch(state) < fork_epoch
@@ -677,9 +678,7 @@ def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
     The leaking starts at the fork transition in this case.
     """
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     assert not spec.is_in_inactivity_leak(state)
     assert spec.get_current_epoch(state) < fork_epoch
@@ -711,9 +710,7 @@ def test_transition_with_leaking_post_fork(state, fork_epoch, spec, post_spec, p
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
     The leaking starts after the fork transition in this case.
     """
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     assert not spec.is_in_inactivity_leak(state)
     assert spec.get_current_epoch(state) < fork_epoch
@@ -747,9 +744,7 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     """
     Create some deposits before the transition
     """
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     _, queuing_indices = set_some_new_deposits(spec, state, rng=random.Random(5566))
 
@@ -781,9 +776,7 @@ def test_transition_with_deposit_at_fork(state, fork_epoch, spec, post_spec, pre
     """
     Create a deposit at the transition
     """
-    # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
-    transition_to(spec, state, to_slot)
+    _transition_until_fork(spec, state, fork_epoch)
 
     yield "pre", state
 
