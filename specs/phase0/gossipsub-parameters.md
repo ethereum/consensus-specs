@@ -1,13 +1,37 @@
-## Recommendations for Gossipsub Parameters
+# Recommendations for Gossipsub Parameters
+
+## Table of contents
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [General Gossipsub Parameters](#general-gossipsub-parameters)
+  - [Gossipsub v1.0 General Parameters](#gossipsub-v10-general-parameters)
+  - [Gossipsub v1.1 General Parameters](#gossipsub-v11-general-parameters)
+- [General Scoring Parameters](#general-scoring-parameters)
+  - [Thresholds](#thresholds)
+  - [Scoring Parameters](#scoring-parameters)
+- [Topic Specific Parameters](#topic-specific-parameters)
+  - [Topics Parameters](#topics-parameters)
+  - [Topic Score Parameters](#topic-score-parameters)
+    - [Beacon Block Topic](#beacon-block-topic)
+    - [Attestation Aggregate Topic](#attestation-aggregate-topic)
+    - [Subnet and Sync Committee Topics](#subnet-and-sync-committee-topics)
+    - [Other topics](#other-topics)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Introduction
 
 This document provides a rough guideline for implementers to follow when
 setting their Gossipsub parameters for an Eth2 network.
 
-### General Gossipsub Parameters
+## General Gossipsub Parameters
 
-This gives an overview of the general parameters, and expected values for the Ethereum 2.0 network. These help form the basic structure of the mesh network in gossipsub and apply globally to all peers regardless of topic. These work regardless of whether scoring is enabled.
+This gives an overview of the general parameters, and expected values for the Ethereum 2.0 network. These help form the basic structure of the mesh network in Gossipsub and apply globally to all peers regardless of topic. These work regardless of whether scoring is enabled.
 
-#### Gossipsub v1.0 General Parameters
+### Gossipsub v1.0 General Parameters
 
 | Parameter | Value | Description |
 | -------- | -------- | -------- |
@@ -21,7 +45,7 @@ This gives an overview of the general parameters, and expected values for the Et
 | `mcache_gossip` | 3 |  Number of heartbeats to gossip about|
 | `seen_ttl` | 33 slots (396 seconds, 566 heartbeats | Amount of time to retain message IDs|
 
-#### Gossipsub v1.1 General Parameters
+### Gossipsub v1.1 General Parameters
 
 | Parameter | Value | Description |
 | -------- | -------- | -------- |
@@ -40,11 +64,11 @@ This gives an overview of the general parameters, and expected values for the Et
 | `iwant_follow_up_time` | 3 secs | The maximum amount of time a peer has to respond to an IWANT before being penalized |
 
 
-### General Scoring Parameters
+## General Scoring Parameters
 
 These parameters are general and apply to all peers regardless of topic. This are only used once scoring is enabled.
 
-#### Thresholds 
+### Thresholds 
 | Parameter | Value | Description |
 | -------- | -------- | -------- |
 | `gossip_threshold` | -4000 | If a peer has a score below this value we no longer gossip to or accept gossip from that peer |
@@ -54,7 +78,7 @@ These parameters are general and apply to all peers regardless of topic. This ar
 | `opportunistic_graft_threshold` | 5 | If a peer has a score below this value we consider them for replacement via opportunistic grafting |
 | `ip_colocation_threshold` | 10 | The number of peers allowed with the same IP. Peers exceeding this get quadratically penalized |
 
-#### Scoring Parameters
+### Scoring Parameters
 
 | Parameter | Value | Description |
 | -------- | -------- | -------- |
@@ -69,7 +93,7 @@ These parameters are general and apply to all peers regardless of topic. This ar
 
 ## Topic Specific Parameters
 
-These are parameters that apply to each specific topic. This section provides an overview of each before providing recommended values for each topic related to eth2 in the following section. 
+These are parameters that apply to each specific topic. This section provides an overview of each before providing recommended values for each topic related to Eth2 in the following section. 
 
 ### Topics Parameters
 
@@ -93,9 +117,9 @@ These are parameters that apply to each specific topic. This section provides an
 | `invalid_message_deliveries_weight` | The weighting for invalid messages (application rejects or encoding errors) |
 | `invalid_message_deliveries_decay` | The decay of this score |
 
-## Topic Score Parameters
+### Topic Score Parameters
 
-### Beacon Block Topic
+#### Beacon Block Topic
 
 | Parameter | Value |  Comment |
 | -------- | --- | -------- |
@@ -117,7 +141,7 @@ These are parameters that apply to each specific topic. This section provides an
 | `invalid_message_deliveries_weight` | -99 |  |
 | `invalid_message_deliveries_decay` | 0.9994 | Very slow to decay to remember bad peers |
 
-### Attestation Aggregate Topic
+#### Attestation Aggregate Topic
 
 | Parameter | Value |  Comment |
 | -------- | --- | -------- |
@@ -142,7 +166,7 @@ These are parameters that apply to each specific topic. This section provides an
 NOTE: The `V` represented in the parameters represents the current active validator
 count.
 
-### Subnet and Sync Committee Topics
+#### Subnet and Sync Committee Topics
 
 The recommendations for the subnets are TBD. Current recommendations are to
 count invalids.
@@ -168,7 +192,7 @@ count invalids.
 | `invalid_message_deliveries_decay` | 0.9994 | Very slow to decay to remember bad peers |
 
 
-### Other topics 
+#### Other topics 
 
 The `voluntary_exit`, `proposer_slashing`, `attester_slashing` topics should
 also penalize based on invalid messages. As these topics do not have an
