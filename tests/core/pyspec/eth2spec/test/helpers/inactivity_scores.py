@@ -16,8 +16,8 @@ def zero_inactivity_scores(spec, state, rng=None):
 def slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(40404040), fraction=0.25):
     """
     ``run_inactivity_scores_test`` runs at the next epoch from `state`.
-    # We retrieve the proposer of this future state to avoid
-    # accidentally slashing that validator
+    We retrieve the proposer of this future state to avoid
+    accidentally slashing that validator
     """
     future_state = state.copy()
     next_epoch_via_block(spec, future_state)

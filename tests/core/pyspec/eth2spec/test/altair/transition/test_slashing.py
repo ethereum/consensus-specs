@@ -22,8 +22,12 @@ from eth2spec.test.helpers.inactivity_scores import (
 
 
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=1)
-def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
-        state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
+                                                                       fork_epoch,
+                                                                       spec,
+                                                                       post_spec,
+                                                                       pre_tag,
+                                                                       post_tag):
     """
     1/4 validators are slashed but still active at the fork transition.
     """
@@ -53,6 +57,7 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
     # ensure that some of the current sync committee members are the slashed
     slashed_pubkeys = [state.validators[index].pubkey for index in slashed_indices]
     assert any(set(slashed_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
+    assert any(set(slashed_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
     to_slot = post_spec.SLOTS_PER_EPOCH + state.slot

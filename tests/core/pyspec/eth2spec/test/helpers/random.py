@@ -7,7 +7,8 @@ from eth2spec.test.helpers.state import next_epoch
 
 
 def set_some_new_deposits(spec, state, rng):
-    eligible_indices = queuing_indices = []
+    eligible_indices = []
+    queuing_indices = []
     num_validators = len(state.validators)
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
