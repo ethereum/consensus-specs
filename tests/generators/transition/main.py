@@ -6,6 +6,7 @@ from eth2spec.test.altair.transition import (
     test_activations_and_exits as test_altair_activations_and_exits,
     test_leaking as test_altair_leaking,
     test_slashing as test_altair_slashing,
+    test_operations as test_altair_operations,
 )
 
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
@@ -35,6 +36,7 @@ TRANSITION_TESTS = (
     (PHASE0, ALTAIR, test_altair_activations_and_exits),
     (PHASE0, ALTAIR, test_altair_leaking),
     (PHASE0, ALTAIR, test_altair_slashing),
+    (PHASE0, ALTAIR, test_altair_operations),
 )
 
 
