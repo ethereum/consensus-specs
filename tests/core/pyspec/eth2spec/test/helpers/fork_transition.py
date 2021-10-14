@@ -21,11 +21,15 @@ def _state_transition_and_sign_block_at_slot(spec,
     been applied to ``state``.
 
     Used to produce a block during an irregular state transition.
+
+    The optional `operation_dict` is a dict of {'<BeaconBlockBody field>': <value>}.
+    This is used for assigning the block operations.
+    p.s. we can't just pass `body` and assign it because randao_reveal and eth1_data was set in `build_empty_block`
+    Thus use dict to pass operations.
     """
     block = build_empty_block(spec, state)
-    # we can't just pass `body` and assign it because randao_reveal and eth1_data was set in `build_empty_block`
-    # thus use dict to pass operations.
-    if operation_dict is not None:
+
+    if operation_dict:
         for key, value in operation_dict.items():
             setattr(block.body, key, value)
 
@@ -134,9 +138,15 @@ def transition_until_fork(spec, state, fork_epoch):
     transition_to(spec, state, to_slot)
 
 
-def transition_to_next_epoch_and_append_blocks(spec, state, post_tag, blocks):
+def transition_to_next_epoch_and_append_blocks(spec, state, post_tag, blocks, only_last_block=False):
     to_slot = spec.SLOTS_PER_EPOCH + state.slot
+
+    if only_last_block:
+        block_filter = only_at(to_slot)
+    else:
+        block_filter = _all_blocks
+
     blocks.extend([
         post_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot)
+        state_transition_across_slots(spec, state, to_slot, block_filter=block_filter)
     ])

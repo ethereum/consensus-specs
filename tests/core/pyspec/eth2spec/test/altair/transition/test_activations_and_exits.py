@@ -5,12 +5,14 @@ from eth2spec.test.helpers.attestations import next_slots_with_attestations
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.fork_transition import (
     do_altair_fork,
-    set_validators_exit_epoch,
     state_transition_across_slots,
     transition_until_fork,
     transition_to_next_epoch_and_append_blocks,
 )
-from eth2spec.test.helpers.random import set_some_new_deposits
+from eth2spec.test.helpers.random import (
+    exit_random_validators,
+    set_some_new_deposits,
+)
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
@@ -26,9 +28,11 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
                                                                       pre_tag,
                                                                       post_tag):
     """
-    1/4 exiting but still active validators at the fork transition.
+    1/4 validators initiated voluntary exit before the fork,
+    and are exiting but still active *after* the fork transition.
     """
-    exited_indices = set_validators_exit_epoch(spec, state, exit_epoch=10, rng=random.Random(5566), fraction=0.25)
+    exited_indices = exit_random_validators(
+        spec, state, rng=random.Random(5566), fraction=0.25, exit_epoch=10, forward=False)
 
     transition_until_fork(spec, state, fork_epoch)
 
@@ -55,7 +59,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
     assert any(set(exited_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     # check state
     for index in exited_indices:
@@ -76,9 +80,11 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
                                                                     pre_tag,
                                                                     post_tag):
     """
-    1/4 exiting but still active validators at the fork transition.
+    1/4 validators initiated voluntary exit before the fork,
+    and being exited and inactive *right after* the fork transition.
     """
-    exited_indices = set_validators_exit_epoch(spec, state, exit_epoch=2, rng=random.Random(5566), fraction=0.25)
+    exited_indices = exit_random_validators(
+        spec, state, rng=random.Random(5566), fraction=0.25, exit_epoch=fork_epoch, forward=False)
 
     transition_until_fork(spec, state, fork_epoch)
 
@@ -111,7 +117,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
     assert not any(set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     yield "blocks", blocks
     yield "post", state
@@ -120,7 +126,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=260)
 def test_transition_with_voluntary_exit_at_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
-    Create an attester slashing at the transition.
+    Create a voluntary exit at the transition.
     fork_epoch=260 because mainnet `SHARD_COMMITTEE_PERIOD` is 256 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
@@ -142,7 +148,7 @@ def test_transition_with_voluntary_exit_at_fork(state, fork_epoch, spec, post_sp
     assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     yield "blocks", blocks
     yield "post", state
@@ -175,7 +181,7 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     yield "blocks", blocks
     yield "post", state
@@ -220,7 +226,7 @@ def test_transition_with_deposit_at_fork(state, fork_epoch, spec, post_spec, pre
     assert state.finalized_checkpoint.epoch == state.validators[validator_index].activation_eligibility_epoch
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     assert state.validators[validator_index].activation_epoch < post_spec.FAR_FUTURE_EPOCH
 

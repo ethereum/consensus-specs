@@ -16,8 +16,8 @@ from eth2spec.test.helpers.fork_transition import (
     transition_until_fork,
     transition_to_next_epoch_and_append_blocks,
 )
-from eth2spec.test.helpers.inactivity_scores import (
-    slash_some_validators_for_inactivity_scores_test,
+from eth2spec.test.helpers.random import (
+    slash_random_validators,
 )
 
 
@@ -32,8 +32,7 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
     1/4 validators are slashed but still active at the fork transition.
     """
     # slash 1/4 validators
-    slashed_indices = slash_some_validators_for_inactivity_scores_test(
-        spec, state, rng=random.Random(5566), fraction=0.25)
+    slashed_indices = slash_random_validators(spec, state, rng=random.Random(5566), fraction=0.25)
     assert len(slashed_indices) > 0
 
     # check if some validators are slashed but still active
@@ -50,11 +49,9 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
     yield "pre", state
 
     # irregular state transition to handle fork:
-    blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
-    blocks.append(post_tag(block))
+    state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
-    # ensure that some of the current sync committee members are the slashed
+    # ensure that some of the current sync committee members are slashed
     slashed_pubkeys = [state.validators[index].pubkey for index in slashed_indices]
     assert any(set(slashed_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
     assert any(set(slashed_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
@@ -62,6 +59,7 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
     # continue regular state transition with new spec into next epoch
     to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
     # since the proposer might have been slashed, here we only create blocks with non-slashed proposers
+    blocks = []
     blocks.extend([
         post_tag(block) for block in
         state_transition_across_slots_with_ignoring_proposers(post_spec, state, to_slot, slashed_indices)
@@ -103,7 +101,7 @@ def test_transition_with_attester_slashing_at_fork(state, fork_epoch, spec, post
         assert state.validators[validator_index].slashed
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     yield "blocks", blocks
     yield "post", state
@@ -132,7 +130,7 @@ def test_transition_with_proposer_slashing_at_fork(state, fork_epoch, spec, post
     assert slashed_proposer.slashed
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
 
     yield "blocks", blocks
     yield "post", state

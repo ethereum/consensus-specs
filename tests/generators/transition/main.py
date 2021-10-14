@@ -3,7 +3,7 @@ from typing import Iterable
 from eth2spec.test.helpers.constants import ALTAIR, MINIMAL, MAINNET, PHASE0
 from eth2spec.test.altair.transition import (
     test_transition as test_altair_transition,
-    test_activation as test_altair_activation,
+    test_activations_and_exits as test_altair_activations_and_exits,
     test_leaking as test_altair_leaking,
     test_slashing as test_altair_slashing,
 )
@@ -32,7 +32,7 @@ def create_provider(tests_src, preset_name: str, pre_fork_name: str, post_fork_n
 
 TRANSITION_TESTS = (
     (PHASE0, ALTAIR, test_altair_transition),
-    (PHASE0, ALTAIR, test_altair_activation),
+    (PHASE0, ALTAIR, test_altair_activations_and_exits),
     (PHASE0, ALTAIR, test_altair_leaking),
     (PHASE0, ALTAIR, test_altair_slashing),
 )

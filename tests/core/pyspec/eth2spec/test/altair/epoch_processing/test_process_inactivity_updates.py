@@ -4,7 +4,6 @@ from eth2spec.test.context import spec_state_test, with_altair_and_later
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
     zero_inactivity_scores,
-    slash_some_validators_for_inactivity_scores_test,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -203,6 +202,20 @@ def test_random_inactivity_scores_full_participation_leaking(spec, state):
 
     # Check still in leak
     assert spec.is_in_inactivity_leak(state)
+
+
+def slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(40404040)):
+    # ``run_inactivity_scores_test`` runs at the next epoch from `state`.
+    # We retrieve the proposer of this future state to avoid
+    # accidentally slashing that validator
+    future_state = state.copy()
+    next_epoch_via_block(spec, future_state)
+
+    proposer_index = spec.get_beacon_proposer_index(future_state)
+    # Slash ~1/4 of validaors
+    for validator_index in range(len(state.validators)):
+        if rng.choice(range(4)) == 0 and validator_index != proposer_index:
+            spec.slash_validator(state, validator_index)
 
 
 @with_altair_and_later
