@@ -131,7 +131,7 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     """
     transition_until_fork(spec, state, fork_epoch)
 
-    _, queuing_indices = set_some_new_deposits(spec, state, rng=random.Random(5566))
+    queuing_indices = set_some_new_deposits(spec, state, rng=random.Random(5566))
 
     assert spec.get_current_epoch(state) < fork_epoch
     assert len(queuing_indices) > 0

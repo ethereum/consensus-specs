@@ -7,7 +7,6 @@ from eth2spec.test.helpers.state import next_epoch
 
 
 def set_some_new_deposits(spec, state, rng):
-    eligible_indices = []
     queuing_indices = []
     num_validators = len(state.validators)
     # Set ~1/10 to just recently deposited
@@ -20,10 +19,9 @@ def set_some_new_deposits(spec, state, rng):
             # Set ~half of selected to eligible for activation
             if rng.choice([True, False]):
                 state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
-                eligible_indices.append(index)
             else:
                 queuing_indices.append(index)
-    return eligible_indices, queuing_indices
+    return queuing_indices
 
 
 def exit_random_validators(spec, state, rng, fraction=None, exit_epoch=None, withdrawable_epoch=None, forward=True):
