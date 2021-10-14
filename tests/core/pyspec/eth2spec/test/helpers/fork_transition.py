@@ -190,6 +190,10 @@ def run_transition_with_operation(state,
                                   post_tag,
                                   operation_type,
                                   operation_at_slot):
+    """
+    Generate `operation_type` operation with the spec before fork.
+    The operation would be included into the block at `operation_at_slot`.
+    """
     is_at_fork = operation_at_slot == fork_epoch * spec.SLOTS_PER_EPOCH
     is_right_before_fork = operation_at_slot == fork_epoch * spec.SLOTS_PER_EPOCH - 1
     assert is_at_fork or is_right_before_fork
@@ -213,8 +217,8 @@ def run_transition_with_operation(state,
     elif operation_type == OperetionType.DEPOSIT:
         # create a new deposit
         selected_validator_index = len(state.validators)
-        amount = post_spec.MAX_EFFECTIVE_BALANCE
-        deposit = prepare_state_and_deposit(post_spec, state, selected_validator_index, amount, signed=True)
+        amount = spec.MAX_EFFECTIVE_BALANCE
+        deposit = prepare_state_and_deposit(spec, state, selected_validator_index, amount, signed=True)
         operation_dict = {'deposits': [deposit]}
     elif operation_type == OperetionType.VOLUNTARY_EXIT:
         selected_validator_index = 0
