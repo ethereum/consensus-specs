@@ -142,7 +142,7 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(spec, state, rng=Random(8020), exit_fraction=None, slash_fraction=None):
+def randomize_state(spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5):
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)
