@@ -247,6 +247,9 @@ def run_transition_with_operation(state,
     blocks = []
 
     if is_right_before_fork:
+        # output pre-state before applying block
+        yield "pre", state
+
         # add a block with operation.
         block = build_empty_block_for_next_slot(spec, state)
         _set_operations_by_dict(block, operation_dict)
@@ -277,7 +280,9 @@ def run_transition_with_operation(state,
     if is_right_before_fork:
         _check_state()
 
-    yield "pre", state
+    if is_at_fork:
+        # output pre-state before applying block
+        yield "pre", state
 
     # irregular state transition to handle fork:
     _operation_at_slot = operation_dict if is_at_fork else None
