@@ -1,5 +1,9 @@
 import random
-from eth2spec.test.context import fork_transition_test
+from eth2spec.test.context import (
+    MINIMAL,
+    fork_transition_test,
+    with_presets,
+)
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.fork_transition import (
     do_altair_fork,
@@ -17,6 +21,7 @@ from eth2spec.test.helpers.random import (
 #
 
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_presets([MINIMAL], reason="only test with non-full committee")
 def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
                                                                       fork_epoch,
                                                                       spec,

@@ -198,18 +198,21 @@ def run_transition_with_operation(state,
     is_right_before_fork = operation_at_slot == fork_epoch * spec.SLOTS_PER_EPOCH - 1
     assert is_at_fork or is_right_before_fork
 
-    blocks = []
-
     if is_at_fork:
         transition_until_fork(spec, state, fork_epoch)
-
-    if is_right_before_fork:
+    elif is_right_before_fork:
         _transition_until_fork_minus_one(spec, state, fork_epoch)
 
     # prepare operation
     selected_validator_index = None
     if operation_type == OperetionType.PROPOSER_SLASHING:
-        proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
+        # avoid slashing the next proposer
+        future_state = state.copy()
+        next_slot(spec, future_state)
+        proposer_index = spec.get_beacon_proposer_index(future_state)
+        selected_validator_index = (proposer_index + 1) % len(state.validators)
+        proposer_slashing = get_valid_proposer_slashing(
+            spec, state, slashed_index=selected_validator_index, signed_1=True, signed_2=True)
         operation_dict = {'proposer_slashings': [proposer_slashing]}
     elif operation_type == OperetionType.ATTESTER_SLASHING:
         attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
@@ -224,6 +227,8 @@ def run_transition_with_operation(state,
         selected_validator_index = 0
         signed_exits = prepare_signed_exits(spec, state, [selected_validator_index])
         operation_dict = {'voluntary_exits': signed_exits}
+
+    blocks = []
 
     if is_right_before_fork:
         # add a block with operation.
