@@ -244,15 +244,6 @@ def run_transition_with_operation(state,
         signed_exits = prepare_signed_exits(spec, state, [selected_validator_index])
         operation_dict = {'voluntary_exits': signed_exits}
 
-    blocks = []
-
-    if is_right_before_fork:
-        # add a block with operation.
-        block = build_empty_block_for_next_slot(spec, state)
-        _set_operations_by_dict(block, operation_dict)
-        signed_block = state_transition_and_sign_block(spec, state, block)
-        blocks.append(pre_tag(signed_block))
-
     def _check_state():
         if operation_type == OperationType.PROPOSER_SLASHING:
             slashed_proposer = state.validators[proposer_slashing.signed_header_1.message.proposer_index]
@@ -274,10 +265,18 @@ def run_transition_with_operation(state,
             validator = state.validators[selected_validator_index]
             assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
 
-    if is_right_before_fork:
-        _check_state()
-
     yield "pre", state
+
+    blocks = []
+
+    if is_right_before_fork:
+        # add a block with operation.
+        block = build_empty_block_for_next_slot(spec, state)
+        _set_operations_by_dict(block, operation_dict)
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        blocks.append(pre_tag(signed_block))
+
+        _check_state()
 
     # irregular state transition to handle fork:
     _operation_at_slot = operation_dict if is_at_fork else None
