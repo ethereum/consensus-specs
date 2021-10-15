@@ -39,7 +39,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
         rng=random.Random(5566),
         fraction=0.25,
         exit_epoch=10,
-        forward=False,
+        from_epoch=spec.get_current_epoch(state),
     )
 
     transition_until_fork(spec, state, fork_epoch)
@@ -97,7 +97,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
         rng=random.Random(5566),
         fraction=0.25,
         exit_epoch=fork_epoch,
-        forward=False,
+        from_epoch=spec.get_current_epoch(state),
     )
 
     transition_until_fork(spec, state, fork_epoch)

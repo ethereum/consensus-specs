@@ -25,17 +25,18 @@ def set_some_new_deposits(spec, state, rng):
     return deposited_indices
 
 
-def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, withdrawable_epoch=None, forward=True):
+def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, withdrawable_epoch=None, from_epoch=None):
     """
     Set some validators' exit_epoch and withdrawable_epoch.
 
     If exit_epoch is configured, use the given exit_epoch. Otherwise, randomly set exit_epoch and withdrawable_epoch.
     """
-    if forward:
-        if spec.get_current_epoch(state) < 5:
-            # Move epochs forward to allow for some validators already exited/withdrawable
-            for _ in range(5):
-                next_epoch(spec, state)
+    if from_epoch is None:
+        from_epoch = spec.MAX_SEED_LOOKAHEAD + 1
+    epoch_diff = from_epoch - spec.get_current_epoch(state)
+    for _ in range(epoch_diff):
+        # NOTE: if `epoch_diff` is negative, then this loop body does not execute.
+        next_epoch(spec, state)
 
     current_epoch = spec.get_current_epoch(state)
     exited_indices = []
