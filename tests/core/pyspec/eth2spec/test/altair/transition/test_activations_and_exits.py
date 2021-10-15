@@ -22,7 +22,7 @@ from eth2spec.test.helpers.random import (
 
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
 @with_presets([MINIMAL],
-              reason="only test with enough validators such that at lease one exited index is not in sync committee")
+              reason="only test with enough validators such that at least one exited index is not in sync committee")
 def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
                                                                       fork_epoch,
                                                                       spec,
