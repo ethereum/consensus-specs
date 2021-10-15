@@ -6,6 +6,26 @@ from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
 
 
+def set_some_activations(spec, state, rng, activation_epoch=None):
+    if activation_epoch is None:
+        activation_epoch = spec.get_current_epoch(state)
+    num_validators = len(state.validators)
+    selected_indices = []
+    for index in range(num_validators):
+        # If is slashed or exiting, skip
+        if state.validators[index].slashed or state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH:
+            continue
+        # Set ~1/10 validators' activation_eligibility_epoch and activation_epoch
+        if rng.randrange(num_validators) < num_validators // 10:
+            state.validators[index].activation_eligibility_epoch = max(
+                int(activation_epoch) - int(spec.MAX_SEED_LOOKAHEAD) - 1,
+                spec.GENESIS_EPOCH,
+            )
+            state.validators[index].activation_epoch = activation_epoch
+            selected_indices.append(index)
+    return selected_indices
+
+
 def set_some_new_deposits(spec, state, rng):
     deposited_indices = []
     num_validators = len(state.validators)

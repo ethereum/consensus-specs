@@ -12,6 +12,7 @@ from eth2spec.test.helpers.fork_transition import (
 )
 from eth2spec.test.helpers.random import (
     exit_random_validators,
+    set_some_activations,
     set_some_new_deposits,
 )
 
@@ -165,6 +166,41 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
 
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+
+    yield "blocks", blocks
+    yield "post", state
+
+
+@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+def test_transition_with_activation_at_fork_epoch(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Create some deposits before the transition
+    """
+    transition_until_fork(spec, state, fork_epoch)
+
+    selected_indices = set_some_activations(spec, state, rng=random.Random(5566), activation_epoch=fork_epoch)
+
+    assert spec.get_current_epoch(state) < fork_epoch
+    assert len(selected_indices) > 0
+    for validator_index in selected_indices:
+        validator = state.validators[validator_index]
+        assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
+        assert validator.activation_epoch == fork_epoch
+
+    yield "pre", state
+
+    # irregular state transition to handle fork:
+    blocks = []
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    blocks.append(post_tag(block))
+
+    # continue regular state transition with new spec into next epoch
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+
+    # now they are active
+    for validator_index in selected_indices:
+        validator = state.validators[validator_index]
+        assert post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
 
     yield "blocks", blocks
     yield "post", state
