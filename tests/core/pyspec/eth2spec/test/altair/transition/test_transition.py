@@ -1,83 +1,18 @@
 import random
 from eth2spec.test.context import fork_transition_test
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
-from eth2spec.test.helpers.state import state_transition_and_sign_block, next_slot, next_epoch_via_signed_block
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
+from eth2spec.test.helpers.state import (
+    next_epoch_via_signed_block,
+)
 from eth2spec.test.helpers.attestations import next_slots_with_attestations
-
-
-def _state_transition_and_sign_block_at_slot(spec, state):
-    """
-    Cribbed from ``transition_unsigned_block`` helper
-    where the early parts of the state transition have already
-    been applied to ``state``.
-
-    Used to produce a block during an irregular state transition.
-    """
-    block = build_empty_block(spec, state)
-
-    assert state.latest_block_header.slot < block.slot
-    assert state.slot == block.slot
-    spec.process_block(state, block)
-    block.state_root = state.hash_tree_root()
-    return sign_block(spec, state, block)
-
-
-def _all_blocks(_):
-    return True
-
-
-def _skip_slots(*slots):
-    """
-    Skip making a block if its slot is
-    passed as an argument to this filter
-    """
-    def f(state_at_prior_slot):
-        return state_at_prior_slot.slot + 1 not in slots
-    return f
-
-
-def _no_blocks(_):
-    return False
-
-
-def _only_at(slot):
-    """
-    Only produce a block if its slot is ``slot``.
-    """
-    def f(state_at_prior_slot):
-        return state_at_prior_slot.slot + 1 == slot
-    return f
-
-
-def _state_transition_across_slots(spec, state, to_slot, block_filter=_all_blocks):
-    assert state.slot < to_slot
-    while state.slot < to_slot:
-        should_make_block = block_filter(state)
-        if should_make_block:
-            block = build_empty_block_for_next_slot(spec, state)
-            signed_block = state_transition_and_sign_block(spec, state, block)
-            yield signed_block
-        else:
-            next_slot(spec, state)
-
-
-def _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True):
-    spec.process_slots(state, state.slot + 1)
-
-    assert state.slot % spec.SLOTS_PER_EPOCH == 0
-    assert spec.get_current_epoch(state) == fork_epoch
-
-    state = post_spec.upgrade_to_altair(state)
-
-    assert state.fork.epoch == fork_epoch
-    assert state.fork.previous_version == post_spec.config.GENESIS_FORK_VERSION
-    assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
-
-    if with_block:
-        return state, _state_transition_and_sign_block_at_slot(post_spec, state)
-    else:
-        return state, None
+from eth2spec.test.helpers.fork_transition import (
+    do_altair_fork,
+    no_blocks,
+    only_at,
+    skip_slots,
+    state_transition_across_slots,
+    transition_to_next_epoch_and_append_blocks,
+)
 
 
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
@@ -95,19 +30,15 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     blocks = []
     blocks.extend([
         pre_tag(block) for block in
-        _state_transition_across_slots(spec, state, to_slot)
+        state_transition_across_slots(spec, state, to_slot)
     ])
 
     # irregular state transition to handle fork:
-    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        _state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
@@ -136,18 +67,14 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
     blocks = []
     blocks.extend([
         pre_tag(block) for block in
-        _state_transition_across_slots(spec, state, to_slot)
+        state_transition_across_slots(spec, state, to_slot)
     ])
 
     # irregular state transition to handle fork:
-    state, _ = _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+    state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        _state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
@@ -178,19 +105,15 @@ def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_sp
     blocks = []
     blocks.extend([
         pre_tag(block) for block in
-        _state_transition_across_slots(spec, state, to_slot, block_filter=_skip_slots(last_slot_of_pre_fork))
+        state_transition_across_slots(spec, state, to_slot, block_filter=skip_slots(last_slot_of_pre_fork))
     ])
 
     # irregular state transition to handle fork:
-    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
-    blocks.extend([
-        post_tag(block) for block in
-        _state_transition_across_slots(post_spec, state, to_slot)
-    ])
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
@@ -221,18 +144,18 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     blocks = []
     blocks.extend([
         pre_tag(block) for block in
-        _state_transition_across_slots(spec, state, to_slot, block_filter=_no_blocks)
+        state_transition_across_slots(spec, state, to_slot, block_filter=no_blocks)
     ])
 
     # irregular state transition to handle fork:
-    state, _ = _do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+    state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
     # continue regular state transition with new spec into next epoch
     to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
     last_slot = (fork_epoch + 1) * post_spec.SLOTS_PER_EPOCH
     blocks.extend([
         post_tag(block) for block in
-        _state_transition_across_slots(post_spec, state, to_slot, block_filter=_only_at(last_slot))
+        state_transition_across_slots(post_spec, state, to_slot, block_filter=only_at(last_slot))
     ])
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
@@ -292,7 +215,7 @@ def _run_transition_test_with_attestations(state,
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
     # irregular state transition to handle fork:
-    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
@@ -405,11 +328,11 @@ def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spe
     blocks = []
     blocks.extend([
         pre_tag(block) for block in
-        _state_transition_across_slots(spec, state, to_slot)
+        state_transition_across_slots(spec, state, to_slot)
     ])
 
     # irregular state transition to handle fork:
-    state, block = _do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition but add attestations

@@ -527,9 +527,6 @@ class NoopExecutionEngine(ExecutionEngine):
     def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
         return True
 
-    def notify_consensus_validated(self: ExecutionEngine, block_hash: Hash32, valid: bool) -> None:
-        pass
-
     def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
         pass
 
