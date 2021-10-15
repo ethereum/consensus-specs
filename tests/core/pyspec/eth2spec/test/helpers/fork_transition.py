@@ -288,7 +288,7 @@ def run_transition_with_operation(state,
 
     # after the fork
     if operation_type == OperationType.DEPOSIT:
-        _transition_until_active(post_spec, state, post_tag, blocks, selected_validator_index)
+        state = _transition_until_active(post_spec, state, post_tag, blocks, selected_validator_index)
     else:
         # avoid using the slashed validators as block proposers
         ignoring_proposers = [selected_validator_index] if is_slashing_operation else None
@@ -332,3 +332,5 @@ def _transition_until_active(post_spec, state, post_tag, blocks, validator_index
         state_transition_across_slots(post_spec, state, to_slot, block_filter=only_at(to_slot))
     ])
     assert post_spec.is_active_validator(state.validators[validator_index], post_spec.get_current_epoch(state))
+
+    return state
