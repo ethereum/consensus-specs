@@ -7,7 +7,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.fork_transition import (
     do_altair_fork,
-    state_transition_across_slots_with_ignoring_proposers,
+    transition_to_next_epoch_and_append_blocks,
     transition_until_fork,
 )
 from eth2spec.test.helpers.random import (
@@ -16,7 +16,8 @@ from eth2spec.test.helpers.random import (
 
 
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=1)
-@with_presets([MINIMAL], reason="only test with non-full committee")
+@with_presets([MINIMAL],
+              reason="only test with enough validators such that at lease one exited index is not in sync committee")
 def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
                                                                        fork_epoch,
                                                                        spec,
@@ -52,13 +53,16 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
     assert any(set(slashed_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
-    to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
     # since the proposer might have been slashed, here we only create blocks with non-slashed proposers
     blocks = []
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots_with_ignoring_proposers(post_spec, state, to_slot, slashed_indices)
-    ])
+    transition_to_next_epoch_and_append_blocks(
+        post_spec,
+        state,
+        post_tag,
+        blocks,
+        only_last_block=True,
+        ignoring_proposers=slashed_indices,
+    )
 
     # check post state
     for validator in state.validators:

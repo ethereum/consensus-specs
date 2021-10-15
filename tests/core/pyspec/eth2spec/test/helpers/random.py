@@ -7,7 +7,7 @@ from eth2spec.test.helpers.state import next_epoch
 
 
 def set_some_new_deposits(spec, state, rng):
-    queuing_indices = []
+    deposited_indices = []
     num_validators = len(state.validators)
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
@@ -16,24 +16,21 @@ def set_some_new_deposits(spec, state, rng):
             continue
         if rng.randrange(num_validators) < num_validators // 10:
             mock_deposit(spec, state, index)
-            # Set ~half of selected to eligible for activation
             if rng.choice([True, False]):
+                # Set ~half of selected to eligible for activation
                 state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
             else:
-                queuing_indices.append(index)
-    return queuing_indices
+                # The validators that just made a deposit
+                deposited_indices.append(index)
+    return deposited_indices
 
 
-def exit_random_validators(spec, state, rng, fraction=None, exit_epoch=None, withdrawable_epoch=None, forward=True):
+def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, withdrawable_epoch=None, forward=True):
     """
     Set some validators' exit_epoch and withdrawable_epoch.
 
     If exit_epoch is configured, use the given exit_epoch. Otherwise, randomly set exit_epoch and withdrawable_epoch.
     """
-    if fraction is None:
-        # Exit ~1/2
-        fraction = 0.5
-
     if forward:
         if spec.get_current_epoch(state) < 5:
             # Move epochs forward to allow for some validators already exited/withdrawable
@@ -67,11 +64,7 @@ def exit_random_validators(spec, state, rng, fraction=None, exit_epoch=None, wit
     return exited_indices
 
 
-def slash_random_validators(spec, state, rng, fraction=None):
-    if fraction is None:
-        # Slash ~1/2 of validators
-        fraction = 0.5
-
+def slash_random_validators(spec, state, rng, fraction=0.5):
     slashed_indices = []
     for index in range(len(state.validators)):
         # slash at least one validator

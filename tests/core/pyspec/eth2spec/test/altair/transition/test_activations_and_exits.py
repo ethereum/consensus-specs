@@ -21,7 +21,8 @@ from eth2spec.test.helpers.random import (
 #
 
 @fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
-@with_presets([MINIMAL], reason="only test with non-full committee")
+@with_presets([MINIMAL],
+              reason="only test with enough validators such that at lease one exited index is not in sync committee")
 def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
                                                                       fork_epoch,
                                                                       spec,
@@ -33,7 +34,13 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
     and are exiting but still active *after* the fork transition.
     """
     exited_indices = exit_random_validators(
-        spec, state, rng=random.Random(5566), fraction=0.25, exit_epoch=10, forward=False)
+        spec,
+        state,
+        rng=random.Random(5566),
+        fraction=0.25,
+        exit_epoch=10,
+        forward=False,
+    )
 
     transition_until_fork(spec, state, fork_epoch)
 
@@ -85,7 +92,13 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
     and being exited and inactive *right after* the fork transition.
     """
     exited_indices = exit_random_validators(
-        spec, state, rng=random.Random(5566), fraction=0.25, exit_epoch=fork_epoch, forward=False)
+        spec,
+        state,
+        rng=random.Random(5566),
+        fraction=0.25,
+        exit_epoch=fork_epoch,
+        forward=False,
+    )
 
     transition_until_fork(spec, state, fork_epoch)
 
@@ -136,11 +149,11 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     """
     transition_until_fork(spec, state, fork_epoch)
 
-    queuing_indices = set_some_new_deposits(spec, state, rng=random.Random(5566))
+    deposited_indices = set_some_new_deposits(spec, state, rng=random.Random(5566))
 
     assert spec.get_current_epoch(state) < fork_epoch
-    assert len(queuing_indices) > 0
-    for validator_index in queuing_indices:
+    assert len(deposited_indices) > 0
+    for validator_index in deposited_indices:
         assert not spec.is_active_validator(state.validators[validator_index], spec.get_current_epoch(state))
 
     yield "pre", state

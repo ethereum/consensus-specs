@@ -1,8 +1,7 @@
 from enum import Enum, auto
-import random
 
 from eth2spec.test.helpers.attester_slashings import (
-    get_valid_attester_slashing,
+    get_valid_attester_slashing_by_indices,
 )
 from eth2spec.test.helpers.attestations import next_slots_with_attestations
 from eth2spec.test.helpers.block import (
@@ -26,7 +25,7 @@ from eth2spec.test.helpers.voluntary_exits import (
 )
 
 
-class OperetionType(Enum):
+class OperationType(Enum):
     PROPOSER_SLASHING = auto()
     ATTESTER_SLASHING = auto()
     DEPOSIT = auto()
@@ -104,7 +103,11 @@ def state_transition_across_slots(spec, state, to_slot, block_filter=_all_blocks
             next_slot(spec, state)
 
 
-def state_transition_across_slots_with_ignoring_proposers(spec, state, to_slot, ignoring_proposers):
+def state_transition_across_slots_with_ignoring_proposers(spec,
+                                                          state,
+                                                          to_slot,
+                                                          ignoring_proposers,
+                                                          only_last_block=False):
     """
     The slashed validators can't be proposers. Here we ignore the given `ignoring_proposers`
     and ensure that the result state was computed with a block with slot >= to_slot.
@@ -113,6 +116,10 @@ def state_transition_across_slots_with_ignoring_proposers(spec, state, to_slot, 
 
     found_valid = False
     while state.slot < to_slot or not found_valid:
+        if state.slot + 1 < to_slot and only_last_block:
+            next_slot(spec, state)
+            continue
+
         future_state = state.copy()
         next_slot(spec, future_state)
         proposer_index = spec.get_beacon_proposer_index(future_state)
@@ -144,20 +151,6 @@ def do_altair_fork(state, spec, post_spec, fork_epoch, with_block=True, operatio
         return state, None
 
 
-def set_validators_exit_epoch(spec, state, exit_epoch, rng=random.Random(40404040), fraction=0.25):
-    """
-    Set some valdiators' `exit_epoch` and `withdrawable_epoch`.
-    """
-    selected_count = int(len(state.validators) * fraction)
-    selected_indices = rng.sample(range(len(state.validators)), selected_count)
-    for validator_index in selected_indices:
-        state.validators[validator_index].exit_epoch = exit_epoch
-        state.validators[validator_index].withdrawable_epoch = (
-            exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        )
-    return selected_indices
-
-
 def transition_until_fork(spec, state, fork_epoch):
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     transition_to(spec, state, to_slot)
@@ -168,7 +161,12 @@ def _transition_until_fork_minus_one(spec, state, fork_epoch):
     transition_to(spec, state, to_slot)
 
 
-def transition_to_next_epoch_and_append_blocks(spec, state, post_tag, blocks, only_last_block=False):
+def transition_to_next_epoch_and_append_blocks(spec,
+                                               state,
+                                               post_tag,
+                                               blocks,
+                                               only_last_block=False,
+                                               ignoring_proposers=None):
     to_slot = spec.SLOTS_PER_EPOCH + state.slot
 
     if only_last_block:
@@ -176,9 +174,20 @@ def transition_to_next_epoch_and_append_blocks(spec, state, post_tag, blocks, on
     else:
         block_filter = _all_blocks
 
+    if ignoring_proposers is None:
+        result_blocks = state_transition_across_slots(spec, state, to_slot, block_filter=block_filter)
+    else:
+        result_blocks = state_transition_across_slots_with_ignoring_proposers(
+            spec,
+            state,
+            to_slot,
+            ignoring_proposers,
+            only_last_block=only_last_block,
+        )
+
     blocks.extend([
         post_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot, block_filter=block_filter)
+        result_blocks
     ])
 
 
@@ -203,27 +212,34 @@ def run_transition_with_operation(state,
     elif is_right_before_fork:
         _transition_until_fork_minus_one(spec, state, fork_epoch)
 
+    is_slashing_operation = operation_type in (OperationType.PROPOSER_SLASHING, OperationType.ATTESTER_SLASHING)
     # prepare operation
     selected_validator_index = None
-    if operation_type == OperetionType.PROPOSER_SLASHING:
+    if is_slashing_operation:
         # avoid slashing the next proposer
         future_state = state.copy()
         next_slot(spec, future_state)
         proposer_index = spec.get_beacon_proposer_index(future_state)
         selected_validator_index = (proposer_index + 1) % len(state.validators)
-        proposer_slashing = get_valid_proposer_slashing(
-            spec, state, slashed_index=selected_validator_index, signed_1=True, signed_2=True)
-        operation_dict = {'proposer_slashings': [proposer_slashing]}
-    elif operation_type == OperetionType.ATTESTER_SLASHING:
-        attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-        operation_dict = {'attester_slashings': [attester_slashing]}
-    elif operation_type == OperetionType.DEPOSIT:
+        if operation_type == OperationType.PROPOSER_SLASHING:
+            proposer_slashing = get_valid_proposer_slashing(
+                spec, state, slashed_index=selected_validator_index, signed_1=True, signed_2=True)
+            operation_dict = {'proposer_slashings': [proposer_slashing]}
+        else:
+            # operation_type == OperationType.ATTESTER_SLASHING:
+            attester_slashing = get_valid_attester_slashing_by_indices(
+                spec, state,
+                [selected_validator_index],
+                signed_1=True, signed_2=True,
+            )
+            operation_dict = {'attester_slashings': [attester_slashing]}
+    elif operation_type == OperationType.DEPOSIT:
         # create a new deposit
         selected_validator_index = len(state.validators)
         amount = spec.MAX_EFFECTIVE_BALANCE
         deposit = prepare_state_and_deposit(spec, state, selected_validator_index, amount, signed=True)
         operation_dict = {'deposits': [deposit]}
-    elif operation_type == OperetionType.VOLUNTARY_EXIT:
+    elif operation_type == OperationType.VOLUNTARY_EXIT:
         selected_validator_index = 0
         signed_exits = prepare_signed_exits(spec, state, [selected_validator_index])
         operation_dict = {'voluntary_exits': signed_exits}
@@ -238,22 +254,23 @@ def run_transition_with_operation(state,
         blocks.append(pre_tag(signed_block))
 
     def _check_state():
-        if operation_type == OperetionType.PROPOSER_SLASHING:
+        if operation_type == OperationType.PROPOSER_SLASHING:
             slashed_proposer = state.validators[proposer_slashing.signed_header_1.message.proposer_index]
             assert slashed_proposer.slashed
-        elif operation_type == OperetionType.ATTESTER_SLASHING:
+        elif operation_type == OperationType.ATTESTER_SLASHING:
             indices = set(attester_slashing.attestation_1.attesting_indices).intersection(
                 attester_slashing.attestation_2.attesting_indices
             )
+            assert selected_validator_index in indices
             assert len(indices) > 0
             for validator_index in indices:
                 assert state.validators[validator_index].slashed
-        elif operation_type == OperetionType.DEPOSIT:
+        elif operation_type == OperationType.DEPOSIT:
             assert not post_spec.is_active_validator(
                 state.validators[selected_validator_index],
                 post_spec.get_current_epoch(state)
             )
-        elif operation_type == OperetionType.VOLUNTARY_EXIT:
+        elif operation_type == OperationType.VOLUNTARY_EXIT:
             validator = state.validators[selected_validator_index]
             assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
 
@@ -271,11 +288,21 @@ def run_transition_with_operation(state,
         _check_state()
 
     # after the fork
-    if operation_type == OperetionType.DEPOSIT:
+    if operation_type == OperationType.DEPOSIT:
         _transition_until_active(post_spec, state, post_tag, blocks, selected_validator_index)
     else:
+        # avoid using the slashed validators as block proposers
+        ignoring_proposers = [selected_validator_index] if is_slashing_operation else None
+
         # continue regular state transition with new spec into next epoch
-        transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+        transition_to_next_epoch_and_append_blocks(
+            post_spec,
+            state,
+            post_tag,
+            blocks,
+            only_last_block=True,
+            ignoring_proposers=ignoring_proposers,
+        )
 
     yield "blocks", blocks
     yield "post", state

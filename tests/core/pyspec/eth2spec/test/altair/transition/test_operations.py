@@ -4,7 +4,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.fork_transition import (
-    OperetionType,
+    OperationType,
     run_transition_with_operation,
 )
 
@@ -26,7 +26,7 @@ def test_transition_with_proposer_slashing_right_after_fork(state, fork_epoch, s
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.PROPOSER_SLASHING,
+        operation_type=OperationType.PROPOSER_SLASHING,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
     )
 
@@ -44,7 +44,7 @@ def test_transition_with_proposer_slashing_right_before_fork(state, fork_epoch, 
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.PROPOSER_SLASHING,
+        operation_type=OperationType.PROPOSER_SLASHING,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
     )
 
@@ -67,7 +67,7 @@ def test_transition_with_attester_slashing_right_after_fork(state, fork_epoch, s
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.ATTESTER_SLASHING,
+        operation_type=OperationType.ATTESTER_SLASHING,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
     )
 
@@ -85,7 +85,7 @@ def test_transition_with_attester_slashing_right_before_fork(state, fork_epoch, 
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.ATTESTER_SLASHING,
+        operation_type=OperationType.ATTESTER_SLASHING,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
     )
 
@@ -107,7 +107,7 @@ def test_transition_with_deposit_right_after_fork(state, fork_epoch, spec, post_
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.DEPOSIT,
+        operation_type=OperationType.DEPOSIT,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
     )
 
@@ -124,7 +124,7 @@ def test_transition_with_deposit_right_before_fork(state, fork_epoch, spec, post
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.DEPOSIT,
+        operation_type=OperationType.DEPOSIT,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
     )
 
@@ -150,7 +150,7 @@ def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.VOLUNTARY_EXIT,
+        operation_type=OperationType.VOLUNTARY_EXIT,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
     )
 
@@ -171,6 +171,6 @@ def test_transition_with_voluntary_exit_right_before_fork(state, fork_epoch, spe
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperetionType.VOLUNTARY_EXIT,
+        operation_type=OperationType.VOLUNTARY_EXIT,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
     )
