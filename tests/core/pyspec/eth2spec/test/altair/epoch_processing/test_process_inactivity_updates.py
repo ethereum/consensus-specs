@@ -1,7 +1,10 @@
 from random import Random
 
 from eth2spec.test.context import spec_state_test, with_altair_and_later
-from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores, zero_inactivity_scores
+from eth2spec.test.helpers.inactivity_scores import (
+    randomize_inactivity_scores,
+    zero_inactivity_scores,
+)
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_epoch_via_block,

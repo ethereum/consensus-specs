@@ -6,7 +6,28 @@ from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch
 
 
+def set_some_activations(spec, state, rng, activation_epoch=None):
+    if activation_epoch is None:
+        activation_epoch = spec.get_current_epoch(state)
+    num_validators = len(state.validators)
+    selected_indices = []
+    for index in range(num_validators):
+        # If is slashed or exiting, skip
+        if state.validators[index].slashed or state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH:
+            continue
+        # Set ~1/10 validators' activation_eligibility_epoch and activation_epoch
+        if rng.randrange(num_validators) < num_validators // 10:
+            state.validators[index].activation_eligibility_epoch = max(
+                int(activation_epoch) - int(spec.MAX_SEED_LOOKAHEAD) - 1,
+                spec.GENESIS_EPOCH,
+            )
+            state.validators[index].activation_epoch = activation_epoch
+            selected_indices.append(index)
+    return selected_indices
+
+
 def set_some_new_deposits(spec, state, rng):
+    deposited_indices = []
     num_validators = len(state.validators)
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
@@ -15,46 +36,64 @@ def set_some_new_deposits(spec, state, rng):
             continue
         if rng.randrange(num_validators) < num_validators // 10:
             mock_deposit(spec, state, index)
-            # Set ~half of selected to eligible for activation
             if rng.choice([True, False]):
+                # Set ~half of selected to eligible for activation
                 state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
+            else:
+                # The validators that just made a deposit
+                deposited_indices.append(index)
+    return deposited_indices
 
 
-def exit_random_validators(spec, state, rng, fraction=None):
-    if fraction is None:
-        # Exit ~1/2
-        fraction = 0.5
+def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, withdrawable_epoch=None, from_epoch=None):
+    """
+    Set some validators' exit_epoch and withdrawable_epoch.
 
-    if spec.get_current_epoch(state) < 5:
-        # Move epochs forward to allow for some validators already exited/withdrawable
-        for _ in range(5):
-            next_epoch(spec, state)
+    If exit_epoch is configured, use the given exit_epoch. Otherwise, randomly set exit_epoch and withdrawable_epoch.
+    """
+    if from_epoch is None:
+        from_epoch = spec.MAX_SEED_LOOKAHEAD + 1
+    epoch_diff = int(from_epoch) - int(spec.get_current_epoch(state))
+    for _ in range(epoch_diff):
+        # NOTE: if `epoch_diff` is negative, then this loop body does not execute.
+        next_epoch(spec, state)
 
     current_epoch = spec.get_current_epoch(state)
+    exited_indices = []
     for index in spec.get_active_validator_indices(state, current_epoch):
         sampled = rng.random() < fraction
         if not sampled:
             continue
 
+        exited_indices.append(index)
         validator = state.validators[index]
-        validator.exit_epoch = rng.choice([current_epoch, current_epoch - 1, current_epoch - 2, current_epoch - 3])
-        # ~1/2 are withdrawable (note, unnatural span between exit epoch and withdrawable epoch)
-        if rng.choice([True, False]):
-            validator.withdrawable_epoch = current_epoch
+        if exit_epoch is None:
+            assert withdrawable_epoch is None
+            validator.exit_epoch = rng.choice([current_epoch, current_epoch - 1, current_epoch - 2, current_epoch - 3])
+            # ~1/2 are withdrawable (note, unnatural span between exit epoch and withdrawable epoch)
+            if rng.choice([True, False]):
+                validator.withdrawable_epoch = current_epoch
+            else:
+                validator.withdrawable_epoch = current_epoch + 1
         else:
-            validator.withdrawable_epoch = current_epoch + 1
+            validator.exit_epoch = exit_epoch
+            if withdrawable_epoch is None:
+                validator.withdrawable_epoch = validator.exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            else:
+                validator.withdrawable_epoch = withdrawable_epoch
+
+    return exited_indices
 
 
-def slash_random_validators(spec, state, rng, fraction=None):
-    if fraction is None:
-        # Slash ~1/2 of validators
-        fraction = 0.5
-
+def slash_random_validators(spec, state, rng, fraction=0.5):
+    slashed_indices = []
     for index in range(len(state.validators)):
         # slash at least one validator
         sampled = rng.random() < fraction
         if index == 0 or sampled:
             spec.slash_validator(state, index)
+            slashed_indices.append(index)
+    return slashed_indices
 
 
 def randomize_epoch_participation(spec, state, epoch, rng):
@@ -123,7 +162,7 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(spec, state, rng=Random(8020), exit_fraction=None, slash_fraction=None):
+def randomize_state(spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5):
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)
