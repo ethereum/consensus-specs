@@ -1,4 +1,7 @@
 from eth2spec.test import context
+from eth2spec.test.helpers.constants import (
+    ALL_PHASES,
+)
 from eth2spec.utils import bls as bls_utils
 
 # We import pytest only when it's present, i.e. when we are running tests.
@@ -30,6 +33,13 @@ def pytest_addoption(parser):
         help="preset: make the pyspec use the specified preset"
     )
     parser.addoption(
+        "--fork", action="append", type=str,
+        help=(
+            "fork: make the pyspec only run with the specified phase."
+            " To run multiple phases, e.g., --fork=phase0 --fork=altair"
+        )
+    )
+    parser.addoption(
         "--disable-bls", action="store_true", default=False,
         help="bls-default: make tests that are not dependent on BLS run without BLS"
     )
@@ -42,6 +52,16 @@ def pytest_addoption(parser):
 @fixture(autouse=True)
 def preset(request):
     context.DEFAULT_TEST_PRESET = request.config.getoption("--preset")
+
+
+@fixture(autouse=True)
+def run_phases(request):
+    phases = request.config.getoption("--fork")
+    if phases:
+        phases = [phase.lower() for phase in phases]
+        context.DEFAULT_PYTEST_FORKS = set(phases)
+    else:
+        context.DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
 @fixture(autouse=True)

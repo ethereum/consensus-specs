@@ -22,6 +22,9 @@ from lru import LRU
 # Without pytest CLI arg or pyspec-test-generator 'preset' argument, this will be the config to apply.
 DEFAULT_TEST_PRESET = MINIMAL
 
+# Without pytest CLI arg or pyspec-test-generator 'run-phase' argument, this will be the config to apply.
+DEFAULT_PYTEST_FORKS = ALL_PHASES
+
 
 # TODO: currently phases are defined as python modules.
 # It would be better if they would be more well-defined interfaces for stronger typing.
@@ -351,7 +354,7 @@ def with_phases(phases, other_phases=None):
     """
     def decorator(fn):
         def wrapper(*args, **kw):
-            run_phases = phases
+            run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
 
             # limit phases if one explicitly specified
             if 'phase' in kw:
