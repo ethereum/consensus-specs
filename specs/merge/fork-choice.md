@@ -64,7 +64,8 @@ class PowBlock(Container):
 
 ### `get_pow_block`
 
-Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
+Let `get_pow_block(block_hash: Hash32) -> Optional[PowBlock]` be the function that given the hash of the PoW block returns its data.
+It may result in `None` if the requested block is not found if execution engine is still syncing.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this information from an execution client.
 
@@ -90,6 +91,12 @@ def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    """
+    Run ``on_block`` upon receiving a new block.
+
+    An block that is asserted as invalid due to unavailable PoW block may be valid at a later time,
+    consider scheduling it for later processing in such case.
+    """
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
@@ -110,8 +117,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Merge]
     if is_merge_block(pre_state, block.body):
+        # Note: the unavailable PoW block(s) may be available later
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
+        assert pow_block is not None
         pow_parent = get_pow_block(pow_block.parent_hash)
+        assert pow_parent is not None
         assert is_valid_terminal_pow_block(pow_block, pow_parent)
 
     # Add new block to the store

@@ -103,6 +103,7 @@ def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) ->
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain:
         parent = get_pow_block(block.parent_hash)
+        assert parent is not None
         block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
         parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
         if block_reached_ttd and not parent_reached_ttd:
