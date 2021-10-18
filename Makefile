@@ -105,8 +105,15 @@ find_test: pyspec
 	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
-	mkdir -p tests/core/pyspec/test-reports/eth2spec; . venv/bin/activate; cd $(PY_SPEC_DIR); \
+	mkdir -p tests/core/pyspec/test-reports/eth2spec;
+ifdef fork
+	. venv/bin/activate; cd $(PY_SPEC_DIR); \
+	python3 -m pytest -n 4 --bls-type=milagro --fork=$(fork) --junitxml=eth2spec/test_results.xml eth2spec
+else
+	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	python3 -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
+endif
+
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
