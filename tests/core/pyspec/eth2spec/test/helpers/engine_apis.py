@@ -163,7 +163,7 @@ def with_pow_blocks_and_execute_payload(
                     '_to_next_on_block': {
                         'get_pow_block': {
                             'input': {
-                                'pow_chain': [get_pow_block_file_name(pow_block) for pow_block in pow_chain]
+                                'block_hash': encode_hex(block_hash)
                             },
                             'output': {
                                 'result': get_pow_block_file_name(block),

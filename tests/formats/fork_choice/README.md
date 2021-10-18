@@ -65,10 +65,10 @@ The parameters that are required for executing `on_block(store, block)`.
                       If it's `false`, this execution step is expected to be invalid.
     get_pow_block: -- this item only exists if `get_pow_block` is called with `on_block` call
       input: {
-          pow_chain: List[strings]   -- map to the name of the `pow_block_<32-byte-root>.ssz_snappy` file
+          block_hash: string         -- 32-byte-hash string of the PoW block
       }
       output: {
-          result: string             -- map to the name of the `pow_block_<32-byte-root>.ssz_snappy` file
+          result: string             -- map to the name of the `pow_block_<32-byte-hash>.ssz_snappy` file
       }
     process_execution_payload:  -- this item only exists if `process_execution_payload` is called with `on_block` call
       engine_api:

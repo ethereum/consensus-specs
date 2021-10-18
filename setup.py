@@ -510,8 +510,8 @@ from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256
 ExecutionState = Any
 
 
-def get_pow_block(hash: Bytes32) -> PowBlock:
-    return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0), difficulty=uint256(0))
+def get_pow_block(block_hash: Bytes32) -> PowBlock:
+    return PowBlock(block_hash=block_hash, parent_hash=Bytes32(), total_difficulty=uint256(0), difficulty=uint256(0))
 
 
 def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
