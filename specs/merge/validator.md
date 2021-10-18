@@ -127,6 +127,11 @@ def prepare_execution_payload(state: BeaconState,
                               fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     if not is_merge_complete(state):
+        is_tbh_override_set = TERMINAL_BLOCK_HASH != Hash32()
+        if is_tbh_override_set and get_current_epoch(state.slot) < TBH_ACTIVATION_EPOCH:
+            # TBH is set but activation epoch is not yet reached, no prepare payload call is needed
+            return None
+
         terminal_pow_block = get_terminal_pow_block(pow_chain)
         if terminal_pow_block is None:
             # Pre-merge, no prepare payload call is needed
