@@ -32,7 +32,7 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This  documens is an extension of the [Altair -- Honest Validator](../altair/validator.md) guide.
+This document is an extension of the [Altair -- Honest Validator](../altair/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout.
@@ -102,8 +102,8 @@ avoid requiring simple serialize hashing capabilities in the Execution Layer.
 
 *Note*: `get_payload` function is added to the `ExecutionEngine` protocol for use as a validator.
 
-The body of each of these functions is implementation dependent.
-The Engine API may be used to implement them with an external execution engine.
+The body of this function is implementation dependent.
+The Engine API may be used to implement it with an external execution engine.
 
 #### `get_payload`
 
