@@ -603,7 +603,7 @@ def objects_to_spec(preset_name: str,
 
     # Access global dict of config vars for runtime configurables
     for name in spec_object.config_vars.keys():
-        functions_spec = functions_spec.replace(name, 'config.' + name)
+        functions_spec = re.sub(r"\b%s\b" % name, 'config.' + name, functions_spec)
 
     def format_config_var(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:

@@ -114,7 +114,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         pow_parent = get_pow_block(pow_block.parent_hash)
         assert is_valid_terminal_pow_block(pow_block, pow_parent)
         if TERMINAL_BLOCK_HASH != Hash32():
-            assert compute_epoch_at_slot(block.slot) >= TBH_ACTIVATION_EPOCH
+            assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
 
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block

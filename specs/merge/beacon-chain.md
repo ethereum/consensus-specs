@@ -75,7 +75,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | - | - |
 | `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
 | `TERMINAL_BLOCK_HASH` | `Hash32()` |
-| `TBH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
 
 ## Containers
 

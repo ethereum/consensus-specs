@@ -24,6 +24,6 @@ Except under exceptional scenarios, this setting is not expected to be used. Suf
 
 To allow for transition coordination around a specific PoW block, clients must also provide `--terminal-block-hash-override` and `--terminal-block-hash-epoch-override` as configurable settings.
 * The value provided by `--terminal-block-hash-override` takes precedence over the pre-configured `TERMINAL_BLOCK_HASH` parameter.
-* The value provided by `--terminal-block-hash-epoch-override` takes precedence over the pre-configured `TBH_ACTIVATION_EPOCH` parameter.
+* The value provided by `--terminal-block-hash-epoch-override` takes precedence over the pre-configured `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` parameter.
 
 Except under exceptional scenarios, these settings are not expected to be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
