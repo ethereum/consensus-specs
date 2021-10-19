@@ -65,7 +65,7 @@ class PowBlock(Container):
 ### `get_pow_block`
 
 Let `get_pow_block(block_hash: Hash32) -> Optional[PowBlock]` be the function that given the hash of the PoW block returns its data.
-It may result in `None` if the requested block is not found if execution engine is still syncing.
+It may result in `None` if the requested block is not yet available.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this information from an execution client.
 
@@ -117,7 +117,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Merge]
     if is_merge_block(pre_state, block.body):
-        # Note: the unavailable PoW block(s) may be available later
+        # Note: unavailable PoW block(s) may later become available.
+        # Nodes should queue such beacon blocks for later processing.
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         assert pow_block is not None
         pow_parent = get_pow_block(pow_block.parent_hash)
