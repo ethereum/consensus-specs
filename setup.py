@@ -533,13 +533,6 @@ class NoopExecutionEngine(ExecutionEngine):
                                   payload_attributes: Optional[PayloadAttributes]) -> None:
         pass
 
-    def prepare_payload(self: ExecutionEngine,
-                        parent_hash: Hash32,
-                        timestamp: uint64,
-                        random: Bytes32,
-                        feeRecipient: ExecutionAddress) -> PayloadId:
-        raise NotImplementedError("no default block production")
-
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
         raise NotImplementedError("no default block production")
 

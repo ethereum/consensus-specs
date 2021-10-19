@@ -100,7 +100,7 @@ avoid requiring simple serialize hashing capabilities in the Execution Layer.
 
 ### `ExecutionEngine`
 
-*Note*: `prepare_payload` and `get_payload` functions are added to the `ExecutionEngine` protocol for use as a validator.
+*Note*: `get_payload` function is added to the `ExecutionEngine` protocol for use as a validator.
 
 The body of each of these functions is implementation dependent.
 The Engine API may be used to implement them with an external execution engine.
