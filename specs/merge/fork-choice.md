@@ -110,9 +110,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Merge]
     if is_merge_block(pre_state, block.body):
+        # Check the parent PoW block of execution payload is a valid terminal PoW block.
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         pow_parent = get_pow_block(pow_block.parent_hash)
         assert is_valid_terminal_pow_block(pow_block, pow_parent)
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         if TERMINAL_BLOCK_HASH != Hash32():
             assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
 
