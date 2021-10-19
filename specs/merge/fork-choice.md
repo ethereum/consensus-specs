@@ -49,6 +49,7 @@ def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, fi
 ```
 
 *Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
+As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice_updated` must be called with `finalized_block_hash = Hash32()`.
 
 ## Helpers
 
