@@ -497,7 +497,7 @@ class MergeSpecBuilder(AltairSpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
-from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector, uint256, Union
+from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector, uint256
 '''
 
     @classmethod
@@ -543,7 +543,7 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
     @classmethod
     def hardcoded_custom_type_dep_constants(cls) -> str:
         constants = {
-            'MAX_BYTES_PER_OPAQUE_TRANSACTION': 'uint64(2**20)',
+            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**20)',
         }
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
