@@ -75,8 +75,8 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
-    if block.block_hash == TERMINAL_BLOCK_HASH:
-        return True
+    if TERMINAL_BLOCK_HASH != Hash32():
+        return block.block_hash == TERMINAL_BLOCK_HASH
 
     is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
     is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
@@ -111,9 +111,13 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Merge]
     if is_merge_block(pre_state, block.body):
+        # Check the parent PoW block of execution payload is a valid terminal PoW block.
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
         pow_parent = get_pow_block(pow_block.parent_hash)
         assert is_valid_terminal_pow_block(pow_block, pow_parent)
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        if TERMINAL_BLOCK_HASH != Hash32():
+            assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
 
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
