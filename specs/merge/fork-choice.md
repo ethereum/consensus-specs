@@ -12,6 +12,7 @@
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
+  - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
@@ -43,14 +44,32 @@ This function performs two actions *atomically*:
 * Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
 and corresponding state, up to and including `finalized_block_hash`.
 
+Additionally, if `payload_attributes` is provided, this function sets in motion a payload build process on top of
+`head_block_hash` with the result to be gathered by a followup call to  `get_payload`.
+
 ```python
-def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
+def notify_forkchoice_updated(self: ExecutionEngine,
+                              head_block_hash: Hash32,
+                              finalized_block_hash: Hash32,
+                              payload_attributes: Optional[PayloadAttributes]) -> None:
     ...
 ```
 
 *Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
 
 ## Helpers
+
+### `PayloadAttributes`
+
+Used to signal to initiate the payload build process via `notify_forkchoice_updated`.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    random: Bytes32
+    fee_recipient: ExecutionAddress
+```
 
 ### `PowBlock`
 

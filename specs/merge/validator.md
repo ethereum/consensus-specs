@@ -11,9 +11,12 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Custom types](#custom-types)
+- [Helpers](#helpers)
+  - [`get_pow_block_at_terminal_total_difficulty`](#get_pow_block_at_terminal_total_difficulty)
+  - [`get_terminal_pow_block`](#get_terminal_pow_block)
+  - [`get_payload_id`](#get_payload_id)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`prepare_payload`](#prepare_payload)
     - [`get_payload`](#get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
@@ -29,7 +32,7 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Altair -- Honest Validator](../altair/validator.md) guide.
+This  documens is an extension of the [Altair -- Honest Validator](../altair/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [The Merge](./beacon-chain.md) are requisite for this document and used throughout.
@@ -39,7 +42,59 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `PayloadId` | `uint64` | Identifier of a payload building process |
+| `PayloadId` | `Bytes8` | Identifier of a payload building process |
+
+## Helpers
+
+### `get_pow_block_at_terminal_total_difficulty`
+
+```python
+def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+    # `pow_chain` abstractly represents all blocks in the PoW chain
+    for block in pow_chain:
+        parent = get_pow_block(block.parent_hash)
+        block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+        parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+        if block_reached_ttd and not parent_reached_ttd:
+            return block
+
+    return None
+```
+
+### `get_terminal_pow_block`
+
+```python
+def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # Terminal block hash override takes precedence over terminal total difficulty
+        pow_block_overrides = [block for block in pow_chain if block.block_hash == TERMINAL_BLOCK_HASH]
+        if not any(pow_block_overrides):
+            return None
+        return pow_block_overrides[0]
+
+    return get_pow_block_at_terminal_total_difficulty(pow_chain)
+```
+
+### `get_payload_id`
+
+Given the `head_block_hash` and the `payload_attributes` that were used to
+initiate the build process via `notify_forkchoice_updated`, `get_payload_id()`
+returns the `payload_id` used to retrieve the payload via `get_payload`.
+
+```python
+def get_payload_id(parent_hash: Hash32, payload_attributes: PayloadAttributes) -> PayloadId:
+    return PayloadId(
+        hash(
+            parent_hash
+            + uint_to_bytes(payload_attributes.timestamp)
+            + payload_attributes.random
+            + payload_attributes.fee_recipient
+        )[0:8]
+    )
+```
+
+*Note*: This function does *not* use simple serialize `hash_tree_root` as to
+avoid requiring simple serialize hashing capabilities in the Execution Layer.
 
 ## Protocols
 
@@ -50,27 +105,10 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 The body of each of these functions is implementation dependent.
 The Engine API may be used to implement them with an external execution engine.
 
-#### `prepare_payload`
-
-Given the set of execution payload attributes, `prepare_payload` initiates a process of building an execution payload
-on top of the execution chain tip identified by `parent_hash`.
-
-```python
-def prepare_payload(self: ExecutionEngine,
-                    parent_hash: Hash32,
-                    timestamp: uint64,
-                    random: Bytes32,
-                    fee_recipient: ExecutionAddress) -> PayloadId:
-    """
-    Return ``payload_id`` that is used to obtain the execution payload in a subsequent ``get_payload`` call.
-    """
-    ...
-```
-
 #### `get_payload`
 
 Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
-has been built since the corresponding call to `prepare_payload` method.
+has been built since the corresponding call to `notify_forkchoice_updated` method.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
@@ -92,38 +130,17 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 To obtain an execution payload, a block proposer building a block on top of a `state` must take the following actions:
 
-1. Set `payload_id = prepare_execution_payload(state, pow_chain, fee_recipient, execution_engine)`, where:
+1. Set `payload_id = prepare_execution_payload(state, pow_chain, finalized_block_hash, fee_recipient, execution_engine)`, where:
     * `state` is the state object after applying `process_slots(state, slot)` transition to the resulting state of the parent block processing
     * `pow_chain` is a list that abstractly represents all blocks in the PoW chain
+    * `finalized_block_hash` is the hash of the latest finalized execution payload (`Hash32()` if none yet finalized)
     * `fee_recipient` is the value suggested to be used for the `coinbase` field of the execution payload
 
 
 ```python
-def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
-    # `pow_chain` abstractly represents all blocks in the PoW chain
-    for block in pow_chain:
-        parent = get_pow_block(block.parent_hash)
-        block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
-        parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
-        if block_reached_ttd and not parent_reached_ttd:
-            return block
-
-    return None
-
-
-def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
-    if TERMINAL_BLOCK_HASH != Hash32():
-        # Terminal block hash override takes precedence over terminal total difficulty
-        pow_block_overrides = [block for block in pow_chain if block.block_hash == TERMINAL_BLOCK_HASH]
-        if not any(pow_block_overrides):
-            return None
-        return pow_block_overrides[0]
-
-    return get_pow_block_at_terminal_total_difficulty(pow_chain)
-
-
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Sequence[PowBlock],
+                              finalized_block_hash: Hash32,
                               fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     if not is_merge_complete(state):
@@ -137,9 +154,14 @@ def prepare_execution_payload(state: BeaconState,
         # Post-merge, normal payload
         parent_hash = state.latest_execution_payload_header.block_hash
 
-    timestamp = compute_timestamp_at_slot(state, state.slot)
-    random = get_randao_mix(state, get_current_epoch(state))
-    return execution_engine.prepare_payload(parent_hash, timestamp, random, fee_recipient)
+    # Set the forkchoice head and initiate the payload build process
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_timestamp_at_slot(state, state.slot),
+        random=get_randao_mix(state, get_current_epoch(state)),
+        fee_recipient=fee_recipient,
+    )
+    execution_engine.notify_forkchoice_updated(parent_hash, finalized_block_hash, payload_attributes)
+    return get_payload_id(parent_hash, payload_attributes)
 ```
 
 2. Set `block.body.execution_payload = get_execution_payload(payload_id, execution_engine)`, where:
