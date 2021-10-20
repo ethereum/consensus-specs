@@ -1,3 +1,16 @@
 # Minimal preset - The Merge
 
-# No presets here.
+# Execution
+# ---------------------------------------------------------------
+# 2**20 (= 1,048,576)
+MAX_BYTES_PER_TRANSACTION: 1048576
+# 2**14 (= 16,384)
+MAX_TRANSACTIONS_PER_PAYLOAD: 16384
+# 2**8 (= 256)
+BYTES_PER_LOGS_BLOOM: 256
+# 2**10 (= 1,024)
+GAS_LIMIT_DENOMINATOR: 1024
+# 5,000
+MIN_GAS_LIMIT: 5000
+# 2**5 (= 32)
+MAX_EXTRA_DATA_BYTES: 32
