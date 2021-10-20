@@ -59,7 +59,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 
 | Name | Value |
 | - | - |
-| `MAX_BYTES_PER_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
+| `MAX_BYTES_PER_TRANSACTION` | `uint64(2**24)` (= 16,777,216) |
 | `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
