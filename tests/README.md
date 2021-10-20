@@ -32,7 +32,7 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
 1. Run a sanity check test:
    ```sh 
    cd tests/core/pyspec/
-   python -m pytest -k test_empty_block_transition
+   python -m pytest -k test_empty_block_transition --fork Phase0 eth2spec/
    ```
 1. The output should be similar to:
    ```
