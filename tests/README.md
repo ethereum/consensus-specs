@@ -287,11 +287,17 @@ not execute EVM programs or store user data. The reason it exists at all is to p
 information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
 which do provide storage, and possibly execution, services.
 
-The block proposed by the proposer includes the hash for the latest block in the shard for which the proposer is
-responsible. Then there's a randomly selected committee of validators that needs to vote whether that is really
-a valid hash for that shard at that point in time. 2/3's of the validators on the committee need to vote to 
-approve the proposal for that hash to be accepted for that shard. The result of this vote is called an 
-[attestation](https://notes.ethereum.org/@hww/aggregation#112-Attestation).
+For every slot a validator is randomly selected as the proposer. Currently the proposer proposes the hash
+for the current head of the beacon chain (the previous block). When shards are added, the proposer will also
+propose a hash for the head of the assigned shard.
+
+For every slot there is also a randomly selected committee of validators that needs to vote whether the value proposed 
+by the proposer is really a valid hash for the head of the beacon chain (and, once added, valid hash for 
+the head of the assigned shard). Those votes are 
+[attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation), sent as independent messages.
+
+The proposer for a block is able to include attestations from previous slots, which is how they get
+on chain to form consensus, reward honest validators, etc.
 
 [You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26-L30):
 Lets go over it line by line.
@@ -304,9 +310,9 @@ def test_success(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 ```
 
-This function creates a valid attestation (which can then be modified to make it invalid if needed).
-[You can see this function here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120).
-To see an attestion "from the inside" we need to follow this function.
+[This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120)
+creates a valid attestation (which can then be modified to make it invalid if needed).
+To see an attestion "from the inside" we need to follow it.
 
 
 > ```python
@@ -378,12 +384,30 @@ To see an attestion "from the inside" we need to follow this function.
 ```
 
 Attestations have to appear after the block they attest for. The current value
-of `MIN_ATTESTATION_INCLUSION_DELAY` is one, but 
+of `MIN_ATTESTATION_INCLUSION_DELAY` is one, but it might change.
 
 ```
     yield from run_attestation_processing(spec, state, attestation)
 ```
 
+[This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L13-L50) 
+processes the attestation and returns the result.
+
+
+
+
+
+
+
+
+The asserts deal with edge cases.
+(for example, an attestation can't be too new or too old).
+
+Write an example like 
+
+https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L98
+
+except that it succeeds because it happens one slot earlier.
 
 
 
@@ -404,6 +428,10 @@ https://ethos.dev/beacon-chain/
 -->
 
 ## How are These Tests Used?
+
+They are incorporated into https://github.com/ethereum/eth2.0-spec-tests, and client teams know how to test them.
+
+https://github.com/protolambda/zrnt#testing
 
 <!--
 
