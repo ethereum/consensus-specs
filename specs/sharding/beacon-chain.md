@@ -154,7 +154,7 @@ TODO: `WEIGHT_DENOMINATOR` needs to be adjusted, but this breaks a lot of Altair
 | `INITIAL_ACTIVE_SHARDS` | `uint64(2**6)` (= 64) | Initial shard count |
 | `SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Sample price may decrease/increase by at most exp(1 / this value) *per epoch* |
 | `MAX_SHARD_PROPOSER_SLASHINGS` | `2**4` (= 16) | Maximum amount of shard proposer slashing operations per block |
-| `MAX_SHARD_HEADERS_PER_SHARD` | `4` | |
+| `MAX_SHARD_HEADERS_PER_SHARD` | `2` | |
 | `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
 | `BLOB_BUILDER_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | shard blob builders |
 
