@@ -67,7 +67,7 @@ def preset(request):
 def run_phases(request):
     forks = request.config.getoption("--fork", default=None)
     if forks:
-        forks = [phase.lower() for phase in forks]
+        forks = [fork.lower() for fork in forks]
         _validate_fork_name(forks)
         context.DEFAULT_PYTEST_FORKS = set(forks)
     else:
