@@ -31,8 +31,8 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    ```
 1. Run a sanity check test:
    ```sh 
-   cd tests/core/pyspec/
-   python -m pytest -k test_empty_block_transition --fork Merge eth2spec/
+   cd tests/core/pyspec
+   python -m pytest -k test_empty_block_transition --fork Merge eth2spec
    ```
 1. The output should be similar to:
    ```
@@ -283,7 +283,7 @@ because the processing mechanism errors out before creating it.
 ## Attestation Tests
 
 The [beacon chain](https://ethereum.org/en/eth2/beacon-chain/) doesn't provide any direct value. It does
-not execute EVM programs or store user data. The reason it exists at all is to provide a trusted source of
+not execute EVM programs or store user data. It exists to provide a trusted source of
 information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
 which do provide storage, and possibly execution, services.
 
@@ -291,12 +291,11 @@ For every slot a validator is randomly selected as the proposer. Currently the p
 for the current head of the beacon chain (the previous block). When shards are added, the proposer will also
 propose a hash for the head of the assigned shard.
 
-For every slot there is also a randomly selected committee of validators that needs to vote whether the value proposed 
-by the proposer is really a valid hash for the head of the beacon chain (and, once added, valid hash for 
-the head of the assigned shard). Those votes are 
-[attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation), sent as independent messages.
-
-The proposer for a block is able to include attestations from previous slots, which is how they get
+For every slot there is also a randomly selected committee of validators that needs to vote whether the value 
+proposed by the proposer is really a valid hash for the head of the beacon chain (and, once added, valid hash 
+for the head of the assigned shard). Those votes are called
+[attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation), and they are sent as independent 
+messages. The proposer for a block is able to include attestations from previous slots, which is how they get
 on chain to form consensus, reward honest validators, etc.
 
 [You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26-L30):
@@ -418,33 +417,47 @@ In the last line you can see two conditions being asserted:
    arrive too early.
 1. `state.slot <= data.slot + SLOTS_PER_EPOCH` which verifies that the attestation doesn't
    arrive too late.
+   
+This is how the consensus layer tests deal with edge cases, by asserting the conditions required for the
+values to be legitimate. In the case of these particular conditions, they are tested 
+[here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L87-L104).
+One test checks what happens if the attestation is too early, and another if it is too late.
 
+However, it is not enough to ensure we reject invalid blocks. It is also necessary to ensure we accept all valid blocks. You saw earlier
+a test (`test_success`) that tested that being `MIN_ATTESTATION_INCLUSION_DELAY` after the data for which we attest is enough. 
+Now we'll write a similar test that verifies that being `SLOTS_PER_EPOCH` away is still valid. To do this, we modify the 
+`test_after_epoch_slots` function. We need two changes:
 
+1. Call `transition_to_slot_via_block` with one less slot to advance
+1. Don't tell `run_attestation_processing` to return an empty post state.
 
+The modified function is:
 
+```python
+@with_all_phases
+@spec_state_test
+def test_almost_after_epoch_slots(spec, state):
+    attestation = get_valid_attestation(spec, state, signed=True)
 
-The asserts deal with edge cases.
-(for example, an attestation can't be too new or too old).
+    # increment to latest inclusion slot (not beyond it)
+    transition_to_slot_via_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
 
-Write an example like 
+    yield from run_attestation_processing(spec, state, attestation)
+```    
 
-https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L98
+Add this function to the file `consensus-specs/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py`,
+and run the test:
 
-except that it succeeds because it happens one slot earlier.
+```sh
+cd ~/consensus-specs
+. venv/bin/activate
+cd tests/core/pyspec
+python -m pytest -k almost_after --fork Merge eth2spec
+```
 
-
+You should see it ran successfully (although you might get a warning, you can ignore it)
 
 <!--
-
-
-Attestation:
-
-Success: https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26
-
-Failure: https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L98
-
-And the conditions in process_attestation for these cases are pretty clear to reference and reason about for a new contributor
-And obviously, one of our goals to directly test all of these boundaries so can be a good just general testing approach discussion there too
 
 https://ethos.dev/beacon-chain/
 
