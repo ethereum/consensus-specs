@@ -383,10 +383,11 @@ To see an attestion "from the inside" we need to follow it.
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 ```
 
-Attestations have to appear after the block they attest for. The current value
-of `MIN_ATTESTATION_INCLUSION_DELAY` is one, but it might change.
+Attestations have to appear after the block they attest for, so we advance 
+`spec.MIN_ATTESTATION_INCLUSION_DELAY` slots before creating the block that includes the attestation.
+Currently a single block is sufficient, but that may change in the future.
 
-```
+```python
     yield from run_attestation_processing(spec, state, attestation)
 ```
 
@@ -394,7 +395,29 @@ of `MIN_ATTESTATION_INCLUSION_DELAY` is one, but it might change.
 processes the attestation and returns the result.
 
 
+### Adding an Attestation Test
 
+Attestations can't happen in the same block as the one about which they are attesting, or in a block that is
+after the block is finalized. This is specified as part of the specs, in the `process_attestation` function
+(which is created from the spec by the `make pyspec` command you ran earlier). Here is the relevant code
+fragment:
+
+
+```python
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    data = attestation.data
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
+    ...
+```
+
+In the last line you can see two conditions being asserted:
+
+1. `data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot` which verifies that the attestation doesn't
+   arrive too early.
+1. `state.slot <= data.slot + SLOTS_PER_EPOCH` which verifies that the attestation doesn't
+   arrive too late.
 
 
 
