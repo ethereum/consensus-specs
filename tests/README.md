@@ -477,6 +477,10 @@ All the clients know how to use tests in the format.
 
 To actually see the process end to end we are going to use [this client](https://github.com/protolambda/zrnt).
 
+1. Convert a test into the test specifications format
+1. Install ZRNT
+1. Run a test on ZRNT
+
 <!--
 
 
