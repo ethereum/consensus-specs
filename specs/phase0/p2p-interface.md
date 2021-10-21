@@ -179,6 +179,7 @@ This section outlines constants that are used in this spec.
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
+| `MAXIMUM_CONCURRENT_REQUESTS` | `2` | The maximum number of parallel requests waiting for response per message type |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `0x00000000` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `0x01000000` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
 
@@ -534,6 +535,12 @@ A requester SHOULD read from the stream until either:
 
 For requests consisting of a single valid `response_chunk`,
 the requester SHOULD read the chunk fully, as defined by the `encoding-dependent-header`, before closing the stream.
+
+The requesting side should bind its request rate by limiting the number of concurrent requests to 
+`MAXIMUM_CONCURRENT_REQUESTS` on per request type basis. 
+I.e. a requester MUST NOT send another request if it still awaits responses for previous 
+`MAXIMUM_CONCURRENT_REQUESTS` requests of the same type. Else it is subject to be disconnected and downscored 
+by the remote party.
 
 #### Responding side
 
