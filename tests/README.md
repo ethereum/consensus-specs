@@ -465,13 +465,19 @@ https://ethos.dev/beacon-chain/
 
 ## How are These Tests Used?
 
-They are incorporated into https://github.com/ethereum/eth2.0-spec-tests, and client teams know how to test them.
+So far we've ran tests against the formal specifications. This is a way to check the specifications
+are what we expect, but it doesn't actually check the beacon chain clients. The way these tests get applied
+by clients is that every few days 
+[new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
+in a format [documented here](https://github.com/ethereum/consensus-specs/tree/dev/tests/formats).
+All the clients know how to use tests in the format. 
 
-https://github.com/protolambda/zrnt#testing
+
+### Example
+
+To actually see the process end to end we are going to use [this client](https://github.com/protolambda/zrnt).
 
 <!--
-
-Beacon chain has operations (such as attestation, deposit). It deals with core consensus
 
 
 See if I can rename single_phase
