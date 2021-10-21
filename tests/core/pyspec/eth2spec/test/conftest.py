@@ -49,6 +49,15 @@ def pytest_addoption(parser):
     )
 
 
+def _validate_fork_name(forks):
+    for fork in forks:
+        if fork not in ALL_PHASES:
+            raise ValueError(
+                f'The given --fork argument "{fork}" is not an available fork.'
+                f' The available forks: {ALL_PHASES}'
+            )
+
+
 @fixture(autouse=True)
 def preset(request):
     context.DEFAULT_TEST_PRESET = request.config.getoption("--preset")
@@ -56,10 +65,11 @@ def preset(request):
 
 @fixture(autouse=True)
 def run_phases(request):
-    phases = request.config.getoption("--fork")
-    if phases:
-        phases = [phase.lower() for phase in phases]
-        context.DEFAULT_PYTEST_FORKS = set(phases)
+    forks = request.config.getoption("--fork", default=None)
+    if forks:
+        forks = [fork.lower() for fork in forks]
+        _validate_fork_name(forks)
+        context.DEFAULT_PYTEST_FORKS = set(forks)
     else:
         context.DEFAULT_PYTEST_FORKS = ALL_PHASES
 
