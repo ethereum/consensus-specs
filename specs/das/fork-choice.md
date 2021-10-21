@@ -37,7 +37,7 @@ def get_new_dependencies(state: BeaconState) -> Set[DataCommitment]:
 
 ```python
 def get_all_dependencies(store: Store, block: BeaconBlock) -> Set[DataCommitment]:
-    if compute_epoch_at_slot(block.slot) < SHARDING_FORK_EPOCH:
+    if compute_epoch_at_slot(block.slot) <= store.finalized_checkpoint.epoch:
         return set()
     else:
         latest = get_new_dependencies(store.block_states[hash_tree_root(block)])
