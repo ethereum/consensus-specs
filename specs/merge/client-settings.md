@@ -18,11 +18,12 @@ This document specifies configurable settings that clients must implement for th
 
 To coordinate manual overrides to [`TERMINAL_TOTAL_DIFFICULTY`](./beacon-chain.md#Transition-settings) parameter, clients must provide `--terminal-total-difficulty-override` as a configurable setting. The value provided by this setting must take precedence over pre-configured `TERMINAL_TOTAL_DIFFICULTY` parameter. Clients should accept the setting as a decimal value (i.e., *not* hexadecimal).
 
-Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
+Except under exceptional scenarios, this setting is not expected to be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
 
 ### Override terminal block hash
 
-To allow for transition coordination around a specific PoW block, clients must also provide `--terminal-block-hash-override` as a configurable setting.
-The value provided by this setting takes precedence over the pre-configured `TERMINAL_BLOCK_HASH` parameter.
+To allow for transition coordination around a specific PoW block, clients must also provide `--terminal-block-hash-override` and `--terminal-block-hash-epoch-override` as configurable settings.
+* The value provided by `--terminal-block-hash-override` takes precedence over the pre-configured `TERMINAL_BLOCK_HASH` parameter.
+* The value provided by `--terminal-block-hash-epoch-override` takes precedence over the pre-configured `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` parameter.
 
-Except under exceptional scenarios, this setting is expected to not be used. Sufficient warning to the user about this exceptional configurable setting should be provided.
+Except under exceptional scenarios, these settings are not expected to be used. Sufficient warning to the user about this exceptional configurable setting should be provided.

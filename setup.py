@@ -497,7 +497,7 @@ class MergeSpecBuilder(AltairSpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
-from eth2spec.utils.ssz.ssz_typing import Bytes20, ByteList, ByteVector, uint256, Union
+from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector, uint256
 '''
 
     @classmethod
@@ -527,15 +527,11 @@ class NoopExecutionEngine(ExecutionEngine):
     def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
         return True
 
-    def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
+    def notify_forkchoice_updated(self: ExecutionEngine,
+                                  head_block_hash: Hash32,
+                                  finalized_block_hash: Hash32,
+                                  payload_attributes: Optional[PayloadAttributes]) -> None:
         pass
-
-    def prepare_payload(self: ExecutionEngine,
-                        parent_hash: Hash32,
-                        timestamp: uint64,
-                        random: Bytes32,
-                        feeRecipient: ExecutionAddress) -> PayloadId:
-        raise NotImplementedError("no default block production")
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
         raise NotImplementedError("no default block production")
@@ -547,7 +543,7 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
     @classmethod
     def hardcoded_custom_type_dep_constants(cls) -> str:
         constants = {
-            'MAX_BYTES_PER_OPAQUE_TRANSACTION': 'uint64(2**20)',
+            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**20)',
         }
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
@@ -603,7 +599,7 @@ def objects_to_spec(preset_name: str,
 
     # Access global dict of config vars for runtime configurables
     for name in spec_object.config_vars.keys():
-        functions_spec = functions_spec.replace(name, 'config.' + name)
+        functions_spec = re.sub(r"\b%s\b" % name, 'config.' + name, functions_spec)
 
     def format_config_var(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:
@@ -683,7 +679,7 @@ def combine_dicts(old_dict: Dict[str, T], new_dict: Dict[str, T]) -> Dict[str, T
 
 ignored_dependencies = [
     'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature',
-    'Bytes1', 'Bytes4', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
+    'Bytes1', 'Bytes4', 'Bytes8', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
@@ -1021,7 +1017,7 @@ setup(
         "py_ecc==5.2.0",
         "milagro_bls_binding==1.6.3",
         "dataclasses==0.6",
-        "remerkleable==0.1.22",
+        "remerkleable==0.1.24",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.6",
         MARKO_VERSION,

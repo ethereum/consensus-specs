@@ -50,8 +50,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `OpaqueTransaction` | `ByteList[MAX_BYTES_PER_OPAQUE_TRANSACTION]` | a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) structured as `TransactionType \|\| TransactionPayload` |
-| `Transaction` | `Union[OpaqueTransaction]` | a transaction |
+| `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction|
 | `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
 
 ## Constants
@@ -60,7 +59,7 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 
 | Name | Value |
 | - | - |
-| `MAX_BYTES_PER_OPAQUE_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
+| `MAX_BYTES_PER_TRANSACTION` | `uint64(2**20)` (= 1,048,576) |
 | `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**14)` (= 16,384) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
@@ -74,7 +73,8 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | Name | Value |
 | - | - |
 | `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
-| `TERMINAL_BLOCK_HASH` | `Hash32('0x0000000000000000000000000000000000000000000000000000000000000000')` |
+| `TERMINAL_BLOCK_HASH` | `Hash32()` |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
 
 ## Containers
 

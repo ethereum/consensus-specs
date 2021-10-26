@@ -12,6 +12,7 @@
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
+  - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
@@ -43,14 +44,33 @@ This function performs two actions *atomically*:
 * Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
 and corresponding state, up to and including `finalized_block_hash`.
 
+Additionally, if `payload_attributes` is provided, this function sets in motion a payload build process on top of
+`head_block_hash` with the result to be gathered by a followup call to  `get_payload`.
+
 ```python
-def notify_forkchoice_updated(self: ExecutionEngine, head_block_hash: Hash32, finalized_block_hash: Hash32) -> None:
+def notify_forkchoice_updated(self: ExecutionEngine,
+                              head_block_hash: Hash32,
+                              finalized_block_hash: Hash32,
+                              payload_attributes: Optional[PayloadAttributes]) -> None:
     ...
 ```
 
 *Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
+As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice_updated` must be called with `finalized_block_hash = Hash32()`.
 
 ## Helpers
+
+### `PayloadAttributes`
+
+Used to signal to initiate the payload build process via `notify_forkchoice_updated`.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    random: Bytes32
+    fee_recipient: ExecutionAddress
+```
 
 ### `PowBlock`
 
@@ -75,8 +95,8 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
-    if block.block_hash == TERMINAL_BLOCK_HASH:
-        return True
+    if TERMINAL_BLOCK_HASH != Hash32():
+        return block.block_hash == TERMINAL_BLOCK_HASH
 
     is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
     is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
@@ -117,6 +137,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Merge]
     if is_merge_block(pre_state, block.body):
+        # Check the parent PoW block of execution payload is a valid terminal PoW block.
         # Note: unavailable PoW block(s) may later become available.
         # Nodes should queue such beacon blocks for later processing.
         pow_block = get_pow_block(block.body.execution_payload.parent_hash)
@@ -124,6 +145,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         pow_parent = get_pow_block(pow_block.parent_hash)
         assert pow_parent is not None
         assert is_valid_terminal_pow_block(pow_block, pow_parent)
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        if TERMINAL_BLOCK_HASH != Hash32():
+            assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
 
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
