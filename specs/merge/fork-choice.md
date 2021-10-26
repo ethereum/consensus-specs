@@ -114,7 +114,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     """
     Run ``on_block`` upon receiving a new block.
 
-    An block that is asserted as invalid due to unavailable PoW block may be valid at a later time,
+    A block that is asserted as invalid due to unavailable PoW block may be valid at a later time,
     consider scheduling it for later processing in such case.
     """
     block = signed_block.message
