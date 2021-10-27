@@ -275,10 +275,38 @@ def test_invalid_current_source_root(spec, state):
     state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
     state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32' * 32)
 
-    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    attestation = get_valid_attestation(spec, state, slot=spec.SLOTS_PER_EPOCH * 5)
+
+    # Test logic sanity checks:
+    assert attestation.data.target.epoch == spec.get_current_epoch(state)
+    assert state.current_justified_checkpoint.root != state.previous_justified_checkpoint.root
+    assert attestation.data.source.root == state.current_justified_checkpoint.root
+
+    # Make attestation source root invalid: should be current justified, not previous one
+    attestation.data.source.root = state.previous_justified_checkpoint.root
+
+    sign_attestation(spec, state, attestation)
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_invalid_previous_source_root(spec, state):
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 5)
+
+    state.finalized_checkpoint.epoch = 2
+
+    state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
+    state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32' * 32)
+
+    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 4) + 1)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Test logic sanity checks:
+    assert attestation.data.target.epoch == spec.get_previous_epoch(state)
     assert state.current_justified_checkpoint.root != state.previous_justified_checkpoint.root
     assert attestation.data.source.root == state.previous_justified_checkpoint.root
 
