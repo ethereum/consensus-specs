@@ -27,6 +27,8 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 - [Design decision rationale](#design-decision-rationale)
   - [Gossipsub](#gossipsub)
     - [Why was the max gossip message size increased at the Merge?](#why-was-the-max-gossip-message-size-increased-at-the-merge)
+  - [Req/Resp](#reqresp)
+    - [Why was the max chunk response size increased at the Merge?](#why-was-the-max-chunk-response-size-increased-at-the-merge)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -44,7 +46,8 @@ This section outlines modifications constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `GOSSIP_MAX_SIZE_MERGE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at the Merge upgrade |
+| `GOSSIP_MAX_SIZE_MERGE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at the Merge upgrade. |
+| `MAX_CHUNK_SIZE_MERGE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses starting at the Merge upgrade. |
 
 ## The gossip domain: gossipsub
 
@@ -108,7 +111,12 @@ details on how to handle transitioning gossip topics for the Merge.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-Request and Response remain unchanged.
+Request and Response remain unchanged unless explicitly noted here.
+
+Starting at the Merge upgrade,
+a global maximum uncompressed byte size of `MAX_CHUNK_SIZE_MERGE` MUST be applied to all method response chunks
+regardless of type specific bounds that *MUST* also be respected.
+
 The Merge fork-digest is introduced to the `context` enum to specify the Merge block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
@@ -164,3 +172,17 @@ slightly lower than 10 MiB. Considering that `BeaconBlock` max size is on the
 order of 128 KiB in the worst case and the current gas limit (~30M) bounds max blocksize to less
 than 2 MiB today, this marginal difference in theoretical bounds will have zero
 impact on network functionality and security.
+
+## Req/Resp
+
+### Why was the max chunk response size increased at the Merge?
+
+Similar to the discussion about the maximum gossip size increase, the
+`ExecutionPayload` type can cause `BeaconBlock`s to exceed the 1 MiB bounds put
+in place during Phase 0.
+
+As with the gossip limit, 10 MiB is selected because this is firmly below any
+valid block sizes in the range of gas limits expected in the medium term.
+
+As with both gossip and req/rsp maximum values, type-specific limits should
+always by simultaneously respected.
