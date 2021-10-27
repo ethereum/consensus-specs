@@ -49,10 +49,10 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 ### `get_pow_block_at_terminal_total_difficulty`
 
 ```python
-def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain:
-        parent = get_pow_block(block.parent_hash)
+        parent = pow_chain[block.parent_hash]
         block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
         parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
         if block_reached_ttd and not parent_reached_ttd:
@@ -64,13 +64,13 @@ def get_pow_block_at_terminal_total_difficulty(pow_chain: Sequence[PowBlock]) ->
 ### `get_terminal_pow_block`
 
 ```python
-def get_terminal_pow_block(pow_chain: Sequence[PowBlock]) -> Optional[PowBlock]:
+def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
     if TERMINAL_BLOCK_HASH != Hash32():
         # Terminal block hash override takes precedence over terminal total difficulty
-        pow_block_overrides = [block for block in pow_chain if block.block_hash == TERMINAL_BLOCK_HASH]
-        if not any(pow_block_overrides):
+        if TERMINAL_BLOCK_HASH in pow_chain:
+            return pow_chain[TERMINAL_BLOCK_HASH]
+        else:
             return None
-        return pow_block_overrides[0]
 
     return get_pow_block_at_terminal_total_difficulty(pow_chain)
 ```
@@ -132,14 +132,14 @@ To obtain an execution payload, a block proposer building a block on top of a `s
 
 1. Set `payload_id = prepare_execution_payload(state, pow_chain, finalized_block_hash, fee_recipient, execution_engine)`, where:
     * `state` is the state object after applying `process_slots(state, slot)` transition to the resulting state of the parent block processing
-    * `pow_chain` is a list that abstractly represents all blocks in the PoW chain
+    * `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly represents all blocks in the PoW chain with block hash as the dictionary key
     * `finalized_block_hash` is the hash of the latest finalized execution payload (`Hash32()` if none yet finalized)
     * `fee_recipient` is the value suggested to be used for the `coinbase` field of the execution payload
 
 
 ```python
 def prepare_execution_payload(state: BeaconState,
-                              pow_chain: Sequence[PowBlock],
+                              pow_chain: Dict[Hash32, PowBlock],
                               finalized_block_hash: Hash32,
                               fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
