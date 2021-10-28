@@ -334,7 +334,7 @@ Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_
 
 ###### `get_eth1_data`
 
-Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and depost contract data available.
+Let `Eth1Block` be an abstract object representing Eth1 blocks with the `timestamp` and deposit contract data available.
 
 Let `get_eth1_data(block: Eth1Block) -> Eth1Data` be the function that returns the Eth1 data for a given Eth1 block.
 
