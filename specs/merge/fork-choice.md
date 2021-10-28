@@ -111,14 +111,15 @@ def validate_merge_block(block: BeaconBlock) -> None:
     """
     Check the parent PoW block of execution payload is a valid terminal PoW block.
 
-    Note: Unavailable PoW block(s) may later become available and a client software MAY delay
-    a call to ``validate_merge_block`` until the PoW block(s) become available.
+    Note: Unavailable PoW block(s) may later become available,
+    and a client software MAY delay a call to ``validate_merge_block``
+    until the PoW block(s) become available.
     """
     pow_block = get_pow_block(block.body.execution_payload.parent_hash)
-    # Check if `pow_block` is unavailable
+    # Check if `pow_block` is available
     assert pow_block is not None
     pow_parent = get_pow_block(pow_block.parent_hash)
-    # Check if `pow_parent` is unavailable
+    # Check if `pow_parent` is available
     assert pow_parent is not None
     # Check if `pow_block` is a valid terminal PoW block
     assert is_valid_terminal_pow_block(pow_block, pow_parent)
