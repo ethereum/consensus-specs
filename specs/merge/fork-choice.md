@@ -16,6 +16,7 @@
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
+  - [`validate_merge_block`](#validate_merge_block)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -84,7 +85,8 @@ class PowBlock(Container):
 
 ### `get_pow_block`
 
-Let `get_pow_block(block_hash: Hash32) -> PowBlock` be the function that given the hash of the PoW block returns its data.
+Let `get_pow_block(block_hash: Hash32) -> Optional[PowBlock]` be the function that given the hash of the PoW block returns its data.
+It may result in `None` if the requested block is not yet available.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this information from an execution client.
 
@@ -102,6 +104,31 @@ def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
     return is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
+### `validate_merge_block`
+
+```python
+def validate_merge_block(block: BeaconBlock) -> None:
+    """
+    Check the parent PoW block of execution payload is a valid terminal PoW block.
+
+    Note: Unavailable PoW block(s) may later become available,
+    and a client software MAY delay a call to ``validate_merge_block``
+    until the PoW block(s) become available.
+    """
+    pow_block = get_pow_block(block.body.execution_payload.parent_hash)
+    # Check if `pow_block` is available
+    assert pow_block is not None
+    pow_parent = get_pow_block(pow_block.parent_hash)
+    # Check if `pow_parent` is available
+    assert pow_parent is not None
+    # Check if `pow_block` is a valid terminal PoW block
+    assert is_valid_terminal_pow_block(pow_block, pow_parent)
+
+    # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+    if TERMINAL_BLOCK_HASH != Hash32():
+        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+```
+
 ## Updated fork-choice handlers
 
 ### `on_block`
@@ -110,6 +137,12 @@ def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    """
+    Run ``on_block`` upon receiving a new block.
+
+    A block that is asserted as invalid due to unavailable PoW block may be valid at a later time,
+    consider scheduling it for later processing in such case.
+    """
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
@@ -130,13 +163,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Merge]
     if is_merge_block(pre_state, block.body):
-        # Check the parent PoW block of execution payload is a valid terminal PoW block.
-        pow_block = get_pow_block(block.body.execution_payload.parent_hash)
-        pow_parent = get_pow_block(pow_block.parent_hash)
-        assert is_valid_terminal_pow_block(pow_block, pow_parent)
-        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-        if TERMINAL_BLOCK_HASH != Hash32():
-            assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        validate_merge_block(block)
 
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
