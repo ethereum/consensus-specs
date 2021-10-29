@@ -12,6 +12,8 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Preset](#preset)
+  - [Updated penalty values](#updated-penalty-values)
 - [Configuration](#configuration)
   - [Transition settings](#transition-settings)
 - [Containers](#containers)
@@ -28,13 +30,19 @@
     - [`is_execution_enabled`](#is_execution_enabled)
   - [Misc](#misc)
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [`execute_payload`](#execute_payload)
   - [Block processing](#block-processing)
-  - [Execution payload processing](#execution-payload-processing)
-    - [`is_valid_gas_limit`](#is_valid_gas_limit)
-    - [`process_execution_payload`](#process_execution_payload)
+    - [Execution payload](#execution-payload)
+      - [`is_valid_gas_limit`](#is_valid_gas_limit)
+      - [`process_execution_payload`](#process_execution_payload)
+  - [Epoch processing](#epoch-processing)
+    - [Slashings](#slashings)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -65,6 +73,20 @@ This patch adds transaction execution to the beacon chain as part of the Merge f
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
 | `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
+
+## Preset
+
+### Updated penalty values
+
+The Merge updates a few configuration values to move penalty parameters to their final, maximum security values.
+
+*Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
+
+| Name | Value |
+| - | - |
+| `INACTIVITY_PENALTY_QUOTIENT_MERGE` | `uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_MERGE` | `uint64(2**5)` (= 32) |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_MERGE` | `uint64(3)` |
 
 ## Configuration
 
@@ -223,6 +245,62 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
     return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
 ```
 
+### Beacon state accessors
+
+#### Modified `get_inactivity_penalty_deltas`
+
+*Note*: The function `get_inactivity_penalty_deltas` is modified to use `INACTIVITY_PENALTY_QUOTIENT_MERGE`.
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
+    """
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    previous_epoch = get_previous_epoch(state)
+    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
+    for index in get_eligible_validator_indices(state):
+        if index not in matching_target_indices:
+            penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_MERGE
+            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+    return rewards, penalties
+```
+
+### Beacon state mutators
+
+#### Modified `slash_validator`
+
+*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_MERGE`.
+
+```python
+def slash_validator(state: BeaconState,
+                    slashed_index: ValidatorIndex,
+                    whistleblower_index: ValidatorIndex=None) -> None:
+    """
+    Slash the validator with index ``slashed_index``.
+    """
+    epoch = get_current_epoch(state)
+    initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
+    validator.slashed = True
+    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_MERGE)
+
+    # Apply proposer and whistleblower rewards
+    proposer_index = get_beacon_proposer_index(state)
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
+```
+
+
+
 ## Beacon chain state transition function
 
 ### Execution engine
@@ -262,9 +340,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-### Execution payload processing
+#### Execution payload
 
-#### `is_valid_gas_limit`
+##### `is_valid_gas_limit`
 
 ```python
 def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> bool:
@@ -287,7 +365,7 @@ def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader
     return True
 ```
 
-#### `process_execution_payload`
+##### `process_execution_payload`
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
@@ -320,6 +398,25 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
     )
+```
+
+### Epoch processing
+
+#### Slashings
+
+*Note*: The function `process_slashings` is modified to use `PROPORTIONAL_SLASHING_MULTIPLIER_MERGE`.
+
+```python
+def process_slashings(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
+    total_balance = get_total_active_balance(state)
+    adjusted_total_slashing_balance = min(sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_MERGE, total_balance)
+    for index, validator in enumerate(state.validators):
+        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
+            penalty_numerator = validator.effective_balance // increment * adjusted_total_slashing_balance
+            penalty = penalty_numerator // total_balance * increment
+            decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
 ## Testing

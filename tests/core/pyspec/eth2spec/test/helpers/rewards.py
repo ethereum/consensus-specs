@@ -2,7 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
-from eth2spec.test.context import is_post_altair
+from eth2spec.test.context import is_post_altair, is_post_merge
 from eth2spec.test.helpers.state import (
     next_epoch,
 )
@@ -19,6 +19,15 @@ from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
 class Deltas(Container):
     rewards: List[uint64, VALIDATOR_REGISTRY_LIMIT]
     penalties: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+
+
+def get_inactivity_penalty_quotient(spec):
+    if is_post_merge(spec):
+        return spec.INACTIVITY_PENALTY_QUOTIENT_MERGE
+    elif is_post_altair(spec):
+        return spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+    else:
+        return spec.INACTIVITY_PENALTY_QUOTIENT
 
 
 def has_enough_for_reward(spec, state, index):
@@ -45,7 +54,7 @@ def has_enough_for_leak_penalty(spec, state, index):
     if is_post_altair(spec):
         return (
             state.validators[index].effective_balance * state.inactivity_scores[index]
-            > spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+            > spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
         )
     else:
         return (
@@ -266,7 +275,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
                 else:
                     # copied from spec:
                     penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-                    penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+                    penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
                     assert penalties[index] == penalty_numerator // penalty_denominator
 
 
