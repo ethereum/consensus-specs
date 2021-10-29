@@ -39,7 +39,6 @@
     - [`execute_payload`](#execute_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
-      - [`is_valid_gas_limit`](#is_valid_gas_limit)
       - [`process_execution_payload`](#process_execution_payload)
   - [Epoch processing](#epoch-processing)
     - [Slashings](#slashings)
@@ -347,39 +346,15 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Execution payload
 
-##### `is_valid_gas_limit`
-
-```python
-def is_valid_gas_limit(payload: ExecutionPayload, parent: ExecutionPayloadHeader) -> bool:
-    parent_gas_limit = parent.gas_limit
-
-    # Check if the payload used too much gas
-    if payload.gas_used > payload.gas_limit:
-        return False
-
-    # Check if the payload changed the gas limit too much
-    if payload.gas_limit >= parent_gas_limit + parent_gas_limit // GAS_LIMIT_DENOMINATOR:
-        return False
-    if payload.gas_limit <= parent_gas_limit - parent_gas_limit // GAS_LIMIT_DENOMINATOR:
-        return False
-
-    # Check if the gas limit is at least the minimum gas limit
-    if payload.gas_limit < MIN_GAS_LIMIT:
-        return False
-
-    return True
-```
-
 ##### `process_execution_payload`
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash, block number, base fee per gas and gas limit
+    # Verify consistency of the parent hash and block number
     # with respect to the previous execution payload header
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
-        assert is_valid_gas_limit(payload, state.latest_execution_payload_header)
     # Verify random
     assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
