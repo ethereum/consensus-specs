@@ -1,12 +1,15 @@
 import random
 from eth2spec.test.context import (
-    MINIMAL,
-    fork_transition_test,
+    ForkMeta,
+    with_fork_metas,
     with_presets,
 )
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.helpers.constants import (
+    ALL_FORKS,
+    MINIMAL,
+)
 from eth2spec.test.helpers.fork_transition import (
-    do_altair_fork,
+    do_fork,
     transition_to_next_epoch_and_append_blocks,
     transition_until_fork,
 )
@@ -15,7 +18,7 @@ from eth2spec.test.helpers.random import (
 )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=1)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=1) for pre, post in ALL_FORKS.items()])
 @with_presets([MINIMAL],
               reason="only test with enough validators such that at least one exited index is not in sync committee")
 def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
@@ -45,7 +48,7 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(state,
     yield "pre", state
 
     # irregular state transition to handle fork:
-    state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+    state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
     # ensure that some of the current sync committee members are slashed
     slashed_pubkeys = [state.validators[index].pubkey for index in slashed_indices]

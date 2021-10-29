@@ -21,6 +21,11 @@ TESTGEN_FORKS = (PHASE0, ALTAIR, MERGE)
 
 FORKS_BEFORE_ALTAIR = (PHASE0,)
 FORKS_BEFORE_MERGE = (PHASE0, ALTAIR)
+ALL_FORKS = {
+    # pre_fork_name: post_fork_name
+    PHASE0: ALTAIR,
+    ALTAIR: MERGE,
+}
 
 #
 # Config

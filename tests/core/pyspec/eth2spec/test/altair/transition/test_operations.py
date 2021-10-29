@@ -1,8 +1,13 @@
 from eth2spec.test.context import (
+    ForkMeta,
     always_bls,
-    fork_transition_test,
+    with_fork_metas,
+    with_presets,
 )
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.helpers.constants import (
+    ALL_FORKS,
+    MINIMAL,
+)
 from eth2spec.test.helpers.fork_transition import (
     OperationType,
     run_transition_with_operation,
@@ -13,7 +18,7 @@ from eth2spec.test.helpers.fork_transition import (
 # PROPOSER_SLASHING
 #
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 @always_bls
 def test_transition_with_proposer_slashing_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
@@ -31,7 +36,7 @@ def test_transition_with_proposer_slashing_right_after_fork(state, fork_epoch, s
     )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 @always_bls
 def test_transition_with_proposer_slashing_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
@@ -54,7 +59,7 @@ def test_transition_with_proposer_slashing_right_before_fork(state, fork_epoch, 
 #
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 @always_bls
 def test_transition_with_attester_slashing_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
@@ -72,7 +77,7 @@ def test_transition_with_attester_slashing_right_after_fork(state, fork_epoch, s
     )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 @always_bls
 def test_transition_with_attester_slashing_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
@@ -95,7 +100,7 @@ def test_transition_with_attester_slashing_right_before_fork(state, fork_epoch, 
 #
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_with_deposit_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create a deposit right *after* the transition
@@ -112,7 +117,7 @@ def test_transition_with_deposit_right_after_fork(state, fork_epoch, spec, post_
     )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_with_deposit_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create a deposit right *before* the transition
@@ -134,11 +139,12 @@ def test_transition_with_deposit_right_before_fork(state, fork_epoch, spec, post
 #
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=260)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66) for pre, post in ALL_FORKS.items()])
+@with_presets([MINIMAL], reason="too slow")
 def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create a voluntary exit right *after* the transition.
-    fork_epoch=260 because mainnet `SHARD_COMMITTEE_PERIOD` is 256 epochs.
+    fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
     state.slot = spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -155,11 +161,12 @@ def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec
     )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=260)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66) for pre, post in ALL_FORKS.items()])
+@with_presets([MINIMAL], reason="too slow")
 def test_transition_with_voluntary_exit_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create a voluntary exit right *before* the transition.
-    fork_epoch=260 because mainnet `SHARD_COMMITTEE_PERIOD` is 256 epochs.
+    fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
     state.slot = spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH

@@ -1,5 +1,7 @@
 import pytest
 from copy import deepcopy
+from dataclasses import dataclass
+
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
 from eth2spec.merge import mainnet as spec_merge_mainnet, minimal as spec_merge_minimal
@@ -7,12 +9,16 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    SpecForkName, PresetBaseName,
     PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
+    ALL_FORKS,
 )
+from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
-from .utils import vector_test, with_meta_tags, build_transition_test
+from .utils import (
+    vector_test,
+    with_meta_tags,
+)
 
 from random import Random
 from typing import Any, Callable, Sequence, TypedDict, Protocol, Dict
@@ -48,6 +54,13 @@ class SpecAltair(Spec):
 
 class SpecMerge(Spec):
     ...
+
+
+@dataclass(frozen=True)
+class ForkMeta:
+    pre_fork_name: str
+    post_fork_name: str
+    fork_epoch: int
 
 
 spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
@@ -86,7 +99,6 @@ _custom_state_cache_dict = LRU(size=10)
 def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
                       threshold_fn: Callable[[Any], int]):
     def deco(fn):
-
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
             key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
@@ -104,7 +116,7 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
     return deco
 
 
-def default_activation_threshold(spec):
+def default_activation_threshold(spec: Spec):
     """
     Helper method to use the default balance activation threshold for state creation for tests.
     Usage: `@with_custom_state(threshold_fn=default_activation_threshold, ...)`
@@ -112,7 +124,7 @@ def default_activation_threshold(spec):
     return spec.MAX_EFFECTIVE_BALANCE
 
 
-def zero_activation_threshold(spec):
+def zero_activation_threshold(spec: Spec):
     """
     Helper method to use 0 gwei as the activation threshold for state creation for tests.
     Usage: `@with_custom_state(threshold_fn=zero_activation_threshold, ...)`
@@ -120,7 +132,7 @@ def zero_activation_threshold(spec):
     return 0
 
 
-def default_balances(spec):
+def default_balances(spec: Spec):
     """
     Helper method to create a series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
@@ -129,7 +141,7 @@ def default_balances(spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
-def scaled_churn_balances(spec):
+def scaled_churn_balances(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
@@ -143,7 +155,7 @@ def scaled_churn_balances(spec):
 with_state = with_custom_state(default_balances, default_activation_threshold)
 
 
-def low_balances(spec):
+def low_balances(spec: Spec):
     """
     Helper method to create a series of low balances.
     Usage: `@with_custom_state(balances_fn=low_balances, ...)`
@@ -154,7 +166,7 @@ def low_balances(spec):
     return [low_balance] * num_validators
 
 
-def misc_balances(spec):
+def misc_balances(spec: Spec):
     """
     Helper method to create a series of balances that includes some misc. balances.
     Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
@@ -166,7 +178,7 @@ def misc_balances(spec):
     return balances
 
 
-def misc_balances_in_default_range_with_many_validators(spec):
+def misc_balances_in_default_range_with_many_validators(spec: Spec):
     """
     Helper method to create a series of balances that includes some misc. balances but
     none that are below the ``EJECTION_BALANCE``.
@@ -182,7 +194,7 @@ def misc_balances_in_default_range_with_many_validators(spec):
     return balances
 
 
-def low_single_balance(spec):
+def low_single_balance(spec: Spec):
     """
     Helper method to create a single of balance of 1 Gwei.
     Usage: `@with_custom_state(balances_fn=low_single_balance, ...)`
@@ -190,7 +202,7 @@ def low_single_balance(spec):
     return [1]
 
 
-def large_validator_set(spec):
+def large_validator_set(spec: Spec):
     """
     Helper method to create a large series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
@@ -347,6 +359,66 @@ def with_all_phases_except(exclusion_phases):
     return decorator
 
 
+def _get_preset_targets(kw):
+    preset_name = DEFAULT_TEST_PRESET
+    if 'preset' in kw:
+        preset_name = kw.pop('preset')
+    return spec_targets[preset_name]
+
+
+def _get_run_phases(phases, kw):
+    """
+    Return the fork names for the base `spec` in test cases
+    """
+    if 'phase' in kw:
+        # Limit phases if one explicitly specified
+        phase = kw.pop('phase')
+        if phase not in phases:
+            dump_skipping_message(f"doesn't support this fork: {phase}")
+            return None
+        run_phases = [phase]
+    else:
+        # If pytest `--fork` flag is set, filter out the rest forks
+        run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
+
+    return run_phases
+
+
+def _get_available_phases(run_phases, other_phases):
+    """
+    The return the available fork names for multi-phase tests
+    """
+    available_phases = set(run_phases)
+    if other_phases is not None:
+        available_phases |= set(other_phases)
+    return available_phases
+
+
+def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_transition=False):
+    run_phases = _get_run_phases(phases, kw)
+
+    if len(run_phases) == 0:
+        if not is_fork_transition:
+            dump_skipping_message("none of the recognized phases are executable, skipping test.")
+        return None
+
+    available_phases = _get_available_phases(run_phases, other_phases)
+
+    targets = _get_preset_targets(kw)
+
+    # Populate all phases for multi-phase tests
+    phase_dir = {}
+    for phase in available_phases:
+        phase_dir[phase] = targets[phase]
+
+    # Return is ignored whenever multiple phases are ran.
+    # This return is for test generators to emit python generators (yielding test vector outputs)
+    for phase in run_phases:
+        ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+
+    return ret
+
+
 def with_phases(phases, other_phases=None):
     """
     Decorator factory that returns a decorator that runs a test for the appropriate phases.
@@ -354,49 +426,24 @@ def with_phases(phases, other_phases=None):
     """
     def decorator(fn):
         def wrapper(*args, **kw):
-            run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
-
-            # limit phases if one explicitly specified
-            if 'phase' in kw:
-                phase = kw.pop('phase')
-                if phase not in phases:
-                    dump_skipping_message(f"doesn't support this fork: {phase}")
-                    return None
-                run_phases = [phase]
-
-            if PHASE0 not in run_phases and ALTAIR not in run_phases and MERGE not in run_phases:
-                dump_skipping_message("none of the recognized phases are executable, skipping test.")
-                return None
-
-            available_phases = set(run_phases)
-            if other_phases is not None:
-                available_phases |= set(other_phases)
-
-            preset_name = DEFAULT_TEST_PRESET
-            if 'preset' in kw:
-                preset_name = kw.pop('preset')
-            targets = spec_targets[preset_name]
-
-            # Populate all phases for multi-phase tests
-            phase_dir = {}
-            if PHASE0 in available_phases:
-                phase_dir[PHASE0] = targets[PHASE0]
-            if ALTAIR in available_phases:
-                phase_dir[ALTAIR] = targets[ALTAIR]
-            if MERGE in available_phases:
-                phase_dir[MERGE] = targets[MERGE]
-
-            # return is ignored whenever multiple phases are ran.
-            # This return is for test generators to emit python generators (yielding test vector outputs)
-            if PHASE0 in run_phases:
-                ret = fn(spec=targets[PHASE0], phases=phase_dir, *args, **kw)
-            if ALTAIR in run_phases:
-                ret = fn(spec=targets[ALTAIR], phases=phase_dir, *args, **kw)
-            if MERGE in run_phases:
-                ret = fn(spec=targets[MERGE], phases=phase_dir, *args, **kw)
-
-            # TODO: merge, sharding, custody_game and das are not executable yet.
-            #  Tests that specify these features will not run, and get ignored for these specific phases.
+            if 'fork_metas' in kw:
+                fork_metas = kw.pop('fork_metas')
+                if 'phase' in kw:
+                    # When running test generator, it sets specific `phase`
+                    phase = kw['phase']
+                    _phases = [phase]
+                    _other_phases = [ALL_FORKS[phase]]
+                    ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
+                else:
+                    # When running pytest, go through `fork_metas`
+                    for fork_meta in fork_metas:
+                        pre_fork_name = fork_meta.pre_fork_name
+                        post_fork_name = fork_meta.post_fork_name
+                        _phases = [pre_fork_name]
+                        _other_phases = [post_fork_name]
+                        ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
+            else:
+                ret = _run_test_case_with_phases(fn, phases, other_phases, kw, args)
             return ret
         return wrapper
     return decorator
@@ -481,10 +528,25 @@ def only_generator(reason):
     return _decorator
 
 
-def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):
+#
+# Fork transition state tests
+#
+
+
+def set_fork_metas(fork_metas: Sequence[ForkMeta]):
+    def decorator(fn):
+        def wrapper(*args, **kwargs):
+            return fn(*args, fork_metas=fork_metas, **kwargs)
+        return wrapper
+    return decorator
+
+
+def with_fork_metas(fork_metas: Sequence[ForkMeta]):
     """
-    A decorator to construct a "transition" test from one fork of the eth2 spec
-    to another.
+    A decorator to construct a "transition" test from one fork to another.
+
+    Decorator takes a list of `ForkMeta` and each item defines `pre_fork_name`,
+    `post_fork_name`, and `fork_epoch`.
 
     Decorator assumes a transition from the `pre_fork_name` fork to the
     `post_fork_name` fork. The user can supply a `fork_epoch` at which the
@@ -502,15 +564,62 @@ def fork_transition_test(pre_fork_name, post_fork_name, fork_epoch=None):
     `post_tag`: a function to tag data as belonging to `post_fork_name` fork.
         Used to discriminate data during consumption of the generated spec tests.
     """
-    def _wrapper(fn):
-        @with_phases([pre_fork_name], other_phases=[post_fork_name])
-        @spec_test
-        @with_state
-        def _adapter(*args, **kwargs):
-            wrapped = build_transition_test(fn,
-                                            pre_fork_name,
-                                            post_fork_name,
-                                            fork_epoch=fork_epoch)
-            return wrapped(*args, **kwargs)
-        return _adapter
-    return _wrapper
+    run_yield_fork_meta = yield_fork_meta(fork_metas)
+    run_with_phases = with_phases(ALL_PHASES)
+    run_set_fork_metas = set_fork_metas(fork_metas)
+
+    def decorator(fn):
+        return run_set_fork_metas(run_with_phases(spec_test(with_state(run_yield_fork_meta(fn)))))
+    return decorator
+
+
+def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
+    """
+    Yield meta fields to `meta.yaml` and pass post spec and meta fields to `fn`.
+    """
+    def decorator(fn):
+        def wrapper(*args, **kw):
+            phases = kw.pop('phases')
+            spec = kw["spec"]
+            fork_meta = [m for m in fork_metas if m.pre_fork_name == spec.fork][0]
+            fork_meta = next(filter(lambda m: m.pre_fork_name == spec.fork, fork_metas))
+            post_spec = phases[fork_meta.post_fork_name]
+
+            # Reset counter
+            pre_fork_counter = 0
+
+            def pre_tag(obj):
+                nonlocal pre_fork_counter
+                pre_fork_counter += 1
+                return obj
+
+            def post_tag(obj):
+                return obj
+
+            yield "post_fork", "meta", fork_meta.post_fork_name
+
+            has_fork_epoch = False
+            if fork_meta.fork_epoch:
+                kw["fork_epoch"] = fork_meta.fork_epoch
+                has_fork_epoch = True
+                yield "fork_epoch", "meta", fork_meta.fork_epoch
+
+            result = fn(
+                *args,
+                post_spec=post_spec,
+                pre_tag=pre_tag,
+                post_tag=post_tag,
+                **kw,
+            )
+            if result is not None:
+                for part in result:
+                    if part[0] == "fork_epoch":
+                        has_fork_epoch = True
+                    yield part
+            assert has_fork_epoch
+
+            if pre_fork_counter > 0:
+                yield "fork_block", "meta", pre_fork_counter - 1
+
+        return wrapper
+    return decorator

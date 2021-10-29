@@ -1,12 +1,17 @@
 import random
-from eth2spec.test.context import fork_transition_test
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.context import (
+    ForkMeta,
+    with_fork_metas,
+)
+from eth2spec.test.helpers.constants import (
+    ALL_FORKS,
+)
 from eth2spec.test.helpers.state import (
     next_epoch_via_signed_block,
 )
 from eth2spec.test.helpers.attestations import next_slots_with_attestations
 from eth2spec.test.helpers.fork_transition import (
-    do_altair_fork,
+    do_fork,
     no_blocks,
     only_at,
     skip_slots,
@@ -15,7 +20,7 @@ from eth2spec.test.helpers.fork_transition import (
 )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -34,7 +39,7 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     ])
 
     # irregular state transition to handle fork:
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
@@ -51,7 +56,7 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -71,7 +76,7 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
     ])
 
     # irregular state transition to handle fork:
-    state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+    state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
@@ -88,7 +93,7 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -109,7 +114,7 @@ def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_sp
     ])
 
     # irregular state transition to handle fork:
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
@@ -127,7 +132,7 @@ def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_sp
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -148,7 +153,7 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     ])
 
     # irregular state transition to handle fork:
-    state, _ = do_altair_fork(state, spec, post_spec, fork_epoch, with_block=False)
+    state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
 
     # continue regular state transition with new spec into next epoch
     to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
@@ -215,7 +220,7 @@ def _run_transition_test_with_attestations(state,
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
     # irregular state transition to handle fork:
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
@@ -253,7 +258,7 @@ def _run_transition_test_with_attestations(state,
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=3)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_FORKS.items()])
 def test_transition_with_finality(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -262,7 +267,7 @@ def test_transition_with_finality(state, fork_epoch, spec, post_spec, pre_tag, p
     yield from _run_transition_test_with_attestations(state, fork_epoch, spec, post_spec, pre_tag, post_tag)
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=3)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_FORKS.items()])
 def test_transition_with_random_three_quarters_participation(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -289,7 +294,7 @@ def test_transition_with_random_three_quarters_participation(state, fork_epoch, 
     )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=3)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_FORKS.items()])
 def test_transition_with_random_half_participation(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     rng = random.Random(2020)
 
@@ -313,7 +318,7 @@ def test_transition_with_random_half_participation(state, fork_epoch, spec, post
     )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_FORKS.items()])
 def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the ``fork_epoch`` with no attestations,
@@ -332,7 +337,7 @@ def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spe
     ])
 
     # irregular state transition to handle fork:
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition but add attestations

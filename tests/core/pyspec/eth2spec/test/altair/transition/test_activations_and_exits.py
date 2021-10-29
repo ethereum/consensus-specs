@@ -1,12 +1,15 @@
 import random
 from eth2spec.test.context import (
-    MINIMAL,
-    fork_transition_test,
+    ForkMeta,
     with_presets,
+    with_fork_metas,
 )
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.helpers.constants import (
+    ALL_FORKS,
+    MINIMAL,
+)
 from eth2spec.test.helpers.fork_transition import (
-    do_altair_fork,
+    do_fork,
     transition_until_fork,
     transition_to_next_epoch_and_append_blocks,
 )
@@ -21,7 +24,7 @@ from eth2spec.test.helpers.random import (
 # Exit
 #
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 @with_presets([MINIMAL],
               reason="only test with enough validators such that at least one exited index is not in sync committee")
 def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
@@ -59,7 +62,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # ensure that some of the current sync committee members are exiting
@@ -81,7 +84,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
                                                                     fork_epoch,
                                                                     spec,
@@ -117,7 +120,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # check post transition state
@@ -126,10 +129,6 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
         assert not validator.slashed
         assert not post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
     assert not post_spec.is_in_inactivity_leak(state)
-
-    # ensure that none of the current sync committee members are exited validators
-    exited_pubkeys = [state.validators[index].pubkey for index in exited_indices]
-    assert not any(set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
@@ -143,7 +142,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
 #
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create some deposits before the transition
@@ -161,7 +160,7 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
@@ -171,7 +170,7 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=2)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
 def test_transition_with_activation_at_fork_epoch(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create some deposits before the transition
@@ -191,7 +190,7 @@ def test_transition_with_activation_at_fork_epoch(state, fork_epoch, spec, post_
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch

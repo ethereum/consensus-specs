@@ -1,13 +1,18 @@
-from eth2spec.test.context import fork_transition_test
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.context import (
+    ForkMeta,
+    with_fork_metas,
+)
+from eth2spec.test.helpers.constants import (
+    ALL_FORKS,
+)
 from eth2spec.test.helpers.fork_transition import (
-    do_altair_fork,
+    do_fork,
     transition_until_fork,
     transition_to_next_epoch_and_append_blocks,
 )
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=7)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=7) for pre, post in ALL_FORKS.items()])
 def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
@@ -22,7 +27,7 @@ def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pr
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # check post transition state
@@ -35,7 +40,7 @@ def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pr
     yield "post", state
 
 
-@fork_transition_test(PHASE0, ALTAIR, fork_epoch=6)
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=6) for pre, post in ALL_FORKS.items()])
 def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
@@ -50,7 +55,7 @@ def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_altair_fork(state, spec, post_spec, fork_epoch)
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
     blocks.append(post_tag(block))
 
     # check post transition state
