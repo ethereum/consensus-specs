@@ -472,21 +472,39 @@ by clients is that every few days
 in a format [documented here](https://github.com/ethereum/consensus-specs/tree/dev/tests/formats).
 All the clients know how to use tests in the format. 
 
-
-### Example
+<!-- 
+### ZRNT, an Example
 
 To actually see the process end to end we are going to use [this client](https://github.com/protolambda/zrnt).
+
+1. ZRNT is written in Go, so the first step is to 
+   [install the Go programming language on your environment](https://golang.org/doc/install).
+1. Download ZRNT itself, and the current tests
+
+   ```sh
+   git clone https://github.com/protolambda/zrnt.git
+   cd zrnt
+   make download-tests
+   ```
+   
+1. Run the attestation tests
+
+   ```sh
+   cd tests/spec
+   go test -tags preset_minimal ./test_runners/operations/attestation_test.go 
+   ```
+
 
 1. Convert a test into the test specifications format
 1. Install ZRNT
 1. Run a test on ZRNT
 
+
+https://github.com/protolambda/zrnt#testing
+
+-->
+
 <!--
-
-
-See if I can rename single_phase
-
-
 
 so sometimes you uncover issues on the mainnet version of tests (all tests run against each unless flagged not to) that weren't caught in CI
 you can force to run against mainnet config locally by doing python3 -m pytest -k {search_str} --preset=mainnet eth2spec/
