@@ -50,7 +50,10 @@
 
 ## Introduction
 
-This patch adds transaction execution to the beacon chain as part of the Merge fork.
+This upgrade adds transaction execution to the beacon chain as part of the Merge fork.
+
+Additionally, this upgrade introduces the following minor changes:
+* Penalty parameter updates to their planned maximally punitive values
 
 ## Custom types
 
@@ -263,6 +266,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     for index in get_eligible_validator_indices(state):
         if index not in matching_target_indices:
             penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+            # [Modified in Merge]
             penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_MERGE
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
@@ -287,7 +291,8 @@ def slash_validator(state: BeaconState,
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_MERGE)
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_MERGE  # [Modified in Merge]
+    decrease_balance(state, slashed_index, slashing_penalty)
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
@@ -410,7 +415,10 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
-    adjusted_total_slashing_balance = min(sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_MERGE, total_balance)
+    adjusted_total_slashing_balance = min(
+        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_MERGE,  # [Modified in Merge]
+        total_balance
+    )
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
