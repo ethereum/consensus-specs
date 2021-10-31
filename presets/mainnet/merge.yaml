@@ -1,5 +1,14 @@
 # Mainnet preset - The Merge
 
+# Updated penalty values
+# ---------------------------------------------------------------
+# 2**24 (= 16,777,216)
+INACTIVITY_PENALTY_QUOTIENT_MERGE: 16777216
+# 2**5 (= 32)
+MIN_SLASHING_PENALTY_QUOTIENT_MERGE: 32
+# 3
+PROPORTIONAL_SLASHING_MULTIPLIER_MERGE: 3
+
 # Execution
 # ---------------------------------------------------------------
 # 2**30 (= 1,073,741,824)

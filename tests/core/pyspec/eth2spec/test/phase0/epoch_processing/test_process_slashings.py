@@ -1,5 +1,5 @@
 from random import Random
-from eth2spec.test.context import spec_state_test, with_all_phases, is_post_altair
+from eth2spec.test.context import spec_state_test, with_all_phases, is_post_altair, is_post_merge
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with, run_epoch_processing_to
 )
@@ -31,7 +31,9 @@ def slash_validators(spec, state, indices, out_epochs):
 
 
 def get_slashing_multiplier(spec):
-    if is_post_altair(spec):
+    if is_post_merge(spec):
+        return spec.PROPORTIONAL_SLASHING_MULTIPLIER_MERGE
+    elif is_post_altair(spec):
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR
     else:
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER
