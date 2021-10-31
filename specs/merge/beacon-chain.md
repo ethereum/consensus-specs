@@ -72,8 +72,6 @@ Additionally, this upgrade introduces the following minor changes:
 | `MAX_BYTES_PER_TRANSACTION` | `uint64(2**30)` (= 1,073,741,824) |
 | `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
-| `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
-| `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
 | `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
 
 ## Preset
