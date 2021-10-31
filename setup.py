@@ -543,7 +543,7 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
     @classmethod
     def hardcoded_custom_type_dep_constants(cls) -> str:
         constants = {
-            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**20)',
+            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**30)',
         }
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
