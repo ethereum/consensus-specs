@@ -70,7 +70,7 @@ To learn how consensus spec tests are written, let's go over the code:
 ```
 
 This [decorator](https://book.pythontips.com/en/latest/decorators.html) specifies that this test
-is applicable to all the phases of the ETH 2.0 project. These phases are similar to forks (Istanbul,
+is applicable to all the phases of consensus layer development. These phases are similar to forks (Istanbul,
 Berlin, London, etc.) in the execution blockchain. If you are interested, [you can see the definition of
 this decorator here](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L331-L335).
 
@@ -457,12 +457,6 @@ python -m pytest -k almost_after --fork Merge eth2spec
 
 You should see it ran successfully (although you might get a warning, you can ignore it)
 
-<!--
-
-https://ethos.dev/beacon-chain/
-
--->
-
 ## How are These Tests Used?
 
 So far we've ran tests against the formal specifications. This is a way to check the specifications
@@ -470,7 +464,7 @@ are what we expect, but it doesn't actually check the beacon chain clients. The 
 by clients is that every few days 
 [new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
 in a format [documented here](https://github.com/ethereum/consensus-specs/tree/dev/tests/formats).
-All the clients know how to use tests in the format. 
+All the consensus layer clients implement test-runners that consume the test vectors in this standard format.
 
 <!-- 
 ### ZRNT, an Example
@@ -501,15 +495,5 @@ To actually see the process end to end we are going to use [this client](https:/
 
 
 https://github.com/protolambda/zrnt#testing
-
--->
-
-<!--
-
-so sometimes you uncover issues on the mainnet version of tests (all tests run against each unless flagged not to) that weren't caught in CI
-you can force to run against mainnet config locally by doing python3 -m pytest -k {search_str} --preset=mainnet eth2spec/
-the --preset flag
-and running all the tests against mainnet config takes much longer... like 30+ minutes instead of 4 or 5
-
 
 -->
