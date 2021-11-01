@@ -122,6 +122,8 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayloa
 
 All validator responsibilities remain unchanged other than those noted below. Namely, the transition block handling and the addition of `ExecutionPayload`.
 
+*Note*: A validator must not propose on or attest to a block that isn't deemed valid, i.e. hasn't yet passed the beacon chain state transition and execution validations.
+
 ### Block proposal
 
 #### Constructing the `BeaconBlockBody`
