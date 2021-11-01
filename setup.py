@@ -634,6 +634,10 @@ def objects_to_spec(preset_name: str,
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
+    custom_type_dep_constants_verification = '\n'.join(map(
+        lambda x: 'assert %s == %s' % (x, f'{spec_object.preset_vars[x].type_name}({spec_object.preset_vars[x].value})'),
+        builder.hardcoded_custom_type_dep_constants(),
+    ))
     spec = (
             builder.imports(preset_name)
             + builder.preparations()
@@ -654,6 +658,7 @@ def objects_to_spec(preset_name: str,
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
+            + ('\n\n\n' + custom_type_dep_constants_verification if custom_type_dep_constants_verification != '' else '')
             + '\n'
     )
     return spec

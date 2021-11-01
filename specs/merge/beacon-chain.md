@@ -10,9 +10,8 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
-- [Constants](#constants)
-  - [Execution](#execution)
 - [Preset](#preset)
+  - [Execution](#execution)
   - [Updated penalty values](#updated-penalty-values)
 - [Configuration](#configuration)
   - [Transition settings](#transition-settings)
@@ -64,7 +63,7 @@ Additionally, this upgrade introduces the following minor changes:
 | `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction|
 | `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
 
-## Constants
+## Preset
 
 ### Execution
 
@@ -76,8 +75,6 @@ Additionally, this upgrade introduces the following minor changes:
 | `GAS_LIMIT_DENOMINATOR` | `uint64(2**10)` (= 1,024) |
 | `MIN_GAS_LIMIT` | `uint64(5000)` (= 5,000) |
 | `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
-
-## Preset
 
 ### Updated penalty values
 
