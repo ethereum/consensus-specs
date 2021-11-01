@@ -348,11 +348,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
-    # Verify consistency of the parent hash and block number
-    # with respect to the previous execution payload header
+    # Verify consistency of the parent hash with respect to the previous execution payload header
     if is_merge_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-        assert payload.block_number == state.latest_execution_payload_header.block_number + uint64(1)
     # Verify random
     assert payload.random == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
