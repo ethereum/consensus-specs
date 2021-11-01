@@ -92,11 +92,6 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
   then validate the following:
   - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
     -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
-  - _[REJECT]_ Gas used is less than the gas limit --
-    i.e. `execution_payload.gas_used <= execution_payload.gas_limit`.
-
-*Note*: Additional [gossip validations](https://github.com/ethereum/devp2p/blob/master/caps/eth.md#block-encoding-and-validity)
-(see block "data validity" conditions) that rely more heavily on execution-layer state and logic are currently under consideration.
 
 ### Transitioning the gossip
 
