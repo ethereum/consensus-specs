@@ -11,7 +11,7 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
-    ALL_FORKS,
+    ALL_FORK_UPGRADES,
 )
 from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
@@ -432,7 +432,7 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw['phase']
                     _phases = [phase]
-                    _other_phases = [ALL_FORKS[phase]]
+                    _other_phases = [ALL_FORK_UPGRADES[phase]]
                     ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
                 else:
                     # When running pytest, go through `fork_metas`

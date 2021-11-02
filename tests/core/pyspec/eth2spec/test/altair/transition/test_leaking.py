@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     with_fork_metas,
 )
 from eth2spec.test.helpers.constants import (
-    ALL_FORKS,
+    ALL_PRE_POST_FORKS,
 )
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
@@ -12,7 +12,7 @@ from eth2spec.test.helpers.fork_transition import (
 )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=7) for pre, post in ALL_FORKS.items()])
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=7) for pre, post in ALL_PRE_POST_FORKS])
 def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
@@ -40,7 +40,7 @@ def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pr
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=6) for pre, post in ALL_FORKS.items()])
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=6) for pre, post in ALL_PRE_POST_FORKS])
 def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).

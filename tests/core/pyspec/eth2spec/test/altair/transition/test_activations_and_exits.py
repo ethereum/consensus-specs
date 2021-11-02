@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     with_fork_metas,
 )
 from eth2spec.test.helpers.constants import (
-    ALL_FORKS,
+    ALL_PRE_POST_FORKS,
     MINIMAL,
 )
 from eth2spec.test.helpers.fork_transition import (
@@ -24,7 +24,7 @@ from eth2spec.test.helpers.random import (
 # Exit
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
 @with_presets([MINIMAL],
               reason="only test with enough validators such that at least one exited index is not in sync committee")
 def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
@@ -84,7 +84,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
 def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
                                                                     fork_epoch,
                                                                     spec,
@@ -142,7 +142,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
 #
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
 def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create some deposits before the transition
@@ -170,7 +170,7 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_FORKS.items()])
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
 def test_transition_with_activation_at_fork_epoch(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create some deposits before the transition
