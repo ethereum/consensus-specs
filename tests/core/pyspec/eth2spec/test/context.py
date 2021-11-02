@@ -378,7 +378,7 @@ def _get_run_phases(phases, kw):
             return None
         run_phases = [phase]
     else:
-        # If pytest `--fork` flag is set, filter out the rest forks
+        # If pytest `--fork` flag is set, filter out the rest of the forks
         run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
 
     return run_phases
@@ -386,7 +386,7 @@ def _get_run_phases(phases, kw):
 
 def _get_available_phases(run_phases, other_phases):
     """
-    The return the available fork names for multi-phase tests
+    Return the available fork names for multi-phase tests
     """
     available_phases = set(run_phases)
     if other_phases is not None:
@@ -581,7 +581,6 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
         def wrapper(*args, **kw):
             phases = kw.pop('phases')
             spec = kw["spec"]
-            fork_meta = [m for m in fork_metas if m.pre_fork_name == spec.fork][0]
             fork_meta = next(filter(lambda m: m.pre_fork_name == spec.fork, fork_metas))
             post_spec = phases[fork_meta.post_fork_name]
 
