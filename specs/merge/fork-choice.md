@@ -96,9 +96,6 @@ Used by fork-choice handler, `on_block`.
 
 ```python
 def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
-    if TERMINAL_BLOCK_HASH != Hash32():
-        return block.block_hash == TERMINAL_BLOCK_HASH
-
     is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
     is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
     return is_total_difficulty_reached and is_parent_total_difficulty_valid
@@ -115,6 +112,11 @@ def validate_merge_block(block: BeaconBlock) -> None:
     and a client software MAY delay a call to ``validate_merge_block``
     until the PoW block(s) become available.
     """
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        return block.block_hash == TERMINAL_BLOCK_HASH
+
     pow_block = get_pow_block(block.body.execution_payload.parent_hash)
     # Check if `pow_block` is available
     assert pow_block is not None
@@ -123,10 +125,6 @@ def validate_merge_block(block: BeaconBlock) -> None:
     assert pow_parent is not None
     # Check if `pow_block` is a valid terminal PoW block
     assert is_valid_terminal_pow_block(pow_block, pow_parent)
-
-    # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-    if TERMINAL_BLOCK_HASH != Hash32():
-        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
 ```
 
 ## Updated fork-choice handlers
