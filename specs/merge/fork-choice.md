@@ -122,7 +122,8 @@ def validate_merge_block(block: BeaconBlock) -> None:
     if TERMINAL_BLOCK_HASH != Hash32():
         # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        return block.block_hash == TERMINAL_BLOCK_HASH
+        assert block.body.execution_payload.parent_hash == TERMINAL_BLOCK_HASH
+        return
 
     pow_block = get_pow_block(block.body.execution_payload.parent_hash)
     # Check if `pow_block` is available
