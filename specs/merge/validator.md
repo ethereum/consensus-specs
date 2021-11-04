@@ -10,11 +10,9 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Custom types](#custom-types)
 - [Helpers](#helpers)
   - [`get_pow_block_at_terminal_total_difficulty`](#get_pow_block_at_terminal_total_difficulty)
   - [`get_terminal_pow_block`](#get_terminal_pow_block)
-  - [`get_payload_id`](#get_payload_id)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`get_payload`](#get_payload)
