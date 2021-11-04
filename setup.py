@@ -530,7 +530,7 @@ class NoopExecutionEngine(ExecutionEngine):
     def notify_forkchoice_updated(self: ExecutionEngine,
                                   head_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes]) -> None:
+                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:

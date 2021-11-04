@@ -8,6 +8,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
@@ -29,6 +30,12 @@ This is the modification of the fork choice according to the executable beacon c
 
 *Note*: It introduces the process of transition from the last PoW block to the first PoS block.
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `PayloadId` | `Bytes8` | Identifier of a payload building process |
+
 ## Protocols
 
 ### `ExecutionEngine`
@@ -46,13 +53,13 @@ This function performs two actions *atomically*:
 and corresponding state, up to and including `finalized_block_hash`.
 
 Additionally, if `payload_attributes` is provided, this function sets in motion a payload build process on top of
-`head_block_hash` with the result to be gathered by a followup call to  `get_payload`.
+`head_block_hash` and returns an identifier of initiated process.
 
 ```python
 def notify_forkchoice_updated(self: ExecutionEngine,
                               head_block_hash: Hash32,
                               finalized_block_hash: Hash32,
-                              payload_attributes: Optional[PayloadAttributes]) -> None:
+                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
     ...
 ```
 
