@@ -13,8 +13,10 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth2spec.test.helpers.fork_choice import (
-    prepare_empty_pow_block,
     add_pow_block,
+)
+from eth2spec.test.helpers.pow_block import (
+    prepare_empty_pow_block,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_state_with_incomplete_transition,
