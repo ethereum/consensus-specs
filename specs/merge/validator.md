@@ -122,7 +122,7 @@ def prepare_execution_payload(state: BeaconState,
     if not is_merge_complete(state):
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
         is_activation_epoch_reached = get_current_epoch(state.slot) < TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        if is_terminal_block_hash_set and is_activation_epoch_reached:
+        if is_terminal_block_hash_set and not is_activation_epoch_reached:
             # Terminal block hash is set but activation epoch is not yet reached, no prepare payload call is needed
             return None
 
