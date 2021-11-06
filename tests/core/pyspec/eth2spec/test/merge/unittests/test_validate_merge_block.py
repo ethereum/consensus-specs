@@ -53,10 +53,10 @@ def run_validate_merge_block(spec, pow_chain, beacon_block, valid=True):
 @spec_state_test
 def test_validate_merge_block_success(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[1].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block)
 
 
@@ -64,8 +64,8 @@ def test_validate_merge_block_success(spec, state):
 @spec_state_test
 def test_validate_merge_block_fail_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
@@ -74,9 +74,9 @@ def test_validate_merge_block_fail_block_lookup(spec, state):
 @spec_state_test
 def test_validate_merge_block_fail_parent_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 1)
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[0].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
@@ -84,10 +84,10 @@ def test_validate_merge_block_fail_parent_block_lookup(spec, state):
 @spec_state_test
 def test_validate_merge_block_fail_after_terminal(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[1].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
@@ -99,11 +99,11 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
 def test_validate_merge_block_tbh_override_success(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # should fail if TTD check is reached
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_chain[1].block_hash = TERMINAL_BLOCK_HASH
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().block_hash = TERMINAL_BLOCK_HASH
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[1].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block)
 
 
@@ -115,10 +115,10 @@ def test_validate_merge_block_tbh_override_success(spec, state):
 def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # shouldn't fail if TTD check is reached
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[1].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
@@ -130,11 +130,11 @@ def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
 def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # shouldn't fail if TTD check is reached
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
-    pow_chain[1].block_hash = TERMINAL_BLOCK_HASH
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head().block_hash = TERMINAL_BLOCK_HASH
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[1].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
@@ -146,8 +146,8 @@ def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(sp
 def test_validate_merge_block_fail_activation_not_reached_parent_hash_is_not_tbh(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # shouldn't fail if TTD check is reached
-    pow_chain[0].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
-    pow_chain[1].total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.parent_hash = pow_chain[1].block_hash
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
     run_validate_merge_block(spec, pow_chain, block, valid=False)
