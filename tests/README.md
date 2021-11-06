@@ -21,6 +21,8 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    make pyspec
    ```
 
+To read more about creating the environment, [see here](core/pyspec/README.md).
+
 ### Running your first test
 
 
