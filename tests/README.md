@@ -112,6 +112,8 @@ In Python `yield` is used by [generators](https://wiki.python.org/moin/Generator
 we can treat it as a partial return statement that doesn't stop the function's processing, only adds to a list
 of return values. Here we add two values, the string `'pre'` and the initial state, to the list of return values.
 
+[You can read more about test generators and how the are used here](generators).
+
 ```python
     block = build_empty_block_for_next_slot(spec, state)
 ```
@@ -465,35 +467,3 @@ by clients is that every few days
 [new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
 in a format [documented here](https://github.com/ethereum/consensus-specs/tree/dev/tests/formats).
 All the consensus layer clients implement test-runners that consume the test vectors in this standard format.
-
-<!-- 
-### ZRNT, an Example
-
-To actually see the process end to end we are going to use [this client](https://github.com/protolambda/zrnt).
-
-1. ZRNT is written in Go, so the first step is to 
-   [install the Go programming language on your environment](https://golang.org/doc/install).
-1. Download ZRNT itself, and the current tests
-
-   ```sh
-   git clone https://github.com/protolambda/zrnt.git
-   cd zrnt
-   make download-tests
-   ```
-   
-1. Run the attestation tests
-
-   ```sh
-   cd tests/spec
-   go test -tags preset_minimal ./test_runners/operations/attestation_test.go 
-   ```
-
-
-1. Convert a test into the test specifications format
-1. Install ZRNT
-1. Run a test on ZRNT
-
-
-https://github.com/protolambda/zrnt#testing
-
--->
