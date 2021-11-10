@@ -119,7 +119,7 @@ def invalid_cases():
                                   change=lambda x: 0
                               ))
                         if index == 0:
-                            yield f'{name}_fist offset_{offset_index}_minus_one', \
+                            yield f'{name}_first offset_{offset_index}_minus_one', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
@@ -127,7 +127,7 @@ def invalid_cases():
                               ))
         if len(offsets) > 1 :
             serialized = serialize(container_case_fn(rng, RandomizationMode.mode_max_count, typ))
-            yield f'{name}_fist offset_{offsets[0]}_skip', \
+            yield f'{name}_first offset_{offsets[0]}_skip', \
                             invalid_test_case(lambda: mod_offset(
                                 b=serialize(container_case_fn(rng, mode, typ)),
                                 offset_index=offsets[0],
