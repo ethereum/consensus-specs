@@ -90,7 +90,7 @@ def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
 
 
 def invalid_cases():
-    rng = Random(1234)
+    rng = Random(12345)
     for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f'{name}_extra_byte', \
