@@ -90,7 +90,7 @@ def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
 
 
 def invalid_cases():
-    rng = Random(12345)
+    rng = Random(1234)
     for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f'{name}_extra_byte', \
@@ -105,7 +105,7 @@ def invalid_cases():
                          RandomizationMode.mode_one_count,
                          RandomizationMode.mode_max_count]:
                 if len(offsets) != 0:
-                    for offset_index in offsets:
+                    for index,offset_index in enumerate(offsets):
                         yield f'{name}_offset_{offset_index}_plus_one', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
@@ -117,4 +117,11 @@ def invalid_cases():
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
                                   change=lambda x: 0
+                              ))
+                        if index == 0:
+                            yield f'{name}_fist offset_{offset_index}_minus_one', \
+                              invalid_test_case(lambda: mod_offset(
+                                  b=serialize(container_case_fn(rng, mode, typ)),
+                                  offset_index=offset_index,
+                                  change=lambda x: x - 1
                               ))
