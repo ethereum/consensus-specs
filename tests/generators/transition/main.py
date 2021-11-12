@@ -3,7 +3,7 @@ from typing import Iterable
 from eth2spec.test.helpers.constants import (
     MINIMAL,
     MAINNET,
-    ALL_FORK_UPGRADES,
+    ALL_PRE_POST_FORKS,
 )
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import (
@@ -15,6 +15,9 @@ from eth2spec.test.altair.transition import (
     test_leaking as test_altair_leaking,
     test_slashing as test_altair_slashing,
     test_operations as test_altair_operations,
+)
+from eth2spec.test.merge.transition import (
+    test_transition as test_merge_transition,
 )
 
 
@@ -44,7 +47,11 @@ if __name__ == "__main__":
         test_altair_slashing,
         test_altair_operations,
     )
-    for transition_test_module in altair_tests:
+    merge_tests = (
+        test_merge_transition,
+    )
+    all_tests = altair_tests + merge_tests
+    for transition_test_module in all_tests:
         for pre_fork, post_fork in ALL_PRE_POST_FORKS:
             gen_runner.run_generator("transition", [
                 create_provider(transition_test_module, MINIMAL, pre_fork, post_fork),

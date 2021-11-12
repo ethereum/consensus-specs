@@ -581,7 +581,11 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
         def wrapper(*args, **kw):
             phases = kw.pop('phases')
             spec = kw["spec"]
-            fork_meta = next(filter(lambda m: m.pre_fork_name == spec.fork, fork_metas))
+            try:
+                fork_meta = next(filter(lambda m: m.pre_fork_name == spec.fork, fork_metas))
+            except StopIteration:
+                dump_skipping_message(f"doesn't support this fork: {spec.fork}")
+
             post_spec = phases[fork_meta.post_fork_name]
 
             # Reset counter
