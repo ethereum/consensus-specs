@@ -166,6 +166,7 @@ def add_block(spec,
             raise
 
     block_root = signed_block.message.hash_tree_root()
+    print(encode_hex(block_root))
     assert store.blocks[block_root] == signed_block.message
     assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
     test_steps.append({
@@ -186,6 +187,7 @@ def add_block(spec,
             },
         }
     })
+    print(test_steps[-1])
 
     return store.block_states[signed_block.message.hash_tree_root()]
 
