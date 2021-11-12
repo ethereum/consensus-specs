@@ -564,6 +564,7 @@ def test_new_justified_is_later_than_store_justified(spec, state):
 
 @with_all_phases
 @spec_state_test
+@with_presets([MINIMAL], reason="too slow")
 def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
     """
     J: Justified
@@ -641,6 +642,7 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
 
 @with_all_phases
 @spec_state_test
+@with_presets([MINIMAL], reason="too slow")
 def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     """
     J: Justified

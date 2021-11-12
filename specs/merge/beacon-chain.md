@@ -10,9 +10,8 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
-- [Constants](#constants)
-  - [Execution](#execution)
 - [Preset](#preset)
+  - [Execution](#execution)
   - [Updated penalty values](#updated-penalty-values)
 - [Configuration](#configuration)
   - [Transition settings](#transition-settings)
@@ -63,7 +62,7 @@ Additionally, this upgrade introduces the following minor changes:
 | `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction|
 | `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
 
-## Constants
+## Preset
 
 ### Execution
 
@@ -73,8 +72,6 @@ Additionally, this upgrade introduces the following minor changes:
 | `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576) |
 | `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
 | `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
-
-## Preset
 
 ### Updated penalty values
 
