@@ -276,8 +276,12 @@ def validate_target_epoch_scope(store: Store, attestation: Attestation) -> None:
 ##### `validate_on_attestation`
 
 ```python
-def validate_on_attestation(store: Store, attestation: Attestation) -> None:
+def validate_on_attestation(store: Store, attestation: Attestation, is_from_block: bool) -> None:
     target = attestation.data.target
+
+    # If the given attestation is not from a beacon block message, we have to check the target epoch scope.
+    if not is_from_block:
+        validate_target_epoch_scope(store, attestation)
 
     # Check that the epoch number and slot number are matching
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
@@ -396,10 +400,7 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
     An ``attestation`` that is asserted as invalid may be valid at a later time,
     consider scheduling it for later processing in such case.
     """
-    validate_on_attestation(store, attestation)
-    if not is_from_block:
-        # If the given attestation is not from a beacon block message, we have to check the target epoch scope.
-        validate_target_epoch_scope(store, attestation)
+    validate_on_attestation(store, attestation, is_from_block)
 
     store_target_checkpoint_state(store, attestation.data.target)
 
