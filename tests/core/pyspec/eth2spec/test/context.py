@@ -435,12 +435,10 @@ def with_phases(phases, other_phases=None):
                     _other_phases = [ALL_FORK_UPGRADES[phase]]
                     ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
                 else:
-                    # When running pytest, go through `fork_metas`
+                    # When running pytest, go through `fork_metas` instead of using `phases`
                     for fork_meta in fork_metas:
-                        pre_fork_name = fork_meta.pre_fork_name
-                        post_fork_name = fork_meta.post_fork_name
-                        _phases = [pre_fork_name]
-                        _other_phases = [post_fork_name]
+                        _phases = [fork_meta.pre_fork_name]
+                        _other_phases = [fork_meta.post_fork_name]
                         ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
             else:
                 ret = _run_test_case_with_phases(fn, phases, other_phases, kw, args)
