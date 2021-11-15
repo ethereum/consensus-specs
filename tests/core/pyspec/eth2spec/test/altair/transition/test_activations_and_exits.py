@@ -1,6 +1,7 @@
 import random
 from eth2spec.test.context import (
     ForkMeta,
+    ALTAIR,
     with_presets,
     with_fork_metas,
 )
@@ -129,6 +130,14 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
         assert not validator.slashed
         assert not post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
     assert not post_spec.is_in_inactivity_leak(state)
+
+    exited_pubkeys = [state.validators[index].pubkey for index in exited_indices]
+    some_sync_committee_exited = any(set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
+    if post_spec.fork == ALTAIR:
+        # in Altair fork, the sync committee members would be set with only active validators
+        assert not some_sync_committee_exited
+    else:
+        assert some_sync_committee_exited
 
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
