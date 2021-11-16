@@ -511,7 +511,7 @@ ExecutionState = Any
 
 
 def get_pow_block(hash: Bytes32) -> Optional[PowBlock]:
-    return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0), difficulty=uint256(0))
+    return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0))
 
 
 def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
