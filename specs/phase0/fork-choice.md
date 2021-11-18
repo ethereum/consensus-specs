@@ -386,9 +386,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
-        print("made it")
-        print(state.finalized_checkpoint)
-        print(state.current_justified_checkpoint)
         store.finalized_checkpoint = state.finalized_checkpoint
         store.justified_checkpoint = state.current_justified_checkpoint
 ```

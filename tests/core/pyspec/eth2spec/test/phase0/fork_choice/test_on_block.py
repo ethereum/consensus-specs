@@ -694,21 +694,13 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
 
     pre_store_justified_checkpoint_root = store.justified_checkpoint.root
     for block in all_blocks:
-        # FIXME: Once `on_block` and `on_attestation` logic is fixed,
-        # fix test case and remove allow_invalid_attestations flag
         yield from tick_and_add_block(spec, store, block, test_steps)
 
     finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
-    print(store.finalized_checkpoint)
-    print(store.justified_checkpoint)
-    print(another_state.current_justified_checkpoint)
-    print('spec.get_head(store)', spec.get_head(store))
-
     assert store.finalized_checkpoint == another_state.finalized_checkpoint
-    # Thus should fail with the fix. Once show fail, swap to ==
     assert store.justified_checkpoint == another_state.current_justified_checkpoint
 
     yield 'steps', test_steps
