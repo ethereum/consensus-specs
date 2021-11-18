@@ -42,7 +42,7 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
     return post_state
 
 
-def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
+def tick_and_run_on_attestation(spec, store, attestation, test_steps):
     parent_block = store.blocks[attestation.data.beacon_block_root]
     pre_state = store.block_states[spec.hash_tree_root(parent_block)]
     block_time = pre_state.genesis_time + parent_block.slot * spec.config.SECONDS_PER_SLOT
@@ -52,21 +52,21 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_bl
         spec.on_tick(store, next_epoch_time)
         test_steps.append({'tick': int(next_epoch_time)})
 
-    spec.on_attestation(store, attestation, is_from_block=is_from_block)
+    spec.on_attestation(store, attestation)
     yield get_attestation_file_name(attestation), attestation
     test_steps.append({'attestation': get_attestation_file_name(attestation)})
 
 
-def run_on_attestation(spec, store, attestation, is_from_block=False, valid=True):
+def run_on_attestation(spec, store, attestation, valid=True):
     if not valid:
         try:
-            spec.on_attestation(store, attestation, is_from_block=is_from_block)
+            spec.on_attestation(store, attestation)
         except AssertionError:
             return
         else:
             assert False
 
-    spec.on_attestation(store, attestation, is_from_block=is_from_block)
+    spec.on_attestation(store, attestation)
 
 
 def get_genesis_forkchoice_store(spec, genesis_state):
@@ -136,7 +136,7 @@ def add_block(spec,
 
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:
-        run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
+        run_on_attestation(spec, store, attestation, valid=True)
 
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message

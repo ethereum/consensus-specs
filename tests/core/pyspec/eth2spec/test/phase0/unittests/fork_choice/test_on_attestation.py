@@ -88,7 +88,7 @@ def test_on_attestation_past_epoch(spec, state):
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 2
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, True)
 
 
 @with_all_phases

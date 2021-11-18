@@ -22,7 +22,6 @@
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
     - [`on_attestation` helpers](#on_attestation-helpers)
-      - [`validate_target_epoch_against_current_time`](#validate_target_epoch_against_current_time)
       - [`validate_on_attestation`](#validate_on_attestation)
       - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
       - [`update_latest_messages`](#update_latest_messages)
@@ -258,30 +257,11 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
 
 #### `on_attestation` helpers
 
-
-##### `validate_target_epoch_against_current_time`
-
-```python
-def validate_target_epoch_against_current_time(store: Store, attestation: Attestation) -> None:
-    target = attestation.data.target
-
-    # Attestations must be from the current or previous epoch
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
-    # Use GENESIS_EPOCH for previous when genesis to avoid underflow
-    previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
-    # If attestation target is from a future epoch, delay consideration until the epoch arrives
-    assert target.epoch in [current_epoch, previous_epoch]
-```
-
 ##### `validate_on_attestation`
 
 ```python
-def validate_on_attestation(store: Store, attestation: Attestation, is_from_block: bool) -> None:
+def validate_on_attestation(store: Store, attestation: Attestation) -> None:
     target = attestation.data.target
-
-    # If the given attestation is not from a beacon block message, we have to check the target epoch scope.
-    if not is_from_block:
-        validate_target_epoch_against_current_time(store, attestation)
 
     # Check that the epoch number and slot number are matching
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
@@ -393,15 +373,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 #### `on_attestation`
 
 ```python
-def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=False) -> None:
+def on_attestation(store: Store, attestation: Attestation) -> None:
     """
     Run ``on_attestation`` upon receiving a new ``attestation`` from either within a block or directly on the wire.
 
     An ``attestation`` that is asserted as invalid may be valid at a later time,
     consider scheduling it for later processing in such case.
     """
-    validate_on_attestation(store, attestation, is_from_block)
-
+    validate_on_attestation(store, attestation)
     store_target_checkpoint_state(store, attestation.data.target)
 
     # Get state at the `target` to fully validate attestation
