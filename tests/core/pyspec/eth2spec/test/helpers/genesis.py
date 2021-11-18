@@ -26,7 +26,7 @@ def get_sample_genesis_execution_payload_header(spec,
         eth1_block_hash = b'\x55' * 32
     return spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
-        coinbase=b'\x42' * 20,
+        fee_recipient=b'\x42' * 20,
         state_root=b'\x20' * 32,
         receipt_root=b'\x20' * 32,
         logs_bloom=b'\x35' * spec.BYTES_PER_LOGS_BLOOM,

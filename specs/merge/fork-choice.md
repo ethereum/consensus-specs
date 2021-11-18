@@ -77,7 +77,7 @@ Used to signal to initiate the payload build process via `notify_forkchoice_upda
 class PayloadAttributes(object):
     timestamp: uint64
     random: Bytes32
-    fee_recipient: ExecutionAddress
+    suggested_fee_recipient: ExecutionAddress
 ```
 
 ### `PowBlock`
