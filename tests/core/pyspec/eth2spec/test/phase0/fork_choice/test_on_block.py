@@ -710,3 +710,47 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     assert store.justified_checkpoint != another_state.current_justified_checkpoint
 
     yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_process_block_old_attestations(spec, state):
+    """
+    Blocks which have attestations from the past should be processed by the fork choice.
+    For example, if processing a block with attestations that justify a checkpoint that is
+    2 epochs in the past with respect to the store's current time and this is the highest
+    justified checkpoint seen yet, the store should be updated accordingly.
+    """
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    # Process state
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    # Create blocks filled with attestations for epoch 1 & 2
+    all_blocks = []
+    for _ in range(2):
+        _, signed_blocks, state = next_epoch_with_attestations(spec, state, True, True)
+        all_blocks += signed_blocks
+
+    assert state.finalized_checkpoint.epoch == 2
+    assert state.current_justified_checkpoint.epoch == 3
+
+    # Forward store time so that all attestation targets are at least 2 epochs in the past
+    current_time = 2 * spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT + \
+                    state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    for block in all_blocks:
+        yield from tick_and_add_block(spec, store, block, test_steps)
+    
+    assert store.finalized_checkpoint == state.finalized_checkpoint
+    assert store.justified_checkpoint == state.current_justified_checkpoint
