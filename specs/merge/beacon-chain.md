@@ -167,7 +167,7 @@ class BeaconState(Container):
 class ExecutionPayload(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: ExecutionAddress  # 'beneficiary' in the yellow paper
+    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
     receipt_root: Bytes32  # 'receipts root' in the yellow paper
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -189,7 +189,7 @@ class ExecutionPayload(Container):
 class ExecutionPayloadHeader(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: ExecutionAddress
+    fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -357,7 +357,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
-        coinbase=payload.coinbase,
+        fee_recipient=payload.fee_recipient,
         state_root=payload.state_root,
         receipt_root=payload.receipt_root,
         logs_bloom=payload.logs_bloom,
