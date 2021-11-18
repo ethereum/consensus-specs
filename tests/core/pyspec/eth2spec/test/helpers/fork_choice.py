@@ -60,13 +60,13 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_bl
 def run_on_attestation(spec, store, attestation, is_from_block=False, valid=True):
     if not valid:
         try:
-            spec.on_attestation(store, attestation, is_from_block)
+            spec.on_attestation(store, attestation, is_from_block=is_from_block)
         except AssertionError:
             return
         else:
             assert False
 
-    spec.on_attestation(store, attestation, is_from_block)
+    spec.on_attestation(store, attestation, is_from_block=is_from_block)
 
 
 def get_genesis_forkchoice_store(spec, genesis_state):
@@ -139,7 +139,6 @@ def add_block(spec,
         run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
 
     block_root = signed_block.message.hash_tree_root()
-    print(encode_hex(block_root))
     assert store.blocks[block_root] == signed_block.message
     assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
     test_steps.append({
@@ -160,7 +159,6 @@ def add_block(spec,
             },
         }
     })
-    print(test_steps[-1])
 
     return store.block_states[signed_block.message.hash_tree_root()]
 

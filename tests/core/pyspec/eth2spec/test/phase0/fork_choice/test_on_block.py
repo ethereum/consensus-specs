@@ -551,11 +551,9 @@ def test_new_justified_is_later_than_store_justified(spec, state):
         yield from add_block(spec, store, block, test_steps)
 
     assert store.finalized_checkpoint == fork_3_state.finalized_checkpoint
-    assert (store.justified_checkpoint
-            == fork_3_state.current_justified_checkpoint
-            != store.best_justified_checkpoint)
-    assert (store.best_justified_checkpoint
-            == fork_2_state.current_justified_checkpoint)
+    assert store.justified_checkpoint == fork_3_state.current_justified_checkpoint
+    assert store.justified_checkpoint != store.best_justified_checkpoint
+    assert store.best_justified_checkpoint == fork_2_state.current_justified_checkpoint
 
     yield 'steps', test_steps
 
@@ -656,7 +654,6 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     """
     test_steps = []
     # Initialization
-    print("INIT")
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
@@ -678,14 +675,12 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
         state, store, _ = yield from apply_next_epoch_with_attestations(
             spec, state, store, False, True, test_steps=test_steps)
 
-    print("INIT FIN")
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
     # Create another chain
     # Forking from epoch 3
-    print("FORK")
     all_blocks = []
     slot = spec.compute_start_slot_at_epoch(3)
     block_root = spec.get_block_root_at_slot(state, slot)
@@ -697,7 +692,6 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     assert another_state.finalized_checkpoint.epoch == 3
     assert another_state.current_justified_checkpoint.epoch == 4
 
-    print("APPLY FORK TO FORK CHOICE")
     pre_store_justified_checkpoint_root = store.justified_checkpoint.root
     for block in all_blocks:
         # FIXME: Once `on_block` and `on_attestation` logic is fixed,
@@ -708,11 +702,13 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
-    assert store.finalized_checkpoint == another_state.finalized_checkpoint
-    # Thus should fail with the fix. Once show fail, swap to ==
-    # assert store.justified_checkpoint != another_state.current_justified_checkpoint
     print(store.finalized_checkpoint)
     print(store.justified_checkpoint)
+    print(another_state.current_justified_checkpoint)
     print('spec.get_head(store)', spec.get_head(store))
+
+    assert store.finalized_checkpoint == another_state.finalized_checkpoint
+    # Thus should fail with the fix. Once show fail, swap to ==
+    assert store.justified_checkpoint == another_state.current_justified_checkpoint
 
     yield 'steps', test_steps

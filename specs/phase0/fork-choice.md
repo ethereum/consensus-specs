@@ -22,7 +22,7 @@
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
     - [`on_attestation` helpers](#on_attestation-helpers)
-      - [`validate_target_epoch_scope`](#validate_target_epoch_scope)
+      - [`validate_target_epoch_against_current_time`](#validate_target_epoch_against_current_time)
       - [`validate_on_attestation`](#validate_on_attestation)
       - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
       - [`update_latest_messages`](#update_latest_messages)
@@ -259,10 +259,10 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
 #### `on_attestation` helpers
 
 
-##### `validate_target_epoch_scope`
+##### `validate_target_epoch_against_current_time`
 
 ```python
-def validate_target_epoch_scope(store: Store, attestation: Attestation) -> None:
+def validate_target_epoch_against_current_time(store: Store, attestation: Attestation) -> None:
     target = attestation.data.target
 
     # Attestations must be from the current or previous epoch
@@ -281,7 +281,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 
     # If the given attestation is not from a beacon block message, we have to check the target epoch scope.
     if not is_from_block:
-        validate_target_epoch_scope(store, attestation)
+        validate_target_epoch_against_current_time(store, attestation)
 
     # Check that the epoch number and slot number are matching
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
@@ -386,6 +386,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
+        print("made it")
+        print(state.finalized_checkpoint)
+        print(state.current_justified_checkpoint)
         store.finalized_checkpoint = state.finalized_checkpoint
         store.justified_checkpoint = state.current_justified_checkpoint
 ```
