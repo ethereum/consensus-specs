@@ -87,7 +87,6 @@ class PowBlock(Container):
     block_hash: Hash32
     parent_hash: Hash32
     total_difficulty: uint256
-    difficulty: uint256
 ```
 
 ### `get_pow_block`
