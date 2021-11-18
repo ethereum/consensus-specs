@@ -618,20 +618,19 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
     assert state.finalized_checkpoint != another_state.finalized_checkpoint
     assert state.current_justified_checkpoint != another_state.current_justified_checkpoint
 
-    # pre_store_justified_checkpoint_root = store.justified_checkpoint.root
+    pre_store_justified_checkpoint_root = store.justified_checkpoint.root
 
-    # FIXME: pending on the `on_block`, `on_attestation` fix
-    # # Apply blocks of `another_state` to `store`
-    # for block in all_blocks:
-    #     # NOTE: Do not call `on_tick` here
-    #     yield from add_block(spec, store, block, test_steps)
+    # Apply blocks of `another_state` to `store`
+    for block in all_blocks:
+        # NOTE: Do not call `on_tick` here
+        yield from add_block(spec, store, block, test_steps)
 
-    # finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    # ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
-    # assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
+    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
+    assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
 
-    # assert store.finalized_checkpoint == another_state.finalized_checkpoint
-    # assert store.justified_checkpoint == another_state.current_justified_checkpoint
+    assert store.finalized_checkpoint == another_state.finalized_checkpoint
+    assert store.justified_checkpoint == another_state.current_justified_checkpoint
 
     yield 'steps', test_steps
 
