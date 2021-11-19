@@ -127,7 +127,7 @@ return b"\x01" if value is True else b"\x00"
 ```python
 array = [0] * ((N + 7) // 8)
 for i in range(N):
-    array[i // 8] |= value[i] << (i % 8)
+    array[i // 8] |= value[i] << (i & 0x7)
 return bytes(array)
 ```
 
@@ -138,8 +138,8 @@ Note that from the offset coding, the length (in bytes) of the bitlist is known.
 ```python
 array = [0] * ((len(value) // 8) + 1)
 for i in range(len(value)):
-    array[i // 8] |= value[i] << (i % 8)
-array[len(value) // 8] |= 1 << (len(value) % 8)
+    array[i // 8] |= value[i] << (i & 0x7)
+array[len(value) // 8] |= 1 << (len(value) & 0x7)
 return bytes(array)
 ```
 
