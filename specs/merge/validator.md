@@ -43,15 +43,16 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 ```python
 def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
-    for block in pow_chain:
+    for block in pow_chain.values():
         block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
-        # If genesis block, no parent exists so reaching TTD alone qualifies as valid terminal block
-        if block_reached_ttd and block.parent_hash == Hash32():
-            return block
-        parent = pow_chain[block.parent_hash]
-        parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
-        if block_reached_ttd and not parent_reached_ttd:
-            return block
+        if block_reached_ttd:
+            # If genesis block, no parent exists so reaching TTD alone qualifies as valid terminal block
+            if block.parent_hash == Hash32():
+                return block
+            parent = pow_chain[block.parent_hash]
+            parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+            if not parent_reached_ttd:
+                return block
 
     return None
 ```

@@ -15,6 +15,12 @@ class PowChain:
         assert offset <= 0
         return self.blocks[offset - 1]
 
+    def to_dict(self):
+        return {
+            block.block_hash: block
+            for block in self.blocks
+        }
+
 
 def prepare_random_pow_block(spec, rng=Random(3131)):
     return spec.PowBlock(
