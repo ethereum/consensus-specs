@@ -49,11 +49,10 @@ def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]
             # If genesis block, no parent exists so reaching TTD alone qualifies as valid terminal block
             if block.parent_hash == Hash32():
                 return block
-            else:
-                parent = pow_chain[block.parent_hash]
-                parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
-                if not parent_reached_ttd:
-                    return block
+            parent = pow_chain[block.parent_hash]
+            parent_reached_ttd = parent.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
+            if not parent_reached_ttd:
+                return block
 
     return None
 ```
