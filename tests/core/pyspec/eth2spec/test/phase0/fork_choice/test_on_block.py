@@ -744,13 +744,13 @@ def test_process_block_old_attestations(spec, state):
     assert state.current_justified_checkpoint.epoch == 3
 
     # Forward store time so that all attestation targets are at least 2 epochs in the past
-    current_time = 2 * spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT + \
-                    state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    current_time = (2 * spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT +
+                    state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time)
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     for block in all_blocks:
         yield from tick_and_add_block(spec, store, block, test_steps)
-    
+
     assert store.finalized_checkpoint == state.finalized_checkpoint
     assert store.justified_checkpoint == state.current_justified_checkpoint
