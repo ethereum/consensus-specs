@@ -61,6 +61,7 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
+| `ATTESTATION_OFFSET_QUOTIENT` | `3` | - | - |
 
 ### Helpers
 
@@ -83,6 +84,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
+    proposer_score_boost: LatestMessage
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -103,12 +105,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     return Store(
         time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
+        proposer_score_boost=proposer_score_boost,
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
@@ -156,11 +160,23 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return Gwei(sum(
+    attestation_score = Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
+    proposer_score = Gwei(0)
+    if store.proposer_score_boost.root != Root():
+        block_slot = store.blocks[root].slot
+        if get_ancestor(store, root, block_slot) == store.proposer_score_boost.root:
+            num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
+            avg_balance = get_total_active_balance(state) // num_validators
+            block_epoch = compute_epoch_at_slot(block_slot)
+            committee_size = get_committee_count_per_slot(state, block_epoch) * TARGET_COMMITTEE_SIZE
+            committee_weight = committee_size * avg_balance
+            proposer_score = committee_weight // 4
+    return attestation_score + proposer_score
+
 ```
 
 #### `filter_block_tree`
@@ -339,6 +355,10 @@ def on_tick(store: Store, time: uint64) -> None:
     store.time = time
 
     current_slot = get_current_slot(store)
+    # Reset store.proposer_score_boost if this is a new slot
+    if store.proposer_score_boost.root != Root():
+        if current_slot != store.blocks[store.proposer_score_boost.root].slot:
+            store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
@@ -376,6 +396,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
+
+    # Add proposer score boost if the block is timely
+    if (get_current_slot(store) == block.slot and
+       store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT):
+        store.proposer_score_boost = LatestMessage(
+            root=hash_tree_root(block),
+            epoch=compute_epoch_at_slot(block.slot)
+        )
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:

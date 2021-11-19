@@ -703,3 +703,29 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     assert store.justified_checkpoint == another_state.current_justified_checkpoint
 
     yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_score_boost_same_slot_untimely_block(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+
+    # Build block that serves as head ONLY on timely arrival, and ONLY in that slot
+    state = genesis_state.copy()
+    next_slots(spec, state, 3)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # Process block on untimely arrival in the same slot
+    spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+                 spec.config.SECONDS_PER_SLOT // spec.ATTESTATION_OFFSET_QUOTIENT)
+    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    assert store.proposer_score_boost.root == spec.Root()
+
+    yield 'steps', test_steps

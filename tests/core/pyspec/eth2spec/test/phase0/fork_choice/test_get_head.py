@@ -1,3 +1,4 @@
+import random
 from eth_utils import encode_hex
 
 from eth2spec.test.context import (
@@ -19,6 +20,7 @@ from eth2spec.test.helpers.fork_choice import (
     add_block,
 )
 from eth2spec.test.helpers.state import (
+    next_slots,
     next_epoch,
     state_transition_and_sign_block,
 )
@@ -103,17 +105,21 @@ def test_split_tie_breaker_no_attestations(spec, state):
         }
     })
 
-    # block at slot 1
+    # Create block at slot 1
     block_1_state = genesis_state.copy()
     block_1 = build_empty_block_for_next_slot(spec, block_1_state)
     signed_block_1 = state_transition_and_sign_block(spec, block_1_state, block_1)
-    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
 
-    # additional block at slot 1
+    # Create additional block at slot 1
     block_2_state = genesis_state.copy()
     block_2 = build_empty_block_for_next_slot(spec, block_2_state)
     block_2.body.graffiti = b'\x42' * 32
     signed_block_2 = state_transition_and_sign_block(spec, block_2_state, block_2)
+
+    # Tick time past slot 1 so proposer score boost does not apply
+    spec.on_tick(store, store.genesis_time + (block_2.slot + 1) * spec.config.SECONDS_PER_SLOT)
+
+    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
 
     highest_root = max(spec.hash_tree_root(block_1), spec.hash_tree_root(block_2))
@@ -257,6 +263,70 @@ def test_filtered_block_tree(spec, state):
     test_steps.append({
         'checks': {
             'head': get_formatted_head_output(spec, store)
+        }
+    })
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_score_boost_basic(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
+    test_steps.append({
+        'checks': {
+            'head': get_formatted_head_output(spec, store),
+        }
+    })
+
+    # Build block that serves as head ONLY on timely arrival, and ONLY in that slot
+    state_1 = genesis_state.copy()
+    next_slots(spec, state_1, 3)
+    block_1 = build_empty_block_for_next_slot(spec, state_1)
+    signed_block_1 = state_transition_and_sign_block(spec, state_1, block_1)
+
+    # Build block that serves as current head, and remains the head after block_1.slot
+    state_2 = genesis_state.copy()
+    next_slots(spec, state_2, 2)
+    block_2 = build_empty_block_for_next_slot(spec, state_2)
+    block_2.body.graffiti = spec.Bytes32(hex(random.getrandbits(8 * 32))[2:].zfill(64))
+    signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
+    while spec.hash_tree_root(block_1) > spec.hash_tree_root(block_2):
+        block_2.body.graffiti = spec.Bytes32(hex(random.getrandbits(8 * 32))[2:].zfill(64))
+        signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
+    assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
+
+    # Tick to block_1 slot time
+    spec.on_tick(store, store.genesis_time + block_1.slot * spec.config.SECONDS_PER_SLOT)
+
+    # Process block_2
+    yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
+    assert store.proposer_score_boost.root == spec.Root()
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+
+    # Process block_1 on timely arrival
+    # The head should temporarily change to block_1
+    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
+    assert store.proposer_score_boost == spec.LatestMessage(root=spec.hash_tree_root(block_1),
+                                                            epoch=spec.compute_epoch_at_slot(block_1.slot))
+    assert spec.get_head(store) == spec.hash_tree_root(block_1)
+
+    # After block_1.slot, the head should revert to block_2
+    spec.on_tick(store, store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT)
+    assert store.proposer_score_boost.root == spec.Root()
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+
+    test_steps.append({
+        'checks': {
+            'head': get_formatted_head_output(spec, store),
         }
     })
 

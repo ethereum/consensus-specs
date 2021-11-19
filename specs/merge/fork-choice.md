@@ -175,6 +175,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
 
+    # Add proposer score boost if the block is timely
+    if (get_current_slot(store) == block.slot and
+       store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT):
+        store.proposer_score_boost = LatestMessage(
+            root=hash_tree_root(block),
+            epoch=compute_epoch_at_slot(block.slot)
+        )
+
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
         if state.current_justified_checkpoint.epoch > store.best_justified_checkpoint.epoch:
