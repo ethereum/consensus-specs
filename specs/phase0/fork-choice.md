@@ -68,7 +68,9 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 | Name | Value |
 | - | - |
-| `PROPOSER_SCORE_BOOST_QUOTIENT` | `uint64(4)` |
+| `PROPOSER_SCORE_BOOST` | `uint64(25)` |
+
+- The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
 
 ### Helpers
 
@@ -181,7 +183,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
             block_epoch = compute_epoch_at_slot(block_slot)
             committee_size = get_committee_count_per_slot(state, block_epoch) * TARGET_COMMITTEE_SIZE
             committee_weight = committee_size * avg_balance
-            proposer_score = committee_weight // PROPOSER_SCORE_BOOST_QUOTIENT
+            proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
     return attestation_score + proposer_score
 
 ```
