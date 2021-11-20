@@ -20,8 +20,8 @@
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
-    - [`BlindedBeaconBlock`](#blindedbeaconblock)
     - [`BlindedBeaconBlockBody`](#blindedbeaconblockbody)
+    - [`BlindedBeaconBlock`](#blindedbeaconblock)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
@@ -163,17 +163,6 @@ class BeaconState(Container):
 
 ### New containers
 
-#### `BlindedBeaconBlock`
-
-```python
-class BlindedBeaconBlock(Container):
-    slot: Slot
-    proposer_index: ValidatorIndex
-    parent_root: Root
-    state_root: Root
-    body: BlindedBeaconBlockBody
-```
-
 #### `BlindedBeaconBlockBody`
 
 ```python
@@ -190,6 +179,17 @@ class BlindedBeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload_header: ExecutionPayloadHeader  # [New in Merge]
+```
+
+#### `BlindedBeaconBlock`
+
+```python
+class BlindedBeaconBlock(Container):
+    slot: Slot
+    proposer_index: ValidatorIndex
+    parent_root: Root
+    state_root: Root
+    body: BlindedBeaconBlockBody
 ```
 
 #### `ExecutionPayload`
