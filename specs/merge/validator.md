@@ -83,6 +83,11 @@ avoid requiring simple serialize hashing capabilities in the Execution Layer.
 The body of this function is implementation dependent.
 The Engine API may be used to implement it with an external execution engine.
 
+*Note*: `get_payload_header` function is added to the `ExecutionEngine` protocol for use as a validator.
+
+The body of this function is implementation dependent.
+The Engine API may be used to implement it with an external execution engine.
+
 #### `get_payload`
 
 Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
@@ -96,19 +101,32 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayloa
     ...
 ```
 
+#### `get_payload_header`
+
+Given the `payload_id`, `get_payload_header` returns the most recent version of the execution payload header that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload_header(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayloadHeader:
+    """
+    Return ``execution_payload_header`` object.
+    """
+    ...
+```
+
 ## Beacon chain responsibilities
 
-All validator responsibilities remain unchanged other than those noted below. Namely, the transition block handling and the addition of `ExecutionPayload`.
+All validator responsibilities remain unchanged other than those noted below. Namely, the transition block handling and the addition of `ExecutionPayload` and `ExecutionPayloadHeader`.
 
-*Note*: A validator must not propose on or attest to a block that isn't deemed valid, i.e. hasn't yet passed the beacon chain state transition and execution validations. In future upgrades, an "execution Proof-of-Custody" will be integrated to prevent outsourcing of execution payload validations.
+*Note*: A validator must not propose on or attest to a block that isn't deemed valid, i.e. hasn't yet passed the beacon chain state transition and execution validations. Block validity checks may be entrusted with mev-boost and MEV-relays when `ExecutionPayloadHeader` is used insead of `ExecutionPayload`. In future upgrades, an "execution Proof-of-Custody" will be integrated to prevent outsourcing of execution payload validations.
 
 ### Block proposal
 
 #### Constructing the `BeaconBlockBody`
 
-##### ExecutionPayload
+##### ExecutionPayload / ExecutionPayloadHeader
 
-To obtain an execution payload, a block proposer building a block on top of a `state` must take the following actions:
+To obtain an execution payload or execution payload header, a block proposer building a block on top of a `state` must take the following actions:
 
 1. Set `payload_id = prepare_execution_payload(state, pow_chain, finalized_block_hash, suggested_fee_recipient, execution_engine)`, where:
     * `state` is the state object after applying `process_slots(state, slot)` transition to the resulting state of the parent block processing
@@ -160,5 +178,14 @@ def get_execution_payload(payload_id: Optional[PayloadId], execution_engine: Exe
         return execution_engine.get_payload(payload_id)
 ```
 
-*Note*: It is recommended for a validator to call `prepare_execution_payload` as soon as input parameters become known,
+```python
+def get_execution_payload_header(payload_id: Optional[PayloadId], execution_engine: ExecutionEngine) -> ExecutionPayloadHeader:
+    if payload_id is None:
+        # Pre-merge, empty payload
+        return ExecutionPayloadHeader()
+    else:
+        return execution_engine.get_payload_header(payload_id)
+```
+
+*Note*: It is recommended for a validator to call `prepare_execution_payload` or `prepare_execution_payload_header` as soon as input parameters become known,
 and make subsequent calls to this function when any of these parameters gets updated.
