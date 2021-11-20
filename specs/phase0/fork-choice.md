@@ -62,13 +62,13 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
-| `ATTESTATION_OFFSET_QUOTIENT` | `3` | - | - |
+| `ATTESTATION_OFFSET_QUOTIENT` | `uint64(3)` | - | - |
 
 ### Configuration
 
 | Name | Value |
 | - | - |
-| `PROPOSER_SCORE_BOOST_QUOTIENT` | `4` |
+| `PROPOSER_SCORE_BOOST_QUOTIENT` | `uint64(4)` |
 
 ### Helpers
 
