@@ -469,3 +469,7 @@ by clients is that every few days
 [new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
 in a format [documented here](https://github.com/ethereum/consensus-specs/tree/dev/tests/formats).
 All the consensus layer clients implement test-runners that consume the test vectors in this standard format.
+
+---
+
+Original version by [Ori Pomerantz](mailto:qbzzt1@gmail.com)
