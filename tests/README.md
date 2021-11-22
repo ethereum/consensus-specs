@@ -286,21 +286,19 @@ because the processing mechanism errors out before creating it.
 
 ## Attestation Tests
 
-The [beacon chain](https://ethereum.org/en/eth2/beacon-chain/) doesn't provide any direct functionality to end users. Prior to the merge, it does
+The consensus layer doesn't provide any direct functionality to end users. It does
 not execute EVM programs or store user data. It exists to provide a trusted source of
-information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
-which do provide storage, and possibly execution, services.
+information about the latest verified block hash of the execution layer.
 
-For every slot a validator is randomly selected as the proposer. Currently the proposer proposes a block
-for the current head of the beacon chain (built on the previous block).
-propose a hash for the head of the assigned shard.
+For every slot a validator is randomly selected as the proposer. The proposer proposes a block
+for the current head of the consensus layer chain (built on the previous block). That block 
+includes the hash of the proposed new head of the execution layer.
 
-For every slot there is also a randomly selected committee of validators that needs to vote whether the value 
-proposed by the proposer is really a valid hash for the head of the beacon chain (and, once added, valid hash 
-for the head of the assigned shard). Those votes are called
-[attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation), and they are sent as independent 
-messages. The proposer for a block is able to include attestations from previous slots, which is how they get
-on chain to form consensus, reward honest validators, etc.
+For every slot there is also a randomly selected committee of validators that needs to vote whether
+the new consensus layer block is valid, which requires the proposed head of the execution chain to
+also be a valid block. These votes are called [attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation), 
+and they are sent as independent messages. The proposer for a block is able to include attestations from previous slots, 
+which is how they get on chain to form consensus, reward honest validators, etc.
 
 [You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26-L30):
 Lets go over it line by line.
