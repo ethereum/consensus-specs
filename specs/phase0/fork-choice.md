@@ -369,10 +369,11 @@ def on_tick(store: Store, time: uint64) -> None:
     store.time = time
 
     current_slot = get_current_slot(store)
+
     # Reset store.proposer_score_boost if this is a new slot
-    if store.proposer_score_boost.root != Root():
-        if current_slot != store.blocks[store.proposer_score_boost.root].slot:
-            store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
+    if current_slot > previous_slot:
+        store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
+
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
