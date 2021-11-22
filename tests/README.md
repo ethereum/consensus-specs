@@ -292,7 +292,7 @@ information about the latest verified block hash of the [shard blockchains](http
 which do provide storage, and possibly execution, services.
 
 For every slot a validator is randomly selected as the proposer. Currently the proposer proposes a block
-for the current head of the beacon chain (the previous block). When shards are added, the proposer will also
+for the current head of the beacon chain (built on the previous block).
 propose a hash for the head of the assigned shard.
 
 For every slot there is also a randomly selected committee of validators that needs to vote whether the value 
