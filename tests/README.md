@@ -273,7 +273,7 @@ belonging to this slot (even though it was created for the previous slot).
 
 Notice that `proposer_index` is the variable we set earlier, *before* we advanced
 the slot with `spec.process_slots(state, state.slot + 1)`. It is not the proposer 
-for hte current state.
+for the current state.
 
 ```python
     yield 'blocks', [signed_block]
