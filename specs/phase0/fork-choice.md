@@ -57,12 +57,18 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
 5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
+
+### Constant
+
+| Name | Value |
+| - | - |
+| `INTERVALS_PER_SLOT` | `uint64(3)` |
+
 ### Preset
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
-| `ATTESTATION_OFFSET_QUOTIENT` | `uint64(3)` | - | - |
 
 ### Configuration
 
@@ -406,10 +412,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[hash_tree_root(block)] = state
 
     # Add proposer score boost if the block is timely
-    is_before_attestation_broadcast = (
-        store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT
-    )
-    if get_current_slot(store) == block.slot and is_before_attestation_broadcast:
+    is_before_attesting_interval = store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    if get_current_slot(store) == block.slot and is_before_attesting_interval:
         store.proposer_score_boost = LatestMessage(
             root=hash_tree_root(block),
             epoch=compute_epoch_at_slot(block.slot)

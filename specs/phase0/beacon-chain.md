@@ -169,7 +169,6 @@ We define the following Python custom types for type hinting and readability:
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
-
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.

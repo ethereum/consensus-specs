@@ -176,10 +176,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[hash_tree_root(block)] = state
 
     # Add proposer score boost if the block is timely
-    is_before_attestation_broadcast = (
-        store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT
-    )
-    if get_current_slot(store) == block.slot and is_before_attestation_broadcast:
+    is_before_attesting_interval = store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    if get_current_slot(store) == block.slot and is_before_attesting_interval:
         store.proposer_score_boost = LatestMessage(
             root=hash_tree_root(block),
             epoch=compute_epoch_at_slot(block.slot)
