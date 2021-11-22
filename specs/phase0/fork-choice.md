@@ -114,7 +114,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
+    proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch())
     return Store(
         time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
