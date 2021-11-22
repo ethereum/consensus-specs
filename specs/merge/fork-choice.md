@@ -178,10 +178,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     is_before_attesting_interval = store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
     if get_current_slot(store) == block.slot and is_before_attesting_interval:
-        store.proposer_score_boost = LatestMessage(
-            root=hash_tree_root(block),
-            epoch=compute_epoch_at_slot(block.slot)
-        )
+        store.proposer_boost_root = hash_tree_root(block)
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:

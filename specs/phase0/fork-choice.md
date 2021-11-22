@@ -100,7 +100,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
-    proposer_score_boost: LatestMessage
+    proposer_boost_root: Root
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -121,14 +121,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
+    proposer_boost_root = Root()
     return Store(
         time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
-        proposer_score_boost=proposer_score_boost,
+        proposer_boost_root=proposer_boost_root,
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
@@ -182,9 +182,9 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
     proposer_score = Gwei(0)
-    if store.proposer_score_boost.root != Root():
+    if store.proposer_boost_root != Root():
         block = store.blocks[root]
-        if get_ancestor(store, root, block.slot) == store.proposer_score_boost.root:
+        if get_ancestor(store, root, block.slot) == store.proposer_boost_root:
             num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
             avg_balance = get_total_active_balance(state) // num_validators
             committee_size = num_validators // SLOTS_PER_EPOCH
@@ -371,9 +371,9 @@ def on_tick(store: Store, time: uint64) -> None:
 
     current_slot = get_current_slot(store)
 
-    # Reset store.proposer_score_boost if this is a new slot
+    # Reset store.proposer_boost_root if this is a new slot
     if current_slot > previous_slot:
-        store.proposer_score_boost = LatestMessage(root=Root(), epoch=Epoch(0))
+        store.proposer_boost_root = Root()
 
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
@@ -416,10 +416,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     is_before_attesting_interval = store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
     if get_current_slot(store) == block.slot and is_before_attesting_interval:
-        store.proposer_score_boost = LatestMessage(
-            root=hash_tree_root(block),
-            epoch=compute_epoch_at_slot(block.slot)
-        )
+        store.proposer_boost_root = hash_tree_root(block)
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
