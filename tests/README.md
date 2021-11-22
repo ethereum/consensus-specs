@@ -287,7 +287,7 @@ because the processing mechanism errors out before creating it.
 ## Attestation Tests
 
 The consensus layer doesn't provide any direct functionality to end users. It does
-not execute EVM programs or store user data. It exists to provide a trusted source of
+not execute EVM programs or store user data. It exists to provide a secure source of
 information about the latest verified block hash of the execution layer.
 
 For every slot a validator is randomly selected as the proposer. The proposer proposes a block
