@@ -127,7 +127,7 @@ have the hash of the previous one in a blockchain).
     signed_block = state_transition_and_sign_block(spec, state, block)
 ```
 
-Create a block signed by the appropriate proposer and advance the state
+Create a block signed by the appropriate proposer and advance the state.
 
 ```python
     yield 'blocks', [signed_block]
