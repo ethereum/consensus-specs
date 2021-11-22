@@ -286,7 +286,7 @@ because the processing mechanism errors out before creating it.
 
 ## Attestation Tests
 
-The [beacon chain](https://ethereum.org/en/eth2/beacon-chain/) doesn't provide any direct value. It does
+The [beacon chain](https://ethereum.org/en/eth2/beacon-chain/) doesn't provide any direct functionality to end users. Prior to the merge, it does
 not execute EVM programs or store user data. It exists to provide a trusted source of
 information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
 which do provide storage, and possibly execution, services.
