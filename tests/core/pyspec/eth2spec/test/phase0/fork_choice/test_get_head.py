@@ -271,7 +271,7 @@ def test_filtered_block_tree(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_proposer_score_boost_basic(spec, state):
+def test_proposer_boost_correct_head(spec, state):
     test_steps = []
     genesis_state = state.copy()
 
@@ -297,9 +297,8 @@ def test_proposer_score_boost_basic(spec, state):
     state_2 = genesis_state.copy()
     next_slots(spec, state_2, 2)
     block_2 = build_empty_block_for_next_slot(spec, state_2)
-    block_2.body.graffiti = spec.Bytes32(hex(random.getrandbits(8 * 32))[2:].zfill(64))
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
-    while spec.hash_tree_root(block_1) > spec.hash_tree_root(block_2):
+    while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
         block_2.body.graffiti = spec.Bytes32(hex(random.getrandbits(8 * 32))[2:].zfill(64))
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
@@ -309,19 +308,18 @@ def test_proposer_score_boost_basic(spec, state):
 
     # Process block_2
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
-    assert store.proposer_score_boost.root == spec.Root()
+    assert store.proposer_boost_root == spec.Root()
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     # Process block_1 on timely arrival
     # The head should temporarily change to block_1
     yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-    assert store.proposer_score_boost == spec.LatestMessage(root=spec.hash_tree_root(block_1),
-                                                            epoch=spec.compute_epoch_at_slot(block_1.slot))
+    assert store.proposer_boost_root == spec.hash_tree_root(block_1)
     assert spec.get_head(store) == spec.hash_tree_root(block_1)
 
     # After block_1.slot, the head should revert to block_2
     spec.on_tick(store, store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT)
-    assert store.proposer_score_boost.root == spec.Root()
+    assert store.proposer_boost_root == spec.Root()
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     test_steps.append({
