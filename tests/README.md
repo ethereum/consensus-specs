@@ -291,7 +291,7 @@ not execute EVM programs or store user data. It exists to provide a trusted sour
 information about the latest verified block hash of the [shard blockchains](https://ethereum.org/en/eth2/shard-chains/)
 which do provide storage, and possibly execution, services.
 
-For every slot a validator is randomly selected as the proposer. Currently the proposer proposes the hash
+For every slot a validator is randomly selected as the proposer. Currently the proposer proposes a block
 for the current head of the beacon chain (the previous block). When shards are added, the proposer will also
 propose a hash for the head of the assigned shard.
 
