@@ -446,7 +446,7 @@ def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) one-third of the `slot` has transpired (`SECONDS_PER_SLOT / ATTESTATION_OFFSET_QUOTIENT` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) `1 / ATTESTATION_OFFSET_QUOTIENT` of the `slot` has transpired (`SECONDS_PER_SLOT / ATTESTATION_OFFSET_QUOTIENT` seconds after the start of `slot`) -- whichever comes _first_.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
@@ -569,7 +569,7 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 #### Broadcast aggregate
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `2 / ATTESTATION_OFFSET_QUOTIENT` of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / ATTESTATION_OFFSET_QUOTIENT` seconds after the start of `slot`.
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
 

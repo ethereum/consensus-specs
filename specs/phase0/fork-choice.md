@@ -176,12 +176,11 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     ))
     proposer_score = Gwei(0)
     if store.proposer_score_boost.root != Root():
-        block_slot = store.blocks[root].slot
-        if get_ancestor(store, root, block_slot) == store.proposer_score_boost.root:
+        block = store.blocks[root]
+        if get_ancestor(store, root, block.slot) == store.proposer_score_boost.root:
             num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
             avg_balance = get_total_active_balance(state) // num_validators
-            block_epoch = compute_epoch_at_slot(block_slot)
-            committee_size = get_committee_count_per_slot(state, block_epoch) * TARGET_COMMITTEE_SIZE
+            committee_size = num_validators // SLOTS_PER_EPOCH
             committee_weight = committee_size * avg_balance
             proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
     return attestation_score + proposer_score
@@ -407,8 +406,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[hash_tree_root(block)] = state
 
     # Add proposer score boost if the block is timely
-    if (get_current_slot(store) == block.slot and
-       store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT):
+    is_before_attestation_broadcast = (
+        store.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // ATTESTATION_OFFSET_QUOTIENT
+    )
+    if get_current_slot(store) == block.slot and is_before_attestation_broadcast:
         store.proposer_score_boost = LatestMessage(
             root=hash_tree_root(block),
             epoch=compute_epoch_at_slot(block.slot)
