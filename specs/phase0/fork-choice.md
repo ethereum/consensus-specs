@@ -7,6 +7,7 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
+  - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Helpers](#helpers)

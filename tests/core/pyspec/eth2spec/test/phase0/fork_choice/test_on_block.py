@@ -724,7 +724,7 @@ def test_proposer_score_boost_same_slot_untimely_block(spec, state):
 
     # Process block on untimely arrival in the same slot
     spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-                 spec.config.SECONDS_PER_SLOT // spec.ATTESTATION_OFFSET_QUOTIENT)
+                 spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     assert store.proposer_score_boost.root == spec.Root()
 
