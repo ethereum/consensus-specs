@@ -304,21 +304,23 @@ def test_proposer_boost_correct_head(spec, state):
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
     # Tick to block_1 slot time
-    spec.on_tick(store, store.genesis_time + block_1.slot * spec.config.SECONDS_PER_SLOT)
+    time = store.genesis_time + block_1.slot * spec.config.SECONDS_PER_SLOT
+    on_tick_and_append_step(spec, store, time, test_steps)
 
     # Process block_2
-    yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
+    yield from add_block(spec, store, signed_block_2, test_steps)
     assert store.proposer_boost_root == spec.Root()
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     # Process block_1 on timely arrival
     # The head should temporarily change to block_1
-    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
+    yield from add_block(spec, store, signed_block_1, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block_1)
     assert spec.get_head(store) == spec.hash_tree_root(block_1)
 
     # After block_1.slot, the head should revert to block_2
-    spec.on_tick(store, store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT)
+    time = store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT
+    on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 

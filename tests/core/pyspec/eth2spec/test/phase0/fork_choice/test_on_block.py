@@ -723,15 +723,17 @@ def test_proposer_boost(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on timely arrival just before end of boost interval
-    spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-                 spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
-    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) > 0
 
     # Ensure that boost is removed after slot is over
-    spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-                 spec.config.SECONDS_PER_SLOT)
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
 
@@ -740,14 +742,16 @@ def test_proposer_boost(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on timely arrival at start of boost interval
-    spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT)
-    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) > 0
 
     # Ensure that boost is removed after slot is over
-    spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-                 spec.config.SECONDS_PER_SLOT)
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
 
@@ -772,9 +776,10 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on untimely arrival in the same slot
-    spec.on_tick(store, store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-                 spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
-    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.Root()
 
     yield 'steps', test_steps
