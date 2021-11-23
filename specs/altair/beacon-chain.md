@@ -685,7 +685,7 @@ This helper function is only for initializing the state for pure Altair testnets
 *Note*: The function `initialize_beacon_state_from_eth1` is modified: (1) using `ALTAIR_FORK_VERSION` as the current fork version, (2) utilizing the Altair `BeaconBlockBody` when constructing the initial `latest_block_header`, and (3) adding initial sync committees.
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
     fork = Fork(
