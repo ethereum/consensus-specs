@@ -117,10 +117,11 @@ def test_split_tie_breaker_no_attestations(spec, state):
     signed_block_2 = state_transition_and_sign_block(spec, block_2_state, block_2)
 
     # Tick time past slot 1 so proposer score boost does not apply
-    spec.on_tick(store, store.genesis_time + (block_2.slot + 1) * spec.config.SECONDS_PER_SLOT)
+    time = store.genesis_time + (block_2.slot + 1) * spec.config.SECONDS_PER_SLOT
+    on_tick_and_append_step(spec, store, time, test_steps)
 
-    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-    yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
+    yield from add_block(spec, store, signed_block_1, test_steps)
+    yield from add_block(spec, store, signed_block_2, test_steps)
 
     highest_root = max(spec.hash_tree_root(block_1), spec.hash_tree_root(block_2))
     assert spec.get_head(store) == highest_root

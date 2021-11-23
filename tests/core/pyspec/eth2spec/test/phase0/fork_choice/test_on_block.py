@@ -1,4 +1,5 @@
 import random
+from eth_utils import encode_hex
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.test.context import MINIMAL, spec_state_test, with_all_phases, with_presets
@@ -755,6 +756,12 @@ def test_proposer_boost(spec, state):
     assert store.proposer_boost_root == spec.Root()
     assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
 
+    test_steps.append({
+        'checks': {
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+        }
+    })
+
     yield 'steps', test_steps
 
 
@@ -780,6 +787,13 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
             spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
+
     assert store.proposer_boost_root == spec.Root()
+
+    test_steps.append({
+        'checks': {
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+        }
+    })
 
     yield 'steps', test_steps
