@@ -406,7 +406,7 @@ Modifications include:
   Else, the Merge starts from genesis and the transition is incomplete.
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit],
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
