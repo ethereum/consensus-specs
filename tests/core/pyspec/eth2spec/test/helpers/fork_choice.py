@@ -157,6 +157,7 @@ def add_block(spec,
                 'epoch': int(store.best_justified_checkpoint.epoch),
                 'root': encode_hex(store.best_justified_checkpoint.root),
             },
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
         }
     })
 

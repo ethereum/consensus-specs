@@ -7,7 +7,9 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
+  - [Constant](#constant)
   - [Preset](#preset)
+  - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
@@ -56,11 +58,26 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
 5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
+
+### Constant
+
+| Name | Value |
+| - | - |
+| `INTERVALS_PER_SLOT` | `uint64(3)` |
+
 ### Preset
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
+
+### Configuration
+
+| Name | Value |
+| - | - |
+| `PROPOSER_SCORE_BOOST` | `uint64(70)` |
+
+- The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
 
 ### Helpers
 
@@ -83,6 +100,7 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
+    proposer_boost_root: Root
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -103,12 +121,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_boost_root = Root()
     return Store(
         time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
+        proposer_boost_root=proposer_boost_root,
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
@@ -156,11 +176,22 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return Gwei(sum(
+    attestation_score = Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
+    proposer_score = Gwei(0)
+    if store.proposer_boost_root != Root():
+        block = store.blocks[root]
+        if get_ancestor(store, root, block.slot) == store.proposer_boost_root:
+            num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
+            avg_balance = get_total_active_balance(state) // num_validators
+            committee_size = num_validators // SLOTS_PER_EPOCH
+            committee_weight = committee_size * avg_balance
+            proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    return attestation_score + proposer_score
+
 ```
 
 #### `filter_block_tree`
@@ -339,6 +370,11 @@ def on_tick(store: Store, time: uint64) -> None:
     store.time = time
 
     current_slot = get_current_slot(store)
+
+    # Reset store.proposer_boost_root if this is a new slot
+    if current_slot > previous_slot:
+        store.proposer_boost_root = Root()
+
     # Not a new epoch, return
     if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
@@ -376,6 +412,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
+
+    # Add proposer score boost if the block is timely
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+        store.proposer_boost_root = hash_tree_root(block)
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
