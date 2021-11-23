@@ -28,7 +28,7 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
     pre_state = store.block_states[signed_block.message.parent_root]
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     if merge_block:
-        assert spec.is_merge_block(pre_state, signed_block.message.body)
+        assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
     if store.time < block_time:
         on_tick_and_append_step(spec, store, block_time, test_steps)
