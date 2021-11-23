@@ -45,7 +45,7 @@ def test_initialize_pre_transition_no_param(spec):
     yield 'execution_payload_header', 'meta', False
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    assert not spec.is_merge_complete(state)
+    assert not spec.is_merge_transition_complete(state)
 
     yield 'state', state
 
@@ -79,7 +79,7 @@ def test_initialize_pre_transition_empty_payload(spec):
         execution_payload_header=execution_payload_header,
     )
 
-    assert not spec.is_merge_complete(state)
+    assert not spec.is_merge_transition_complete(state)
 
     yield 'execution_payload_header', execution_payload_header
 
@@ -117,6 +117,6 @@ def test_initialize_post_transition(spec):
 
     yield 'execution_payload_header', genesis_execution_payload_header
 
-    assert spec.is_merge_complete(state)
+    assert spec.is_merge_transition_complete(state)
 
     yield 'state', state

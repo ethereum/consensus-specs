@@ -24,8 +24,8 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
-    - [`is_merge_complete`](#is_merge_complete)
-    - [`is_merge_block`](#is_merge_block)
+    - [`is_merge_transition_complete`](#is_merge_transition_complete)
+    - [`is_merge_transition_block`](#is_merge_transition_block)
     - [`is_execution_enabled`](#is_execution_enabled)
   - [Misc](#misc)
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
@@ -209,25 +209,25 @@ class ExecutionPayloadHeader(Container):
 
 ### Predicates
 
-#### `is_merge_complete`
+#### `is_merge_transition_complete`
 
 ```python
-def is_merge_complete(state: BeaconState) -> bool:
+def is_merge_transition_complete(state: BeaconState) -> bool:
     return state.latest_execution_payload_header != ExecutionPayloadHeader()
 ```
 
-#### `is_merge_block`
+#### `is_merge_transition_block`
 
 ```python
-def is_merge_block(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return not is_merge_complete(state) and body.execution_payload != ExecutionPayload()
+def is_merge_transition_block(state: BeaconState, body: BeaconBlockBody) -> bool:
+    return not is_merge_transition_complete(state) and body.execution_payload != ExecutionPayload()
 ```
 
 #### `is_execution_enabled`
 
 ```python
 def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return is_merge_block(state, body) or is_merge_complete(state)
+    return is_merge_transition_block(state, body) or is_merge_transition_complete(state)
 ```
 
 ### Misc
@@ -346,7 +346,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_complete(state):
+    if is_merge_transition_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify random
     assert payload.random == get_randao_mix(state, get_current_epoch(state))

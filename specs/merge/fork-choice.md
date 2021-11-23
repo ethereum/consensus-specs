@@ -167,7 +167,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state_transition(state, signed_block, True)
 
     # [New in Merge]
-    if is_merge_block(pre_state, block.body):
+    if is_merge_transition_block(pre_state, block.body):
         validate_merge_block(block)
 
     # Add new block to the store
