@@ -72,7 +72,7 @@ CHURN_LIMIT_QUOTIENT: 32
 # Fork choice
 # ---------------------------------------------------------------
 # 25%
-PROPOSER_SCORE_BOOST: 25
+PROPOSER_SCORE_BOOST: 70
 
 
 # Deposit contract
