@@ -66,6 +66,10 @@ def notify_forkchoice_updated(self: ExecutionEngine,
 *Note*: The call of the `notify_forkchoice_updated` function maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).
 As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice_updated` must be called with `finalized_block_hash = Hash32()`.
 
+*Note*: Client software must not call this function as long as the paylod of the head of the chain is empty, i.e. `get_head(store).body.payload == ExecutionPayload()`.
+
+*Note*: Client software must call this function to initiate payload build process to produce the merge transition block, in this case the `head_block_hash` parameter must be set to the hash of a terminal PoW block.
+
 ## Helpers
 
 ### `PayloadAttributes`
