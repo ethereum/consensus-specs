@@ -11,7 +11,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
 
     payload = spec.ExecutionPayload(
         parent_hash=latest.block_hash,
-        coinbase=spec.ExecutionAddress(),
+        fee_recipient=spec.ExecutionAddress(),
         state_root=latest.state_root,  # no changes to the state
         receipt_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
@@ -34,7 +34,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
 def get_execution_payload_header(spec, execution_payload):
     return spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
-        coinbase=execution_payload.coinbase,
+        fee_recipient=execution_payload.fee_recipient,
         state_root=execution_payload.state_root,
         receipt_root=execution_payload.receipt_root,
         logs_bloom=execution_payload.logs_bloom,

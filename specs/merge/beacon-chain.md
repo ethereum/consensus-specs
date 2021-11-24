@@ -24,8 +24,8 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
-    - [`is_merge_complete`](#is_merge_complete)
-    - [`is_merge_block`](#is_merge_block)
+    - [`is_merge_transition_complete`](#is_merge_transition_complete)
+    - [`is_merge_transition_block`](#is_merge_transition_block)
     - [`is_execution_enabled`](#is_execution_enabled)
   - [Misc](#misc)
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
@@ -167,7 +167,7 @@ class BeaconState(Container):
 class ExecutionPayload(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: ExecutionAddress  # 'beneficiary' in the yellow paper
+    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
     receipt_root: Bytes32  # 'receipts root' in the yellow paper
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -189,7 +189,7 @@ class ExecutionPayload(Container):
 class ExecutionPayloadHeader(Container):
     # Execution block header fields
     parent_hash: Hash32
-    coinbase: ExecutionAddress
+    fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipt_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
@@ -209,25 +209,25 @@ class ExecutionPayloadHeader(Container):
 
 ### Predicates
 
-#### `is_merge_complete`
+#### `is_merge_transition_complete`
 
 ```python
-def is_merge_complete(state: BeaconState) -> bool:
+def is_merge_transition_complete(state: BeaconState) -> bool:
     return state.latest_execution_payload_header != ExecutionPayloadHeader()
 ```
 
-#### `is_merge_block`
+#### `is_merge_transition_block`
 
 ```python
-def is_merge_block(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return not is_merge_complete(state) and body.execution_payload != ExecutionPayload()
+def is_merge_transition_block(state: BeaconState, body: BeaconBlockBody) -> bool:
+    return not is_merge_transition_complete(state) and body.execution_payload != ExecutionPayload()
 ```
 
 #### `is_execution_enabled`
 
 ```python
 def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return is_merge_block(state, body) or is_merge_complete(state)
+    return is_merge_transition_block(state, body) or is_merge_transition_complete(state)
 ```
 
 ### Misc
@@ -346,7 +346,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_complete(state):
+    if is_merge_transition_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify random
     assert payload.random == get_randao_mix(state, get_current_epoch(state))
@@ -357,7 +357,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
-        coinbase=payload.coinbase,
+        fee_recipient=payload.fee_recipient,
         state_root=payload.state_root,
         receipt_root=payload.receipt_root,
         logs_bloom=payload.logs_bloom,
@@ -406,7 +406,7 @@ Modifications include:
   Else, the Merge starts from genesis and the transition is incomplete.
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit],
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()

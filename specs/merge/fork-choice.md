@@ -77,7 +77,7 @@ Used to signal to initiate the payload build process via `notify_forkchoice_upda
 class PayloadAttributes(object):
     timestamp: uint64
     random: Bytes32
-    fee_recipient: ExecutionAddress
+    suggested_fee_recipient: ExecutionAddress
 ```
 
 ### `PowBlock`
@@ -87,7 +87,6 @@ class PowBlock(Container):
     block_hash: Hash32
     parent_hash: Hash32
     total_difficulty: uint256
-    difficulty: uint256
 ```
 
 ### `get_pow_block`
@@ -168,13 +167,19 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state_transition(state, signed_block, True)
 
     # [New in Merge]
-    if is_merge_block(pre_state, block.body):
+    if is_merge_transition_block(pre_state, block.body):
         validate_merge_block(block)
 
     # Add new block to the store
     store.blocks[hash_tree_root(block)] = block
     # Add new state for this block to the store
     store.block_states[hash_tree_root(block)] = state
+
+    # Add proposer score boost if the block is timely
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+        store.proposer_boost_root = hash_tree_root(block)
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
@@ -186,17 +191,5 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
         store.finalized_checkpoint = state.finalized_checkpoint
-
-        # Potentially update justified if different from store
-        if store.justified_checkpoint != state.current_justified_checkpoint:
-            # Update justified if new justified is later than store justified
-            if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-                store.justified_checkpoint = state.current_justified_checkpoint
-                return
-
-            # Update justified if store justified is not in chain with finalized checkpoint
-            finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-            ancestor_at_finalized_slot = get_ancestor(store, store.justified_checkpoint.root, finalized_slot)
-            if ancestor_at_finalized_slot != store.finalized_checkpoint.root:
-                store.justified_checkpoint = state.current_justified_checkpoint
+        store.justified_checkpoint = state.current_justified_checkpoint
 ```

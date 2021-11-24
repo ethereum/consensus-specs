@@ -74,3 +74,10 @@ def test_time(spec, state):
 @spec_state_test
 def test_networking(spec, state):
     assert spec.RANDOM_SUBNETS_PER_VALIDATOR <= spec.ATTESTATION_SUBNET_COUNT
+
+
+@with_all_phases
+@spec_state_test
+def test_fork_choice(spec, state):
+    assert spec.INTERVALS_PER_SLOT < spec.config.SECONDS_PER_SLOT
+    assert spec.config.PROPOSER_SCORE_BOOST <= 100

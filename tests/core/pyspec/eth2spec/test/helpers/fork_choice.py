@@ -23,12 +23,12 @@ def add_block_to_store(spec, store, signed_block):
     spec.on_block(store, signed_block)
 
 
-def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_invalid_attestations=False,
+def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
                        merge_block=False, block_not_found=False):
     pre_state = store.block_states[signed_block.message.parent_root]
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     if merge_block:
-        assert spec.is_merge_block(pre_state, signed_block.message.body)
+        assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
     if store.time < block_time:
         on_tick_and_append_step(spec, store, block_time, test_steps)
@@ -36,14 +36,13 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True, allow_
     post_state = yield from add_block(
         spec, store, signed_block, test_steps,
         valid=valid,
-        allow_invalid_attestations=allow_invalid_attestations,
         block_not_found=block_not_found,
     )
 
     return post_state
 
 
-def tick_and_run_on_attestation(spec, store, attestation, test_steps):
+def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     parent_block = store.blocks[attestation.data.beacon_block_root]
     pre_state = store.block_states[spec.hash_tree_root(parent_block)]
     block_time = pre_state.genesis_time + parent_block.slot * spec.config.SECONDS_PER_SLOT
@@ -53,40 +52,21 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps):
         spec.on_tick(store, next_epoch_time)
         test_steps.append({'tick': int(next_epoch_time)})
 
-    spec.on_attestation(store, attestation)
+    spec.on_attestation(store, attestation, is_from_block=is_from_block)
     yield get_attestation_file_name(attestation), attestation
     test_steps.append({'attestation': get_attestation_file_name(attestation)})
 
 
-def add_attestation(spec, store, attestation, test_steps, valid=True):
-    yield get_attestation_file_name(attestation), attestation
-
+def run_on_attestation(spec, store, attestation, is_from_block=False, valid=True):
     if not valid:
         try:
-            run_on_attestation(spec, store, attestation, valid=True)
-        except AssertionError:
-            test_steps.append({
-                'attestation': get_attestation_file_name(attestation),
-                'valid': False,
-            })
-            return
-        else:
-            assert False
-
-    run_on_attestation(spec, store, attestation, valid=True)
-    test_steps.append({'attestation': get_attestation_file_name(attestation)})
-
-
-def run_on_attestation(spec, store, attestation, valid=True):
-    if not valid:
-        try:
-            spec.on_attestation(store, attestation)
+            spec.on_attestation(store, attestation, is_from_block=is_from_block)
         except AssertionError:
             return
         else:
             assert False
 
-    spec.on_attestation(store, attestation)
+    spec.on_attestation(store, attestation, is_from_block=is_from_block)
 
 
 def get_genesis_forkchoice_store(spec, genesis_state):
@@ -131,7 +111,6 @@ def add_block(spec,
               signed_block,
               test_steps,
               valid=True,
-              allow_invalid_attestations=False,
               block_not_found=False):
     """
     Run on_block and on_attestation
@@ -156,14 +135,8 @@ def add_block(spec,
     test_steps.append({'block': get_block_file_name(signed_block)})
 
     # An on_block step implies receiving block's attestations
-    try:
-        for attestation in signed_block.message.body.attestations:
-            run_on_attestation(spec, store, attestation, valid=True)
-    except AssertionError:
-        if allow_invalid_attestations:
-            pass
-        else:
-            raise
+    for attestation in signed_block.message.body.attestations:
+        run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
 
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message
@@ -184,6 +157,7 @@ def add_block(spec,
                 'epoch': int(store.best_justified_checkpoint.epoch),
                 'root': encode_hex(store.best_justified_checkpoint.root),
             },
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
         }
     })
 

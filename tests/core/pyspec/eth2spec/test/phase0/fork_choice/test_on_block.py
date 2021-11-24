@@ -1,4 +1,5 @@
 import random
+from eth_utils import encode_hex
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.test.context import MINIMAL, spec_state_test, with_all_phases, with_presets
@@ -543,21 +544,17 @@ def test_new_justified_is_later_than_store_justified(spec, state):
     assert fork_3_state.finalized_checkpoint.epoch == 3
     assert fork_3_state.current_justified_checkpoint.epoch == 4
 
-    # FIXME: pending on the `on_block`, `on_attestation` fix
-    # # Apply blocks of `fork_3_state` to `store`
-    # for block in all_blocks:
-    #     if store.time < spec.compute_time_at_slot(fork_2_state, block.message.slot):
-    #         time = store.genesis_time + block.message.slot * spec.config.SECONDS_PER_SLOT
-    #         on_tick_and_append_step(spec, store, time, test_steps)
-    #     # valid_attestations=False because the attestations are outdated (older than previous epoch)
-    #     yield from add_block(spec, store, block, test_steps, allow_invalid_attestations=False)
+    # Apply blocks of `fork_3_state` to `store`
+    for block in all_blocks:
+        if store.time < spec.compute_time_at_slot(fork_2_state, block.message.slot):
+            time = store.genesis_time + block.message.slot * spec.config.SECONDS_PER_SLOT
+            on_tick_and_append_step(spec, store, time, test_steps)
+        yield from add_block(spec, store, block, test_steps)
 
-    # assert store.finalized_checkpoint == fork_3_state.finalized_checkpoint
-    # assert (store.justified_checkpoint
-    #         == fork_3_state.current_justified_checkpoint
-    #         != store.best_justified_checkpoint)
-    # assert (store.best_justified_checkpoint
-    #         == fork_2_state.current_justified_checkpoint)
+    assert store.finalized_checkpoint == fork_3_state.finalized_checkpoint
+    assert store.justified_checkpoint == fork_3_state.current_justified_checkpoint
+    assert store.justified_checkpoint != store.best_justified_checkpoint
+    assert store.best_justified_checkpoint == fork_2_state.current_justified_checkpoint
 
     yield 'steps', test_steps
 
@@ -622,20 +619,19 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
     assert state.finalized_checkpoint != another_state.finalized_checkpoint
     assert state.current_justified_checkpoint != another_state.current_justified_checkpoint
 
-    # pre_store_justified_checkpoint_root = store.justified_checkpoint.root
+    pre_store_justified_checkpoint_root = store.justified_checkpoint.root
 
-    # FIXME: pending on the `on_block`, `on_attestation` fix
-    # # Apply blocks of `another_state` to `store`
-    # for block in all_blocks:
-    #     # NOTE: Do not call `on_tick` here
-    #     yield from add_block(spec, store, block, test_steps, allow_invalid_attestations=True)
+    # Apply blocks of `another_state` to `store`
+    for block in all_blocks:
+        # NOTE: Do not call `on_tick` here
+        yield from add_block(spec, store, block, test_steps)
 
-    # finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    # ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
-    # assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
+    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
+    assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
 
-    # assert store.finalized_checkpoint == another_state.finalized_checkpoint
-    # assert store.justified_checkpoint == another_state.current_justified_checkpoint
+    assert store.finalized_checkpoint == another_state.finalized_checkpoint
+    assert store.justified_checkpoint == another_state.current_justified_checkpoint
 
     yield 'steps', test_steps
 
@@ -698,15 +694,106 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
 
     pre_store_justified_checkpoint_root = store.justified_checkpoint.root
     for block in all_blocks:
-        # FIXME: Once `on_block` and `on_attestation` logic is fixed,
-        # fix test case and remove allow_invalid_attestations flag
-        yield from tick_and_add_block(spec, store, block, test_steps, allow_invalid_attestations=True)
+        yield from tick_and_add_block(spec, store, block, test_steps)
 
     finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
     assert store.finalized_checkpoint == another_state.finalized_checkpoint
-    assert store.justified_checkpoint != another_state.current_justified_checkpoint
+    assert store.justified_checkpoint == another_state.current_justified_checkpoint
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_boost(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+
+    # Build block that serves as head ONLY on timely arrival, and ONLY in that slot
+    state = genesis_state.copy()
+    next_slots(spec, state, 3)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # Process block on timely arrival just before end of boost interval
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps)
+    assert store.proposer_boost_root == spec.hash_tree_root(block)
+    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) > 0
+
+    # Ensure that boost is removed after slot is over
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    assert store.proposer_boost_root == spec.Root()
+    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
+
+    next_slots(spec, state, 3)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # Process block on timely arrival at start of boost interval
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps)
+    assert store.proposer_boost_root == spec.hash_tree_root(block)
+    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) > 0
+
+    # Ensure that boost is removed after slot is over
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    assert store.proposer_boost_root == spec.Root()
+    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
+
+    test_steps.append({
+        'checks': {
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+        }
+    })
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_boost_root_same_slot_untimely_block(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+
+    # Build block that serves as head ONLY on timely arrival, and ONLY in that slot
+    state = genesis_state.copy()
+    next_slots(spec, state, 3)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # Process block on untimely arrival in the same slot
+    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block, test_steps)
+
+    assert store.proposer_boost_root == spec.Root()
+
+    test_steps.append({
+        'checks': {
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+        }
+    })
 
     yield 'steps', test_steps

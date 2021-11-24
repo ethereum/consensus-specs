@@ -169,7 +169,6 @@ We define the following Python custom types for type hinting and readability:
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
-
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.
@@ -1175,7 +1174,7 @@ Before the Ethereum beacon chain genesis has been triggered, and for every Ether
 Proof-of-work blocks must only be considered once they are at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e. `eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`). Due to this constraint, if `GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the `genesis_time` can happen before the time/state is first known. Values should be configured to avoid this case.
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
     fork = Fork(

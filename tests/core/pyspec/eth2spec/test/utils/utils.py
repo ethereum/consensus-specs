@@ -1,4 +1,3 @@
-import inspect
 from typing import Dict, Any
 from eth2spec.utils.ssz.ssz_typing import View
 from eth2spec.utils.ssz.ssz_impl import serialize
@@ -94,50 +93,3 @@ def with_meta_tags(tags: Dict[str, Any]):
                     yield k, 'meta', v
         return entry
     return runner
-
-
-def build_transition_test(fn, pre_fork_name, post_fork_name, fork_epoch=None):
-    """
-    Handles the inner plumbing to generate `transition_test`s.
-    See that decorator in `context.py` for more information.
-    """
-    def _adapter(*args, **kwargs):
-        post_spec = kwargs["phases"][post_fork_name]
-
-        pre_fork_counter = 0
-
-        def pre_tag(obj):
-            nonlocal pre_fork_counter
-            pre_fork_counter += 1
-            return obj
-
-        def post_tag(obj):
-            return obj
-
-        yield "post_fork", "meta", post_fork_name
-
-        has_fork_epoch = False
-        if fork_epoch:
-            kwargs["fork_epoch"] = fork_epoch
-            has_fork_epoch = True
-            yield "fork_epoch", "meta", fork_epoch
-
-        # massage args to handle an optional custom state using
-        # `with_custom_state` decorator
-        expected_args = inspect.getfullargspec(fn)
-        if "phases" not in expected_args.kwonlyargs:
-            kwargs.pop("phases", None)
-
-        for part in fn(*args,
-                       post_spec=post_spec,
-                       pre_tag=pre_tag,
-                       post_tag=post_tag,
-                       **kwargs):
-            if part[0] == "fork_epoch":
-                has_fork_epoch = True
-            yield part
-        assert has_fork_epoch
-
-        if pre_fork_counter > 0:
-            yield "fork_block", "meta", pre_fork_counter - 1
-    return _adapter

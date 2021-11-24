@@ -69,6 +69,12 @@ MIN_PER_EPOCH_CHURN_LIMIT: 4
 CHURN_LIMIT_QUOTIENT: 32
 
 
+# Fork choice
+# ---------------------------------------------------------------
+# 70%
+PROPOSER_SCORE_BOOST: 70
+
+
 # Deposit contract
 # ---------------------------------------------------------------
 # Ethereum Goerli testnet
