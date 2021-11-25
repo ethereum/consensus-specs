@@ -68,7 +68,7 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 
 *Note*: Client software must not call this function as long as the paylod of the head of the chain is empty, i.e. `get_head(store).body.payload == ExecutionPayload()`.
 
-*Note*: Client software must call this function to initiate payload build process to produce the merge transition block, in this case the `head_block_hash` parameter must be set to the hash of a terminal PoW block.
+*Note*: Client software MUST call this function to initiate the payload build process to produce the merge transition block; the `head_block_hash` parameter MUST be set to the hash of a terminal PoW block in this case.
 
 ## Helpers
 
