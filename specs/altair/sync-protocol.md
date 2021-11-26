@@ -18,7 +18,10 @@
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
+  - [`get_signed_header`](#get_signed_header)
+  - [`get_safety_threshold`](#get_safety_threshold)
 - [Light client state updates](#light-client-state-updates)
+    - [`process_slot`](#process_slot)
     - [`validate_light_client_update`](#validate_light_client_update)
     - [`apply_light_client_update`](#apply_light_client_update)
     - [`process_light_client_update`](#process_light_client_update)
@@ -47,9 +50,10 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` |
+| Name | Value | Notes |
+| - | - | - |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | |
+| `SAFETY_THRESHOLD_CALCULATION_PERIOD` | `4096` | ~13.6 hours |
 
 ## Containers
 
@@ -86,10 +90,12 @@ class LightClientUpdate(Container):
 ### `LightClientStore`
 
 ```python
-@dataclass
 class LightClientStore(object):
     snapshot: LightClientSnapshot
-    valid_updates: Set[LightClientUpdate]
+    best_valid_update: Optional[LightClientUpdate]
+    optimistic_header: BeaconBlockHeader
+    previous_period_max_attendance: uint64
+    current_period_max_attendance: uint64
 ```
 
 ## Helper functions
@@ -101,9 +107,38 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
 ```
 
+### `get_signed_header`
+
+```python
+def get_signed_header(update: LightClientUpdate):
+    if update.finality_header is None:
+        return update.header
+    else:
+        return update.finality_header
+```
+
+### `get_safety_threshold`
+
+```python
+def get_safety_threshold(store: LightClientStore):
+    return max(
+        store.previous_period_max_attendance,     
+        store.current_period_max_attendance
+    ) // 2
+```
+
 ## Light client state updates
 
-A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock.
+A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock. `process_slot` is processed every time the current slot increments.
+
+### `process_slot`
+
+```python
+def process_slot(store: LightClientStore, current_slot: Slot):
+    if current_slot % SAFETY_THRESHOLD_CALCULATION_PERIOD == 0:
+        store.previous_period_max_attendance = store.current_period_max_attendance
+        store.current_period_max_attendance = 0
+```
 
 #### `validate_light_client_update`
 
@@ -172,24 +207,43 @@ def apply_light_client_update(snapshot: LightClientSnapshot, update: LightClient
 #### `process_light_client_update`
 
 ```python
-def process_light_client_update(store: LightClientStore, update: LightClientUpdate, current_slot: Slot,
+def process_light_client_update(store: LightClientStore,
+                                update: LightClientUpdate,
+                                current_slot: Slot,
                                 genesis_validators_root: Root) -> None:
+                                
     validate_light_client_update(store.snapshot, update, genesis_validators_root)
-    store.valid_updates.add(update)
-
-    update_timeout = SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    
+    # Update the best update in case we have to force-update to it if the timeout elapses
+    if (
+        sum(update.sync_committee_bits) > sum(store.best_finalization_update.sync_committee_bits) and
+        get_signed_header(update).slot > store.snapshot.header.slot
+    ):
+        store.best_finalization_update = update
+    
+    # Track the maximum attendance in the committee signatures
+    store.current_period_max_attendance = max(
+         store.current_period_max_attendance,
+         update.sync_committee_bits.count(1)
+    )
+    
+    # Update the optimistic header
+    if (
+        sum(update.sync_committee_bits) > get_safety_threshold(store) and
+        update.header.slot > store.optimistic_header.slot
+    ):
+        store.optimistic_header = update.header
+    
+    # Update finalized header
     if (
         sum(update.sync_committee_bits) * 3 >= len(update.sync_committee_bits) * 2
         and update.finality_header != BeaconBlockHeader()
     ):
-        # Apply update if (1) 2/3 quorum is reached and (2) we have a finality proof.
-        # Note that (2) means that the current light client design needs finality.
-        # It may be changed to re-organizable light client design. See the on-going issue consensus-specs#2182.
+        # Normal update through 2/3 threshold
         apply_light_client_update(store.snapshot, update)
-        store.valid_updates = set()
+        store.best_valid_update = None
     elif current_slot > store.snapshot.header.slot + update_timeout:
         # Forced best update when the update timeout has elapsed
-        apply_light_client_update(store.snapshot,
-                                  max(store.valid_updates, key=lambda update: sum(update.sync_committee_bits)))
-        store.valid_updates = set()
+        apply_light_client_update(store.snapshot, store.best_valid_update)
+        store.best_valid_update = None
 ```
