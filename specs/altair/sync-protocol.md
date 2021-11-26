@@ -156,10 +156,8 @@ def validate_light_client_update(snapshot: LightClientSnapshot,
 
     # Verify update header root is the finalized root of the finality header, if specified
     if update.finality_header == BeaconBlockHeader():
-        signed_header = update.header
         assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
     else:
-        signed_header = update.finality_header
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.header),
             branch=update.finality_branch,
@@ -188,7 +186,7 @@ def validate_light_client_update(snapshot: LightClientSnapshot,
     # Verify sync committee aggregate signature
     participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
-    signing_root = compute_signing_root(signed_header, domain)
+    signing_root = compute_signing_root(get_signed_header(update), domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
 ```
 
