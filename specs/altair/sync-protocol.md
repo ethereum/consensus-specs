@@ -17,11 +17,10 @@
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
   - [`get_subtree_index`](#get_subtree_index)
-  - [`get_signed_header`](#get_signed_header)
+  - [`get_active_header`](#get_active_header)
   - [`get_safety_threshold`](#get_safety_threshold)
 - [Light client state updates](#light-client-state-updates)
     - [`process_slot`](#process_slot)
-    - [`get_active_header`](#get_active_header)
     - [`validate_light_client_update`](#validate_light_client_update)
     - [`apply_light_client_update`](#apply_light_client_update)
     - [`process_light_client_update`](#process_light_client_update)
@@ -103,6 +102,17 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
 ```
 
+### `get_active_header`
+
+```python
+def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
+    # Is the update trying to convince us of a finalized header or an optimistic header?
+    if update.finalized_header BeaconBlockHeader():
+        return update.finalized_header
+    else:
+        return update.attested_header
+```
+
 ### `get_safety_threshold`
 
 ```python
@@ -124,17 +134,6 @@ def process_slot(store: LightClientStore, current_slot: Slot):
     if current_slot % SAFETY_THRESHOLD_CALCULATION_PERIOD == 0:
         store.previous_period_max_attendance = store.current_period_max_attendance
         store.current_period_max_attendance = 0
-```
-
-### `get_active_header`
-
-```python
-def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
-    # Is the update trying to convince us of a finalized header or an optimistic header?
-    if update.finalized_header BeaconBlockHeader():
-        return update.finalized_header
-    else:
-        return update.attested_header
 ```
 
 #### `validate_light_client_update`
