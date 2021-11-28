@@ -107,7 +107,7 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
 ```python
 def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
     # Is the update trying to convince us of a finalized header or an optimistic header?
-    if update.finalized_header BeaconBlockHeader():
+    if update.finalized_header != BeaconBlockHeader():
         return update.finalized_header
     else:
         return update.attested_header
