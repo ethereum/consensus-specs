@@ -52,7 +52,8 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | Name | Value | Notes |
 | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | |
-| `SAFETY_THRESHOLD_CALCULATION_PERIOD` | `4096` | ~13.6 hours |
+| `SAFETY_THRESHOLD_PERIOD` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | ~13.6 hours |
+| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | ~27.3 hours |
 
 ## Containers
 
@@ -88,9 +89,9 @@ class LightClientStore(object):
     best_valid_update: Optional[LightClientUpdate]
     # Most recent available reasonably-safe header
     optimistic_header: BeaconBlockHeader
-    # Max number of participants in a sync committee (used to calculate safety threshold)
-    previous_period_max_attendance: uint64
-    current_period_max_attendance: uint64
+    # Max number of active participants in a sync committee (used to calculate safety threshold)
+    previous_max_active_participants: uint64
+    current_max_active_participants: uint64
 ```
 
 ## Helper functions
@@ -106,7 +107,9 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
 
 ```python
 def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
-    # Is the update trying to convince us of a finalized header or an optimistic header?
+    # The "active header" is the header that the update is trying to convince us
+    # to accept. If a finalized header is present, it's the finalized header,
+    # otherwise it's the attested header
     if update.finalized_header != BeaconBlockHeader():
         return update.finalized_header
     else:
@@ -118,8 +121,8 @@ def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
 ```python
 def get_safety_threshold(store: LightClientStore):
     return max(
-        store.previous_period_max_attendance,     
-        store.current_period_max_attendance
+        store.previous_max_active_participants,     
+        store.current_max_active_participants
     ) // 2
 ```
 
@@ -131,9 +134,9 @@ A light client maintains its state in a `store` object of type `LightClientStore
 
 ```python
 def process_slot(store: LightClientStore, current_slot: Slot):
-    if current_slot % SAFETY_THRESHOLD_CALCULATION_PERIOD == 0:
-        store.previous_period_max_attendance = store.current_period_max_attendance
-        store.current_period_max_attendance = 0
+    if current_slot % SAFETY_THRESHOLD_PERIOD == 0:
+        store.previous_max_active_participants = store.current_max_active_participants
+        store.current_max_active_participants = 0
 ```
 
 #### `validate_light_client_update`
@@ -141,11 +144,12 @@ def process_slot(store: LightClientStore, current_slot: Slot):
 ```python
 def validate_light_client_update(store: LightClientStore,
                                  update: LightClientUpdate,
+                                 current_slot: Slot,
                                  genesis_validators_root: Root) -> None:
                                  
     # Verify update slot is larger than slot of current best finalized header
     active_header = get_active_header(update)
-    assert active_header.slot > store.finalized_header.slot
+    assert current_slot >= active_header.slot > store.finalized_header.slot
 
     # Verify update does not skip a sync committee period
     finalized_period = compute_epoch_at_slot(store.finalized_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
@@ -209,15 +213,15 @@ def process_light_client_update(store: LightClientStore,
                                 current_slot: Slot,
                                 genesis_validators_root: Root) -> None:
                                 
-    validate_light_client_update(store, update, genesis_validators_root)
+    validate_light_client_update(store, update, current_slot, genesis_validators_root)
     
     # Update the best update in case we have to force-update to it if the timeout elapses
-    if sum(update.sync_committee_bits) > sum(store.best_finalization_update.sync_committee_bits):
-        store.best_finalization_update = update
+    if sum(update.sync_committee_bits) > sum(store.best_valid_update.sync_committee_bits):
+        store.best_valid_update = update
     
-    # Track the maximum attendance in the committee signatures
-    store.current_period_max_attendance = max(
-         store.current_period_max_attendance,
+    # Track the maximum numebr of active participants in the committee signatures
+    store.current_max_active_participants = max(
+         store.current_max_active_participants,
          update.sync_committee_bits.count(1)
     )
     
@@ -236,7 +240,7 @@ def process_light_client_update(store: LightClientStore,
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)
         store.best_valid_update = None
-    elif current_slot > store.finalized_header.slot + update_timeout:
+    elif current_slot > store.finalized_header.slot + UPDATE_TIMEOUT:
         # Forced best update when the update timeout has elapsed
         apply_light_client_update(store, store.best_valid_update)
         store.best_valid_update = None
