@@ -63,7 +63,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 class LightClientUpdate(Container):
     # The beacon block header that is attested to by the sync committee
     attested_header: BeaconBlockHeader
-    # Next sync committee corresponding to the header
+    # Next sync committee corresponding to the active header
     next_sync_committee: SyncCommittee
     next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
     # The finalized beacon block header attested to by Merkle branch
