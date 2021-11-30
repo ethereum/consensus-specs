@@ -52,8 +52,8 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | Name | Value | Notes |
 | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | |
-| `SAFETY_THRESHOLD_PERIOD` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | ~13.6 hours |
 | `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | ~27.3 hours |
+| `SAFETY_THRESHOLD_PERIOD` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD // 2` | ~13.6 hours |
 
 ## Containers
 
@@ -79,6 +79,7 @@ class LightClientUpdate(Container):
 ### `LightClientStore`
 
 ```python
+@dataclass
 class LightClientStore(object):
     # Beacon block header that is finalized
     finalized_header: BeaconBlockHeader
@@ -119,7 +120,7 @@ def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
 ### `get_safety_threshold`
 
 ```python
-def get_safety_threshold(store: LightClientStore):
+def get_safety_threshold(store: LightClientStore) -> uint64:
     return max(
         store.previous_max_active_participants,     
         store.current_max_active_participants
@@ -130,10 +131,10 @@ def get_safety_threshold(store: LightClientStore):
 
 A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock. `process_slot` is processed every time the current slot increments.
 
-### `process_slot`
+#### `process_slot`
 
 ```python
-def process_slot(store: LightClientStore, current_slot: Slot):
+def process_slot_for_light_client_store(store: LightClientStore, current_slot: Slot) -> None:
     if current_slot % SAFETY_THRESHOLD_PERIOD == 0:
         store.previous_max_active_participants = store.current_max_active_participants
         store.current_max_active_participants = 0
@@ -216,13 +217,16 @@ def process_light_client_update(store: LightClientStore,
     validate_light_client_update(store, update, current_slot, genesis_validators_root)
     
     # Update the best update in case we have to force-update to it if the timeout elapses
-    if sum(update.sync_committee_bits) > sum(store.best_valid_update.sync_committee_bits):
+    if (
+        store.best_valid_update is None
+        or sum(update.sync_committee_bits) > sum(store.best_valid_update.sync_committee_bits)
+    ):
         store.best_valid_update = update
     
-    # Track the maximum numebr of active participants in the committee signatures
+    # Track the maximum number of active participants in the committee signatures
     store.current_max_active_participants = max(
-         store.current_max_active_participants,
-         update.sync_committee_bits.count(1)
+        store.current_max_active_participants,
+        update.sync_committee_bits.count(1),
     )
     
     # Update the optimistic header
@@ -240,7 +244,10 @@ def process_light_client_update(store: LightClientStore,
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)
         store.best_valid_update = None
-    elif current_slot > store.finalized_header.slot + UPDATE_TIMEOUT:
+    elif (
+        current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
+        and store.best_valid_update is not None
+    ):
         # Forced best update when the update timeout has elapsed
         apply_light_client_update(store, store.best_valid_update)
         store.best_valid_update = None
