@@ -106,20 +106,20 @@ def invalid_cases():
                          RandomizationMode.mode_max_count]:
                 if len(offsets) != 0:
                     for index,offset_index in enumerate(offsets):
-                        yield f'{name}_offset_{offset_index}_plus_one', \
+                        yield f'{name}_{mode.to_name()}_offset_{offset_index}_plus_one', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
                                   change=lambda x: x + 1
                               ))
-                        yield f'{name}_offset_{offset_index}_zeroed', \
+                        yield f'{name}_{mode.to_name()}_offset_{offset_index}_zeroed', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
                                   change=lambda x: 0
                               ))
                         if index == 0:
-                            yield f'{name}_first offset_{offset_index}_minus_one', \
+                            yield f'{name}_{mode.to_name()}_first offset_{offset_index}_minus_one', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
@@ -131,7 +131,7 @@ def invalid_cases():
                          RandomizationMode.mode_one_count,
                          RandomizationMode.mode_max_count]:
                 serialized = serialize(container_case_fn(rng, RandomizationMode.mode_max_count, typ))
-                yield f'{name}_first offset_{offsets[0]}_skip', \
+                yield f'{name}_{mode.to_name()}_first offset_{offsets[0]}_skip', \
                                 invalid_test_case(lambda: mod_offset(
                                     b=serialize(container_case_fn(rng, mode, typ)),
                                     offset_index=offsets[0],
