@@ -484,8 +484,9 @@ def with_config_overrides(config_overrides):
             # Retain types of all config values
             test_config = {k: config_types[k](v) for k, v in tmp_config.items()}
 
-            # Output the config for test vectors  (TODO: check config YAML encoding)
-            yield 'config', 'data', test_config
+            # FIXME: config YAML encoding issue
+            # Output the config for test vectors
+            # yield 'config', 'data', test_config
 
             spec.config = spec.Configuration(**test_config)
 

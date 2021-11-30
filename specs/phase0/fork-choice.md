@@ -263,6 +263,7 @@ def get_head(store: Store) -> Root:
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
+        # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
 ```
 
