@@ -182,14 +182,12 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
     proposer_score = Gwei(0)
-    if store.proposer_boost_root != Root():
-        block = store.blocks[root]
-        if get_ancestor(store, root, block.slot) == store.proposer_boost_root:
-            num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
-            avg_balance = get_total_active_balance(state) // num_validators
-            committee_size = num_validators // SLOTS_PER_EPOCH
-            committee_weight = committee_size * avg_balance
-            proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    if store.proposer_boost_root != Root() and root == store.proposer_boost_root:
+        num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
+        avg_balance = get_total_active_balance(state) // num_validators
+        committee_size = num_validators // SLOTS_PER_EPOCH
+        committee_weight = committee_size * avg_balance
+        proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
     return attestation_score + proposer_score
 
 ```
