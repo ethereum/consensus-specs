@@ -226,7 +226,7 @@ def process_light_client_update(store: LightClientStore,
     # Track the maximum number of active participants in the committee signatures
     store.current_max_active_participants = max(
         store.current_max_active_participants,
-        update.sync_committee_bits.count(1),
+        sum(update.sync_committee_bits),
     )
     
     # Update the optimistic header
