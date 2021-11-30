@@ -106,13 +106,13 @@ def invalid_cases():
                          RandomizationMode.mode_max_count]:
                 if len(offsets) != 0:
                     for offset_index in offsets:
-                        yield f'{name}_offset_{offset_index}_plus_one', \
+                        yield f'{name}_{mode.to_name()}_offset_{offset_index}_plus_one', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
                                   change=lambda x: x + 1
                               ))
-                        yield f'{name}_offset_{offset_index}_zeroed', \
+                        yield f'{name}_{mode.to_name()}_offset_{offset_index}_zeroed', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
