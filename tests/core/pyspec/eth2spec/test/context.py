@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
 from eth2spec.merge import mainnet as spec_merge_mainnet, minimal as spec_merge_minimal
+from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
+    PHASE0, ALTAIR, MERGE, CAPELLA,
+    MINIMAL, MAINNET,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE, FORKS_BEFORE_CAPELLA,
     ALL_FORK_UPGRADES,
 )
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -56,6 +58,10 @@ class SpecMerge(Spec):
     ...
 
 
+class SpecCapella(Spec):
+    ...
+
+
 @dataclass(frozen=True)
 class ForkMeta:
     pre_fork_name: str
@@ -68,11 +74,13 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         PHASE0: spec_phase0_minimal,
         ALTAIR: spec_altair_minimal,
         MERGE: spec_merge_minimal,
+        CAPELLA: spec_capella_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
         MERGE: spec_merge_mainnet,
+        CAPELLA: spec_capella_mainnet,
     },
 }
 
@@ -81,6 +89,7 @@ class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     ALTAIR: SpecAltair
     MERGE: SpecMerge
+    CAPELLA: SpecCapella
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -511,8 +520,13 @@ def is_post_merge(spec):
     return spec.fork not in FORKS_BEFORE_MERGE
 
 
+def is_post_capella(spec):
+    return spec.fork not in FORKS_BEFORE_CAPELLA
+
+
 with_altair_and_later = with_all_phases_except([PHASE0])
 with_merge_and_later = with_all_phases_except([PHASE0, ALTAIR])
+with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, MERGE])
 
 
 def only_generator(reason):

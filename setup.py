@@ -41,6 +41,7 @@ from marko.ext.gfm.elements import Table
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
 MERGE = 'merge'
+CAPELLA = 'capella'
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
@@ -548,9 +549,38 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
 
+#
+# CapellaSpecBuilder
+#
+class CapellaSpecBuilder(MergeSpecBuilder):
+    fork: str = CAPELLA
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.merge import {preset_name} as merge
+'''
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations()
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions()
+
+    @classmethod
+    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+        constants = {
+            'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
+            'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
+        }
+        return {**super().hardcoded_ssz_dep_constants(), **constants}
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder, CapellaSpecBuilder)
 }
 
 
@@ -845,14 +875,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, MERGE):
+            if self.spec_fork in (PHASE0, ALTAIR, MERGE, CAPELLA):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, MERGE):
+            if self.spec_fork in (ALTAIR, MERGE, CAPELLA):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -861,12 +891,19 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork == MERGE:
+            if self.spec_fork in (MERGE, CAPELLA):
                 self.md_doc_paths += """
                     specs/merge/beacon-chain.md
                     specs/merge/fork.md
                     specs/merge/fork-choice.md
                     specs/merge/validator.md
+                """
+            if self.spec_fork == CAPELLA:
+                self.md_doc_paths += """
+                    specs/capella/beacon-chain.md
+                    specs/capella/fork.md
+                    specs/capella/validator.md
+                    specs/capella/p2p-interface.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
