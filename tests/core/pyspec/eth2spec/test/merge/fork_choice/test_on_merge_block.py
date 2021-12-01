@@ -1,9 +1,10 @@
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.exceptions import BlockNotFoundException
-from eth2spec.test.context import spec_state_test, with_phases, MERGE
+from eth2spec.test.context import spec_state_test, with_phases
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth2spec.test.helpers.constants import MERGE
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,

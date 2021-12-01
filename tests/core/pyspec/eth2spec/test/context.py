@@ -2,19 +2,17 @@ import pytest
 from copy import deepcopy
 from dataclasses import dataclass
 from eth_utils import encode_hex
+import importlib
 
-from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
-from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
-from eth2spec.merge import mainnet as spec_merge_mainnet, minimal as spec_merge_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
+    PHASE0, ALTAIR, MINIMAL,
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
     ALL_FORK_UPGRADES,
 )
-from .helpers.typing import SpecForkName, PresetBaseName
+from .helpers.typing import SpecForkName
 from .helpers.genesis import create_genesis_state
 from .utils import (
     vector_test,
@@ -62,20 +60,6 @@ class ForkMeta:
     pre_fork_name: str
     post_fork_name: str
     fork_epoch: int
-
-
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
-    MINIMAL: {
-        PHASE0: spec_phase0_minimal,
-        ALTAIR: spec_altair_minimal,
-        MERGE: spec_merge_minimal,
-    },
-    MAINNET: {
-        PHASE0: spec_phase0_mainnet,
-        ALTAIR: spec_altair_mainnet,
-        MERGE: spec_merge_mainnet,
-    },
-}
 
 
 class SpecForks(TypedDict, total=False):
@@ -360,11 +344,31 @@ def with_all_phases_except(exclusion_phases):
     return decorator
 
 
+def _get_module(module_path):
+    module_spec = importlib.util.find_spec(module_path)
+    module = importlib.util.module_from_spec(module_spec)
+    loader = importlib.util.LazyLoader(module_spec.loader)
+    module_spec.loader = loader
+    import sys
+    sys.modules[module_path] = module
+    loader.exec_module(module)
+    return module
+
+
+def _get_targets(preset_name: SpecForkName) -> Dict[SpecForkName, Spec]:
+    return {
+        # e.g., eth2spec.phase0.mainnet
+        fork_name: _get_module('eth2spec.' + fork_name + '.' + preset_name)
+        for fork_name in ALL_PHASES
+    }
+
+
 def _get_preset_targets(kw):
     preset_name = DEFAULT_TEST_PRESET
     if 'preset' in kw:
         preset_name = kw.pop('preset')
-    return spec_targets[preset_name]
+
+    return _get_targets(preset_name)
 
 
 def _get_run_phases(phases, kw):

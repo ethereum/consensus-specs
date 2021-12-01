@@ -1,12 +1,14 @@
 from eth2spec.test.context import (
-    MERGE,
     single_phase,
     spec_test,
     with_presets,
     with_phases,
     with_merge_and_later,
 )
-from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.constants import (
+    MERGE,
+    MINIMAL,
+)
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
 )
