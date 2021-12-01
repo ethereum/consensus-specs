@@ -44,8 +44,6 @@ SHARDING_FORK_VERSION: 0x04000001
 SHARDING_FORK_EPOCH: 18446744073709551615
 
 
-
-
 # Time parameters
 # ---------------------------------------------------------------
 # [customized] Faster for testing purposes
