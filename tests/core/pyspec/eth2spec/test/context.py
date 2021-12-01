@@ -484,9 +484,10 @@ def with_config_overrides(config_overrides):
             # Retain types of all config values
             test_config = {k: config_types[k](v) for k, v in tmp_config.items()}
 
-            # FIXME: config YAML encoding issue
             # Output the config for test vectors
-            # yield 'config', 'data', test_config
+            # Cast uint object with `int()` so that it could be serialized with yaml
+            output_config = {k: int(v) if isinstance(v, int) else str(v) for k, v in test_config.items()}
+            yield 'config', 'data', output_config
 
             spec.config = spec.Configuration(**test_config)
 
