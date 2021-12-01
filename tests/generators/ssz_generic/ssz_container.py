@@ -125,15 +125,3 @@ def invalid_cases():
                                   offset_index=offset_index,
                                   change=lambda x: x - 1
                               ))
-        if len(offsets) > 1 :
-            for mode in [RandomizationMode.mode_random,
-                         RandomizationMode.mode_nil_count,
-                         RandomizationMode.mode_one_count,
-                         RandomizationMode.mode_max_count]:
-                serialized = serialize(container_case_fn(rng, RandomizationMode.mode_max_count, typ))
-                yield f'{name}_{mode.to_name()}_first offset_{offsets[0]}_skip', \
-                                invalid_test_case(lambda: mod_offset(
-                                    b=serialize(container_case_fn(rng, mode, typ)),
-                                    offset_index=offsets[0],
-                                    change=lambda x: serialized[offsets[1]]
-                                ))
