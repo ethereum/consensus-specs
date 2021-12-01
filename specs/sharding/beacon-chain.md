@@ -101,7 +101,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Notes |
 | - | - | - |
-| `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) modulus |
 | `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2) | Factor by which samples are extended for data availability encoding |
 | `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
