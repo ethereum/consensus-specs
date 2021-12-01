@@ -153,7 +153,7 @@ def test_ex_ante_secnario_1_without_boost(spec, state):
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
     # Block B received at N+2
-    # Block B and C has the same score 0. Use a lexicographical order for tie-breaking.
+    # Block B and C have the same score 0. Use a lexicographical order for tie-breaking.
     yield from add_block(spec, store, signed_block_b, test_steps)
     if signed_block_b.message.hash_tree_root() >= signed_block_c.message.hash_tree_root():
         assert spec.get_head(store) == signed_block_b.message.hash_tree_root()
@@ -240,6 +240,9 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
     Block C (parent A) - slot N+2
     Attestation_1 (Block B) - slot N+1 – size > proposer_boost
     """
+    # For testing `PROPOSER_SCORE_BOOST = 0` case
+    yield 'PROPOSER_SCORE_BOOST', 'meta', 0
+
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -276,7 +279,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
     # Block B received at N+2
-    # Block B and C has the same score 0. Use a lexicographical order for tie-breaking.
+    # Block B and C have the same score 0. Use a lexicographical order for tie-breaking.
     yield from add_block(spec, store, signed_block_b, test_steps)
     if signed_block_b.message.hash_tree_root() >= signed_block_c.message.hash_tree_root():
         assert spec.get_head(store) == signed_block_b.message.hash_tree_root()
