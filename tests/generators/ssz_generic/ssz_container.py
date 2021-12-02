@@ -125,3 +125,13 @@ def invalid_cases():
                                   offset_index=offset_index,
                                   change=lambda x: x - 1
                               ))
+                        if mode == RandomizationMode.mode_max_count:
+                            serialized = serialize(container_case_fn(rng, mode, typ))
+                            serialized = serialized + serialized[0:2]
+                            yield f'{name}_{mode.to_name()}_last offset_{offset_index}_overflow', \
+                                invalid_test_case(lambda:serialized)
+                        if mode == RandomizationMode.mode_one_count:
+                            serialized = serialize(container_case_fn(rng, mode, typ))
+                            serialized = serialized + serialized[0:1]
+                            yield f'{name}_{mode.to_name()}_last offset_{offset_index}_wrong_byte_length', \
+                                invalid_test_case(lambda:serialized)
