@@ -1,4 +1,4 @@
-# Cappela -- The Beacon Chain
+# Capella -- The Beacon Chain
 
 ## Table of contents
 
@@ -11,7 +11,7 @@
 
 ## Introduction
 
-Cappela is a consensus-layer upgrade containin a number of features related
+Capella is a consensus-layer upgrade containin a number of features related
 to validator withdrawals. Including:
 * Automatic withdrawals of `withdrawable` validators
 * Partial withdrawals during block proposal
@@ -39,6 +39,23 @@ to validator withdrawals. Including:
 ## Containers
 
 ### Extended Containers
+
+#### `Validator`
+
+```python
+class Validator(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
+    effective_balance: Gwei  # Balance at stake
+    slashed: boolean
+    # Status epochs
+    activation_eligibility_epoch: Epoch  # When criteria for activation were met
+    activation_epoch: Epoch
+    exit_epoch: Epoch
+    withdrawable_epoch: Epoch  # When validator can withdraw funds
+    withdrawn_epoch: Epoch  # [New in Capella]
+```
+
 
 #### `BeaconState`
 
@@ -81,7 +98,7 @@ class BeaconState(Container):
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
-    withdrawal_receipts: List[WithdrawalReceipt, WITHDRAWAL_RECEIPT_LIMIT]  # [New in Cappela]
+    withdrawal_receipts: List[WithdrawalReceipt, WITHDRAWAL_RECEIPT_LIMIT]  # [New in Capella]
 ```
 
 ### New containers
@@ -144,7 +161,7 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_roots_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_withdrawals(state)  # [New in Cappela]
+    process_withdrawals(state)  # [New in Capella]
 ```
 
 #### Withdrawals
@@ -160,4 +177,5 @@ def process_withdrawals(state: BeaconState) -> None:
         is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
         if is_balance_nonzero and is_eth1_withdrawal_prefix and is_withdrawable_validator(validator, current_epoch):
             withdraw(state, ValidatorIndex(index), balance)
+            validator.withdrawn_epoch = current_epoch
 ```
