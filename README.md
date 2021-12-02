@@ -48,6 +48,12 @@ The merge is still actively in development. The exact specification has not been
   * [Client settings](specs/merge/client-settings.md)
   * [P2P Networking](specs/merge/p2p-interface.md)
 
+### Crux
+
+Crux is a fork following the merge were validator delegation is implemented. 
+* Specifications:
+  * [Beacon Chain changes](specs/crux/beacon-chain.md)
+
 ### Sharding
 
 Sharding follows the merge, and is divided into three parts:
