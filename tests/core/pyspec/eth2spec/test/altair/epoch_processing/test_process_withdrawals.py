@@ -1,6 +1,3 @@
-from random import Random
-
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     with_capella_and_later,
     spec_state_test,
@@ -60,10 +57,8 @@ def test_no_withdrawals_but_some_next_epoch(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_single_withdrawal(spec, state):
-    current_epoch = spec.get_current_epoch(state)
-
     # Make one validator withdrawable
-    set_validator_withdrawable(spec, state, current_epoch)
+    set_validator_withdrawable(spec, state, 0)
 
     yield from run_process_withdrawals(spec, state, 1)
 
@@ -71,8 +66,6 @@ def test_single_withdrawal(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_multi_withdrawal(spec, state):
-    current_epoch = spec.get_current_epoch(state)
-
     # Make a few validators withdrawable
     for index in range(3):
         set_validator_withdrawable(spec, state, index)
@@ -83,13 +76,8 @@ def test_multi_withdrawal(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_all_withdrawal(spec, state):
-    current_epoch = spec.get_current_epoch(state)
-
     # Make all validators withdrawable
     for index in range(len(state.validators)):
         set_validator_withdrawable(spec, state, index)
 
     yield from run_process_withdrawals(spec, state, len(state.validators))
-
-
-
