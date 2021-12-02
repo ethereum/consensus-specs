@@ -34,7 +34,7 @@ def _apply_base_block_a(spec, state, store, test_steps):
 
 @with_all_phases
 @spec_state_test
-def test_ex_ante_secnario_1_with_boost(spec, state):
+def test_ex_ante_scenario_1_with_boost(spec, state):
     """
     With a single adversarial attestation
 
@@ -98,7 +98,7 @@ def test_ex_ante_secnario_1_with_boost(spec, state):
 @spec_configured_state_test({
     'PROPOSER_SCORE_BOOST': 0,
 })
-def test_ex_ante_secnario_1_without_boost(spec, state):
+def test_ex_ante_scenario_1_without_boost(spec, state):
     """
     With a single adversarial attestation
 
