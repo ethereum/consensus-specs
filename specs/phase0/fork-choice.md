@@ -184,6 +184,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     if store.proposer_boost_root == Root():
         # Return only attestation score if ``proposer_boost_root`` is not set
         return attestation_score
+
     # Calculate proposer score if ``proposer_boost_root`` is set
     proposer_score = Gwei(0)
     # Boost is applied if ``root`` is an ancestor of ``proposer_boost_root``
