@@ -257,6 +257,9 @@ workflows:
       - test-merge:
           requires:
             - install_pyspec_test
+      - test-capella:
+          requires:
+            - install_pyspec_test
       - table_of_contents
       - codespell
       - lint:
