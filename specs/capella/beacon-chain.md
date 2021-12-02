@@ -149,7 +149,7 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Withdrawals
 
-*Note*: The function `process_inactivity_updates` is new.
+*Note*: The function `process_withdrawals` is new.
 
 ```python
 def process_withdrawals(state: BeaconState) -> None:
@@ -157,7 +157,7 @@ def process_withdrawals(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
         is_balance_nonzero = state.balances[index] == 0
-        is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0] != ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
         if is_balance_nonzero and is_eth1_withdrawal_prefix and is_withdrawable_validator(validator, current_epoch):
             withdraw(state, ValidatorIndex(index), balance)
 ```
