@@ -140,7 +140,8 @@ def is_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is withdrawable.
     """
-    return validator.withdrawable_epoch <= epoch
+    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.withdrawn_epoch
 ```
 
 ## Beacon chain state transition function
@@ -172,10 +173,8 @@ def process_epoch(state: BeaconState) -> None:
 def process_withdrawals(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        is_balance_nonzero = state.balances[index] == 0
-        is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-        if is_balance_nonzero and is_eth1_withdrawal_prefix and is_withdrawable_validator(validator, current_epoch):
-            withdraw(state, ValidatorIndex(index), balance)
+        if is_withdrawable_validator(validator, current_epoch):
+            # TODO, consider the zero-balance case
+            withdraw(state, ValidatorIndex(index), state.balances[index])
             validator.withdrawn_epoch = current_epoch
 ```
