@@ -4,7 +4,7 @@
 We allow for validators to delegate their excess earnings to another (possibly new) validator. Thus allowing for beacon-chain issuance to quickly start staking instead of either remaining inactive or impacting the exit churn. This all within the consensus layer, in particular not involving the deposit contract.
 
 ## The problem
-At the time of writing the beacon chain has 264,676 active validators, the average earning is 1.34 ETH and over 150,000 validators have earned over 1ETH. There are over 100,000 validators accounted for staking pools according to [beaconcha.in](https://beaconcha.in/pools). There is no reason to expect these validators to not withdraw their proceeds as soon as they become available. Disregarding those validators that would want to perform a normal withdraw of all of their funds, there will still be a large number of validators that will simply withdraw their excess earnings, either to keep it off the consensus layer, or to compound their interest rate by staking extra validators, as is expectedly the case of staking pools. Under the current leading proposals these validators will have two paths to withdraw their earnings
+At the time of writing the beacon chain has 264,676 active validators, the average earning is 1.34 ETH and over 150,000 validators have earned over 1ETH. There are over 100,000 validators accounted for staking pools according to [beaconcha.in](https://beaconcha.in/pools). There is no reason to expect these validators to not withdraw their proceeds as soon as they become available. Disregarding those validators that would want to perform a normal withdrawal of all of their funds, there will still be a large number of validators that will simply withdraw their excess earnings, either to keep it off the consensus layer, or to compound their interest rate by staking extra validators, as is expectedly the case of staking pools. Under the current leading proposals these validators will have two paths to withdraw their earnings
 
 - Enter an exit queue. Wait for their turn to become withdrawable. Deposit the principal. Enter an entry queue. Wait for their turn to become active.
 - Wait for their turn to propose a block to perform a partial withdrawal.
@@ -20,6 +20,7 @@ The current proposal solves the above problem by providing validators, and in pa
 - Validators can compound their interest immediately and spin off new validators more quickly, avoiding the partial withdrawal and deposit cycle (but are still subject to activation queue)
 - Validators can trustlesly sell their excess earnings, providing liquidity for small stakers without requiring them to either wait possibly months nor withdraw their stake. Thus this could in principle be a decentralizing force.
 - It keeps the non-staking capital to a minimum since as soon as the delegate validator reaches `MAX_EFFECTIVE_BALANCE` it enters the activation queue.
+- It allows for faster withdrawal of earnings since validators can delegate all their validators and then exit the delegate instead of waiting for all their validators to propose.
 
 ## Typical workflow
 
@@ -40,7 +41,7 @@ A new domain to sign the `Delgation` messages sent by validators.
 ### Preset
 
 #### Max operations per block
-The number of `Delegations` that can be included per block. This works as a churn which is independent of the exit queue churn and `MAX_VOLUNTARY_EXITS`
+The number of `Delegations` that can be included per block. This works as a churn which is independent of the exit queue churn and `MAX_VOLUNTARY_EXITS`.
 
 | Name | Value |
 | - | - |
@@ -254,7 +255,7 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
 ```
-
+Notice that validators created by `process_delegation` will automatically enter the activation queue once their balance reaches `MAX_EFFECTIVE_BALANCE` when they are processed in `process_registry_updates`.
 
 #### `process_delegation_transfers`
 
@@ -271,3 +272,22 @@ def process_delegation_transfers(state: BeaconState) -> None:
                 state_balance[index] = MAX_EFFECTIVE_BALANCE
                 increase_balance(state, validator.delegate, amount)
 ```
+## Implementations not curently specified
+
+### Fork transition
+Fork transition logic is simple, at the fork epoch validators are endowed with a new field `delegate` that contains their own index. This is the unique change.
+
+### P2P changes
+Similar to Altair's changes, we would introduce a new gossipsub topic for the delegation messages. Minimal validation can be performed on these messages without checking for signature, like epoch validity and the non-existence of a previous delegate.
+
+### ETH1 withdrawal credentials
+As mentioned above, regular withdrawals will need to address the signature verification in this case. We will wait for the precise mechanism used for withdrawals and introduce it here so as not to duplicate code.
+
+## Issues
+
+In this section we address some of the concerns that were received during discussions in Discord.
+
+- The total cost of storage of delegations on the `BeaconState` is minimal: a very naive implementation adding a delegate index to all validator structures would be 2Mb. This would be the absolute maximum if clients decide to keep an extra map and all validators decide to delegate to the same validator (the highest index). In real life implementations the total cost would be 16 bytes per delegation.
+- The processing cost of transfers is negligible as this is a single loop without expensive logic on a snapshot of the beacon state.
+- The biggest impact on processing time arises in the signature verification of each `Delegation` message. This can be up to `MAX_DELEGATIONS` signatures per block. Notice however that delegations prevent at the very least one signature verification on any alternative mechanism to withdraw funds. And since once a delegation is set it will continue transferring excess, its effect in processing of signature verifications should be net positive.
+- The biggest impact on the network is the gossiping of `Delegation` messages that serialize to 240 bytes and the corresponding increase of Beacon blocks that will grow by `240 * MAX_DELEGATIONS`.
