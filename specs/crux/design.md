@@ -193,7 +193,7 @@ We perform some basic sanity checks like checking that the delegating validator 
 ```python
     delegating_validator = state.validators[delegating_index]
     assert is_active_validator(delegating_validator, current_epoch)
-    assert delegating_validator.slashed == false
+    assert not delegating_validator.slashed
 ```
 
 We allow for only one delegation per validator. This may be relaxed. In principle spams and spamming loops are already prevented by the fact that we only allow delegations from validators that have 1 ETH in excess and to delegates that are newer than the delegating validator.

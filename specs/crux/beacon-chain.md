@@ -186,7 +186,7 @@ def process_delegation(state: BeaconState, delegation: Delegation) -> None:
 
     delegating_validator = state.validators[delegating_index]
     assert is_active_validator(delegating_validator, current_epoch)
-    assert delegating_validator.slashed == false
+    assert not delegating_validator.slashed 
 
     assert delegating_validator.delegate == delegating_index
 
