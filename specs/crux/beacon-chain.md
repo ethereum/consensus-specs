@@ -13,6 +13,7 @@
   - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
+  - [Time parameters](#time-parameters)
 - [Configuration](#configuration)
   - [Gwei values](#gwei-values)
 - [Containers](#containers)
@@ -22,16 +23,7 @@
   - [New containers](#new-containers)
     - [`DelegationMessage`](#delegationmessage)
     - [`Delegation`](#delegation)
-- [Helper functions](#helper-functions)
-  - [Predicates](#predicates)
-  - [Misc](#misc)
-  - [Beacon state accessors](#beacon-state-accessors)
-    - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
-  - [Beacon state mutators](#beacon-state-mutators)
-    - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Execution engine](#execution-engine)
-    - [`execute_payload`](#execute_payload)
   - [Block processing](#block-processing)
     - [Operations](#operations)
     - [Delegation](#delegation)
@@ -62,6 +54,11 @@ This upgrade adds validator delegation. A validator may choose to delegate all i
 | Name | Value |
 | - | - |
 | `MAX_DELEGATIONS` | `2**4` (=16) |
+
+### Time parameters
+| Name | Value | Unit | Duration | 
+| - | - | :-: | :-: |
+| `MAX_DELEGATION_INCLUSION_DELAY` | `uint64(2**7)` (=128) | slots | 25.6 minutes | 
 
 ## Configuration
 
@@ -129,6 +126,7 @@ class DelegationMessage(Container):
 ```python
 class Delegation(Container):
     message: DelegationMessage
+    epoch: Epoch
     signature: BLSSignature
 ```
 
@@ -178,13 +176,16 @@ def get_validator_from_delegation_message(message: DelegationMessage, amount: Gw
 ```python
 def process_delegation(state: BeaconState, delegation: Delegation) -> None:
     message = delegation.message
+    current_epoch = get_current_epoch(state)
+    assert  message.epoch <= current.epoch <= message.epoch + MAX_DELEGATION_INCLUSION_DELAY
+
     delegating_index = message.delegating_index
     min_delegating_balance = MAX_EFFECTIVE_BALANCE + MIN_DEPOSIT_AMOUNT + DELEGATION_TRANSACTION_COST
     assert state.balances[delegating_index] >= min_delegating_balance
     amount = state.balances[delegating_index] - MAX_EFFECTIVE_BALANCE - DELEGATION_TRANSACTION_COST
 
     delegating_validator = state.validators[delegating_index]
-    assert is_active_validator(validator, get_current_epoch(state))
+    assert is_active_validator(validator, current_epoch)
     assert delegating_validator.delegate == delegating_index
 
     delegating_pubkey = message.delegating_pubkey
