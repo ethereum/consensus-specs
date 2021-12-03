@@ -56,7 +56,7 @@ The maximum duration a `Delegation` message is valid for. This is to avoid havin
 ### Configuration
 
 #### Gwei values
-The fee payed by the delegating validator, to the block proposer that includes the `Delegation` message. This value should be small enough to make it convenient for the staking validator to delegate, rather than exit and deposit. At the same time it has to be large enough to incentivize proposers to include delegations.
+The fee paid by the delegating validator, to the block proposer that includes the `Delegation` message. This value should be small enough to make it convenient for the staking validator to delegate, rather than exit and deposit. At the same time it has to be large enough to incentivize proposers to include delegations.
 | Name | Value |
 | - | - |
 | `DELEGATION_TRANSACTION_COST` | `Gwei(10**6)` (= 1,000,000) TBD |
@@ -201,7 +201,7 @@ We allow for only one delegation per validator. This may be relaxed. In principl
     assert delegating_validator.delegate == delegating_index
 ```
 
-We check the signature. As this is a withdrawal this has to be secured wih the withdrawal signature of the delegating validator. See the note above regarding ETH1 withdrawal credentials.
+We check the signature. As this is a withdrawal this has to be secured with the withdrawal signature of the delegating validator. See the note above regarding ETH1 withdrawal credentials.
 ```python
     delegating_pubkey = message.delegating_pubkey
     assert hash(delegating_pubkey)[1:] == delegating_validator.withdrawal_credentials[1:]
@@ -272,7 +272,7 @@ def process_delegation_transfers(state: BeaconState) -> None:
                 state_balance[index] = MAX_EFFECTIVE_BALANCE
                 increase_balance(state, validator.delegate, amount)
 ```
-## Implementations not curently specified
+## Implementations not currently specified
 
 ### Fork transition
 Fork transition logic is simple, at the fork epoch validators are endowed with a new field `delegate` that contains their own index. This is the unique change.
