@@ -185,7 +185,9 @@ def process_delegation(state: BeaconState, delegation: Delegation) -> None:
     amount = state.balances[delegating_index] - MAX_EFFECTIVE_BALANCE - DELEGATION_TRANSACTION_COST
 
     delegating_validator = state.validators[delegating_index]
-    assert is_active_validator(validator, current_epoch)
+    assert is_active_validator(delegating_validator, current_epoch)
+    assert delegating_validator.slashed == false
+
     assert delegating_validator.delegate == delegating_index
 
     delegating_pubkey = message.delegating_pubkey
@@ -199,11 +201,12 @@ def process_delegation(state: BeaconState, delegation: Delegation) -> None:
     if pubkey not in validator_pubkeys:
         index = len(state.validators)
         state.validators.append(get_validator_from_delegation(message, amount))
-        delegating_validator.delegate = index
     else:
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
         assert index > delegating_index
+        assert state.validators[index].exit_epoch == FAR_FUTURE_EPOCH
 
+    delegating_validator.delegate = index
     proposer_index = get_beacon_proposer_index(state)
     decrease_balance(state, delegating_validator, amount + DELEGATION_TRANSACTION_COST)
     increase_balance(state, index, amount)
@@ -233,7 +236,7 @@ def process_epoch(state: BeaconState) -> None:
 
 ```python
 def process_delegation_transfers(state: BeaconState) -> None:
-    delegating_validators = [(i, v) for i, v in enumerate(state.validators) if v.delegate > i]
+    delegating_validators = [(i, v) for i, v in enumerate(state.validators) if v.delegate > i and not v.slashed]
     for index, validator in delegating_validators:
         if state.balance[index] > MAX_EFFECTIVE_BALANCE:
             delegate_validator = state.validators[validator.delegate]
