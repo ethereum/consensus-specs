@@ -126,11 +126,11 @@ def validate_light_client_update(snapshot: LightClientSnapshot,
     else:
         signed_header = update.finality_header
         assert is_valid_merkle_branch(
-            leaf=hash_tree_root(update.header),
+            leaf=hash_tree_root(update.finality_header),
             branch=update.finality_branch,
             depth=floorlog2(FINALIZED_ROOT_INDEX),
             index=get_subtree_index(FINALIZED_ROOT_INDEX),
-            root=update.finality_header.state_root,
+            root=update.header.state_root,
         )
 
     # Verify update next sync committee if the update period incremented
