@@ -9,7 +9,7 @@ At the time of writing the beacon chain has 264,676 active validators, the avera
 - Enter an exit queue. Wait for their turn to become withdrawable. Deposit the principal. Enter an entry queue. Wait for their turn to become active.
 - Wait for their turn to propose a block to perform a partial withdrawal.
 
-In average the latter will happen once every 37 days with current numbers. The former incurrs in costs of earnings lost while in queue and gas costs of redepositing. This leads to an equilibrium in which the exit queue becomes at least large enough that the cost is comparable to waiting 37 days to extract funds. This equilibrium is not a one-time run for the exit queue, as validator rotation to compound interest will be a constant exit force, and the wait time for a proposal increases linearly with the number of active validators, so will the exit queue.
+In average the latter will happen once every 37 days with current numbers. The former incurs in costs of earnings lost while in queue and gas costs of redepositing. This leads to an equilibrium in which the exit queue becomes at least large enough that the cost is comparable to waiting 37 days to extract funds. This equilibrium is not a one-time run for the exit queue, as validator rotation to compound interest will be a constant exit force, and the wait time for a proposal increases linearly with the number of active validators, so will the exit queue.
 
 This makes for a bad user experience, particularly for a single staker, 20% of which will have to wait for 2 months for a proposal with current numbers (presumably much more as the validator registry increases)
 
@@ -32,7 +32,7 @@ This section contains an annotated description of the changes to the beacon chai
 ### Constants
 
 #### Domain types
-A new domain to sign the `Delgation` messsages sent by validators.
+A new domain to sign the `Delgation` messages sent by validators.
 | Name  | Value |
 | - | - |
 | `DOMAIN_DELEGATION` | `DomainType('0x0A000000')` |
@@ -105,7 +105,7 @@ class BeaconBlockBody(Container):
 ### New containers
 
 #### `DelegationMessage`
-A `DelegationMessage` contains the validating public key and the withdrawal creedentials of the delegate validator. It also contains the delegate validator withdrawal public key. This latter key is used to verify the signature of the sender. In this current implementation we support only BLS withdrawal credentials postponing the implementation ETH1 withdrawal credentials when the proposal for withdrawals is settled (as the same issue has to be addressed for withdrawals)
+A `DelegationMessage` contains the validating public key and the withdrawal credentials of the delegate validator. It also contains the delegate validator withdrawal public key. This latter key is used to verify the signature of the sender. In this current implementation we support only BLS withdrawal credentials postponing the implementation ETH1 withdrawal credentials when the proposal for withdrawals is settled (as the same issue has to be addressed for withdrawals)
 
 ```python
 class DelegationMessage(Container):
@@ -132,7 +132,7 @@ class Delegation(Container):
 
 #### Operations
 
-The last step of block processing is the delegation processing. Althouh no problem would actually exists if delegating to an exited validator (as a chec is performed on transfers) it is here as an extra measure to prevent delegations to slashed or exited validators. It also prevents the situation where the delegating validator has enough excess to start a new validator, but it is getting slashed in this block, or simply is being penalized.
+The last step of block processing is the delegation processing. Although no problem would actually exists if delegating to an exited validator (as a check is performed on transfers) it is here as an extra measure to prevent delegations to slashed or exited validators. It also prevents the situation where the delegating validator has enough excess to start a new validator, but it is getting slashed in this block, or simply is being penalized.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
