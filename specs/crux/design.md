@@ -15,9 +15,9 @@ This makes for a bad user experience, particularly for a single staker, 20% of w
 
 ## Delegating validators
 
-The current proposal solves the above problem by providing validators, and in particular staking pools, with a mechanism to continuously transfer their excess earnings to another validator. This new validator can be a new validator. There are several advantages to this mechanism:
+The current proposal solves the above problem by providing validators, and in particular staking pools, with a mechanism to continuously transfer their excess earnings to another validator. This validator can be a new validator. There are several advantages to this mechanism:
 
-- Validators can compound their interest immediately and spin off new validators more quickly, avoiding the partial withdrawal and deposit cycle (but are still subject to activation queue)
+- Validators can compound their interest immediately and spin off new validators faster, avoiding the partial withdrawal and deposit cycle (but are still subject to activation queue)
 - Validators can trustlesly sell their excess earnings, providing liquidity for small stakers without requiring them to either wait possibly months nor withdraw their stake. Thus this could in principle be a decentralizing force.
 - It keeps the non-staking capital to a minimum since as soon as the delegate validator reaches `MAX_EFFECTIVE_BALANCE` it enters the activation queue.
 - It allows for faster withdrawal of earnings since validators can delegate all their validators and then exit the delegate instead of waiting for all their validators to propose.
@@ -72,7 +72,6 @@ The `Validator` container gains a new field `delegate` containing the validator 
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    delegate: ValidatorIndex  # [New in Crux]
     withdrawal_credentials: Bytes32
     effective_balance: Gwei
     slashed: boolean
@@ -81,6 +80,7 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch
+    delegate: ValidatorIndex  # [New in Crux]
 ```
 
 #### `BeaconBlockBody`
@@ -91,16 +91,14 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    delegations: List[Delegation, MAX_DELEGATIONS]  # [New in Crux]
     sync_aggregate: SyncAggregate
-    # Execution
     execution_payload: ExecutionPayload
+    delegations: List[Delegation, MAX_DELEGATIONS]  # [New in Crux]
 ```
 
 ### New containers

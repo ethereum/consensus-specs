@@ -79,7 +79,6 @@ The `Validator` container gains a new field `delegate` containing the validator 
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    delegate: ValidatorIndex  # [New in Crux]
     withdrawal_credentials: Bytes32
     effective_balance: Gwei
     slashed: boolean
@@ -88,6 +87,7 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch
+    delegate: ValidatorIndex  # [New in Crux]
 ```
 
 #### `BeaconBlockBody`
@@ -97,16 +97,14 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    delegations: List[Delegation, MAX_DELEGATIONS]  # [New in Crux]
     sync_aggregate: SyncAggregate
-    # Execution
     execution_payload: ExecutionPayload
+    delegations: List[Delegation, MAX_DELEGATIONS]  # [New in Crux]
 ```
 
 ### New containers
