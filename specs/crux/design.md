@@ -263,11 +263,11 @@ This function is the main loop where we transfer excess balance. We run over the
 def process_delegation_transfers(state: BeaconState) -> None:
     delegating_validators = [(i, v) for i, v in enumerate(state.validators) if v.delegate > i and not v.slashed]
     for index, validator in delegating_validators:
-        if state.balance[index] > MAX_EFFECTIVE_BALANCE:
+        if state.balances[index] > MAX_EFFECTIVE_BALANCE:
             delegate_validator = state.validators[validator.delegate]
             if delegate_validator.exit_epoch == FAR_FUTURE_EPOCH:
-                amount = state_balance[index] - MAX_EFFECTIVE_BALANCE
-                state_balance[index] = MAX_EFFECTIVE_BALANCE
+                amount = state.balances[index] - MAX_EFFECTIVE_BALANCE
+                state.balances[index] = MAX_EFFECTIVE_BALANCE
                 increase_balance(state, validator.delegate, amount)
 ```
 ## Implementations not currently specified
