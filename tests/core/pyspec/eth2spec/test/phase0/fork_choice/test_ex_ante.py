@@ -167,6 +167,26 @@ def test_ex_ante_scenario_1_without_boost(spec, state):
     yield 'steps', test_steps
 
 
+def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root):
+    """
+    Return the minimum attestation participant count such that attestation_score > proposer_score
+    """
+    # calculate proposer boost score
+    block = store.blocks[root]
+    proposer_score = 0
+    if spec.get_ancestor(store, root, block.slot) == proposer_boost_root:
+        num_validators = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+        avg_balance = spec.get_total_active_balance(state) // num_validators
+        committee_size = num_validators // spec.SLOTS_PER_EPOCH
+        committee_weight = committee_size * avg_balance
+        proposer_score = (committee_weight * spec.config.PROPOSER_SCORE_BOOST) // 100
+
+    # calculate minimum participant count such that attestation_score > proposer_score
+    base_effective_balance = state.validators[0].effective_balance
+
+    return proposer_score // base_effective_balance + 1
+
+
 @with_all_phases
 @with_presets([MAINNET], reason="to create larger committee")
 @spec_state_test
@@ -177,7 +197,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     Block A - slot N
     Block B (parent A) - slot N+1
     Block C (parent A) - slot N+2
-    Attestation_1 (Block B) - slot N+1 – size > proposer_boost
+    Attestation_1 (Block B) - slot N+1 – proposer_boost + 1 participants
     """
     test_steps = []
     # Initialization
@@ -202,12 +222,6 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
     signed_block_c = state_transition_and_sign_block(spec, state_c, block)
 
-    # Full attestation received at N+2 — B is head due to boost proposer
-    attestation = get_valid_attestation(spec, state_b, slot=state_b.slot, signed=False)
-    attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) > 1
-    sign_attestation(spec, state_b, attestation)
-
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -217,6 +231,20 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     # Block B received at N+2 — C is head that has higher proposer score boost
     yield from add_block(spec, store, signed_block_b, test_steps)
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
+
+    # Attestation of proposer_boost + 1 participants
+    proposer_boost_root = signed_block_b.message.hash_tree_root()
+    root = signed_block_b.message.hash_tree_root()
+    participant_num = _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root)
+
+    def _filter_participant_set(participants):
+        return [index for i, index in enumerate(participants) if i < participant_num]
+
+    attestation = get_valid_attestation(
+        spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
+    )
+    attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
+    sign_attestation(spec, state_b, attestation)
 
     # Attestation_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
     # (B's proposer_score = C's attestation_score = 0)
@@ -238,7 +266,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
     Block A - slot N
     Block B (parent A) - slot N+1
     Block C (parent A) - slot N+2
-    Attestation_1 (Block B) - slot N+1 – size > proposer_boost
+    Attestation_1 (Block B) - slot N+1 – proposer_boost + 1 participants
     """
     # For testing `PROPOSER_SCORE_BOOST = 0` case
     yield 'PROPOSER_SCORE_BOOST', 'meta', 0
@@ -266,12 +294,6 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
     signed_block_c = state_transition_and_sign_block(spec, state_c, block)
 
-    # Full attestation received at N+2 — B is head due to boost proposer
-    attestation = get_valid_attestation(spec, state_b, slot=state_b.slot, signed=False)
-    attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) > 1
-    sign_attestation(spec, state_b, attestation)
-
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -285,6 +307,20 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
         assert spec.get_head(store) == signed_block_b.message.hash_tree_root()
     else:
         assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
+
+    # Attestation of proposer_boost + 1 participants
+    proposer_boost_root = signed_block_b.message.hash_tree_root()
+    root = signed_block_b.message.hash_tree_root()
+    participant_num = _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root)
+
+    def _filter_participant_set(participants):
+        return [index for i, index in enumerate(participants) if i < participant_num]
+
+    attestation = get_valid_attestation(
+        spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
+    )
+    attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
+    sign_attestation(spec, state_b, attestation)
 
     # Attestation_1 received at N+2 — B is head because B's attestation_score > C's attestation_score
     yield from add_attestation(spec, store, attestation, test_steps)
