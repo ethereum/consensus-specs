@@ -484,10 +484,10 @@ def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
 def _get_copy_of_spec(spec):
     fork = spec.fork
     preset = spec.config.PRESET_BASE
-    path = f"eth2spec.{fork}.{preset}"
-
-    module_spec = importlib.util.find_spec(path)
+    module_path = f"eth2spec.{fork}.{preset}"
+    module_spec = importlib.util.find_spec(module_path)
     module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
     return module
 
 
@@ -504,12 +504,17 @@ def with_config_overrides(config_overrides):
             spec = _get_copy_of_spec(spec)
 
             # apply our overrides to a copy of it, and apply it to the spec
-            spec.config.update(config_overrides)
+            config = spec.config._asdict()
+            config.update(config_overrides)
+            config_types = spec.Configuration.__annotations__
+            modified_config = {k: config_types[k](v) for k, v in config.items()}
 
             # To output the changed config to could be serialized with yaml test vectors,
             # the dict SSZ objects have to be converted into Python built-in types.
-            output_config = _get_basic_dict(spec.config)
+            output_config = _get_basic_dict(modified_config)
             yield 'config', 'data', output_config
+
+            spec.config = spec.Configuration(**modified_config)
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
