@@ -86,10 +86,9 @@ class SpecForks(TypedDict, total=False):
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
                    spec: Spec, phases: SpecForks):
-    phase = phases[spec.fork]
-    balances = balances_fn(phase)
-    activation_threshold = threshold_fn(phase)
-    state = create_genesis_state(spec=phase, validator_balances=balances,
+    balances = balances_fn(spec)
+    activation_threshold = threshold_fn(spec)
+    state = create_genesis_state(spec=spec, validator_balances=balances,
                                  activation_threshold=activation_threshold)
     return state
 
