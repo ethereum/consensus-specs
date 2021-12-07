@@ -166,6 +166,9 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
     yield from tick_and_add_block(spec, store, signed_short_block, test_steps)
 
+    # Since the long chain has higher proposer_score at slot 1, the latest long block is the head
+    assert spec.get_head(store) == spec.hash_tree_root(long_block)
+
     short_attestation = get_valid_attestation(spec, short_state, short_block.slot, signed=True)
     yield from tick_and_run_on_attestation(spec, store, short_attestation, test_steps)
 
