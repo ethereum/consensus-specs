@@ -491,22 +491,18 @@ def with_config_overrides(config_overrides):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            # remember the old config
-            old_config = spec.config
+            spec = deepcopy(spec)
 
             # apply our overrides to a copy of it, and apply it to the spec
-            tmp_config = deepcopy(old_config._asdict())  # not a private method, there are multiple
-            tmp_config.update(config_overrides)
-            config_types = spec.Configuration.__annotations__
-            # Retain types of all config values
-            test_config = {k: config_types[k](v) for k, v in tmp_config.items()}
+            spec.config.update(config_overrides)
 
             # To output the changed config to could be serialized with yaml test vectors,
             # the dict SSZ objects have to be converted into Python built-in types.
-            output_config = _get_basic_dict(test_config)
+            output_config = _get_basic_dict(spec.config)
             yield 'config', 'data', output_config
 
-            spec.config = spec.Configuration(**test_config)
+            # Output the config for test vectors  (TODO: check config YAML encoding)
+            yield 'config', 'data', spec.config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
@@ -514,10 +510,6 @@ def with_config_overrides(config_overrides):
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:
                 yield from out
-
-            # Restore the old config and apply it
-            spec.config = old_config
-
         return wrapper
     return decorator
 
