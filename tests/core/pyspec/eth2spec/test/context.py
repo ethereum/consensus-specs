@@ -1,6 +1,6 @@
 import pytest
-from copy import deepcopy
 from dataclasses import dataclass
+import importlib
 from eth_utils import encode_hex
 
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
@@ -481,6 +481,16 @@ def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+def _get_copy_of_spec(spec):
+    fork = spec.fork
+    preset = spec.config.PRESET_BASE
+    path = f"eth2spec.{fork}.{preset}"
+
+    module_spec = importlib.util.find_spec(path)
+    module = importlib.util.module_from_spec(module_spec)
+    return module
+
+
 def with_config_overrides(config_overrides):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
@@ -491,7 +501,7 @@ def with_config_overrides(config_overrides):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            spec = deepcopy(spec)
+            spec = _get_copy_of_spec(spec)
 
             # apply our overrides to a copy of it, and apply it to the spec
             spec.config.update(config_overrides)
@@ -500,9 +510,6 @@ def with_config_overrides(config_overrides):
             # the dict SSZ objects have to be converted into Python built-in types.
             output_config = _get_basic_dict(spec.config)
             yield 'config', 'data', output_config
-
-            # Output the config for test vectors  (TODO: check config YAML encoding)
-            yield 'config', 'data', spec.config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
