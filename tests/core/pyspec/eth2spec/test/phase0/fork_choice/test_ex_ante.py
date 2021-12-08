@@ -455,7 +455,7 @@ def test_ex_ante_sandwich_without_attestations_without_boost(spec, state):
     time = state_d.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_d, test_steps)
-    if signed_block_d.message.hash_tree_root() >= signed_block_c.message.hash_tree_root():
+    if signed_block_b.message.hash_tree_root() >= signed_block_c.message.hash_tree_root():
         assert spec.get_head(store) == signed_block_d.message.hash_tree_root()
     else:
         assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
