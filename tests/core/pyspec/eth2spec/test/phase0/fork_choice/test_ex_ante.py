@@ -60,7 +60,7 @@ def test_ex_ante_scenario_1_with_boost(spec, state):
     state_b = state_a.copy()
     block = build_empty_block(spec, state_a, slot=state_a.slot + 1)
     signed_block_b = state_transition_and_sign_block(spec, state_b, block)
-    
+
     # Block C at slot `N + 2`, parent is A
     state_c = state_a.copy()
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
@@ -89,7 +89,7 @@ def test_ex_ante_scenario_1_with_boost(spec, state):
 
     # Attestation_1 received at N+2 — C is head
     yield from add_attestation(spec, store, attestation, test_steps)
-    assert spec.get_head(store) == signed_block_c.message.hash_tree_root() 
+    assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
     yield 'steps', test_steps
 
@@ -328,6 +328,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
 
     yield 'steps', test_steps
 
+
 @with_all_phases
 @spec_state_test
 def test_ex_ante_sandwich_without_attestations_with_boost(spec, state):
@@ -371,7 +372,7 @@ def test_ex_ante_sandwich_without_attestations_with_boost(spec, state):
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
-    
+
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -389,6 +390,7 @@ def test_ex_ante_sandwich_without_attestations_with_boost(spec, state):
     assert spec.get_head(store) == signed_block_d.message.hash_tree_root()
 
     yield 'steps', test_steps
+
 
 @with_all_phases
 @spec_configured_state_test({
@@ -435,7 +437,7 @@ def test_ex_ante_sandwich_without_attestations_without_boost(spec, state):
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
-    
+
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -461,6 +463,7 @@ def test_ex_ante_sandwich_without_attestations_without_boost(spec, state):
         assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
     yield 'steps', test_steps
+
 
 @with_all_phases
 @spec_state_test
@@ -519,7 +522,7 @@ def test_ex_ante_sandwich_with_honest_attestation_with_boost(spec, state):
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
-    
+
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -541,6 +544,7 @@ def test_ex_ante_sandwich_with_honest_attestation_with_boost(spec, state):
     assert spec.get_head(store) == signed_block_d.message.hash_tree_root()
 
     yield 'steps', test_steps
+
 
 @with_all_phases
 @spec_configured_state_test({
@@ -589,7 +593,7 @@ def test_ex_ante_sandwich_with_honest_attestation_without_boost(spec, state):
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
-    
+
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -614,7 +618,7 @@ def test_ex_ante_sandwich_with_honest_attestation_without_boost(spec, state):
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
     sign_attestation(spec, state_c, attestation)
-    
+
     # Attestation_1 received at N+3 - C is head
     time = state_d.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
@@ -626,6 +630,7 @@ def test_ex_ante_sandwich_with_honest_attestation_without_boost(spec, state):
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
     yield 'steps', test_steps
+
 
 @with_all_phases
 @with_presets([MAINNET], reason="to create non-duplicate committee")
@@ -673,7 +678,7 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
-    
+
     # Block C received at N+2 — C is head
     time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
