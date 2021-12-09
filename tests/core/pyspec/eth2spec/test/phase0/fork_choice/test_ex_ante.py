@@ -34,7 +34,7 @@ def _apply_base_block_a(spec, state, store, test_steps):
 
 @with_all_phases
 @spec_state_test
-def test_ex_ante_scenario_1_with_boost(spec, state):
+def test_ex_ante_vanilla_with_boost(spec, state):
     """
     With a single adversarial attestation
 
@@ -98,7 +98,7 @@ def test_ex_ante_scenario_1_with_boost(spec, state):
 @spec_configured_state_test({
     'PROPOSER_SCORE_BOOST': 0,
 })
-def test_ex_ante_scenario_1_without_boost(spec, state):
+def test_ex_ante_vanilla_without_boost(spec, state):
     """
     With a single adversarial attestation
 
@@ -244,6 +244,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
         spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
+    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_b, attestation)
 
     # Attestation_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
@@ -320,6 +321,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
         spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
+    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_b, attestation)
 
     # Attestation_1 received at N+2 — B is head because B's attestation_score > C's attestation_score
@@ -410,6 +412,9 @@ def test_ex_ante_sandwich_without_attestations_without_boost(spec, state):
         Block B received at N+2 — B or C is head (chosen lexicographically; without boost)
         Block D received at N+3 — D or C is head (chosen lexicographically; without boost)
     """
+    # For testing `PROPOSER_SCORE_BOOST = 0` case
+    yield 'PROPOSER_SCORE_BOOST', 'meta', 0
+
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -566,6 +571,9 @@ def test_ex_ante_sandwich_with_honest_attestation_without_boost(spec, state):
         Attestation_1 received at N+3 — C is head
         Block D received at N+3 — C is head
     """
+    # For testing `PROPOSER_SCORE_BOOST = 0` case
+    yield 'PROPOSER_SCORE_BOOST', 'meta', 0
+
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -701,6 +709,7 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
         spec, state_c, slot=state_c.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
+    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_c, attestation)
 
     # Attestation_1 received at N+3 — B is head because B's attestation_score > C's proposer_score.
