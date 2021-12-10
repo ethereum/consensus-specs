@@ -53,7 +53,6 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | |
 | `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | ~27.3 hours |
-| `SAFETY_THRESHOLD_PERIOD` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD // 2` | ~13.6 hours |
 
 ## Containers
 
@@ -70,8 +69,7 @@ class LightClientUpdate(Container):
     finalized_header: BeaconBlockHeader
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
-    sync_committee_signature: BLSSignature
+    sync_committee_aggregate: SyncAggregate
     # Fork version for the aggregate signature
     fork_version: Version
 ```
@@ -135,9 +133,16 @@ A light client maintains its state in a `store` object of type `LightClientStore
 
 ```python
 def process_slot_for_light_client_store(store: LightClientStore, current_slot: Slot) -> None:
-    if current_slot % SAFETY_THRESHOLD_PERIOD == 0:
+    if current_slot % UPDATE_TIMEOUT == 0:
         store.previous_max_active_participants = store.current_max_active_participants
         store.current_max_active_participants = 0
+    if (
+        current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
+        and store.best_valid_update is not None
+    ):
+        # Forced best update when the update timeout has elapsed
+        apply_light_client_update(store, store.best_valid_update)
+        store.best_valid_update = None
 ```
 
 #### `validate_light_client_update`
@@ -157,7 +162,8 @@ def validate_light_client_update(store: LightClientStore,
     update_period = compute_epoch_at_slot(active_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     assert update_period in (finalized_period, finalized_period + 1)
 
-    # Verify update header root is the finalized root of the finality header, if specified
+    # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
+    # state of the `attested header`
     if update.finalized_header == BeaconBlockHeader():
         assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
     else:
@@ -182,15 +188,17 @@ def validate_light_client_update(store: LightClientStore,
             index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
             root=active_header.state_root,
         )
+        
+    sync_aggregate = update.sync_committee_aggregate
 
     # Verify sync committee has sufficient participants
-    assert sum(update.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify sync committee aggregate signature
-    participant_pubkeys = [pubkey for (bit, pubkey) in zip(update.sync_committee_bits, sync_committee.pubkeys) if bit]
+    participant_pubkeys = [pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys) if bit]
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header, domain)
-    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, update.sync_committee_signature)
+    assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
 ```
 
 #### `apply_light_client_update`
@@ -243,12 +251,5 @@ def process_light_client_update(store: LightClientStore,
     ):
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)
-        store.best_valid_update = None
-    elif (
-        current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
-        and store.best_valid_update is not None
-    ):
-        # Forced best update when the update timeout has elapsed
-        apply_light_client_update(store, store.best_valid_update)
         store.best_valid_update = None
 ```
