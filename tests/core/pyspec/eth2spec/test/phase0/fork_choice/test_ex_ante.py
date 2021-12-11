@@ -36,7 +36,7 @@ def _apply_base_block_a(spec, state, store, test_steps):
 def test_ex_ante_vanilla(spec, state):
     """
     With a single adversarial attestation
-    Objects: 
+    Objects:
         Block A - slot N
         Block B (parent A) - slot N+1
         Block C (parent A) - slot N+2
@@ -124,7 +124,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):
     """
     Adversarial attestations > proposer boost
-    Objects: 
+    Objects:
         Block A - slot N
         Block B (parent A) - slot N+1
         Block C (parent A) - slot N+2
