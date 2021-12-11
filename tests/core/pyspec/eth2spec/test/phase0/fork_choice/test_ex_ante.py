@@ -104,10 +104,16 @@ def test_ex_ante_vanilla_without_boost(spec, state):
 
     NOTE: this case disabled proposer score boost by setting config `PROPOSER_SCORE_BOOST` to `0`
 
-    Block A - slot N
-    Block B (parent A) - slot N+1
-    Block C (parent A) - slot N+2
-    Attestation_1 (Block B) - slot N+1 – size 1
+    Objects:
+        Block A - slot N
+        Block B (parent A) - slot N+1
+        Block C (parent A) - slot N+2
+        Attestation_1 (Block B); size `1` - slot N+1
+    Steps:
+        Block A received at N – A is head
+        Block C received at N+2 – C is head
+        Block B received at N+2 – B or C is head (chosen lexicographically)
+        Attestation_1 received at N+2 – B is head
     """
     # For testing `PROPOSER_SCORE_BOOST = 0` case
     yield 'PROPOSER_SCORE_BOOST', 'meta', 0
@@ -135,7 +141,7 @@ def test_ex_ante_vanilla_without_boost(spec, state):
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
     signed_block_c = state_transition_and_sign_block(spec, state_c, block)
 
-    # Attestation_1 received at N+2 — B is head due to boost proposer
+    # Attestation_1 at slot `N + 1` voting for block B
     def _filter_participant_set(participants):
         return [next(iter(participants))]
 
@@ -263,11 +269,16 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
 def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec, state):
     """
     Adversarial attestations > proposer boost
-
-    Block A - slot N
-    Block B (parent A) - slot N+1
-    Block C (parent A) - slot N+2
-    Attestation_1 (Block B) - slot N+1 – proposer_boost + 1 participants
+    Objects:
+        Block A - slot N
+        Block B (parent A) - slot N+1
+        Block C (parent A) - slot N+2
+        Attestation_set_1 (Block B) - slot N+1 – proposer_boost + 1 participants
+    Steps:
+        Block A received at N – A is head
+        Block C received at N+2 – C is head
+        Block B received at N+2 – B or C is head (chosen lexicographically)
+        Attestation_set_1 received at N+2 – B is head
     """
     # For testing `PROPOSER_SCORE_BOOST = 0` case
     yield 'PROPOSER_SCORE_BOOST', 'meta', 0
@@ -309,7 +320,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
     else:
         assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
-    # Attestation of proposer_boost + 1 participants
+    # Attestation_set_1 at slot `N + 1` voting for block B
     proposer_boost_root = signed_block_b.message.hash_tree_root()
     root = signed_block_b.message.hash_tree_root()
     participant_num = _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root)
@@ -324,7 +335,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_without_boost(spec,
     assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_b, attestation)
 
-    # Attestation_1 received at N+2 — B is head because B's attestation_score > C's attestation_score
+    # Attestation_set_1 received at N+2 — B is head because B's attestation_score > C's attestation_score
     yield from add_attestation(spec, store, attestation, test_steps)
     assert spec.get_head(store) == signed_block_b.message.hash_tree_root()
 
@@ -409,8 +420,8 @@ def test_ex_ante_sandwich_without_attestations_without_boost(spec, state):
     Steps:
         Block A received at N — A is head
         Block C received at N+2 — C is head
-        Block B received at N+2 — B or C is head (chosen lexicographically; without boost)
-        Block D received at N+3 — D or C is head (chosen lexicographically; without boost)
+        Block B received at N+2 — B or C is head (chosen lexicographically)
+        Block D received at N+3 — D or C is head (chosen lexicographically)
     """
     # For testing `PROPOSER_SCORE_BOOST = 0` case
     yield 'PROPOSER_SCORE_BOOST', 'meta', 0
