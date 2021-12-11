@@ -33,14 +33,19 @@ def _apply_base_block_a(spec, state, store, test_steps):
 
 @with_all_phases
 @spec_state_test
-def test_ex_ante_vanilla_with_boost(spec, state):
+def test_ex_ante_vanilla(spec, state):
     """
     With a single adversarial attestation
-
-    Block A - slot N
-    Block B (parent A) - slot N+1
-    Block C (parent A) - slot N+2
-    Attestation_1 (Block B) - slot N+1 – size 1
+    Objects: 
+        Block A - slot N
+        Block B (parent A) - slot N+1
+        Block C (parent A) - slot N+2
+        Attestation_1 (Block B); size `1` - slot N+1
+    Steps:
+        Block A received at N — A is head
+        Block C received at N+2 — C is head
+        Block B received at N+2 — C is head
+        Attestation_1 received at N+2 — C is head
     """
     test_steps = []
     # Initialization
@@ -65,7 +70,7 @@ def test_ex_ante_vanilla_with_boost(spec, state):
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
     signed_block_c = state_transition_and_sign_block(spec, state_c, block)
 
-    # Attestation_1 received at N+2 — B is head due to boost proposer
+    # Attestation_1 at slot `N + 1` voting for block B
     def _filter_participant_set(participants):
         return [next(iter(participants))]
 
@@ -82,7 +87,7 @@ def test_ex_ante_vanilla_with_boost(spec, state):
     yield from add_block(spec, store, signed_block_c, test_steps)
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
-    # Block B received at N+2 — C is head that has higher proposer score boost
+    # Block B received at N+2 — C is head due to proposer score boost
     yield from add_block(spec, store, signed_block_b, test_steps)
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
@@ -119,11 +124,16 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):
     """
     Adversarial attestations > proposer boost
-
-    Block A - slot N
-    Block B (parent A) - slot N+1
-    Block C (parent A) - slot N+2
-    Attestation_1 (Block B) - slot N+1 – proposer_boost + 1 participants
+    Objects: 
+        Block A - slot N
+        Block B (parent A) - slot N+1
+        Block C (parent A) - slot N+2
+        Attestation_set_1 (Block B); size `proposer_boost + 1` - slot N+1
+    Steps:
+        Block A received at N — A is head
+        Block C received at N+2 — C is head
+        Block B received at N+2 — C is head
+        Attestation_1 received at N+2 — B is head
     """
     test_steps = []
     # Initialization
@@ -154,11 +164,11 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     yield from add_block(spec, store, signed_block_c, test_steps)
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
-    # Block B received at N+2 — C is head that has higher proposer score boost
+    # Block B received at N+2 — C is head due to proposer score boost
     yield from add_block(spec, store, signed_block_b, test_steps)
     assert spec.get_head(store) == signed_block_c.message.hash_tree_root()
 
-    # Attestation of proposer_boost + 1 participants
+    # Attestation_set_1 at slot `N + 1` voting for block B
     proposer_boost_root = signed_block_b.message.hash_tree_root()
     root = signed_block_b.message.hash_tree_root()
     participant_num = _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root)
@@ -173,7 +183,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_b, attestation)
 
-    # Attestation_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
+    # Attestation_set_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
     # (B's proposer_score = C's attestation_score = 0)
     yield from add_attestation(spec, store, attestation, test_steps)
     assert spec.get_head(store) == signed_block_b.message.hash_tree_root()
@@ -183,7 +193,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
 
 @with_all_phases
 @spec_state_test
-def test_ex_ante_sandwich_without_attestations_with_boost(spec, state):
+def test_ex_ante_sandwich_without_attestations(spec, state):
     """
     Simple Sandwich test with boost and no attestations.
     Obejcts:
@@ -246,7 +256,7 @@ def test_ex_ante_sandwich_without_attestations_with_boost(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_ex_ante_sandwich_with_honest_attestation_with_boost(spec, state):
+def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     """
     Boosting necessary to sandwich attack.
     Objects:
