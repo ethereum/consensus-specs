@@ -1,6 +1,7 @@
 import pytest
-from copy import deepcopy
 from dataclasses import dataclass
+import importlib
+from eth_utils import encode_hex
 
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
@@ -85,10 +86,9 @@ class SpecForks(TypedDict, total=False):
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
                    spec: Spec, phases: SpecForks):
-    phase = phases[spec.fork]
-    balances = balances_fn(phase)
-    activation_threshold = threshold_fn(phase)
-    state = create_genesis_state(spec=phase, validator_balances=balances,
+    balances = balances_fn(spec)
+    activation_threshold = threshold_fn(spec)
+    state = create_genesis_state(spec=spec, validator_balances=balances,
                                  activation_threshold=activation_threshold)
     return state
 
@@ -464,6 +464,32 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get dict of Python built-in types from a dict of SSZ objects.
+    """
+    result = {}
+    for k, v in ssz_dict.items():
+        if isinstance(v, int):
+            value = int(v)
+        elif isinstance(v, bytes):
+            value = encode_hex(v)
+        else:
+            value = str(v)
+        result[k] = value
+    return result
+
+
+def _get_copy_of_spec(spec):
+    fork = spec.fork
+    preset = spec.config.PRESET_BASE
+    module_path = f"eth2spec.{fork}.{preset}"
+    module_spec = importlib.util.find_spec(module_path)
+    module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
+    return module
+
+
 def with_config_overrides(config_overrides):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
@@ -474,20 +500,20 @@ def with_config_overrides(config_overrides):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            # remember the old config
-            old_config = spec.config
+            spec = _get_copy_of_spec(spec)
 
             # apply our overrides to a copy of it, and apply it to the spec
-            tmp_config = deepcopy(old_config._asdict())  # not a private method, there are multiple
-            tmp_config.update(config_overrides)
+            config = spec.config._asdict()
+            config.update(config_overrides)
             config_types = spec.Configuration.__annotations__
-            # Retain types of all config values
-            test_config = {k: config_types[k](v) for k, v in tmp_config.items()}
+            modified_config = {k: config_types[k](v) for k, v in config.items()}
 
-            # Output the config for test vectors  (TODO: check config YAML encoding)
-            yield 'config', 'data', test_config
+            # To output the changed config to could be serialized with yaml test vectors,
+            # the dict SSZ objects have to be converted into Python built-in types.
+            output_config = _get_basic_dict(modified_config)
+            yield 'config', 'data', output_config
 
-            spec.config = spec.Configuration(**test_config)
+            spec.config = spec.Configuration(**modified_config)
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
@@ -495,10 +521,6 @@ def with_config_overrides(config_overrides):
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:
                 yield from out
-
-            # Restore the old config and apply it
-            spec.config = old_config
-
         return wrapper
     return decorator
 
