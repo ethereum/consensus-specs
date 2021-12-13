@@ -68,13 +68,6 @@ from `SYNCING` to `INVALID`. Specifically, a block deemed `INVALID` at any
 point MUST NOT be included in the canonical chain and the weights from those
 `INVALID` blocks MUST NOT be applied to any `VALID` or `SYNCING` ancestors.
 
-## Validator assignments
-
-An entirely optimistically synced node is *not* a full node. It is unable to
-produce blocks, since an execution engine cannot produce a payload upon an
-unknown parent. It cannot faithfully attest to the head block of the chain,
-since it has not fully verified that block.
-
 ### Helpers
 
 Let `head_block: BeaconBlock` be the result of calling of the fork choice
@@ -108,6 +101,17 @@ def recent_valid_ancestor(block: BeaconBlock) -> Optional[BeaconBlock]:
 
 Let only a node which returns `is_optimistic(head) == True` be an *optimistic
 node*. Let only a validator on an optimistic node be an *optimistic validator*.
+
+When this specification only defines behaviour for an optimistic
+node/validator, but *not* for the non-optimistic case, assume default
+behaviours without regard for optimistic sync.
+
+## Validator assignments
+
+An entirely optimistically synced node is *not* a full node. It is unable to
+produce blocks, since an execution engine cannot produce a payload upon an
+unknown parent. It cannot faithfully attest to the head block of the chain,
+since it has not fully verified that block.
 
 ### Block production
 
@@ -146,3 +150,38 @@ attestation.
 An optimistic validator MUST NOT participate in sync committees (i.e., sign across the
 `DOMAIN_SYNC_COMMITTEE`, `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` or
 `DOMAIN_CONTRIBUTION_AND_PROOF` domains).
+
+## P2P Networking
+
+### Topics and Messages on Gossipsub
+
+#### `beacon_block`
+
+An optimistic validator MUST subscribe to the `beacon_block` topic. Propagation
+validation conditions are modified as such:
+
+Do not apply the existing condition:
+
+- [REJECT] The block's parent (defined by block.parent_root) passes validation.
+
+Instead, apply the new condition:
+
+- [REJECT] The block's parent (defined by block.parent_root) passes validation,
+	*and* `block.parent root not in optimistic_roots`.
+
+#### `beacon_aggregate_and_proof`
+
+An optimistic validator MUST NOT subscribe to the `beacon_aggregate_and_proof`
+topic.
+
+#### `voluntary_exit`
+
+An optimistic validator MUST NOT subscribe to the `voluntary_exit` topic.
+
+#### `proposer_slashing`
+
+An optimistic validator MUST NOT subscribe to the `proposer_slashing` topic.
+
+#### `attester_slashing`
+
+An optimistic validator MUST NOT subscribe to the `attester_slashing` topic.
