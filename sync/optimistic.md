@@ -76,27 +76,15 @@ be the latest current justified ancestor ancestor of the `head_block`.
 
 ```python
 def is_optimistic(block: BeaconBlock) -> bool:
-	hash_tree_root(block) in optimistic_roots
+    hash_tree_root(block) in optimistic_roots
 ```
 
 ```python
-def latest_valid_ancestor(block: BeaconBlock) -> Optional[BeaconBlock]:
-	while block.parent_root != Root():
-		if not is_optimistic(block):
-			return block
-		block = get_block(block.parent_root)
-
-	return None
-```
-
-```python
-def recent_valid_ancestor(block: BeaconBlock) -> Optional[BeaconBlock]:
-	ancestor = latest_valid_ancestor(block)
-
-	if ancestor is None or ancestor.slot + SLOTS_PER_EPOCH >= block.slot:
-		return None
-
-	return ancestor
+def latest_valid_ancestor(block: BeaconBlock) -> BeaconBlock:
+    while block.parent_root != Root():
+	    if not is_optimistic(block) or block.parent_root == Root():
+		    return block
+        block = get_block(block.parent_root)
 ```
 
 Let only a node which returns `is_optimistic(head) == True` be an *optimistic
@@ -113,18 +101,17 @@ produce blocks, since an execution engine cannot produce a payload upon an
 unknown parent. It cannot faithfully attest to the head block of the chain,
 since it has not fully verified that block.
 
-### Block production
+### Block Production
 
 A optimistic validator MUST NOT produce a block (i.e., sign across the
-`DOMAIN_BEACON_PROPOSER` domain), unless one of the follow exceptions are met:
+`DOMAIN_BEACON_PROPOSER` domain), unless one of the following exceptions are
+met:
 
-#### Exception 1.
+#### Block Production Exception 1.
 
 If the justified block is fully verified (i.e., `not
 is_optimistic(justified_block)`, the validator MAY produce a block upon
 `latest_valid_ancestor(head)`.
-
-If the latest valid ancestor is `None`, the validator MUST NOT produce a block.
 
 ### Attesting
 
@@ -140,11 +127,11 @@ An optimistic validator MUST NOT participate in sync committees (i.e., sign acro
 
 ## P2P Networking
 
-### Topics and Messages on Gossipsub
+### The Gossip Domain (gossipsub)
 
 #### `beacon_block`
 
-An optimistic validator MUST subscribe to the `beacon_block` topic. Propagation
+An optimistic validator MAY subscribe to the `beacon_block` topic. Propagation
 validation conditions are modified as such:
 
 Do not apply the existing condition:
