@@ -159,3 +159,45 @@ An optimistic validator MUST NOT subscribe to the `proposer_slashing` topic.
 #### `attester_slashing`
 
 An optimistic validator MUST NOT subscribe to the `attester_slashing` topic.
+
+#### `beacon_attestation_{subnet_id}`
+
+An optimistic validator MUST NOT subscribe to the
+`beacon_attestation_{subnet_id}` (attestation subnets) topics.
+
+#### `sync_committee_contribution_and_proof`
+
+An optimistic validator MUST NOT subscribe to the
+`sync_committee_contribution_and_proof` topic.
+
+#### `sync_committee_{subnet_id}`
+
+An optimistic validator MUST NOT subscribe to the `sync_committee_{subnet_id}`
+(sync committee subnets) topics.
+
+### The Req/Resp Domain
+
+#### BeaconBlocksByRange (v1, v2)
+
+Consensus engines MUST NOT include any block in a response where
+`is_optimistic(block) == False`.
+
+#### BeaconBlocksByRoot (v1, v2)
+
+Consensus engines MUST NOT include any block in a response where
+`is_optimistic(block) == False`.
+
+#### Status
+
+An optimistic node MUST use the `latest_valid_ancestor(head)` block to form
+responses, rather than the head block. Specifically, an optimistic node must
+form a `Status` message as so:
+
+The fields are, as seen by the client at the time of sending the message:
+
+- `fork_digest`: As previously defined.
+- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the latest valid ancestor block
+  (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
+- `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the latest valid ancestor block.
+- `head_root`: The `hash_tree_root` root of the current latest valid ancestor block (`BeaconBlock`).
+- `head_slot`: The slot of the block corresponding to `latest_valid_ancestor(head)`.
