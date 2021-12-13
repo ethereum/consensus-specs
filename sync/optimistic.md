@@ -130,20 +130,7 @@ If the latest valid ancestor is `None`, the validator MUST NOT produce a block.
 
 An optimistic validator MUST NOT participate in attestation (i.e., sign across the
 `DOMAIN_BEACON_ATTESTER`, `DOMAIN_SELECTION_PROOF` or
-`DOMAIN_AGGREGATE_AND_PROOF` domains), unless one of the follow exceptions are
-met:
-
-#### Exception 1.
-
-If the justified block is fully verified (i.e., `not
-is_optimistic(justified_block)`, the validator MAY sign across the following
-domains:
-
-- `DOMAIN_BEACON_ATTESTER`: where `attestation.data.beacon_block_root == hash_tree_root(recent_valid_ancestor(head))`.
-- `DOMAIN_AGGREGATE_AND_PROOF` and `DOMAIN_SELECTION_PROOF`: where `aggregate.message.aggregate.data.beacon_block_root == hash_tree_root(recent_valid_ancestor(head))`
-
-If the recent valid ancestor is `None`, the validator MUST NOT participate in
-attestation.
+`DOMAIN_AGGREGATE_AND_PROOF` domains).
 
 ### Participating in Sync Committees
 
