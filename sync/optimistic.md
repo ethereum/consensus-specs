@@ -49,6 +49,15 @@ A consensus engine MUST NOT interpret an error or failure to respond to a
 message as a `SYNCING`, `VALID` or `INVALID` response. A consensus engine MAY
 queue such a message for later processing.
 
+### Assumptions about Execution Engine Behaviour
+
+This specification assumes execution engines will only return `SYNCING` when
+there is insufficient information available to make a `VALID` or `INVALID`
+determination on the given `ExecutionPayload` (e.g., the parent payload is
+unknown). Specifically, `SYNCING` responses should be fork-specific; the search
+for a block on one chain MUST NOT trigger a `SYNCING` response for another
+chain.
+
 ## Merge Transition
 
 To protect against attacks during the transition from empty `ExecutionPayload`
