@@ -86,8 +86,8 @@ def is_optimistic(block: BeaconBlock) -> bool:
 ```python
 def latest_valid_ancestor(block: BeaconBlock) -> BeaconBlock:
     while block.parent_root != Root():
-	    if not is_optimistic(block) or block.parent_root == Root():
-		    return block
+        if not is_optimistic(block) or block.parent_root == Root():
+	        return block
         block = get_block(block.parent_root)
 ```
 
