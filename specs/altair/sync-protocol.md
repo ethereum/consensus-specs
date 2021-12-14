@@ -226,30 +226,32 @@ def process_light_client_update(store: LightClientStore,
                                 genesis_validators_root: Root) -> None:
                                 
     validate_light_client_update(store, update, current_slot, genesis_validators_root)
-    
+
+    sync_committee_bits = update.sync_committee_aggregate.sync_committee_bits
+
     # Update the best update in case we have to force-update to it if the timeout elapses
     if (
         store.best_valid_update is None
-        or sum(update.sync_committee_bits) > sum(store.best_valid_update.sync_committee_bits)
+        or sum(sync_committee_bits) > sum(store.best_valid_update.sync_committee_aggregate.sync_committee_bits)
     ):
         store.best_valid_update = update
     
     # Track the maximum number of active participants in the committee signatures
     store.current_max_active_participants = max(
         store.current_max_active_participants,
-        sum(update.sync_committee_bits),
+        sum(sync_committee_bits),
     )
     
     # Update the optimistic header
     if (
-        sum(update.sync_committee_bits) > get_safety_threshold(store) and
+        sum(sync_committee_bits) > get_safety_threshold(store) and
         update.attested_header.slot > store.optimistic_header.slot
     ):
         store.optimistic_header = update.attested_header
     
     # Update finalized header
     if (
-        sum(update.sync_committee_bits) * 3 >= len(update.sync_committee_bits) * 2
+        sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
         and update.finalized_header != BeaconBlockHeader()
     ):
         # Normal update through 2/3 threshold
