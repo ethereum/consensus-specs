@@ -36,8 +36,10 @@ also transition from `SYNCING` -> `VALID`.
 When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
 
-### Execution Engine Errors
+When a node transitions from the `SYNCING` state is is removed from the set of
+`optimistic_roots`.
 
+### Execution Engine Errors
 A consensus engine MUST NOT interpret an error or failure to respond to a
 message as a `SYNCING`, `VALID` or `INVALID` response. A consensus engine MAY
 queue such a message for later processing.
