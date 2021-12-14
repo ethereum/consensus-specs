@@ -193,3 +193,20 @@ The fields are, as seen by the client at the time of sending the message:
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the latest valid ancestor block.
 - `head_root`: The `hash_tree_root` root of the current latest valid ancestor block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to `latest_valid_ancestor(head)`.
+
+## Ethereum Beacon APIs
+
+Consensus engines which provide an implementation of the [Ethereum Beacon
+APIs](https://github.com/ethereum/beacon-APIs) must take care to avoid
+presenting optimistic blocks as fully-verified blocks.
+
+When information about an optimistic block is requested, the consensus engine:
+
+- MUST NOT return a "success"-type response (e.g., 2xx).
+- MAY return an "empty"-type response (e.g., 404).
+- MAY return a "beacon node is currently syncing"-type response (e.g., 503).
+
+When `is_optimistic(head) == True`, the consensus engine:
+
+- MAY substitute the head block with `latest_valid_ancestor(block)`.
+- MAY return a "beacon node is currently syncing"-type response (e.g., 503).
