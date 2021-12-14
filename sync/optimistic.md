@@ -40,7 +40,7 @@ also transition from `SYNCING` -> `VALID`.
 When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
 
-When a node transitions from the `SYNCING` state is is removed from the set of
+When a node transitions from the `SYNCING` state it is removed from the set of
 `optimistic_roots`.
 
 ### Execution Engine Errors
