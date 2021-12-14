@@ -75,9 +75,9 @@ NOT perform an optimistic sync unless the `finalized_checkpoint.root` of the hea
 block references a block for which
 `is_execution_enabled(head_state, head_block.body) == True`.
 
-TODO: this restriction is very onerous, however it is the best known remedy for
-the attack described in https://hackmd.io/S5ZEVhsNTqqfJirTAkBPlg I hope we can
-do better.
+> TODO: this restriction is very onerous, however it is the best known remedy for
+> the attack described in https://hackmd.io/S5ZEVhsNTqqfJirTAkBPlg I hope we can
+> do better.
 
 ## Fork Choice
 
