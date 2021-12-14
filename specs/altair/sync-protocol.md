@@ -195,7 +195,10 @@ def validate_light_client_update(store: LightClientStore,
     assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify sync committee aggregate signature
-    participant_pubkeys = [pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys) if bit]
+    participant_pubkeys = [
+        pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
+        if bit
+    ]
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
