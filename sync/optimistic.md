@@ -185,7 +185,7 @@ Consensus engines MUST NOT include any block in a response where
 #### BeaconBlocksByRoot (v1, v2)
 
 Consensus engines MUST NOT include any block in a response where
-`is_optimistic(block) == False`.
+`is_optimistic(block) == True`.
 
 #### Status
 
