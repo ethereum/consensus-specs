@@ -13,22 +13,15 @@ To perform an optimistic sync:
 
 - The `execute_payload` function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
-- The `validate_merge_block` function MUST NOT raise an assertion if both the
-	`pow_block` and `pow_parent` are unknown to the execution engine.
+- The `validate_merge_block` function MUST NOT raise an assertion if both the `pow_block` and `pow_parent` are unknown to the execution engine.
 
 In addition to these changes to validation, the consensus engine MUST be able
 to ascertain, after import, which blocks returned `SYNCING` and which returned
 `VALID`. This document will assume that consensus engines store the following
-sets:
+set:
 
-- `valid_roots: Set[Root]`: `hash_tree_root(block)` where
-	`block.body.execution_payload` is known to be `VALID`.
 - `optimistic_roots: Set[Root]`: `hash_tree_root(block)` where
 	`block.body.execution_payload` is known to be `SYNCING`.
-
-Notably, `optimistic_roots` only includes blocks which have execution enabled.
-On the other hand, `valid_roots` contains blocks *with or without* execution
-enabled (i.e., all blocks).
 
 A consensus engine MUST be able to retrospectively (i.e., after import) modify
 the status of `SYNCING` blocks to be either `VALID` or `INVALID` based upon responses
