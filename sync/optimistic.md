@@ -72,6 +72,11 @@ from `SYNCING` to `INVALID`. Specifically, a block deemed `INVALID` at any
 point MUST NOT be included in the canonical chain and the weights from those
 `INVALID` blocks MUST NOT be applied to any `VALID` or `SYNCING` ancestors.
 
+## Checkpoint Sync (Weak Subjectivity Sync)
+
+A consensus engine MAY assume that the `ExecutionPayload` of a block used for
+checkpoint sync is `VALID`.
+
 ### Helpers
 
 Let `head_block: BeaconBlock` be the result of calling of the fork choice
