@@ -22,6 +22,11 @@ set:
 - `optimistic_roots: Set[Root]`: `hash_tree_root(block)` where
 	`block.body.execution_payload` is known to be `SYNCING`.
 
+Notably, blocks included in `optimistic_roots` have passed all verifications
+included in `process_block` (noting the modifications to the
+`execute_payload`). I.e., the blocks are fully verified but awaiting execution
+of the `ExecutionPayload`.
+
 A consensus engine MUST be able to retrospectively (i.e., after import) modify
 the status of `SYNCING` blocks to be either `VALID` or `INVALID` based upon responses
 from an execution engine. I.e., perform the following transitions:
