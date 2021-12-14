@@ -13,7 +13,6 @@ To perform an optimistic sync:
 
 - The `execute_payload` function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
-- The `validate_merge_block` function MUST NOT raise an assertion if both the `pow_block` and `pow_parent` are unknown to the execution engine.
 
 In addition to these changes to validation, the consensus engine MUST be able
 to ascertain, after import, which blocks returned `SYNCING` and which returned
