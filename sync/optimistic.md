@@ -147,37 +147,20 @@ Instead, apply the new condition:
 - [REJECT] The block's parent (defined by block.parent_root) passes validation,
 	*and* `block.parent root not in optimistic_roots`.
 
-#### `beacon_aggregate_and_proof`
+#### Other Topics
 
-An optimistic validator MUST NOT subscribe to the `beacon_aggregate_and_proof`
-topic.
+An optimistic node MUST NOT subscribe to the following topics:
 
-#### `voluntary_exit`
+-  `beacon_aggregate_and_proof`
+-  `voluntary_exit`
+-  `proposer_slashing`
+-  `attester_slashing`
+-  `beacon_attestation_{subnet_id}`
+-  `sync_committee_contribution_and_proof`
+-  `sync_committee_{subnet_id}`
 
-An optimistic validator MUST NOT subscribe to the `voluntary_exit` topic.
-
-#### `proposer_slashing`
-
-An optimistic validator MUST NOT subscribe to the `proposer_slashing` topic.
-
-#### `attester_slashing`
-
-An optimistic validator MUST NOT subscribe to the `attester_slashing` topic.
-
-#### `beacon_attestation_{subnet_id}`
-
-An optimistic validator MUST NOT subscribe to the
-`beacon_attestation_{subnet_id}` (attestation subnets) topics.
-
-#### `sync_committee_contribution_and_proof`
-
-An optimistic validator MUST NOT subscribe to the
-`sync_committee_contribution_and_proof` topic.
-
-#### `sync_committee_{subnet_id}`
-
-An optimistic validator MUST NOT subscribe to the `sync_committee_{subnet_id}`
-(sync committee subnets) topics.
+Once the node ceases to be optimistic, it MAY re-subscribe to the aformentioned
+topics.
 
 ### The Req/Resp Domain
 
