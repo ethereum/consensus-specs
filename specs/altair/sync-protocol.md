@@ -40,8 +40,8 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` |
+| `FINALIZED_ROOT_GINDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
+| `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` |
 
 ## Preset
 
@@ -72,10 +72,10 @@ class LightClientUpdate(Container):
     header: BeaconBlockHeader
     # Next sync committee corresponding to the header
     next_sync_committee: SyncCommittee
-    next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
+    next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]
     # Finality proof for the update header
     finality_header: BeaconBlockHeader
-    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]
     # Sync committee aggregate signature
     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
@@ -122,28 +122,28 @@ def validate_light_client_update(snapshot: LightClientSnapshot,
     # Verify update header root is the finalized root of the finality header, if specified
     if update.finality_header == BeaconBlockHeader():
         signed_header = update.header
-        assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+        assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_GINDEX))]
     else:
         signed_header = update.finality_header
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.header),
             branch=update.finality_branch,
-            depth=floorlog2(FINALIZED_ROOT_INDEX),
-            index=get_subtree_index(FINALIZED_ROOT_INDEX),
+            depth=floorlog2(FINALIZED_ROOT_GINDEX),
+            index=get_subtree_index(FINALIZED_ROOT_GINDEX),
             root=update.finality_header.state_root,
         )
 
     # Verify update next sync committee if the update period incremented
     if update_period == snapshot_period:
         sync_committee = snapshot.current_sync_committee
-        assert update.next_sync_committee_branch == [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
+        assert update.next_sync_committee_branch == [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_GINDEX))]
     else:
         sync_committee = snapshot.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
-            index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
+            depth=floorlog2(NEXT_SYNC_COMMITTEE_GINDEX),
+            index=get_subtree_index(NEXT_SYNC_COMMITTEE_GINDEX),
             root=update.header.state_root,
         )
 

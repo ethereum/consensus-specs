@@ -475,8 +475,8 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         constants = {
-            'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
-            'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
+            'FINALIZED_ROOT_GINDEX': 'GeneralizedIndex(105)',
+            'NEXT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(55)',
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}
 
