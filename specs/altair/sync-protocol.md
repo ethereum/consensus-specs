@@ -120,8 +120,8 @@ def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
 ```python
 def get_safety_threshold(store: LightClientStore) -> uint64:
     return max(
-        store.previous_max_active_participants,     
-        store.current_max_active_participants
+        store.previous_max_active_participants,
+        store.current_max_active_participants,
     ) // 2
 ```
 
@@ -152,7 +152,6 @@ def validate_light_client_update(store: LightClientStore,
                                  update: LightClientUpdate,
                                  current_slot: Slot,
                                  genesis_validators_root: Root) -> None:
-                                 
     # Verify update slot is larger than slot of current best finalized header
     active_header = get_active_header(update)
     assert current_slot >= active_header.slot > store.finalized_header.slot
@@ -224,7 +223,6 @@ def process_light_client_update(store: LightClientStore,
                                 update: LightClientUpdate,
                                 current_slot: Slot,
                                 genesis_validators_root: Root) -> None:
-                                
     validate_light_client_update(store, update, current_slot, genesis_validators_root)
 
     sync_committee_bits = update.sync_committee_aggregate.sync_committee_bits
@@ -235,20 +233,20 @@ def process_light_client_update(store: LightClientStore,
         or sum(sync_committee_bits) > sum(store.best_valid_update.sync_committee_aggregate.sync_committee_bits)
     ):
         store.best_valid_update = update
-    
+
     # Track the maximum number of active participants in the committee signatures
     store.current_max_active_participants = max(
         store.current_max_active_participants,
         sum(sync_committee_bits),
     )
-    
+
     # Update the optimistic header
     if (
-        sum(sync_committee_bits) > get_safety_threshold(store) and
-        update.attested_header.slot > store.optimistic_header.slot
+        sum(sync_committee_bits) > get_safety_threshold(store)
+        and update.attested_header.slot > store.optimistic_header.slot
     ):
         store.optimistic_header = update.attested_header
-    
+
     # Update finalized header
     if (
         sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
