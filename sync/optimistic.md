@@ -22,6 +22,10 @@ Let `head_block: BeaconBlock` be the result of calling of the fork choice
 algorithm at the time of block production. Let `justified_block: BeaconBlock`
 be the latest current justified ancestor ancestor of the `head_block`.
 
+Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
+optimistically imported blocks which have yet to receive an `INVALID` or
+`VALID` designation from an execution engine.
+
 ```python
 def is_optimistic(block: BeaconBlock) -> bool:
     hash_tree_root(block) in optimistic_roots
@@ -74,15 +78,11 @@ To optimistically import a block:
 - The `execute_payload` function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
 
-In addition to this change to validation, the consensus engine MUST be able
-to ascertain, after import, which blocks returned `SYNCING` and which returned
-`VALID`. This document will assume that consensus engines store the following
-set:
+In addition to this change to validation, the consensus engine MUST be able to
+ascertain, after import, which blocks returned `SYNCING` (`optimistic_roots`)
+and which returned `VALID`.
 
-- `optimistic_roots: Set[Root]`: `hash_tree_root(block)` where
-	`block.body.execution_payload` is known to be `SYNCING`.
-
-Notably, blocks included in `optimistic_roots` have passed all verifications
+Notably, optimistically imported blocks MUST have passed all verifications
 included in `process_block` (noting the modifications to the
 `execute_payload`). I.e., the blocks are fully verified but awaiting execution
 of the `ExecutionPayload`.
