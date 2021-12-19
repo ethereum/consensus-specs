@@ -7,14 +7,57 @@ of the chain, it may be desirable for a consensus engine to import beacon
 blocks without verifying the execution payloads. This partial sync is called an
 *optimistic sync*.
 
+## Constants
+
+|Name|Value|Unit
+|---|---|---|
+|`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`| `64` | slots
+
+## Helpers
+
+Let `head_block: BeaconBlock` be the result of calling of the fork choice
+algorithm at the time of block production. Let `justified_block: BeaconBlock`
+be the latest current justified ancestor ancestor of the `head_block`.
+
+```python
+def is_optimistic(block: BeaconBlock) -> bool:
+    hash_tree_root(block) in optimistic_roots
+```
+
+```python
+def latest_valid_ancestor(block: BeaconBlock) -> BeaconBlock:
+    while True:
+        if not is_optimistic(block) or block.parent_root == Root():
+	        return block
+        block = get_block(block.parent_root)
+```
+
+```python
+def is_execution_block(block: BeaconBlock) -> BeaconBlock:
+	block.execution_payload != ExecutionPayload()
+```
+
+Let only a node which returns `is_optimistic(head) == True` be an *optimistic
+node*. Let only a validator on an optimistic node be an *optimistic validator*.
+
+When this specification only defines behaviour for an optimistic
+node/validator, but *not* for the non-optimistic case, assume default
+behaviours without regard for optimistic sync.
+
 ## Mechanisms
 
-To perform an optimistic sync:
+## When to optimistically import blocks
+
+TODO
+
+## How to optimistically import blocks
+
+To optimistically import a block:
 
 - The `execute_payload` function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
 
-In addition to these changes to validation, the consensus engine MUST be able
+In addition to this change to validation, the consensus engine MUST be able
 to ascertain, after import, which blocks returned `SYNCING` and which returned
 `VALID`. This document will assume that consensus engines store the following
 set:
@@ -75,7 +118,7 @@ To protect against attacks during the transition from empty `ExecutionPayload`
 values to those which include the terminal PoW block, a consensus engine MUST
 NOT perform an optimistic sync unless the `finalized_checkpoint.root` of the head
 block references a block for which
-`is_execution_enabled(head_state, head_block.body) == True`.
+`is_execution_block(head_block) == True`.
 
 > TODO: this restriction is very onerous, however it is the best known remedy for
 > the attack described in https://hackmd.io/S5ZEVhsNTqqfJirTAkBPlg I hope we can
@@ -92,32 +135,6 @@ point MUST NOT be included in the canonical chain and the weights from those
 
 A consensus engine MAY assume that the `ExecutionPayload` of a block used for
 checkpoint sync is `VALID`.
-
-### Helpers
-
-Let `head_block: BeaconBlock` be the result of calling of the fork choice
-algorithm at the time of block production. Let `justified_block: BeaconBlock`
-be the latest current justified ancestor ancestor of the `head_block`.
-
-```python
-def is_optimistic(block: BeaconBlock) -> bool:
-    hash_tree_root(block) in optimistic_roots
-```
-
-```python
-def latest_valid_ancestor(block: BeaconBlock) -> BeaconBlock:
-    while True:
-        if not is_optimistic(block) or block.parent_root == Root():
-	        return block
-        block = get_block(block.parent_root)
-```
-
-Let only a node which returns `is_optimistic(head) == True` be an *optimistic
-node*. Let only a validator on an optimistic node be an *optimistic validator*.
-
-When this specification only defines behaviour for an optimistic
-node/validator, but *not* for the non-optimistic case, assume default
-behaviours without regard for optimistic sync.
 
 ## Validator assignments
 
