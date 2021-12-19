@@ -44,9 +44,11 @@ When a node transitions from the `SYNCING` state it is removed from the set of
 `optimistic_roots`.
 
 ### Execution Engine Errors
+
 A consensus engine MUST NOT interpret an error or failure to respond to a
-message as a `SYNCING`, `VALID` or `INVALID` response. A consensus engine MAY
-queue such a message for later processing.
+message as a `SYNCING`, `VALID` or `INVALID` response. A message which receives
+and error or no response MUST NOT be permitted to modify the fork choice
+`Store`. A consensus engine MAY queue such a message for later processing.
 
 ### Assumptions about Execution Engine Behaviour
 
