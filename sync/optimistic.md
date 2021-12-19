@@ -14,7 +14,7 @@ blocks without verifying the execution payloads. This partial sync is called an
 |`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`| `96` | slots
 
 *Note: the `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` must be user-configurable. See
-[Failure Recovery](#failure-recovery).
+[Fork Choice Poisoning](#fork-choice-poisoning).*
 
 ## Helpers
 
@@ -63,6 +63,9 @@ conditions are met:
    `is_execution_block(get_block(get_state(head_block).finalized_checkpoint.root))`
 1. The current slot (as per the system clock) is at least `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of
    the slot of the block being imported. I.e., `should_optimistically_import_block(current_slot) == True`.
+
+*See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
+these conditions.*
 
 ## How to optimistically import blocks
 
@@ -126,7 +129,14 @@ If the justified checkpoint transitions from `SYNCING` -> `INVALID`, a
 consensus engine MAY choose to alert the user and force the application to
 exit.
 
-## Failure Recovery
+## Fork Choice
+
+Consensus engines MUST support removing from fork choice blocks that transition
+from `SYNCING` to `INVALID`. Specifically, a block deemed `INVALID` at any
+point MUST NOT be included in the canonical chain and the weights from those
+`INVALID` blocks MUST NOT be applied to any `VALID` or `SYNCING` ancestors.
+
+### Fork Choice Poisoning
 
 During the merge transition it is possible for an attacker to craft a
 `BeaconBlock` with an execution payload that references an
@@ -157,13 +167,6 @@ disaster recovery:
 
 - `--safe_slots_to_import_optimistically`: modifies the
 	`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
-
-## Fork Choice
-
-Consensus engines MUST support removing from fork choice blocks that transition
-from `SYNCING` to `INVALID`. Specifically, a block deemed `INVALID` at any
-point MUST NOT be included in the canonical chain and the weights from those
-`INVALID` blocks MUST NOT be applied to any `VALID` or `SYNCING` ancestors.
 
 ## Checkpoint Sync (Weak Subjectivity Sync)
 
