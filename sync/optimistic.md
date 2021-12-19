@@ -11,7 +11,10 @@ blocks without verifying the execution payloads. This partial sync is called an
 
 |Name|Value|Unit
 |---|---|---|
-|`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`| `64` | slots
+|`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`| `96` | slots
+
+*Note: the `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` must be user-configurable. See
+[Failure Recovery](#failure-recovery).
 
 ## Helpers
 
@@ -122,6 +125,38 @@ beyond the justified checkpoint.
 If the justified checkpoint transitions from `SYNCING` -> `INVALID`, a
 consensus engine MAY choose to alert the user and force the application to
 exit.
+
+## Failure Recovery
+
+During the merge transition it is possible for an attacker to craft a
+`BeaconBlock` with an execution payload that references an
+eternally-unavailable `body.execution_payload.parent_hash` value. In some rare
+circumstances, it is possible that an attacker can build atop such a block to
+trigger justification. If an optimistic node imports this malicious chain, that
+node will have a "poisoned" fork choice store, such that the node is unable to
+produce a child of the head (due to the invalid chain of payloads) and the node
+is unable to fork around the head (due to the justification of the malicious
+chain).
+
+The fork choice poisoning attack is temporary for an individual node, assuming
+there exists an honest chain. An honest chain which justifies a higher epoch
+than the malicious chain will take precedence and revive any poisoned store
+once imported.
+
+The `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` parameter assumes that the network
+will justify a honest chain within some number of slots. With this assumption,
+it is therefore "safe" to optimistically import transition blocks during the
+sync process. Since there is an assumption that an honest chain with a higher
+justified checkpoint exists, any fork choice poisoning will be short-lived and
+resolved before that node is required to produce a block.
+
+However, the assumption that the honest, canonical chain will always justify
+within `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` slots is dubious. Therefore,
+clients MUST provide the following command line flag to assist with manual
+disaster recovery:
+
+- `--safe_slots_to_import_optimistically`: modifies the
+	`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
 
 ## Merge Transition
 
