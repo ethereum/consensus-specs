@@ -158,18 +158,6 @@ disaster recovery:
 - `--safe_slots_to_import_optimistically`: modifies the
 	`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
 
-## Merge Transition
-
-To protect against attacks during the transition from empty `ExecutionPayload`
-values to those which include the terminal PoW block, a consensus engine MUST
-NOT perform an optimistic sync unless the `finalized_checkpoint.root` of the head
-block references a block for which
-`is_execution_block(head_block) == True`.
-
-> TODO: this restriction is very onerous, however it is the best known remedy for
-> the attack described in https://hackmd.io/S5ZEVhsNTqqfJirTAkBPlg I hope we can
-> do better.
-
 ## Fork Choice
 
 Consensus engines MUST support removing from fork choice blocks that transition
