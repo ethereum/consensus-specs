@@ -37,6 +37,11 @@ def is_execution_block(block: BeaconBlock) -> BeaconBlock:
 	block.execution_payload != ExecutionPayload()
 ```
 
+```python
+def should_optimistically_import_block(current_slot: Slot, block: BeaconBlock) -> bool:
+	block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
+```
+
 Let only a node which returns `is_optimistic(head) == True` be an *optimistic
 node*. Let only a validator on an optimistic node be an *optimistic validator*.
 
@@ -48,7 +53,13 @@ behaviours without regard for optimistic sync.
 
 ## When to optimistically import blocks
 
-TODO
+A block MUST NOT be optimistically imported, unless either of the following
+conditions are met:
+
+1. The justified checkpoint has execution enabled. I.e.,
+   `is_execution_block(get_block(get_state(head_block).finalized_checkpoint.root))`
+1. The current slot (as per the system clock) is at least `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of
+   the slot of the block being imported. I.e., `should_optimistically_import_block(current_slot) == True`.
 
 ## How to optimistically import blocks
 
