@@ -64,7 +64,7 @@ A block MUST NOT be optimistically imported, unless either of the following
 conditions are met:
 
 1. The justified checkpoint has execution enabled. I.e.,
-   `is_execution_block(get_block(get_state(head_block).finalized_checkpoint.root))`
+   `is_execution_block(get_block(get_state(head_block).current_justified_checkpoint.root))`
 1. The current slot (as per the system clock) is at least `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of
    the slot of the block being imported. I.e., `should_optimistically_import_block(current_slot) == True`.
 
@@ -79,13 +79,11 @@ To optimistically import a block:
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
 
 In addition to this change to validation, the consensus engine MUST be able to
-ascertain, after import, which blocks returned `SYNCING` (`optimistic_roots`)
-and which returned `VALID`.
+ascertain, after import, which blocks returned `SYNCING` and which returned
+`VALID`.
 
-Notably, optimistically imported blocks MUST have passed all verifications
-included in `process_block` (noting the modifications to the
-`execute_payload`). I.e., the blocks are fully verified but awaiting execution
-of the `ExecutionPayload`.
+Optimistically imported blocks MUST pass all verifications included in
+`process_block` (withstanding the modifications to `execute_payload`).
 
 A consensus engine MUST be able to retrospectively (i.e., after import) modify
 the status of `SYNCING` blocks to be either `VALID` or `INVALID` based upon responses
@@ -94,8 +92,9 @@ from an execution engine. I.e., perform the following transitions:
 - `SYNCING` -> `VALID`
 - `SYNCING` -> `INVALID`
 
-When a block transitions from `SYNCING` -> `VALID`, all *ancestors* of the block MUST
-also transition from `SYNCING` -> `VALID`.
+When a block transitions from `SYNCING` -> `VALID`, all *ancestors* of the
+block MUST also transition from `SYNCING` -> `VALID`. Such a block is no longer
+considered "optimistically imported".
 
 When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
@@ -105,10 +104,11 @@ When a node transitions from the `SYNCING` state it is removed from the set of
 
 ### Execution Engine Errors
 
-A consensus engine MUST NOT interpret an error or failure to respond to a
-message as a `SYNCING`, `VALID` or `INVALID` response. A message which receives
-and error or no response MUST NOT be permitted to modify the fork choice
-`Store`. A consensus engine MAY queue such a message for later processing.
+When an execution engine returns an error or fails to respond to a payload
+validity request some block, a consensus engine:
+
+- MUST NOT optimistically import the block.
+- MAY queue the block for later processing.
 
 ### Assumptions about Execution Engine Behaviour
 
@@ -140,7 +140,7 @@ point MUST NOT be included in the canonical chain and the weights from those
 
 During the merge transition it is possible for an attacker to craft a
 `BeaconBlock` with an execution payload that references an
-eternally-unavailable `body.execution_payload.parent_hash` value. In some rare
+eternally-unavailable `body.execution_payload.parent_hash` value. In rare
 circumstances, it is possible that an attacker can build atop such a block to
 trigger justification. If an optimistic node imports this malicious chain, that
 node will have a "poisoned" fork choice store, such that the node is unable to
@@ -149,14 +149,13 @@ is unable to fork around the head (due to the justification of the malicious
 chain).
 
 The fork choice poisoning attack is temporary for an individual node, assuming
-there exists an honest chain. An honest chain which justifies a higher epoch
-than the malicious chain will take precedence and revive any poisoned store
-once imported.
+there exists an honest chain which justifies a higher epoch than the malicious
+chain. Such an honest chain will take precedence and revive any poisoned store.
 
 The `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` parameter assumes that the network
 will justify a honest chain within some number of slots. With this assumption,
-it is therefore "safe" to optimistically import transition blocks during the
-sync process. Since there is an assumption that an honest chain with a higher
+it is acceptable to optimistically import transition blocks during the sync
+process. Since there is an assumption that an honest chain with a higher
 justified checkpoint exists, any fork choice poisoning will be short-lived and
 resolved before that node is required to produce a block.
 
@@ -165,13 +164,14 @@ within `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` slots is dubious. Therefore,
 clients MUST provide the following command line flag to assist with manual
 disaster recovery:
 
-- `--safe_slots_to_import_optimistically`: modifies the
+- `--safe-slots-to-import-optimistically`: modifies the
 	`SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
 
 ## Checkpoint Sync (Weak Subjectivity Sync)
 
 A consensus engine MAY assume that the `ExecutionPayload` of a block used for
-checkpoint sync is `VALID`.
+checkpoint sync is `VALID` without providing that payload to an execution
+engine.
 
 ## Validator assignments
 
