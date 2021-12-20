@@ -240,30 +240,10 @@ topics.
 
 ### The Req/Resp Domain
 
-#### BeaconBlocksByRange (v1, v2)
-
-Consensus engines MUST NOT include any block in a response where
-`is_optimistic(block) == True`.
-
-#### BeaconBlocksByRoot (v1, v2)
-
-Consensus engines MUST NOT include any block in a response where
-`is_optimistic(block) == True`.
-
-#### Status
-
-An optimistic node MUST use the `latest_valid_ancestor(head)` block to form
-responses, rather than the head block. Specifically, an optimistic node must
-form a `Status` message as so:
-
-The fields are, as seen by the client at the time of sending the message:
-
-- `fork_digest`: As previously defined.
-- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the latest valid ancestor block
-  (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
-- `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the latest valid ancestor block.
-- `head_root`: The `hash_tree_root` root of the current latest valid ancestor block (`BeaconBlock`).
-- `head_slot`: The slot of the block corresponding to `latest_valid_ancestor(head)`.
+Non-faulty, optimistic nodes may send blocks which result in an INVALID
+response from an execution engine. To prevent network segregation between
+optimistic and non-optimistic nodes, transmission of an INVALID payload SHOULD
+NOT cause a node to be down-scored or disconnected.
 
 ## Ethereum Beacon APIs
 
@@ -271,13 +251,32 @@ Consensus engines which provide an implementation of the [Ethereum Beacon
 APIs](https://github.com/ethereum/beacon-APIs) must take care to avoid
 presenting optimistic blocks as fully-verified blocks.
 
+### Helpers
+
+Let the following response types be defined as any response with the
+corresponding HTTP status code:
+
+- "Success" Response: Status Codes 200-299.
+- "Not Found" Response: Status Code 404.
+- "Syncing" Response: Status Code 503.
+
+### Requests for Optimistic Blocks
+
 When information about an optimistic block is requested, the consensus engine:
 
-- MUST NOT return a "success"-type response (e.g., 2xx).
-- MAY return an "empty"-type response (e.g., 404).
-- MAY return a "beacon node is currently syncing"-type response (e.g., 503).
+- MUST NOT respond with success.
+- MAY respond with not found.
+- MAY respond with syncing.
+
+### Requests for the Head
 
 When `is_optimistic(head) == True`, the consensus engine:
 
 - MAY substitute the head block with `latest_valid_ancestor(block)`.
-- MAY return a "beacon node is currently syncing"-type response (e.g., 503).
+- MAY return syncing.
+
+### Requests to Validators Endpoints
+
+When `is_optimistic(head) == True`, the consensus engine:
+
+MUST respon
