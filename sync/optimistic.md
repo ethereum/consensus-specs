@@ -79,6 +79,9 @@ To optimistically import a block:
 
 - The `execute_payload` function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
+- The `validate_merge_block` function MUST NOT raise an assertion if both the
+`pow_block` and `pow_parent` are unknown to the execution engine.
+- The parent of the block MUST NOT have an INVALID execution payload.
 
 In addition to this change to validation, the consensus engine MUST be able to
 ascertain, after import, which blocks returned `SYNCING` and which returned
