@@ -19,8 +19,10 @@ blocks without verifying the execution payloads. This partial sync is called an
 ## Helpers
 
 Let `head_block: BeaconBlock` be the result of calling of the fork choice
-algorithm at the time of block production. Let `justified_block: BeaconBlock`
-be the latest current justified ancestor ancestor of the `head_block`.
+algorithm at the time of block production.
+
+Let `justified_block: BeaconBlock` be the latest current justified ancestor
+ancestor of the `head_block`.
 
 Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have yet to receive an `INVALID` or
@@ -99,7 +101,7 @@ considered "optimistically imported".
 When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
 
-When a node transitions from the `SYNCING` state it is removed from the set of
+When a block transitions from the `SYNCING` state it is removed from the set of
 `optimistic_roots`.
 
 ### Execution Engine Errors
@@ -116,9 +118,9 @@ validity request some block, a consensus engine:
 This specification assumes execution engines will only return `SYNCING` when
 there is insufficient information available to make a `VALID` or `INVALID`
 determination on the given `ExecutionPayload` (e.g., the parent payload is
-unknown). Specifically, `SYNCING` responses should be fork-specific; the search
-for a block on one chain MUST NOT trigger a `SYNCING` response for another
-chain.
+unknown). Specifically, `SYNCING` responses should be fork-specific, in that
+the search for a block on one chain MUST NOT trigger a `SYNCING` response for
+another chain.
 
 ### Re-Orgs
 
@@ -132,7 +134,7 @@ exit.
 
 ## Fork Choice
 
-Consensus engines MUST support removing from fork choice blocks that transition
+Consensus engines MUST support removing blocks from fork choice that transition
 from `SYNCING` to `INVALID`. Specifically, a block deemed `INVALID` at any
 point MUST NOT be included in the canonical chain and the weights from those
 `INVALID` blocks MUST NOT be applied to any `VALID` or `SYNCING` ancestors.
@@ -141,17 +143,18 @@ point MUST NOT be included in the canonical chain and the weights from those
 
 During the merge transition it is possible for an attacker to craft a
 `BeaconBlock` with an execution payload that references an
-eternally-unavailable `body.execution_payload.parent_hash` value. In rare
-circumstances, it is possible that an attacker can build atop such a block to
-trigger justification. If an optimistic node imports this malicious chain, that
-node will have a "poisoned" fork choice store, such that the node is unable to
-produce a child of the head (due to the invalid chain of payloads) and the node
-is unable to fork around the head (due to the justification of the malicious
+eternally-unavailable `body.execution_payload.parent_hash` (i.e., the parent
+hash is random bytes). In rare circumstances, it is possible that an attacker
+can build atop such a block to trigger justification. If an optimistic node
+imports this malicious chain, that node will have a "poisoned" fork choice
+store, such that the node is unable to produce a block that descends from the
+head (due to the invalid chain of payloads) and the node is unable to produce a
+block that forks around the head (due to the justification of the malicious
 chain).
 
-The fork choice poisoning attack is temporary for an individual node, assuming
-there exists an honest chain which justifies a higher epoch than the malicious
-chain. Such an honest chain will take precedence and revive any poisoned store.
+The fork choice poisoning attack is temporary for an individual node when that
+an honest chain exists which justifies a higher epoch than the malicious chain.
+Such an honest chain will take precedence and revive any poisoned store.
 
 The `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` parameter assumes that the network
 will justify a honest chain within some number of slots. With this assumption,
@@ -170,9 +173,9 @@ disaster recovery:
 
 ## Checkpoint Sync (Weak Subjectivity Sync)
 
-A consensus engine MAY assume that the `ExecutionPayload` of a block used for
-checkpoint sync is `VALID` without providing that payload to an execution
-engine.
+A consensus engine MAY assume that the `ExecutionPayload` of a block used as an
+anchor for checkpoint sync is `VALID` without necessarily providing that
+payload to an execution engine.
 
 ## Validator assignments
 
@@ -220,8 +223,7 @@ Do not apply the existing condition:
 
 Instead, apply the new condition:
 
-- [IGNORE] The block's parent (defined by block.parent_root) passes validation
-	except the block.body.execution_payload was deemed INVALID.
+- [IGNORE] The block's parent was imported optimistically.
 - [REJECT] The block's parent (defined by block.parent_root) passes all
     validation, excluding verification of the block.body.execution_payload.
 
@@ -274,16 +276,17 @@ When information about an optimistic block is requested, the consensus engine:
 - MAY respond with not found.
 - MAY respond with syncing.
 
-### Requests for the Head
+### Requests for an Optimistic Head
 
 When `is_optimistic(head) == True`, the consensus engine:
 
-- MUST NOT return `head`.
+- MUST NOT return an optimistic `head`.
 - MAY substitute the head block with `latest_valid_ancestor(block)`.
 - MAY return syncing.
 
 ### Requests to Validators Endpoints
 
-When `is_optimistic(head) == True`, the consensus engine:
+When `is_optimistic(head) == True`, the consensus engine MUST return syncing to
+all endpoints which match the following pattern:
 
-MUST respon
+- `eth/*/validator/*`
