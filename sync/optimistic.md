@@ -183,22 +183,15 @@ payload to an execution engine.
 
 ## Validator assignments
 
-An entirely optimistically synced node is *not* a full node. It is unable to
-produce blocks, since an execution engine cannot produce a payload upon an
-unknown parent. It cannot faithfully attest to the head block of the chain,
-since it has not fully verified that block.
+An optimistic node is *not* a full node. It is unable to produce blocks, since
+an execution engine cannot produce a payload upon an unknown parent. It cannot
+faithfully attest to the head block of the chain, since it has not fully
+verified that block.
 
 ### Block Production
 
 A optimistic validator MUST NOT produce a block (i.e., sign across the
-`DOMAIN_BEACON_PROPOSER` domain), unless one of the following exceptions are
-met:
-
-#### Block Production Exception 1.
-
-If the justified block is fully verified (i.e., `not
-is_optimistic(justified_block)`, the validator MAY produce a block upon
-`latest_valid_ancestor(head)`.
+`DOMAIN_BEACON_PROPOSER` domain).
 
 ### Attesting
 
