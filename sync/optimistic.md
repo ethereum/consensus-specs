@@ -220,9 +220,10 @@ Do not apply the existing condition:
 
 Instead, apply the new condition:
 
-- [IGNORE] The block's parent was imported optimistically.
 - [REJECT] The block's parent (defined by block.parent_root) passes all
     validation, excluding verification of the block.body.execution_payload.
+- [IGNORE] The block's parent (defined by block.parent_root) passes all
+    validation, including verification of the block.body.execution_payload.
 
 The effect of these modifications is that invalid payloads may be propagated
 across the network, but only when contained inside a block that is valid in *all
