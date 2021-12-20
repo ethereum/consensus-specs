@@ -108,6 +108,7 @@ When an execution engine returns an error or fails to respond to a payload
 validity request some block, a consensus engine:
 
 - MUST NOT optimistically import the block.
+- MUST NOT apply the block to the fork choice store.
 - MAY queue the block for later processing.
 
 ### Assumptions about Execution Engine Behaviour
