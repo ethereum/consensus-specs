@@ -43,7 +43,7 @@ def latest_valid_ancestor(block: BeaconBlock) -> BeaconBlock:
 
 ```python
 def is_execution_block(block: BeaconBlock) -> BeaconBlock:
-	block.execution_payload != ExecutionPayload()
+	block.body.execution_payload != ExecutionPayload()
 ```
 
 ```python
@@ -110,7 +110,7 @@ When a block transitions from the `SYNCING` state it is removed from the set of
 ### Execution Engine Errors
 
 When an execution engine returns an error or fails to respond to a payload
-validity request some block, a consensus engine:
+validity request for some block, a consensus engine:
 
 - MUST NOT optimistically import the block.
 - MUST NOT apply the block to the fork choice store.
@@ -155,9 +155,10 @@ head (due to the invalid chain of payloads) and the node is unable to produce a
 block that forks around the head (due to the justification of the malicious
 chain).
 
-The fork choice poisoning attack is temporary for an individual node when that
-an honest chain exists which justifies a higher epoch than the malicious chain.
-Such an honest chain will take precedence and revive any poisoned store.
+If honest chain exists which justifies a higher epoch than the malicious chain,
+that chain will take precedence and revive any poisoned store. Therefore, the
+poisoning attack is temporary if >= 2/3rds of the network is honest and
+non-faulty.
 
 The `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` parameter assumes that the network
 will justify a honest chain within some number of slots. With this assumption,
