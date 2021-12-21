@@ -68,7 +68,7 @@ conditions are met:
 1. The justified checkpoint has execution enabled. I.e.,
    `is_execution_block(get_block(get_state(head_block).current_justified_checkpoint.root))`
 1. The current slot (as per the system clock) is at least `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of
-   the slot of the block being imported. I.e., `should_optimistically_import_block(current_slot) == True`.
+   the slot of the block being imported. I.e., `should_optimistically_import_block(current_slot, block) == True`.
 
 *See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
 these conditions.*
