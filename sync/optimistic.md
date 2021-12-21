@@ -241,8 +241,8 @@ An optimistic node MUST NOT subscribe to the following topics:
 -  `sync_committee_contribution_and_proof`
 -  `sync_committee_{subnet_id}`
 
-Once the node ceases to be optimistic, it MAY re-subscribe to the aformentioned
-topics.
+Once the node ceases to be optimistic, it MAY re-subscribe to the
+aforementioned topics.
 
 ### The Req/Resp Domain
 
