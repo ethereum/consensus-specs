@@ -1,4 +1,4 @@
-from eth2spec.test.context import is_post_altair, is_post_merge
+from eth2spec.test.context import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
@@ -98,7 +98,7 @@ def build_empty_block(spec, state, slot=None):
     if is_post_altair(spec):
         empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
-    if is_post_merge(spec):
+    if is_post_bellatrix(spec):
         empty_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     return empty_block

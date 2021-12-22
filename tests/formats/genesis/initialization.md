@@ -29,7 +29,7 @@ Each file is a SSZ-snappy encoded `Deposit` object.
 
 ###  `execution_payload_header.ssz_snappy`
 
-*Note*: Param added only for the Merge and subsequent forks.
+*Note*: Param added only for Bellatrix and subsequent forks.
 
 The execution payload header that state is initialized with. An SSZ-snappy encoded `BeaconState` object.
 

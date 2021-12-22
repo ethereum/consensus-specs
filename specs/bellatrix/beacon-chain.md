@@ -1,4 +1,4 @@
-# The Merge -- The Beacon Chain
+# Bellatrix -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -48,7 +48,7 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of the Merge fork.
+This upgrade adds transaction execution to the beacon chain as part of Bellatrix fork.
 
 Additionally, this upgrade introduces the following minor changes:
 * Penalty parameter updates to their planned maximally punitive values
@@ -75,15 +75,15 @@ Additionally, this upgrade introduces the following minor changes:
 
 ### Updated penalty values
 
-The Merge updates a few configuration values to move penalty parameters to their final, maximum security values.
+Bellatrix updates a few configuration values to move penalty parameters to their final, maximum security values.
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
 | Name | Value |
 | - | - |
-| `INACTIVITY_PENALTY_QUOTIENT_MERGE` | `uint64(2**24)` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_MERGE` | `uint64(2**5)` (= 32) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_MERGE` | `uint64(3)` |
+| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX` | `uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX` | `uint64(2**5)` (= 32) |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)` |
 
 ## Configuration
 
@@ -114,7 +114,7 @@ class BeaconBlockBody(Container):
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
-    execution_payload: ExecutionPayload  # [New in Merge]
+    execution_payload: ExecutionPayload  # [New in Bellatrix]
 ```
 
 #### `BeaconState`
@@ -156,7 +156,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [New in Merge]
+    latest_execution_payload_header: ExecutionPayloadHeader  # [New in Bellatrix]
 ```
 
 ### New containers
@@ -246,7 +246,7 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 #### Modified `get_inactivity_penalty_deltas`
 
-*Note*: The function `get_inactivity_penalty_deltas` is modified to use `INACTIVITY_PENALTY_QUOTIENT_MERGE`.
+*Note*: The function `get_inactivity_penalty_deltas` is modified to use `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -260,8 +260,8 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     for index in get_eligible_validator_indices(state):
         if index not in matching_target_indices:
             penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-            # [Modified in Merge]
-            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_MERGE
+            # [Modified in Bellatrix]
+            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
@@ -270,7 +270,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 #### Modified `slash_validator`
 
-*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_MERGE`.
+*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
 def slash_validator(state: BeaconState,
@@ -285,7 +285,7 @@ def slash_validator(state: BeaconState,
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_MERGE  # [Modified in Merge]
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX  # [Modified in Bellatrix]
     decrease_balance(state, slashed_index, slashing_penalty)
 
     # Apply proposer and whistleblower rewards
@@ -332,7 +332,7 @@ def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) 
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Merge]
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Bellatrix]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -377,14 +377,14 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 #### Slashings
 
-*Note*: The function `process_slashings` is modified to use `PROPORTIONAL_SLASHING_MULTIPLIER_MERGE`.
+*Note*: The function `process_slashings` is modified to use `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX`.
 
 ```python
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_MERGE,  # [Modified in Merge]
+        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,  # [Modified in Bellatrix]
         total_balance
     )
     for index, validator in enumerate(state.validators):
@@ -397,10 +397,10 @@ def process_slashings(state: BeaconState) -> None:
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Merge testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Bellatrix testing only.
 Modifications include:
-1. Use `MERGE_FORK_VERSION` as the current fork version.
-2. Utilize the Merge `BeaconBlockBody` when constructing the initial `latest_block_header`.
+1. Use `BELLATRIX_FORK_VERSION` as the current fork version.
+2. Utilize the Bellatrix `BeaconBlockBody` when constructing the initial `latest_block_header`.
 3. Initialize `latest_execution_payload_header`.
   If `execution_payload_header == ExecutionPayloadHeader()`, then the Merge has not yet occurred.
   Else, the Merge starts from genesis and the transition is incomplete.
@@ -412,8 +412,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=MERGE_FORK_VERSION,  # [Modified in Merge] for testing only
-        current_version=MERGE_FORK_VERSION,  # [Modified in Merge]
+        previous_version=BELLATRIX_FORK_VERSION,  # [Modified in Bellatrix] for testing only
+        current_version=BELLATRIX_FORK_VERSION,  # [Modified in Bellatrix]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
@@ -447,7 +447,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     state.current_sync_committee = get_next_sync_committee(state)
     state.next_sync_committee = get_next_sync_committee(state)
 
-    # [New in Merge] Initialize the execution payload header
+    # [New in Bellatrix] Initialize the execution payload header
     # If empty, will initialize a chain that has not yet gone through the Merge transition
     state.latest_execution_payload_header = execution_payload_header
 

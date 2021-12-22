@@ -5,13 +5,13 @@ from eth_utils import encode_hex
 
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
-from eth2spec.merge import mainnet as spec_merge_mainnet, minimal as spec_merge_minimal
+from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, MERGE, MINIMAL, MAINNET,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE,
+    PHASE0, ALTAIR, BELLATRIX, MINIMAL, MAINNET,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
     ALL_FORK_UPGRADES,
 )
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -53,7 +53,7 @@ class SpecAltair(Spec):
     ...
 
 
-class SpecMerge(Spec):
+class SpecBellatrix(Spec):
     ...
 
 
@@ -68,12 +68,12 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
     MINIMAL: {
         PHASE0: spec_phase0_minimal,
         ALTAIR: spec_altair_minimal,
-        MERGE: spec_merge_minimal,
+        BELLATRIX: spec_bellatrix_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
-        MERGE: spec_merge_mainnet,
+        BELLATRIX: spec_bellatrix_mainnet,
     },
 }
 
@@ -81,7 +81,7 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
 class SpecForks(TypedDict, total=False):
     PHASE0: SpecPhase0
     ALTAIR: SpecAltair
-    MERGE: SpecMerge
+    BELLATRIX: SpecBellatrix
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -529,12 +529,12 @@ def is_post_altair(spec):
     return spec.fork not in FORKS_BEFORE_ALTAIR
 
 
-def is_post_merge(spec):
-    return spec.fork not in FORKS_BEFORE_MERGE
+def is_post_bellatrix(spec):
+    return spec.fork not in FORKS_BEFORE_BELLATRIX
 
 
 with_altair_and_later = with_all_phases_except([PHASE0])
-with_merge_and_later = with_all_phases_except([PHASE0, ALTAIR])
+with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
 
 
 def only_generator(reason):

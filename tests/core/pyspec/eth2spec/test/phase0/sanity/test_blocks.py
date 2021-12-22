@@ -39,7 +39,7 @@ from eth2spec.test.context import (
     with_custom_state,
     large_validator_set,
     is_post_altair,
-    is_post_merge,
+    is_post_bellatrix,
 )
 
 
@@ -143,7 +143,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
         state_root=spec.Bytes32(),
         body_root=block.body.hash_tree_root(),
     )
-    if is_post_merge(spec):
+    if is_post_bellatrix(spec):
         if spec.is_execution_enabled(state, block.body):
             spec.process_execution_payload(state, block.body.execution_payload, spec.EXECUTION_ENGINE)
 
@@ -195,7 +195,7 @@ def test_parent_from_same_slot(spec, state):
     child_block = parent_block.copy()
     child_block.parent_root = state.latest_block_header.hash_tree_root()
 
-    if is_post_merge(spec):
+    if is_post_bellatrix(spec):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     # Show that normal path through transition fails

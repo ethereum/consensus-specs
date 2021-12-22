@@ -17,7 +17,7 @@ consensus-spec-tests/
 # Dynamically built from Markdown spec
 tests/core/pyspec/eth2spec/phase0/
 tests/core/pyspec/eth2spec/altair/
-tests/core/pyspec/eth2spec/merge/
+tests/core/pyspec/eth2spec/bellatrix/
 
 # coverage reports
 .htmlcov

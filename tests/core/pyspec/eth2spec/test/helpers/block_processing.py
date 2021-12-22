@@ -27,7 +27,7 @@ def get_process_calls(spec):
         # Altair
         'process_sync_aggregate':
             lambda state, block: spec.process_sync_aggregate(state, block.body.sync_aggregate),
-        # Merge
+        # Bellatrix
         'process_application_payload':
             lambda state, block: spec.process_application_payload(state, block.body),
         # TODO: add sharding processing functions when spec stabilizes.
