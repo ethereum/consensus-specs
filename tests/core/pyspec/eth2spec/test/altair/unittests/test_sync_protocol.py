@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from eth2spec.test.context import (
     spec_state_test,
     with_presets,
@@ -19,20 +21,24 @@ from eth2spec.test.helpers.sync_committee import (
 from eth2spec.test.helpers.merkle import build_proof
 
 
-@with_altair_and_later
-@spec_state_test
-def test_process_light_client_update_not_updated(spec, state):
-    pre_snapshot = spec.LightClientSnapshot(
-        header=spec.BeaconBlockHeader(),
+def _initialize_light_client_store(spec, state):
+    return spec.LightClientStore(
+        finalized_header=spec.BeaconBlockHeader(),
         current_sync_committee=state.current_sync_committee,
         next_sync_committee=state.next_sync_committee,
-    )
-    store = spec.LightClientStore(
-        snapshot=pre_snapshot,
-        valid_updates=set(),
+        best_valid_update=None,
+        optimistic_header=spec.BeaconBlockHeader(),
+        previous_max_active_participants=0,
+        current_max_active_participants=0,
     )
 
-    # Block at slot 1 doesn't increase sync committee period, so it won't update snapshot
+
+@with_altair_and_later
+@spec_state_test
+def test_process_light_client_update_not_timeout(spec, state):
+    store = _initialize_light_client_store(spec, state)
+
+    # Block at slot 1 doesn't increase sync committee period, so it won't force update store.finalized_header
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_header = spec.BeaconBlockHeader(
@@ -52,6 +58,10 @@ def test_process_light_client_update_not_updated(spec, state):
         block_header.slot,
         committee,
     )
+    sync_committee_aggregate = spec.SyncAggregate(
+        sync_committee_bits=sync_committee_bits,
+        sync_committee_signature=sync_committee_signature,
+    )
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Ensure that finality checkpoint is genesis
@@ -61,40 +71,34 @@ def test_process_light_client_update_not_updated(spec, state):
     finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
     update = spec.LightClientUpdate(
-        header=block_header,
+        attested_header=block_header,
         next_sync_committee=state.next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
-        finality_header=finality_header,
+        finalized_header=finality_header,
         finality_branch=finality_branch,
-        sync_committee_bits=sync_committee_bits,
-        sync_committee_signature=sync_committee_signature,
+        sync_committee_aggregate=sync_committee_aggregate,
         fork_version=state.fork.current_version,
     )
 
+    pre_store = deepcopy(store)
+
     spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
 
-    assert len(store.valid_updates) == 1
-    assert store.valid_updates.pop() == update
-    assert store.snapshot == pre_snapshot
+    assert store.current_max_active_participants > 0
+    assert store.optimistic_header == update.attested_header
+    assert store.finalized_header == pre_store.finalized_header
+    assert store.best_valid_update == update
 
 
 @with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
-    pre_snapshot = spec.LightClientSnapshot(
-        header=spec.BeaconBlockHeader(),
-        current_sync_committee=state.current_sync_committee,
-        next_sync_committee=state.next_sync_committee,
-    )
-    store = spec.LightClientStore(
-        snapshot=pre_snapshot,
-        valid_updates=set(),
-    )
+    store = _initialize_light_client_store(spec, state)
 
     # Forward to next sync committee period
-    next_slots(spec, state, spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD))
-    snapshot_period = spec.compute_epoch_at_slot(pre_snapshot.header.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    next_slots(spec, state, spec.UPDATE_TIMEOUT)
+    snapshot_period = spec.compute_epoch_at_slot(store.optimistic_header.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     update_period = spec.compute_epoch_at_slot(state.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     assert snapshot_period + 1 == update_period
 
@@ -119,6 +123,10 @@ def test_process_light_client_update_timeout(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
+    sync_committee_aggregate = spec.SyncAggregate(
+        sync_committee_bits=sync_committee_bits,
+        sync_committee_signature=sync_committee_signature,
+    )
 
     # Sync committee is updated
     next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
@@ -127,36 +135,30 @@ def test_process_light_client_update_timeout(spec, state):
     finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
     update = spec.LightClientUpdate(
-        header=block_header,
+        attested_header=block_header,
         next_sync_committee=state.next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
-        finality_header=finality_header,
+        finalized_header=finality_header,
         finality_branch=finality_branch,
-        sync_committee_bits=sync_committee_bits,
-        sync_committee_signature=sync_committee_signature,
+        sync_committee_aggregate=sync_committee_aggregate,
         fork_version=state.fork.current_version,
     )
 
+    pre_store = deepcopy(store)
+
     spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
 
-    # snapshot has been updated
-    assert len(store.valid_updates) == 0
-    assert store.snapshot.header == update.header
+    assert store.current_max_active_participants > 0
+    assert store.optimistic_header == update.attested_header
+    assert store.best_valid_update == update
+    assert store.finalized_header == pre_store.finalized_header
 
 
 @with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
-    pre_snapshot = spec.LightClientSnapshot(
-        header=spec.BeaconBlockHeader(),
-        current_sync_committee=state.current_sync_committee,
-        next_sync_committee=state.next_sync_committee,
-    )
-    store = spec.LightClientStore(
-        snapshot=pre_snapshot,
-        valid_updates=set(),
-    )
+    store = _initialize_light_client_store(spec, state)
 
     # Change finality
     blocks = []
@@ -167,7 +169,7 @@ def test_process_light_client_update_finality_updated(spec, state):
     # Ensure that finality checkpoint has changed
     assert state.finalized_checkpoint.epoch == 3
     # Ensure that it's same period
-    snapshot_period = spec.compute_epoch_at_slot(pre_snapshot.header.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    snapshot_period = spec.compute_epoch_at_slot(store.optimistic_header.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     update_period = spec.compute_epoch_at_slot(state.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     assert snapshot_period == update_period
 
@@ -199,20 +201,24 @@ def test_process_light_client_update_finality_updated(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
-
-    update = spec.LightClientUpdate(
-        header=finalized_block_header,
-        next_sync_committee=state.next_sync_committee,
-        next_sync_committee_branch=next_sync_committee_branch,
-        finality_header=block_header,  # block_header is the signed header
-        finality_branch=finality_branch,
+    sync_committee_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
+    )
+
+    update = spec.LightClientUpdate(
+        attested_header=block_header,
+        next_sync_committee=state.next_sync_committee,
+        next_sync_committee_branch=next_sync_committee_branch,
+        finalized_header=finalized_block_header,
+        finality_branch=finality_branch,
+        sync_committee_aggregate=sync_committee_aggregate,
         fork_version=state.fork.current_version,
     )
 
     spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
 
-    # snapshot has been updated
-    assert len(store.valid_updates) == 0
-    assert store.snapshot.header == update.header
+    assert store.current_max_active_participants > 0
+    assert store.optimistic_header == update.attested_header
+    assert store.finalized_header == update.finalized_header
+    assert store.best_valid_update is None

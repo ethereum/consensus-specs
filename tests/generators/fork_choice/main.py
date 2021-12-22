@@ -6,6 +6,7 @@ if __name__ == "__main__":
     phase_0_mods = {key: 'eth2spec.test.phase0.fork_choice.test_' + key for key in [
         'get_head',
         'on_block',
+        'ex_ante',
     ]}
     # No additional Altair specific finality tests, yet.
     altair_mods = phase_0_mods
