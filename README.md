@@ -35,7 +35,7 @@ The current features are:
 
 ### Bellatrix (as known as The Merge)
 
-Bellatrix protocol upgrade is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
+The Bellatrix protocol upgrade is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
 
 * Background material:
   * An [ethresear.ch](https://ethresear.ch) post [describing the basic mechanism of the CL+EL merge](https://ethresear.ch/t/the-eth1-eth2-transition/6265)
