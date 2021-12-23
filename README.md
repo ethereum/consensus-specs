@@ -50,7 +50,7 @@ Bellatrix protocol upgrade is still actively in development. The exact specifica
 
 ### Sharding
 
-Sharding follows the merge, and is divided into three parts:
+Sharding follows Bellatrix, and is divided into three parts:
 
 * Sharding base functionality - In early engineering phase
   * [Beacon Chain changes](specs/sharding/beacon-chain.md)

@@ -44,7 +44,7 @@ These configurations are updated for releases and may be out of sync during `dev
 
 ## Staking deposit contract
 
-The initial deployment phases of Ethereum proof-of-stake are implemented without consensus changes to the existing Ethereum proof-of-work chain. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum proof-of-work chain defined by the [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the execution-layer in a followup fork after the Merge.
+The initial deployment phases of Ethereum proof-of-stake are implemented without consensus changes to the existing Ethereum proof-of-work chain. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum proof-of-work chain defined by the [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the execution-layer in a followup fork after Bellatrix fork.
 
 _Note_: See [here](https://chainid.network/) for a comprehensive list of public Ethereum chain chain-id's and network-id's.
 
@@ -54,7 +54,7 @@ The deposit contract has a public `deposit` function to make deposits. It takes 
 
 #### Deposit amount
 
-The amount of ETH (rounded down to the closest Gwei) sent to the deposit contract is the deposit amount, which must be of size at least `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no longer usable on the execution-layer until sometime after the Merge.
+The amount of ETH (rounded down to the closest Gwei) sent to the deposit contract is the deposit amount, which must be of size at least `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no longer usable on the execution-layer until sometime after Bellatrix fork.
 
 #### Withdrawal credentials
 
