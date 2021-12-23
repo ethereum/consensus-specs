@@ -26,6 +26,9 @@ from eth2spec.test.helpers.state import (
 )
 
 
+rng = random.Random(1001)
+
+
 @with_all_phases
 @spec_state_test
 def test_genesis(spec, state):
@@ -303,7 +306,7 @@ def test_proposer_boost_correct_head(spec, state):
     block_2 = build_empty_block_for_next_slot(spec, state_2)
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
-        block_2.body.graffiti = spec.Bytes32(hex(random.getrandbits(8 * 32))[2:].zfill(64))
+        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
