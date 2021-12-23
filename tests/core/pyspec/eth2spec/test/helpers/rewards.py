@@ -2,7 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
-from eth2spec.test.context import is_post_altair, is_post_merge
+from eth2spec.test.context import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.state import (
     next_epoch,
 )
@@ -22,8 +22,8 @@ class Deltas(Container):
 
 
 def get_inactivity_penalty_quotient(spec):
-    if is_post_merge(spec):
-        return spec.INACTIVITY_PENALTY_QUOTIENT_MERGE
+    if is_post_bellatrix(spec):
+        return spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
     elif is_post_altair(spec):
         return spec.INACTIVITY_PENALTY_QUOTIENT_ALTAIR
     else:

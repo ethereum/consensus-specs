@@ -31,10 +31,10 @@ To read more about creating the environment, [see here](core/pyspec/README.md).
    cd ~/consensus-specs
    . venv/bin/activate
    ```
-1. Run a sanity check test:
+1. Run a sanity check test against Altair fork:
    ```sh 
    cd tests/core/pyspec
-   python -m pytest -k test_empty_block_transition --fork Merge eth2spec
+   python -m pytest -k test_empty_block_transition --fork altair eth2spec
    ```
 1. The output should be similar to:
    ```
@@ -44,7 +44,7 @@ To read more about creating the environment, [see here](core/pyspec/README.md).
    plugins: cov-2.12.1, forked-1.3.0, xdist-2.3.0
    collected 629 items / 626 deselected / 3 selected
 
-   eth2spec/test/merge/sanity/test_blocks.py .                              [ 33%]
+   eth2spec/test/bellatrix/sanity/test_blocks.py .                              [ 33%]
    eth2spec/test/phase0/sanity/test_blocks.py ..                            [100%]
 
    =============================== warnings summary ===============================
@@ -448,13 +448,13 @@ def test_almost_after_epoch_slots(spec, state):
 ```    
 
 Add this function to the file `consensus-specs/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py`,
-and run the test:
+and run the test against Altair fork:
 
 ```sh
 cd ~/consensus-specs
 . venv/bin/activate
 cd tests/core/pyspec
-python -m pytest -k almost_after --fork Merge eth2spec
+python -m pytest -k almost_after --fork altair eth2spec
 ```
 
 You should see it ran successfully (although you might get a warning, you can ignore it)

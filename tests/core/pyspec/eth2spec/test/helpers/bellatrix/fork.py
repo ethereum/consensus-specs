@@ -1,12 +1,12 @@
-MERGE_FORK_TEST_META_TAGS = {
-    'fork': 'merge',
+BELLATRIX_FORK_TEST_META_TAGS = {
+    'fork': 'bellatrix',
 }
 
 
 def run_fork_test(post_spec, pre_state):
     yield 'pre', pre_state
 
-    post_state = post_spec.upgrade_to_merge(pre_state)
+    post_state = post_spec.upgrade_to_bellatrix(pre_state)
 
     # Stable fields
     stable_fields = [
@@ -39,7 +39,7 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) != getattr(post_state, field)
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
-    assert post_state.fork.current_version == post_spec.config.MERGE_FORK_VERSION
+    assert post_state.fork.current_version == post_spec.config.BELLATRIX_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
     assert post_state.latest_execution_payload_header == post_spec.ExecutionPayloadHeader()
 

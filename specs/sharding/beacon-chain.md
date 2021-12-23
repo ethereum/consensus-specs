@@ -207,7 +207,7 @@ class AttestationData(Container):
 ### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
+class BeaconBlockBody(bellatrix.BeaconBlockBody):  # [extends Bellatrix block body]
     shard_proposer_slashings: List[ShardProposerSlashing, MAX_SHARD_PROPOSER_SLASHINGS]
     shard_headers: List[SignedShardBlobHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
 ```
@@ -215,7 +215,7 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 ### `BeaconState`
 
 ```python
-class BeaconState(merge.BeaconState):
+class BeaconState(bellatrix.BeaconState):
     # Blob builder registry.
     blob_builders: List[Builder, BLOB_BUILDER_REGISTRY_LIMIT]
     blob_builder_balances: List[Gwei, BLOB_BUILDER_REGISTRY_LIMIT]
@@ -804,7 +804,7 @@ def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: Shard
 
 ### Epoch transition
 
-This epoch transition overrides the Merge epoch transition:
+This epoch transition overrides Bellatrix epoch transition:
 
 ```python
 def process_epoch(state: BeaconState) -> None:

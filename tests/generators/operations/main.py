@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MERGE
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX
 
 
 if __name__ == "__main__":
@@ -17,10 +17,10 @@ if __name__ == "__main__":
     ]}
     altair_mods = combine_mods(_new_altair_mods, phase_0_mods)
 
-    _new_merge_mods = {key: 'eth2spec.test.merge.block_processing.test_process_' + key for key in [
+    _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.block_processing.test_process_' + key for key in [
         'execution_payload',
     ]}
-    merge_mods = combine_mods(_new_merge_mods, altair_mods)
+    bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
 
     # TODO Custody Game testgen is disabled for now
     # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
-        MERGE: merge_mods,
+        BELLATRIX: bellatrix_mods,
     }
 
     run_state_test_generators(runner_name="operations", all_mods=all_mods)

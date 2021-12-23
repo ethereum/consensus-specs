@@ -4,7 +4,7 @@ from eth2spec.test.helpers.execution_payload import (
     build_state_with_incomplete_transition,
     build_state_with_complete_transition,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_merge_and_later
+from eth2spec.test.context import spec_state_test, expect_assertion_error, with_bellatrix_and_later
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -46,7 +46,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     assert state.latest_execution_payload_header == get_execution_payload_header(spec, execution_payload)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_success_first_payload(spec, state):
     # pre-state
@@ -59,7 +59,7 @@ def test_success_first_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_success_regular_payload(spec, state):
     # pre-state
@@ -72,7 +72,7 @@ def test_success_regular_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_success_first_payload_with_gap_slot(spec, state):
     # pre-state
@@ -86,7 +86,7 @@ def test_success_first_payload_with_gap_slot(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_success_regular_payload_with_gap_slot(spec, state):
     # pre-state
@@ -100,7 +100,7 @@ def test_success_regular_payload_with_gap_slot(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_execution_first_payload(spec, state):
     # completely valid payload, but execution itself fails (e.g. block exceeds gas limit)
@@ -115,7 +115,7 @@ def test_bad_execution_first_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_execution_regular_payload(spec, state):
     # completely valid payload, but execution itself fails (e.g. block exceeds gas limit)
@@ -130,7 +130,7 @@ def test_bad_execution_regular_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_parent_hash_regular_payload(spec, state):
     # pre-state
@@ -144,7 +144,7 @@ def test_bad_parent_hash_regular_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_random_first_payload(spec, state):
     # pre-state
@@ -158,7 +158,7 @@ def test_bad_random_first_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_random_regular_payload(spec, state):
     # pre-state
@@ -172,7 +172,7 @@ def test_bad_random_regular_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_everything_regular_payload(spec, state):
     # pre-state
@@ -188,7 +188,7 @@ def test_bad_everything_regular_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_timestamp_first_payload(spec, state):
     # pre-state
@@ -202,7 +202,7 @@ def test_bad_timestamp_first_payload(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_bad_timestamp_regular_payload(spec, state):
     # pre-state
