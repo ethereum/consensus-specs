@@ -46,7 +46,7 @@ This section outlines modifications constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `GOSSIP_MAX_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at the Merge upgrade. |
+| `GOSSIP_MAX_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at Bellatrix upgrade. |
 | `MAX_CHUNK_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses starting at Bellatrix upgrade. |
 
 ## The gossip domain: gossipsub

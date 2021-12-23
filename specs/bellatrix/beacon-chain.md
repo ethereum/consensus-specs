@@ -48,7 +48,7 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix fork.
+This upgrade adds transaction execution to the beacon chain as part of Bellatrix upgrade.
 
 Additionally, this upgrade introduces the following minor changes:
 * Penalty parameter updates to their planned maximally punitive values
