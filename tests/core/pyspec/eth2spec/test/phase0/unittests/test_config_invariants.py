@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases,
-    is_post_altair, is_post_merge,
+    is_post_altair, is_post_bellatrix,
 )
 from eth2spec.test.helpers.constants import MAX_UINT_64
 
@@ -52,8 +52,8 @@ def test_hysteresis_quotient(spec, state):
 @spec_state_test
 def test_incentives(spec, state):
     # Ensure no ETH is minted in slash_validator
-    if is_post_merge(spec):
-        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_MERGE <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
+    if is_post_bellatrix(spec):
+        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     elif is_post_altair(spec):
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     else:

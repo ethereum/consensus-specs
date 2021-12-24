@@ -8,7 +8,7 @@ from eth2spec.test.helpers.pow_block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_merge_and_later,
+    with_bellatrix_and_later,
     spec_configured_state_test
 )
 
@@ -49,7 +49,7 @@ def run_validate_merge_block(spec, pow_chain, beacon_block, valid=True):
         assert assertion_error_caught
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_validate_merge_block_success(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
@@ -60,7 +60,7 @@ def test_validate_merge_block_success(spec, state):
     run_validate_merge_block(spec, pow_chain, block)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_validate_merge_block_fail_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
@@ -70,7 +70,7 @@ def test_validate_merge_block_fail_block_lookup(spec, state):
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_validate_merge_block_fail_parent_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 1)
@@ -80,7 +80,7 @@ def test_validate_merge_block_fail_parent_block_lookup(spec, state):
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_validate_merge_block_fail_after_terminal(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
@@ -91,7 +91,7 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_configured_state_test({
     'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
     'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '0'
@@ -107,7 +107,7 @@ def test_validate_merge_block_tbh_override_success(spec, state):
     run_validate_merge_block(spec, pow_chain, block)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_configured_state_test({
     'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
     'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '0'
@@ -122,7 +122,7 @@ def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_configured_state_test({
     'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
     'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '1'
@@ -138,7 +138,7 @@ def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(sp
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_configured_state_test({
     'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
     'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '1'

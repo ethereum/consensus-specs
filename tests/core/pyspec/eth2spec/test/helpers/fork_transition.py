@@ -11,7 +11,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     ALTAIR,
-    MERGE,
+    BELLATRIX,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -145,17 +145,17 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
 
     if post_spec.fork == ALTAIR:
         state = post_spec.upgrade_to_altair(state)
-    elif post_spec.fork == MERGE:
-        state = post_spec.upgrade_to_merge(state)
+    elif post_spec.fork == BELLATRIX:
+        state = post_spec.upgrade_to_bellatrix(state)
 
     assert state.fork.epoch == fork_epoch
 
     if post_spec.fork == ALTAIR:
         assert state.fork.previous_version == post_spec.config.GENESIS_FORK_VERSION
         assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
-    elif post_spec.fork == MERGE:
+    elif post_spec.fork == BELLATRIX:
         assert state.fork.previous_version == post_spec.config.ALTAIR_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.MERGE_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.BELLATRIX_FORK_VERSION
 
     if with_block:
         return state, _state_transition_and_sign_block_at_slot(post_spec, state, operation_dict=operation_dict)
