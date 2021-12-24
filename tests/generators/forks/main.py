@@ -1,8 +1,9 @@
 from typing import Iterable
 
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, MINIMAL, MAINNET
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, MINIMAL, MAINNET
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from eth2spec.test.altair.fork import test_altair_fork_basic, test_altair_fork_random
+from eth2spec.test.bellatrix.fork import test_bellatrix_fork_basic, test_bellatrix_fork_random
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
 
@@ -26,10 +27,13 @@ def create_provider(tests_src, preset_name: PresetBaseName,
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
+def _get_fork_tests_providers():
+    for preset in [MINIMAL, MAINNET]:
+        yield create_provider(test_altair_fork_basic, preset, PHASE0, ALTAIR)
+        yield create_provider(test_altair_fork_random, preset, PHASE0, ALTAIR)
+        yield create_provider(test_bellatrix_fork_basic, preset, ALTAIR, BELLATRIX)
+        yield create_provider(test_bellatrix_fork_random, preset, ALTAIR, BELLATRIX)
+
+
 if __name__ == "__main__":
-    gen_runner.run_generator("forks", [
-        create_provider(test_altair_fork_basic, MINIMAL, PHASE0, ALTAIR),
-        create_provider(test_altair_fork_basic, MAINNET, PHASE0, ALTAIR),
-        create_provider(test_altair_fork_random, MINIMAL, PHASE0, ALTAIR),
-        create_provider(test_altair_fork_random, MAINNET, PHASE0, ALTAIR),
-    ])
+    gen_runner.run_generator("forks", list(_get_fork_tests_providers()))
