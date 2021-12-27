@@ -39,8 +39,8 @@ Care must be taken when transitioning through the fork boundary as implementatio
 In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead the logic must be within `process_slots`.
 
 ```python
-def upgrade_to_capella(pre: merge.BeaconState) -> BeaconState:
-    epoch = merge.get_current_epoch(pre)
+def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
+    epoch = bellatrix.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,

@@ -1,6 +1,6 @@
-# The Merge -- Networking
+# Bellatrix -- Networking
 
-This document contains the networking specification for the Merge.
+This document contains the networking specification for the Bellatrix.
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite. This document should be viewed as additive to the documents from [Phase 0](../phase0/p2p-interface.md) and from [Altair](../altair/p2p-interface.md)
 and will be referred to as the "Phase 0 document" and "Altair document" respectively, hereafter.
@@ -13,7 +13,7 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
   - [Warning](#warning)
-- [Modifications in the Merge](#modifications-in-the-merge)
+- [Modifications in Bellatrix](#modifications-in-bellatrix)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -26,19 +26,19 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
 - [Design decision rationale](#design-decision-rationale)
   - [Gossipsub](#gossipsub)
-    - [Why was the max gossip message size increased at the Merge?](#why-was-the-max-gossip-message-size-increased-at-the-merge)
+    - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
   - [Req/Resp](#reqresp)
-    - [Why was the max chunk response size increased at the Merge?](#why-was-the-max-chunk-response-size-increased-at-the-merge)
+    - [Why was the max chunk response size increased at Bellatrix?](#why-was-the-max-chunk-response-size-increased-at-bellatrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Warning
 
-This document is currently illustrative for early Merge testnets and some parts are subject to change.
+This document is currently illustrative for early Bellatrix testnets and some parts are subject to change.
 Refer to the note in the [validator guide](./validator.md) for further details.
 
-# Modifications in the Merge
+# Modifications in Bellatrix
 
 ## Configuration
 
@@ -46,12 +46,12 @@ This section outlines modifications constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `GOSSIP_MAX_SIZE_MERGE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at the Merge upgrade. |
-| `MAX_CHUNK_SIZE_MERGE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses starting at the Merge upgrade. |
+| `GOSSIP_MAX_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at Bellatrix upgrade. |
+| `MAX_CHUNK_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses starting at Bellatrix upgrade. |
 
 ## The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the Merge to support upgraded types.
+Some gossip meshes are upgraded in Bellatrix to support upgraded types.
 
 ### Topics and messages
 
@@ -60,8 +60,8 @@ All topics remain stable except the beacon block topic which is updated with the
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 and Altair documents unless explicitly noted here.
 
-Starting at the Merge upgrade, each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
-has a maximum size of `GOSSIP_MAX_SIZE_MERGE`.
+Starting at Bellatrix upgrade, each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
+has a maximum size of `GOSSIP_MAX_SIZE_BELLATRIX`.
 Clients MUST reject (fail validation) messages that are over this size limit.
 Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
@@ -77,13 +77,13 @@ Note that the `ForkDigestValue` path segment of the topic separates the old and 
 
 #### Global topics
 
-The Merge changes the type of the global beacon block topic.
+Bellatrix changes the type of the global beacon block topic.
 
 ##### `beacon_block`
 
-The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in the Merge.
+The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in Bellatrix.
 Specifically, this type changes with the addition of `execution_payload` to the inner `BeaconBlockBody`.
-See the Merge [state transition document](./beacon-chain.md#beaconblockbody) for further details.
+See Bellatrix [state transition document](./beacon-chain.md#beaconblockbody) for further details.
 
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
@@ -96,7 +96,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
 ### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
-details on how to handle transitioning gossip topics for the Merge.
+details on how to handle transitioning gossip topics for Bellatrix.
 
 ## The Req/Resp domain
 
@@ -108,11 +108,11 @@ details on how to handle transitioning gossip topics for the Merge.
 
 Request and Response remain unchanged unless explicitly noted here.
 
-Starting at the Merge upgrade,
-a global maximum uncompressed byte size of `MAX_CHUNK_SIZE_MERGE` MUST be applied to all method response chunks
+Starting at Bellatrix upgrade,
+a global maximum uncompressed byte size of `MAX_CHUNK_SIZE_BELLATRIX` MUST be applied to all method response chunks
 regardless of type specific bounds that *MUST* also be respected.
 
-The Merge fork-digest is introduced to the `context` enum to specify the Merge block type.
+Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -122,14 +122,14 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | ------------------------ | -------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
-| `MERGE_FORK_VERSION`     | `merge.SignedBeaconBlock`  |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
 #### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
 Request and Response remain unchanged.
-The Merge fork-digest is introduced to the `context` enum to specify the Merge block type.
+Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -139,13 +139,13 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | ------------------------ | -------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
-| `MERGE_FORK_VERSION`     | `merge.SignedBeaconBlock`  |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
 # Design decision rationale
 
 ## Gossipsub
 
-### Why was the max gossip message size increased at the Merge?
+### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
 field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in place in
@@ -156,9 +156,9 @@ current mainnet conditions.
 
 Geth currently has a [max gossip message size](https://github.com/ethereum/go-ethereum/blob/3ce9f6d96f38712f5d6756e97b59ccc20cc403b3/eth/protocols/eth/protocol.go#L49) of 10 MiB.
 To support backward compatibility with this previously defined network limit,
-we adopt `GOSSIP_MAX_SIZE_MERGE` of 10 MiB for maximum gossip sizes at the
-point of the Merge and beyond. Note, that clients SHOULD still reject objects
-that exceed their maximum theoretical bounds which in most cases is less than `GOSSIP_MAX_SIZE_MERGE`.
+we adopt `GOSSIP_MAX_SIZE_BELLATRIX` of 10 MiB for maximum gossip sizes at the
+point of Bellatrix and beyond. Note, that clients SHOULD still reject objects
+that exceed their maximum theoretical bounds which in most cases is less than `GOSSIP_MAX_SIZE_BELLATRIX`.
 
 Note, that due to additional size induced by the `BeaconBlock` contents (e.g.
 proposer signature, operations lists, etc) this does reduce the
@@ -170,7 +170,7 @@ impact on network functionality and security.
 
 ## Req/Resp
 
-### Why was the max chunk response size increased at the Merge?
+### Why was the max chunk response size increased at Bellatrix?
 
 Similar to the discussion about the maximum gossip size increase, the
 `ExecutionPayload` type can cause `BeaconBlock`s to exceed the 1 MiB bounds put

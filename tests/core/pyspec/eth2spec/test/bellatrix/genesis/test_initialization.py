@@ -1,10 +1,10 @@
 from eth2spec.test.context import (
-    MERGE,
+    BELLATRIX,
     single_phase,
     spec_test,
     with_presets,
     with_phases,
-    with_merge_and_later,
+    with_bellatrix_and_later,
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
@@ -22,7 +22,7 @@ def eth1_init_data(eth1_block_hash, eth1_timestamp):
     }
 
 
-@with_phases([MERGE])
+@with_phases([BELLATRIX])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -50,7 +50,7 @@ def test_initialize_pre_transition_no_param(spec):
     yield 'state', state
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -86,7 +86,7 @@ def test_initialize_pre_transition_empty_payload(spec):
     yield 'state', state
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")

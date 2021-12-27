@@ -42,6 +42,12 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
     return post_state
 
 
+def add_attestation(spec, store, attestation, test_steps, is_from_block=False):
+    spec.on_attestation(store, attestation, is_from_block=is_from_block)
+    yield get_attestation_file_name(attestation), attestation
+    test_steps.append({'attestation': get_attestation_file_name(attestation)})
+
+
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     parent_block = store.blocks[attestation.data.beacon_block_root]
     pre_state = store.block_states[spec.hash_tree_root(parent_block)]
@@ -52,9 +58,7 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_bl
         spec.on_tick(store, next_epoch_time)
         test_steps.append({'tick': int(next_epoch_time)})
 
-    spec.on_attestation(store, attestation, is_from_block=is_from_block)
-    yield get_attestation_file_name(attestation), attestation
-    test_steps.append({'attestation': get_attestation_file_name(attestation)})
+    yield from add_attestation(spec, store, attestation, test_steps, is_from_block)
 
 
 def run_on_attestation(spec, store, attestation, is_from_block=False, valid=True):

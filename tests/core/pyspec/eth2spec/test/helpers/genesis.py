@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, MERGE,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_MERGE, FORKS_BEFORE_CAPELLA,
+    ALTAIR, BELLATRIX,
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -53,9 +53,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork == ALTAIR:
         current_version = spec.config.ALTAIR_FORK_VERSION
-    elif spec.fork == MERGE:
+    elif spec.fork == BELLATRIX:
         previous_version = spec.config.ALTAIR_FORK_VERSION
-        current_version = spec.config.MERGE_FORK_VERSION
+        current_version = spec.config.BELLATRIX_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -98,7 +98,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
-    if spec.fork not in FORKS_BEFORE_MERGE:
+    if spec.fork not in FORKS_BEFORE_BELLATRIX:
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,

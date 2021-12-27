@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     with_fork_metas,
 )
 from eth2spec.test.helpers.constants import (
-    AFTER_MERGE_PRE_POST_FORKS,
+    AFTER_BELLATRIX_PRE_POST_FORKS,
 )
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
@@ -13,7 +13,7 @@ from eth2spec.test.helpers.fork_transition import (
 
 
 @with_fork_metas([
-    ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in AFTER_MERGE_PRE_POST_FORKS
+    ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in AFTER_BELLATRIX_PRE_POST_FORKS
 ])
 def test_sample_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     transition_until_fork(spec, state, fork_epoch)

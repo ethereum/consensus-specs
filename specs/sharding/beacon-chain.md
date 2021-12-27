@@ -101,7 +101,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Notes |
 | - | - | - |
-| `PRIMITIVE_ROOT_OF_UNITY` | `5` | Primitive root of unity of the BLS12_381 (inner) modulus |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) modulus |
 | `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2) | Factor by which samples are extended for data availability encoding |
 | `POINTS_PER_SAMPLE` | `uint64(2**3)` (= 8) | 31 * 8 = 248 bytes |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
@@ -207,7 +207,7 @@ class AttestationData(Container):
 ### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
+class BeaconBlockBody(bellatrix.BeaconBlockBody):  # [extends Bellatrix block body]
     shard_proposer_slashings: List[ShardProposerSlashing, MAX_SHARD_PROPOSER_SLASHINGS]
     shard_headers: List[SignedShardBlobHeader, MAX_SHARDS * MAX_SHARD_HEADERS_PER_SHARD]
 ```
@@ -215,7 +215,7 @@ class BeaconBlockBody(merge.BeaconBlockBody):  # [extends The Merge block body]
 ### `BeaconState`
 
 ```python
-class BeaconState(merge.BeaconState):
+class BeaconState(bellatrix.BeaconState):
     # Blob builder registry.
     blob_builders: List[Builder, BLOB_BUILDER_REGISTRY_LIMIT]
     blob_builder_balances: List[Gwei, BLOB_BUILDER_REGISTRY_LIMIT]
@@ -804,7 +804,7 @@ def process_shard_proposer_slashing(state: BeaconState, proposer_slashing: Shard
 
 ### Epoch transition
 
-This epoch transition overrides the Merge epoch transition:
+This epoch transition overrides Bellatrix epoch transition:
 
 ```python
 def process_epoch(state: BeaconState) -> None:

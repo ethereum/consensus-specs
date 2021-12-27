@@ -40,8 +40,9 @@ from marko.ext.gfm.elements import Table
 # Definitions in context.py
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
-MERGE = 'merge'
+BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
+
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
@@ -488,10 +489,10 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
         return super().implement_optimizations(functions)
 
 #
-# MergeSpecBuilder
+# BellatrixSpecBuilder
 #
-class MergeSpecBuilder(AltairSpecBuilder):
-    fork: str = MERGE
+class BellatrixSpecBuilder(AltairSpecBuilder):
+    fork: str = BELLATRIX
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -552,19 +553,19 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 #
 # CapellaSpecBuilder
 #
-class CapellaSpecBuilder(MergeSpecBuilder):
+class CapellaSpecBuilder(BellatrixSpecBuilder):
     fork: str = CAPELLA
 
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
-from eth2spec.merge import {preset_name} as merge
+from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder, CapellaSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder)
 }
 
 
@@ -697,6 +698,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
+    'Optional',
 ]
 
 
@@ -859,14 +861,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, MERGE, CAPELLA):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, MERGE, CAPELLA):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -875,12 +877,12 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork in (MERGE, CAPELLA):
+            if self.spec_fork in (BELLATRIX, CAPELLA):
                 self.md_doc_paths += """
-                    specs/merge/beacon-chain.md
-                    specs/merge/fork.md
-                    specs/merge/fork-choice.md
-                    specs/merge/validator.md
+                    specs/bellatrix/beacon-chain.md
+                    specs/bellatrix/fork.md
+                    specs/bellatrix/fork-choice.md
+                    specs/bellatrix/validator.md
                 """
             if self.spec_fork == CAPELLA:
                 self.md_doc_paths += """

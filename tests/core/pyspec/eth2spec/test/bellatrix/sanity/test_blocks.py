@@ -5,11 +5,11 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot
 )
 from eth2spec.test.context import (
-    with_merge_and_later, spec_state_test
+    with_bellatrix_and_later, spec_state_test
 )
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_empty_block_transition_no_tx(spec, state):
     yield 'pre', state
@@ -25,7 +25,7 @@ def test_empty_block_transition_no_tx(spec, state):
 # TODO: tests with EVM, mock or replacement?
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_is_execution_enabled_false(spec, state):
     # Set `latest_execution_payload_header` to empty

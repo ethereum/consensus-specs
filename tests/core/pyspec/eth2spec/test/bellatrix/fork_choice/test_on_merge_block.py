@@ -1,6 +1,6 @@
 from eth2spec.utils.ssz.ssz_typing import uint256
 from eth2spec.test.exceptions import BlockNotFoundException
-from eth2spec.test.context import spec_state_test, with_phases, MERGE
+from eth2spec.test.context import spec_state_test, with_phases, BELLATRIX
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -47,7 +47,7 @@ def with_pow_block_patch(spec, blocks, func):
     assert is_called.value
 
 
-@with_phases([MERGE])
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_all_valid(spec, state):
     test_steps = []
@@ -81,7 +81,7 @@ def test_all_valid(spec, state):
     yield 'steps', test_steps
 
 
-@with_phases([MERGE])
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_block_lookup_failed(spec, state):
     test_steps = []
@@ -111,7 +111,7 @@ def test_block_lookup_failed(spec, state):
     yield 'steps', test_steps
 
 
-@with_phases([MERGE])
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_too_early_for_merge(spec, state):
     test_steps = []
@@ -143,7 +143,7 @@ def test_too_early_for_merge(spec, state):
     yield 'steps', test_steps
 
 
-@with_phases([MERGE])
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_too_late_for_merge(spec, state):
     test_steps = []

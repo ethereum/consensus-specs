@@ -33,24 +33,24 @@ The current features are:
 * [Honest Validator guide changes](specs/altair/validator.md)
 * [P2P Networking](specs/altair/p2p-interface.md)
 
-### Merge
+### Bellatrix (as known as The Merge)
 
-The merge is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
+The Bellatrix protocol upgrade is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
 
 * Background material:
-  * An [ethresear.ch](https://ethresear.ch) post [describing the basic mechanism](https://ethresear.ch/t/the-eth1-eth2-transition/6265)
-  * [ethereum.org](https://ethereum.org) high-level description of the merge [here](https://ethereum.org/en/eth2/docking/)
+  * An [ethresear.ch](https://ethresear.ch) post [describing the basic mechanism of the CL+EL merge](https://ethresear.ch/t/the-eth1-eth2-transition/6265)
+  * [ethereum.org](https://ethereum.org) high-level description of the CL+EL merge [here](https://ethereum.org/en/eth2/docking/)
 * Specifications:
-  * [Beacon Chain changes](specs/merge/beacon-chain.md)
-  * [Merge fork](specs/merge/fork.md)
-  * [Fork Choice changes](specs/merge/fork-choice.md)
-  * [Validator additions](specs/merge/validator.md)
-  * [Client settings](specs/merge/client-settings.md)
-  * [P2P Networking](specs/merge/p2p-interface.md)
+  * [Beacon Chain changes](specs/bellatrix/beacon-chain.md)
+  * [Bellatrix fork](specs/bellatrix/fork.md)
+  * [Fork Choice changes](specs/bellatrix/fork-choice.md)
+  * [Validator additions](specs/bellatrix/validator.md)
+  * [Client settings](specs/bellatrix/client-settings.md)
+  * [P2P Networking](specs/bellatrix/p2p-interface.md)
 
 ### Sharding
 
-Sharding follows the merge, and is divided into three parts:
+Sharding follows Bellatrix, and is divided into three parts:
 
 * Sharding base functionality - In early engineering phase
   * [Beacon Chain changes](specs/sharding/beacon-chain.md)

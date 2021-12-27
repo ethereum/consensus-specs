@@ -1,4 +1,4 @@
-# The Merge -- Fork Choice
+# Bellatrix -- Fork Choice
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -170,7 +170,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state = pre_state.copy()
     state_transition(state, signed_block, True)
 
-    # [New in Merge]
+    # [New in Bellatrix]
     if is_merge_transition_block(pre_state, block.body):
         validate_merge_block(block)
 

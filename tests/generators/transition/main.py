@@ -16,8 +16,8 @@ from eth2spec.test.altair.transition import (
     test_slashing as test_altair_slashing,
     test_operations as test_altair_operations,
 )
-from eth2spec.test.merge.transition import (
-    test_transition as test_merge_transition,
+from eth2spec.test.bellatrix.transition import (
+    test_transition as test_bellatrix_transition,
 )
 
 
@@ -47,10 +47,10 @@ if __name__ == "__main__":
         test_altair_slashing,
         test_altair_operations,
     )
-    merge_tests = (
-        test_merge_transition,
+    bellatrix_tests = (
+        test_bellatrix_transition,
     )
-    all_tests = altair_tests + merge_tests
+    all_tests = altair_tests + bellatrix_tests
     for transition_test_module in all_tests:
         for pre_fork, post_fork in ALL_PRE_POST_FORKS:
             gen_runner.run_generator("transition", [

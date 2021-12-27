@@ -26,6 +26,9 @@ from eth2spec.test.helpers.state import (
 )
 
 
+rng = random.Random(1001)
+
+
 @with_all_phases
 @spec_state_test
 def test_genesis(spec, state):
@@ -166,6 +169,9 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
     yield from tick_and_add_block(spec, store, signed_short_block, test_steps)
 
+    # Since the long chain has higher proposer_score at slot 1, the latest long block is the head
+    assert spec.get_head(store) == spec.hash_tree_root(long_block)
+
     short_attestation = get_valid_attestation(spec, short_state, short_block.slot, signed=True)
     yield from tick_and_run_on_attestation(spec, store, short_attestation, test_steps)
 
@@ -300,7 +306,7 @@ def test_proposer_boost_correct_head(spec, state):
     block_2 = build_empty_block_for_next_slot(spec, state_2)
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
-        block_2.body.graffiti = spec.Bytes32(hex(random.getrandbits(8 * 32))[2:].zfill(64))
+        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
