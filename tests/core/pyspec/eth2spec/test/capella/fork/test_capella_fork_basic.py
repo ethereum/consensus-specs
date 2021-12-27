@@ -7,7 +7,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.utils import with_meta_tags
 from eth2spec.test.helpers.constants import (
-    MERGE, CAPELLA,
+    BELLATRIX, CAPELLA,
     MINIMAL,
 )
 from eth2spec.test.helpers.state import (
@@ -20,7 +20,7 @@ from eth2spec.test.helpers.capella.fork import (
 )
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @spec_test
 @with_state
 @with_meta_tags(CAPELLA_FORK_TEST_META_TAGS)
@@ -28,7 +28,7 @@ def test_fork_base_state(spec, phases, state):
     yield from run_fork_test(phases[CAPELLA], state)
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @spec_test
 @with_state
 @with_meta_tags(CAPELLA_FORK_TEST_META_TAGS)
@@ -37,7 +37,7 @@ def test_fork_next_epoch(spec, phases, state):
     yield from run_fork_test(phases[CAPELLA], state)
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @spec_test
 @with_state
 @with_meta_tags(CAPELLA_FORK_TEST_META_TAGS)
@@ -46,7 +46,7 @@ def test_fork_next_epoch_with_block(spec, phases, state):
     yield from run_fork_test(phases[CAPELLA], state)
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @spec_test
 @with_state
 @with_meta_tags(CAPELLA_FORK_TEST_META_TAGS)
@@ -56,7 +56,7 @@ def test_fork_many_next_epoch(spec, phases, state):
     yield from run_fork_test(phases[CAPELLA], state)
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(CAPELLA_FORK_TEST_META_TAGS)
@@ -64,7 +64,7 @@ def test_fork_random_low_balances(spec, phases, state):
     yield from run_fork_test(phases[CAPELLA], state)
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(CAPELLA_FORK_TEST_META_TAGS)
@@ -72,7 +72,7 @@ def test_fork_random_misc_balances(spec, phases, state):
     yield from run_fork_test(phases[CAPELLA], state)
 
 
-@with_phases(phases=[MERGE], other_phases=[CAPELLA])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
