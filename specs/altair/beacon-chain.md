@@ -45,6 +45,7 @@
     - [Modified `process_attestation`](#modified-process_attestation)
     - [Modified `process_deposit`](#modified-process_deposit)
     - [Sync aggregate processing](#sync-aggregate-processing)
+    - [Light Client Update Processing](#light-client-update-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
     - [Inactivity scores](#inactivity-scores)
@@ -52,6 +53,7 @@
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
     - [Sync committee updates](#sync-committee-updates)
+    - [Skip sync update](#skip-sync-update)
 - [Initialize state for pure Altair testnets and test vectors](#initialize-state-for-pure-altair-testnets-and-test-vectors)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -447,6 +449,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Altair]
     process_sync_aggregate(state, block.body.sync_aggregate)  # [New in Altair]
+    process_light_update(state, block.body)  # [light-client]
 ```
 
 #### Modified `process_attestation`
@@ -564,6 +567,16 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
             decrease_balance(state, participant_index, participant_reward)
 ```
 
+#### Light Client Update Processing
+
+*Note*: The function `process_light_update` is new.
+
+```python
+def process_light_update(state: BeaconState, block: BeaconBlock) -> None:
+    # TODO: Create a LightClientUpdate and save it to a queue
+```
+
+
 ### Epoch processing
 
 ```python
@@ -580,6 +593,7 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_roots_update(state)
     process_participation_flag_updates(state)  # [New in Altair]
     process_sync_committee_updates(state)  # [New in Altair]
+    process_skip_sync_update(state)  # [light-client]
 ```
 
 #### Justification and finalization
@@ -676,6 +690,15 @@ def process_sync_committee_updates(state: BeaconState) -> None:
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
         state.current_sync_committee = state.next_sync_committee
         state.next_sync_committee = get_next_sync_committee(state)
+```
+
+#### Skip sync update
+
+*Note*: The function `process_skip_sync_update` is new.
+
+```python
+def process_skip_sync_update(state: BeaconState) -> None:
+    # TODO: Create SkipSyncUpdate and save it to a db keyed by hash_tree_root(state.current_sync_committee)
 ```
 
 ## Initialize state for pure Altair testnets and test vectors
