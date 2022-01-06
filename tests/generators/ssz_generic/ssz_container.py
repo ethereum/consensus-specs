@@ -132,6 +132,6 @@ def invalid_cases():
                                 invalid_test_case(lambda: serialized)
                         if mode == RandomizationMode.mode_one_count:
                             serialized = serialize(container_case_fn(rng, mode, typ))
-                            serialized = serialized + serialized[0:1]
+                            serialized = serialized + serialized[:1]
                             yield f'{name}_{mode.to_name()}_last offset_{offset_index}_wrong_byte_length', \
                                 invalid_test_case(lambda: serialized)
