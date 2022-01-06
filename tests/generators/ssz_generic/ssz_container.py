@@ -127,7 +127,7 @@ def invalid_cases():
                                 ))
                         if mode == RandomizationMode.mode_max_count:
                             serialized = serialize(container_case_fn(rng, mode, typ))
-                            serialized = serialized + serialized[0:2]
+                            serialized = serialized + serialized[:2]
                             yield f'{name}_{mode.to_name()}_last offset_{offset_index}_overflow', \
                                 invalid_test_case(lambda: serialized)
                         if mode == RandomizationMode.mode_one_count:
