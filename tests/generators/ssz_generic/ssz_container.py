@@ -124,7 +124,7 @@ def invalid_cases():
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
                                   change=lambda x: x - 1
-                            ))
+                                ))
                         if mode == RandomizationMode.mode_max_count:
                             serialized = serialize(container_case_fn(rng, mode, typ))
                             serialized = serialized + serialized[0:2]
