@@ -119,7 +119,7 @@ def invalid_cases():
                                   change=lambda x: 0
                               ))
                         if index == 0:
-                            yield f'{name}_{mode.to_name()}_first offset_{offset_index}_minus_one', \
+                            yield f'{name}_{mode.to_name()}_offset_{offset_index}_minus_one', \
                                 invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
