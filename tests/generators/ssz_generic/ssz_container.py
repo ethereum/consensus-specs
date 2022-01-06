@@ -105,7 +105,7 @@ def invalid_cases():
                          RandomizationMode.mode_one_count,
                          RandomizationMode.mode_max_count]:
                 if len(offsets) != 0:
-                    for index,offset_index in enumerate(offsets):
+                    for index, offset_index in enumerate(offsets):
                         yield f'{name}_{mode.to_name()}_offset_{offset_index}_plus_one', \
                               invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
@@ -120,7 +120,7 @@ def invalid_cases():
                               ))
                         if index == 0:
                             yield f'{name}_{mode.to_name()}_first offset_{offset_index}_minus_one', \
-                              invalid_test_case(lambda: mod_offset(
+                                invalid_test_case(lambda: mod_offset(
                                   b=serialize(container_case_fn(rng, mode, typ)),
                                   offset_index=offset_index,
                                   change=lambda x: x - 1
@@ -129,9 +129,9 @@ def invalid_cases():
                             serialized = serialize(container_case_fn(rng, mode, typ))
                             serialized = serialized + serialized[0:2]
                             yield f'{name}_{mode.to_name()}_last offset_{offset_index}_overflow', \
-                                invalid_test_case(lambda:serialized)
+                                invalid_test_case(lambda: serialized)
                         if mode == RandomizationMode.mode_one_count:
                             serialized = serialize(container_case_fn(rng, mode, typ))
                             serialized = serialized + serialized[0:1]
                             yield f'{name}_{mode.to_name()}_last offset_{offset_index}_wrong_byte_length', \
-                                invalid_test_case(lambda:serialized)
+                                invalid_test_case(lambda: serialized)
