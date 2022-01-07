@@ -112,7 +112,6 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes) |
 | `ACTIVE_SHARDS` | `uint64(2**8)` (= 256) | Initial shard count |
-| `TARGET_SHARDS` | `uint64(ACTIVE_SHARDS // 2)` (= 256) | Initial shard count |
 
 ### Time parameters
 
@@ -126,7 +125,7 @@ With the introduction of intermediate blocks the number of slots per epoch is do
 
 | Name | Value | Notes |
 | - | - | - |
-| `SAMPLES_PER_BLOB` | `uint64(2**9)` (= 2,048) | 248 * 2,048 = 507,904 bytes |
+| `SAMPLES_PER_BLOB` | `uint64(2**9)` (= 512) | 248 * 512 = 126,976 bytes |
 
 ### Precomputed size verification points
 
@@ -148,19 +147,19 @@ E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
 | `SECONDS_PER_SLOT` | `uint64(8)` | seconds | 8 seconds |
 
 
-## Updated containers
+## Containers
 
-The following containers have updated definitions to support Sharding.
+### New Containers
 
-### `IntermediateBlockBid`
+#### `IntermediateBlockBid`
 
 ```python
 class IntermediateBlockBid(Container):
     execution_payload_root: Root
 
-    sharded_data_commitment: Root # Root of the sharded data (only data, not beacon/intermediate block commitments)
+    sharded_data_commitment_root: Root # Root of the sharded data (only data, not beacon/intermediate block commitments)
 
-    sharded_data_commitments: uint64 # Count of sharded data commitments
+    sharded_data_commitment_count: uint64 # Count of sharded data commitments
 
     bid: Gwei # Block builder bid paid to proposer
     
@@ -171,14 +170,7 @@ class IntermediateBlockBid(Container):
 	signature_s: uint256    
 ```
 
-### `BeaconBlockBody`
-
-```python
-class BeaconBlockBody(altair.BeaconBlockBody):  # Not from bellatrix because we don't want the payload
-    intermediate_block_bid: IntermediateBlockBid
-```
-
-### `ShardedCommitmentsContainer`
+#### `ShardedCommitmentsContainer`
 
 ```python
 class ShardedCommitmentsContainer(Container):
@@ -197,7 +189,7 @@ class ShardedCommitmentsContainer(Container):
     block_verification_kzg_proof: KZGCommitment
 ```
 
-### `IntermediateBlockBody`
+#### `IntermediateBlockBody`
 
 ```python
 class IntermediateBlockBody(phase0.BeaconBlockBody):
@@ -206,7 +198,7 @@ class IntermediateBlockBody(phase0.BeaconBlockBody):
     sharded_commitments_container: ShardedCommitmentsContainer
 ```
 
-### `IntermediateBlockHeader`
+#### `IntermediateBlockHeader`
 
 ```python
 class IntermediateBlockHeader(Container):
@@ -216,7 +208,7 @@ class IntermediateBlockHeader(Container):
     body: Root
 ```
 
-### `IntermediateBlock`
+#### `IntermediateBlock`
 
 ```python
 class IntermediateBlock(Container):
@@ -226,7 +218,7 @@ class IntermediateBlock(Container):
     body: IntermediateBlockBody
 ```
 
-### `SignedIntermediateBlock`
+#### `SignedIntermediateBlock`
 
 ```python
 class SignedIntermediateBlock(Container):  # 
@@ -237,7 +229,7 @@ class SignedIntermediateBlock(Container):  #
 	signature_s: uint256    
 ```
 
-### `SignedIntermediateBlockHeader`
+#### `SignedIntermediateBlockHeader`
 
 ```python
 class SignedIntermediateBlockHeader(Container):  # 
@@ -248,12 +240,21 @@ class SignedIntermediateBlockHeader(Container):  #
 	signature_s: uint256    
 ```
 
-### `BeaconState`
+### Extended Containers
+
+#### `BeaconState`
 
 ```python
 class BeaconState(bellatrix.BeaconState):
     beacon_blocks_since_intermediate_block: List[BeaconBlock, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS]
     last_intermediate_block: IntermediateBlock
+```
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(altair.BeaconBlockBody):  # Not from bellatrix because we don't want the payload
+    intermediate_block_bid: IntermediateBlockBid
 ```
 
 ## Helper functions
@@ -382,10 +383,10 @@ def vector_lincomb(vectors: List[List[uint256]], scalars: List[uint256]) -> List
     return [uint256(x) for x in r]
 ```
 
-#### `multiscalar_multiplication`
+#### `elliptic_curve_lincomb`
 
 ```python
-def multiscalar_multiplication(points: List[KZGCommitment], scalars: List[uint256]) -> KZGCommitment:
+def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[uint256]) -> KZGCommitment:
     """
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
@@ -481,9 +482,9 @@ def process_intermediate_block_bid_commitment(state: BeaconState, body: Intermed
 
     assert intermediate_block_bid.execution_payload_root == hash_tree_root(body.execution_payload)
 
-    assert intermediate_block_bid.sharded_data_commitments == body.sharded_commitments_container.included_sharded_data_commitments
+    assert intermediate_block_bid.sharded_data_commitment_number == body.sharded_commitments_container.included_sharded_data_commitments
 
-    assert intermediate_block_bid.sharded_data_commitment == hash_tree_root(body.sharded_commitments_container.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
+    assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(body.sharded_commitments_container.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
 ```
 
 #### Intermediate Block header
@@ -520,7 +521,7 @@ def process_sharded_data(state: BeaconState, body: IntermediateBlockBody) -> Non
     # Verify the degree proof
     r = hash_to_field(sharded_commitments_container.sharded_commitments)
     r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
-    combined_commitment = multiscalar_multiplication(sharded_commitments_container.sharded_commitments, r_powers)
+    combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
 
     verify_degree_proof(combined_commitments, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
 
@@ -541,7 +542,7 @@ def process_sharded_data(state: BeaconState, body: IntermediateBlockBody) -> Non
 
     r_powers = compute_powers(r, number_of_blobs)
     combined_vector = vector_lincomb(block_vectors, r_powers)
-    combined_commitment = multiscalar_multiplication(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
+    combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
     y = eval_poly_at(combined_vector, x)
 
     verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
