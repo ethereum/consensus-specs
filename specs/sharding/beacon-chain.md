@@ -113,8 +113,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_SHARDS` | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes) |
 | `ACTIVE_SHARDS` | `uint64(2**8)` (= 256) | Initial shard count |
 | `TARGET_SHARDS` | `uint64(ACTIVE_SHARDS // 2)` (= 256) | Initial shard count |
-| `DATAGAS_PRICE_ADJUSTMENT_COEFFICIENT` | `uint64(2**3)` (= 8) | Sample price may decrease/increase by at most exp(1 / this value) *per epoch* |
-| `SHARD_STATE_MEMORY_SLOTS` | `uint64(2**8)` (= 256) | Number of slots for which shard commitments and confirmation status is directly available in the state |
 
 ### Time parameters
 
@@ -196,7 +194,6 @@ class ShardedCommitmentsContainer(Container):
     included_sharded_data_commitments: uint64
 
     # Random evaluation of beacon blocks + execution payload (this helps with quick verification)
-    block_verification_y: uint256
     block_verification_kzg_proof: KZGCommitment
 ```
 
@@ -257,6 +254,145 @@ class SignedIntermediateBlockHeader(Container):  #
 class BeaconState(bellatrix.BeaconState):
     beacon_blocks_since_intermediate_block: List[BeaconBlock, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS]
     last_intermediate_block: IntermediateBlock
+```
+
+## Helper functions
+
+*Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
+
+### KZG
+
+#### `hash_to_field`
+
+```python
+def hash_to_field(x: Container):
+    return int.from_bytes(hash_tree_root(x), "little") % MODULUS
+```
+
+#### `compute_powers`
+
+```python
+def compute_powers(x: uint256, n: uint64):
+    current_power = 1
+    powers = []
+    for i in range(n):
+        powers.append(uint256(current_power))
+        current_power = current_power * int(x) % MODULUS
+```
+
+#### `verify_kzg_proof`
+
+```python
+def verify_kzg_proof(commitment: KZGCommitment, x: uint256, y: uint256, proof: KZGCommitment) -> List[uint256]:
+    zero_poly = G2_SETUP[1].add(G2_SETUP[0].mult(x).neg())
+
+    assert (
+        bls.Pairing(proof, zero_poly)
+        == bls.Pairing(commitment, G2_SETUP[-degree + 1])
+    )
+```
+
+#### `verify_degree_proof`
+
+```python
+def verify_degree_proof(commitment: KZGCommitment, degree: uint64, proof: KZGCommitment):
+    
+    if degree == -1: # Zero polynomial
+        assert body_summary.degree_proof == G1_SETUP[0]
+
+    # TODO! Check for off by one error
+    assert (
+        bls.Pairing(proof, G2_SETUP[0])
+        == bls.Pairing(commitment, G2_SETUP[-degree + 1])
+    )
+```
+
+#### `block_to_field_elements`
+
+```python
+def block_to_field_elements(block: bytes) -> List[uint256]:
+    """
+    Slices a block into 31 byte chunks that can fit into field elements
+    """
+    sliced_block = [block[i:i + 31] for i in range(0, len(bytes), 31)]
+    return [uint256(int.from_bytes(x, "little")) for x in sliced_block]
+```
+
+#### `roots_of_unity`
+
+```python
+def roots_of_unity() -> List[uint256]:
+    r = []
+    current_root_of_unity = 1
+    for i in range(len(SAMPLES_PER_BLOB * POINTS_PER_SAMPLE)):
+        r.append(current_root_of_unity)
+        current_root_of_unity = current_root_of_unity * ROOT_OF_UNITY % MODULUS
+    return r
+```
+
+#### `modular_inverse`
+
+```python
+def modular_inverse(a):
+    assert(a == 0):
+    lm, hm = 1, 0
+    low, high = a % MODULUS, MODULUS
+    while low > 1:
+        r = high // low
+        nm, new = hm - lm * r, high - low * r
+        lm, low, hm, high = nm, new, lm, low
+    return lm % MODULUS
+```
+
+#### `eval_poly_at`
+
+```python
+def eval_poly_at(poly: List[uint256], x: uint256) -> uint256:
+    """
+    Evaluates a polynomial (in evaluation form) at an arbitrary point
+    """
+    roots = roots_of_unity()
+    def A(z):
+        r = 1
+        for w in roots:
+            r = r * (z - w) % MODULUS
+
+    def Aprime(z):
+        return pow(z, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE - 1, MODULUS) 
+
+    r = 0
+    inverses = [modular_inverse(z - x) for z in roots]
+    for i, x in enumerate(inverses):
+        r += f[i] * modular_inverse(Aprime(roots[i])) * x % self.MODULUS
+    r = r * A(x) % self.MODULUS
+    return r
+```
+
+#### `vector_lincomb`
+
+```python
+def vector_lincomb(vectors: List[List[uint256]], scalars: List[uint256]) -> List[uint256]:
+    """
+    Compute a linear combination of field element vectors
+    """
+    r = [0 for i in len(vectors[0])]
+    for v, a in zip(vectors, scalars):
+        for i, x in enumerate(v):
+            r[i] = (r[i] + a * x) % MODULUS
+    return [uint256(x) for x in r]
+```
+
+#### `multiscalar_multiplication`
+
+```python
+def multiscalar_multiplication(points: List[KZGCommitment], scalars: List[uint256]) -> KZGCommitment:
+    """
+    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    """
+    r = bls.Z1()
+    for x, a in zip(points, scalars):
+        r = r.add(x.mult(a))
+    return r
 ```
 
 ### Beacon state accessors
@@ -353,7 +489,7 @@ def process_intermediate_block_bid_commitment(state: BeaconState, body: Intermed
 #### Intermediate Block header
 
 ```python
-def process_intermediate_block_header(state: BeaconState, block: BeaconBlock) -> None:
+def process_intermediate_block_header(state: BeaconState, block: IntermediateBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
 
@@ -378,15 +514,37 @@ def process_intermediate_block_header(state: BeaconState, block: BeaconBlock) ->
 
 
 ```python
-def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
+def process_sharded_data(state: BeaconState, body: IntermediateBlockBody) -> None:
+    sharded_commitments_container = body.sharded_commitments_container
+
     # Verify the degree proof
+    r = hash_to_field(sharded_commitments_container.sharded_commitments)
+    r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
+    combined_commitment = multiscalar_multiplication(sharded_commitments_container.sharded_commitments, r_powers)
+
+    verify_degree_proof(combined_commitments, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
 
     # Verify that the 2*N commitments lie on a degree N-1 polynomial
+    # TODO! Compute combined barycentric formula for this
 
-    # Verify that last intermediate block has been included
+    # Verify that last intermediate block and beacon block (blocks if intermediate blocks were missing) have been included
+    intermediate_block_chunked = block_to_field_elements(ssz_serialize(state.last_intermediate_block))
+    beacon_blocks_chunked = [block_to_field_elements(ssz_serialize(block)) for block in state.beacon_blocks_since_intermediate_block]
+    block_vectors = []
+    for block_chunked in [intermediate_block_chunked] + beacon_blocks_chunked:
+        for i in range(0, len(block_chunked), SAMPLES_PER_BLOB * POINTS_PER_SAMPLE):
+            block_vectors.append(block_chunked[i:i + SAMPLES_PER_BLOB * POINTS_PER_SAMPLE])
+        
+    number_of_blobs = len(block_vectors)
+    r = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 0])
+    x = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 1])
 
-    # Verify that beacon block (blocks if intermediate blocks were missing) have been included
+    r_powers = compute_powers(r, number_of_blobs)
+    combined_vector = vector_lincomb(block_vectors, r_powers)
+    combined_commitment = multiscalar_multiplication(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
+    y = eval_poly_at(combined_vector, x)
 
+    verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
 ```
 
 The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
@@ -397,7 +555,10 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 #### Execution payload
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, block: IntermediateBlock, execution_engine: ExecutionEngine) -> None:
+
+    payload = block.body.execution_payload
+
     # Verify consistency of the parent hash with respect to the previous execution payload header
     if is_merge_transition_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
@@ -406,13 +567,21 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
 
-    # Get sharded data headers
+    # Get sharded data commitments
+    sharded_commitments_container = block.body.sharded_commitments_container
+    sharded_data_commitments = sharded_commitments_container.sharded_commitments[-sharded_commitments_container.included_sharded_data_commitments:]
 
     # Get all unprocessed intermediate block bids
+    unprocessed_intermediate_block_bids = []
+    for block in state.beacon_blocks_since_intermediate_block:
+        unprocessed_intermediate_block_bids.append(block.body.intermediate_block_bid)
 
 
     # Verify the execution payload is valid
-    assert execution_engine.execute_payload(payload)
+    assert execution_engine.execute_payload(payload,
+                                            sharded_data_commitments,
+                                            unprocessed_intermediate_block_bids)
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
