@@ -322,12 +322,14 @@ def block_to_field_elements(block: bytes) -> List[uint256]:
 #### `roots_of_unity`
 
 ```python
-def roots_of_unity() -> List[uint256]:
+def roots_of_unity(order: uint64) -> List[uint256]:
     r = []
+    root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // order, MODULUS)
+
     current_root_of_unity = 1
     for i in range(len(SAMPLES_PER_BLOB * POINTS_PER_SAMPLE)):
         r.append(current_root_of_unity)
-        current_root_of_unity = current_root_of_unity * ROOT_OF_UNITY % MODULUS
+        current_root_of_unity = current_root_of_unity * root_of_unity % MODULUS
     return r
 ```
 
@@ -352,14 +354,15 @@ def eval_poly_at(poly: List[uint256], x: uint256) -> uint256:
     """
     Evaluates a polynomial (in evaluation form) at an arbitrary point
     """
-    roots = roots_of_unity()
+    points_per_blob = SAMPLES_PER_BLOB * POINTS_PER_SAMPLE
+    roots = roots_of_unity(points_per_blob)
     def A(z):
         r = 1
         for w in roots:
             r = r * (z - w) % MODULUS
 
     def Aprime(z):
-        return pow(z, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE - 1, MODULUS) 
+        return points_per_blob * pow(z, points_per_blob - 1, MODULUS) 
 
     r = 0
     inverses = [modular_inverse(z - x) for z in roots]
@@ -367,6 +370,37 @@ def eval_poly_at(poly: List[uint256], x: uint256) -> uint256:
         r += f[i] * modular_inverse(Aprime(roots[i])) * x % self.MODULUS
     r = r * A(x) % self.MODULUS
     return r
+```
+
+#### `next_power_of_two`
+
+```python
+def next_power_of_two(x: int) -> int:
+    return 2 ** ((x - 1).bit_length())
+```
+
+#### `low_degree_check`
+
+```python
+def low_degree_check(commitments: List[KZGCommitment]):
+    """
+    Checks that the commitments are on a low-degree polynomial
+    If there are 2*N commitments, that means they should lie on a polynomial
+    of degree d - N - 1, where d = next_power_of_two(2*N)
+    (The remaining positions are filled with 0, this is to make FFTs usable)
+    """
+    result = 0
+    N = len(commitments) // 2
+    r = hash_to_field(commitments)
+    domain_size = next_power_of_two(2 * N)
+    r_to_domain_size = pow(r, N, domain_size)
+    roots = roots_of_unity(domain_size)
+
+    coefs = []
+    for i in range(2 * N):
+        coefs.append(((-1)**i * r_to_domain_size - 1) * modular_inverse(roots[i * (domain_size // 2 - 1) % domain_size] * (r - roots[i])) % MODULUS)
+    
+    assert elliptic_curve_lincomb(commitments, coefs) == bls.Z1()
 ```
 
 #### `vector_lincomb`
@@ -526,7 +560,7 @@ def process_sharded_data(state: BeaconState, body: IntermediateBlockBody) -> Non
     verify_degree_proof(combined_commitments, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
 
     # Verify that the 2*N commitments lie on a degree N-1 polynomial
-    # TODO! Compute combined barycentric formula for this
+    low_degree_check(sharded_commitments_container.sharded_commitments)
 
     # Verify that last intermediate block and beacon block (blocks if intermediate blocks were missing) have been included
     intermediate_block_chunked = block_to_field_elements(ssz_serialize(state.last_intermediate_block))
