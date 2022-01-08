@@ -297,9 +297,9 @@ def verify_kzg_proof(commitment: KZGCommitment, x: uint256, y: uint256, proof: K
 
 ```python
 def verify_degree_proof(commitment: KZGCommitment, degree: uint64, proof: KZGCommitment):
-    
-    if degree == -1: # Zero polynomial
-        assert body_summary.degree_proof == G1_SETUP[0]
+    """
+    Verifies that the commitment is of polynomial degree <= degree. 
+    """
 
     # TODO! Check for off by one error
     assert (
