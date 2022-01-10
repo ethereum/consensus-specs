@@ -33,7 +33,7 @@ The current features are:
 * [Honest Validator guide changes](specs/altair/validator.md)
 * [P2P Networking](specs/altair/p2p-interface.md)
 
-### Bellatrix (as known as The Merge)
+### Bellatrix (also known as The Merge)
 
 The Bellatrix protocol upgrade is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
 
