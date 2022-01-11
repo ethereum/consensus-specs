@@ -69,7 +69,7 @@ class LightClientUpdate(Container):
     finalized_header: BeaconBlockHeader
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
-    sync_committee_aggregate: SyncAggregate
+    sync_aggregate: SyncAggregate
     # Fork version for the aggregate signature
     fork_version: Version
 ```
@@ -187,8 +187,8 @@ def validate_light_client_update(store: LightClientStore,
             index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
             root=active_header.state_root,
         )
-        
-    sync_aggregate = update.sync_committee_aggregate
+
+    sync_aggregate = update.sync_aggregate
 
     # Verify sync committee has sufficient participants
     assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
@@ -225,12 +225,12 @@ def process_light_client_update(store: LightClientStore,
                                 genesis_validators_root: Root) -> None:
     validate_light_client_update(store, update, current_slot, genesis_validators_root)
 
-    sync_committee_bits = update.sync_committee_aggregate.sync_committee_bits
+    sync_committee_bits = update.sync_aggregate.sync_committee_bits
 
     # Update the best update in case we have to force-update to it if the timeout elapses
     if (
         store.best_valid_update is None
-        or sum(sync_committee_bits) > sum(store.best_valid_update.sync_committee_aggregate.sync_committee_bits)
+        or sum(sync_committee_bits) > sum(store.best_valid_update.sync_aggregate.sync_committee_bits)
     ):
         store.best_valid_update = update
 
