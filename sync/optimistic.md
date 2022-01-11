@@ -62,7 +62,7 @@ behaviours without regard for optimistic sync.
 
 ### When to optimistically import blocks
 
-A block MUST NOT be optimistically imported, unless either of the following
+A block MAY be optimistically imported when either of the following
 conditions are met:
 
 1. The justified checkpoint has execution enabled. I.e.,
