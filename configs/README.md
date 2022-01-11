@@ -9,7 +9,7 @@ Standard configs:
 - [`minimal.yaml`](./minimal.yaml): Minimal configuration, used in spec-testing along with the [`minimal`](../presets/minimal) preset.
 
 Not all network configurations are in scope for the specification,
-see [`github.com/eth2-clients/eth2-networks`](https://github.com/eth2-clients/eth2-networks) for common networks,
+see [`github.com/eth-clients/eth2-networks`](https://github.com/eth-clients/eth2-networks) for common networks,
 and additional testnet assets.
 
 ## Forking
