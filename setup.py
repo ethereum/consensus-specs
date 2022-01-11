@@ -752,7 +752,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
     """
     out: Dict[str, str] = dict()
     for k, v in conf.items():
-        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE'):
+        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything is either byte data or an integer, with PRESET_BASE as one exception.
             out[k] = f"'{v}'"
