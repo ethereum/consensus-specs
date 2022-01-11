@@ -127,7 +127,7 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
 
 ## Light client state updates
 
-A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot)` where `current_slot` is the current slot based on some local clock. `process_slot_for_light_client_store` is processed every time the current slot increments.
+A light client maintains its state in a `store` object of type `LightClientStore` and receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock. `process_slot_for_light_client_store` is triggered every time the current slot increments.
 
 #### `process_slot_for_light_client_store`
 
