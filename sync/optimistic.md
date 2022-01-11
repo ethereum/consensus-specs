@@ -29,29 +29,29 @@ optimistically imported blocks which have yet to receive an `INVALID` or
 `VALID` designation from an execution engine.
 
 ```python
-def is_optimistic(block: BeaconBlock) -> bool:
-    hash_tree_root(block) in optimistic_roots
+def is_optimistic(block: BeaconBlock, optimistic_roots: Set[Root]) -> bool:
+    return hash_tree_root(block) in optimistic_roots
 ```
 
 ```python
-def latest_valid_ancestor(block: BeaconBlock) -> BeaconBlock:
+def latest_verified_ancestor(block: BeaconBlock) -> BeaconBlock:
     while True:
         if not is_optimistic(block) or block.parent_root == Root():
-	        return block
+            return block
         block = get_block(block.parent_root)
 ```
 
 ```python
 def is_execution_block(block: BeaconBlock) -> BeaconBlock:
-	block.body.execution_payload != ExecutionPayload()
+    return block.body.execution_payload != ExecutionPayload()
 ```
 
 ```python
 def should_optimistically_import_block(current_slot: Slot, block: BeaconBlock) -> bool:
-	block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
+    return block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
 ```
 
-Let only a node which returns `is_optimistic(head) == True` be an *optimistic
+Let only a node which returns `is_optimistic(head) is True` be an *optimistic
 node*. Let only a validator on an optimistic node be an *optimistic validator*.
 
 When this specification only defines behaviour for an optimistic
@@ -60,7 +60,7 @@ behaviours without regard for optimistic sync.
 
 ## Mechanisms
 
-## When to optimistically import blocks
+### When to optimistically import blocks
 
 A block MUST NOT be optimistically imported, unless either of the following
 conditions are met:
@@ -73,13 +73,13 @@ conditions are met:
 *See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
 these conditions.*
 
-## How to optimistically import blocks
+### How to optimistically import blocks
 
 To optimistically import a block:
 
-- The `execute_payload` function MUST return `True` if the execution
+- The [`execute_payload`](../specs/merge/beacon-chain.md#execute_payload) function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
-- The `validate_merge_block` function MUST NOT raise an assertion if both the
+- The [`validate_merge_block`](../specs/merge/fork-choice.md#validate_merge_block) function MUST NOT raise an assertion if both the
 `pow_block` and `pow_parent` are unknown to the execution engine.
 - The parent of the block MUST NOT have an INVALID execution payload.
 
@@ -190,7 +190,7 @@ verified that block.
 
 ### Block Production
 
-A optimistic validator MUST NOT produce a block (i.e., sign across the
+An optimistic validator MUST NOT produce a block (i.e., sign across the
 `DOMAIN_BEACON_PROPOSER` domain).
 
 ### Attesting
@@ -216,14 +216,14 @@ validation conditions are modified as such:
 
 Do not apply the existing condition:
 
-- [REJECT] The block's parent (defined by block.parent_root) passes validation.
+- [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 Instead, apply the new condition:
 
-- [REJECT] The block's parent (defined by block.parent_root) passes all
-    validation, excluding verification of the block.body.execution_payload.
-- [IGNORE] The block's parent (defined by block.parent_root) passes all
-    validation, including verification of the block.body.execution_payload.
+- [REJECT] The block's parent (defined by `block.parent_root`) passes all
+    validation, excluding verification of the `block.body.execution_payload`.
+- [IGNORE] The block's parent (defined by `block.parent_root`) passes all
+    validation, including verification of the `block.body.execution_payload`.
 
 The effect of these modifications is that invalid payloads may be propagated
 across the network, but only when contained inside a block that is valid in *all
@@ -276,7 +276,7 @@ When information about an optimistic block is requested, the consensus engine:
 
 ### Requests for an Optimistic Head
 
-When `is_optimistic(head) == True`, the consensus engine:
+When `is_optimistic(head) is True`, the consensus engine:
 
 - MUST NOT return an optimistic `head`.
 - MAY substitute the head block with `latest_valid_ancestor(block)`.
@@ -284,7 +284,7 @@ When `is_optimistic(head) == True`, the consensus engine:
 
 ### Requests to Validators Endpoints
 
-When `is_optimistic(head) == True`, the consensus engine MUST return syncing to
+When `is_optimistic(head) is True`, the consensus engine MUST return syncing to
 all endpoints which match the following pattern:
 
 - `eth/*/validator/*`
