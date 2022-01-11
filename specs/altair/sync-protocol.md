@@ -42,17 +42,17 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` |
+| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
+| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
 
 ## Preset
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | |
-| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | ~27.3 hours |
+| Name | Value | Unit | Duration |
+| - | - | - | - |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators |
+| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | epochs | ~27.3 hours |
 
 ## Containers
 
