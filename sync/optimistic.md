@@ -310,9 +310,9 @@ Note the use of "feasibly" in the previous paragraph. One can imagine
 mechanisms to check that a block is justified before importing it. For example,
 just keep processing blocks without adding them to fork choice.  However, there
 are still edge-cases here (e.g., when to halt and declare there was no
-justification?) and how to mitigate implemenation complexity.  At this point,
+justification?) and how to mitigate implementation complexity.  At this point,
 it's important to reflect on the attack and how likely it is to happen. It
-requires some rather contrived circumstances and it seems very unlikley to
+requires some rather contrived circumstances and it seems very unlikely to
 occur.  Therefore, we need to consider if adding complexity to avoid an
 unlikely attack increases or decreases our total risk. Presently, it appears
 that `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` sits in a sweet spot for this
