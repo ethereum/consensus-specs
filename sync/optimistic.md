@@ -218,52 +218,6 @@ An optimistic validator MUST NOT participate in sync committees (i.e., sign acro
 `DOMAIN_SYNC_COMMITTEE`, `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` or
 `DOMAIN_CONTRIBUTION_AND_PROOF` domains).
 
-## P2P Networking
-
-### The Gossip Domain (gossipsub)
-
-#### `beacon_block`
-
-An optimistic validator MAY subscribe to the `beacon_block` topic. Propagation
-validation conditions are modified as such:
-
-Do not apply the existing condition:
-
-- [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
-
-Instead, apply the new condition:
-
-- [REJECT] The block's parent (defined by `block.parent_root`) passes all
-    validation, excluding verification of the `block.body.execution_payload`.
-- [IGNORE] The block's parent (defined by `block.parent_root`) passes all
-    validation, including verification of the `block.body.execution_payload`.
-
-The effect of these modifications is that invalid payloads may be propagated
-across the network, but only when contained inside a block that is valid in *all
-other aspects*.
-
-#### Other Topics
-
-An optimistic node MUST NOT subscribe to the following topics:
-
--  `beacon_aggregate_and_proof`
--  `voluntary_exit`
--  `proposer_slashing`
--  `attester_slashing`
--  `beacon_attestation_{subnet_id}`
--  `sync_committee_contribution_and_proof`
--  `sync_committee_{subnet_id}`
-
-Once the node ceases to be optimistic, it MAY re-subscribe to the
-aforementioned topics.
-
-### The Req/Resp Domain
-
-Non-faulty, optimistic nodes may send blocks which result in an INVALID
-response from an execution engine. To prevent network segregation between
-optimistic and non-optimistic nodes, transmission of an INVALID payload SHOULD
-NOT cause a node to be down-scored or disconnected.
-
 ## Ethereum Beacon APIs
 
 Consensus engines which provide an implementation of the [Ethereum Beacon

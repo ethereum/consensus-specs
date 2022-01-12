@@ -85,6 +85,10 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 Specifically, this type changes with the addition of `execution_payload` to the inner `BeaconBlockBody`.
 See the Merge [state transition document](./beacon-chain.md#beaconblockbody) for further details.
 
+Blocks with execution enabled will be permitted to propagate regardless of the
+validity of the execution payload. This prevents network segregation between
+[optimistic](/sync/optimistic.md) and non-optimistic nodes.
+
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
@@ -92,6 +96,13 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
   then validate the following:
   - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
     -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
+  - [REJECT] The block's parent (defined by `block.parent_root`) passes all
+      validation, excluding verification of the `block.body.execution_payload`.
+  - [IGNORE] The block's parent (defined by `block.parent_root`) passes all
+      validation, including verification of the `block.body.execution_payload`.
+
+The following gossip validation from prior specifications MUST NOT be applied if the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
+  - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 ### Transitioning the gossip
 
@@ -99,6 +110,12 @@ See gossip transition details found in the [Altair document](../altair/p2p-inter
 details on how to handle transitioning gossip topics for the Merge.
 
 ## The Req/Resp domain
+
+Non-faulty, [optimistic](/sync/optimistic.md) nodes may send blocks which
+result in an INVALID response from an execution engine. To prevent network
+segregation between optimistic and non-optimistic nodes, transmission of an
+INVALID payload via the Req/Resp domain SHOULD NOT cause a node to be
+down-scored or disconnected.
 
 ### Messages
 
