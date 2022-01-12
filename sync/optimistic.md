@@ -78,13 +78,14 @@ behaviours without regard for optimistic sync.
 
 ### When to optimistically import blocks
 
-A block MAY be optimistically imported when either of the following
-conditions are met:
+A block MAY be optimistically imported when
+`should_optimistically_import_block(store, current_slot, block)` returns
+`True`. This ensures that blocks are only optimistically imported if either:
 
-1. The justified checkpoint has execution enabled. I.e.,
-   `is_execution_block(get_block(get_state(head_block).current_justified_checkpoint.root))`
-1. The current slot (as per the system clock) is at least `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of
-   the slot of the block being imported. I.e., `should_optimistically_import_block(current_slot, block) == True`.
+1. The justified checkpoint has execution enabled.
+1. The current slot (as per the system clock) is at least
+   `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of the slot of the block being
+   imported.
 
 *See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
 these conditions.*
