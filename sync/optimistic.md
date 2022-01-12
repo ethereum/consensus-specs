@@ -20,7 +20,7 @@ blocks without verifying the execution payloads. This partial sync is called an
 
 ## Helpers
 
-Let `head_block: BeaconBlock` be the result of calling of the fork choice
+Let `head: BeaconBlock` be the result of calling of the fork choice
 algorithm at the time of block production.
 
 Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
@@ -51,7 +51,7 @@ def latest_verified_ancestor(store: Store, block: BeaconBlock) -> BeaconBlock:
     while True:
         if not is_optimistic(store, block) or block.parent_root == Root():
             return block
-        block = get_block(block.parent_root)
+        block = store.blocks[block.parent_root]
 ```
 
 ```python
@@ -67,7 +67,7 @@ def should_optimistically_import_block(store: Store, current_slot: Slot, block: 
     return justified_is_verified or block_is_deep
 ```
 
-Let only a node which returns `is_optimistic(head) is True` be an *optimistic
+Let only a node which returns `is_optimistic(store, head) is True` be an *optimistic
 node*. Let only a validator on an optimistic node be an *optimistic validator*.
 
 When this specification only defines behaviour for an optimistic
@@ -254,7 +254,7 @@ When information about an optimistic block is requested, the consensus engine:
 
 ### Requests for an Optimistic Head
 
-When `is_optimistic(head) is True`, the consensus engine:
+When `is_optimistic(store, head) is True`, the consensus engine:
 
 - MUST NOT return an optimistic `head`.
 - MAY substitute the head block with `latest_verified_ancestor(block)`.
@@ -262,7 +262,7 @@ When `is_optimistic(head) is True`, the consensus engine:
 
 ### Requests to Validators Endpoints
 
-When `is_optimistic(head) is True`, the consensus engine MUST return syncing to
+When `is_optimistic(store, head) is True`, the consensus engine MUST return syncing to
 all endpoints which match the following pattern:
 
 - `eth/*/validator/*`
