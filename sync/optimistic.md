@@ -21,9 +21,6 @@ blocks without verifying the execution payloads. This partial sync is called an
 Let `head_block: BeaconBlock` be the result of calling of the fork choice
 algorithm at the time of block production.
 
-Let `justified_block: BeaconBlock` be the latest current justified ancestor
-ancestor of the `head_block`.
-
 Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have yet to receive an `INVALID` or
 `VALID` designation from an execution engine.
