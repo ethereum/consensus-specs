@@ -255,7 +255,7 @@ When information about an optimistic block is requested, the consensus engine:
 When `is_optimistic(head) is True`, the consensus engine:
 
 - MUST NOT return an optimistic `head`.
-- MAY substitute the head block with `latest_valid_ancestor(block)`.
+- MAY substitute the head block with `latest_verified_ancestor(block)`.
 - MAY return syncing.
 
 ### Requests to Validators Endpoints
