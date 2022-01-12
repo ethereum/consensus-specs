@@ -21,11 +21,12 @@ blocks without verifying the execution payloads. This partial sync is called an
 ## Helpers
 
 Let `head: BeaconBlock` be the result of calling of the fork choice
-algorithm at the time of block production.
+algorithm at the time of block production. Let `head_block_root: Root` be the
+root of that block.
 
-Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
-optimistically imported blocks which have yet to receive an `INVALID` or
-`VALID` designation from an execution engine.
+Let `blocks: Dict[Root, BeaconBlock]` and `block_states: Dict[Root,
+BeaconState]` be the blocks (and accompanying states) that have been verified
+either completely or optimistically.
 
 Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have only received a `SYNCING` designation
