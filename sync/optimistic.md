@@ -179,9 +179,10 @@ block that forks around the head (due to the justification of the malicious
 chain).
 
 If an honest chain exists which justifies a higher epoch than the malicious
-chain, that chain will take precedence and revive any poisoned store.
-Therefore, the poisoning attack is temporary if >= 2/3rds of the network is
-honest and non-faulty.
+chain, that chain will take precedence and revive any poisoned store. Such a
+chain, if imported before the malicious chain, will prevent the store from
+being poisoned. Therefore, the poisoning attack is temporary if >= 2/3rds of
+the network is honest and non-faulty.
 
 The `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` parameter assumes that the network
 will justify a honest chain within some number of slots. With this assumption,
