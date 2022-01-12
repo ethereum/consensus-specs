@@ -1,5 +1,7 @@
 # Optimistic Sync
 
+[`validate_merge_block`]: ../specs/merge/fork-choice.md#validate_merge_block
+
 ## Introduction
 
 In order to provide a syncing execution engine with a partial view of the head
@@ -92,7 +94,7 @@ To optimistically import a block:
 
 - The [`execute_payload`](../specs/merge/beacon-chain.md#execute_payload) function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
-- The [`validate_merge_block`](../specs/merge/fork-choice.md#validate_merge_block) function MUST NOT raise an assertion if both the
+- The [`validate_merge_block`][] function MUST NOT raise an assertion if both the
 `pow_block` and `pow_parent` are unknown to the execution engine.
 - The parent of the block MUST NOT have an INVALID execution payload.
 
@@ -119,6 +121,13 @@ block MUST also transition from `SYNCING` -> `INVALID`.
 
 When a block transitions from the `SYNCING` state it is removed from the set of
 `store.optimistic_roots`.
+
+When a "merge block" (i.e. a block which enables execution) is declared to be
+`VALID` by an execution engine (either directly or indirectly), the full
+[`validate_merge_block`][] MUST be run against the merge block. If the block
+fails [`validate_merge_block`][], the merge block MUST be treated the same as
+an `INVALID` block (i.e., it and all its descendants are invalidated and
+removed from the block tree).
 
 ### Execution Engine Errors
 
