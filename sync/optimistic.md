@@ -1,6 +1,6 @@
 # Optimistic Sync
 
-[`validate_merge_block`]: ../specs/merge/fork-choice.md#validate_merge_block
+[`validate_merge_block`]: ../specs/bellatrix/fork-choice.md#validate_merge_block
 
 ## Introduction
 
@@ -93,7 +93,7 @@ these conditions.*
 
 To optimistically import a block:
 
-- The [`execute_payload`](../specs/merge/beacon-chain.md#execute_payload) function MUST return `True` if the execution
+- The [`execute_payload`](../specs/bellatrix/beacon-chain.md#execute_payload) function MUST return `True` if the execution
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
 - The [`validate_merge_block`][] function MUST NOT raise an assertion if both the
 `pow_block` and `pow_parent` are unknown to the execution engine.
