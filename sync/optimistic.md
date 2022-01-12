@@ -28,6 +28,10 @@ Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have yet to receive an `INVALID` or
 `VALID` designation from an execution engine.
 
+Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
+optimistically imported blocks which have only received a `SYNCING` designation
+from an execution engine (i.e., they are not known to be `INVALID` or `VALID`).
+
 ```python
 @dataclass
 class Store(object):
