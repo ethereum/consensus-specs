@@ -45,7 +45,6 @@ The Bellatrix protocol upgrade is still actively in development. The exact speci
   * [Bellatrix fork](specs/bellatrix/fork.md)
   * [Fork Choice changes](specs/bellatrix/fork-choice.md)
   * [Validator additions](specs/bellatrix/validator.md)
-  * [Client settings](specs/bellatrix/client-settings.md)
   * [P2P Networking](specs/bellatrix/p2p-interface.md)
 
 ### Sharding
