@@ -29,14 +29,23 @@ optimistically imported blocks which have yet to receive an `INVALID` or
 `VALID` designation from an execution engine.
 
 ```python
-def is_optimistic(block: BeaconBlock, optimistic_roots: Set[Root]) -> bool:
-    return hash_tree_root(block) in optimistic_roots
+@dataclass
+class Store(object):
+    optimistic_roots: Set[Root]
+    head_block_root: Root
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
 ```
 
 ```python
-def latest_verified_ancestor(block: BeaconBlock) -> BeaconBlock:
+def is_optimistic(store: Store, block: BeaconBlock) -> bool:
+    return hash_tree_root(block) in store.optimistic_roots
+```
+
+```python
+def latest_verified_ancestor(store: Store, block: BeaconBlock) -> BeaconBlock:
     while True:
-        if not is_optimistic(block) or block.parent_root == Root():
+        if not is_optimistic(store, block) or block.parent_root == Root():
             return block
         block = get_block(block.parent_root)
 ```
@@ -47,8 +56,11 @@ def is_execution_block(block: BeaconBlock) -> BeaconBlock:
 ```
 
 ```python
-def should_optimistically_import_block(current_slot: Slot, block: BeaconBlock) -> bool:
-    return block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
+def should_optimistically_import_block(store: Store, current_slot: Slot, block: BeaconBlock) -> bool:
+	justified_root = store.block_states[store.head_block_root].current_justified_checkpoint.root
+	justifed_is_verified = is_execution_block(store.blocks[justified_root])
+    block_is_deep = block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
+    return justified_is_verified or block_is_deep
 ```
 
 Let only a node which returns `is_optimistic(head) is True` be an *optimistic
@@ -105,7 +117,7 @@ When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
 
 When a block transitions from the `SYNCING` state it is removed from the set of
-`optimistic_roots`.
+`store.optimistic_roots`.
 
 ### Execution Engine Errors
 
