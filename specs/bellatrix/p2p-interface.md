@@ -198,3 +198,26 @@ valid block sizes in the range of gas limits expected in the medium term.
 
 As with both gossip and req/rsp maximum values, type-specific limits should
 always by simultaneously respected.
+
+### Why allow invalid payloads on the P2P network?
+
+The specification allows blocks with invalid payloads to propagate across
+gossip and via RPC calls. The reasoning for this is as follows:
+
+1. Optimistic nodes must listen to block gossip to obtain a view of the head of
+   the chain.
+2. Therefore, optimistic nodes must propagate gossip blocks. Otherwise, they'd
+   be censoring.
+3. If optimistic nodes will propose blocks via gossip, then they must respond
+   to requests for the parent via RPC.
+4. Therefore, optimistic nodes must send optimistic blocks via RPC.
+
+So, to prevent network segregation from optimistic nodes accidentally sending
+invalid payloads, nodes should never downscore/disconnect nodes due to invalid
+payloads. This does open the network to some DoS attacks from invalid execution
+payloads, but the scope of actors is limited to validators who can put those
+payloads in valid (and slashable) beacon blocks. Therefore, it is argued that
+the DoS risk introduced in tolerable.
+
+More complicated schemes are possible that could restrict invalid payloads from
+RPC. However, it's not clear that complexity is warranted.

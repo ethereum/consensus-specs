@@ -265,3 +265,73 @@ When `is_optimistic(head) is True`, the consensus engine MUST return syncing to
 all endpoints which match the following pattern:
 
 - `eth/*/validator/*`
+
+## Design Decision Rationale
+
+### Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?
+
+Nodes can only import an optimistic block if their justified checkpoint is
+verified or the block is older than `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
+
+These restraints are applied in order to mitigate an attack where a block which
+enables execution (a *transition block*) can reference a junk parent hash. This
+makes it impossible for honest nodes to build atop that block. If an attacker
+exploits a nuance in fork choice `filter_block_tree`, they can, in some rare
+cases, produce a junk block that out-competes all locally produced blocks for
+the head. This prevents a node from producing a chain of blocks, therefore
+breaking liveness.
+
+Thankfully, if 2/3rds of validators are not poisoned, they can justify an
+honest chain which will un-poison all other nodes.
+
+Notably, this attack only exists for optimistic nodes. Nodes which fully verify
+the transition block will reject a block with a junk parent hash.
+
+Given all of this, we can say two things:
+
+1. **BNs which are following the head during the transition shouldn't
+   optimistically import the transition block.** If 1/3rd of validators
+   optimistically import the poison block, there will be no remaining nodes to
+   justify an honest chain.
+2. **BNs which are syncing can optimistically import transition blocks.** In
+   this case a justified chain already exists blocks. The poison block would be
+   quickly reverted and would have no affect on liveness.
+
+Astute readers will notice that (2) contains a glaring assumption about network
+liveness. This is necessary because a node cannot feasibly ascertain that the
+transition block is justified without importing that block and risking
+poisoning. Therefore, we use `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` to say
+something along the lines of: *"if the transition block is sufficiently old
+enough, then we can just assume that block is honest or there exists an honest
+justified chain to out-compete it."*
+
+Note the use of "feasibly" in the previous paragraph. One can imagine
+mechanisms to check that a block is justified before importing it. For example,
+just keep processing blocks without adding them to fork choice.  However, there
+are still edge-cases here (e.g., when to halt and declare there was no
+justification?) and how to mitigate implemenation complexity.  At this point,
+it's important to reflect on the attack and how likely it is to happen. It
+requires some rather contrived circumstances and it seems very unlikley to
+occur.  Therefore, we need to consider if adding complexity to avoid an
+unlikely attack increases or decreases our total risk. Presently, it appears
+that `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` sits in a sweet spot for this
+trade-off.
+
+### Transitioning from VALID -> INVALID or INVALID -> VALID
+
+These operations are purposefully omitted. It is outside of the scope of the
+specification since it's only possible with a faulty EE.
+
+Such a scenario requires manual intervention.
+
+## What about Light Clients?
+
+An alternative to optimistic sync is to run a light client inside/alongside
+beacon nodes that mitigates the need for optimistic sync by providing
+tip-of-chain blocks to the execution engine. However, light clients comes with
+their own set of complexities. Relying on light clients may also restrict nodes
+from syncing from genesis, if they so desire.
+
+A notable thing about optimistic sync is that it's *optional*. Should an
+implementation decide to go the light-client route, then they can just ignore
+optimistic sync all together.
