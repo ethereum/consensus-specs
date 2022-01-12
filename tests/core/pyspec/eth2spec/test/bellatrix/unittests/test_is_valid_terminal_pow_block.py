@@ -4,11 +4,11 @@ from eth2spec.test.helpers.pow_block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_merge_and_later,
+    with_bellatrix_and_later,
 )
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_is_valid_terminal_pow_block_success_valid(spec, state):
     parent_block = prepare_random_pow_block(spec)
@@ -20,7 +20,7 @@ def test_is_valid_terminal_pow_block_success_valid(spec, state):
     assert spec.is_valid_terminal_pow_block(block, parent_block)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_is_valid_terminal_pow_block_fail_before_terminal(spec, state):
     parent_block = prepare_random_pow_block(spec)
@@ -32,7 +32,7 @@ def test_is_valid_terminal_pow_block_fail_before_terminal(spec, state):
     assert not spec.is_valid_terminal_pow_block(block, parent_block)
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_is_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
     parent_block = prepare_random_pow_block(spec)

@@ -3,6 +3,13 @@
 # Extends the mainnet preset
 PRESET_BASE: 'mainnet'
 
+# Free-form short name of the network that this configuration applies to - known
+# canonical network names include:
+# * 'mainnet' - there can be only one
+# * 'prater' - testnet
+# Must match the regex: [a-z0-9\-]
+CONFIG_NAME: 'mainnet'
+
 # Transition
 # ---------------------------------------------------------------
 # TBD, 2**256-2**10 is a placeholder
@@ -34,9 +41,9 @@ GENESIS_DELAY: 604800
 # Altair
 ALTAIR_FORK_VERSION: 0x01000000
 ALTAIR_FORK_EPOCH: 74240  # Oct 27, 2021, 10:56:23am UTC
-# Merge
-MERGE_FORK_VERSION: 0x02000000
-MERGE_FORK_EPOCH: 18446744073709551615
+# Bellatrix
+BELLATRIX_FORK_VERSION: 0x02000000
+BELLATRIX_FORK_EPOCH: 18446744073709551615
 # Sharding
 SHARDING_FORK_VERSION: 0x03000000
 SHARDING_FORK_EPOCH: 18446744073709551615

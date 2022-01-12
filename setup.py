@@ -40,7 +40,7 @@ from marko.ext.gfm.elements import Table
 # Definitions in context.py
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
-MERGE = 'merge'
+BELLATRIX = 'bellatrix'
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
@@ -487,10 +487,10 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
         return super().implement_optimizations(functions)
 
 #
-# MergeSpecBuilder
+# BellatrixSpecBuilder
 #
-class MergeSpecBuilder(AltairSpecBuilder):
-    fork: str = MERGE
+class BellatrixSpecBuilder(AltairSpecBuilder):
+    fork: str = BELLATRIX
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -550,7 +550,7 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, MergeSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder)
 }
 
 
@@ -683,6 +683,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
+    'Optional',
 ]
 
 
@@ -751,7 +752,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
     """
     out: Dict[str, str] = dict()
     for k, v in conf.items():
-        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE'):
+        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything is either byte data or an integer, with PRESET_BASE as one exception.
             out[k] = f"'{v}'"
@@ -845,14 +846,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, MERGE):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, MERGE):
+            if self.spec_fork in (ALTAIR, BELLATRIX):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -861,12 +862,12 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork == MERGE:
+            if self.spec_fork == BELLATRIX:
                 self.md_doc_paths += """
-                    specs/merge/beacon-chain.md
-                    specs/merge/fork.md
-                    specs/merge/fork-choice.md
-                    specs/merge/validator.md
+                    specs/bellatrix/beacon-chain.md
+                    specs/bellatrix/fork.md
+                    specs/bellatrix/fork-choice.md
+                    specs/bellatrix/validator.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)

@@ -5,7 +5,7 @@ from eth2spec.test.helpers.pow_block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_merge_and_later,
+    with_bellatrix_and_later,
 )
 
 
@@ -29,7 +29,7 @@ expected_results = [
 # it would return the first block (IS_HEAD_PARENT_BLOCK).
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_get_pow_block_at_terminal_total_difficulty(spec, state):
     for result in expected_results:
@@ -89,7 +89,7 @@ prepare_execution_payload_expected_results = [
 ]
 
 
-@with_merge_and_later
+@with_bellatrix_and_later
 @spec_state_test
 def test_prepare_execution_payload(spec, state):
     for result in prepare_execution_payload_expected_results:
