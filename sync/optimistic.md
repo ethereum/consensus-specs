@@ -47,7 +47,7 @@ def is_optimistic(store: Store, block: BeaconBlock) -> bool:
 
 ```python
 def latest_verified_ancestor(store: Store, block: BeaconBlock) -> BeaconBlock:
-	# It is assumed that the `block` parameter is never an INVALID block.
+    # It is assumed that the `block` parameter is never an INVALID block.
     while True:
         if not is_optimistic(store, block) or block.parent_root == Root():
             return block
