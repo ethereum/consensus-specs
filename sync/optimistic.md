@@ -168,10 +168,10 @@ head (due to the invalid chain of payloads) and the node is unable to produce a
 block that forks around the head (due to the justification of the malicious
 chain).
 
-If honest chain exists which justifies a higher epoch than the malicious chain,
-that chain will take precedence and revive any poisoned store. Therefore, the
-poisoning attack is temporary if >= 2/3rds of the network is honest and
-non-faulty.
+If an honest chain exists which justifies a higher epoch than the malicious
+chain, that chain will take precedence and revive any poisoned store.
+Therefore, the poisoning attack is temporary if >= 2/3rds of the network is
+honest and non-faulty.
 
 The `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` parameter assumes that the network
 will justify a honest chain within some number of slots. With this assumption,
