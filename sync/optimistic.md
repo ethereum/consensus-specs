@@ -61,8 +61,8 @@ def is_execution_block(block: BeaconBlock) -> BeaconBlock:
 
 ```python
 def should_optimistically_import_block(store: Store, current_slot: Slot, block: BeaconBlock) -> bool:
-	justified_root = store.block_states[store.head_block_root].current_justified_checkpoint.root
-	justifed_is_verified = is_execution_block(store.blocks[justified_root])
+    justified_root = store.block_states[store.head_block_root].current_justified_checkpoint.root
+    justifed_is_verified = is_execution_block(store.blocks[justified_root])
     block_is_deep = block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
     return justified_is_verified or block_is_deep
 ```
