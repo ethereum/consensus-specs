@@ -104,7 +104,7 @@ def invalid_cases():
                          RandomizationMode.mode_nil_count,
                          RandomizationMode.mode_one_count,
                          RandomizationMode.mode_max_count]:
-                for offset_index in offsets:
+                for index, offset_index in enumerate(offsets):
                     yield f'{name}_{mode.to_name()}_offset_{offset_index}_plus_one', \
                           invalid_test_case(lambda: mod_offset(
                               b=serialize(container_case_fn(rng, mode, typ)),
