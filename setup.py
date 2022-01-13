@@ -1008,7 +1008,7 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.812"],
+        "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
         "generator": ["python-snappy==0.5.4"],
     },
     install_requires=[
