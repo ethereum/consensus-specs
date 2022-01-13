@@ -262,10 +262,9 @@ def verify_degree_proof(commitment: KZGCommitment, degree: uint64, proof: KZGCom
     Verifies that the commitment is of polynomial degree <= degree. 
     """
 
-    # TODO! Check for off by one error
     assert (
         bls.Pairing(proof, G2_SETUP[0])
-        == bls.Pairing(commitment, G2_SETUP[-degree + 1])
+        == bls.Pairing(commitment, G2_SETUP[-degree - 1])
     )
 ```
 
@@ -321,6 +320,7 @@ def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldEle
         r = 1
         for w in roots:
             r = r * (z - w) % MODULUS
+        return r
 
     def Aprime(z):
         return points_per_blob * pow(z, points_per_blob - 1, MODULUS) 
@@ -347,20 +347,39 @@ def low_degree_check(commitments: List[KZGCommitment]):
     """
     Checks that the commitments are on a low-degree polynomial
     If there are 2*N commitments, that means they should lie on a polynomial
-    of degree d - N - 1, where d = next_power_of_two(2*N)
+    of degree d = K - N - 1, where K = next_power_of_two(2*N)
     (The remaining positions are filled with 0, this is to make FFTs usable)
     """
     # TODO!  -- this is currently wrong non power of two lists, need to implement last part of this: https://notes.ethereum.org/N-4E_VbaSy2Iqcug9ke8PQ
-    result = 0
+    assert len(commitments) % 2 == 1
     N = len(commitments) // 2
     r = hash_to_field(commitments)
-    domain_size = next_power_of_two(2 * N)
-    r_to_domain_size = pow(r, N, domain_size)
-    roots = roots_of_unity(domain_size)
+    K = next_power_of_two(2 * N)
+    d = K - N - 1
+    r_to_K = pow(r, N, K)
+    roots = roots_of_unity(K)
+
+    # For an efficient implementation, B and Bprime should be precomputed
+    def B(z):
+        r = 1
+        for w in roots[:d + 1]:
+            r = r * (z - w) % MODULUS
+        return r
+
+    def Bprime(z):
+        r = 0
+        for i in range(d + 1):
+            m = 1
+            for w in roots[:i] + roots[i+1:d + 1]:
+                m = m * (z - w) % MODULUS
+            r = (r + M) % MODULUS
+        return r
 
     coefs = []
-    for i in range(2 * N):
-        coefs.append(((-1)**i * r_to_domain_size - 1) * modular_inverse(roots[i * (domain_size // 2 - 1) % domain_size] * (r - roots[i])) % MODULUS)
+    for i in range(K):
+        coefs.append( - (r_to_K - 1) * modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % MODULUS)
+    for i in range(d + 1):
+        coefs.append( B(r) * modular_inverse(Bprime(r) * (r - roots[i])) % MODULUS)
     
     assert elliptic_curve_lincomb(commitments, coefs) == bls.Z1()
 ```
