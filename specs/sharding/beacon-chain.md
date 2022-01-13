@@ -88,7 +88,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `BLSCommitment` | `Bytes48` | A G1 curve point |
+| `KZGCommitment` | `Bytes48` | A G1 curve point |
 | `BLSFieldElement` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 
 ## Constants
@@ -162,6 +162,8 @@ class IntermediateBlockBid(Container):
     sharded_data_commitment_count: uint64 # Count of sharded data commitments
 
     bid: Gwei # Block builder bid paid to proposer
+
+    validator_index: ValidatorIndex # Validator index for this bid
     
     # Block builders use an Eth1 address -- need signature as
     # block builder fees and data gas base fees will be charged to this address
@@ -180,7 +182,7 @@ class ShardedCommitmentsContainer(Container):
     degree_proof: KZGCommitment
 
     # The sizes of the blocks encoded in the commitments (last intermediate and all beacon blocks since)
-    included_beacon_block_sizes: List[uint64, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS + 1]
+    included_block_sizes: List[uint64, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS + 1]
     
     # Number of commitments that are for sharded data (no blocks)
     included_sharded_data_commitments: uint64
@@ -189,77 +191,36 @@ class ShardedCommitmentsContainer(Container):
     block_verification_kzg_proof: KZGCommitment
 ```
 
-#### `IntermediateBlockBody`
-
-```python
-class IntermediateBlockBody(phase0.BeaconBlockBody):
-    attestation: Attestation
-    execution_payload: ExecutionPayload
-    sharded_commitments_container: ShardedCommitmentsContainer
-```
-
-#### `IntermediateBlockHeader`
-
-```python
-class IntermediateBlockHeader(Container):
-    slot: Slot
-    parent_root: Root
-    state_root: Root
-    body: Root
-```
-
-#### `IntermediateBlock`
-
-```python
-class IntermediateBlock(Container):
-    slot: Slot
-    parent_root: Root
-    state_root: Root
-    body: IntermediateBlockBody
-```
-
-#### `SignedIntermediateBlock`
-
-```python
-class SignedIntermediateBlock(Container):  # 
-    message: IntermediateBlock
-
-	signature_y_parity: bool
-	signature_r: uint256
-	signature_s: uint256    
-```
-
-#### `SignedIntermediateBlockHeader`
-
-```python
-class SignedIntermediateBlockHeader(Container):  # 
-    message: IntermediateBlockHeader
-
-	signature_y_parity: bool
-	signature_r: uint256
-	signature_s: uint256    
-```
-
 ### Extended Containers
 
 #### `BeaconState`
 
 ```python
 class BeaconState(bellatrix.BeaconState):
-    beacon_blocks_since_intermediate_block: List[BeaconBlock, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS]
-    last_intermediate_block: IntermediateBlock
+    blocks_since_intermediate_block: List[BeaconBlock, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS]
 ```
 
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(altair.BeaconBlockBody):  # Not from bellatrix because we don't want the payload
-    intermediate_block_bid: IntermediateBlockBid
+class BeaconBlockBody(bellatrix.BeaconBlockBody):
+    execution_payload: Union[None, ExecutionPayload]
+    sharded_commitments_container: Union[None, ShardedCommitmentsContainer]
+    intermediate_block_bid: Union[None, IntermediateBlockBid]
 ```
 
 ## Helper functions
 
 *Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
+
+### Block processing
+
+#### `is_intermediate_block_slot`
+
+```python
+def is_intermediate_block_slot(slot: Slot):
+    return slot % 2 == 1
+```
 
 ### KZG
 
@@ -273,18 +234,18 @@ def hash_to_field(x: Container):
 #### `compute_powers`
 
 ```python
-def compute_powers(x: uint256, n: uint64):
+def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
     current_power = 1
     powers = []
     for i in range(n):
-        powers.append(uint256(current_power))
+        powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % MODULUS
 ```
 
 #### `verify_kzg_proof`
 
 ```python
-def verify_kzg_proof(commitment: KZGCommitment, x: uint256, y: uint256, proof: KZGCommitment) -> List[uint256]:
+def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldElement, proof: KZGCommitment) -> None:
     zero_poly = G2_SETUP[1].add(G2_SETUP[0].mult(x).neg())
 
     assert (
@@ -311,18 +272,18 @@ def verify_degree_proof(commitment: KZGCommitment, degree: uint64, proof: KZGCom
 #### `block_to_field_elements`
 
 ```python
-def block_to_field_elements(block: bytes) -> List[uint256]:
+def block_to_field_elements(block: bytes) -> List[BLSFieldElement]:
     """
     Slices a block into 31 byte chunks that can fit into field elements
     """
     sliced_block = [block[i:i + 31] for i in range(0, len(bytes), 31)]
-    return [uint256(int.from_bytes(x, "little")) for x in sliced_block]
+    return [BLSFieldElement(int.from_bytes(x, "little")) for x in sliced_block]
 ```
 
 #### `roots_of_unity`
 
 ```python
-def roots_of_unity(order: uint64) -> List[uint256]:
+def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
     r = []
     root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // order, MODULUS)
 
@@ -350,7 +311,7 @@ def modular_inverse(a):
 #### `eval_poly_at`
 
 ```python
-def eval_poly_at(poly: List[uint256], x: uint256) -> uint256:
+def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldElement:
     """
     Evaluates a polynomial (in evaluation form) at an arbitrary point
     """
@@ -389,6 +350,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
     of degree d - N - 1, where d = next_power_of_two(2*N)
     (The remaining positions are filled with 0, this is to make FFTs usable)
     """
+    # TODO!  -- this is currently wrong non power of two lists, need to implement last part of this: https://notes.ethereum.org/N-4E_VbaSy2Iqcug9ke8PQ
     result = 0
     N = len(commitments) // 2
     r = hash_to_field(commitments)
@@ -406,7 +368,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
 #### `vector_lincomb`
 
 ```python
-def vector_lincomb(vectors: List[List[uint256]], scalars: List[uint256]) -> List[uint256]:
+def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
     """
     Compute a linear combination of field element vectors
     """
@@ -414,13 +376,13 @@ def vector_lincomb(vectors: List[List[uint256]], scalars: List[uint256]) -> List
     for v, a in zip(vectors, scalars):
         for i, x in enumerate(v):
             r[i] = (r[i] + a * x) % MODULUS
-    return [uint256(x) for x in r]
+    return [BLSFieldElement(x) for x in r]
 ```
 
 #### `elliptic_curve_lincomb`
 
 ```python
-def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[uint256]) -> KZGCommitment:
+def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
     """
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
@@ -450,92 +412,36 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
 ```python
 def process_beacon_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
+    verify_intermediate_block_bid_commitment(state, block)
+    verify_intermediate_block_bid(state, block)
+    process_sharded_data(state, block)
+    if is_execution_enabled(state, block.body):
+        process_execution_payload(state, block, EXECUTION_ENGINE)
+
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
 
-    state.beacon_blocks_since_intermediate_block.append(block)
+    if is_intermediat_block_slot(block.slot):
+        state.blocks_since_intermediate_block = []
+    state.blocks_since_intermediate_block.append(block)
 ```
 
-#### `process_intermediate_block`
+#### Block header
 
 ```python
-def process_intermediate_block(state: BeaconState, block: IntermediateBlock) -> None:
-    process_intermediate_block_header(state, block)
-    process_intermediate_block_bid_commitment(state, block)
-    process_sharded_data(state, block)
-    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
-    process_intermediate_block_attestations(state, block)
-
-    state.last_intermediate_block = block
-```
-
-#### Beacon Block Operations
-
-```python
-def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
-
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(body.proposer_slashings, process_proposer_slashing)
-    for_ops(body.attester_slashings, process_attester_slashing)
-
-    # New shard proposer slashing processing
-    for_ops(body.shard_proposer_slashings, process_shard_proposer_slashing)
-
-    # Limit is dynamic: based on active shard count
-    assert len(body.shard_headers) <= MAX_SHARD_HEADERS_PER_SHARD * get_active_shard_count(state, get_current_epoch(state))
-    for_ops(body.shard_headers, process_shard_header)
-
-    # New attestation processing
-    for_ops(body.attestations, process_attestation)
-    for_ops(body.deposits, process_deposit)
-    for_ops(body.voluntary_exits, process_voluntary_exit)
-```
-
-#### Intermediate Block Operations
-
-```python
-def process_intermediate_block_attestations(state: BeaconState, body: IntermediateBlockBody) -> None:
-
-    for attestation in block.body.attestations:
-    process_attestation(state, block.body.attestation)
-```
-
-#### Intermediate Block Bid Commitment
-
-```python
-def process_intermediate_block_bid_commitment(state: BeaconState, body: IntermediateBlockBody) -> None:
-    # Get last intermediate block bid
-    intermediate_block_bid = state.beacon_blocks_since_intermediate_block[-1].body.intermediate_block_bid
-
-    assert intermediate_block_bid.execution_payload_root == hash_tree_root(body.execution_payload)
-
-    assert intermediate_block_bid.sharded_data_commitment_number == body.sharded_commitments_container.included_sharded_data_commitments
-
-    assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(body.sharded_commitments_container.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
-```
-
-#### Intermediate Block header
-
-```python
-def process_intermediate_block_header(state: BeaconState, block: IntermediateBlock) -> None:
+def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
-
     # Verify that the block is newer than latest block header
-    assert block.slot == state.latest_block_header.slot + 1
-
+    assert block.slot > state.latest_block_header.slot
+    # Verify that proposer index is the correct index
+    if not is_intermediate_block_slot(block.slot):
+        assert block.proposer_index == get_beacon_proposer_index(state)
     # Verify that the parent matches
     assert block.parent_root == hash_tree_root(state.latest_block_header)
-
     # Cache current block as the new latest block
-    # TODO! Adapt this to support intermediate block headers
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         proposer_index=block.proposer_index,
@@ -543,43 +449,79 @@ def process_intermediate_block_header(state: BeaconState, block: IntermediateBlo
         state_root=Bytes32(),  # Overwritten in the next process_slot call
         body_root=hash_tree_root(block.body),
     )
+
+    # Verify proposer is not slashed
+    proposer = state.validators[block.proposer_index]
+    assert not proposer.slashed
+```
+
+#### Intermediate Block Bid Commitment
+
+```python
+def verify_intermediate_block_bid_commitment(state: BeaconState, block: BeaconBlock) -> None:
+    if is_intermediate_block_slot(block.slot):
+
+```
+
+#### Intermediate Block Bid
+
+```python
+def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> None:
+    if is_intermediate_block_slot(block.slot):
+        # Get last intermediate block bid
+        intermediate_block_bid = state.blocks_since_intermediate_block[-1].body.intermediate_block_bid
+
+        assert intermediate_block_bid.execution_payload_root == hash_tree_root(block.body.execution_payload)
+
+        assert intermediate_block_bid.sharded_data_commitment_number == block.body.sharded_commitments_container.included_sharded_data_commitments
+
+        assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(block.body.sharded_commitments_container.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
+
+        assert intermediate_block_bid.validator_index == block.proposer_index
+
+        assert block.body.intermediate_block_bid.selector == 0 # Verify that intermediate block does not contain bid
+    else:
+        assert block.body.intermediate_block_bid.selector == 1
 ```
 
 #### Sharded data
 
-
 ```python
-def process_sharded_data(state: BeaconState, body: IntermediateBlockBody) -> None:
-    sharded_commitments_container = body.sharded_commitments_container
+def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
+    if is_intermediate_block_slot(block.slot):
+        assert block.body.sharded_commitments_container.selector == 1
+        sharded_commitments_container = block.body.sharded_commitments_container.value
 
-    # Verify the degree proof
-    r = hash_to_field(sharded_commitments_container.sharded_commitments)
-    r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
-    combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
+        # Verify the degree proof
+        r = hash_to_field(sharded_commitments_container.sharded_commitments)
+        r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
+        combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
 
-    verify_degree_proof(combined_commitments, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
+        verify_degree_proof(combined_commitment, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
 
-    # Verify that the 2*N commitments lie on a degree N-1 polynomial
-    low_degree_check(sharded_commitments_container.sharded_commitments)
+        # Verify that the 2*N commitments lie on a degree N-1 polynomial
+        low_degree_check(sharded_commitments_container.sharded_commitments)
 
-    # Verify that last intermediate block and beacon block (blocks if intermediate blocks were missing) have been included
-    intermediate_block_chunked = block_to_field_elements(ssz_serialize(state.last_intermediate_block))
-    beacon_blocks_chunked = [block_to_field_elements(ssz_serialize(block)) for block in state.beacon_blocks_since_intermediate_block]
-    block_vectors = []
-    for block_chunked in [intermediate_block_chunked] + beacon_blocks_chunked:
-        for i in range(0, len(block_chunked), SAMPLES_PER_BLOB * POINTS_PER_SAMPLE):
-            block_vectors.append(block_chunked[i:i + SAMPLES_PER_BLOB * POINTS_PER_SAMPLE])
-        
-    number_of_blobs = len(block_vectors)
-    r = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 0])
-    x = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 1])
+        # Verify that last intermediate block and beacon block (blocks if intermediate blocks were missing) have been included
+        intermediate_block_chunked = block_to_field_elements(ssz_serialize(state.last_intermediate_block))
+        beacon_blocks_chunked = [block_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_intermediate_block]
+        block_vectors = []
+        for block_chunked in [intermediate_block_chunked] + beacon_blocks_chunked:
+            for i in range(0, len(block_chunked), SAMPLES_PER_BLOB * POINTS_PER_SAMPLE):
+                block_vectors.append(block_chunked[i:i + SAMPLES_PER_BLOB * POINTS_PER_SAMPLE])
+            
+        number_of_blobs = len(block_vectors)
+        r = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 0])
+        x = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 1])
 
-    r_powers = compute_powers(r, number_of_blobs)
-    combined_vector = vector_lincomb(block_vectors, r_powers)
-    combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
-    y = eval_poly_at(combined_vector, x)
+        r_powers = compute_powers(r, number_of_blobs)
+        combined_vector = vector_lincomb(block_vectors, r_powers)
+        combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
+        y = eval_poly_at(combined_vector, x)
 
-    verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
+        verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
+    else:
+        assert block.body.sharded_commitments_container.selector == 0 # Only intermediate blocks have sharded commitments
 ```
 
 The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
@@ -590,69 +532,51 @@ The goal is to ensure that a proof can only be constructed if `deg(B) < l` (ther
 #### Execution payload
 
 ```python
-def process_execution_payload(state: BeaconState, block: IntermediateBlock, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_engine: ExecutionEngine) -> None:
+    if is_intermediate_block_slot(block.slot):
+        assert block.body.execution_payload.selector == 1
+        payload = block.body.execution_payload.value
 
-    payload = block.body.execution_payload
+        # Verify consistency of the parent hash with respect to the previous execution payload header
+        if is_merge_transition_complete(state):
+            assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+        # Verify random
+        assert payload.random == get_randao_mix(state, get_current_epoch(state))
+        # Verify timestamp
+        assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
 
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify random
-    assert payload.random == get_randao_mix(state, get_current_epoch(state))
-    # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+        # Get sharded data commitments
+        sharded_commitments_container = block.body.sharded_commitments_container
+        sharded_data_commitments = sharded_commitments_container.sharded_commitments[-sharded_commitments_container.included_sharded_data_commitments:]
 
-    # Get sharded data commitments
-    sharded_commitments_container = block.body.sharded_commitments_container
-    sharded_data_commitments = sharded_commitments_container.sharded_commitments[-sharded_commitments_container.included_sharded_data_commitments:]
-
-    # Get all unprocessed intermediate block bids
-    unprocessed_intermediate_block_bids = []
-    for block in state.beacon_blocks_since_intermediate_block:
-        unprocessed_intermediate_block_bids.append(block.body.intermediate_block_bid)
+        # Get all unprocessed intermediate block bids
+        unprocessed_intermediate_block_bids = []
+        for block in state.blocks_since_intermediate_block:
+            unprocessed_intermediate_block_bids.append(block.body.intermediate_block_bid)
 
 
-    # Verify the execution payload is valid
-    assert execution_engine.execute_payload(payload,
-                                            sharded_data_commitments,
-                                            unprocessed_intermediate_block_bids)
+        # Verify the execution payload is valid
+        assert execution_engine.execute_payload(payload,
+                                                sharded_data_commitments,
+                                                unprocessed_intermediate_block_bids)
 
-    # Cache execution payload header
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=payload.parent_hash,
-        fee_recipient=payload.fee_recipient,
-        state_root=payload.state_root,
-        receipt_root=payload.receipt_root,
-        logs_bloom=payload.logs_bloom,
-        random=payload.random,
-        block_number=payload.block_number,
-        gas_limit=payload.gas_limit,
-        gas_used=payload.gas_used,
-        timestamp=payload.timestamp,
-        extra_data=payload.extra_data,
-        base_fee_per_gas=payload.base_fee_per_gas,
-        block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-    )
-```
-
-### Epoch transition
-
-This epoch transition overrides Bellatrix epoch transition:
-
-```python
-def process_epoch(state: BeaconState) -> None:
-    # Base functionality
-    process_justification_and_finalization(state)
-    process_inactivity_updates(state)
-    process_rewards_and_penalties(state)
-    process_registry_updates(state)
-    process_slashings(state)
-    process_eth1_data_reset(state)
-    process_effective_balance_updates(state)
-    process_slashings_reset(state)
-    process_randao_mixes_reset(state)
-    process_historical_roots_update(state)
-    process_participation_flag_updates(state)
-    process_sync_committee_updates(state)
+        # Cache execution payload header
+        state.latest_execution_payload_header = ExecutionPayloadHeader(
+            parent_hash=payload.parent_hash,
+            fee_recipient=payload.fee_recipient,
+            state_root=payload.state_root,
+            receipt_root=payload.receipt_root,
+            logs_bloom=payload.logs_bloom,
+            random=payload.random,
+            block_number=payload.block_number,
+            gas_limit=payload.gas_limit,
+            gas_used=payload.gas_used,
+            timestamp=payload.timestamp,
+            extra_data=payload.extra_data,
+            base_fee_per_gas=payload.base_fee_per_gas,
+            block_hash=payload.block_hash,
+            transactions_root=hash_tree_root(payload.transactions),
+        )
+    else:
+        assert block.body.execution_payload.selector == 0 # Only intermediate blocks have execution payloads
 ```
