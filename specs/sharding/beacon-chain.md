@@ -412,7 +412,6 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
 ```python
 def process_beacon_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    verify_intermediate_block_bid_commitment(state, block)
     verify_intermediate_block_bid(state, block)
     process_sharded_data(state, block)
     if is_execution_enabled(state, block.body):
