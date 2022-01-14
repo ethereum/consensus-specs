@@ -60,15 +60,13 @@
 ## Introduction
 
 This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding,
-based on the ideas [here](https://hackmd.io/G-Iy5jqyT7CXWEz8Ssos8g) and more broadly [here](https://arxiv.org/abs/1809.09044),
+based on the ideas [here](https://notes.ethereum.org/@dankrad/new_sharding) and more broadly [here](https://arxiv.org/abs/1809.09044),
 using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
 
 ### Glossary
 
 - **Data**: A list of KZG points, to translate a byte string into
 - **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
-- **Builder**: Independent actor that builds blobs and bids for proposal slots via fee-paying blob-headers, responsible for availability.
-- **Shard proposer**: Validator taking bids from blob builders for shard data opportunity, co-signs with builder to propose the blob.
 
 ## Custom types
 
