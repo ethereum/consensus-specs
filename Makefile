@@ -25,6 +25,7 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 
 MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) \
                  $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
+                 $(wildcard $(SPEC_DIR)/capella/*.md) \
                  $(wildcard $(SPEC_DIR)/custody/*.md) \
                  $(wildcard $(SPEC_DIR)/das/*.md) \
                  $(wildcard $(SPEC_DIR)/sharding/*.md)
