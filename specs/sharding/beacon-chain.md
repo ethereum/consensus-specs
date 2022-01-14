@@ -13,57 +13,45 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
-  - [Domain types](#domain-types)
-  - [Shard Work Status](#shard-work-status)
-  - [Misc](#misc-1)
-  - [Participation flag indices](#participation-flag-indices)
-  - [Incentivization weights](#incentivization-weights)
 - [Preset](#preset)
-  - [Misc](#misc-2)
+  - [Misc](#misc-1)
+  - [Time parameters](#time-parameters)
   - [Shard blob samples](#shard-blob-samples)
   - [Precomputed size verification points](#precomputed-size-verification-points)
-  - [Gwei values](#gwei-values)
 - [Configuration](#configuration)
-- [Updated containers](#updated-containers)
-  - [`AttestationData`](#attestationdata)
-  - [`BeaconBlockBody`](#beaconblockbody)
-  - [`BeaconState`](#beaconstate)
-- [New containers](#new-containers)
-  - [`Builder`](#builder)
-  - [`DataCommitment`](#datacommitment)
-  - [`AttestedDataCommitment`](#attesteddatacommitment)
-  - [`ShardBlobBody`](#shardblobbody)
-  - [`ShardBlobBodySummary`](#shardblobbodysummary)
-  - [`ShardBlob`](#shardblob)
-  - [`ShardBlobHeader`](#shardblobheader)
-  - [`SignedShardBlob`](#signedshardblob)
-  - [`SignedShardBlobHeader`](#signedshardblobheader)
-  - [`PendingShardHeader`](#pendingshardheader)
-  - [`ShardBlobReference`](#shardblobreference)
-  - [`ShardProposerSlashing`](#shardproposerslashing)
-  - [`ShardWork`](#shardwork)
+  - [Time parameters](#time-parameters-1)
+- [Containers](#containers)
+  - [New Containers](#new-containers)
+    - [`IntermediateBlockBid`](#intermediateblockbid)
+    - [`IntermediateBlockBidWithRecipientAddress`](#intermediateblockbidwithrecipientaddress)
+    - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
+  - [Extended Containers](#extended-containers)
+    - [`BeaconState`](#beaconstate)
+    - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc-3)
-    - [`next_power_of_two`](#next_power_of_two)
-    - [`compute_previous_slot`](#compute_previous_slot)
-    - [`compute_updated_sample_price`](#compute_updated_sample_price)
-    - [`compute_committee_source_epoch`](#compute_committee_source_epoch)
-    - [`batch_apply_participation_flag`](#batch_apply_participation_flag)
-  - [Beacon state accessors](#beacon-state-accessors)
-    - [Updated `get_committee_count_per_slot`](#updated-get_committee_count_per_slot)
-    - [`get_active_shard_count`](#get_active_shard_count)
-    - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [`get_start_shard`](#get_start_shard)
-    - [`compute_shard_from_committee_index`](#compute_shard_from_committee_index)
-    - [`compute_committee_index_from_shard`](#compute_committee_index_from_shard)
   - [Block processing](#block-processing)
-    - [Operations](#operations)
-      - [Extended Attestation processing](#extended-attestation-processing)
-      - [`process_shard_header`](#process_shard_header)
-      - [`process_shard_proposer_slashing`](#process_shard_proposer_slashing)
-  - [Epoch transition](#epoch-transition)
-    - [`process_pending_shard_confirmations`](#process_pending_shard_confirmations)
-    - [`reset_pending_shard_work`](#reset_pending_shard_work)
+    - [`is_intermediate_block_slot`](#is_intermediate_block_slot)
+  - [KZG](#kzg)
+    - [`hash_to_field`](#hash_to_field)
+    - [`compute_powers`](#compute_powers)
+    - [`verify_kzg_proof`](#verify_kzg_proof)
+    - [`verify_degree_proof`](#verify_degree_proof)
+    - [`block_to_field_elements`](#block_to_field_elements)
+    - [`roots_of_unity`](#roots_of_unity)
+    - [`modular_inverse`](#modular_inverse)
+    - [`eval_poly_at`](#eval_poly_at)
+    - [`next_power_of_two`](#next_power_of_two)
+    - [`low_degree_check`](#low_degree_check)
+    - [`vector_lincomb`](#vector_lincomb)
+    - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_active_shard_count`](#get_active_shard_count)
+  - [Block processing](#block-processing-1)
+    - [`process_block`](#process_block)
+    - [Block header](#block-header)
+    - [Intermediate Block Bid](#intermediate-block-bid)
+    - [Sharded data](#sharded-data)
+    - [Execution payload](#execution-payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -101,7 +89,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) modulus |
 | `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2) | Factor by which samples are extended for data availability encoding |
-| `POINTS_PER_SAMPLE` | `uint64(2**4)` (= 16) | 31 * 16 = 496 bytes |
+| `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(2**4)` (= 16) | 31 * 16 = 496 bytes |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 
 ## Preset
@@ -133,7 +121,7 @@ With the introduction of intermediate blocks the number of slots per epoch is do
 | - | - |
 | `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
 | `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // int(SAMPLES_PER_BLOB * POINTS_PER_SAMPLE), MODULUS)` |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // int(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE), MODULUS)` |
 
 ## Configuration
 
@@ -155,6 +143,9 @@ E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
 
 ```python
 class IntermediateBlockBid(Container):
+    slot: Slot
+    parent_block_root: Root
+
     execution_payload_root: Root
 
     sharded_data_commitment_root: Root # Root of the sharded data (only data, not beacon/intermediate block commitments)
@@ -170,6 +161,14 @@ class IntermediateBlockBid(Container):
 	signature_y_parity: bool
 	signature_r: uint256
 	signature_s: uint256    
+```
+
+#### `IntermediateBlockBidWithRecipientAddress`
+
+```python
+class IntermediateBlockBidWithRecipientAddress(Container):
+    intermediate_block_bid: Union[None, IntermediateBlockBid]
+    ethereum_address: Bytes[20] # Address to receive the block builder bid
 ```
 
 #### `ShardedCommitmentsContainer`
@@ -206,7 +205,7 @@ class BeaconState(bellatrix.BeaconState):
 class BeaconBlockBody(bellatrix.BeaconBlockBody):
     execution_payload: Union[None, ExecutionPayload]
     sharded_commitments_container: Union[None, ShardedCommitmentsContainer]
-    intermediate_block_bid: Union[None, IntermediateBlockBid]
+    intermediate_block_bid_with_recipient_address: Union[None, IntermediateBlockBidWithRecipientAddress]
 ```
 
 ## Helper functions
@@ -287,7 +286,7 @@ def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
     root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // order, MODULUS)
 
     current_root_of_unity = 1
-    for i in range(len(SAMPLES_PER_BLOB * POINTS_PER_SAMPLE)):
+    for i in range(len(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE)):
         r.append(current_root_of_unity)
         current_root_of_unity = current_root_of_unity * root_of_unity % MODULUS
     return r
@@ -314,8 +313,9 @@ def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldEle
     """
     Evaluates a polynomial (in evaluation form) at an arbitrary point
     """
-    points_per_blob = SAMPLES_PER_BLOB * POINTS_PER_SAMPLE
-    roots = roots_of_unity(points_per_blob)
+    field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE
+    roots = roots_of_unity(field_elements_per_blob)
+
     def A(z):
         r = 1
         for w in roots:
@@ -323,7 +323,7 @@ def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldEle
         return r
 
     def Aprime(z):
-        return points_per_blob * pow(z, points_per_blob - 1, MODULUS) 
+        return field_elements_per_blob * pow(z, field_elements_per_blob - 1, MODULUS) 
 
     r = 0
     inverses = [modular_inverse(z - x) for z in roots]
@@ -349,9 +349,10 @@ def low_degree_check(commitments: List[KZGCommitment]):
     If there are 2*N commitments, that means they should lie on a polynomial
     of degree d = K - N - 1, where K = next_power_of_two(2*N)
     (The remaining positions are filled with 0, this is to make FFTs usable)
+
+    For details see here: https://notes.ethereum.org/@dankrad/barycentric_low_degree_check
     """
-    # TODO!  -- this is currently wrong non power of two lists, need to implement last part of this: https://notes.ethereum.org/N-4E_VbaSy2Iqcug9ke8PQ
-    assert len(commitments) % 2 == 1
+    assert len(commitments) % 2 == 0
     N = len(commitments) // 2
     r = hash_to_field(commitments)
     K = next_power_of_two(2 * N)
@@ -379,7 +380,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
     for i in range(K):
         coefs.append( - (r_to_K - 1) * modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % MODULUS)
     for i in range(d + 1):
-        coefs.append( B(r) * modular_inverse(Bprime(r) * (r - roots[i])) % MODULUS)
+        coefs[i] = (coefs[i] + B(r) * modular_inverse(Bprime(r) * (r - roots[i]))) % MODULUS
     
     assert elliptic_curve_lincomb(commitments, coefs) == bls.Z1()
 ```
@@ -403,7 +404,7 @@ def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldE
 ```python
 def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
     """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants. This is a non-optimized implementation.
     """
     r = bls.Z1()
     for x, a in zip(points, scalars):
@@ -441,7 +442,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
 
-    if is_intermediat_block_slot(block.slot):
+    if is_intermediate_block_slot(block.slot):
         state.blocks_since_intermediate_block = []
     state.blocks_since_intermediate_block.append(block)
 ```
@@ -473,21 +474,15 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     assert not proposer.slashed
 ```
 
-#### Intermediate Block Bid Commitment
-
-```python
-def verify_intermediate_block_bid_commitment(state: BeaconState, block: BeaconBlock) -> None:
-    if is_intermediate_block_slot(block.slot):
-
-```
-
 #### Intermediate Block Bid
 
 ```python
 def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> None:
     if is_intermediate_block_slot(block.slot):
         # Get last intermediate block bid
-        intermediate_block_bid = state.blocks_since_intermediate_block[-1].body.intermediate_block_bid
+        assert state.blocks_since_intermediate_block[-1].body.intermediate_block_bid_with_recipient_address.selector == 1
+        intermediate_block_bid = state.blocks_since_intermediate_block[-1].body.intermediate_block_bid_with_recipient_address.value.intermediate_block_bid
+        assert intermediate_block_bid.slot + 1 == block.slot
 
         assert intermediate_block_bid.execution_payload_root == hash_tree_root(block.body.execution_payload)
 
@@ -497,9 +492,13 @@ def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> Non
 
         assert intermediate_block_bid.validator_index == block.proposer_index
 
-        assert block.body.intermediate_block_bid.selector == 0 # Verify that intermediate block does not contain bid
+        assert block.body.intermediate_block_bid_with_recipient_address.selector == 0 # Verify that intermediate block does not contain bid
     else:
-        assert block.body.intermediate_block_bid.selector == 1
+        assert block.body.intermediate_block_bid_with_recipient_address.selector == 1
+
+        intermediate_block_bid = block.body.intermediate_block_bid_with_recipient_address.value.intermediate_block_bid
+        assert intermediate_block_bid.slot == block.slot
+        assert intermediate_block_bid.parent_block_root == block.parent_root
 ```
 
 #### Sharded data
@@ -510,23 +509,26 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         assert block.body.sharded_commitments_container.selector == 1
         sharded_commitments_container = block.body.sharded_commitments_container.value
 
+        # Verify not too many commitments
+        assert len(sharded_commitments_container.sharded_commitments) // 2 <= get_active_shard_count(state, get_current_epoch(state))
+
         # Verify the degree proof
         r = hash_to_field(sharded_commitments_container.sharded_commitments)
         r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
         combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
 
-        verify_degree_proof(combined_commitment, SAMPLES_PER_BLOB * POINTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
+        verify_degree_proof(combined_commitment, SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
 
         # Verify that the 2*N commitments lie on a degree N-1 polynomial
         low_degree_check(sharded_commitments_container.sharded_commitments)
 
-        # Verify that last intermediate block and beacon block (blocks if intermediate blocks were missing) have been included
-        intermediate_block_chunked = block_to_field_elements(ssz_serialize(state.last_intermediate_block))
-        beacon_blocks_chunked = [block_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_intermediate_block]
+        # Verify that blocks since the last intermediate block have been included
+        blocks_chunked = [block_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_intermediate_block]
         block_vectors = []
-        for block_chunked in [intermediate_block_chunked] + beacon_blocks_chunked:
-            for i in range(0, len(block_chunked), SAMPLES_PER_BLOB * POINTS_PER_SAMPLE):
-                block_vectors.append(block_chunked[i:i + SAMPLES_PER_BLOB * POINTS_PER_SAMPLE])
+        field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE
+        for block_chunked in blocks_chunked:
+            for i in range(0, len(block_chunked), field_elements_per_blob):
+                block_vectors.append(block_chunked[i:i + field_elements_per_blob])
             
         number_of_blobs = len(block_vectors)
         r = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 0])
@@ -538,14 +540,13 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         y = eval_poly_at(combined_vector, x)
 
         verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
+
+        # Verify that number of sharded data commitments is correctly indicated
+        assert 2 * (number_of_blobs + included_sharded_data_commitments) == len(sharded_commitments_container.sharded_commitments)
+
     else:
         assert block.body.sharded_commitments_container.selector == 0 # Only intermediate blocks have sharded commitments
 ```
-
-The degree proof works as follows. For a block `B` with length `l` (so `l`  values in `[0...l - 1]`, seen as a polynomial `B(X)` which takes these values),
-the length proof is the commitment to the polynomial `B(X) * X**(MAX_DEGREE + 1 - l)`,
-where `MAX_DEGREE` is the maximum power of `s` available in the setup, which is `MAX_DEGREE = len(G2_SETUP) - 1`.
-The goal is to ensure that a proof can only be constructed if `deg(B) < l` (there are not hidden higher-order terms in the polynomial, which would thwart reconstruction).
 
 #### Execution payload
 
@@ -568,15 +569,18 @@ def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_
         sharded_data_commitments = sharded_commitments_container.sharded_commitments[-sharded_commitments_container.included_sharded_data_commitments:]
 
         # Get all unprocessed intermediate block bids
-        unprocessed_intermediate_block_bids = []
-        for block in state.blocks_since_intermediate_block:
-            unprocessed_intermediate_block_bids.append(block.body.intermediate_block_bid)
-
+        unprocessed_intermediate_block_bid_with_recipient_addresses = []
+        for block in state.blocks_since_intermediate_block[1:]:
+            unprocessed_intermediate_block_bid_with_recipient_addresses.append(block.body.intermediate_block_bid_with_recipient_address.value)
 
         # Verify the execution payload is valid
+        # The execution engine gets two extra payloads: One for the sharded data commitments (these are needed to verify type 3 transactions)
+        # and one for all so far unprocessed intermediate block bids:
+        # * The execution engine needs to transfer the balance from the bidder to the proposer.
+        # * The execution engine needs to deduct data gas fees from the bidder balances
         assert execution_engine.execute_payload(payload,
                                                 sharded_data_commitments,
-                                                unprocessed_intermediate_block_bids)
+                                                unprocessed_intermediate_block_bid_with_recipient_addresses)
 
         # Cache execution payload header
         state.latest_execution_payload_header = ExecutionPayloadHeader(
