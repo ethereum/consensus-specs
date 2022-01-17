@@ -188,6 +188,19 @@ class ShardedCommitmentsContainer(Container):
     block_verification_kzg_proof: KZGCommitment
 ```
 
+#### `ShardSample`
+
+```python
+class SignedShardSample(Container):
+    slot: Slot
+    row: uint64
+    column: uint64
+    data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE]
+    proof: KZGCommitment
+    builder: ValidatorIndex
+    signature: BLSSignature
+```
+
 ### Extended Containers
 
 #### `BeaconState`
