@@ -24,7 +24,7 @@ def run_sync_committees_progress_test(spec, state):
     first_sync_committee = state.current_sync_committee.copy()
     second_sync_committee = state.next_sync_committee.copy()
 
-    current_period = spec.get_current_epoch(state) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    current_period = spec.compute_sync_committee_period(spec.get_current_epoch(state))
     next_period = current_period + 1
     next_period_start_epoch = next_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
     next_period_start_slot = next_period_start_epoch * spec.SLOTS_PER_EPOCH

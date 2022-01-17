@@ -157,8 +157,8 @@ def validate_light_client_update(store: LightClientStore,
     assert current_slot >= active_header.slot > store.finalized_header.slot
 
     # Verify update does not skip a sync committee period
-    finalized_period = compute_epoch_at_slot(store.finalized_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = compute_epoch_at_slot(active_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
+    update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
     assert update_period in (finalized_period, finalized_period + 1)
 
     # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
@@ -208,8 +208,8 @@ def validate_light_client_update(store: LightClientStore,
 ```python
 def apply_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
     active_header = get_active_header(update)
-    finalized_period = compute_epoch_at_slot(store.finalized_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = compute_epoch_at_slot(active_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
+    update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
     if update_period == finalized_period + 1:
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
