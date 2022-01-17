@@ -185,7 +185,7 @@ def validate_light_client_update(store: LightClientStore,
             branch=update.next_sync_committee_branch,
             depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
             index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
-            root=active_header.state_root,
+            root=update.attested_header.state_root,
         )
 
     sync_aggregate = update.sync_aggregate
