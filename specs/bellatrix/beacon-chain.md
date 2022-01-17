@@ -169,7 +169,7 @@ class ExecutionPayload(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
-    receipt_root: Bytes32  # 'receipts root' in the yellow paper
+    receipts_root: Bytes32  # 'receipts root' in the yellow paper
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     random: Bytes32  # 'difficulty' in the yellow paper
     block_number: uint64  # 'number' in the yellow paper
@@ -191,7 +191,7 @@ class ExecutionPayloadHeader(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress
     state_root: Bytes32
-    receipt_root: Bytes32
+    receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     random: Bytes32
     block_number: uint64
@@ -359,7 +359,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         parent_hash=payload.parent_hash,
         fee_recipient=payload.fee_recipient,
         state_root=payload.state_root,
-        receipt_root=payload.receipt_root,
+        receipts_root=payload.receipts_root,
         logs_bloom=payload.logs_bloom,
         random=payload.random,
         block_number=payload.block_number,
