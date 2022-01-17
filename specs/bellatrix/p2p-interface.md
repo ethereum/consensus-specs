@@ -202,7 +202,7 @@ always by simultaneously respected.
 
 ### Why allow invalid payloads on the P2P network?
 
-The specification allows blocks with invalid payloads to propagate across
+The specification allows blocks with invalid execution payloads to propagate across
 gossip and via RPC calls. The reasoning for this is as follows:
 
 1. Optimistic nodes must listen to block gossip to obtain a view of the head of
@@ -213,8 +213,8 @@ gossip and via RPC calls. The reasoning for this is as follows:
    to requests for the parent via RPC.
 4. Therefore, optimistic nodes must send optimistic blocks via RPC.
 
-So, to prevent network segregation from optimistic nodes accidentally sending
-invalid payloads, nodes should never downscore/disconnect nodes due to invalid
+So, to prevent network segregation from optimistic nodes inadvertently sending
+invalid execution payloads, nodes should never downscore/disconnect nodes due to such invalid
 payloads. This does open the network to some DoS attacks from invalid execution
 payloads, but the scope of actors is limited to validators who can put those
 payloads in valid (and slashable) beacon blocks. Therefore, it is argued that

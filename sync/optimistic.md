@@ -116,16 +116,16 @@ from an execution engine. I.e., perform the following transitions:
 - `SYNCING` -> `INVALID`
 
 When a block transitions from `SYNCING` -> `VALID`, all *ancestors* of the
-block MUST also transition from `SYNCING` -> `VALID`. Such a block is no longer
+block MUST also transition from `SYNCING` -> `VALID`. Such a block and any previously `SYNCING` ancestors are no longer
 considered "optimistically imported".
 
 When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
 
-When a block transitions from the `SYNCING` state it is removed from the set of
+When a block transitions from the `SYNCING` state, it is removed from the set of
 `store.optimistic_roots`.
 
-When a "merge block" (i.e. a block which enables execution) is declared to be
+When a "merge block" (i.e. the first block which enables execution in a chain) is declared to be
 `VALID` by an execution engine (either directly or indirectly), the full
 [`validate_merge_block`][] MUST be run against the merge block. If the block
 fails [`validate_merge_block`][], the merge block MUST be treated the same as
