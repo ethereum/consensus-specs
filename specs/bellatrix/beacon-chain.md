@@ -169,7 +169,7 @@ class ExecutionPayload(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
-    receipts_root: Bytes32  # 'receipts root' in the yellow paper
+    receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     random: Bytes32  # 'difficulty' in the yellow paper
     block_number: uint64  # 'number' in the yellow paper
