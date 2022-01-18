@@ -39,6 +39,9 @@ Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have only received a `SYNCING` designation
 from an execution engine (i.e., they are not known to be `INVALID` or `VALID`).
 
+Let `current_slot: Slot` be `(time - genesis_time) // SECONDS_PER_SLOT` where
+`time` is the UNIX time according to the local system clock.
+
 ```python
 @dataclass
 class OptimisticStore(object):
