@@ -71,7 +71,7 @@ def is_execution_block(block: BeaconBlock) -> BeaconBlock:
 ```
 
 ```python
-def should_optimistically_import_block(opt_store: OptimisticStore, current_slot: Slot, block: BeaconBlock) -> bool:
+def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot, block: BeaconBlock) -> bool:
     justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
     justifed_is_verified = is_execution_block(opt_store.blocks[justified_root])
     block_is_deep = block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
@@ -90,7 +90,7 @@ behaviours without regard for optimistic sync.
 ### When to optimistically import blocks
 
 A block MAY be optimistically imported when
-`should_optimistically_import_block(opt_store, current_slot, block)` returns
+`is_optimistic_candidate_block(opt_store, current_slot, block)` returns
 `True`. This ensures that blocks are only optimistically imported if either:
 
 1. The justified checkpoint has execution enabled.
