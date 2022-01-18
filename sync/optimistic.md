@@ -293,7 +293,9 @@ Thankfully, if 2/3rds of validators are not poisoned, they can justify an
 honest chain which will un-poison all other nodes.
 
 Notably, this attack only exists for optimistic nodes. Nodes which fully verify
-the transition block will reject a block with a junk parent hash.
+the transition block will reject a block with a junk parent hash. Therefore,
+liveness is unaffected if a vast majority of nodes have fully synced execution
+and consensus clients before and during the transition.
 
 Given all of this, we can say two things:
 
