@@ -116,12 +116,12 @@ def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
         index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]
 
-    # Select candidate trackers of active validators
+    # Select candidate trackers from active validator trackers
     active_validator_indices = get_active_validator_indices(state, epoch)
     for i in range(WHISK_CANDIDATE_TRACKERS_COUNT):
         seed = hash(get_seed(state, epoch, DOMAIN_WHISK_CANDIDATE_SELECTION) + uint_to_bytes(i))
-        validator_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
-        state.whisk_candidate_trackers[i] = state.validators[validator_index].whisk_tracker
+        candidate_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
+        state.whisk_candidate_trackers[i] = state.validators[candidate_index].whisk_tracker
 
 
 def process_whisk_updates(state: BeaconState) -> None:
@@ -251,7 +251,7 @@ def get_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFrSca
 
 
 def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
-    validator = bellatrix.get_validator_from_deposit()
+    validator = bellatrix.get_validator_from_deposit(state, deposit)
     validator.whisk_tracker = WhiskTracker(BLS_G1_GENERATOR, bls.ScalarMultiplication(k, BLS_G1_GENERATOR))
     validator.whisk_k_commitment = bls.ScalarMultiplication(k, BLS_G1_GENERATOR)
     validator.whisk_permutation_commitment = WHISK_TRIVIAL_PERMUTATION_COMMITMENT
