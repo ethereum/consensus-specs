@@ -1832,7 +1832,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
+def get_validator_from_deposit(deposit: Deposit) -> Validator:
     amount = deposit.data.amount
     effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
 
@@ -1877,7 +1877,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             return
 
         # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(state, deposit))
+        state.validators.append(get_validator_from_deposit(deposit))
         state.balances.append(amount)
     else:
         # Increase balance by deposit amount
