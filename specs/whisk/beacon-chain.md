@@ -212,7 +212,7 @@ def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -
 
 
 def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool:
-    return not any([validator.whisk_k_commitment == k_commitment for validator in state.validators])
+    return all([validator.whisk_k_commitment != k_commitment for validator in state.validators])
 
 
 def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
