@@ -9,6 +9,13 @@ of the chain, it may be desirable for a consensus engine to import beacon
 blocks without verifying the execution payloads. This partial sync is called an
 *optimistic sync*.
 
+Optimistic sync is designed to be opt-in and backwards compatible (i.e.,
+non-optimistic nodes can tolerate optimistic nodes on the network and vice
+versa). Optimistic sync is not a fundamental requirement for consensus nodes.
+Rather, it's a stop-gap measure to allow execution nodes to sync via
+established methods until future Ethereum roadmap items are implemented (e.g.,
+statelessness).
+
 ## Constants
 
 |Name|Value|Unit
