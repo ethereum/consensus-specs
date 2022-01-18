@@ -213,7 +213,7 @@ gossip and via RPC calls. The reasoning for this is as follows:
    the chain.
 2. Therefore, optimistic nodes must propagate gossip blocks. Otherwise, they'd
    be censoring.
-3. If optimistic nodes will propose blocks via gossip, then they must respond
+3. If optimistic nodes will propagate blocks via gossip, then they must respond
    to requests for the parent via RPC.
 4. Therefore, optimistic nodes must send optimistic blocks via RPC.
 
