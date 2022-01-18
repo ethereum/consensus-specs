@@ -109,6 +109,7 @@ To optimistically import a block:
 	engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
 - The [`validate_merge_block`][] function MUST NOT raise an assertion if both the
 `pow_block` and `pow_parent` are unknown to the execution engine.
+	- All other assertions in [`validate_merge_block`][] (e.g., `TERMINAL_BLOCK_HASH`) MUST prevent an optimistic import.
 - The parent of the block MUST NOT have an INVALID execution payload.
 
 In addition to this change in validation, the consensus engine MUST track which
@@ -348,3 +349,13 @@ from syncing from genesis, if they so desire.
 A notable thing about optimistic sync is that it's *optional*. Should an
 implementation decide to go the light-client route, then they can just ignore
 optimistic sync all together.
+
+## What if `TERMINAL_BLOCK_HASH` is used?
+
+If the terminal block hash override is used (i.e., `TERMINAL_BLOCK_HASH !=
+Hash32()`), the [`validate_merge_block`][] function will deterministically
+return `True` or `False`. Whilst it's not *technically* required
+retrospectively call [`validate_merge_block`][] on a transition block that
+matches `TERMINAL_BLOCK_HASH` after an optimistic sync, doing so will have no
+effect. For simplicity, the optimistic sync specification does not define
+edge-case behaviour for when `TERMINAL_BLOCK_HASH` is used.
