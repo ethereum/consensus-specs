@@ -1,7 +1,6 @@
 ### Diagram
 
-```python
-"""
+```
                                           cooldown                  cooldown
                                           | ||                      | ||
                                           | ||                      | ||
@@ -12,7 +11,6 @@
                     |                         |                         |
          proposer selection        proposer selection        proposer selection
         candidate selection       candidate selection       candidate selection
-"""
 ```
 
 ### Constants
@@ -159,7 +157,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # ...
 ```
 
-#### Wisk
+#### Whisk
 
 ```python
 class BeaconBlockBody(Container):
