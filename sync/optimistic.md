@@ -41,7 +41,7 @@ from an execution engine (i.e., they are not known to be `INVALID` or `VALID`).
 
 ```python
 @dataclass
-class Store(object):
+class OptimisticStore(object):
     optimistic_roots: Set[Root]
     head_block_root: Root
     blocks: Dict[Root, BeaconBlock]
@@ -49,17 +49,17 @@ class Store(object):
 ```
 
 ```python
-def is_optimistic(store: Store, block: BeaconBlock) -> bool:
-    return hash_tree_root(block) in store.optimistic_roots
+def is_optimistic(opt_store: OptimisticStore, block: BeaconBlock) -> bool:
+    return hash_tree_root(block) in opt_store.optimistic_roots
 ```
 
 ```python
-def latest_verified_ancestor(store: Store, block: BeaconBlock) -> BeaconBlock:
+def latest_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock) -> BeaconBlock:
     # It is assumed that the `block` parameter is never an INVALID block.
     while True:
-        if not is_optimistic(store, block) or block.parent_root == Root():
+        if not is_optimistic(opt_store, block) or block.parent_root == Root():
             return block
-        block = store.blocks[block.parent_root]
+        block = opt_store.blocks[block.parent_root]
 ```
 
 ```python
@@ -68,14 +68,14 @@ def is_execution_block(block: BeaconBlock) -> BeaconBlock:
 ```
 
 ```python
-def should_optimistically_import_block(store: Store, current_slot: Slot, block: BeaconBlock) -> bool:
-    justified_root = store.block_states[store.head_block_root].current_justified_checkpoint.root
-    justifed_is_verified = is_execution_block(store.blocks[justified_root])
+def should_optimistically_import_block(opt_store: OptimisticStore, current_slot: Slot, block: BeaconBlock) -> bool:
+    justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
+    justifed_is_verified = is_execution_block(opt_store.blocks[justified_root])
     block_is_deep = block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
     return justified_is_verified or block_is_deep
 ```
 
-Let only a node which returns `is_optimistic(store, head) is True` be an *optimistic
+Let only a node which returns `is_optimistic(opt_store, head) is True` be an *optimistic
 node*. Let only a validator on an optimistic node be an *optimistic validator*.
 
 When this specification only defines behaviour for an optimistic
@@ -87,7 +87,7 @@ behaviours without regard for optimistic sync.
 ### When to optimistically import blocks
 
 A block MAY be optimistically imported when
-`should_optimistically_import_block(store, current_slot, block)` returns
+`should_optimistically_import_block(opt_store, current_slot, block)` returns
 `True`. This ensures that blocks are only optimistically imported if either:
 
 1. The justified checkpoint has execution enabled.
@@ -130,7 +130,7 @@ When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
 block MUST also transition from `SYNCING` -> `INVALID`.
 
 When a block transitions from the `SYNCING` state, it is removed from the set of
-`store.optimistic_roots`.
+`opt_store.optimistic_roots`.
 
 When a "merge block" (i.e. the first block which enables execution in a chain) is declared to be
 `VALID` by an execution engine (either directly or indirectly), the full
@@ -263,7 +263,7 @@ When information about an optimistic block is requested, the consensus engine:
 
 ### Requests for an Optimistic Head
 
-When `is_optimistic(store, head) is True`, the consensus engine:
+When `is_optimistic(opt_store, head) is True`, the consensus engine:
 
 - MUST NOT return an optimistic `head`.
 - MAY substitute the head block with `latest_verified_ancestor(block)`.
@@ -271,7 +271,7 @@ When `is_optimistic(store, head) is True`, the consensus engine:
 
 ### Requests to Validators Endpoints
 
-When `is_optimistic(store, head) is True`, the consensus engine MUST return syncing to
+When `is_optimistic(opt_store, head) is True`, the consensus engine MUST return syncing to
 all endpoints which match the following pattern:
 
 - `eth/*/validator/*`
