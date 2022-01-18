@@ -21,7 +21,7 @@
 | - | - | - |
 | `WHISK_CANDIDATE_TRACKERS_COUNT` | `uint64(2**14)` (= 16,384) | number of candidate trackers |
 | `WHISK_PROPOSER_TRACKERS_COUNT` | `uint64(2**13)` (= 8,192) | number of proposer trackers |
-| `WHISK_SHUFFLING_PHASE_DURATION` | `Epoch(2**8)` (= 256) | shuffling phase duration |
+| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256) | epochs per shuffling phase |
 | `WHISK_VALIDATORS_PER_SHUFFLE` | `uint64(2**7)` (= 128) | number of validators shuffled per shuffle step |
 | `WHISK_SHUFFLE_STEPS_PER_ROUND` | `uint64(2**7)` (= 128) | Feistel permutation steps to complete a pass over all rows |
 | `WHISK_PROPOSER_SELECTION_GAP` | `Epoch(2)` | gap between proposer selection and the block proposal phase |
@@ -71,13 +71,13 @@ class WhiskTrackerProof:
 def IsValidShuffleProof(permutation_commitment: BLSG1Point,
                         pre_shuffle_trackers: Sequence[WhiskTracker],
                         post_shuffle_trackers: Sequence[WhiskTracker],
-                        shuffle_proof: WhiskShuffleProof) -> bool
+                        shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is the permutation of `pre_shuffle_trackers` according to `permutation_commitment`.
     """
 
 
-def IsValidTrackerProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof) -> bool
+def IsValidTrackerProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * G`.
     """
@@ -126,7 +126,7 @@ def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
 
 def process_whisk_updates(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % WHISK_SHUFFLING_PHASE_DURATION == 0:  # tracker selection happens at the start of shuffling phases
+    if next_epoch % WHISK_EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
         select_whisk_trackers(state, next_epoch)
 
 def process_epoch(state: BeaconState) -> None:
@@ -164,24 +164,22 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 class BeaconBlockBody(Container):
     # ...
+    # Whisk
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
-    whisk_shuffle_proof: ShuffleProof  # [New in Whisk]
-
+    whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
     whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # [New in Whisk]
     whisk_permutation_commitment: BLSG1Point  # [New in Whisk]
 
-
 def get_feistel_encryption(index: uint64, rounds: uin64, K: uint64) -> uint64:
     def F(x):  # F(x) = x^3 (mod K) is a bijective non-linear function
         return (x ** 3) % K
 
-    # Convert 2D (x, y) coordinates from 1D coordinates, apply Fiestel rounds, and convert back to 1D coordinates
-    x, y = index // K, index % K
-    for _ in range(rounds):
+    x, y = index // K, index % K  # Convert 2D (x, y) coordinates from 1D coordinates
+    for _ in range(rounds):  # Apply Fiestel rounds
         x, y = y, (F(y) + x) % K
-    return x * K + y
+    return x * K + y  # Convert back to 1D coordinates
 
 
 def get_shuffle_indices(state: BeaconState, epoch: Epoch) -> Sequence[uint64]:
@@ -195,15 +193,14 @@ def get_shuffle_indices(state: BeaconState, epoch: Epoch) -> Sequence[uint64]:
 
 
 def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None:
-    epoch = get_current_epoch(state)
-    epoch_in_shuffle_phase = epoch % WHISK_SHUFFLING_PHASE_DURATION
-    if epoch_in_shuffle_phase + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_SHUFFLING_PHASE_DURATION:
+    epoch_in_shuffling_phase = get_current_epoch(state) % WHISK_EPOCHS_PER_SHUFFLING_PHASE
+    if epoch_in_shuffling_phase + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
         permutation_commitment = WHISK_TRIVIAL_PERMUTATION_COMMITMENT  # Require the trivial permutation during cooldown
     else:
         permutation_commitment = state.validators[get_beacon_proposer_index(state)].permutation_commitment
 
     # Check the shuffle proof
-    shuffle_indices = get_shuffle_indices(state, epoch)
+    shuffle_indices = get_shuffle_indices(state, get_current_epoch(state))
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
     post_shuffle_trackers = body.whisk_post_shuffle_trackers
     shuffle_proof = body.whisk_shuffle_proof
@@ -221,22 +218,18 @@ def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool
 def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
     whisk_process_shuffled_trackers(state, body)
 
-    # Allow proposer to register fresh Whisk commitments once
+    # Overwrite all validator Whisk fields (first Whisk proposal) or just the permutation commitment (next proposals)
     proposer = state.validators[get_beacon_proposer_index(state)]
-    if proposer.whisk_tracker.r_G == BLS_G1_GENERATOR:
+    if proposer.whisk_tracker.r_G == BLS_G1_GENERATOR:  # first Whisk proposal
         assert body.whisk_tracker.r_G != BLS_G1_GENERATOR
-        # Check k is unique and that the same k is used in both the tracker and k commitment
         assert is_k_commitment_unique(state, body.whisk_k_commitment)
-        assert whisk.IsValidTrackerProof(body.wisk_tracker, body.whisk_k_commitment, body.whisk_registration_proof)
-
+        assert whisk.IsValidTrackerProof(body.whisk_tracker, body.whisk_k_commitment, body.whisk_registration_proof)
         proposer.whisk_tracker = body.whisk_tracker
         proposer.whisk_k_commitment = body.whisk_k_commitment
-    else:
+    else:  # next Whisk proposals
         assert body.whisk_registration_proof == WhiskTrackerProof()
         assert body.whisk_tracker == WhiskTracker()
         assert body.whisk_k_commitment == BLSG1Point()
-
-    # Always register a fresh permutation commitment
     proposer.whisk_permutation_commitment = body.whisk_permutation_commitment
 
 
@@ -249,37 +242,23 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def get_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFrScalar:
-    """
-    Find a unique dummy `k` using try-and-increment.
-    """
     counter = 0
     while True:
         k = BLSFrScalar(hash(uint_to_bytes(validator_index) + uint_to_bytes(counter)))  # hash `validator_index || counter`
         if is_k_commitment_unique(state, bls.ScalarMultiplication(k, BLS_G1_GENERATOR)):
-            return k
+            return k  # unique by trial and error
         counter += 1
 
 
 def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
-    amount = deposit.data.amount
-    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    k = get_whisk_k(state, len(state.validators))  # [New in Whisk]
-
-    return Validator(
-        pubkey=deposit.data.pubkey,
-        withdrawal_credentials=deposit.data.withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
-        whisk_tracker=WhiskTracker(BLS_G1_GENERATOR, bls.ScalarMultiplication(k, BLS_G1_GENERATOR)),  # [New in Whisk]
-        whisk_k_commitment=bls.ScalarMultiplication(k, BLS_G1_GENERATOR),  # [New in Whisk]
-        whisk_permutation_commitment=WHISK_TRIVIAL_PERMUTATION_COMMITMENT,  # [New in Whisk]
-    )
+    validator = bellatrix.get_validator_from_deposit()
+    validator.whisk_tracker = WhiskTracker(BLS_G1_GENERATOR, bls.ScalarMultiplication(k, BLS_G1_GENERATOR))
+    validator.whisk_k_commitment = bls.ScalarMultiplication(k, BLS_G1_GENERATOR)
+    validator.whisk_permutation_commitment = WHISK_TRIVIAL_PERMUTATION_COMMITMENT
+    return validator
 ```
 
-#### `get_beacon_proposer_index()`
+#### `get_beacon_proposer_index`
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
