@@ -159,8 +159,7 @@ another chain.
 ### Re-Orgs
 
 The consensus engine MUST support any chain reorganisation which does *not*
-affect the justified checkpoint. The consensus engine MAY support re-orgs
-beyond the justified checkpoint.
+affect the justified checkpoint.
 
 If the justified checkpoint transitions from `SYNCING` -> `INVALID`, a
 consensus engine MAY choose to alert the user and force the application to
