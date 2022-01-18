@@ -108,9 +108,8 @@ To optimistically import a block:
 `pow_block` and `pow_parent` are unknown to the execution engine.
 - The parent of the block MUST NOT have an INVALID execution payload.
 
-In addition to this change to validation, the consensus engine MUST be able to
-ascertain, after import, which blocks returned `SYNCING` and which returned
-`VALID`.
+In addition to this change in validation, the consensus engine MUST track which
+blocks returned `SYNCING` and which returned `VALID` for subsequent processing.
 
 Optimistically imported blocks MUST pass all verifications included in
 `process_block` (withstanding the modifications to `execute_payload`).
