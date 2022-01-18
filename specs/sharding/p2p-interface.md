@@ -70,9 +70,10 @@ The following validations MUST pass before forwarding the `sample`.
 - _[IGNORE]_ The sample is the first sample with valid signature received for the `(sample.builder, sample.slot, sample.row, sample.column)` combination.
 - _[REJECT]_ The `sample.data` MUST NOT contain any point `x >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
 - _[REJECT]_ The validator defined by `sample.builder` exists and is slashable.
-- _[REJECT]_ The sample signature, `sample.signature`, is valid for the builder --
-  i.e. `bls.Verify(builder_pubkey, sample_signing_root, samplev.signature)`.
 - _[REJECT]_ The sample is proposed by the expected `builder` for the sample's `slot`.
   i.e., the beacon block at `sample.slot - 1` according to the node's fork choise contains an `IntermediateBlockBid`
   with `intermediate_block_bid.validator_index == sample.builder`
+- _[REJECT]_ The sample signature, `sample.signature`, is valid for the builder --
+  i.e. `bls.Verify(builder_pubkey, sample_signing_root, sample.signature)` OR `sample.signature == Bytes96(b"\0" * 96)` AND
+  the sample verification `verify_sample` passes
 

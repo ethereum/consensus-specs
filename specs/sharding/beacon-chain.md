@@ -90,6 +90,12 @@ The following values are (non-configurable) constants used throughout the specif
 | `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(2**4)` (= 16) | 31 * 16 = 496 bytes |
 | `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_SHARD_SAMPLE`     | `DomainType('0x10000000')` |
+
 ## Preset
 
 ### Misc
@@ -188,7 +194,7 @@ class ShardedCommitmentsContainer(Container):
     block_verification_kzg_proof: KZGCommitment
 ```
 
-#### `ShardSample`
+#### `SignedShardSample`
 
 ```python
 class SignedShardSample(Container):
@@ -260,7 +266,30 @@ def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldE
 
     assert (
         bls.Pairing(proof, zero_poly)
-        == bls.Pairing(commitment, G2_SETUP[-degree + 1])
+        == bls.Pairing(commitment.add(G1_SETUP[0].mult(y).neg), G2_SETUP[0])
+    )
+```
+
+#### `interpolate_poly`
+
+```python
+def interpolate_poly(xs: List[BLSFieldElement], ys: List[BLSFieldElement]):
+    """
+    Lagrange interpolation
+    """
+    # TODO!
+```
+
+#### `verify_kzg_multiproof`
+
+```python
+def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], ys: List[BLSFieldElement], proof: KZGCommitment) -> None:
+    zero_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_poly(xs, [0] * len(ys)))
+    interpolated_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_poly(xs, ys))
+
+    assert (
+        bls.Pairing(proof, zero_poly)
+        == bls.Pairing(commitment.add(interpolated_poly.neg()), G2_SETUP[0])
     )
 ```
 
