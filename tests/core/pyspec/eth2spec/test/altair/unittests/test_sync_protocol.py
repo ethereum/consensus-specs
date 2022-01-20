@@ -111,14 +111,12 @@ def test_process_light_client_update_timeout(spec, state):
         fork_version=state.fork.current_version,
     )
 
-    pre_store = deepcopy(store)
-
     spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
 
-    assert store.current_max_active_participants > 0
+    assert store.previous_max_active_participants > 0
     assert store.optimistic_header == update.attested_header
-    assert store.best_valid_update == update
-    assert store.finalized_header == pre_store.finalized_header
+    assert store.finalized_header == update.attested_header
+    assert store.best_valid_update is None
 
 
 @with_altair_and_later

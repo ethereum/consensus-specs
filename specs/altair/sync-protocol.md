@@ -52,7 +52,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators | |
 | `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
 
 ## Containers
@@ -141,9 +141,6 @@ A light client maintains its state in a `store` object of type `LightClientStore
 
 ```python
 def process_slot_for_light_client_store(store: LightClientStore, current_slot: Slot) -> None:
-    if current_slot % UPDATE_TIMEOUT == 0:
-        store.previous_max_active_participants = store.current_max_active_participants
-        store.current_max_active_participants = 0
     if (
         current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
         and store.best_valid_update is not None
@@ -219,6 +216,8 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
     finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
     update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
     if update_period == finalized_period + 1:
+        store.previous_max_active_participants = store.current_max_active_participants
+        store.current_max_active_participants = 0
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
     store.finalized_header = active_header
@@ -265,4 +264,7 @@ def process_light_client_update(store: LightClientStore,
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)
         store.best_valid_update = None
+    else:
+        # Force-update to best update if the timeout elapsed
+        process_slot_for_light_client_store(store, current_slot)
 ```
