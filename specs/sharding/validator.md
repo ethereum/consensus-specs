@@ -92,9 +92,11 @@ def verify_sample(state: BeaconState, block: BeaconBlock, sample: SignedShardSam
     # signing_root = compute_signing_root(sample, get_domain(state, DOMAIN_SHARD_SAMPLE))
     # assert bls.Verify(sample.builder, signing_root, sample.signature)
 
+    roots_in_rbo = list_to_reverse_bit_order(roots_of_unity(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE))
+
     # Verify KZG proof
-    verify_kzg_multiproof(block.body.sharded_commitments_container.value.sharded_commitments[sample.row],
-                          ??? # TODO! Compute the roots of unity for this sample 
+    verify_kzg_multiproof(block.body.payload_data.value.sharded_commitments_container.sharded_commitments[sample.row],
+                          roots_in_rbo[sample.column * FIELD_ELEMENTS_PER_SAMPLE:(sample.column + 1) * FIELD_ELEMENTS_PER_SAMPLE]
                           sample.data,
                           sample.proof)
 ```

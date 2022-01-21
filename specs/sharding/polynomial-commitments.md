@@ -84,6 +84,28 @@ def next_power_of_two(x: int) -> int:
     return 2 ** ((x - 1).bit_length())
 ```
 
+#### `reverse_bit_order`
+
+```python
+def reverse_bit_order(n, order):
+    """
+    Reverse the bit order of an integer n
+    """
+    assert is_power_of_two(order)
+    # Convert n to binary with the same number of bits as "order" - 1, then reverse its bit order
+    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
+```
+
+#### `list_to_reverse_bit_order`
+
+```python
+def list_to_reverse_bit_order(l):
+    """
+    Convert a list between normal and reverse bit order. This operation is idempotent.
+    """
+    return [l[reverse_bit_order(i, len(l))] for i in range(len(l))]
+```
+
 ## Field operations
 
 ### Generic field operations
@@ -154,7 +176,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
     K = next_power_of_two(2 * N)
     d = K - N - 1
     r_to_K = pow(r, N, K)
-    roots = roots_of_unity(K)
+    roots = list_to_reverse_bit_order(roots_of_unity(K))
 
     # For an efficient implementation, B and Bprime should be precomputed
     def B(z):
