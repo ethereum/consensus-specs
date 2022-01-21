@@ -132,4 +132,10 @@ the local node is subscribed to, if they have not already received that sample o
 
 TODO: We need to verify the total complexity of doing this and make sure this does not cause too much load on a validator
 
-TODO: Compute what the minimum number of validators online would be that guarantees reconstruction of all samples
+## Minimum online validator requirement
+
+The data availability construction guarantees that reconstruction is possible if 75% of all samples are available. In this case, at least 50% of all rows and 50% of all columns are independently available. In practice, it is likely that some supernodes will centrally collect all samples and fill in any gaps. However, we want to build a system that reliably reconstructs even absent all supernodes. Any row or column with 50% of samples will easily be reconstructed even with only 100s of validators online; so the only question is how we get to 50% of samples for all rows and columns, when some of them might be completely unseeded.
+
+Each validator will transfer 4 samples between rows and columns where there is overlap. Without loss of generality, look at row 0. Each validator has 1/128 chance of having a sample in this row, and we need 256 samples to reconstruct it. So we expect that we need ~256 * 128 = 32,768 validators to have a fair chance of reconstructing it if it was completely unseeded.
+
+A more elaborate estimate [here](https://notes.ethereum.org/@dankrad/minimum-reconstruction-validators) needs about 55,000 validators to be online for high safety that each row and column will be reconstructed.
