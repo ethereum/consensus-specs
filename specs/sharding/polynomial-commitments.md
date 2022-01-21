@@ -9,36 +9,36 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
-  - [Introduction](#introduction)
-  - [Constants](#constants)
-    - [BLS Field](#bls-field)
-    - [KZG Trusted setup](#kzg-trusted-setup)
-  - [Custom types](#custom-types)
-  - [Helper functions](#helper-functions)
-      - [`next_power_of_two`](#next_power_of_two)
-  - [Field operations](#field-operations)
-    - [Generic field operations](#generic-field-operations)
-      - [`bls_modular_inverse`](#bls_modular_inverse)
-      - [`roots_of_unity`](#roots_of_unity)
-    - [Field helper functions](#field-helper-functions)
-      - [`compute_powers`](#compute_powers)
-      - [`low_degree_check`](#low_degree_check)
-      - [`vector_lincomb`](#vector_lincomb)
-      - [`bytes_to_field_elements`](#bytes_to_field_elements)
-  - [Polynomial operations](#polynomial-operations)
-      - [`add_polynomials`](#add_polynomials)
-      - [`multiply_polynomials`](#multiply_polynomials)
-      - [`interpolate_polynomial`](#interpolate_polynomial)
-      - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
+- [Introduction](#introduction)
+- [Constants](#constants)
+  - [BLS Field](#bls-field)
+  - [KZG Trusted setup](#kzg-trusted-setup)
+- [Custom types](#custom-types)
+- [Helper functions](#helper-functions)
+    - [`next_power_of_two`](#next_power_of_two)
+- [Field operations](#field-operations)
+  - [Generic field operations](#generic-field-operations)
+    - [`bls_modular_inverse`](#bls_modular_inverse)
+    - [`roots_of_unity`](#roots_of_unity)
+  - [Field helper functions](#field-helper-functions)
+    - [`compute_powers`](#compute_powers)
+    - [`low_degree_check`](#low_degree_check)
+    - [`vector_lincomb`](#vector_lincomb)
+    - [`bytes_to_field_elements`](#bytes_to_field_elements)
+- [Polynomial operations](#polynomial-operations)
+    - [`add_polynomials`](#add_polynomials)
+    - [`multiply_polynomials`](#multiply_polynomials)
+    - [`interpolate_polynomial`](#interpolate_polynomial)
+    - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
 - [KZG Operations](#kzg-operations)
   - [Elliptic curve helper functoins](#elliptic-curve-helper-functoins)
-      - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
+    - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
   - [Hash to field](#hash-to-field)
-      - [`hash_to_bls_field`](#hash_to_bls_field)
+    - [`hash_to_bls_field`](#hash_to_bls_field)
   - [KZG operations](#kzg-operations)
-      - [`verify_kzg_proof`](#verify_kzg_proof)
-      - [`verify_kzg_multiproof`](#verify_kzg_multiproof)
-      - [`verify_degree_proof`](#verify_degree_proof)
+    - [`verify_kzg_proof`](#verify_kzg_proof)
+    - [`verify_kzg_multiproof`](#verify_kzg_multiproof)
+    - [`verify_degree_proof`](#verify_degree_proof)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -282,11 +282,11 @@ def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: 
     return r
 ```
 
-# KZG Operations
+## KZG Operations
 
 We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).  
 
-## Elliptic curve helper functoins
+### Elliptic curve helper functoins
 
 #### `elliptic_curve_lincomb`
 
@@ -301,7 +301,7 @@ def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldEl
     return r
 ```
 
-## Hash to field
+### Hash to field
 
 #### `hash_to_bls_field`
 
@@ -313,7 +313,7 @@ def hash_to_bls_field(x: Container, challenge_number: uint64) -> BLSFieldElement
     return int.from_bytes(hash(hash_tree_root(x) + int.to_bytes(challenge_number, 32, "little")), "little") % BLS_MODULUS
 ```
 
-## KZG operations
+### KZG operations
 
 #### `verify_kzg_proof`
 
