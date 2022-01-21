@@ -352,7 +352,7 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
         y = evaluate_polynomial_in_evaluation_form(combined_vector, x)
 
-        verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
+        verify_kzg_proof(combined_commitment, x, y, sharded_commitments_container.block_verification_kzg_proof)
 
         # Verify that number of sharded data commitments is correctly indicated
         assert 2 * (number_of_blobs + included_sharded_data_commitments) == len(sharded_commitments_container.sharded_commitments)
