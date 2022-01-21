@@ -371,13 +371,13 @@ def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], 
 #### `verify_degree_proof`
 
 ```python
-def verify_degree_proof(commitment: KZGCommitment, degree: uint64, proof: KZGCommitment):
+def verify_degree_proof(commitment: KZGCommitment, degree_bound: uint64, proof: KZGCommitment):
     """
-    Verifies that the commitment is of polynomial degree <= degree. 
+    Verifies that the commitment is of polynomial degree < degree_bound. 
     """
 
     assert (
         bls.Pairing(proof, G2_SETUP[0])
-        == bls.Pairing(commitment, G2_SETUP[-degree - 1])
+        == bls.Pairing(commitment, G2_SETUP[-degree_bound])
     )
 ```
