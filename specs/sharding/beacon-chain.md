@@ -526,7 +526,7 @@ def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> Non
 
         assert intermediate_block_bid.execution_payload_root == hash_tree_root(block.body.execution_payload)
 
-        assert intermediate_block_bid.sharded_data_commitment_number == block.body.sharded_commitments_container.included_sharded_data_commitments
+        assert intermediate_block_bid.sharded_data_commitment_count == block.body.sharded_commitments_container.included_sharded_data_commitments
 
         assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(block.body.sharded_commitments_container.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
 
