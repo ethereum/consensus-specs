@@ -8,16 +8,17 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Introduction](#introduction)
   - [Glossary](#glossary)
-- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
+  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Time parameters](#time-parameters)
   - [Shard blob samples](#shard-blob-samples)
-  - [Precomputed size verification points](#precomputed-size-verification-points)
+  - [Precomputed root of unity](#precomputed-root-of-unity)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters-1)
 - [Containers](#containers)
@@ -25,27 +26,16 @@
     - [`IntermediateBlockBid`](#intermediateblockbid)
     - [`IntermediateBlockBidWithRecipientAddress`](#intermediateblockbidwithrecipientaddress)
     - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
+    - [`SignedShardSample`](#signedshardsample)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
     - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
   - [Block processing](#block-processing)
     - [`is_intermediate_block_slot`](#is_intermediate_block_slot)
-  - [KZG](#kzg)
-    - [`hash_to_field`](#hash_to_field)
-    - [`compute_powers`](#compute_powers)
-    - [`verify_kzg_proof`](#verify_kzg_proof)
-    - [`verify_degree_proof`](#verify_degree_proof)
-    - [`block_to_field_elements`](#block_to_field_elements)
-    - [`roots_of_unity`](#roots_of_unity)
-    - [`modular_inverse`](#modular_inverse)
-    - [`eval_poly_at`](#eval_poly_at)
-    - [`next_power_of_two`](#next_power_of_two)
-    - [`low_degree_check`](#low_degree_check)
-    - [`vector_lincomb`](#vector_lincomb)
-    - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_active_shard_count`](#get_active_shard_count)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing-1)
     - [`process_block`](#process_block)
     - [Block header](#block-header)
@@ -325,7 +315,7 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         assert len(sharded_commitments_container.sharded_commitments) // 2 <= get_active_shard_count(state, get_current_epoch(state))
 
         # Verify the degree proof
-        r = hash_to_field(sharded_commitments_container.sharded_commitments)
+        r = hash_to_bls_field(sharded_commitments_container.sharded_commitments, 0)
         r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
         combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
 
@@ -335,7 +325,7 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         low_degree_check(sharded_commitments_container.sharded_commitments)
 
         # Verify that blocks since the last intermediate block have been included
-        blocks_chunked = [block_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_intermediate_block]
+        blocks_chunked = [bytes_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_intermediate_block]
         block_vectors = []
         field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE
         for block_chunked in blocks_chunked:
@@ -343,13 +333,13 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
                 block_vectors.append(block_chunked[i:i + field_elements_per_blob])
             
         number_of_blobs = len(block_vectors)
-        r = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 0])
-        x = hash_to_field([sharded_commitments_container.sharded_commitments[:number_of_blobs], 1])
+        r = hash_to_bls_field(sharded_commitments_container.sharded_commitments[:number_of_blobs], 0)
+        x = hash_to_bls_field(sharded_commitments_container.sharded_commitments[:number_of_blobs], 1)
 
         r_powers = compute_powers(r, number_of_blobs)
         combined_vector = vector_lincomb(block_vectors, r_powers)
         combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
-        y = eval_poly_at(combined_vector, x)
+        y = evaluate_polynomial_in_evaluation_form(combined_vector, x)
 
         verify_kzg_proof(combined_commitment, x, y, block_verification_kzg_proof)
 

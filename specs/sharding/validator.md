@@ -8,18 +8,21 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-- [Helpers](#helpers)
-  - [`get_pow_block_at_terminal_total_difficulty`](#get_pow_block_at_terminal_total_difficulty)
-  - [`get_terminal_pow_block`](#get_terminal_pow_block)
-- [Protocols](#protocols)
-  - [`ExecutionEngine`](#executionengine)
-    - [`get_payload`](#get_payload)
+
+  - [Introduction](#introduction)
+  - [Prerequisites](#prerequisites)
+  - [Constants](#constants)
+    - [Sample counts](#sample-counts)
+  - [Helpers](#helpers)
+    - [`get_validator_row_subnets`](#get_validator_row_subnets)
+    - [`get_validator_column_subnets`](#get_validator_column_subnets)
+    - [`reconstruct_polynomial`](#reconstruct_polynomial)
+  - [Sample verification](#sample-verification)
+    - [`verify_sample`](#verify_sample)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Block proposal](#block-proposal)
-    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [ExecutionPayload](#executionpayload)
+  - [Validator assignments](#validator-assignments)
+    - [Attesting](#attesting)
+- [Sample reconstruction](#sample-reconstruction)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->

@@ -8,17 +8,14 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
-    - [Shard blob subnets](#shard-blob-subnets)
-      - [`shard_blob_{subnet_id}`](#shard_blob_subnet_id)
-    - [Global topics](#global-topics)
-      - [`shard_blob_header`](#shard_blob_header)
-      - [`shard_blob_tx`](#shard_blob_tx)
-      - [`shard_proposer_slashing`](#shard_proposer_slashing)
+    - [Shard sample subnets](#shard-sample-subnets)
+      - [`shard_row_{subnet_id}`](#shard_row_subnet_id)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -68,7 +65,7 @@ The following validations MUST pass before forwarding the `sample`.
 - _[REJECT]_ The shard sample is for the correct subnet --
   i.e. `sample.row == subnet_id` for `shard_row_{subnet_id}` and `sample.column == subnet_id` for `shard_column_{subnet_id}`
 - _[IGNORE]_ The sample is the first sample with valid signature received for the `(sample.builder, sample.slot, sample.row, sample.column)` combination.
-- _[REJECT]_ The `sample.data` MUST NOT contain any point `x >= MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
+- _[REJECT]_ The `sample.data` MUST NOT contain any point `x >= BLS_MODULUS`. Although it is a `uint256`, not the full 256 bit range is valid.
 - _[REJECT]_ The validator defined by `sample.builder` exists and is slashable.
 - _[REJECT]_ The sample is proposed by the expected `builder` for the sample's `slot`.
   i.e., the beacon block at `sample.slot - 1` according to the node's fork choise contains an `IntermediateBlockBid`

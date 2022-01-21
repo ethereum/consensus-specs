@@ -8,50 +8,37 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-  - [Glossary](#glossary)
-- [Custom types](#custom-types)
-- [Constants](#constants)
-  - [Misc](#misc)
-- [Preset](#preset)
-  - [Misc](#misc-1)
-  - [Time parameters](#time-parameters)
-  - [Shard blob samples](#shard-blob-samples)
-  - [Precomputed size verification points](#precomputed-size-verification-points)
-- [Configuration](#configuration)
-  - [Time parameters](#time-parameters-1)
-- [Containers](#containers)
-  - [New Containers](#new-containers)
-    - [`IntermediateBlockBid`](#intermediateblockbid)
-    - [`IntermediateBlockBidWithRecipientAddress`](#intermediateblockbidwithrecipientaddress)
-    - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
-  - [Extended Containers](#extended-containers)
-    - [`BeaconState`](#beaconstate)
-    - [`BeaconBlockBody`](#beaconblockbody)
-- [Helper functions](#helper-functions)
-  - [Block processing](#block-processing)
-    - [`is_intermediate_block_slot`](#is_intermediate_block_slot)
-  - [KZG](#kzg)
-    - [`hash_to_field`](#hash_to_field)
-    - [`compute_powers`](#compute_powers)
-    - [`verify_kzg_proof`](#verify_kzg_proof)
-    - [`verify_degree_proof`](#verify_degree_proof)
-    - [`block_to_field_elements`](#block_to_field_elements)
-    - [`roots_of_unity`](#roots_of_unity)
-    - [`modular_inverse`](#modular_inverse)
-    - [`eval_poly_at`](#eval_poly_at)
-    - [`next_power_of_two`](#next_power_of_two)
-    - [`low_degree_check`](#low_degree_check)
-    - [`vector_lincomb`](#vector_lincomb)
-    - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
-  - [Beacon state accessors](#beacon-state-accessors)
-    - [`get_active_shard_count`](#get_active_shard_count)
-  - [Block processing](#block-processing-1)
-    - [`process_block`](#process_block)
-    - [Block header](#block-header)
-    - [Intermediate Block Bid](#intermediate-block-bid)
-    - [Sharded data](#sharded-data)
-    - [Execution payload](#execution-payload)
+
+  - [Introduction](#introduction)
+  - [Constants](#constants)
+    - [BLS Field](#bls-field)
+    - [KZG Trusted setup](#kzg-trusted-setup)
+  - [Custom types](#custom-types)
+  - [Helper functions](#helper-functions)
+      - [`next_power_of_two`](#next_power_of_two)
+  - [Field operations](#field-operations)
+    - [Generic field operations](#generic-field-operations)
+      - [`bls_modular_inverse`](#bls_modular_inverse)
+      - [`roots_of_unity`](#roots_of_unity)
+    - [Field helper functions](#field-helper-functions)
+      - [`compute_powers`](#compute_powers)
+      - [`low_degree_check`](#low_degree_check)
+      - [`vector_lincomb`](#vector_lincomb)
+      - [`bytes_to_field_elements`](#bytes_to_field_elements)
+  - [Polynomial operations](#polynomial-operations)
+      - [`add_polynomials`](#add_polynomials)
+      - [`multiply_polynomials`](#multiply_polynomials)
+      - [`interpolate_polynomial`](#interpolate_polynomial)
+      - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
+- [KZG Operations](#kzg-operations)
+  - [Elliptic curve helper functoins](#elliptic-curve-helper-functoins)
+      - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
+  - [Hash to field](#hash-to-field)
+      - [`hash_to_bls_field`](#hash_to_bls_field)
+  - [KZG operations](#kzg-operations)
+      - [`verify_kzg_proof`](#verify_kzg_proof)
+      - [`verify_kzg_multiproof`](#verify_kzg_multiproof)
+      - [`verify_degree_proof`](#verify_degree_proof)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -85,8 +72,8 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `KZGCommitment` | `Bytes48` | A G1 curve point |
 | `BLSFieldElement` | `uint256` | A number `x` in the range `0 <= x < BLS_MODULUS` |
-| `BLSPolynomialCoefficients` | `List[BLSFieldElement]` | A polynomial over the BLS field, given in coefficient form |
-| `BLSPolynomialEvaluations` | `List[BLSFieldElement]` | A polynomial over the BLS field, given in evaluation form |
+| `BLSPolynomialByCoefficients` | `List[BLSFieldElement]` | A polynomial over the BLS field, given in coefficient form |
+| `BLSPolynomialByEvaluations` | `List[BLSFieldElement]` | A polynomial over the BLS field, given in evaluation form |
 
 ## Helper functions
 
@@ -101,13 +88,15 @@ def next_power_of_two(x: int) -> int:
 
 ### Generic field operations
 
-#### `modular_inverse`
+#### `bls_modular_inverse`
 
 ```python
-def modular_inverse(a):
-    assert(a == 0):
+def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
+    """
+    Computes the modular inverse of x, i.e. y such that x * y % BLS_MODULUS == 1. Returns 0 for x == 0
+    """
     lm, hm = 1, 0
-    low, high = a % BLS_MODULUS, BLS_MODULUS
+    low, high = x % BLS_MODULUS, BLS_MODULUS
     while low > 1:
         r = high // low
         nm, new = hm - lm * r, high - low * r
@@ -119,12 +108,16 @@ def modular_inverse(a):
 
 ```python
 def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
-    r = []
+    """
+    Computes a list of roots of unity for a given order. The order must divide the BLS multiplicative group order, i.e. BLS_MODULUS - 1
+    """
+    assert (BLS_MODULUS - 1) % order == 0
+    roots = []
     root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // order, BLS_MODULUS)
 
     current_root_of_unity = 1
     for i in range(len(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE)):
-        r.append(current_root_of_unity)
+        roots.append(current_root_of_unity)
         current_root_of_unity = current_root_of_unity * root_of_unity % BLS_MODULUS
     return r
 ```
@@ -148,7 +141,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
 ```python
 def low_degree_check(commitments: List[KZGCommitment]):
     """
-    Checks that the commitments are on a low-degree polynomial
+    Checks that the commitments are on a low-degree polynomial.
     If there are 2*N commitments, that means they should lie on a polynomial
     of degree d = K - N - 1, where K = next_power_of_two(2*N)
     (The remaining positions are filled with 0, this is to make FFTs usable)
@@ -157,7 +150,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
     """
     assert len(commitments) % 2 == 0
     N = len(commitments) // 2
-    r = hash_to_field(commitments)
+    r = hash_to_bls_field(commitments, 0)
     K = next_power_of_two(2 * N)
     d = K - N - 1
     r_to_K = pow(r, N, K)
@@ -181,9 +174,9 @@ def low_degree_check(commitments: List[KZGCommitment]):
 
     coefs = []
     for i in range(K):
-        coefs.append( - (r_to_K - 1) * modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % BLS_MODULUS)
+        coefs.append( - (r_to_K - 1) * bls_modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % BLS_MODULUS)
     for i in range(d + 1):
-        coefs[i] = (coefs[i] + B(r) * modular_inverse(Bprime(r) * (r - roots[i]))) % BLS_MODULUS
+        coefs[i] = (coefs[i] + B(r) * bls_modular_inverse(Bprime(r) * (r - roots[i]))) % BLS_MODULUS
     
     assert elliptic_curve_lincomb(commitments, coefs) == bls.Z1()
 ```
@@ -202,10 +195,10 @@ def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldE
     return [BLSFieldElement(x) for x in r]
 ```
 
-#### `block_to_field_elements`
+#### `bytes_to_field_elements`
 
 ```python
-def block_to_field_elements(block: bytes) -> List[BLSFieldElement]:
+def bytes_to_field_elements(block: bytes) -> List[BLSFieldElement]:
     """
     Slices a block into 31 byte chunks that can fit into field elements
     """
@@ -213,23 +206,59 @@ def block_to_field_elements(block: bytes) -> List[BLSFieldElement]:
     return [BLSFieldElement(int.from_bytes(x, "little")) for x in sliced_block]
 ```
 
-
 ## Polynomial operations
 
-#### `interpolate_poly`
+#### `add_polynomials`
 
 ```python
-def interpolate_poly(xs: List[BLSFieldElement], ys: List[BLSFieldElement]):
+def add_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients) -> BLSPolynomialByCoefficients:
+    """
+    Sums the polynomials `a` and `b` given by their coefficients
+    """
+    a, b = (a, b) if len(a >= b) else (b, a)
+    return [(a[i] + (b[i] if i < len(b) else 0) % BLS_MODULUS for i in range(len(a))]
+```
+
+#### `multiply_polynomials`
+
+```python
+def multiply_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients) -> BLSPolynomialByCoefficients:
+    """
+    Multiplies the polynomials `a` and `b` given by their coefficients
+    """
+    r = [0]
+    for power, coef in enumerate(a):
+        summand = [0] * power + [coef * x % BLS_MODULUS for x in b]
+        r = add_polynomials(r, summand)
+    return r
+```
+
+
+#### `interpolate_polynomial`
+
+```python
+def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement]) -> BLSPolynomialByCoefficients:
     """
     Lagrange interpolation
     """
-    # TODO!
+    assert len(xs) == len(ys)
+    r = [0]
+
+    for i in range(len(xs)):
+        summand = [ys[i]]
+        for j in range(len(ys)):
+            if j != i:
+                weight_adjustment = bls_modular_inverse(xs[j] - xs[i])
+                summand  = multiply_polynomials(summand, [weight_adjustment, ((MODULUS - weight_adjustment) * xs[i])])
+        r = add_polynomials(r, summand)
+    
+    return r
 ```
 
-#### `eval_poly_at`
+#### `evaluate_polynomial_in_evaluation_form`
 
 ```python
-def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldElement:
+def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: BLSFieldElement) -> BLSFieldElement:
     """
     Evaluates a polynomial (in evaluation form) at an arbitrary point
     """
@@ -246,9 +275,9 @@ def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldEle
         return field_elements_per_blob * pow(z, field_elements_per_blob - 1, BLS_MODULUS) 
 
     r = 0
-    inverses = [modular_inverse(z - x) for z in roots]
+    inverses = [bls_modular_inverse(z - x) for z in roots]
     for i, x in enumerate(inverses):
-        r += f[i] * modular_inverse(Aprime(roots[i])) * x % self.BLS_MODULUS
+        r += f[i] * bls_modular_inverse(Aprime(roots[i])) * x % self.BLS_MODULUS
     r = r * A(x) % self.BLS_MODULUS
     return r
 ```
@@ -274,20 +303,25 @@ def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldEl
 
 ## Hash to field
 
-#### `hash_to_field`
+#### `hash_to_bls_field`
 
 ```python
-def hash_to_field(x: Container):
-    return int.from_bytes(hash_tree_root(x), "little") % BLS_MODULUS
+def hash_to_bls_field(x: Container, challenge_number: uint64) -> BLSFieldElement:
+    """
+    This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
+    """
+    return int.from_bytes(hash(hash_tree_root(x) + int.to_bytes(challenge_number, 32, "little")), "little") % BLS_MODULUS
 ```
 
 ## KZG operations
-
 
 #### `verify_kzg_proof`
 
 ```python
 def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldElement, proof: KZGCommitment) -> None:
+    """
+    Checks that `proof` is a valid KZG proof for the polynomial committed to by `commitment` evaluated at `x` equals `y`
+    """
     zero_poly = G2_SETUP[1].add(G2_SETUP[0].mult(x).neg())
 
     assert (
@@ -296,13 +330,15 @@ def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldE
     )
 ```
 
-
 #### `verify_kzg_multiproof`
 
 ```python
 def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], ys: List[BLSFieldElement], proof: KZGCommitment) -> None:
-    zero_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_poly(xs, [0] * len(ys)))
-    interpolated_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_poly(xs, ys))
+    """
+    Verifies a KZG multiproof.
+    """
+    zero_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_polynomial(xs, [0] * len(ys)))
+    interpolated_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_polynomial(xs, ys))
 
     assert (
         bls.Pairing(proof, zero_poly)
