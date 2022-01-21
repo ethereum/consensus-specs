@@ -68,14 +68,6 @@ using KZG10 commitments to commit to data to remove any need for fraud proofs (a
 - **Data**: A list of KZG points, to translate a byte string into
 - **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
 
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `KZGCommitment` | `Bytes48` | A G1 curve point |
-| `BLSFieldElement` | `uint256` | A number `x` in the range `0 <= x < MODULUS` |
 
 ## Constants
 
@@ -85,10 +77,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Notes |
 | - | - | - |
-| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) modulus |
-| `DATA_AVAILABILITY_INVERSE_CODING_RATE` | `2**1` (= 2) | Factor by which samples are extended for data availability encoding |
 | `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(2**4)` (= 16) | 31 * 16 = 496 bytes |
-| `MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 
 ### Domain types
 
@@ -119,13 +108,9 @@ With the introduction of intermediate blocks the number of slots per epoch is do
 | - | - | - |
 | `SAMPLES_PER_BLOB` | `uint64(2**9)` (= 512) | 248 * 512 = 126,976 bytes |
 
-### Precomputed size verification points
+### Precomputed root of unity
 
-| Name | Value |
-| - | - |
-| `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
-| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // int(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE), MODULUS)` |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE), BLS_MODULUS)` |
 
 ## Configuration
 
@@ -137,7 +122,6 @@ E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SECONDS_PER_SLOT` | `uint64(8)` | seconds | 8 seconds |
-
 
 ## Containers
 
@@ -238,221 +222,6 @@ def is_intermediate_block_slot(slot: Slot):
     return slot % 2 == 1
 ```
 
-### KZG
-
-#### `hash_to_field`
-
-```python
-def hash_to_field(x: Container):
-    return int.from_bytes(hash_tree_root(x), "little") % MODULUS
-```
-
-#### `compute_powers`
-
-```python
-def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
-    current_power = 1
-    powers = []
-    for i in range(n):
-        powers.append(BLSFieldElement(current_power))
-        current_power = current_power * int(x) % MODULUS
-    return powers
-```
-
-#### `verify_kzg_proof`
-
-```python
-def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldElement, proof: KZGCommitment) -> None:
-    zero_poly = G2_SETUP[1].add(G2_SETUP[0].mult(x).neg())
-
-    assert (
-        bls.Pairing(proof, zero_poly)
-        == bls.Pairing(commitment.add(G1_SETUP[0].mult(y).neg), G2_SETUP[0])
-    )
-```
-
-#### `interpolate_poly`
-
-```python
-def interpolate_poly(xs: List[BLSFieldElement], ys: List[BLSFieldElement]):
-    """
-    Lagrange interpolation
-    """
-    # TODO!
-```
-
-#### `verify_kzg_multiproof`
-
-```python
-def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], ys: List[BLSFieldElement], proof: KZGCommitment) -> None:
-    zero_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_poly(xs, [0] * len(ys)))
-    interpolated_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_poly(xs, ys))
-
-    assert (
-        bls.Pairing(proof, zero_poly)
-        == bls.Pairing(commitment.add(interpolated_poly.neg()), G2_SETUP[0])
-    )
-```
-
-#### `verify_degree_proof`
-
-```python
-def verify_degree_proof(commitment: KZGCommitment, degree: uint64, proof: KZGCommitment):
-    """
-    Verifies that the commitment is of polynomial degree <= degree. 
-    """
-
-    assert (
-        bls.Pairing(proof, G2_SETUP[0])
-        == bls.Pairing(commitment, G2_SETUP[-degree - 1])
-    )
-```
-
-#### `block_to_field_elements`
-
-```python
-def block_to_field_elements(block: bytes) -> List[BLSFieldElement]:
-    """
-    Slices a block into 31 byte chunks that can fit into field elements
-    """
-    sliced_block = [block[i:i + 31] for i in range(0, len(bytes), 31)]
-    return [BLSFieldElement(int.from_bytes(x, "little")) for x in sliced_block]
-```
-
-#### `roots_of_unity`
-
-```python
-def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
-    r = []
-    root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (MODULUS - 1) // order, MODULUS)
-
-    current_root_of_unity = 1
-    for i in range(len(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE)):
-        r.append(current_root_of_unity)
-        current_root_of_unity = current_root_of_unity * root_of_unity % MODULUS
-    return r
-```
-
-#### `modular_inverse`
-
-```python
-def modular_inverse(a):
-    assert(a == 0):
-    lm, hm = 1, 0
-    low, high = a % MODULUS, MODULUS
-    while low > 1:
-        r = high // low
-        nm, new = hm - lm * r, high - low * r
-        lm, low, hm, high = nm, new, lm, low
-    return lm % MODULUS
-```
-
-#### `eval_poly_at`
-
-```python
-def eval_poly_at(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldElement:
-    """
-    Evaluates a polynomial (in evaluation form) at an arbitrary point
-    """
-    field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE
-    roots = roots_of_unity(field_elements_per_blob)
-
-    def A(z):
-        r = 1
-        for w in roots:
-            r = r * (z - w) % MODULUS
-        return r
-
-    def Aprime(z):
-        return field_elements_per_blob * pow(z, field_elements_per_blob - 1, MODULUS) 
-
-    r = 0
-    inverses = [modular_inverse(z - x) for z in roots]
-    for i, x in enumerate(inverses):
-        r += f[i] * modular_inverse(Aprime(roots[i])) * x % self.MODULUS
-    r = r * A(x) % self.MODULUS
-    return r
-```
-
-#### `next_power_of_two`
-
-```python
-def next_power_of_two(x: int) -> int:
-    return 2 ** ((x - 1).bit_length())
-```
-
-#### `low_degree_check`
-
-```python
-def low_degree_check(commitments: List[KZGCommitment]):
-    """
-    Checks that the commitments are on a low-degree polynomial
-    If there are 2*N commitments, that means they should lie on a polynomial
-    of degree d = K - N - 1, where K = next_power_of_two(2*N)
-    (The remaining positions are filled with 0, this is to make FFTs usable)
-
-    For details see here: https://notes.ethereum.org/@dankrad/barycentric_low_degree_check
-    """
-    assert len(commitments) % 2 == 0
-    N = len(commitments) // 2
-    r = hash_to_field(commitments)
-    K = next_power_of_two(2 * N)
-    d = K - N - 1
-    r_to_K = pow(r, N, K)
-    roots = roots_of_unity(K)
-
-    # For an efficient implementation, B and Bprime should be precomputed
-    def B(z):
-        r = 1
-        for w in roots[:d + 1]:
-            r = r * (z - w) % MODULUS
-        return r
-
-    def Bprime(z):
-        r = 0
-        for i in range(d + 1):
-            m = 1
-            for w in roots[:i] + roots[i+1:d + 1]:
-                m = m * (z - w) % MODULUS
-            r = (r + M) % MODULUS
-        return r
-
-    coefs = []
-    for i in range(K):
-        coefs.append( - (r_to_K - 1) * modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % MODULUS)
-    for i in range(d + 1):
-        coefs[i] = (coefs[i] + B(r) * modular_inverse(Bprime(r) * (r - roots[i]))) % MODULUS
-    
-    assert elliptic_curve_lincomb(commitments, coefs) == bls.Z1()
-```
-
-#### `vector_lincomb`
-
-```python
-def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
-    """
-    Compute a linear combination of field element vectors
-    """
-    r = [0 for i in len(vectors[0])]
-    for v, a in zip(vectors, scalars):
-        for i, x in enumerate(v):
-            r[i] = (r[i] + a * x) % MODULUS
-    return [BLSFieldElement(x) for x in r]
-```
-
-#### `elliptic_curve_lincomb`
-
-```python
-def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
-    """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants. This is a non-optimized implementation.
-    """
-    r = bls.Z1()
-    for x, a in zip(points, scalars):
-        r = r.add(x.mult(a))
-    return r
-```
-
 ### Beacon state accessors
 
 #### `get_active_shard_count`
@@ -465,6 +234,8 @@ def get_active_shard_count(state: BeaconState, epoch: Epoch) -> uint64:
     """
     return ACTIVE_SHARDS
 ```
+
+## Beacon chain state transition function
 
 ### Block processing
 
