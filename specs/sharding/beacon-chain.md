@@ -29,6 +29,7 @@
     - [`SignedShardSample`](#signedshardsample)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
+    - [`IntermediatBlockData`](#intermediatblockdata)
     - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
   - [Block processing](#block-processing)
@@ -190,18 +191,22 @@ class BeaconState(bellatrix.BeaconState):
     blocks_since_intermediate_block: List[BeaconBlock, MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS]
 ```
 
+#### `IntermediatBlockData`
+
+```python
+class IntermediateBlockData(Container):
+    execution_payload: ExecutionPayload
+    sharded_commitments_container: ShardedCommitmentsContainer
+```    
+
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(bellatrix.BeaconBlockBody):
-    execution_payload: Union[None, ExecutionPayload]
-    sharded_commitments_container: Union[None, ShardedCommitmentsContainer]
-    intermediate_block_bid_with_recipient_address: Union[None, IntermediateBlockBidWithRecipientAddress]
+class BeaconBlockBody(altair.BeaconBlockBody):
+    payload_data: Union[IntermediateBlockBid, IntermediateBlockData]
 ```
 
 ## Helper functions
-
-*Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
 
 ### Block processing
 
@@ -282,25 +287,31 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> None:
     if is_intermediate_block_slot(block.slot):
         # Get last intermediate block bid
-        assert state.blocks_since_intermediate_block[-1].body.intermediate_block_bid_with_recipient_address.selector == 1
-        intermediate_block_bid = state.blocks_since_intermediate_block[-1].body.intermediate_block_bid_with_recipient_address.value.intermediate_block_bid
+        assert state.blocks_since_intermediate_block[-1].body.payload_data.selector == 0
+        intermediate_block_bid = state.blocks_since_intermediate_block[-1].body.payload_data.value.intermediate_block_bid
         assert intermediate_block_bid.slot + 1 == block.slot
 
-        assert intermediate_block_bid.execution_payload_root == hash_tree_root(block.body.execution_payload)
+        assert block.body.payload_data.selector == 1 # Verify that intermediate block does not contain bid
 
-        assert intermediate_block_bid.sharded_data_commitment_count == block.body.sharded_commitments_container.included_sharded_data_commitments
+        intermediate_block_data = block.body.payload_data.value
 
-        assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(block.body.sharded_commitments_container.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
+        assert intermediate_block_bid.execution_payload_root == hash_tree_root(intermediate_block_data.execution_payload)
+
+        assert intermediate_block_bid.sharded_data_commitment_count == intermediate_block_data.included_sharded_data_commitments
+
+        assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(intermediate_block_data.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
 
         assert intermediate_block_bid.validator_index == block.proposer_index
 
-        assert block.body.intermediate_block_bid_with_recipient_address.selector == 0 # Verify that intermediate block does not contain bid
     else:
-        assert block.body.intermediate_block_bid_with_recipient_address.selector == 1
+        assert block.body.payload_data.selector == 0
 
-        intermediate_block_bid = block.body.intermediate_block_bid_with_recipient_address.value.intermediate_block_bid
+        intermediate_block_bid = block.body.payload_data.value.intermediate_block_bid
         assert intermediate_block_bid.slot == block.slot
         assert intermediate_block_bid.parent_block_root == block.parent_root
+        # We do not check that the builder address exists or has sufficient balance here.
+        # If it does not have sufficient balance, the block proposer loses out, so it is their
+        # responsibility to check.
 ```
 
 #### Sharded data
@@ -308,8 +319,8 @@ def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> Non
 ```python
 def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
     if is_intermediate_block_slot(block.slot):
-        assert block.body.sharded_commitments_container.selector == 1
-        sharded_commitments_container = block.body.sharded_commitments_container.value
+        assert block.body.payload_data.selector == 1
+        sharded_commitments_container = block.body.payload_data.value.sharded_commitments_container
 
         # Verify not too many commitments
         assert len(sharded_commitments_container.sharded_commitments) // 2 <= get_active_shard_count(state, get_current_epoch(state))
@@ -345,9 +356,6 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
 
         # Verify that number of sharded data commitments is correctly indicated
         assert 2 * (number_of_blobs + included_sharded_data_commitments) == len(sharded_commitments_container.sharded_commitments)
-
-    else:
-        assert block.body.sharded_commitments_container.selector == 0 # Only intermediate blocks have sharded commitments
 ```
 
 #### Execution payload
@@ -355,8 +363,8 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_engine: ExecutionEngine) -> None:
     if is_intermediate_block_slot(block.slot):
-        assert block.body.execution_payload.selector == 1
-        payload = block.body.execution_payload.value
+        assert block.body.payload_data.selector == 1
+        payload = block.body.payload_data.value.execution_payload
 
         # Verify consistency of the parent hash with respect to the previous execution payload header
         if is_merge_transition_complete(state):
@@ -401,6 +409,4 @@ def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_
             block_hash=payload.block_hash,
             transactions_root=hash_tree_root(payload.transactions),
         )
-    else:
-        assert block.body.execution_payload.selector == 0 # Only intermediate blocks have execution payloads
 ```
