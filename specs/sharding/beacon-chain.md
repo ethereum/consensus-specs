@@ -560,7 +560,7 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
 
         verify_degree_proof(combined_commitment, SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
 
-        # Verify that the 2*N commitments lie on a degree N-1 polynomial
+        # Verify that the 2*N commitments lie on a degree < N polynomial
         low_degree_check(sharded_commitments_container.sharded_commitments)
 
         # Verify that blocks since the last intermediate block have been included
