@@ -299,7 +299,7 @@ def verify_intermediate_block_bid(state: BeaconState, block: BeaconBlock) -> Non
 
         assert intermediate_block_bid.sharded_data_commitment_count == intermediate_block_data.included_sharded_data_commitments
 
-        assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(intermediate_block_data.sharded_commitments[-intermediate_block_bid.sharded_data_commitments:])
+        assert intermediate_block_bid.sharded_data_commitment_root == hash_tree_root(intermediate_block_data.sharded_commitments[-intermediate_block_bid.included_sharded_data_commitments:])
 
         assert intermediate_block_bid.validator_index == block.proposer_index
 
