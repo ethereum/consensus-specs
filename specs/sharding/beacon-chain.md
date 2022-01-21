@@ -256,6 +256,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
     for i in range(n):
         powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % MODULUS
+    return powers
 ```
 
 #### `verify_kzg_proof`
