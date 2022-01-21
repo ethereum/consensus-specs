@@ -84,6 +84,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes) |
 | `ACTIVE_SHARDS` | `uint64(2**8)` (= 256) | Initial shard count |
+| `MAX_BEACON_BLOCKS_BETWEEN_INTERMEDIATE_BLOCKS` | `uint64(2**4)` (= 16) | TODO: Need to define what happens if there were more blocks without intermediate blocks | 
 
 ### Time parameters
 
