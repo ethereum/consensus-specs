@@ -299,7 +299,7 @@ def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: 
     r = 0
     inverses = [bls_modular_inverse(z - x) for z in roots]
     for i, x in enumerate(inverses):
-        r += f[i] * bls_modular_inverse(Aprime(roots[i])) * x % self.BLS_MODULUS
+        r += poly[i] * bls_modular_inverse(Aprime(roots[i])) * x % self.BLS_MODULUS
     r = r * A(x) % self.BLS_MODULUS
     return r
 ```
