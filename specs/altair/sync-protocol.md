@@ -152,9 +152,11 @@ def validate_light_client_update(store: LightClientStore,
                                  update: LightClientUpdate,
                                  current_slot: Slot,
                                  genesis_validators_root: Root) -> None:
-    # Verify update slot is larger than slot of current best finalized header
+    # Verify update is relevant
     active_header = get_active_header(update)
-    assert current_slot >= active_header.slot > store.finalized_header.slot
+    assert current_slot >= active_header.slot >= store.finalized_header.slot
+    if active_header.slot == store.finalized_header.slot:
+        assert update.attested_header.slot > store.optimistic_header.slot
 
     # Verify update does not skip a sync committee period
     finalized_period = compute_epoch_at_slot(store.finalized_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
