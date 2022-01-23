@@ -138,9 +138,9 @@ class IntermediateBlockBid(Container):
     
     # Block builders use an Eth1 address -- need signature as
     # block builder fees and data gas base fees will be charged to this address
-	signature_y_parity: bool
-	signature_r: uint256
-	signature_s: uint256    
+    signature_y_parity: bool
+    signature_r: uint256
+    signature_s: uint256    
 ```
 
 #### `IntermediateBlockBidWithRecipientAddress`
