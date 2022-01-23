@@ -216,7 +216,7 @@ class BeaconBlockBody(altair.BeaconBlockBody):
 #### `is_intermediate_block_slot`
 
 ```python
-def is_intermediate_block_slot(slot: Slot):
+def is_intermediate_block_slot(slot: Slot) -> bool:
     return slot % 2 == 1
 ```
 
