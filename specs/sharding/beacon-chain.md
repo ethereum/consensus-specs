@@ -102,6 +102,8 @@ With the introduction of intermediate blocks the number of slots per epoch is do
 
 ### Precomputed root of unity
 
+| Name | Value | Notes |
+| - | - | - |
 | `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE), BLS_MODULUS)` |
 
 ## Configuration
