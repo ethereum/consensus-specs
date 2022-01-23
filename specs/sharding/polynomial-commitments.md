@@ -238,7 +238,7 @@ def add_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficien
     Sums the polynomials `a` and `b` given by their coefficients
     """
     a, b = (a, b) if len(a >= b) else (b, a)
-    return [(a[i] + (b[i] if i < len(b) else 0) % BLS_MODULUS for i in range(len(a))]
+    return [(a[i] + (b[i] if i < len(b) else 0)) % BLS_MODULUS for i in range(len(a))]
 ```
 
 #### `multiply_polynomials`
