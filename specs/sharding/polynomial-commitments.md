@@ -141,7 +141,7 @@ def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
     for i in range(len(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE)):
         roots.append(current_root_of_unity)
         current_root_of_unity = current_root_of_unity * root_of_unity % BLS_MODULUS
-    return r
+    return roots
 ```
 
 ### Field helper functions
