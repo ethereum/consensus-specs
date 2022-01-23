@@ -191,7 +191,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
             m = 1
             for w in roots[:i] + roots[i+1:d + 1]:
                 m = m * (z - w) % BLS_MODULUS
-            r = (r + M) % BLS_MODULUS
+            r = (r + m) % BLS_MODULUS
         return r
 
     coefs = []
