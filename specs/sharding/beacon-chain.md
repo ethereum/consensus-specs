@@ -150,7 +150,7 @@ class IntermediateBlockBid(Container):
 ```python
 class IntermediateBlockBidWithRecipientAddress(Container):
     intermediate_block_bid: Union[None, IntermediateBlockBid]
-    ethereum_address: Bytes[20] # Address to receive the block builder bid
+    recipient_address: ExecutionAddress # Address to receive the block builder bid
 ```
 
 #### `ShardedCommitmentsContainer`
