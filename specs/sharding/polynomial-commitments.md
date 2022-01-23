@@ -222,7 +222,7 @@ def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldE
 ```python
 def bytes_to_field_elements(block: bytes) -> List[BLSFieldElement]:
     """
-    Slices a block into 31 byte chunks that can fit into field elements
+    Slices a block into 31-byte chunks that can fit into field elements.
     """
     sliced_block = [block[i:i + 31] for i in range(0, len(bytes), 31)]
     return [BLSFieldElement(int.from_bytes(x, "little")) for x in sliced_block]
