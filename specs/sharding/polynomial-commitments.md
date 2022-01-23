@@ -131,7 +131,8 @@ def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
 ```python
 def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
     """
-    Computes a list of roots of unity for a given order. The order must divide the BLS multiplicative group order, i.e. BLS_MODULUS - 1
+    Compute a list of roots of unity for a given order.
+    The order must divide the BLS multiplicative group order, i.e. BLS_MODULUS - 1
     """
     assert (BLS_MODULUS - 1) % order == 0
     roots = []
