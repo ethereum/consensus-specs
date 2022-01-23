@@ -332,7 +332,10 @@ def hash_to_bls_field(x: Container, challenge_number: uint64) -> BLSFieldElement
     """
     This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
     """
-    return int.from_bytes(hash(hash_tree_root(x) + int.to_bytes(challenge_number, 32, "little")), "little") % BLS_MODULUS
+    return (
+        (int.from_bytes(hash(hash_tree_root(x) + int.to_bytes(challenge_number, 32, "little")), "little"))
+        % BLS_MODULUS
+    )
 ```
 
 ### KZG operations
