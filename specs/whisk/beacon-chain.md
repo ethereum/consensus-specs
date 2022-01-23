@@ -1,18 +1,3 @@
-### Diagram
-
-```
-                                          cooldown                  cooldown
-                                          | ||                      | ||
-                                          | ||                      | ||
-           epoch N        N+1             vpvv       N+2            vpvv
-                ----+~~~~~~~~~~~~~~~~~~~~~----+~~~~~~~~~~~~~~~~~~~~~----+-
-                    ^        shuffling        ^         shuffling       ^
-                    |                         |                         |
-                    |                         |                         |
-         proposer selection        proposer selection        proposer selection
-        candidate selection       candidate selection       candidate selection
-```
-
 ### Constants
 
 | Name | Value | Description |
@@ -127,6 +112,7 @@ def process_whisk_updates(state: BeaconState) -> None:
     if next_epoch % WHISK_EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
         select_whisk_trackers(state, next_epoch)
 
+
 def process_epoch(state: BeaconState) -> None:
     # ...
     process_whisk_updates(state)  # [New in Whisk]
@@ -175,7 +161,7 @@ def get_feistel_encryption(index: uint64, rounds: uin64, K: uint64) -> uint64:
         return (x ** 3) % K
 
     x, y = index // K, index % K  # Convert 2D (x, y) coordinates from 1D coordinates
-    for _ in range(rounds):  # Apply Fiestel rounds
+    for _ in range(rounds):  # Apply Feistel rounds
         x, y = y, (F(y) + x) % K
     return x * K + y  # Convert back to 1D coordinates
 
@@ -250,6 +236,7 @@ def get_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFrSca
 
 def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
     validator = bellatrix.get_validator_from_deposit(state, deposit)
+    k = get_whisk_k(state, len(state.validators))
     validator.whisk_tracker = WhiskTracker(BLS_G1_GENERATOR, bls.ScalarMultiplication(k, BLS_G1_GENERATOR))
     validator.whisk_k_commitment = bls.ScalarMultiplication(k, BLS_G1_GENERATOR)
     validator.whisk_permutation_commitment = WHISK_TRIVIAL_PERMUTATION_COMMITMENT
