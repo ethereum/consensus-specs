@@ -268,7 +268,7 @@ This process occurs each slot.
 If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`. This means that when assigned to `slot` a `SyncCommitteeMessage` is prepared and broadcast in `slot-1 ` instead of `slot`.   
 
 This logic is triggered upon the same conditions as when producing an attestation.
-Meaning, a sync committee member should produce and broadcast a `SyncCommitteeMessage` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / 3` seconds after the start of the slot) -- whichever comes first.
+Meaning, a sync committee member should produce and broadcast a `SyncCommitteeMessage` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot) -- whichever comes first.
 
 `get_sync_committee_message(state, block_root, validator_index, privkey)` assumes the parameter `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice (including any empty slots up to the current slot processed with `process_slots` on top of the latest block), `block_root` is the root of the head block, `validator_index` is the index of the validator in the registry `state.validators` controlled by `privkey`, and `privkey` is the BLS private key for the validator.
 
@@ -385,7 +385,7 @@ The collection of input signatures should include one signature per validator wh
 
 ##### Broadcast sync committee contribution
 
-If the validator is selected to aggregate (`is_sync_committee_aggregator()`), then they broadcast their best aggregate as a `SignedContributionAndProof` to the global aggregate channel (`sync_committee_contribution_and_proof` topic) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_sync_committee_aggregator()`), then they broadcast their best aggregate as a `SignedContributionAndProof` to the global aggregate channel (`sync_committee_contribution_and_proof` topic) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / INTERVALS_PER_SLOT` seconds after the start of `slot`.
 
 Selection proofs are provided in `ContributionAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
 
