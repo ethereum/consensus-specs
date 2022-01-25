@@ -214,6 +214,8 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
     store.finalized_header = active_header
+    if store.finalized_header.slot > store.optimistic_header.slot:
+        store.optimistic_header = store.finalized_header
 ```
 
 #### `process_light_client_update`
