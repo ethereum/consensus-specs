@@ -29,6 +29,7 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
     - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
   - [Req/Resp](#reqresp)
     - [Why was the max chunk response size increased at Bellatrix?](#why-was-the-max-chunk-response-size-increased-at-bellatrix)
+    - [Why allow invalid payloads on the P2P network?](#why-allow-invalid-payloads-on-the-p2p-network)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -85,13 +86,26 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 Specifically, this type changes with the addition of `execution_payload` to the inner `BeaconBlockBody`.
 See Bellatrix [state transition document](./beacon-chain.md#beaconblockbody) for further details.
 
+Blocks with execution enabled will be permitted to propagate regardless of the
+validity of the execution payload. This prevents network segregation between
+[optimistic](/sync/optimistic.md) and non-optimistic nodes.
+
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - If the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`
   then validate the following:
-  - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
-    -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
+    - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
+       -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
+    - If `exection_payload` verification of block's parent by an execution node is *not* complete:
+    	- [REJECT] The block's parent (defined by `block.parent_root`) passes all
+    	  validation (excluding execution node verification of the `block.body.execution_payload`).
+    - otherwise:
+    	- [IGNORE] The block's parent (defined by `block.parent_root`) passes all
+    	  validation (including execution node verification of the `block.body.execution_payload`).
+
+The following gossip validation from prior specifications MUST NOT be applied if the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
+  - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 ### Transitioning the gossip
 
@@ -99,6 +113,14 @@ See gossip transition details found in the [Altair document](../altair/p2p-inter
 details on how to handle transitioning gossip topics for Bellatrix.
 
 ## The Req/Resp domain
+
+Non-faulty, [optimistic](/sync/optimistic.md) nodes may send blocks which
+result in an INVALID response from an execution engine. To prevent network
+segregation between optimistic and non-optimistic nodes, transmission of an
+INVALID execution payload via the Req/Resp domain SHOULD NOT cause a node to be
+down-scored or disconnected. Transmission of a block which is invalid due to
+any consensus layer rules (i.e., *not* execution layer rules) MAY result in
+down-scoring or disconnection.
 
 ### Messages
 
@@ -181,3 +203,26 @@ valid block sizes in the range of gas limits expected in the medium term.
 
 As with both gossip and req/rsp maximum values, type-specific limits should
 always by simultaneously respected.
+
+### Why allow invalid payloads on the P2P network?
+
+The specification allows blocks with invalid execution payloads to propagate across
+gossip and via RPC calls. The reasoning for this is as follows:
+
+1. Optimistic nodes must listen to block gossip to obtain a view of the head of
+   the chain.
+2. Therefore, optimistic nodes must propagate gossip blocks. Otherwise, they'd
+   be censoring.
+3. If optimistic nodes will propagate blocks via gossip, then they must respond
+   to requests for the parent via RPC.
+4. Therefore, optimistic nodes must send optimistic blocks via RPC.
+
+So, to prevent network segregation from optimistic nodes inadvertently sending
+invalid execution payloads, nodes should never downscore/disconnect nodes due to such invalid
+payloads. This does open the network to some DoS attacks from invalid execution
+payloads, but the scope of actors is limited to validators who can put those
+payloads in valid (and slashable) beacon blocks. Therefore, it is argued that
+the DoS risk introduced in tolerable.
+
+More complicated schemes are possible that could restrict invalid payloads from
+RPC. However, it's not clear that complexity is warranted.
