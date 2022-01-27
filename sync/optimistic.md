@@ -1,8 +1,5 @@
 # Optimistic Sync
 
-
-
-../specs/bellatrix/fork-choice.md#validate_merge_block
 ## Introduction
 
 In order to provide a syncing execution engine with a partial view of the head
