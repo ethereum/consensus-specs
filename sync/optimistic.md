@@ -106,8 +106,8 @@ these conditions.*
 
 To optimistically import a block:
 
-- The [`execute_payload`](../specs/bellatrix/beacon-chain.md#execute_payload) function MUST return `True` if the execution
-  engine returns `SYNCING` or `VALID`. An `INVALID` response MUST return `False`.
+- The [`notify_new_payload`](../specs/bellatrix/beacon-chain.md#notify_new_payload) function MUST return `True` if the execution
+  engine returns `SYNCING`, `VALID`, or `ACCEPTED`. An `INVALID` or `INVALID_BLOCK_HASH` response MUST return `False`.
 - The [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
  function MUST NOT raise an assertion if both the
 `pow_block` and `pow_parent` are unknown to the execution engine.
@@ -119,7 +119,7 @@ In addition to this change in validation, the consensus engine MUST track which
 blocks returned `SYNCING` and which returned `VALID` for subsequent processing.
 
 Optimistically imported blocks MUST pass all verifications included in
-`process_block` (withstanding the modifications to `execute_payload`).
+`process_block` (withstanding the modifications to `notify_new_payload`).
 
 A consensus engine MUST be able to retrospectively (i.e., after import) modify
 the status of `SYNCING` blocks to be either `VALID` or `INVALID` based upon responses
