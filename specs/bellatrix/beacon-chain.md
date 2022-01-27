@@ -35,7 +35,7 @@
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [`execute_payload`](#execute_payload)
+    - [`notify_new_payload`](#notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
@@ -307,17 +307,17 @@ def slash_validator(state: BeaconState,
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
-* a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
+* a notification function `self.notify_new_payload` which may apply changes to the `self.execution_state`
 
-*Note*: `execute_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+*Note*: `notify_new_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
 
 The body of this function is implementation dependent.
 The Engine API may be used to implement this and similarly defined functions via an external execution engine.
 
-#### `execute_payload`
+#### `notify_new_payload`
 
 ```python
-def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
@@ -353,7 +353,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.execute_payload(payload)
+    assert execution_engine.notify_new_payload(payload)
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
