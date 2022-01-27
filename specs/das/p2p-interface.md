@@ -196,11 +196,6 @@ This builds on top of the protocol identification and encoding spec which was in
 
 Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 
-The result codes are extended with:
--  3: **ResourceUnavailable** -- when the request was valid but cannot be served at this point in time.
-
-TODO: unify with phase0? Lighthoue already defined this in their response codes enum.
-
 ### Messages
 
 #### DASQuery

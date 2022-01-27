@@ -569,11 +569,11 @@ The response code can have one of the following values, encoded as a single unsi
   The response payload adheres to the `ErrorMessage` schema (described below).
 -  3: **ResourceUnavailable** -- the responder does not have requested resource.
   The response payload adheres to the `ErrorMessage` schema (described below).
-  *Note*: This response code is only valid as a response to `BlocksByRange`.
+  *Note*: This response code is only valid as a response where specified.
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous request-specific responses.
 
-The range `[3, 127]` is RESERVED for future usages, and should be treated as error if not recognized expressly.
+The range `[4, 127]` is RESERVED for future usages, and should be treated as error if not recognized expressly.
 
 The `ErrorMessage` schema is:
 
