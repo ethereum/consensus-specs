@@ -1,8 +1,5 @@
 # Optimistic Sync
 
-
-
-../specs/bellatrix/fork-choice.md#validate_merge_block
 ## Introduction
 
 In order to provide a syncing execution engine with a partial view of the head
@@ -28,6 +25,17 @@ statelessness).
 
 ## Helpers
 
+For brevity, we define two aliases for values of the `status` field on
+`PayloadStatusV1`:
+
+- Alias `NOT_VALIDATED` to:
+    - `SYNCING`
+    - `ACCEPTED`
+- Alias `INVALIDATED` to:
+    - `INVALID`
+    - `INVALID_BLOCK_HASH`
+    - `INVALID_TERMINAL_BLOCK`
+
 Let `head: BeaconBlock` be the result of calling of the fork choice
 algorithm at the time of block production. Let `head_block_root: Root` be the
 root of that block.
@@ -37,8 +45,8 @@ BeaconState]` be the blocks (and accompanying states) that have been verified
 either completely or optimistically.
 
 Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
-optimistically imported blocks which have only received a `SYNCING` designation
-from an execution engine (i.e., they are not known to be `INVALID` or `VALID`).
+optimistically imported blocks which have only received a `NOT_VALIDATED` designation
+from an execution engine (i.e., they are not known to be `INVALIDATED` or `VALID`).
 
 Let `current_slot: Slot` be `(time - genesis_time) // SECONDS_PER_SLOT` where
 `time` is the UNIX time according to the local system clock.
@@ -59,7 +67,7 @@ def is_optimistic(opt_store: OptimisticStore, block: BeaconBlock) -> bool:
 
 ```python
 def latest_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock) -> BeaconBlock:
-    # It is assumed that the `block` parameter is never an INVALID block.
+    # It is assumed that the `block` parameter is never an INVALIDATED block.
     while True:
         if not is_optimistic(opt_store, block) or block.parent_root == Root():
             return block
@@ -107,35 +115,35 @@ these conditions.*
 To optimistically import a block:
 
 - The [`notify_new_payload`](../specs/bellatrix/beacon-chain.md#notify_new_payload) function MUST return `True` if the execution
-  engine returns `SYNCING`, `VALID`, or `ACCEPTED`. An `INVALID` or `INVALID_BLOCK_HASH` response MUST return `False`.
+  engine returns `NOT_VALIDATED` or `VALID`. An `INVALIDATED` response MUST return `False`.
 - The [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
  function MUST NOT raise an assertion if both the
 `pow_block` and `pow_parent` are unknown to the execution engine.
   - All other assertions in [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
    (e.g., `TERMINAL_BLOCK_HASH`) MUST prevent an optimistic import.
-- The parent of the block MUST NOT have an INVALID execution payload.
+- The parent of the block MUST NOT have an `INVALIDATED` execution payload.
 
 In addition to this change in validation, the consensus engine MUST track which
-blocks returned `SYNCING` and which returned `VALID` for subsequent processing.
+blocks returned `NOT_VALIDATED` and which returned `VALID` for subsequent processing.
 
 Optimistically imported blocks MUST pass all verifications included in
 `process_block` (withstanding the modifications to `notify_new_payload`).
 
 A consensus engine MUST be able to retrospectively (i.e., after import) modify
-the status of `SYNCING` blocks to be either `VALID` or `INVALID` based upon responses
+the status of `NOT_VALIDATED` blocks to be either `VALID` or `INVALIDATED` based upon responses
 from an execution engine. I.e., perform the following transitions:
 
-- `SYNCING` -> `VALID`
-- `SYNCING` -> `INVALID`
+- `NOT_VALIDATED` -> `VALID`
+- `NOT_VALIDATED` -> `INVALIDATED`
 
-When a block transitions from `SYNCING` -> `VALID`, all *ancestors* of the
-block MUST also transition from `SYNCING` -> `VALID`. Such a block and any previously `SYNCING` ancestors are no longer
+When a block transitions from `NOT_VALIDATED` -> `VALID`, all *ancestors* of the
+block MUST also transition from `NOT_VALIDATED` -> `VALID`. Such a block and any previously `NOT_VALIDATED` ancestors are no longer
 considered "optimistically imported".
 
-When a block transitions from `SYNCING` -> `INVALID`, all *descendants* of the
-block MUST also transition from `SYNCING` -> `INVALID`.
+When a block transitions from `NOT_VALIDATED` -> `INVALIDATED`, all *descendants* of the
+block MUST also transition from `NOT_VALIDATED` -> `INVALIDATED`.
 
-When a block transitions from the `SYNCING` state, it is removed from the set of
+When a block transitions from the `NOT_VALIDATED` state, it is removed from the set of
 `opt_store.optimistic_roots`.
 
 When a "merge block" (i.e. the first block which enables execution in a chain) is declared to be
@@ -144,7 +152,7 @@ When a "merge block" (i.e. the first block which enables execution in a chain) i
 MUST be run against the merge block. If the block
 fails [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block),
 the merge block MUST be treated the same as
-an `INVALID` block (i.e., it and all its descendants are invalidated and
+an `INVALIDATED` block (i.e., it and all its descendants are invalidated and
 removed from the block tree).
 
 ### Execution Engine Errors
@@ -158,11 +166,11 @@ validity request for some block, a consensus engine:
 
 ### Assumptions about Execution Engine Behaviour
 
-This specification assumes execution engines will only return `SYNCING` when
-there is insufficient information available to make a `VALID` or `INVALID`
+This specification assumes execution engines will only return `NOT_VALIDATED` when
+there is insufficient information available to make a `VALID` or `INVALIDATED`
 determination on the given `ExecutionPayload` (e.g., the parent payload is
-unknown). Specifically, `SYNCING` responses should be fork-specific, in that
-the search for a block on one chain MUST NOT trigger a `SYNCING` response for
+unknown). Specifically, `NOT_VALIDATED` responses should be fork-specific, in that
+the search for a block on one chain MUST NOT trigger a `NOT_VALIDATED` response for
 another chain.
 
 ### Re-Orgs
@@ -170,16 +178,16 @@ another chain.
 The consensus engine MUST support any chain reorganisation which does *not*
 affect the justified checkpoint.
 
-If the justified checkpoint transitions from `SYNCING` -> `INVALID`, a
+If the justified checkpoint transitions from `NOT_VALIDATED` -> `INVALIDATED`, a
 consensus engine MAY choose to alert the user and force the application to
 exit.
 
 ## Fork Choice
 
 Consensus engines MUST support removing blocks from fork choice that transition
-from `SYNCING` to `INVALID`. Specifically, a block deemed `INVALID` at any
+from `NOT_VALIDATED` to `INVALIDATED`. Specifically, a block deemed `INVALIDATED` at any
 point MUST NOT be included in the canonical chain and the weights from those
-`INVALID` blocks MUST NOT be applied to any `VALID` or `SYNCING` ancestors.
+`INVALIDATED` blocks MUST NOT be applied to any `VALID` or `NOT_VALIDATED` ancestors.
 
 ### Fork Choice Poisoning
 
@@ -336,7 +344,7 @@ unlikely attack increases or decreases our total risk. Presently, it appears
 that `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` sits in a sweet spot for this
 trade-off.
 
-### Transitioning from VALID -> INVALID or INVALID -> VALID
+### Transitioning from VALID -> INVALIDATED or INVALIDATED -> VALID
 
 These operations are purposefully omitted. It is outside of the scope of the
 specification since it's only possible with a faulty EE.
