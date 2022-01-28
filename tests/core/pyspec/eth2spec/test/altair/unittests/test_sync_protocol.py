@@ -58,7 +58,7 @@ def test_process_light_client_update_not_timeout(spec, state):
         block_header.slot,
         committee,
     )
-    sync_committee_aggregate = spec.SyncAggregate(
+    sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
     )
@@ -76,7 +76,7 @@ def test_process_light_client_update_not_timeout(spec, state):
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finality_header,
         finality_branch=finality_branch,
-        sync_committee_aggregate=sync_committee_aggregate,
+        sync_aggregate=sync_aggregate,
         fork_version=state.fork.current_version,
     )
 
@@ -123,7 +123,7 @@ def test_process_light_client_update_timeout(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
-    sync_committee_aggregate = spec.SyncAggregate(
+    sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
     )
@@ -140,7 +140,7 @@ def test_process_light_client_update_timeout(spec, state):
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finality_header,
         finality_branch=finality_branch,
-        sync_committee_aggregate=sync_committee_aggregate,
+        sync_aggregate=sync_aggregate,
         fork_version=state.fork.current_version,
     )
 
@@ -201,7 +201,7 @@ def test_process_light_client_update_finality_updated(spec, state):
         committee,
         block_root=spec.Root(block_header.hash_tree_root()),
     )
-    sync_committee_aggregate = spec.SyncAggregate(
+    sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
     )
@@ -212,7 +212,7 @@ def test_process_light_client_update_finality_updated(spec, state):
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finalized_block_header,
         finality_branch=finality_branch,
-        sync_committee_aggregate=sync_committee_aggregate,
+        sync_aggregate=sync_aggregate,
         fork_version=state.fork.current_version,
     )
 

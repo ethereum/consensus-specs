@@ -126,7 +126,7 @@ This patch updates a few configuration values to move penalty parameters closer 
 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | Validators | |
+| `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | validators | |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 
 ## Configuration
@@ -521,7 +521,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, deposit.data.signature):
-            state.validators.append(get_validator_from_deposit(state, deposit))
+            state.validators.append(get_validator_from_deposit(deposit))
             state.balances.append(amount)
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))

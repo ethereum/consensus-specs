@@ -19,8 +19,10 @@ from eth2spec.test.utils.randomized_block_tests import (
     no_op_validation,
     randomize_state,
     randomize_state_altair,
+    randomize_state_bellatrix,
     random_block,
     random_block_altair_with_cycling_sync_committee_participation,
+    random_block_bellatrix,
     last_slot_in_epoch,
     random_slot_in_epoch,
     penultimate_slot_in_epoch,
@@ -30,7 +32,7 @@ from eth2spec.test.utils.randomized_block_tests import (
     transition_to_leaking,
     transition_without_leak,
 )
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX
 
 
 # Ensure this many blocks are present in *each* randomized scenario
@@ -253,6 +255,13 @@ if __name__ == "__main__":
             ALTAIR,
             state_randomizer=randomize_state_altair,
             block_randomizer=random_block_altair_with_cycling_sync_committee_participation,
+        )
+    if BELLATRIX in sys.argv:
+        did_generate = True
+        run_generate_tests_to_std_out(
+            BELLATRIX,
+            state_randomizer=randomize_state_bellatrix,
+            block_randomizer=random_block_bellatrix,
         )
     if not did_generate:
         warnings.warn("no phase given for test generation")
