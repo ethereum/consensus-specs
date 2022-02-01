@@ -4,6 +4,7 @@ from eth_utils import encode_hex
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.test.context import MINIMAL, spec_state_test, with_all_phases, with_presets
 from eth2spec.test.helpers.attestations import (
+    get_valid_attestation,
     next_epoch_with_attestations,
     next_slots_with_attestations,
     state_transition_with_full_block,
@@ -18,6 +19,7 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
+    add_attestation,
     add_block,
     tick_and_add_block,
     apply_next_epoch_with_attestations,
@@ -26,6 +28,7 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slots,
+    next_slot,
     state_transition_and_sign_block,
 )
 
@@ -795,5 +798,106 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
             'proposer_boost_root': encode_hex(store.proposer_boost_root),
         }
     })
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_old_attestation_lmd(spec, state):
+    """
+    state (forked from genesis):
+        epoch
+        [0] <- [A]
+
+    another_state (forked from epoch 0):
+         └──── [B]
+    """
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+
+    state_a = genesis_state.copy()
+    state_b = genesis_state.copy()
+
+    # state_a
+    block_a = build_empty_block_for_next_slot(spec, state_a)
+    block_a.body.graffiti = b'\xaa' * 32
+    signed_block_a = state_transition_and_sign_block(spec, state_a, block_a)
+    yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
+
+    # state_b
+    block_b = build_empty_block_for_next_slot(spec, state_b)
+    block_b.body.graffiti = b'\xbb' * 32
+    signed_block_b = state_transition_and_sign_block(spec, state_b, block_b)
+    yield from tick_and_add_block(spec, store, signed_block_b, test_steps)
+
+    # ===== Create attestations or blocks but not add them immediately
+    # At epoch x
+    # Create attestations for state_b
+
+    # Create attestation for state_b with 4 signed bits
+    participant_num = 4
+
+    def _filter_participant_set(participants):
+        return [index for i, index in enumerate(participants) if i < participant_num]
+
+    attestation_b_1 = get_valid_attestation(
+        spec, state_b, signed=True, filter_participant_set=_filter_participant_set
+    )
+
+    # Create a forked block that contains attestation_b_1
+    state_b_2 = state_b.copy()
+    block_b_2 = build_empty_block_for_next_slot(spec, state_b_2)
+    block_b_2.body.attestations.append(attestation_b_1)
+    transition_unsigned_block(spec, state_b_2, block_b_2)
+    block_b_2.state_root = state_b_2.hash_tree_root()
+    signed_block_b_2 = sign_block(spec, state_b_2, block_b_2)
+
+    # Forward to epoch x + 2
+    for _ in range(2):
+        next_epoch(spec, state_a)
+        next_epoch(spec, state_b)
+
+    # Create attestation for state_b with 1 signed bits
+    participant_num = 1
+
+    def _filter_participant_set_2(participants):
+        return [index for i, index in enumerate(participants) if i < participant_num]
+
+    attestation_b_2 = get_valid_attestation(
+        spec, state_b, signed=True, filter_participant_set=_filter_participant_set_2
+    )
+
+    # Create attestation for state_a with 3 signed bits
+    participant_num = 3
+
+    def _filter_participant_set_3(participants):
+        return [index for i, index in enumerate(participants) if i < participant_num]
+
+    attestation_a = get_valid_attestation(
+        spec, state_a, signed=True, filter_participant_set=_filter_participant_set_3
+    )
+
+    # ===== Start to add things!
+    next_slot(spec, state_b)
+    current_time = state_b.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+
+    # state_b wins after adding attestation_b_2 (1 bit signed the attestation)
+    yield from add_attestation(spec, store, attestation_b_2, test_steps, is_from_block=False)
+    assert spec.get_head(store) == signed_block_b.message.hash_tree_root()
+
+    # state_a wins after adding attestation_a (3 bits signed the attestation)
+    yield from add_attestation(spec, store, attestation_a, test_steps, is_from_block=False)
+    assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
+
+    # state_a still wins after adding signed_block_b_2 with old attestation
+    yield from add_block(spec, store, signed_block_b_2, test_steps)
+    assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
 
     yield 'steps', test_steps
