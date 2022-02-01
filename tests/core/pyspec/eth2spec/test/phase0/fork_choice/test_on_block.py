@@ -901,3 +901,59 @@ def test_old_attestation_lmd(spec, state):
     assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
 
     yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_old_attestation_ffg(spec, state):
+    test_steps = []
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    # Create a finalized chain
+    for _ in range(4):
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, False, test_steps=test_steps)
+    assert store.finalized_checkpoint.epoch == 2
+    assert store.justified_checkpoint.epoch == 3
+
+    # Attest target at epoch 4 with <2/3 votes
+    state, store, _ = yield from apply_next_slots_with_attestations(
+        spec, state, store, spec.SLOTS_PER_EPOCH * 2 // 3 + 1, True, True, test_steps)
+
+    next_slot(spec, state)
+
+    # Create a block with attestation that vote on target = epoch 4
+    # But not apply it to store now
+    attestation = get_valid_attestation(spec, state, signed=True)
+    assert attestation.data.target.epoch == 4
+
+    state_copy = state.copy()
+    block = build_empty_block_for_next_slot(spec, state_copy)
+    block.body.attestations.append(attestation)
+    transition_unsigned_block(spec, state_copy, block)
+    block.state_root = state_copy.hash_tree_root()
+    signed_block = sign_block(spec, state_copy, block)
+
+    assert store.justified_checkpoint.epoch == 3
+
+    # Apply the block after 3 epochs
+    for _ in range(3):
+        next_epoch(spec, state)
+    assert spec.compute_epoch_at_slot(state.slot) == 7
+    assert store.justified_checkpoint.epoch == 3
+
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+
+    yield from add_block(spec, store, signed_block, test_steps)
+    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert store.justified_checkpoint.epoch == 4
