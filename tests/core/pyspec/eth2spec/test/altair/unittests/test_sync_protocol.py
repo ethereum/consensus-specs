@@ -98,8 +98,8 @@ def test_process_light_client_update_timeout(spec, state):
 
     # Forward to next sync committee period
     next_slots(spec, state, spec.UPDATE_TIMEOUT)
-    snapshot_period = spec.compute_epoch_at_slot(store.optimistic_header.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = spec.compute_epoch_at_slot(state.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    snapshot_period = spec.compute_sync_committee_period(spec.compute_epoch_at_slot(store.optimistic_header.slot))
+    update_period = spec.compute_sync_committee_period(spec.compute_epoch_at_slot(state.slot))
     assert snapshot_period + 1 == update_period
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -169,8 +169,8 @@ def test_process_light_client_update_finality_updated(spec, state):
     # Ensure that finality checkpoint has changed
     assert state.finalized_checkpoint.epoch == 3
     # Ensure that it's same period
-    snapshot_period = spec.compute_epoch_at_slot(store.optimistic_header.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = spec.compute_epoch_at_slot(state.slot) // spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    snapshot_period = spec.compute_sync_committee_period(spec.compute_epoch_at_slot(store.optimistic_header.slot))
+    update_period = spec.compute_sync_committee_period(spec.compute_epoch_at_slot(state.slot))
     assert snapshot_period == update_period
 
     # Updated sync_committee and finality
