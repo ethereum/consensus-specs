@@ -21,7 +21,7 @@
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `BLSG1Scalar` | `Bytes48` | BLS12-381 G1 scalar |
+| `BLSScalar` | `Bytes48` | BLS12-381 scalar |
 | `BLSG1Point` | `Bytes48` | BLS12-381 G1 point |
 
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
@@ -30,7 +30,7 @@
 def BLSG1PointFromAffine(x: int, y: int) -> BLSG1Point
 
 
-def BLSG1ScalarMultiply(scalar: BLSG1Scalar, point: BLSG1Point) -> BLSG1Point
+def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point
 ```
 
 | Name | Value |
@@ -48,8 +48,8 @@ class WhiskShuffleProof:
 class WhiskTrackerProof:
     T_1: BLSG1Point  # Sigma commitment
     T_2: BLSG1Point  # Sigma commitment
-    s_1: BLSG1Scalar  # Sigma response
-    s_2: BLSG1Scalar  # Sigma response
+    s_1: BLSScalar  # Sigma response
+    s_2: BLSScalar  # Sigma response
 
 def IsValidShuffleProof(permutation_commitment: BLSG1Point,
                         pre_shuffle_trackers: Sequence[WhiskTracker],
@@ -225,10 +225,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 #### Deposits
 
 ```python
-def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSG1Scalar:
+def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSScalar:
     counter = 0
     while True:
-        k = BLSG1Scalar(hash(uint_to_bytes(validator_index) + uint_to_bytes(counter)))  # hash `validator_index || counter`
+        k = BLSScalar(hash(uint_to_bytes(validator_index) + uint_to_bytes(counter)))  # hash `validator_index || counter`
         if is_k_commitment_unique(state, bls.BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)):
             return k  # unique by trial and error
         counter += 1
