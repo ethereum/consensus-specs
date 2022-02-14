@@ -29,7 +29,7 @@
     - [`SignedShardSample`](#signedshardsample)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
-    - [`IntermediatBlockData`](#intermediatblockdata)
+    - [`BuilderBlockData`](#builderblockdata)
     - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
   - [Block processing](#block-processing)
@@ -40,7 +40,7 @@
   - [Block processing](#block-processing-1)
     - [`process_block`](#process_block)
     - [Block header](#block-header)
-    - [Intermediate Block Bid](#builder-block-bid)
+    - [Builder Block Bid](#builder-block-bid)
     - [Sharded data](#sharded-data)
     - [Execution payload](#execution-payload)
 
@@ -194,7 +194,7 @@ class BeaconState(bellatrix.BeaconState):
     blocks_since_builder_block: List[BeaconBlock, MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS]
 ```
 
-#### `IntermediatBlockData`
+#### `BuilderBlockData`
 
 ```python
 class BuilderBlockData(Container):
@@ -284,7 +284,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     assert not proposer.slashed
 ```
 
-#### Intermediate Block Bid
+#### Builder Block Bid
 
 ```python
 def verify_builder_block_bid(state: BeaconState, block: BeaconBlock) -> None:
