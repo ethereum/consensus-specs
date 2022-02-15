@@ -171,7 +171,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state_transition(state, signed_block, True)
 
     # [New in Bellatrix]
-    if is_merge_transition_block(pre_state, block.body):
+    if compute_epoch_at_slot(pre_state.slot) >= BELLATRIX_FORK_EPOCH and is_merge_transition_block(pre_state, block.body):
         validate_merge_block(block)
 
     # Add new block to the store
