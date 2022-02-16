@@ -213,6 +213,8 @@ class ExecutionPayloadHeader(Container):
 
 ```python
 def is_merge_transition_complete(state: BeaconState) -> bool:
+    if compute_epoch_at_slot(state.slot) < BELLATRIX_FORK_EPOCH:
+        return False
     return state.latest_execution_payload_header != ExecutionPayloadHeader()
 ```
 
