@@ -559,16 +559,26 @@ class ShardingSpecBuilder(BellatrixSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
-from eth2spec.bellatrix import {preset_name} as bellatrix
+# from eth2spec.bellatrix import {preset_name} as bellatrix
+from eth2spec.utils.bls import G1, G2
 '''
 
     @classmethod
     def preparations(cls):
-        return super().preparations()
+        return super().preparations() + '\n' + '''
+G1_SETUP = None
+G2_SETUP = None
+'''
 
     @classmethod
-    def sundry_functions(cls) -> str:
-        return super().sundry_functions() 
+    def hardcoded_custom_type_dep_constants(cls) -> str:
+        constants = {
+            'BLSFieldElement': 'uint256',
+            'BLSPolynomialByCoefficients': 'List[BLSFieldElement]',
+            'BLSPolynomialByEvaluations': 'List[BLSFieldElement]',
+        }
+        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+
 
 spec_builders = {
     builder.fork: builder
@@ -706,6 +716,7 @@ ignored_dependencies = [
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
     'Optional',
+    'G1_SETUP', 'G2_SETUP',
 ]
 
 

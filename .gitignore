@@ -18,6 +18,7 @@ consensus-spec-tests/
 tests/core/pyspec/eth2spec/phase0/
 tests/core/pyspec/eth2spec/altair/
 tests/core/pyspec/eth2spec/bellatrix/
+tests/core/pyspec/eth2spec/sharding/
 
 # coverage reports
 .htmlcov

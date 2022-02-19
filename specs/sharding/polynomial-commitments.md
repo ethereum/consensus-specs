@@ -61,8 +61,8 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 | Name | Value |
 | - | - |
-| `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
-| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
+| `G1_SETUP` | `List[G1]` value. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
+| `G2_SETUP` | `List[G2]` value. The G2-side trusted setup `[G, G*s, G*s**2....]` |
 
 ## Custom types
 
@@ -82,6 +82,16 @@ We define the following Python custom types for type hinting and readability:
 ```python
 def next_power_of_two(x: int) -> int:
     return 2 ** ((x - 1).bit_length())
+```
+
+#### `is_power_of_two`
+
+```python
+def is_power_of_two(value: int) -> bool:
+    """
+    Check if ``value`` is a power of two integer.
+    """
+    return (value > 0) and (value & (value - 1) == 0)
 ```
 
 #### `reverse_bit_order`
@@ -139,7 +149,7 @@ def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
     root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // order, BLS_MODULUS)
 
     current_root_of_unity = 1
-    for i in range(len(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE)):
+    for _ in range(order):
         roots.append(current_root_of_unity)
         current_root_of_unity = current_root_of_unity * root_of_unity % BLS_MODULUS
     return roots
@@ -197,7 +207,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
 
     coefs = []
     for i in range(K):
-        coefs.append( - (r_to_K - 1) * bls_modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % BLS_MODULUS)
+        coefs.append(- (r_to_K - 1) * bls_modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % BLS_MODULUS)
     for i in range(d + 1):
         coefs[i] = (coefs[i] + B(r) * bls_modular_inverse(Bprime(r) * (r - roots[i]))) % BLS_MODULUS
     
@@ -272,7 +282,10 @@ def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement])
         for j in range(len(ys)):
             if j != i:
                 weight_adjustment = bls_modular_inverse(xs[j] - xs[i])
-                summand  = multiply_polynomials(summand, [weight_adjustment, ((MODULUS - weight_adjustment) * xs[i])])
+                summand = multiply_polynomials(
+                    summand,
+                    [weight_adjustment, ((BLS_MODULUS - weight_adjustment) * xs[i])],
+                )
         r = add_polynomials(r, summand)
     
     return r
@@ -281,11 +294,12 @@ def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement])
 #### `evaluate_polynomial_in_evaluation_form`
 
 ```python
-def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: BLSFieldElement) -> BLSFieldElement:
+def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations,
+                                           x: BLSFieldElement,
+                                           field_elements_per_blob: uint64) -> BLSFieldElement:
     """
     Evaluates a polynomial (in evaluation form) at an arbitrary point
     """
-    field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE
     roots = roots_of_unity(field_elements_per_blob)
 
     def A(z):
@@ -300,8 +314,8 @@ def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: 
     r = 0
     inverses = [bls_modular_inverse(z - x) for z in roots]
     for i, x in enumerate(inverses):
-        r += poly[i] * bls_modular_inverse(Aprime(roots[i])) * x % self.BLS_MODULUS
-    r = r * A(x) % self.BLS_MODULUS
+        r += poly[i] * bls_modular_inverse(Aprime(roots[i])) * x % BLS_MODULUS
+    r = r * A(x) % BLS_MODULUS
     return r
 ```
 
@@ -316,7 +330,8 @@ We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldber
 ```python
 def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
     """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants. This is a non-optimized implementation.
+    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    This is a non-optimized implementation.
     """
     r = bls.Z1()
     for x, a in zip(points, scalars):
@@ -359,7 +374,10 @@ def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldE
 #### `verify_kzg_multiproof`
 
 ```python
-def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], ys: List[BLSFieldElement], proof: KZGCommitment) -> None:
+def verify_kzg_multiproof(commitment: KZGCommitment,
+                          xs: List[BLSFieldElement],
+                          ys: List[BLSFieldElement],
+                          proof: KZGCommitment) -> None:
     """
     Verifies a KZG multiproof.
     """
