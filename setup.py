@@ -891,6 +891,10 @@ class PySpecCommand(Command):
                     specs/bellatrix/fork-choice.md
                     specs/bellatrix/validator.md
                 """
+            if self.spec_fork == SHARDING:
+                self.md_doc_paths += """
+                    specs/sharding/polynomial-commitments.md
+                """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
