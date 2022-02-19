@@ -41,6 +41,7 @@ from marko.ext.gfm.elements import Table
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
+SHARDING = 'sharding'
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
@@ -548,9 +549,30 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
 
+
+#
+# ShardingSpecBuilder
+#
+class ShardingSpecBuilder(BellatrixSpecBuilder):
+    fork: str = SHARDING
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.bellatrix import {preset_name} as bellatrix
+'''
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations()
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() 
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, ShardingSpecBuilder)
 }
 
 
@@ -846,14 +868,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, SHARDING):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX):
+            if self.spec_fork in (ALTAIR, BELLATRIX, SHARDING):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -862,7 +884,7 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork == BELLATRIX:
+            if self.spec_fork in (BELLATRIX, SHARDING):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
