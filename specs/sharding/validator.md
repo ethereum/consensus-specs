@@ -8,7 +8,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
   - [Introduction](#introduction)
   - [Prerequisites](#prerequisites)
   - [Constants](#constants)
@@ -23,6 +22,7 @@
   - [Validator assignments](#validator-assignments)
     - [Attesting](#attesting)
 - [Sample reconstruction](#sample-reconstruction)
+  - [Minimum online validator requirement](#minimum-online-validator-requirement)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
