@@ -103,7 +103,7 @@ def test_prepare_execution_payload(spec, state):
 
         # 1. Handle `is_merge_complete`
         if is_merge_complete:
-            state.latest_execution_payload_header = spec.ExecutionPayloadHeader(random=b'\x12' * 32)
+            state.latest_execution_payload_header = spec.ExecutionPayloadHeader(prev_randao=b'\x12' * 32)
         else:
             state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
 
