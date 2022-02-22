@@ -80,7 +80,7 @@ Used to signal to initiate the payload build process via `notify_forkchoice_upda
 @dataclass
 class PayloadAttributes(object):
     timestamp: uint64
-    random: Bytes32
+    prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
 ```
 

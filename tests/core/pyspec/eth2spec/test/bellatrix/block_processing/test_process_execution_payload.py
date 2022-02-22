@@ -153,7 +153,7 @@ def test_bad_random_first_payload(spec, state):
 
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.random = b'\x42' * 32
+    execution_payload.prev_randao = b'\x42' * 32
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -167,7 +167,7 @@ def test_bad_random_regular_payload(spec, state):
 
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.random = b'\x04' * 32
+    execution_payload.prev_randao = b'\x04' * 32
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -182,7 +182,7 @@ def test_bad_everything_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.parent_hash = spec.Hash32()
-    execution_payload.random = spec.Bytes32()
+    execution_payload.prev_randao = spec.Bytes32()
     execution_payload.timestamp = 0
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
