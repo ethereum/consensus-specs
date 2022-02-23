@@ -55,9 +55,19 @@ def randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     return scenario_state
 
 
-def randomize_state_altair(spec, state, stats):
-    scenario_state = randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1)
+def randomize_state_altair(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state(spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
     randomize_inactivity_scores(spec, state)
+    return scenario_state
+
+
+def randomize_state_bellatrix(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_altair(spec,
+                                            state,
+                                            stats,
+                                            exit_fraction=exit_fraction,
+                                            slash_fraction=slash_fraction)
+    # TODO: randomize execution payload, merge status, etc.
     return scenario_state
 
 
@@ -176,6 +186,12 @@ def random_block_altair_with_cycling_sync_committee_participation(spec,
         block_root=previous_root,
         fraction_participated=fraction_participated,
     )
+    return block
+
+
+def random_block_bellatrix(spec, state, signed_blocks, scenario_state):
+    block = random_block_altair_with_cycling_sync_committee_participation(spec, state, signed_blocks, scenario_state)
+    # TODO: return randomized execution payload
     return block
 
 

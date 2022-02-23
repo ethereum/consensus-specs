@@ -25,7 +25,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     called_new_block = False
 
     class TestEngine(spec.NoopExecutionEngine):
-        def execute_payload(self, payload) -> bool:
+        def notify_new_payload(self, payload) -> bool:
             nonlocal called_new_block, execution_valid
             called_new_block = True
             assert payload == execution_payload
@@ -153,7 +153,7 @@ def test_bad_random_first_payload(spec, state):
 
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.random = b'\x42' * 32
+    execution_payload.prev_randao = b'\x42' * 32
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -167,7 +167,7 @@ def test_bad_random_regular_payload(spec, state):
 
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.random = b'\x04' * 32
+    execution_payload.prev_randao = b'\x04' * 32
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
 
@@ -182,7 +182,7 @@ def test_bad_everything_regular_payload(spec, state):
     # execution payload
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.parent_hash = spec.Hash32()
-    execution_payload.random = spec.Bytes32()
+    execution_payload.prev_randao = spec.Bytes32()
     execution_payload.timestamp = 0
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
@@ -214,3 +214,35 @@ def test_bad_timestamp_regular_payload(spec, state):
     execution_payload.timestamp = execution_payload.timestamp + 1
 
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+
+
+@with_bellatrix_and_later
+@spec_state_test
+def test_non_empty_extra_data_first_payload(spec, state):
+    # pre-state
+    state = build_state_with_incomplete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.extra_data = b'\x45' * 12
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+    assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data
+
+
+@with_bellatrix_and_later
+@spec_state_test
+def test_non_empty_extra_data_regular_payload(spec, state):
+    # pre-state
+    state = build_state_with_complete_transition(spec, state)
+    next_slot(spec, state)
+
+    # execution payload
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.extra_data = b'\x45' * 12
+
+    yield from run_execution_payload_processing(spec, state, execution_payload)
+
+    assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data

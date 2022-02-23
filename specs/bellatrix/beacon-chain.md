@@ -35,7 +35,7 @@
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [`execute_payload`](#execute_payload)
+    - [`notify_new_payload`](#notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
@@ -169,9 +169,9 @@ class ExecutionPayload(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
-    receipt_root: Bytes32  # 'receipts root' in the yellow paper
+    receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    random: Bytes32  # 'difficulty' in the yellow paper
+    prev_randao: Bytes32  # 'difficulty' in the yellow paper
     block_number: uint64  # 'number' in the yellow paper
     gas_limit: uint64
     gas_used: uint64
@@ -191,9 +191,9 @@ class ExecutionPayloadHeader(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress
     state_root: Bytes32
-    receipt_root: Bytes32
+    receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    random: Bytes32
+    prev_randao: Bytes32
     block_number: uint64
     gas_limit: uint64
     gas_used: uint64
@@ -307,17 +307,17 @@ def slash_validator(state: BeaconState,
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
-* a state transition function `self.execute_payload` which applies changes to the `self.execution_state`
+* a notification function `self.notify_new_payload` which may apply changes to the `self.execution_state`
 
-*Note*: `execute_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+*Note*: `notify_new_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
 
 The body of this function is implementation dependent.
 The Engine API may be used to implement this and similarly defined functions via an external execution engine.
 
-#### `execute_payload`
+#### `notify_new_payload`
 
 ```python
-def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
@@ -348,20 +348,20 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify consistency of the parent hash with respect to the previous execution payload header
     if is_merge_transition_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify random
-    assert payload.random == get_randao_mix(state, get_current_epoch(state))
+    # Verify prev_randao
+    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.execute_payload(payload)
+    assert execution_engine.notify_new_payload(payload)
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
         fee_recipient=payload.fee_recipient,
         state_root=payload.state_root,
-        receipt_root=payload.receipt_root,
+        receipts_root=payload.receipts_root,
         logs_bloom=payload.logs_bloom,
-        random=payload.random,
+        prev_randao=payload.prev_randao,
         block_number=payload.block_number,
         gas_limit=payload.gas_limit,
         gas_used=payload.gas_used,

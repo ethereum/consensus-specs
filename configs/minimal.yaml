@@ -3,6 +3,13 @@
 # Extends the minimal preset
 PRESET_BASE: 'minimal'
 
+# Free-form short name of the network that this configuration applies to - known
+# canonical network names include:
+# * 'mainnet' - there can be only one
+# * 'prater' - testnet
+# Must match the regex: [a-z0-9\-]
+CONFIG_NAME: 'minimal'
+
 # Transition
 # ---------------------------------------------------------------
 # TBD, 2**256-2**10 is a placeholder

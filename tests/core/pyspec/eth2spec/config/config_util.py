@@ -14,7 +14,7 @@ def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
             out[k] = [int(item) if item.isdigit() else item for item in v]
         elif isinstance(v, str) and v.startswith("0x"):
             out[k] = bytes.fromhex(v[2:])
-        elif k != 'PRESET_BASE':
+        elif k != 'PRESET_BASE' and k != 'CONFIG_NAME':
             out[k] = int(v)
         else:
             out[k] = v

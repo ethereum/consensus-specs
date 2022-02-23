@@ -516,7 +516,7 @@ def get_pow_block(hash: Bytes32) -> Optional[PowBlock]:
     return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0))
 
 
-def get_execution_state(execution_state_root: Bytes32) -> ExecutionState:
+def get_execution_state(_execution_state_root: Bytes32) -> ExecutionState:
     pass
 
 
@@ -526,7 +526,7 @@ def get_pow_chain_head() -> PowBlock:
 
 class NoopExecutionEngine(ExecutionEngine):
 
-    def execute_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -767,7 +767,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
     """
     out: Dict[str, str] = dict()
     for k, v in conf.items():
-        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE'):
+        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything is either byte data or an integer, with PRESET_BASE as one exception.
             out[k] = f"'{v}'"
@@ -883,6 +883,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/fork.md
                     specs/bellatrix/fork-choice.md
                     specs/bellatrix/validator.md
+                    sync/optimistic.md
                 """
             if self.spec_fork == CAPELLA:
                 self.md_doc_paths += """
@@ -1030,7 +1031,7 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.812"],
+        "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
         "generator": ["python-snappy==0.5.4"],
     },
     install_requires=[
