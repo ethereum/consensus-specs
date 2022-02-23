@@ -5,6 +5,12 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
+- [Configuration](#configuration)
+- [Fork to Capella](#fork-to-capella)
+  - [Fork trigger](#fork-trigger)
+  - [Upgrading the state](#upgrading-the-state)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
@@ -83,7 +89,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
-        withdrawal_receipts=[],
+        withdrawal_count=0,
     )
 
     for pre_validator in pre.validators:

@@ -150,10 +150,10 @@ def compute_withdrawal_tree_root(state: BeaconState) -> Root:
     emulating a List[WithdrawalReceipt, 2**WITHDRAWAL_RECEIPTS_TREE_DEPTH].
     """
     zero_hashes = [Root()]
-    for i in range(WITHDRAWAL_RECEIPTS_TREE_DEPTH-1):
+    for i in range(WITHDRAWAL_RECEIPTS_TREE_DEPTH - 1):
         zero_hashes.append(hash(zero_hashes[i] + zero_hashes[i]))
 
-    size = state.withdrawal_count
+    size = int(state.withdrawal_count)
     node = Root()
     for height in range(WITHDRAWAL_RECEIPTS_TREE_DEPTH):
         if size % 2 == 1:
