@@ -22,6 +22,12 @@ to validator withdrawals. Including:
 
 ## Constants
 
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `TransactionType` | `Bytes1` | an EIP-2718 type |
+
 ## Preset
 
 ### State list lengths
@@ -34,7 +40,7 @@ to validator withdrawals. Including:
 
 | Name | Value | Description |
 | - | - | - |
-| `WITHDRAWAL_TX_TYPE` | `Bytes1(0x05)` | EIP-2718 TX Type |
+| `TX_TYPE_WITHDRAWAL` | `TransactionType('0x05')` | EIP-2718 TX Type |
 | `MAX_WITHDRAWAL_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawal transactions allowed in each payload |
 
 ## Configuration
@@ -153,7 +159,7 @@ class ExecutionPayloadHeader(Container):
 
 #### `WithdrawalTransaction`
 
-New EIP-2718 transaction type, with the format being the single byte `WITHDRAWAL_TX_TYPE`
+New EIP-2718 transaction type, with the format being the single byte `TX_TYPE_WITHDRAWAL`
 followed by an SSZ encoding of the `WithdrawalTransaction` container comprising the transaction contents.
 
 ```python
