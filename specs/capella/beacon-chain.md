@@ -11,7 +11,7 @@
 
 ## Introduction
 
-Capella is a consensus-layer upgrade containin a number of features related
+Capella is a consensus-layer upgrade containing a number of features related
 to validator withdrawals. Including:
 * Automatic withdrawals of `withdrawable` validators
 * Partial withdrawals during block proposal
