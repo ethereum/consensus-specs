@@ -162,6 +162,9 @@ class ExecutionPayloadHeader(Container):
 New EIP-2718 transaction type, with the format being the single byte `TX_TYPE_WITHDRAWAL`
 followed by an SSZ encoding of the `WithdrawalTransaction` container comprising the transaction contents.
 
+*Note*: This container is used for both a special TX that goes into an `ExecutionPayload`
+as well as in the `BeaconState`'s `withdrawal_receipts` queue.
+
 ```python
 class WithdrawalTransaction(Container):
     address: ExecutionAddress

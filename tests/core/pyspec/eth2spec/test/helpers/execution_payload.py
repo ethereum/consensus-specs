@@ -1,3 +1,6 @@
+from eth2spec.test.helpers.constants import FORKS_BEFORE_CAPELLA
+
+
 def build_empty_execution_payload(spec, state, randao_mix=None):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
@@ -32,7 +35,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
 
 
 def get_execution_payload_header(spec, execution_payload):
-    return spec.ExecutionPayloadHeader(
+    payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
         fee_recipient=execution_payload.fee_recipient,
         state_root=execution_payload.state_root,
@@ -48,6 +51,9 @@ def get_execution_payload_header(spec, execution_payload):
         block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
+    if spec.fork not in FORKS_BEFORE_CAPELLA:
+        payload_header.withdrawal_transactions_root = spec.hash_tree_root(execution_payload.withdrawal_transactions)
+    return payload_header
 
 
 def build_state_with_incomplete_transition(spec, state):
