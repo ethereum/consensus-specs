@@ -12,6 +12,9 @@ from abc import ABC, abstractmethod
 import ast
 import subprocess
 import sys
+import copy
+from collections import OrderedDict
+
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
 def installPackage(package: str):
@@ -724,7 +727,6 @@ def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[s
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
 
-
 def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
@@ -814,7 +816,12 @@ def _build_spec(preset_name: str, fork: str,
         spec_object = combine_spec_objects(spec_object, value)
 
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
-    dependency_order_class_objects(class_objects, spec_object.custom_types)
+
+    # Ensure it's ordered after multiple forks
+    new_objects = {}
+    while OrderedDict(new_objects) != OrderedDict(class_objects):
+        new_objects = copy.deepcopy(class_objects)
+        dependency_order_class_objects(class_objects, spec_object.custom_types)
 
     return objects_to_spec(preset_name, spec_object, spec_builders[fork], class_objects)
 
