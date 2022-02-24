@@ -239,8 +239,9 @@ def process_full_withdrawals(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_withdrawal_transactions(state, block.body.execution_payload)  # [New in Capella]
-    process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
+    if is_execution_enabled(state, block.body):
+        process_withdrawal_transactions(state, block.body.execution_payload)  # [New in Capella]
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -274,20 +275,20 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify consistency of the parent hash with respect to the previous execution payload header
     if is_merge_transition_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify random
-    assert payload.random == get_randao_mix(state, get_current_epoch(state))
+    # Verify prev_randao
+    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.execute_payload(payload)
+    assert execution_engine.notify_new_payload(payload)
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
         fee_recipient=payload.fee_recipient,
         state_root=payload.state_root,
-        receipt_root=payload.receipt_root,
+        receipts_root=payload.receipts_root,
         logs_bloom=payload.logs_bloom,
-        random=payload.random,
+        prev_randao=payload.prev_randao,
         block_number=payload.block_number,
         gas_limit=payload.gas_limit,
         gas_used=payload.gas_used,
@@ -299,4 +300,3 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         withdrawal_transactions=hash_tree_root(payload.withdrawal_transactions),
     )
 ```
-
