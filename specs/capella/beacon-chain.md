@@ -117,9 +117,9 @@ class ExecutionPayload(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
     state_root: Bytes32
-    receipt_root: Bytes32  # 'receipts root' in the yellow paper
+    receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    random: Bytes32  # 'difficulty' in the yellow paper
+    prev_randao: Bytes32  # 'difficulty' in the yellow paper
     block_number: uint64  # 'number' in the yellow paper
     gas_limit: uint64
     gas_used: uint64
@@ -140,9 +140,9 @@ class ExecutionPayloadHeader(Container):
     parent_hash: Hash32
     fee_recipient: ExecutionAddress
     state_root: Bytes32
-    receipt_root: Bytes32
+    receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    random: Bytes32
+    prev_randao: Bytes32
     block_number: uint64
     gas_limit: uint64
     gas_used: uint64
@@ -165,7 +165,7 @@ followed by an SSZ encoding of the `WithdrawalTransaction` container comprising 
 ```python
 class WithdrawalTransaction(Container):
     address: ExecutionAddress
-    value: Gwei
+    amount: Gwei
 ```
 
 ## Helpers
@@ -188,12 +188,12 @@ def withdraw(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
 
 ### Predicates
 
-#### `is_withdrawable_validator`
+#### `is_fully_withdrawable_validator`
 
 ```python
-def is_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
+def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
-    Check if ``validator`` is withdrawable.
+    Check if ``validator`` is fully withdrawable.
     """
     is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
     return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.withdrawn_epoch
@@ -228,7 +228,7 @@ def process_epoch(state: BeaconState) -> None:
 def process_full_withdrawals(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     for index, validator in enumerate(state.validators):
-        if is_withdrawable_validator(validator, current_epoch):
+        if is_fully_withdrawable_validator(validator, current_epoch):
             # TODO, consider the zero-balance case
             withdraw(state, ValidatorIndex(index), state.balances[index])
             validator.withdrawn_epoch = current_epoch
@@ -297,6 +297,6 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        withdrawal_transactions=hash_tree_root(payload.withdrawal_transactions),
+        withdrawal_transactions_root=hash_tree_root(payload.withdrawal_transactions),
     )
 ```

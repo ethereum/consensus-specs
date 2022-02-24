@@ -13,31 +13,34 @@ def set_validator_withdrawable(spec, state, index, withdrawable_epoch=None):
     validator.withdrawable_epoch = withdrawable_epoch
     validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
 
-    assert spec.is_withdrawable_validator(validator, withdrawable_epoch)
+    assert spec.is_fully_withdrawable_validator(validator, withdrawable_epoch)
 
 
-def run_process_withdrawals(spec, state, num_expected_withdrawals=None):
+def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
+    pre_withdrawal_receipts = state.withdrawal_receipts
     to_be_withdrawn_indices = [
         index for index, validator in enumerate(state.validators)
-        if spec.is_withdrawable_validator(validator, spec.get_current_epoch(state))
+        if spec.is_fully_withdrawable_validator(validator, spec.get_current_epoch(state))
     ]
 
     if num_expected_withdrawals is not None:
         assert len(to_be_withdrawn_indices) == num_expected_withdrawals
 
-    yield from run_epoch_processing_with(spec, state, 'process_withdrawals')
+    yield from run_epoch_processing_with(spec, state, 'process_full_withdrawals')
 
     for index in to_be_withdrawn_indices:
         validator = state.validators[index]
         assert validator.withdrawn_epoch == spec.get_current_epoch(state)
         assert state.balances[index] == 0
 
+    assert len(state.withdrawal_receipts) == len(pre_withdrawal_receipts) + num_expected_withdrawals
+
 
 @with_capella_and_later
 @spec_state_test
 def test_no_withdrawals(spec, state):
     pre_validators = state.validators.copy()
-    yield from run_process_withdrawals(spec, state, 0)
+    yield from run_process_full_withdrawals(spec, state, 0)
 
     assert pre_validators == state.validators
 
@@ -51,7 +54,7 @@ def test_no_withdrawals_but_some_next_epoch(spec, state):
     for index in range(3):
         set_validator_withdrawable(spec, state, index, current_epoch + 1)
 
-    yield from run_process_withdrawals(spec, state, 0)
+    yield from run_process_full_withdrawals(spec, state, 0)
 
 
 @with_capella_and_later
@@ -60,7 +63,7 @@ def test_single_withdrawal(spec, state):
     # Make one validator withdrawable
     set_validator_withdrawable(spec, state, 0)
 
-    yield from run_process_withdrawals(spec, state, 1)
+    yield from run_process_full_withdrawals(spec, state, 1)
 
 
 @with_capella_and_later
@@ -70,7 +73,7 @@ def test_multi_withdrawal(spec, state):
     for index in range(3):
         set_validator_withdrawable(spec, state, index)
 
-    yield from run_process_withdrawals(spec, state, 3)
+    yield from run_process_full_withdrawals(spec, state, 3)
 
 
 @with_capella_and_later
@@ -80,4 +83,4 @@ def test_all_withdrawal(spec, state):
     for index in range(len(state.validators)):
         set_validator_withdrawable(spec, state, index)
 
-    yield from run_process_withdrawals(spec, state, len(state.validators))
+    yield from run_process_full_withdrawals(spec, state, len(state.validators))
