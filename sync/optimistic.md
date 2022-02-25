@@ -84,7 +84,20 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
     justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
     justified_is_execution_block = is_execution_block(opt_store.blocks[justified_root])
     block_is_deep = block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
-    return justified_is_execution_block or block_is_deep
+    return justified_is_execution_block or block_is_deep or has_verified_ancestor(opt_store, block)
+```
+
+```python
+def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock):
+	while True:
+		if not is_execution_block(block):
+			return false
+		elif hash_tree_root(block) not in opt_store.optimistic_roots:
+			return true
+		elif block.parent_root == Hash32() or block.parent_root not in opt_store.blocks:
+			return false
+		else:
+			block = opt_store.blocks[block.parent_root]
 ```
 
 Let only a node which returns `is_optimistic(opt_store, head) is True` be an *optimistic
@@ -106,6 +119,8 @@ A block MAY be optimistically imported when
 1. The current slot (as per the system clock) is at least
    `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of the slot of the block being
    imported.
+1. The block has a ancestor with an execution payload that has been deemed to
+   be `VALID` by an execution engine.
 
 *See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
 these conditions.*
