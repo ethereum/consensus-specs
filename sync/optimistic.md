@@ -81,18 +81,24 @@ def is_execution_block(block: BeaconBlock) -> bool:
 
 ```python
 def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot, block: BeaconBlock) -> bool:
-    justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
+    state = opt_store.block_states[opt_store.head_block_root]
+    justified_root = state.current_justified_checkpoint.root
+    finalized_root = state.finalized_checkpoint.root
     justified_is_execution_block = is_execution_block(opt_store.blocks[justified_root])
     block_is_deep = block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot
-    return justified_is_execution_block or block_is_deep or has_verified_ancestor(opt_store, block)
+    return justified_is_execution_block or block_is_deep or has_verified_ancestor(opt_store, block, finalized_root)
 ```
 
 ```python
-def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock):
+def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock, finalized_root: Hash32):
 	while True:
 		if not is_execution_block(block):
 			return false
 		elif hash_tree_root(block) not in opt_store.optimistic_roots:
+			return true
+		# Implementations MAY choose to remove this check and iterate further
+		# back in the chain.
+		elif hash_tree_root(block) == finalized_root:
 			return true
 		elif block.parent_root == Hash32() or block.parent_root not in opt_store.blocks:
 			return false
@@ -121,6 +127,9 @@ A block MAY be optimistically imported when
    imported.
 1. The block has a ancestor with an execution payload that has been deemed to
    be `VALID` by an execution engine.
+
+Consensus engines MAY choose to end the iteration in `has_verified_ancestor` at
+the finalized block or any earlier block.
 
 *See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
 these conditions.*
