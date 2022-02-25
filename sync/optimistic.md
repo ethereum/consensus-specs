@@ -91,19 +91,19 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
 
 ```python
 def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock, finalized_root: Hash32):
-	while True:
-		if not is_execution_block(block):
-			return false
-		elif hash_tree_root(block) not in opt_store.optimistic_roots:
-			return true
-		# Implementations MAY choose to remove this check and iterate further
-		# back in the chain.
-		elif hash_tree_root(block) == finalized_root:
-			return true
-		elif block.parent_root == Hash32() or block.parent_root not in opt_store.blocks:
-			return false
-		else:
-			block = opt_store.blocks[block.parent_root]
+    while True:
+        if not is_execution_block(block):
+            return false
+        elif hash_tree_root(block) not in opt_store.optimistic_roots:
+            return True
+        # Implementations MAY choose to remove this check and iterate further
+        # back in the chain.
+        elif hash_tree_root(block) == finalized_root:
+            return True
+        elif block.parent_root == Hash32() or block.parent_root not in opt_store.blocks:
+            return False
+        else:
+            block = opt_store.blocks[block.parent_root]
 ```
 
 Let only a node which returns `is_optimistic(opt_store, head) is True` be an *optimistic
