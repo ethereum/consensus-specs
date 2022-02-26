@@ -90,7 +90,7 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
 ```
 
 ```python
-def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock, finalized_root: Hash32):
+def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock, finalized_root: Hash32) -> bool:
     while True:
         if not is_execution_block(block):
             return False
