@@ -99,7 +99,7 @@ def has_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock, finali
         # Implementations MAY choose to remove this check and iterate further
         # back in the chain.
         elif hash_tree_root(block) == finalized_root:
-            return True
+            return False
         elif block.parent_root == Hash32() or block.parent_root not in opt_store.blocks:
             return False
         else:
