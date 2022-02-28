@@ -337,6 +337,8 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (a client MAY queue future aggregates for processing at the appropriate slot).
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
+- _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen
+  (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
 - _[REJECT]_ The attestation has participants --
