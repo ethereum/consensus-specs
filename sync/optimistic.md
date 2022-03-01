@@ -81,17 +81,17 @@ def is_execution_block(block: BeaconBlock) -> bool:
 
 ```python
 def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot, block: BeaconBlock) -> bool:
-	if is_execution_block(opt_store.blocks[block.parent_root]):
-		return True
+    if is_execution_block(opt_store.blocks[block.parent_root]):
+        return True
 
     justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
     if is_execution_block(opt_store.blocks[justified_root]):
-		return True
+        return True
 
-	if block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot:
-		return True
+    if block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot:
+        return True
 
-	return False
+    return False
 ```
 
 Let only a node which returns `is_optimistic(opt_store, head) is True` be an *optimistic
