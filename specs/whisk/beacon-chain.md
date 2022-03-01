@@ -40,7 +40,7 @@ def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point
 class WhiskShuffleProof:
     ### TODO
 
-class WhiskTrackerProof:
+class WhiskOpeningProof:
     T_1: BLSG1Point  # Sigma commitment
     T_2: BLSG1Point  # Sigma commitment
     s_1: BLSScalar  # Sigma response
@@ -54,9 +54,9 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
     """
 
 
-def IsValidWhiskOpeningProof(tracker: WhiskTracker, tracker_proof: WhiskTrackerProof) -> bool:
+def IsValidWhiskOpeningProof(pubkey: BLSPubkey, tracker: WhiskTracker, opening_proof: WhiskOpeningProof) -> bool:
     """
-    Verify knowledge of `privkey` such that `privkey * tracker.Gt_point == e(tracker.G1_point, BLS_G2_GENERATOR)`.
+    Verify the `privkey` for `pubkey` satisfies `privkey * tracker.Gt_point == e(tracker.G1_point, BLS_G2_GENERATOR)`.
     """
 ```
 
@@ -108,17 +108,20 @@ def process_epoch(state: BeaconState) -> None:
 class BeaconBlock(Container):
     # ...
     proposer_index: ValidatorIndex
-    whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
+    whisk_opening_proof: WhiskOpeningProof  # [New in Whisk]
     # ...
+
+def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
+    pubkey = state.validators[block.proposer_index].pubkey
+    tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
+    assert whisk.IsValidWhiskOpeningProof(pubkey, tracker, block.whisk_opening_proof)
+
 
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # ...
     # [Removed in Whisk] Verify that proposer index is the correct index
     # [Removed in Whisk] assert block.proposer_index == get_beacon_proposer_index(state)
-    # Verify opening proof  # [New in Whisk]
-    tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
-    assert whisk.IsValidWhiskOpeningProof(tracker, block.whisk_opening_proof)  # [New in Whisk]
-    process_whisk_opening_proof(state, block)  
+    process_whisk_opening_proof(state, block)   # [New in Whisk] 
     # ...
 ```
 
@@ -130,8 +133,6 @@ class BeaconBlockBody(Container):
     # Whisk
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
     whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
-    whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
-    whisk_tracker: WhiskTracker  # [New in Whisk]
 
 def get_feistel_encryption(index: uint64, rounds: uin64, K: uint64) -> uint64:
     def F(x):
