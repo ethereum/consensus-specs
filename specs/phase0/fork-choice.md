@@ -32,6 +32,7 @@
     - [`on_tick`](#on_tick)
     - [`on_block`](#on_block)
     - [`on_attestation`](#on_attestation)
+    - [`on_attester_slashing`](#on_attester_slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -181,7 +182,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     attestation_score = Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
-            and not i in store.has_equivocated
+            and i not in store.has_equivocated
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
     if store.proposer_boost_root == Root():
@@ -469,7 +470,8 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:
     """
-    Run ``on_attester_slashing`` upon receiving a new ``AttesterSlashing`` from either within a block or directly on the wire.
+    Run ``on_attester_slashing`` upon receiving a new ``AttesterSlashing`` from either within a block or directly 
+    on the wire.
     """
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2

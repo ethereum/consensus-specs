@@ -368,7 +368,7 @@ def test_discard_equivocations(spec, state):
 
     # Build equivocating attestations to feed to store
     state_eqv = state_1.copy()
-    block_eqv = apply_empty_block(spec, state_eqv, state_eqv.slot+1)
+    block_eqv = apply_empty_block(spec, state_eqv, state_eqv.slot + 1)
     attestation_eqv = get_valid_attestation(spec, state_eqv, slot=block_eqv.slot, signed=True)
 
     next_slots(spec, state_1, 1)
