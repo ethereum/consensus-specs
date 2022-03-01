@@ -337,6 +337,8 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (a client MAY queue future aggregates for processing at the appropriate slot).
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
+- _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen
+  (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
 - _[REJECT]_ The attestation has participants --
@@ -424,7 +426,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(attestation.data.target.epoch)) == attestation.data.target.root`
-- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
+- _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
   == store.finalized_checkpoint.root`
 
@@ -569,11 +571,11 @@ The response code can have one of the following values, encoded as a single unsi
   The response payload adheres to the `ErrorMessage` schema (described below).
 -  3: **ResourceUnavailable** -- the responder does not have requested resource.
   The response payload adheres to the `ErrorMessage` schema (described below).
-  *Note*: This response code is only valid as a response to `BlocksByRange`.
+  *Note*: This response code is only valid as a response where specified.
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous request-specific responses.
 
-The range `[3, 127]` is RESERVED for future usages, and should be treated as error if not recognized expressly.
+The range `[4, 127]` is RESERVED for future usages, and should be treated as error if not recognized expressly.
 
 The `ErrorMessage` schema is:
 

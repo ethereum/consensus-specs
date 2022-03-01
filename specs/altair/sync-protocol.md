@@ -16,6 +16,7 @@
   - [`LightClientUpdate`](#lightclientupdate)
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
+  - [`is_finality_update`](#is_finality_update)
   - [`get_subtree_index`](#get_subtree_index)
   - [`get_active_header`](#get_active_header)
   - [`get_safety_threshold`](#get_safety_threshold)
@@ -95,6 +96,13 @@ class LightClientStore(object):
 
 ## Helper functions
 
+### `is_finality_update`
+
+```python
+def is_finality_update(update: LightClientUpdate) -> bool:
+    return update.finalized_header != BeaconBlockHeader()
+```
+
 ### `get_subtree_index`
 
 ```python
@@ -109,7 +117,7 @@ def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
     # The "active header" is the header that the update is trying to convince us
     # to accept. If a finalized header is present, it's the finalized header,
     # otherwise it's the attested header
-    if update.finalized_header != BeaconBlockHeader():
+    if is_finality_update(update):
         return update.finalized_header
     else:
         return update.attested_header
@@ -157,13 +165,13 @@ def validate_light_client_update(store: LightClientStore,
     assert current_slot >= active_header.slot > store.finalized_header.slot
 
     # Verify update does not skip a sync committee period
-    finalized_period = compute_epoch_at_slot(store.finalized_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = compute_epoch_at_slot(active_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
+    update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
     assert update_period in (finalized_period, finalized_period + 1)
 
     # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
     # state of the `attested header`
-    if update.finalized_header == BeaconBlockHeader():
+    if not is_finality_update(update):
         assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
     else:
         assert is_valid_merkle_branch(
@@ -208,12 +216,14 @@ def validate_light_client_update(store: LightClientStore,
 ```python
 def apply_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
     active_header = get_active_header(update)
-    finalized_period = compute_epoch_at_slot(store.finalized_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    update_period = compute_epoch_at_slot(active_header.slot) // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
+    update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
     if update_period == finalized_period + 1:
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
     store.finalized_header = active_header
+    if store.finalized_header.slot > store.optimistic_header.slot:
+        store.optimistic_header = store.finalized_header
 ```
 
 #### `process_light_client_update`
@@ -250,7 +260,7 @@ def process_light_client_update(store: LightClientStore,
     # Update finalized header
     if (
         sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
-        and update.finalized_header != BeaconBlockHeader()
+        and is_finality_update(update)
     ):
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)

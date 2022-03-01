@@ -143,7 +143,7 @@ def prepare_execution_payload(state: BeaconState,
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_timestamp_at_slot(state, state.slot),
-        random=get_randao_mix(state, get_current_epoch(state)),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
     )
     return execution_engine.notify_forkchoice_updated(parent_hash, finalized_block_hash, payload_attributes)
