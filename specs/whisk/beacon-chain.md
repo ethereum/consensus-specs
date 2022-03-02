@@ -49,7 +49,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
 
 def IsValidWhiskOpeningProof(pubkey: BLSPubkey, tracker: WhiskTracker, opening_proof: WhiskOpeningProof) -> bool:
     """
-    Verify the `privkey` for `pubkey` satisfies `privkey * tracker.Gt_point == e(tracker.G1_point, BLS_G2_GENERATOR)`.
+    Verify the `privkey` for `pubkey` satisfies `tracker.Gt_point == e(privkey * tracker.G1_point, BLS_G2_SAMPLE)`.
     """
 ```
 
@@ -57,8 +57,8 @@ def IsValidWhiskOpeningProof(pubkey: BLSPubkey, tracker: WhiskTracker, opening_p
 
 ```python
 class WhiskTracker(Container):
-    G1_point: BLSG1Point  # r * pubkey
-    Gt_point: BLSGtPoint  # r * BLS_GT_GENERATOR
+    G1_point: BLSG1Point  # r * BLS_G1_GENERATOR
+    Gt_point: BLSGtPoint  # r * e(privkey * BLS_G1_GENERATOR, BLS_G2_SAMPLE)
 
 class BeaconState(Container):
     # ...
