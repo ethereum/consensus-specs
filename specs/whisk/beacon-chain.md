@@ -27,13 +27,6 @@
 
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
 
-```python
-def BLSG1PointFromAffine(x: int, y: int) -> BLSG1Point
-
-
-def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point
-```
-
 #### Whisk
 
 ```python
