@@ -118,8 +118,8 @@ following are true:
 
 In effect, there are restrictions on when a *merge block* can be optimistically
 imported. The merge block is the first block in any chain where
-`is_execution_block(block) == True`. Any descendant of a transition block may
-be imported optimistically at any time.
+`is_execution_block(block) == True`. Any descendant of a merge block may be
+imported optimistically at any time.
 
 *See [Fork Choice Poisoning](#fork-choice-poisoning) for the motivations behind
 these conditions.*
