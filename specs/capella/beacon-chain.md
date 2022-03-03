@@ -27,6 +27,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `TransactionType` | `Bytes1` | an EIP-2718 type |
+| `WithdrawalIndex` | `uint64` | an index of a `WithdrawalTransaction`|
 
 ## Preset
 
@@ -40,7 +41,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `TX_TYPE_WITHDRAWAL` | `TransactionType('0x05')` | EIP-2718 TX Type |
+| `TX_TYPE_WITHDRAWAL` | `TransactionType('0x03')` | EIP-2718 TX Type |
 | `MAX_WITHDRAWAL_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawal transactions allowed in each payload |
 
 ## Configuration
@@ -106,6 +107,7 @@ class BeaconState(Container):
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
+    withdrawal_index: WithdrawalIndex
     withdrawal_receipts: List[WithdrawalTransaction, WITHDRAWAL_TRANSACTION_LIMIT]  # [New in Capella]
 ```
 
@@ -167,6 +169,7 @@ as well as in the `BeaconState`'s `withdrawal_receipts` queue.
 
 ```python
 class WithdrawalTransaction(Container):
+    index: WithdrawalIndex
     address: ExecutionAddress
     amount: Gwei
 ```
@@ -183,9 +186,11 @@ def withdraw(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
     decrease_balance(state, index, amount)
     # Create a corresponding withdrawal receipt
     receipt = WithdrawalTransaction(
+        index=state.withdrawal_index,
         address=state.validators[index].withdrawal_credentials[12:],
         amount=amount,
     )
+    state.withdrawal_index = WithdrawalIndex(state.withdrawal_index + 1)
     state.withdrawal_receipts.append(receipt)
 ```
 

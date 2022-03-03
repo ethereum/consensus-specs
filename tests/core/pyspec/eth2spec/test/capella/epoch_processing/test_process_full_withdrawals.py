@@ -17,6 +17,7 @@ def set_validator_withdrawable(spec, state, index, withdrawable_epoch=None):
 
 
 def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
+    pre_withdrawal_index = state.withdrawal_index
     pre_withdrawal_receipts = state.withdrawal_receipts
     to_be_withdrawn_indices = [
         index for index, validator in enumerate(state.validators)
@@ -34,6 +35,7 @@ def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
         assert state.balances[index] == 0
 
     assert len(state.withdrawal_receipts) == len(pre_withdrawal_receipts) + num_expected_withdrawals
+    assert state.withdrawal_index == pre_withdrawal_index + num_expected_withdrawals
 
 
 @with_capella_and_later
@@ -63,7 +65,10 @@ def test_single_withdrawal(spec, state):
     # Make one validator withdrawable
     set_validator_withdrawable(spec, state, 0)
 
+    assert state.withdrawal_index == 0
     yield from run_process_full_withdrawals(spec, state, 1)
+
+    assert state.withdrawal_index == 1
 
 
 @with_capella_and_later
