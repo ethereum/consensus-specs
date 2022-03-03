@@ -470,8 +470,8 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:
     """
-    Run ``on_attester_slashing`` upon receiving a new ``AttesterSlashing`` from either within a block or directly 
-    on the wire.
+    Run ``on_attester_slashing`` immediately upon receiving a new ``AttesterSlashing``
+    from either within a block or directly on the wire.
     """
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
