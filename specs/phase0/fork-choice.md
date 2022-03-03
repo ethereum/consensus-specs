@@ -102,7 +102,7 @@ class Store(object):
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
     proposer_boost_root: Root
-    has_equivocated: Set[ValidatorIndex]
+    equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -131,7 +131,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         finalized_checkpoint=finalized_checkpoint,
         best_justified_checkpoint=justified_checkpoint,
         proposer_boost_root=proposer_boost_root,
-        has_equivocated=set(),
+        equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
@@ -182,7 +182,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     attestation_score = Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
         if (i in store.latest_messages
-            and i not in store.has_equivocated
+            and i not in store.equivocating_indices
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
     if store.proposer_boost_root == Root():
@@ -361,10 +361,10 @@ def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
-    for i in attesting_indices:
-        if i not in store.has_equivocated:
-            if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
-                store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
+    non_equivocating_attesting_indices = [i for i in attesting_indices if i not in store.equivocating_indices]
+    for i in non_equivocating_attesting_indices:
+        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
+            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
 ```
 
 
@@ -481,6 +481,6 @@ def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> N
     assert is_valid_indexed_attestation(state, attestation_2)
 
     indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)
-    for index in sorted(indices):
-        store.has_equivocated.add(index)
+    for index in indices:
+        store.equivocating_indices.add(index)
 ```
