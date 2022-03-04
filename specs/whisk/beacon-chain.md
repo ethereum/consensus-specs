@@ -27,17 +27,12 @@
 
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
 
-#### Whisk
+#### Whisk (TODO)
 
 ```python
 class WhiskShuffleProof:
-    ### TODO
 
 class WhiskOpeningProof:
-    T_1: BLSG1Point  # Sigma commitment
-    T_2: BLSG1Point  # Sigma commitment
-    s_1: BLSScalar  # Sigma response
-    s_2: BLSScalar  # Sigma response
 
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
