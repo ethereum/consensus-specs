@@ -53,7 +53,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | Name | Value | Unit | Duration |
 | - | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators |
-| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | epochs | ~27.3 hours |
+| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
 
 ## Containers
 
