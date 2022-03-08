@@ -467,7 +467,7 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
 
 #### `on_attester_slashing`
 
-*Note*: `on_attester_slashing` should be called while syncing and a node MUST maintain the equivocation set of `AttesterSlashing`s from at least the last finalized checkpoint
+*Note*: `on_attester_slashing` should be called while syncing and a client MUST maintain the equivocation set of `AttesterSlashing`s from at least the latest finalized checkpoint.
 
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:
