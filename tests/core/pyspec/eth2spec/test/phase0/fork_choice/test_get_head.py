@@ -24,6 +24,8 @@ from eth2spec.test.helpers.state import (
     next_epoch,
     state_transition_and_sign_block,
 )
+from tests.core.pyspec.eth2spec.test.helpers.block import apply_empty_block
+from tests.core.pyspec.eth2spec.test.helpers.fork_choice import run_on_attestation
 
 
 rng = random.Random(1001)
@@ -329,6 +331,87 @@ def test_proposer_boost_correct_head(spec, state):
     time = store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+
+    test_steps.append({
+        'checks': {
+            'head': get_formatted_head_output(spec, store),
+        }
+    })
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_discard_equivocations(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    anchor_root = get_anchor_root(spec, state)
+    assert spec.get_head(store) == anchor_root
+    test_steps.append({
+        'checks': {
+            'head': get_formatted_head_output(spec, store),
+        }
+    })
+
+    # Build block that serves as head before discarding equivocations
+    state_1 = genesis_state.copy()
+    next_slots(spec, state_1, 3)
+    block_1 = build_empty_block_for_next_slot(spec, state_1)
+    signed_block_1 = state_transition_and_sign_block(spec, state_1, block_1)
+
+    # Build equivocating attestations to feed to store
+    state_eqv = state_1.copy()
+    block_eqv = apply_empty_block(spec, state_eqv, state_eqv.slot + 1)
+    attestation_eqv = get_valid_attestation(spec, state_eqv, slot=block_eqv.slot, signed=True)
+
+    next_slots(spec, state_1, 1)
+    attestation = get_valid_attestation(spec, state_1, slot=block_eqv.slot, signed=True)
+    assert spec.is_slashable_attestation_data(attestation.data, attestation_eqv.data)
+
+    indexed_attestation = spec.get_indexed_attestation(state_1, attestation)
+    indexed_attestation_eqv = spec.get_indexed_attestation(state_eqv, attestation_eqv)
+    attester_slashing = spec.AttesterSlashing(attestation_1=indexed_attestation, attestation_2=indexed_attestation_eqv)
+
+    # Build block that serves as head after discarding equivocations
+    state_2 = genesis_state.copy()
+    next_slots(spec, state_2, 2)
+    block_2 = build_empty_block_for_next_slot(spec, state_2)
+    signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
+    while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
+        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
+        signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
+    assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
+
+    # Tick to (block_eqv.slot + 2) slot time
+    time = store.genesis_time + (block_eqv.slot + 2) * spec.config.SECONDS_PER_SLOT
+    on_tick_and_append_step(spec, store, time, test_steps)
+
+    # Process block_2
+    yield from add_block(spec, store, signed_block_2, test_steps)
+    assert store.proposer_boost_root == spec.Root()
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+
+    # Process block_1
+    # The head should remain block_2
+    yield from add_block(spec, store, signed_block_1, test_steps)
+    assert store.proposer_boost_root == spec.Root()
+    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+
+    # Process attestation
+    # The head should change to block_1
+    run_on_attestation(spec, store, attestation)
+    assert spec.get_head(store) == spec.hash_tree_root(block_1)
+
+    # Process attester_slashing
+    # The head should revert to block_2
+    spec.on_attester_slashing(store, attester_slashing)
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     test_steps.append({
