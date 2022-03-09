@@ -76,10 +76,26 @@ Adds `PowBlock` data which is required for executing `on_block(store, block)`.
 {
     pow_block: string  -- the name of the `pow_block_<32-byte-root>.ssz_snappy` file.
                           To be used in `get_pow_block` lookup
-}  
+}
 ```
 The file is located in the same folder (see below).
 PowBlocks should be used as return values for `get_pow_block(hash: Hash32) -> PowBlock` function if hashes match.
+
+#### `on_attester_slashing` execution step
+
+The parameter that is required for executing `on_attester_slashing(store, attester_slashing)`.
+
+```yaml
+{
+    attester_slashing: string  -- the name of the `attester_slashing_<32-byte-root>.ssz_snappy` file.
+                            To execute `on_attester_slashing(store, attester_slashing)` with the given attester slashing.
+    valid: bool          -- optional, default to `true`.
+                            If it's `false`, this execution step is expected to be invalid.
+}
+```
+The file is located in the same folder (see below).
+
+After this step, the `store` object may have been updated.
 
 #### Checks step
 
