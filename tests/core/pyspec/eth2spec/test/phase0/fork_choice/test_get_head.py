@@ -8,24 +8,27 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.block import (
+    apply_empty_block,
+    build_empty_block_for_next_slot,
+)
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.fork_choice import (
-    tick_and_run_on_attestation,
-    tick_and_add_block,
+    add_attester_slashing,
+    add_block,
     get_anchor_root,
     get_genesis_forkchoice_store_and_block,
     get_formatted_head_output,
     on_tick_and_append_step,
-    add_block,
+    run_on_attestation,
+    tick_and_run_on_attestation,
+    tick_and_add_block,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
     next_epoch,
     state_transition_and_sign_block,
 )
-from tests.core.pyspec.eth2spec.test.helpers.block import apply_empty_block
-from tests.core.pyspec.eth2spec.test.helpers.fork_choice import run_on_attestation
 
 
 rng = random.Random(1001)
@@ -411,7 +414,7 @@ def test_discard_equivocations(spec, state):
 
     # Process attester_slashing
     # The head should revert to block_2
-    spec.on_attester_slashing(store, attester_slashing)
+    yield from add_attester_slashing(spec, store, attester_slashing, test_steps)
     assert spec.get_head(store) == spec.hash_tree_root(block_2)
 
     test_steps.append({
