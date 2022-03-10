@@ -26,8 +26,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `TransactionType` | `Bytes1` | an EIP-2718 type |
-| `WithdrawalIndex` | `uint64` | an index of a `WithdrawalTransaction`|
+| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal`|
 
 ## Preset
 
@@ -35,14 +34,13 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `WITHDRAWAL_TRANSACTION_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawal transactions enqueued in state|
+| `WITHDRAWALS_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state|
 
 ### Execution
 
 | Name | Value | Description |
 | - | - | - |
-| `TX_TYPE_WITHDRAWAL` | `TransactionType('0x03')` | EIP-2718 TX Type |
-| `MAX_WITHDRAWAL_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawal transactions allowed in each payload |
+| `MAX_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawals allowed in each payload |
 
 ## Configuration
 
@@ -108,7 +106,7 @@ class BeaconState(Container):
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
     withdrawal_index: WithdrawalIndex
-    withdrawal_receipts: List[WithdrawalTransaction, WITHDRAWAL_TRANSACTION_LIMIT]  # [New in Capella]
+    withdrawals_queue: List[Withdrawal, WITHDRAWALS_QUEUE_LIMIT]  # [New in Capella]
 ```
 
 #### `ExecutionPayload`
@@ -131,7 +129,7 @@ class ExecutionPayload(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawal_transactions: List[WithdrawalTransaction, MAX_WITHDRAWAL_TRANSACTIONS_PER_PAYLOAD]  # [New in Capella]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -154,21 +152,15 @@ class ExecutionPayloadHeader(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
-    withdrawal_transactions_root: Root  # [New in Capella]
+    withdrawals_root: Root  # [New in Capella]
 ```
 
 ### New containers
 
-#### `WithdrawalTransaction`
-
-New EIP-2718 transaction type, with the format being the single byte `TX_TYPE_WITHDRAWAL`
-followed by an SSZ encoding of the `WithdrawalTransaction` container comprising the transaction contents.
-
-*Note*: This container is used for both a special TX that goes into an `ExecutionPayload`
-as well as in the `BeaconState`'s `withdrawal_receipts` queue.
+#### `Withdrawal`
 
 ```python
-class WithdrawalTransaction(Container):
+class Withdrawal(Container):
     index: WithdrawalIndex
     address: ExecutionAddress
     amount: Gwei
@@ -185,13 +177,13 @@ def withdraw(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
     # Decrease the validator's balance
     decrease_balance(state, index, amount)
     # Create a corresponding withdrawal receipt
-    receipt = WithdrawalTransaction(
+    withdrawal = Withdrawal(
         index=state.withdrawal_index,
         address=state.validators[index].withdrawal_credentials[12:],
         amount=amount,
     )
     state.withdrawal_index = WithdrawalIndex(state.withdrawal_index + 1)
-    state.withdrawal_receipts.append(receipt)
+    state.withdrawals_queue.append(withdrawal)
 ```
 
 ### Predicates
@@ -248,7 +240,7 @@ def process_full_withdrawals(state: BeaconState) -> None:
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        process_withdrawal_transactions(state, block.body.execution_payload)  # [New in Capella]
+        process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
@@ -256,22 +248,22 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### New `process_withdrawal_transactions`
+#### New `process_withdrawals`
 
 ```python
-def process_withdrawal_transactions(state: BeaconState, payload: ExecutionPayload) -> None:
-    num_withdrawal_transactions = min(MAX_WITHDRAWAL_TRANSACTIONS_PER_PAYLOAD, len(state.withdrawal_receipts))
-    dequeued_withdrawal_receipts = state.withdrawal_receipts[:num_withdrawal_transactions]
+def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
+    num_withdrawals = min(MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawals_queue))
+    dequeued_withdrawals = state.withdrawals_queue[:num_withdrawals]
 
-    assert len(dequeued_withdrawal_receipts) == len(payload.withdrawal_transactions)
-    for dequeued_receipt, withdrawal_transaction in zip(dequeued_withdrawal_receipts, payload.withdrawal_transactions):
+    assert len(dequeued_withdrawals) == len(payload.withdrawals)
+    for dequeued_receipt, withdrawal_transaction in zip(dequeued_withdrawals, payload.withdrawals):
         assert dequeued_receipt == withdrawal_transaction
 
     # Ensure no withdrawal type transactions in the normal payload transactions
     # assert no_withdrawal_type_transactions_in(payload.transactions)
 
     # Remove dequeued receipts from state
-    state.withdrawal_receipts = state.withdrawal_receipts[num_withdrawal_transactions:]
+    state.withdrawals_queue = state.withdrawals_queue[num_withdrawals:]
 ```
 
 #### Modified `process_execution_payload`
@@ -305,6 +297,6 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        withdrawal_transactions_root=hash_tree_root(payload.withdrawal_transactions),
+        withdrawals_root=hash_tree_root(payload.withdrawals),
     )
 ```

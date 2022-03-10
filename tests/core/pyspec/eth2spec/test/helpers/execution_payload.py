@@ -52,7 +52,7 @@ def get_execution_payload_header(spec, execution_payload):
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
     if spec.fork not in FORKS_BEFORE_CAPELLA:
-        payload_header.withdrawal_transactions_root = spec.hash_tree_root(execution_payload.withdrawal_transactions)
+        payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
     return payload_header
 
 
