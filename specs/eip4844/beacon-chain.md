@@ -173,12 +173,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 #### Blob KZGs
 
 ```python
-def process_blob_kzgs(body: BeaconBlockBody):
+def process_blob_kzgs(state: BeaconState, body: BeaconBlockBody):
     assert verify_kzgs_against_transactions(body.execution_payload.transactions, body.blob_kzgs)
-
-    # TODO do we want to buffer the kzg commitments in the BeaconState, like in the full sharding design?
-    # This could make a proof to any particular blob commitment more efficient,
-    # but the buffer structure is also likely to change with full sharding.
 ```
 
 ## Testing
