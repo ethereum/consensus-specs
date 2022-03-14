@@ -28,7 +28,7 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Bellatrix -- Honest Validator](../altair/validator.md) guide.
+This document is an extension of the [Bellatrix -- Honest Validator](../bellatrix/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP4844](./beacon-chain.md) are requisite for this document and used throughout.
@@ -56,13 +56,12 @@ def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCom
 ```python
 def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
                          expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar):
-    assert blobs_sidecar.shard == 0  # always zero, placeholder for future sharding
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
     assert len(kzgs) == len(blobs)
     for kzg, blob in zip(expected_kzgs, blobs):
-      assert blob_to_kzg(blob) == kzg
+        assert blob_to_kzg(blob) == kzg
 ```
 
 
@@ -81,7 +80,7 @@ After retrieving the execution payload from the execution engine as specified in
 the blobs are retrieved and processed: 
 
 ```python
-# execution_payload = xecution_engine.get_payload(payload_id)
+# execution_payload = execution_engine.get_payload(payload_id)
 # block.body.execution_payload = execution_payload
 # ...
 

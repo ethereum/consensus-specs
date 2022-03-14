@@ -37,13 +37,13 @@ The specification of these changes continues in the same format as the network s
 
 | Name | Value |
 | - | - |
-| `LIMIT_BLOBS_PER_SIDECAR` | `uint64(2**4)` (= 16) |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
 
 ## Configuration
 
 | Name                                     | Value                         | Description                                                         |
 |------------------------------------------|-------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**10` (= 1024)              | Maximum number of blobs sidecars in a single request                |
+| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                | Maximum number of blobs sidecars in a single request                |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
 
 
@@ -56,8 +56,7 @@ The specification of these changes continues in the same format as the network s
 class BlobsSidecar(Container):
     beacon_block_root: Root
     beacon_block_slot: Slot
-    shard: uint64  # [ Forward compatibility ]
-    blobs: List[Blob, LIMIT_BLOBS_PER_SIDECAR]
+    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
 ```
 
 ### `SignedBlobsSidecar`
@@ -117,12 +116,12 @@ Alias `sidecar = signed_blobs_sidecar.message`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
 ```python
-domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot / SLOTS_PER_EPOCH)
+domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
 signing_root = compute_signing_root(blobs_sidecar, domain)
 assert bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature)
 ```
   where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
-- _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_root)` combination,
+- _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
   where `proposer_index` is the validator index of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
 
 Note that a sidecar may be propagated before or after the corresponding beacon block.
@@ -132,7 +131,7 @@ Once both sidecar and beacon block are received, `verify_blobs_sidecar` can unlo
 ### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
-details on how to handle transitioning gossip topics for Bellatrix.
+details on how to handle transitioning gossip topics for this upgrade.
 
 ## The Req/Resp domain
 
@@ -181,7 +180,6 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
-  shard: uint64
 )
 ```
 
@@ -194,8 +192,6 @@ Response Content:
 
 Requests blobs sidecars in the slot range `[start_slot, start_slot + count)`,
 leading up to the current head block as selected by fork choice.
-
-The request and response format is forward-compatible with sharded sidecar sync, but MUST enforce `shard == 0` for now.
 
 The response is unsigned, i.e. `BlobsSidecarsByRange`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
@@ -232,7 +228,7 @@ participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it,
-and no more than `MAX_REQUEST_BLOBS_SIDECARS` blocks.
+and no more than `MAX_REQUEST_BLOBS_SIDECARS` sidecars.
 
 The following blobs sidecars, where they exist, MUST be sent in consecutive order.
 

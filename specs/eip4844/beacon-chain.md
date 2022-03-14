@@ -31,10 +31,7 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix upgrade.
-
-Additionally, this upgrade introduces the following minor changes:
-* Penalty parameter updates to their planned maximally punitive values
+This upgrade adds blobs to the beacon chain as part of EIP-4844.
 
 ## Custom types
 
@@ -53,6 +50,11 @@ Additionally, this upgrade introduces the following minor changes:
 | `FIELD_ELEMENTS_PER_BLOB` | `4096` |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
 
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_BLOBS_SIDECAR` | `DomainType('0x0a000000')` |
 
 ## Preset
 
@@ -91,10 +93,35 @@ class BeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload 
-    blob_kzgs: List[KZGCommitment, MAX_OBJECT_LIST_SIZE] # [New in EIP-4844]
+    blob_kzgs: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
 
 ## Helper functions
+
+### KZG core
+
+KZG core functions. These are also defined in EIP-4844 execution specs.
+
+#### `blob_to_kzg`
+
+```python
+def blob_to_kzg(blob: Blob) -> KZGCommitment:
+    computed_kzg = bls.Z1
+    for value, point_kzg in zip(blob, KZG_SETUP_LAGRANGE):
+        assert value < BLS_MODULUS
+        computed_kzg = bls.add(
+            computed_kzg,
+            bls.multiply(point_kzg, value)
+        )
+    return computed_kzg
+```
+
+#### `kzg_to_versioned_hash`
+
+```python
+def kzg_to_versioned_hash(kzg: KZGCommitment) -> VersionedHash:
+    return BLOB_COMMITMENT_VERSION_KZG + hash(kzg)[1:]
+```
 
 ### Misc
 
@@ -120,9 +147,7 @@ def verify_kzgs_against_transactions(transactions: Sequence[Transaction], blob_k
    for tx in transactions:
       if opaque_tx[0] == BLOB_TX_TYPE:
          all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
-   return all_versioned_hashes == [
-      kzg_to_versioned_hash(kzg) for kzg in blob_kzgs
-   ]
+   return all_versioned_hashes == [ksg_to_version_hash(kzg) for kzg in blob_kzgs]
 ```
 
 ## Beacon chain state transition function
@@ -138,7 +163,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzgs(state, block.body) # [New in EIP-4844]
+    process_blob_kzgs(state, block.body)  # [New in EIP-4844]
 ```
 
 #### Blob KZGs
