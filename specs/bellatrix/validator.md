@@ -149,6 +149,7 @@ def prepare_execution_payload(state: BeaconState,
     # Set safe and head block hashes to the same value
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
+        # TODO: Use `parent_hash` as a stub for now.
         safe_block_hash=parent_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
