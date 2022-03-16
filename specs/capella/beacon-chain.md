@@ -256,11 +256,8 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     dequeued_withdrawals = state.withdrawals_queue[:num_withdrawals]
 
     assert len(dequeued_withdrawals) == len(payload.withdrawals)
-    for dequeued_receipt, withdrawal_transaction in zip(dequeued_withdrawals, payload.withdrawals):
-        assert dequeued_receipt == withdrawal_transaction
-
-    # Ensure no withdrawal type transactions in the normal payload transactions
-    # assert no_withdrawal_type_transactions_in(payload.transactions)
+    for dequeued_receipt, withdrawal in zip(dequeued_withdrawals, payload.withdrawals):
+        assert dequeued_receipt == withdrawal
 
     # Remove dequeued receipts from state
     state.withdrawals_queue = state.withdrawals_queue[num_withdrawals:]
