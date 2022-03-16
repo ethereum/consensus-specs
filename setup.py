@@ -701,7 +701,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
-    'Optional',
+    'Optional', 'Sequence',
 ]
 
 
@@ -896,6 +896,7 @@ class PySpecCommand(Command):
                 self.md_doc_paths += """
                     specs/capella/beacon-chain.md
                     specs/capella/fork.md
+                    specs/capella/fork-choice.md
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
                 """
