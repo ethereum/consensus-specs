@@ -59,7 +59,7 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
-    assert len(kzgs) == len(blobs)
+    assert len(expected_kzgs) == len(blobs)
     for kzg, blob in zip(expected_kzgs, blobs):
         assert blob_to_kzg(blob) == kzg
 ```
