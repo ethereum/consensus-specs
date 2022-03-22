@@ -34,7 +34,7 @@ def notify_forkchoice_updated(self: ExecutionEngine,
                               head_block_hash: Hash32,
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
-                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:  # new in Capella
     ...
 ```
 
@@ -50,5 +50,5 @@ class PayloadAttributes(object):
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
-    withdrawals: Sequence[Withdrawal]
+    withdrawals: Sequence[Withdrawal]  # new in Capella
 ```
