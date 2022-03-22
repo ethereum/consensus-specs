@@ -6,11 +6,12 @@ from eth2spec.test.helpers.keys import pubkeys
 
 
 def build_mock_validator(spec, i: int, balance: int):
-    pubkey = pubkeys[i]
+    active_pubkey = pubkeys[i]
+    withdrawal_pubkey = pubkeys[-1 - i]
     # insecurely use pubkey as withdrawal key as well
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
     validator = spec.Validator(
-        pubkey=pubkeys[i],
+        pubkey=active_pubkey,
         withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
         activation_epoch=spec.FAR_FUTURE_EPOCH,
