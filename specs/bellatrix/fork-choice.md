@@ -72,7 +72,23 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 
 *Note*: Client software MUST call this function to initiate the payload build process to produce the merge transition block; the `head_block_hash` parameter MUST be set to the hash of a terminal PoW block in this case.
 
-*Note*: Until safe head function is implemented, `safe_block_hash` parameter MUST be stubbed with the `head_block_hash` value.
+##### `safe_block_hash`
+
+The `safe_block_hash` parameter in a call to `notify_forkchoice_updated` function
+MUST be set to the return value of the following function:
+
+```python
+def get_safe_block_hash(store: Store) -> Hash32:
+    # Use most recent justified block as a stopgap
+    safe_block_root = store.justified_checkpoint.root
+    safe_block = store.blocks[safe_block_root]
+
+    # Return Hash32() if no payload is yet justified
+    if compute_epoch_at_slot(safe_block.slot) >= BELLATRIX_FORK_EPOCH:
+        return safe_block.body.execution_payload.block_hash
+    else:
+        return Hash32()
+```
 
 ## Helpers
 
