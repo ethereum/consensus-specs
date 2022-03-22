@@ -12,6 +12,7 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
+      - [`safe_block_hash`](#safe_block_hash)
 - [Helpers](#helpers)
   - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
