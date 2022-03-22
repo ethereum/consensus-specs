@@ -46,7 +46,64 @@ We define the following Python custom types for type hinting and readability:
 
 ## Containers
 
+### New containers
+
+#### `Withdrawal`
+
+```python
+class Withdrawal(Container):
+    index: WithdrawalIndex
+    address: ExecutionAddress
+    amount: Gwei
+```
+
 ### Extended Containers
+
+#### `ExecutionPayload`
+
+```python
+class ExecutionPayload(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32  # 'difficulty' in the yellow paper
+    block_number: uint64  # 'number' in the yellow paper
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
+```
+
+#### `ExecutionPayloadHeader`
+
+```python
+class ExecutionPayloadHeader(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions_root: Root
+    withdrawals_root: Root  # [New in Capella]
+```
 
 #### `Validator`
 
@@ -107,63 +164,6 @@ class BeaconState(Container):
     # Withdrawals
     withdrawal_index: WithdrawalIndex
     withdrawals_queue: List[Withdrawal, WITHDRAWALS_QUEUE_LIMIT]  # [New in Capella]
-```
-
-#### `ExecutionPayload`
-
-```python
-class ExecutionPayload(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32  # 'difficulty' in the yellow paper
-    block_number: uint64  # 'number' in the yellow paper
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
-```
-
-#### `ExecutionPayloadHeader`
-
-```python
-class ExecutionPayloadHeader(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions_root: Root
-    withdrawals_root: Root  # [New in Capella]
-```
-
-### New containers
-
-#### `Withdrawal`
-
-```python
-class Withdrawal(Container):
-    index: WithdrawalIndex
-    address: ExecutionAddress
-    amount: Gwei
 ```
 
 ## Helpers
@@ -294,6 +294,6 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
+        withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
     )
 ```
