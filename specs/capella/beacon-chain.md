@@ -58,7 +58,81 @@ We define the following Python custom types for type hinting and readability:
 
 ## Containers
 
+### New containers
+
+#### `Withdrawal`
+
+```python
+class Withdrawal(Container):
+    index: WithdrawalIndex
+    address: ExecutionAddress
+    amount: Gwei
+```
+
+#### `BLSToExecutionChange`
+
+```python
+class BLSToExecutionChange(Container):
+    validator_index: ValidatorIndex
+    from_bls_pubkey: BLSPubkey
+    to_execution_address: ExecutionAddress
+```
+
+#### `SignedBLSToExecutionChange`
+
+```python
+class SignedBLSToExecutionChange(Container):
+    message: BLSToExecutionChange
+    signature: BLSSignature
+```
+
 ### Extended Containers
+
+#### `ExecutionPayload`
+
+```python
+class ExecutionPayload(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32  # 'difficulty' in the yellow paper
+    block_number: uint64  # 'number' in the yellow paper
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
+```
+
+#### `ExecutionPayloadHeader`
+
+```python
+class ExecutionPayloadHeader(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions_root: Root
+    withdrawals_root: Root  # [New in Capella]
+```
 
 #### `Validator`
 
@@ -73,7 +147,7 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch  # When validator can withdraw funds
-    withdrawn_epoch: Epoch  # [New in Capella]
+    fully_withdrawn_epoch: Epoch  # [New in Capella]
 ```
 
 #### `BeaconBlockBody`
@@ -140,80 +214,6 @@ class BeaconState(Container):
     withdrawals_queue: List[Withdrawal, WITHDRAWALS_QUEUE_LIMIT]  # [New in Capella]
 ```
 
-#### `ExecutionPayload`
-
-```python
-class ExecutionPayload(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32  # 'difficulty' in the yellow paper
-    block_number: uint64  # 'number' in the yellow paper
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
-```
-
-#### `ExecutionPayloadHeader`
-
-```python
-class ExecutionPayloadHeader(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions_root: Root
-    withdrawals_root: Root  # [New in Capella]
-```
-
-### New containers
-
-#### `Withdrawal`
-
-```python
-class Withdrawal(Container):
-    index: WithdrawalIndex
-    address: ExecutionAddress
-    amount: Gwei
-```
-
-#### `BLSToExecutionChange`
-
-```python
-class BLSToExecutionChange(Container):
-    validator_index: ValidatorIndex
-    from_bls_pubkey: BLSPubkey
-    to_execution_address: ExecutionAddress
-```
-
-#### `SignedBLSToExecutionChange`
-
-```python
-class SignedBLSToExecutionChange(Container):
-    message: BLSToExecutionChange
-    signature: BLSSignature
-```
-
 ## Helpers
 
 ### Beacon state mutators
@@ -221,7 +221,7 @@ class SignedBLSToExecutionChange(Container):
 #### `withdraw`
 
 ```python
-def withdraw(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
+def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
     # Decrease the validator's balance
     decrease_balance(state, index, amount)
     # Create a corresponding withdrawal receipt
@@ -243,8 +243,8 @@ def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
-    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-    return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.withdrawn_epoch
+    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
 ```
 
 ## Beacon chain state transition function
@@ -278,8 +278,8 @@ def process_full_withdrawals(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if is_fully_withdrawable_validator(validator, current_epoch):
             # TODO, consider the zero-balance case
-            withdraw(state, ValidatorIndex(index), state.balances[index])
-            validator.withdrawn_epoch = current_epoch
+            withdraw_balance(state, ValidatorIndex(index), state.balances[index])
+            validator.fully_withdrawn_epoch = current_epoch
 ```
 
 ### Block processing
@@ -304,10 +304,10 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     dequeued_withdrawals = state.withdrawals_queue[:num_withdrawals]
 
     assert len(dequeued_withdrawals) == len(payload.withdrawals)
-    for dequeued_receipt, withdrawal in zip(dequeued_withdrawals, payload.withdrawals):
-        assert dequeued_receipt == withdrawal
+    for dequeued_withdrawal, withdrawal in zip(dequeued_withdrawals, payload.withdrawals):
+        assert dequeued_withdrawal == withdrawal
 
-    # Remove dequeued receipts from state
+    # Remove dequeued withdrawals from state
     state.withdrawals_queue = state.withdrawals_queue[num_withdrawals:]
 ```
 
@@ -342,7 +342,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
+        withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
     )
 ```
 

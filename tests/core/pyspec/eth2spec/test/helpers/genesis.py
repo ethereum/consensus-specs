@@ -20,7 +20,7 @@ def build_mock_validator(spec, i: int, balance: int):
     )
 
     if spec.fork not in FORKS_BEFORE_CAPELLA:
-        validator.withdrawn_epoch = spec.FAR_FUTURE_EPOCH
+        validator.fully_withdrawn_epoch = spec.FAR_FUTURE_EPOCH
 
     return validator
 

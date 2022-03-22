@@ -16,6 +16,7 @@
   - [`LightClientUpdate`](#lightclientupdate)
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
+  - [`is_finality_update`](#is_finality_update)
   - [`get_subtree_index`](#get_subtree_index)
   - [`get_active_header`](#get_active_header)
   - [`get_safety_threshold`](#get_safety_threshold)
@@ -52,7 +53,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 | Name | Value | Unit | Duration |
 | - | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators |
-| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | epochs | ~27.3 hours |
+| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
 
 ## Containers
 
@@ -95,6 +96,13 @@ class LightClientStore(object):
 
 ## Helper functions
 
+### `is_finality_update`
+
+```python
+def is_finality_update(update: LightClientUpdate) -> bool:
+    return update.finalized_header != BeaconBlockHeader()
+```
+
 ### `get_subtree_index`
 
 ```python
@@ -109,7 +117,7 @@ def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
     # The "active header" is the header that the update is trying to convince us
     # to accept. If a finalized header is present, it's the finalized header,
     # otherwise it's the attested header
-    if update.finalized_header != BeaconBlockHeader():
+    if is_finality_update(update):
         return update.finalized_header
     else:
         return update.attested_header
@@ -163,7 +171,7 @@ def validate_light_client_update(store: LightClientStore,
 
     # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
     # state of the `attested header`
-    if update.finalized_header == BeaconBlockHeader():
+    if not is_finality_update(update):
         assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
     else:
         assert is_valid_merkle_branch(
@@ -252,7 +260,7 @@ def process_light_client_update(store: LightClientStore,
     # Update finalized header
     if (
         sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
-        and update.finalized_header != BeaconBlockHeader()
+        and is_finality_update(update)
     ):
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)

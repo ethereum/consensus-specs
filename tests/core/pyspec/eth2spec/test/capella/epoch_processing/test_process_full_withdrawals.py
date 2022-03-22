@@ -31,7 +31,7 @@ def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
 
     for index in to_be_withdrawn_indices:
         validator = state.validators[index]
-        assert validator.withdrawn_epoch == spec.get_current_epoch(state)
+        assert validator.fully_withdrawn_epoch == spec.get_current_epoch(state)
         assert state.balances[index] == 0
 
     assert len(state.withdrawals_queue) == len(pre_withdrawals_queue) + num_expected_withdrawals
