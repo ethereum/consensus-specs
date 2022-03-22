@@ -87,5 +87,12 @@ def prepare_execution_payload(state: BeaconState,
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),  # [New in Capella]
     )
-    return execution_engine.notify_forkchoice_updated(parent_hash, finalized_block_hash, payload_attributes)
+    # Set safe and head block hashes to the same value
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=parent_hash,
+        # TODO: Use `parent_hash` as a stub for now.
+        safe_block_hash=parent_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
 ```
