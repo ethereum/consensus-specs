@@ -6,6 +6,33 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+- [Preset](#preset)
+  - [State list lengths](#state-list-lengths)
+  - [Execution](#execution)
+- [Configuration](#configuration)
+- [Containers](#containers)
+  - [New containers](#new-containers)
+    - [`Withdrawal`](#withdrawal)
+  - [Extended Containers](#extended-containers)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`Validator`](#validator)
+    - [`BeaconState`](#beaconstate)
+- [Helpers](#helpers)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [`withdraw`](#withdraw)
+  - [Predicates](#predicates)
+    - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Withdrawals](#withdrawals)
+  - [Block processing](#block-processing)
+    - [New `process_withdrawals`](#new-process_withdrawals)
+    - [Modified `process_execution_payload`](#modified-process_execution_payload)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
