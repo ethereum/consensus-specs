@@ -195,7 +195,7 @@ def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
-    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
     return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
 ```
 
@@ -256,10 +256,10 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     dequeued_withdrawals = state.withdrawals_queue[:num_withdrawals]
 
     assert len(dequeued_withdrawals) == len(payload.withdrawals)
-    for dequeued_receipt, withdrawal in zip(dequeued_withdrawals, payload.withdrawals):
-        assert dequeued_receipt == withdrawal
+    for dequeued_withdrawal, withdrawal in zip(dequeued_withdrawals, payload.withdrawals):
+        assert dequeued_withdrawal == withdrawal
 
-    # Remove dequeued receipts from state
+    # Remove dequeued withdrawals from state
     state.withdrawals_queue = state.withdrawals_queue[num_withdrawals:]
 ```
 
