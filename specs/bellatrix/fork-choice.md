@@ -61,6 +61,7 @@ Additionally, if `payload_attributes` is provided, this function sets in motion 
 def notify_forkchoice_updated(self: ExecutionEngine,
                               head_block_hash: Hash32,
                               safe_block_hash: Hash32,
+                              justified_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
     ...
@@ -72,6 +73,8 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 *Note*: Client software MUST NOT call this function until the transition conditions are met on the PoW network, i.e. there exists a block for which `is_valid_terminal_pow_block` function returns `True`.
 
 *Note*: Client software MUST call this function to initiate the payload build process to produce the merge transition block; the `head_block_hash` parameter MUST be set to the hash of a terminal PoW block in this case.
+
+*Note*: The `justified_block_hash` value of the `notify_forkchoice_updated` function call MUST be set to the `block_hash` of the most recent justified execution payload, and MUST be stubbed with `Hash32()` if no payload is yet justified.
 
 ##### `safe_block_hash`
 

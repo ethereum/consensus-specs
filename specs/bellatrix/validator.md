@@ -110,10 +110,11 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 To obtain an execution payload, a block proposer building a block on top of a `state` must take the following actions:
 
-1. Set `payload_id = prepare_execution_payload(state, pow_chain, finalized_block_hash, safe_block_hash, suggested_fee_recipient, execution_engine)`, where:
+1. Set `payload_id = prepare_execution_payload(state, pow_chain, finalized_block_hash, justified_block_hash, safe_block_hash, suggested_fee_recipient, execution_engine)`, where:
     * `state` is the state object after applying `process_slots(state, slot)` transition to the resulting state of the parent block processing
     * `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly represents all blocks in the PoW chain with block hash as the dictionary key
     * `finalized_block_hash` is the hash of the latest finalized execution payload (`Hash32()` if none yet finalized)
+    * `justified_block_hash` is the hash of the latest justified execution payload (`Hash32()` if none yet justified)
     * `safe_block_hash` is the return value of the `get_safe_block_hash(store: Store)` function call
     * `suggested_fee_recipient` is the value suggested to be used for the `fee_recipient` field of the execution payload
 
@@ -122,6 +123,7 @@ To obtain an execution payload, a block proposer building a block on top of a `s
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Dict[Hash32, PowBlock],
                               finalized_block_hash: Hash32,
+                              justified_block_hash: Hash32,
                               safe_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
@@ -151,6 +153,7 @@ def prepare_execution_payload(state: BeaconState,
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
         safe_block_hash=safe_block_hash,
+        justified_block_hash=justified_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
     )
