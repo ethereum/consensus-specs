@@ -97,7 +97,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
             activation_epoch=pre_validator.activation_epoch,
             exit_epoch=pre_validator.exit_epoch,
             withdrawable_epoch=pre_validator.withdrawable_epoch,
-            withdrawn_epoch=FAR_FUTURE_EPOCH,
+            fully_withdrawn_epoch=FAR_FUTURE_EPOCH,
         )
         post.validators.append(post_validator)
 

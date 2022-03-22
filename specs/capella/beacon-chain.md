@@ -61,7 +61,7 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch  # When validator can withdraw funds
-    withdrawn_epoch: Epoch  # [New in Capella]
+    fully_withdrawn_epoch: Epoch  # [New in Capella]
 ```
 
 #### `BeaconState`
@@ -173,7 +173,7 @@ class Withdrawal(Container):
 #### `withdraw`
 
 ```python
-def withdraw(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
+def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
     # Decrease the validator's balance
     decrease_balance(state, index, amount)
     # Create a corresponding withdrawal receipt
@@ -196,7 +196,7 @@ def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is fully withdrawable.
     """
     is_eth1_withdrawal_prefix = validator.withdrawal_credentials[0:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-    return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.withdrawn_epoch
+    return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
 ```
 
 ## Beacon chain state transition function
@@ -230,8 +230,8 @@ def process_full_withdrawals(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if is_fully_withdrawable_validator(validator, current_epoch):
             # TODO, consider the zero-balance case
-            withdraw(state, ValidatorIndex(index), state.balances[index])
-            validator.withdrawn_epoch = current_epoch
+            withdraw_balance(state, ValidatorIndex(index), state.balances[index])
+            validator.fully_withdrawn_epoch = current_epoch
 ```
 
 ### Block processing
