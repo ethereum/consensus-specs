@@ -8,6 +8,17 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Helpers](#helpers)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`get_payload`](#get_payload)
+- [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Block proposal](#block-proposal)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [ExecutionPayload](#executionpayload)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
