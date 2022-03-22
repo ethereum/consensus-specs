@@ -148,7 +148,6 @@ def prepare_execution_payload(state: BeaconState,
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
     )
-    # Set safe and head block hashes to the same value
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
         safe_block_hash=safe_block_hash,
