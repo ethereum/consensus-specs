@@ -197,10 +197,11 @@ class BeaconBlockBody(Container):
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload
+    # Capella operations
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]  # [New in Capella]
 ```
 
 #### `BeaconState`
@@ -398,7 +399,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
-    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)  # [New in Capella]
 ```
 
 #### New `process_bls_to_execution_change`
