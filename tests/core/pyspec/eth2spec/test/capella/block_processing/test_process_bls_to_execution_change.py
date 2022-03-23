@@ -182,6 +182,7 @@ def test_fail_incorrect_from_bls_pubkey(spec, state):
 
 @with_capella_and_later
 @spec_state_test
+@always_bls
 def test_fail_bad_signature(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     # Mutate sigature
