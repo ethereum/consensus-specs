@@ -70,6 +70,12 @@ We define the following Python custom types for type hinting and readability:
 
 ## Preset
 
+### Misc
+
+| Name | Value |
+| - | - |
+| `MAX_PARTIAL_WITHDRAWALS_PER_EPOCH` | `uint64(2**8)` (= 256) |
+
 ### State list lengths
 
 | Name | Value | Unit | Duration |
@@ -245,7 +251,8 @@ class BeaconState(Container):
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
-    withdrawal_index: WithdrawalIndex
+    withdrawal_index: WithdrawalIndex  # [New in Capella]
+    next_partial_withdrawal_index: ValidatorIndex  # [New in Capella]
     withdrawals_queue: List[Withdrawal, WITHDRAWALS_QUEUE_LIMIT]  # [New in Capella]
 ```
 
@@ -262,7 +269,7 @@ def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) ->
     # Create a corresponding withdrawal receipt
     withdrawal = Withdrawal(
         index=state.withdrawal_index,
-        address=state.validators[index].withdrawal_credentials[12:],
+        address=ExecutionAddress(state.validators[index].withdrawal_credentials[12:]),
         amount=amount,
     )
     state.withdrawal_index = WithdrawalIndex(state.withdrawal_index + 1)
@@ -280,6 +287,19 @@ def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     is_eth1_withdrawal_prefix = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
     return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
+```
+
+#### `is_partially_withdrawable_validator`
+
+```python
+def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> bool:
+    """
+    Check if ``validator`` is partially withdrawable.
+    """
+    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    has_max_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
+    has_excess_balance = balance > MAX_EFFECTIVE_BALANCE
+    return is_eth1_withdrawal_prefix and has_max_effective_balance and has_excess_balance
 ```
 
 ## Beacon chain state transition function
@@ -301,9 +321,11 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_full_withdrawals(state)  # [New in Capella]
+    process_partial_withdrawals(state)  # [New in Capella]
+
 ```
 
-#### Withdrawals
+#### Full withdrawals
 
 *Note*: The function `process_full_withdrawals` is new.
 
@@ -315,6 +337,31 @@ def process_full_withdrawals(state: BeaconState) -> None:
             # TODO, consider the zero-balance case
             withdraw_balance(state, ValidatorIndex(index), state.balances[index])
             validator.fully_withdrawn_epoch = current_epoch
+```
+
+#### Partial withdrawals
+
+*Note*: The function `process_partial_withdrawals` is new.
+
+```python
+def process_partial_withdrawals(state: BeaconState) -> None:
+    partial_withdrawals_count = 0
+    # Begin where we left off last time
+    validator_index = state.next_partial_withdrawal_index
+    for _ in range(len(state.validators)):
+        balance = state.balances[validator_index]
+        validator = state.validators[validator_index]
+        if is_partially_withdrawable_validator(validator, balance):
+            withdraw_balance(state, validator_index, balance - MAX_EFFECTIVE_BALANCE)
+            partial_withdrawals_count += 1
+
+        # Iterate to next validator to check for partial withdrawal
+        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        # Exit if performed maximum allowable withdrawals
+        if partial_withdrawals_count == MAX_PARTIAL_WITHDRAWALS_PER_EPOCH:
+            break
+
+    state.next_partial_withdrawal_index = validator_index
 ```
 
 ### Block processing

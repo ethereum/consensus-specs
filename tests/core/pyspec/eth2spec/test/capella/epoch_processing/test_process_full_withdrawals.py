@@ -26,6 +26,8 @@ def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
 
     if num_expected_withdrawals is not None:
         assert len(to_be_withdrawn_indices) == num_expected_withdrawals
+    else:
+        num_expected_withdrawals = len(to_be_withdrawn_indices)
 
     yield from run_epoch_processing_with(spec, state, 'process_full_withdrawals')
 
