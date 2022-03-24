@@ -1,7 +1,7 @@
 from eth2spec.utils import bls
 from eth2spec.test.helpers.keys import pubkeys, privkeys, pubkey_to_privkey
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_capella_and_later
+from eth2spec.test.context import spec_state_test, expect_assertion_error, with_capella_and_later, always_bls
 
 
 def run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=True):
