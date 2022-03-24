@@ -12,6 +12,9 @@ from abc import ABC, abstractmethod
 import ast
 import subprocess
 import sys
+import copy
+from collections import OrderedDict
+
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
 def installPackage(package: str):
@@ -41,6 +44,8 @@ from marko.ext.gfm.elements import Table
 PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
+CAPELLA = 'capella'
+
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
@@ -549,9 +554,22 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
         return {**super().hardcoded_custom_type_dep_constants(), **constants}
 
 
+#
+# CapellaSpecBuilder
+#
+class CapellaSpecBuilder(BellatrixSpecBuilder):
+    fork: str = CAPELLA
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.bellatrix import {preset_name} as bellatrix
+'''
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder)
 }
 
 
@@ -684,7 +702,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
-    'Optional',
+    'Optional', 'Sequence',
 ]
 
 
@@ -709,7 +727,6 @@ def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[s
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
-
 
 def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
@@ -800,7 +817,12 @@ def _build_spec(preset_name: str, fork: str,
         spec_object = combine_spec_objects(spec_object, value)
 
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
-    dependency_order_class_objects(class_objects, spec_object.custom_types)
+
+    # Ensure it's ordered after multiple forks
+    new_objects = {}
+    while OrderedDict(new_objects) != OrderedDict(class_objects):
+        new_objects = copy.deepcopy(class_objects)
+        dependency_order_class_objects(class_objects, spec_object.custom_types)
 
     return objects_to_spec(preset_name, spec_object, spec_builders[fork], class_objects)
 
@@ -847,14 +869,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -863,13 +885,21 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork == BELLATRIX:
+            if self.spec_fork in (BELLATRIX, CAPELLA):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
                     specs/bellatrix/fork-choice.md
                     specs/bellatrix/validator.md
                     sync/optimistic.md
+                """
+            if self.spec_fork == CAPELLA:
+                self.md_doc_paths += """
+                    specs/capella/beacon-chain.md
+                    specs/capella/fork.md
+                    specs/capella/fork-choice.md
+                    specs/capella/validator.md
+                    specs/capella/p2p-interface.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)

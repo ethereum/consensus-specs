@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -9,7 +9,7 @@ def build_mock_validator(spec, i: int, balance: int):
     pubkey = pubkeys[i]
     # insecurely use pubkey as withdrawal key as well
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
-    return spec.Validator(
+    validator = spec.Validator(
         pubkey=pubkeys[i],
         withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
@@ -18,6 +18,11 @@ def build_mock_validator(spec, i: int, balance: int):
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
         effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     )
+
+    if spec.fork not in FORKS_BEFORE_CAPELLA:
+        validator.fully_withdrawn_epoch = spec.FAR_FUTURE_EPOCH
+
+    return validator
 
 
 def get_sample_genesis_execution_payload_header(spec,
