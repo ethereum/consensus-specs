@@ -80,8 +80,7 @@ MUST be set to the return value of the following function:
 
 ```python
 def get_safe_block_hash(store: Store) -> Hash32:
-    # Use most recent justified block as a stopgap
-    safe_block_root = store.justified_checkpoint.root
+    safe_block_root = get_safe_beacon_block(store)
     safe_block = store.blocks[safe_block_root]
 
     # Return Hash32() if no payload is yet justified
