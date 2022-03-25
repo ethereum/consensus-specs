@@ -75,20 +75,7 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 
 ##### `safe_block_hash`
 
-The `safe_block_hash` parameter in a call to `notify_forkchoice_updated` function
-MUST be set to the return value of the following function:
-
-```python
-def get_safe_block_hash(store: Store) -> Hash32:
-    safe_block_root = get_safe_beacon_block(store)
-    safe_block = store.blocks[safe_block_root]
-
-    # Return Hash32() if no payload is yet justified
-    if compute_epoch_at_slot(safe_block.slot) >= BELLATRIX_FORK_EPOCH:
-        return safe_block.body.execution_payload.block_hash
-    else:
-        return Hash32()
-```
+The `safe_block_hash` parameter MUST be set to return value of `get_safe_execution_payload_hash(store: Store)` function.
 
 ## Helpers
 
