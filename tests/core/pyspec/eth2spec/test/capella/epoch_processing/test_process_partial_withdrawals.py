@@ -1,3 +1,4 @@
+import random
 from eth2spec.test.context import (
     with_capella_and_later,
     spec_state_test,
@@ -5,13 +6,13 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
-def set_validator_partiall_withdrawable(spec, state, index):
+def set_validator_partially_withdrawable(spec, state, index, rng=random.Random(666)):
     validator = state.validators[index]
     validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
     validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE
-    state.balances[index] = spec.MAX_EFFECTIVE_BALANCE + 500  # make a random increase
+    state.balances[index] = spec.MAX_EFFECTIVE_BALANCE + rng.randint(1, 100000000)
 
-    assert spec.partially_withdrawable_indices(validator, state.balances[index])
+    assert spec.is_partially_withdrawable_validator(validator, state.balances[index])
 
 
 def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
@@ -43,8 +44,135 @@ def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
 
 @with_capella_and_later
 @spec_state_test
-def test_no_partial_withdrawals(spec, state):
+def test_success_no_withdrawable(spec, state):
     pre_validators = state.validators.copy()
     yield from run_process_partial_withdrawals(spec, state, 0)
 
     assert pre_validators == state.validators
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_one_partial_withdrawable(spec, state):
+    validator_index = len(state.validators) // 2
+    set_validator_partially_withdrawable(spec, state, validator_index)
+
+    yield from run_process_partial_withdrawals(spec, state, 1)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_one_partial_withdrawable_not_yet_active(spec, state):
+    validator_index = len(state.validators) // 2
+    state.validators[validator_index].activation_epoch += 4
+    set_validator_partially_withdrawable(spec, state, validator_index)
+
+    yield from run_process_partial_withdrawals(spec, state, 1)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
+    validator_index = len(state.validators) // 2
+    state.validators[validator_index].exit_epoch = spec.get_current_epoch(state) + 1
+    set_validator_partially_withdrawable(spec, state, validator_index)
+
+    yield from run_process_partial_withdrawals(spec, state, 1)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_one_partial_withdrawable_exited(spec, state):
+    validator_index = len(state.validators) // 2
+    state.validators[validator_index].exit_epoch = spec.get_current_epoch(state)
+    set_validator_partially_withdrawable(spec, state, validator_index)
+
+    yield from run_process_partial_withdrawals(spec, state, 1)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_one_partial_withdrawable_slashed(spec, state):
+    validator_index = len(state.validators) // 2
+    state.validators[validator_index].slashed = True
+    set_validator_partially_withdrawable(spec, state, validator_index)
+
+    yield from run_process_partial_withdrawals(spec, state, 1)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_two_partial_withdrawable(spec, state):
+    set_validator_partially_withdrawable(spec, state, 0)
+    set_validator_partially_withdrawable(spec, state, 1)
+
+    yield from run_process_partial_withdrawals(spec, state, 2)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_max_partial_withdrawable(spec, state):
+    # Sanity check that this test works for this state
+    assert len(state.validators) >= spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH
+
+    for i in range(spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH):
+        set_validator_partially_withdrawable(spec, state, i)
+
+    yield from run_process_partial_withdrawals(spec, state, spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_max_plus_one_withdrawable(spec, state):
+    # Sanity check that this test works for this state
+    assert len(state.validators) >= spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH + 1
+
+    # More than MAX_PARTIAL_WITHDRAWALS_PER_EPOCH paritally withdrawable
+    for i in range(spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH + 1):
+        set_validator_partially_withdrawable(spec, state, i)
+
+    # Should only have MAX_PARTIAL_WITHDRAWALS_PER_EPOCH withdrawals created
+    yield from run_process_partial_withdrawals(spec, state, spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH)
+
+
+def run_random_partial_withdrawals_test(spec, state, rng):
+    num_validators = len(state.validators)
+    state.next_partial_withdrawal_index = rng.randint(0, num_validators - 1)
+
+    num_partially_withdrawable = rng.randint(0, num_validators - 1)
+    partially_withdrawable_indices = rng.sample(range(num_validators), num_partially_withdrawable)
+    for index in partially_withdrawable_indices:
+        set_validator_partially_withdrawable(spec, state, index)
+
+    num_expected_withdrawals = min(num_partially_withdrawable, spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH)
+    yield from run_process_partial_withdrawals(spec, state, num_expected_withdrawals)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_random_0(spec, state):
+    yield from run_random_partial_withdrawals_test(spec, state, random.Random(0))
+
+
+@with_capella_and_later
+@spec_state_test
+def test_random_1(spec, state):
+    yield from run_random_partial_withdrawals_test(spec, state, random.Random(1))
+
+
+@with_capella_and_later
+@spec_state_test
+def test_random_2(spec, state):
+    yield from run_random_partial_withdrawals_test(spec, state, random.Random(2))
+
+
+@with_capella_and_later
+@spec_state_test
+def test_random_3(spec, state):
+    yield from run_random_partial_withdrawals_test(spec, state, random.Random(3))
+
+
+@with_capella_and_later
+@spec_state_test
+def test_random_4(spec, state):
+    yield from run_random_partial_withdrawals_test(spec, state, random.Random(4))
