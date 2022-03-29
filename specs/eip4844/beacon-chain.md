@@ -149,7 +149,7 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
 def verify_kzgs_against_transactions(transactions: Sequence[Transaction], blob_kzgs: Sequence[KZGCommitment]) -> bool:
    all_versioned_hashes = []
    for tx in transactions:
-      if opaque_tx[0] == BLOB_TX_TYPE:
+      if tx[0] == BLOB_TX_TYPE:
          all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
    return all_versioned_hashes == [ksg_to_version_hash(kzg) for kzg in blob_kzgs]
 ```
