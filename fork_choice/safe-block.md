@@ -44,3 +44,5 @@ def get_safe_execution_payload_hash(store: Store) -> Hash32:
     else:
         return Hash32()
 ```
+
+*Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
