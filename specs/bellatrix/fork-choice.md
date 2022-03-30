@@ -12,6 +12,7 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
+      - [`safe_block_hash`](#safe_block_hash)
 - [Helpers](#helpers)
   - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
@@ -72,7 +73,10 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 
 *Note*: Client software MUST call this function to initiate the payload build process to produce the merge transition block; the `head_block_hash` parameter MUST be set to the hash of a terminal PoW block in this case.
 
-*Note*: Until safe head function is implemented, `safe_block_hash` parameter MUST be stubbed with the `head_block_hash` value.
+##### `safe_block_hash`
+
+The `safe_block_hash` parameter MUST be set to return value of
+[`get_safe_execution_payload_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_payload_hash) function.
 
 ## Helpers
 
