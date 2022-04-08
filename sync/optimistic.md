@@ -270,40 +270,9 @@ An optimistic validator MUST NOT participate in sync committees (i.e., sign acro
 ## Ethereum Beacon APIs
 
 Consensus engines which provide an implementation of the [Ethereum Beacon
-APIs](https://github.com/ethereum/beacon-APIs) must take care to avoid
-presenting optimistic blocks as fully-verified blocks.
-
-### Helpers
-
-Let the following response types be defined as any response with the
-corresponding HTTP status code:
-
-- "Success" Response: Status Codes 200-299.
-- "Not Found" Response: Status Code 404.
-- "Syncing" Response: Status Code 503.
-
-### Requests for Optimistic Blocks
-
-When information about an optimistic block is requested, the consensus engine:
-
-- MUST NOT respond with success.
-- MAY respond with not found.
-- MAY respond with syncing.
-
-### Requests for an Optimistic Head
-
-When `is_optimistic(opt_store, head) is True`, the consensus engine:
-
-- MUST NOT return an optimistic `head`.
-- MAY substitute the head block with `latest_verified_ancestor(block)`.
-- MAY return syncing.
-
-### Requests to Validators Endpoints
-
-When `is_optimistic(opt_store, head) is True`, the consensus engine MUST return syncing to
-all endpoints which match the following pattern:
-
-- `eth/*/validator/*`
+APIs](https://github.com/ethereum/beacon-APIs) must take care to ensure the
+`is_execution_optimistic` value is set to `True` whenever the request references
+optimistic blocks (and vice-versa).
 
 ## Design Decision Rationale
 
