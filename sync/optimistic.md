@@ -271,7 +271,7 @@ An optimistic validator MUST NOT participate in sync committees (i.e., sign acro
 
 Consensus engines which provide an implementation of the [Ethereum Beacon
 APIs](https://github.com/ethereum/beacon-APIs) must take care to ensure the
-`is_execution_optimistic` value is set to `True` whenever the request references
+`execution_optimistic` value is set to `True` whenever the request references
 optimistic blocks (and vice-versa).
 
 ## Design Decision Rationale
