@@ -71,6 +71,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
 ```python
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Dict[Hash32, PowBlock],
+                              safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
@@ -98,11 +99,9 @@ def prepare_execution_payload(state: BeaconState,
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),  # [New in Capella]
     )
-    # Set safe and head block hashes to the same value
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
-        # TODO: Use `parent_hash` as a stub for now.
-        safe_block_hash=parent_hash,
+        safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
     )
