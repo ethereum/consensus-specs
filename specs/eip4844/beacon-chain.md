@@ -70,7 +70,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 | Name | Value |
 | - | - |
 | `KZG_SETUP_G2` | `Vector[G2Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[BLSCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Configuration
 
