@@ -151,7 +151,7 @@ def verify_kzgs_against_transactions(transactions: Sequence[Transaction], blob_k
    for tx in transactions:
       if tx[0] == BLOB_TX_TYPE:
          all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
-   return all_versioned_hashes == [ksg_to_version_hash(kzg) for kzg in blob_kzgs]
+   return all_versioned_hashes == [kzg_to_versioned_hash(kzg) for kzg in blob_kzgs]
 ```
 
 ## Beacon chain state transition function
