@@ -92,6 +92,7 @@ def build_empty_block(spec, state, slot=None):
     empty_block.proposer_index = spec.get_beacon_proposer_index(state)
     empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     empty_block.parent_root = parent_block_root
+    empty_block.body.graffiti = '🐼'.encode('utf8') + b'\x00' * 28
 
     apply_randao_reveal(spec, state, empty_block)
 

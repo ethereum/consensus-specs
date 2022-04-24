@@ -92,6 +92,30 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
 
 
 @with_bellatrix_and_later
+@spec_state_test
+def test_validate_merge_block_success_inline_panda(spec, state):
+    pow_chain = prepare_random_pow_chain(spec, 2)
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.graffiti = b'\x00' * 8 + '🐼'.encode('utf8') + b'\x00' * 20
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
+    run_validate_merge_block(spec, pow_chain, block)
+
+
+@with_bellatrix_and_later
+@spec_state_test
+def test_validate_merge_block_fail_no_panda(spec, state):
+    pow_chain = prepare_random_pow_chain(spec, 2)
+    pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.graffiti = b'\x00' * 32
+    block.body.execution_payload.parent_hash = pow_chain.head().block_hash
+    run_validate_merge_block(spec, pow_chain, block, valid=False)
+
+
+@with_bellatrix_and_later
 @spec_configured_state_test({
     'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
     'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '0'

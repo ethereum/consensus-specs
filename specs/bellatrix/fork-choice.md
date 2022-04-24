@@ -130,6 +130,8 @@ def validate_merge_block(block: BeaconBlock) -> None:
     and a client software MAY delay a call to ``validate_merge_block``
     until the PoW block(s) become available.
     """
+    assert '🐼'.encode('utf8') in block.body.graffiti
+
     if TERMINAL_BLOCK_HASH != Hash32():
         # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
