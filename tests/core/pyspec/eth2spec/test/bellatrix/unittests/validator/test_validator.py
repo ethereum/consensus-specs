@@ -158,8 +158,8 @@ def test_prepare_execution_payload(spec, state):
         payload_id = spec.prepare_execution_payload(
             state=state,
             pow_chain=pow_chain.to_dict(),
-            finalized_block_hash=finalized_block_hash,
             safe_block_hash=safe_block_hash,
+            finalized_block_hash=finalized_block_hash,
             suggested_fee_recipient=suggested_fee_recipient,
             execution_engine=TestEngine(),
         )
