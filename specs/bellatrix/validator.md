@@ -110,9 +110,10 @@ All validator responsibilities remain unchanged other than those noted below. Na
 
 To obtain an execution payload, a block proposer building a block on top of a `state` must take the following actions:
 
-1. Set `payload_id = prepare_execution_payload(state, pow_chain, finalized_block_hash, safe_block_hash, suggested_fee_recipient, execution_engine)`, where:
+1. Set `payload_id = prepare_execution_payload(state, pow_chain, graffiti, safe_block_hash, finalized_block_hash, suggested_fee_recipient, execution_engine)`, where:
     * `state` is the state object after applying `process_slots(state, slot)` transition to the resulting state of the parent block processing
     * `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly represents all blocks in the PoW chain with block hash as the dictionary key
+    * `graffiti` is the configured value to use as the beacon block's graffiti
     * `safe_block_hash` is the return value of the `get_safe_execution_payload_hash(store: Store)` function call
     * `finalized_block_hash` is the hash of the latest finalized execution payload (`Hash32()` if none yet finalized)
     * `suggested_fee_recipient` is the value suggested to be used for the `fee_recipient` field of the execution payload
@@ -121,11 +122,16 @@ To obtain an execution payload, a block proposer building a block on top of a `s
 ```python
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Dict[Hash32, PowBlock],
+                              graffiti: Bytes32,
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
+        if '🐼'.encode('utf8') not in graffiti:
+            # Incompatible graffiti for merge transition block
+            return None
+
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
         is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         if is_terminal_block_hash_set and not is_activation_epoch_reached:

@@ -71,11 +71,16 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
 ```python
 def prepare_execution_payload(state: BeaconState,
                               pow_chain: Dict[Hash32, PowBlock],
+                              graffiti: Bytes32,
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
+        if '🐼'.encode('utf8') not in graffiti:
+            # Incompatible graffiti for merge transition block
+            return None
+            
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
         is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         if is_terminal_block_hash_set and not is_activation_epoch_reached:

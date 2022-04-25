@@ -69,24 +69,40 @@ def test_get_pow_block_at_terminal_total_difficulty(spec, state):
 
 SAMPLE_PAYLOAD_ID = b'\x12' * 8
 # ('is_merge_complete', 'is_terminal_block_hash_set', 'is_activation_epoch_reached',
-# 'terminal_pow_block_is_none', 'result_payload_id')
+# 'terminal_pow_block_is_none', 'is_graffiti_compatible', 'result_payload_id')
 prepare_execution_payload_expected_results = [
-    (False, False, False, False, SAMPLE_PAYLOAD_ID),
-    (False, False, False, True, None),
-    (False, False, True, False, SAMPLE_PAYLOAD_ID),
-    (False, False, True, True, None),
-    (False, True, False, False, None),
-    (False, True, False, True, None),
-    (False, True, True, False, SAMPLE_PAYLOAD_ID),
-    (False, True, True, True, None),
-    (True, False, False, False, SAMPLE_PAYLOAD_ID),
-    (True, False, False, True, SAMPLE_PAYLOAD_ID),
-    (True, False, True, False, SAMPLE_PAYLOAD_ID),
-    (True, False, True, True, SAMPLE_PAYLOAD_ID),
-    (True, True, False, False, SAMPLE_PAYLOAD_ID),
-    (True, True, False, True, SAMPLE_PAYLOAD_ID),
-    (True, True, True, False, SAMPLE_PAYLOAD_ID),
-    (True, True, True, True, SAMPLE_PAYLOAD_ID),
+    (False, False, False, False, True, SAMPLE_PAYLOAD_ID),
+    (False, False, False, True, True, None),
+    (False, False, True, False, True, SAMPLE_PAYLOAD_ID),
+    (False, False, True, True, True, None),
+    (False, True, False, False, True, None),
+    (False, True, False, True, True, None),
+    (False, True, True, False, True, SAMPLE_PAYLOAD_ID),
+    (False, True, True, True, True, None),
+    (True, False, False, False, True, SAMPLE_PAYLOAD_ID),
+    (True, False, False, True, True, SAMPLE_PAYLOAD_ID),
+    (True, False, True, False, True, SAMPLE_PAYLOAD_ID),
+    (True, False, True, True, True, SAMPLE_PAYLOAD_ID),
+    (True, True, False, False, True, SAMPLE_PAYLOAD_ID),
+    (True, True, False, True, True, SAMPLE_PAYLOAD_ID),
+    (True, True, True, False, True, SAMPLE_PAYLOAD_ID),
+    (True, True, True, True, True, SAMPLE_PAYLOAD_ID),
+    (False, False, False, False, False, None),
+    (False, False, False, True, False, None),
+    (False, False, True, False, False, None),
+    (False, False, True, True, False, None),
+    (False, True, False, False, False, None),
+    (False, True, False, True, False, None),
+    (False, True, True, False, False, None),
+    (False, True, True, True, False, None),
+    (True, False, False, False, False, SAMPLE_PAYLOAD_ID),
+    (True, False, False, True, False, SAMPLE_PAYLOAD_ID),
+    (True, False, True, False, False, SAMPLE_PAYLOAD_ID),
+    (True, False, True, True, False, SAMPLE_PAYLOAD_ID),
+    (True, True, False, False, False, SAMPLE_PAYLOAD_ID),
+    (True, True, False, True, False, SAMPLE_PAYLOAD_ID),
+    (True, True, True, False, False, SAMPLE_PAYLOAD_ID),
+    (True, True, True, True, False, SAMPLE_PAYLOAD_ID),
 ]
 
 
@@ -99,6 +115,7 @@ def test_prepare_execution_payload(spec, state):
             is_terminal_block_hash_set,
             is_activation_epoch_reached,
             terminal_pow_block_is_none,
+            is_graffiti_compatible,
             result_payload_id,
         ) = result
 
@@ -141,6 +158,12 @@ def test_prepare_execution_payload(spec, state):
                 pow_chain.head().block_hash = _mock_terminal_block_hash
             pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
 
+        # 4. Handle `is_graffiti_compatible`
+        if is_graffiti_compatible:
+            graffiti = '🐼'.encode('utf8') * 8
+        else:
+            graffiti = b'\x00' * 32
+
         # Dummy arguments
         finalized_block_hash = b'\x56' * 32
         safe_block_hash = b'\x58' * 32
@@ -158,8 +181,9 @@ def test_prepare_execution_payload(spec, state):
         payload_id = spec.prepare_execution_payload(
             state=state,
             pow_chain=pow_chain.to_dict(),
-            finalized_block_hash=finalized_block_hash,
+            graffiti=graffiti,
             safe_block_hash=safe_block_hash,
+            finalized_block_hash=finalized_block_hash,
             suggested_fee_recipient=suggested_fee_recipient,
             execution_engine=TestEngine(),
         )
