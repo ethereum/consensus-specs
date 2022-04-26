@@ -1,5 +1,9 @@
+from eth2spec.test.helpers.state import (
+    transition_to,
+)
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
+    compute_committee_indices,
 )
 
 
@@ -15,21 +19,31 @@ def initialize_light_client_store(spec, state):
     )
 
 
-def get_sync_aggregate(spec, state, block_header, block_root=None, signature_slot=None):
+def get_sync_aggregate(spec, state, block_header, signature_slot=None):
+    # By default, the sync committee signs the previous slot
     if signature_slot is None:
-        signature_slot = block_header.slot
+        signature_slot = block_header.slot + 1
 
-    all_pubkeys = [v.pubkey for v in state.validators]
-    committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
-    sync_committee_bits = [True] * len(committee)
+    # Ensure correct sync committee and fork version are selected
+    signature_state = state.copy()
+    transition_to(spec, signature_state, signature_slot)
+
+    # Fetch sync committee
+    committee_indices = compute_committee_indices(spec, signature_state)
+    committee_size = len(committee_indices)
+
+    # Compute sync aggregate
+    sync_committee_bits = [True] * committee_size
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
-        state,
-        block_header.slot,
-        committee,
-        block_root=block_root,
+        signature_state,
+        signature_slot,
+        committee_indices,
+        block_root=spec.Root(block_header.hash_tree_root()),
     )
-    return spec.SyncAggregate(
+    sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
     )
+    fork_version = signature_state.fork.current_version
+    return sync_aggregate, fork_version, signature_slot
