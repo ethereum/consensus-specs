@@ -29,6 +29,7 @@
     - [`is_execution_enabled`](#is_execution_enabled)
   - [Misc](#misc)
     - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
   - [Beacon state mutators](#beacon-state-mutators)
@@ -240,6 +241,20 @@ def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
 def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
     slots_since_genesis = slot - GENESIS_SLOT
     return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
+```
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
 ```
 
 ### Beacon state accessors
