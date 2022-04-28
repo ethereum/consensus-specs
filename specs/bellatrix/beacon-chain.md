@@ -10,6 +10,8 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
+- [Constants](#constants)
+  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
   - [Updated penalty values](#updated-penalty-values)
@@ -61,6 +63,14 @@ Additionally, this upgrade introduces the following minor changes:
 | - | - | - |
 | `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction|
 | `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
+
+## Constants
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_APPLICATION` | `DomainType('0xffffffff')` |
 
 ## Preset
 
