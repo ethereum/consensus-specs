@@ -457,6 +457,7 @@ class AltairSpecBuilder(Phase0SpecBuilder):
 from typing import NewType, Union as PyUnion
 
 from eth2spec.phase0 import {preset_name} as phase0
+from eth2spec.test.helpers.merkle import build_proof
 from eth2spec.utils.ssz.ssz_typing import Path
 '''
 

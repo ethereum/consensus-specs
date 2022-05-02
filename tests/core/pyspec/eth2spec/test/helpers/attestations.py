@@ -246,7 +246,12 @@ def next_epoch_with_attestations(spec,
     )
 
 
-def state_transition_with_full_block(spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None):
+def state_transition_with_full_block(spec,
+                                     state,
+                                     fill_cur_epoch,
+                                     fill_prev_epoch,
+                                     participation_fn=None,
+                                     sync_aggregate=None):
     """
     Build and apply a block with attestions at the calculated `slot_to_attest` of current epoch and/or previous epoch.
     """
@@ -272,6 +277,8 @@ def state_transition_with_full_block(spec, state, fill_cur_epoch, fill_prev_epoc
         )
         for attestation in attestations:
             block.body.attestations.append(attestation)
+    if sync_aggregate is not None:
+        block.body.sync_aggregate = sync_aggregate
 
     signed_block = state_transition_and_sign_block(spec, state, block)
     return signed_block
