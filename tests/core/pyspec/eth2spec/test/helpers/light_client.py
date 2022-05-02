@@ -7,6 +7,16 @@ from eth2spec.test.helpers.sync_committee import (
 )
 
 
+def signed_block_to_header(spec, block):
+    return spec.BeaconBlockHeader(
+        slot=block.message.slot,
+        proposer_index=block.message.proposer_index,
+        parent_root=block.message.parent_root,
+        state_root=block.message.state_root,
+        body_root=block.message.body.hash_tree_root(),
+    )
+
+
 def initialize_light_client_store(spec, state):
     return spec.LightClientStore(
         finalized_header=spec.BeaconBlockHeader(),
@@ -19,10 +29,10 @@ def initialize_light_client_store(spec, state):
     )
 
 
-def get_sync_aggregate(spec, state, block_header, signature_slot=None):
+def get_sync_aggregate(spec, state, signature_slot=None):
     # By default, the sync committee signs the previous slot
     if signature_slot is None:
-        signature_slot = block_header.slot + 1
+        signature_slot = state.slot + 1
 
     # Ensure correct sync committee and fork version are selected
     signature_state = state.copy()
@@ -39,7 +49,6 @@ def get_sync_aggregate(spec, state, block_header, signature_slot=None):
         signature_state,
         signature_slot,
         committee_indices,
-        block_root=spec.Root(block_header.hash_tree_root()),
     )
     sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
