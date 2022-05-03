@@ -934,6 +934,7 @@ class PySpecCommand(Command):
             if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
+                    specs/altair/light-client/light-client.md
                     specs/altair/light-client/sync-protocol.md
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
