@@ -84,10 +84,6 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
     if is_execution_block(opt_store.blocks[block.parent_root]):
         return True
 
-    justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
-    if is_execution_block(opt_store.blocks[justified_root]):
-        return True
-
     if block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot:
         return True
 
@@ -111,7 +107,6 @@ This ensures that blocks are only optimistically imported if one or more of the
 following are true:
 
 1. The parent of the block has execution enabled.
-1. The justified checkpoint has execution enabled.
 1. The current slot (as per the system clock) is at least
    `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of the slot of the block being
    imported.
