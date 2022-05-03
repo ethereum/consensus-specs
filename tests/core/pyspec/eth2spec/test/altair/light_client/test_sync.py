@@ -72,13 +72,13 @@ def get_checks(store):
     }
 
 
-def emit_slot(test, spec, state):
+def emit_force_update(test, spec, state):
     current_slot = state.slot
-    spec.process_slot_for_light_client_store(test.store, current_slot)
+    spec.try_light_client_store_force_update(test.store, current_slot)
 
     yield from []  # Consistently enable `yield from` syntax in calling tests
     test.steps.append({
-        "process_slot": {
+        "force_update": {
             "current_slot": int(current_slot),
             "checks": get_checks(test.store),
         }
@@ -249,7 +249,7 @@ def test_light_client_sync(spec, state):
     # ```
     attested_state = state.copy()
     next_slots(spec, state, spec.UPDATE_TIMEOUT - 1)
-    yield from emit_slot(test, spec, state)
+    yield from emit_force_update(test, spec, state)
     assert test.store.finalized_header.slot == store_state.slot
     assert test.store.next_sync_committee == store_state.next_sync_committee
     assert test.store.best_valid_update is None
@@ -293,7 +293,7 @@ def test_light_client_sync(spec, state):
     assert test.store.next_sync_committee == store_state.next_sync_committee
     assert test.store.best_valid_update == update
     assert test.store.optimistic_header.slot == attested_state.slot
-    yield from emit_slot(test, spec, state)
+    yield from emit_force_update(test, spec, state)
     assert test.store.finalized_header.slot == attested_state.slot
     assert test.store.next_sync_committee == attested_state.next_sync_committee
     assert test.store.best_valid_update is None

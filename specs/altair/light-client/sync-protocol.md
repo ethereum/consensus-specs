@@ -29,9 +29,9 @@
 - [Light client initialization](#light-client-initialization)
   - [`initialize_light_client_store`](#initialize_light_client_store)
 - [Light client state updates](#light-client-state-updates)
-  - [`process_slot_for_light_client_store`](#process_slot_for_light_client_store)
   - [`validate_light_client_update`](#validate_light_client_update)
   - [`apply_light_client_update`](#apply_light_client_update)
+  - [`try_light_client_store_force_update`](#try_light_client_store_force_update)
   - [`process_light_client_update`](#process_light_client_update)
   - [`process_light_client_finality_update`](#process_light_client_finality_update)
   - [`process_light_client_optimistic_update`](#process_light_client_optimistic_update)
@@ -285,28 +285,7 @@ def initialize_light_client_store(trusted_block_root: Root,
     - **`update: LightClientUpdate`**: Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock.
     - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update` triggers `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
     - **`optimistic_update: LightClientOptimisticUpdate`**: Every `optimistic_update` triggers `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
-- `process_slot_for_light_client_store` is triggered every time the current slot increments.
-
-### `process_slot_for_light_client_store`
-
-```python
-def process_slot_for_light_client_store(store: LightClientStore, current_slot: Slot) -> None:
-    if current_slot % UPDATE_TIMEOUT == 0:
-        store.previous_max_active_participants = store.current_max_active_participants
-        store.current_max_active_participants = 0
-    if (
-        current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
-        and store.best_valid_update is not None
-    ):
-        # Forced best update when the update timeout has elapsed.
-        # Because the apply logic waits for `finalized_header.slot` to indicate sync committee finality,
-        # the `attested_header` may be treated as `finalized_header` in extended periods of non-finality
-        # to guarantee progression into later sync committee periods according to `is_better_update`.
-        if store.best_valid_update.finalized_header.slot <= store.finalized_header.slot:
-            store.best_valid_update.finalized_header = store.best_valid_update.attested_header
-        apply_light_client_update(store, store.best_valid_update)
-        store.best_valid_update = None
-```
+- `try_light_client_store_force_update` MAY be called based on use case dependent heuristics if light client sync appears stuck.
 
 ### `validate_light_client_update`
 
@@ -399,10 +378,30 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
     elif update_finalized_period == store_period + 1:
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
+        store.previous_max_active_participants = store.current_max_active_participants
+        store.current_max_active_participants = 0
     if update.finalized_header.slot > store.finalized_header.slot:
         store.finalized_header = update.finalized_header
         if store.finalized_header.slot > store.optimistic_header.slot:
             store.optimistic_header = store.finalized_header
+```
+
+### `try_light_client_store_force_update`
+
+```python
+def try_light_client_store_force_update(store: LightClientStore, current_slot: Slot) -> None:
+    if (
+        current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
+        and store.best_valid_update is not None
+    ):
+        # Forced best update when the update timeout has elapsed.
+        # Because the apply logic waits for `finalized_header.slot` to indicate sync committee finality,
+        # the `attested_header` may be treated as `finalized_header` in extended periods of non-finality
+        # to guarantee progression into later sync committee periods according to `is_better_update`.
+        if store.best_valid_update.finalized_header.slot <= store.finalized_header.slot:
+            store.best_valid_update.finalized_header = store.best_valid_update.attested_header
+        apply_light_client_update(store, store.best_valid_update)
+        store.best_valid_update = None
 ```
 
 ### `process_light_client_update`
