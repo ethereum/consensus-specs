@@ -9,17 +9,22 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
+  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [State list lengths](#state-list-lengths)
+  - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Withdrawal`](#withdrawal)
+    - [`BLSToExecutionChange`](#blstoexecutionchange)
+    - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`Validator`](#validator)
+    - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Beacon state mutators](#beacon-state-mutators)
@@ -32,6 +37,8 @@
   - [Block processing](#block-processing)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [Modified `process_operations`](#modified-process_operations)
+    - [New `process_bls_to_execution_change`](#new-process_bls_to_execution_change)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -47,13 +54,19 @@ to validator withdrawals. Including:
 
 ## Custom types
 
-## Constants
-
 We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `WithdrawalIndex` | `uint64` | an index of a `Withdrawal`|
+
+## Constants
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
 ## Preset
 
@@ -62,6 +75,12 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `WITHDRAWALS_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state|
+
+### Max operations per block
+
+| Name | Value |
+| - | - |
+| `MAX_BLS_TO_EXECUTION_CHANGES` | `2**4` (= 16) |
 
 ### Execution
 
@@ -82,6 +101,23 @@ class Withdrawal(Container):
     index: WithdrawalIndex
     address: ExecutionAddress
     amount: Gwei
+```
+
+#### `BLSToExecutionChange`
+
+```python
+class BLSToExecutionChange(Container):
+    validator_index: ValidatorIndex
+    from_bls_pubkey: BLSPubkey
+    to_execution_address: ExecutionAddress
+```
+
+#### `SignedBLSToExecutionChange`
+
+```python
+class SignedBLSToExecutionChange(Container):
+    message: BLSToExecutionChange
+    signature: BLSSignature
 ```
 
 ### Extended Containers
@@ -146,6 +182,26 @@ class Validator(Container):
     exit_epoch: Epoch
     withdrawable_epoch: Epoch  # When validator can withdraw funds
     fully_withdrawn_epoch: Epoch  # [New in Capella]
+```
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    sync_aggregate: SyncAggregate
+    # Execution
+    execution_payload: ExecutionPayload
+    # Capella operations
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]  # [New in Capella]
 ```
 
 #### `BeaconState`
@@ -322,5 +378,51 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
+    )
+```
+
+#### Modified `process_operations`
+
+*Note*: The function `process_operations` is modified to process `BLSToExecutionChange` operations included in the block.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)  # [New in Capella]
+```
+
+#### New `process_bls_to_execution_change`
+
+```python
+def process_bls_to_execution_change(state: BeaconState,
+                                    signed_address_change: SignedBLSToExecutionChange) -> None:
+    address_change = signed_address_change.message
+
+    assert address_change.validator_index < len(state.validators)
+
+    validator = state.validators[address_change.validator_index]
+
+    assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
+    assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
+
+    domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE)
+    signing_root = compute_signing_root(address_change, domain)
+    assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
+
+    validator.withdrawal_credentials = (
+        ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        + (0x00).to_bytes(11, 'little')
+        + address_change.to_execution_address
     )
 ```
