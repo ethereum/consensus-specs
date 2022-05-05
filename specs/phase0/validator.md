@@ -276,9 +276,15 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 ### Block proposal
 
 A validator is expected to propose a [`SignedBeaconBlock`](./beacon-chain.md#signedbeaconblock) at
-the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`.
-To propose, the validator selects the `BeaconBlock`, `parent`,
-that in their view of the fork choice is the head of the chain during `slot - 1`.
+the beginning of any `slot` during which `is_proposer(state, validator_index)` returns `True`.
+
+To propose, the validator selects the `BeaconBlock`, `parent` which:
+
+1. In their view of fork choice is the head of the chain at the start of
+   `slot`, after applying any queued attestations from `slot - 1`.
+2. Is from a slot strictly less than the slot of the block about to be proposed,
+   i.e. `parent.slot < slot`.
+
 The validator creates, signs, and broadcasts a `block` that is a child of `parent`
 that satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
 
