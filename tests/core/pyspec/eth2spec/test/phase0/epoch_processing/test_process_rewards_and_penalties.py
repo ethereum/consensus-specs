@@ -200,7 +200,10 @@ def run_with_participation(spec, state, participation_fn):
 @spec_state_test
 def test_almost_empty_attestations(spec, state):
     rng = Random(1234)
-    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(sorted(comm), 1))
+
+    def participation_fn(slot, comm_index, comm):
+        return rng.sample(sorted(comm), 1)
+    yield from run_with_participation(spec, state, participation_fn)
 
 
 @with_all_phases
@@ -208,15 +211,20 @@ def test_almost_empty_attestations(spec, state):
 @leaking()
 def test_almost_empty_attestations_with_leak(spec, state):
     rng = Random(1234)
-    yield from run_with_participation(spec, state, lambda slot, comm_index, comm: rng.sample(sorted(comm), 1))
+
+    def participation_fn(slot, comm_index, comm):
+        return rng.sample(sorted(comm), 1)
+    yield from run_with_participation(spec, state, participation_fn)
 
 
 @with_all_phases
 @spec_state_test
 def test_random_fill_attestations(spec, state):
     rng = Random(4567)
-    yield from run_with_participation(spec, state,
-                                      lambda slot, comm_index, comm: rng.sample(sorted(comm), len(comm) // 3))
+
+    def participation_fn(slot, comm_index, comm):
+        return rng.sample(sorted(comm), len(comm) // 3)
+    yield from run_with_participation(spec, state, participation_fn)
 
 
 @with_all_phases
@@ -224,16 +232,20 @@ def test_random_fill_attestations(spec, state):
 @leaking()
 def test_random_fill_attestations_with_leak(spec, state):
     rng = Random(4567)
-    yield from run_with_participation(spec, state,
-                                      lambda slot, comm_index, comm: rng.sample(sorted(comm), len(comm) // 3))
+
+    def participation_fn(slot, comm_index, comm):
+        return rng.sample(sorted(comm), len(comm) // 3)
+    yield from run_with_participation(spec, state, participation_fn)
 
 
 @with_all_phases
 @spec_state_test
 def test_almost_full_attestations(spec, state):
     rng = Random(8901)
-    yield from run_with_participation(spec, state,
-                                      lambda slot, comm_index, comm: rng.sample(sorted(comm), len(comm) - 1))
+
+    def participation_fn(slot, comm_index, comm):
+        return rng.sample(sorted(comm), len(comm) - 1)
+    yield from run_with_participation(spec, state, participation_fn)
 
 
 @with_all_phases
@@ -241,8 +253,10 @@ def test_almost_full_attestations(spec, state):
 @leaking()
 def test_almost_full_attestations_with_leak(spec, state):
     rng = Random(8901)
-    yield from run_with_participation(spec, state,
-                                      lambda slot, comm_index, comm: rng.sample(sorted(comm), len(comm) - 1))
+
+    def participation_fn(slot, comm_index, comm):
+        return rng.sample(sorted(comm), len(comm) - 1)
+    yield from run_with_participation(spec, state, participation_fn)
 
 
 @with_all_phases
