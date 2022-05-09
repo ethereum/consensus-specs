@@ -100,7 +100,7 @@ class LightClientStore(object):
 
 ```python
 def is_finality_update(update: LightClientUpdate) -> bool:
-    return update.finalized_header != BeaconBlockHeader()
+    return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
 ```
 
 ### `get_subtree_index`
@@ -173,10 +173,15 @@ def validate_light_client_update(store: LightClientStore,
     # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
     # state of the `attested_header`
     if not is_finality_update(update):
-        assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+        assert update.finalized_header == BeaconBlockHeader()
     else:
+        if update.finalized_header.slot != GENESIS_SLOT:
+            finalized_root = hash_tree_root(update.finalized_header)
+        else:
+            finalized_root = Bytes32()
+            assert update.finalized_header == BeaconBlockHeader()
         assert is_valid_merkle_branch(
-            leaf=hash_tree_root(update.finalized_header),
+            leaf=finalized_root,
             branch=update.finality_branch,
             depth=floorlog2(FINALIZED_ROOT_INDEX),
             index=get_subtree_index(FINALIZED_ROOT_INDEX),
