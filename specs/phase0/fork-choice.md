@@ -5,34 +5,36 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-- [Fork choice](#fork-choice)
-  - [Constant](#constant)
-  - [Preset](#preset)
-  - [Configuration](#configuration)
-  - [Helpers](#helpers)
-    - [`LatestMessage`](#latestmessage)
-    - [`Store`](#store)
-    - [`get_forkchoice_store`](#get_forkchoice_store)
-    - [`get_slots_since_genesis`](#get_slots_since_genesis)
-    - [`get_current_slot`](#get_current_slot)
-    - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
-    - [`get_ancestor`](#get_ancestor)
-    - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
-    - [`filter_block_tree`](#filter_block_tree)
-    - [`get_filtered_block_tree`](#get_filtered_block_tree)
-    - [`get_head`](#get_head)
-    - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
-    - [`on_attestation` helpers](#on_attestation-helpers)
-      - [`validate_target_epoch_against_current_time`](#validate_target_epoch_against_current_time)
-      - [`validate_on_attestation`](#validate_on_attestation)
-      - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
-      - [`update_latest_messages`](#update_latest_messages)
-  - [Handlers](#handlers)
-    - [`on_tick`](#on_tick)
-    - [`on_block`](#on_block)
-    - [`on_attestation`](#on_attestation)
-    - [`on_attester_slashing`](#on_attester_slashing)
+- [Phase 0 -- Beacon Chain Fork Choice](#phase-0----beacon-chain-fork-choice)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Fork choice](#fork-choice)
+    - [Constant](#constant)
+    - [Preset](#preset)
+    - [Configuration](#configuration)
+    - [Helpers](#helpers)
+      - [`LatestMessage`](#latestmessage)
+      - [`Store`](#store)
+      - [`get_forkchoice_store`](#get_forkchoice_store)
+      - [`get_slots_since_genesis`](#get_slots_since_genesis)
+      - [`get_current_slot`](#get_current_slot)
+      - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
+      - [`get_ancestor`](#get_ancestor)
+      - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
+      - [`filter_block_tree`](#filter_block_tree)
+      - [`get_filtered_block_tree`](#get_filtered_block_tree)
+      - [`get_head`](#get_head)
+      - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
+      - [`on_attestation` helpers](#on_attestation-helpers)
+        - [`validate_target_epoch_against_current_time`](#validate_target_epoch_against_current_time)
+        - [`validate_on_attestation`](#validate_on_attestation)
+        - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
+        - [`update_latest_messages`](#update_latest_messages)
+    - [Handlers](#handlers)
+      - [`on_tick`](#on_tick)
+      - [`on_block`](#on_block)
+      - [`on_attestation`](#on_attestation)
+      - [`on_attester_slashing`](#on_attester_slashing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -62,21 +64,21 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 ### Constant
 
-| Name | Value |
-| - | - |
+| Name                 | Value       |
+| -------------------- | ----------- |
 | `INTERVALS_PER_SLOT` | `uint64(3)` |
 
 ### Preset
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                             | Value        | Unit  |  Duration  |
+| -------------------------------- | ------------ | :---: | :--------: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
 
 ### Configuration
 
-| Name | Value |
-| - | - |
-| `PROPOSER_SCORE_BOOST` | `uint64(70)` |
+| Name                   | Value        |
+| ---------------------- | ------------ |
+| `PROPOSER_SCORE_BOOST` | `uint64(33)` |
 
 - The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
 
