@@ -59,7 +59,7 @@ def test_is_assigned_to_sync_committee(spec, state):
     if disqualified_pubkeys:
         sample_size = 3
         assert validator_count >= sample_size
-        some_pubkeys = rng.sample(disqualified_pubkeys, sample_size)
+        some_pubkeys = rng.sample(sorted(disqualified_pubkeys), sample_size)
         for pubkey in some_pubkeys:
             validator_index = active_pubkeys.index(pubkey)
             is_current = spec.is_assigned_to_sync_committee(
