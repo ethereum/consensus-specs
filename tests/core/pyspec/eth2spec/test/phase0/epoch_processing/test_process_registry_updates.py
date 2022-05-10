@@ -1,5 +1,3 @@
-import pytest
-
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch, next_slots
 from eth2spec.test.helpers.constants import MINIMAL
@@ -365,6 +363,10 @@ def test_invalid_large_withdrawable_epoch(spec, state):
     state.validators[0].exit_epoch = spec.FAR_FUTURE_EPOCH - 1
     state.validators[1].effective_balance = spec.config.EJECTION_BALANCE
 
-    with pytest.raises(ValueError):
+    try:
         yield from run_process_registry_updates(spec, state)
-    yield 'post', None
+    except ValueError:
+        yield 'post', None
+        return
+
+    raise AssertionError('expected ValueError')
