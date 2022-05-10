@@ -422,7 +422,7 @@ def process_bls_to_execution_change(state: BeaconState,
 
     validator.withdrawal_credentials = (
         ETH1_ADDRESS_WITHDRAWAL_PREFIX
-        + (0x00).to_bytes(11, 'little')
+        + b'\x00' * 11
         + address_change.to_execution_address
     )
 ```
