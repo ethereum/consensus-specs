@@ -281,7 +281,7 @@ def test_transition_with_random_three_quarters_participation(state, fork_epoch, 
         assert committee_len >= 4
         filter_len = committee_len // 4
         participant_count = committee_len - filter_len
-        return rng.sample(indices, participant_count)
+        return rng.sample(sorted(indices), participant_count)
 
     yield from _run_transition_test_with_attestations(
         state,
@@ -304,7 +304,7 @@ def test_transition_with_random_half_participation(state, fork_epoch, spec, post
         assert committee_len >= 2
         filter_len = committee_len // 2
         participant_count = committee_len - filter_len
-        return rng.sample(indices, participant_count)
+        return rng.sample(sorted(indices), participant_count)
 
     yield from _run_transition_test_with_attestations(
         state,
