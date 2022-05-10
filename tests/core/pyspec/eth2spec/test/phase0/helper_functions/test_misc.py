@@ -2,7 +2,6 @@ import pytest
 
 from eth2spec.test.context import spec_state_test, with_all_phases
 
-
 @with_all_phases
 @spec_state_test
 def test_invalid_large_withdrawable_epoch(spec, state):
