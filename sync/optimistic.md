@@ -34,7 +34,6 @@ For brevity, we define two aliases for values of the `status` field on
 - Alias `INVALIDATED` to:
     - `INVALID`
     - `INVALID_BLOCK_HASH`
-    - `INVALID_TERMINAL_BLOCK`
 
 Let `head: BeaconBlock` be the result of calling of the fork choice
 algorithm at the time of block production. Let `head_block_root: Root` be the
