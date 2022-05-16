@@ -62,21 +62,21 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 ### Constant
 
-| Name | Value |
-| - | - |
+| Name                 | Value       |
+| -------------------- | ----------- |
 | `INTERVALS_PER_SLOT` | `uint64(3)` |
 
 ### Preset
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                             | Value        | Unit  |  Duration  |
+| -------------------------------- | ------------ | :---: | :--------: |
 | `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
 
 ### Configuration
 
-| Name | Value |
-| - | - |
-| `PROPOSER_SCORE_BOOST` | `uint64(70)` |
+| Name                   | Value        |
+| ---------------------- | ------------ |
+| `PROPOSER_SCORE_BOOST` | `uint64(33)` |
 
 - The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
 
