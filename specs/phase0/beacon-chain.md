@@ -203,6 +203,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
 | `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
 | `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
+| `DOMAIN_APPLICATION_MASK`    | `DomainType('0x00000001')` |
+
+*Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in `DomainType` for application usage. This means for some `DomainType` `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION && DOMAIN_APPLICATION_MASK` **MUST** be non-zero. This expression for any other `DomainType` in the consensus specs **MUST** be zero.
 
 ## Preset
 
