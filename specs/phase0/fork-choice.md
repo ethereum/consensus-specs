@@ -76,7 +76,7 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 | Name                   | Value        |
 | ---------------------- | ------------ |
-| `PROPOSER_SCORE_BOOST` | `uint64(33)` |
+| `PROPOSER_SCORE_BOOST` | `uint64(40)` |
 
 - The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
 
