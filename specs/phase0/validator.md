@@ -281,7 +281,7 @@ the beginning of any `slot` during which `is_proposer(state, validator_index)` r
 To propose, the validator selects the `BeaconBlock`, `parent` which:
 
 1. In their view of fork choice is the head of the chain at the start of
-   `slot`, after applying any queued attestations from `slot - 1`.
+   `slot`, after running `on_tick` and applying any queued attestations from `slot - 1`.
 2. Is from a slot strictly less than the slot of the block about to be proposed,
    i.e. `parent.slot < slot`.
 
