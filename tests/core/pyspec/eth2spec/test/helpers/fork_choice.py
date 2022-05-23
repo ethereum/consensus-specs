@@ -92,6 +92,10 @@ def get_attestation_file_name(attestation):
     return f"attestation_{encode_hex(attestation.hash_tree_root())}"
 
 
+def get_attester_slashing_file_name(attester_slashing):
+    return f"attester_slashing_{encode_hex(attester_slashing.hash_tree_root())}"
+
+
 def on_tick_and_append_step(spec, store, time, test_steps):
     spec.on_tick(store, time)
     test_steps.append({'tick': int(time)})
@@ -142,6 +146,10 @@ def add_block(spec,
     for attestation in signed_block.message.body.attestations:
         run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
 
+    # An on_block step implies receiving block's attester slashings
+    for attester_slashing in signed_block.message.body.attester_slashings:
+        run_on_attester_slashing(spec, store, attester_slashing, valid=True)
+
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message
     assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
@@ -166,6 +174,38 @@ def add_block(spec,
     })
 
     return store.block_states[signed_block.message.hash_tree_root()]
+
+
+def run_on_attester_slashing(spec, store, attester_slashing, valid=True):
+    if not valid:
+        try:
+            spec.on_attester_slashing(store, attester_slashing)
+        except AssertionError:
+            return
+        else:
+            assert False
+
+    spec.on_attester_slashing(store, attester_slashing)
+
+
+def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True):
+    slashing_file_name = get_attester_slashing_file_name(attester_slashing)
+    yield get_attester_slashing_file_name(attester_slashing), attester_slashing
+
+    if not valid:
+        try:
+            run_on_attester_slashing(spec, store, attester_slashing)
+        except AssertionError:
+            test_steps.append({
+                'attester_slashing': slashing_file_name,
+                'valid': False,
+            })
+            return
+        else:
+            assert False
+
+    run_on_attester_slashing(spec, store, attester_slashing)
+    test_steps.append({'attester_slashing': slashing_file_name})
 
 
 def get_formatted_head_output(spec, store):

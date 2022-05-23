@@ -38,7 +38,7 @@ def _drop_random_one_third(_slot, _index, indices):
     assert committee_len >= 3
     filter_len = committee_len // 3
     participant_count = committee_len - filter_len
-    return rng.sample(indices, participant_count)
+    return rng.sample(sorted(indices), participant_count)
 
 
 @with_all_phases

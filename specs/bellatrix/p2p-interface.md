@@ -110,7 +110,7 @@ The following gossip validation from prior specifications MUST NOT be applied if
 ### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
-details on how to handle transitioning gossip topics for Bellatrix.
+details on how to handle transitioning gossip topics for EIP-4844.
 
 ## The Req/Resp domain
 
@@ -170,7 +170,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 ### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
-field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in place in
+field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in
 place at Phase 0. At the `GAS_LIMIT` (~30M) currently seen on mainnet in 2021, a single transaction
 filled entirely with data at a cost of 16 gas per byte can create a valid
 `ExecutionPayload` of ~2 MiB. Thus we need a size limit to at least account for
