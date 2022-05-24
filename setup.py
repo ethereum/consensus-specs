@@ -305,7 +305,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:  # TODO
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
         """
         The constants that are required for custom types.
         """
@@ -433,7 +433,7 @@ get_attesting_indices = cache_this(
         return {}
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
         return {}
 
     @classmethod
@@ -548,11 +548,11 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> str:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
-            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**30)',
+            'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 #
@@ -577,14 +577,28 @@ class EIP4844SpecBuilder(BellatrixSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
+from eth2spec.utils import kzg
 '''
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> str:
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() + '''
+# TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
+TESTING_SECRET = 1337
+TESTING_FIELD_ELEMENTS_PER_BLOB = 4
+TESTING_KZG_SETUP_G1 = kzg.generate_setup(bls.G1, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
+TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
+TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
+
+KZG_SETUP_G2 = TESTING_KZG_SETUP_G2
+KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
-            'FIELD_ELEMENTS_PER_BLOB': 'uint64(4096)',
+            'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 
@@ -673,7 +687,7 @@ def objects_to_spec(preset_name: str,
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
-    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
+    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants(spec_object)[x]), builder.hardcoded_custom_type_dep_constants(spec_object)))
     spec = (
             builder.imports(preset_name)
             + builder.preparations()

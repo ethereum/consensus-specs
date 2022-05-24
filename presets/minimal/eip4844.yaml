@@ -1,0 +1,6 @@
+# Minimal preset - Phase0
+
+# Misc
+# ---------------------------------------------------------------
+# [customized]
+FIELD_ELEMENTS_PER_BLOB: 4
