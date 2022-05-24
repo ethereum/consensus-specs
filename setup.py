@@ -45,6 +45,7 @@ PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
+EIP4844 = 'eip4844'
 
 
 # The helper functions that are used when defining constants
@@ -230,7 +231,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector")):
                             custom_types[name] = value
                         continue
 
@@ -567,14 +568,34 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
+#
+# EIP4844SpecBuilder
+#
+class EIP4844SpecBuilder(BellatrixSpecBuilder):
+    fork: str = EIP4844
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls) -> str:
+        constants = {
+            'FIELD_ELEMENTS_PER_BLOB': 'uint64(4096)',
+        }
+        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
 }
 
 
 def is_spec_defined_type(value: str) -> bool:
-    return value.startswith('ByteList') or value.startswith('Union')
+    return value.startswith(('ByteList', 'Union', 'Vector'))
 
 
 def objects_to_spec(preset_name: str,
@@ -869,14 +890,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -885,7 +906,7 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA):
+            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -900,6 +921,11 @@ class PySpecCommand(Command):
                     specs/capella/fork-choice.md
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
+                """
+            if self.spec_fork == EIP4844:
+                self.md_doc_paths += """
+                    specs/eip4844/beacon-chain.md
+                    specs/eip4844/fork.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
