@@ -204,7 +204,7 @@ correct w.r.t. the expected KZG commitments through `verify_blobs_sidecar`.
 The request MUST be encoded as an SSZ-container.
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `SignedBlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 `[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
