@@ -1,5 +1,4 @@
 from eth2spec.test.context import is_post_capella
-from eth2spec.test.helpers.constants import FORKS_BEFORE_CAPELLA
 
 
 def build_empty_execution_payload(spec, state, randao_mix=None):
