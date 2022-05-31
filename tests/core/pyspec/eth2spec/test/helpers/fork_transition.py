@@ -13,6 +13,7 @@ from eth2spec.test.helpers.constants import (
     ALTAIR,
     BELLATRIX,
     CAPELLA,
+    EIP4844,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -150,6 +151,8 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
         state = post_spec.upgrade_to_bellatrix(state)
     elif post_spec.fork == CAPELLA:
         state = post_spec.upgrade_to_capella(state)
+    elif post_spec.fork == EIP4844:
+        state = post_spec.upgrade_to_eip4844(state)
 
     assert state.fork.epoch == fork_epoch
 

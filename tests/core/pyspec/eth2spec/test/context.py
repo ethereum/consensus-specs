@@ -14,7 +14,7 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
     MINIMAL, MAINNET,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
     ALL_FORK_UPGRADES,
 )
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -546,12 +546,13 @@ def is_post_bellatrix(spec):
 
 
 def is_post_capella(spec):
-    return spec.fork not in FORKS_BEFORE_CAPELLA
+    return spec.fork == CAPELLA
 
 
 with_altair_and_later = with_all_phases_except([PHASE0])
 with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
-with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX])
+with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, EIP4844])
+with_eip4844_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 
 
 def only_generator(reason):

@@ -51,7 +51,7 @@ def pytest_addoption(parser):
 
 def _validate_fork_name(forks):
     for fork in forks:
-        if fork not in ALL_PHASES:
+        if fork not in set(ALL_PHASES):
             raise ValueError(
                 f'The given --fork argument "{fork}" is not an available fork.'
                 f' The available forks: {ALL_PHASES}'

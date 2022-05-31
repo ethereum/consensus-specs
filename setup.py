@@ -578,6 +578,7 @@ class EIP4844SpecBuilder(BellatrixSpecBuilder):
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
 from eth2spec.utils import kzg
+from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
     @classmethod

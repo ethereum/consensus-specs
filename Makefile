@@ -136,7 +136,7 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix \
+	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella
 
 lint_generators: pyspec
