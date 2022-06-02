@@ -15,11 +15,11 @@ Features are researched and developed in parallel, and then consolidated into se
 
 ### Stable Specifications
 
-| Code Name | Fork Version | Previous Fork | Specs | Notes |
-| - | - | - | - | - |
-| **Phase0** |  `0x00000000` |  -   | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> | |
-| **Altair** | `0x01000000` | Phase0 | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/sync-protocol.md)</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> | |
-| **Bellatrix** | `0x02000000` | Altair | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> | [ethereum.org - The Merge intro](https://ethereum.org/en/upgrades/merge/) |
+| Seq. | Code Name  | Specs | Notes |
+| - | - | - | - |
+| 0 | **Phase0** | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> | |
+| 1 |  **Altair** | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/sync-protocol.md)</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> | |
+| 2 | **Bellatrix** | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> | [ethereum.org - The Merge intro](https://ethereum.org/en/upgrades/merge/) |
 
 ### In-development Specifications
 | Code Name or Topic | Specs | Notes | 
@@ -27,8 +27,8 @@ Features are researched and developed in parallel, and then consolidated into se
 | Capella (tentative) | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Validator additions](specs/capella/validator.md)</li></ul></ul> |
 | EIP4844 (tentative) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/eip4844/beacon-chain.md)</li><li>[EIP-4844 fork](specs/eip4844/fork.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/eip4844/validator.md)</li><li>[P2P networking](specs/eip4844/p2p-interface.md)</li></ul></ul> |
 | Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/sharding/p2p-interface.md)</li></ul></ul> |
-| Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/custody_game/validator.md)</li></ul></ul> | dependent on sharding |
-| Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/das/das-core.md)</li><li>[Fork choice changes](specs/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/das/p2p-interface.md)</li><li>[Sampling process](specs/das/sampling.md)</li></ul></ul> | <ul><li> dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
+| Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
+| Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/das/das-core.md)</li><li>[Fork choice changes](specs/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/das/p2p-interface.md)</li><li>[Sampling process](specs/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
