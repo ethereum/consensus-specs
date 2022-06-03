@@ -16,8 +16,8 @@ def set_validator_partially_withdrawable(spec, state, index, rng=random.Random(6
 
 
 def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
-    pre_withdrawal_index = state.withdrawal_index
-    pre_withdrawals_queue = state.withdrawals_queue
+    pre_next_withdrawal_index = state.next_withdrawal_index
+    pre_withdrawal_queue = state.withdrawal_queue
     partially_withdrawable_indices = [
         index for index, validator in enumerate(state.validators)
         if spec.is_partially_withdrawable_validator(validator, state.balances[index])
@@ -38,8 +38,8 @@ def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
 
     assert len(partially_withdrawable_indices) - num_partial_withdrawals == len(post_partially_withdrawable_indices)
 
-    assert len(state.withdrawals_queue) == len(pre_withdrawals_queue) + num_expected_withdrawals
-    assert state.withdrawal_index == pre_withdrawal_index + num_expected_withdrawals
+    assert len(state.withdrawal_queue) == len(pre_withdrawal_queue) + num_expected_withdrawals
+    assert state.next_withdrawal_index == pre_next_withdrawal_index + num_expected_withdrawals
 
 
 @with_capella_and_later
@@ -137,7 +137,7 @@ def test_success_max_plus_one_withdrawable(spec, state):
 
 def run_random_partial_withdrawals_test(spec, state, rng):
     num_validators = len(state.validators)
-    state.next_partial_withdrawal_index = rng.randint(0, num_validators - 1)
+    state.next_partial_withdrawal_validator_index = rng.randint(0, num_validators - 1)
 
     num_partially_withdrawable = rng.randint(0, num_validators - 1)
     partially_withdrawable_indices = rng.sample(range(num_validators), num_partially_withdrawable)
