@@ -1,0 +1,6 @@
+# Mainnet preset - Phase0
+
+# Misc
+# ---------------------------------------------------------------
+#
+FIELD_ELEMENTS_PER_BLOB: 4096
