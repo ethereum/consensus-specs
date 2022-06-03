@@ -70,7 +70,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 | Name | Value |
 | - | - |
 | `KZG_SETUP_G2` | `Vector[G2Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[BLSCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Configuration
 
@@ -149,9 +149,9 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
 def verify_kzgs_against_transactions(transactions: Sequence[Transaction], blob_kzgs: Sequence[KZGCommitment]) -> bool:
    all_versioned_hashes = []
    for tx in transactions:
-      if opaque_tx[0] == BLOB_TX_TYPE:
+      if tx[0] == BLOB_TX_TYPE:
          all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
-   return all_versioned_hashes == [ksg_to_version_hash(kzg) for kzg in blob_kzgs]
+   return all_versioned_hashes == [kzg_to_versioned_hash(kzg) for kzg in blob_kzgs]
 ```
 
 ## Beacon chain state transition function

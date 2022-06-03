@@ -1048,7 +1048,7 @@ setup(
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.9.4",
         "py_ecc==5.2.0",
-        "milagro_bls_binding==1.6.3",
+        "milagro_bls_binding==1.9.0",
         "dataclasses==0.6",
         "remerkleable==0.1.24",
         RUAMEL_YAML_VERSION,

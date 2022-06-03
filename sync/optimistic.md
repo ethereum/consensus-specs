@@ -34,7 +34,6 @@ For brevity, we define two aliases for values of the `status` field on
 - Alias `INVALIDATED` to:
     - `INVALID`
     - `INVALID_BLOCK_HASH`
-    - `INVALID_TERMINAL_BLOCK`
 
 Let `head: BeaconBlock` be the result of calling of the fork choice
 algorithm at the time of block production. Let `head_block_root: Root` be the
@@ -84,10 +83,6 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
     if is_execution_block(opt_store.blocks[block.parent_root]):
         return True
 
-    justified_root = opt_store.block_states[opt_store.head_block_root].current_justified_checkpoint.root
-    if is_execution_block(opt_store.blocks[justified_root]):
-        return True
-
     if block.slot + SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY <= current_slot:
         return True
 
@@ -111,7 +106,6 @@ This ensures that blocks are only optimistically imported if one or more of the
 following are true:
 
 1. The parent of the block has execution enabled.
-1. The justified checkpoint has execution enabled.
 1. The current slot (as per the system clock) is at least
    `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of the slot of the block being
    imported.
@@ -270,40 +264,9 @@ An optimistic validator MUST NOT participate in sync committees (i.e., sign acro
 ## Ethereum Beacon APIs
 
 Consensus engines which provide an implementation of the [Ethereum Beacon
-APIs](https://github.com/ethereum/beacon-APIs) must take care to avoid
-presenting optimistic blocks as fully-verified blocks.
-
-### Helpers
-
-Let the following response types be defined as any response with the
-corresponding HTTP status code:
-
-- "Success" Response: Status Codes 200-299.
-- "Not Found" Response: Status Code 404.
-- "Syncing" Response: Status Code 503.
-
-### Requests for Optimistic Blocks
-
-When information about an optimistic block is requested, the consensus engine:
-
-- MUST NOT respond with success.
-- MAY respond with not found.
-- MAY respond with syncing.
-
-### Requests for an Optimistic Head
-
-When `is_optimistic(opt_store, head) is True`, the consensus engine:
-
-- MUST NOT return an optimistic `head`.
-- MAY substitute the head block with `latest_verified_ancestor(block)`.
-- MAY return syncing.
-
-### Requests to Validators Endpoints
-
-When `is_optimistic(opt_store, head) is True`, the consensus engine MUST return syncing to
-all endpoints which match the following pattern:
-
-- `eth/*/validator/*`
+APIs](https://github.com/ethereum/beacon-APIs) must take care to ensure the
+`execution_optimistic` value is set to `True` whenever the request references
+optimistic blocks (and vice-versa).
 
 ## Design Decision Rationale
 

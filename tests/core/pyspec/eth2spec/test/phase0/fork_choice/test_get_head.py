@@ -20,7 +20,7 @@ from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     get_formatted_head_output,
     on_tick_and_append_step,
-    run_on_attestation,
+    add_attestation,
     tick_and_run_on_attestation,
     tick_and_add_block,
 )
@@ -409,7 +409,7 @@ def test_discard_equivocations(spec, state):
 
     # Process attestation
     # The head should change to block_1
-    run_on_attestation(spec, store, attestation)
+    yield from add_attestation(spec, store, attestation, test_steps)
     assert spec.get_head(store) == spec.hash_tree_root(block_1)
 
     # Process attester_slashing

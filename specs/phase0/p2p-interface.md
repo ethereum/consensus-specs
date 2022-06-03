@@ -252,7 +252,7 @@ Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 The optional `from` (1), `seqno` (3), `signature` (5) and `key` (6) protobuf fields are omitted from the message,
 since messages are identified by content, anonymous, and signed where necessary in the application layer.
 Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictNoSign`
-[signature policy](https://github.com/libp2p/specs/blob/master/pubsub/README.md#signature-policy-options). 
+[signature policy](https://github.com/libp2p/specs/blob/master/pubsub/README.md#signature-policy-options).
 
 The `message-id` of a gossipsub message MUST be the following 20 byte value computed from the message data:
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
@@ -337,7 +337,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (a client MAY queue future aggregates for processing at the appropriate slot).
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
-- _[IGNORE]_ The valid aggregate attestation defined by `hash_tree_root(aggregate)` has _not_ already been seen
+- _[IGNORE]_ A valid aggregate attestation defined by `hash_tree_root(aggregate.data)` whose `aggregation_bits` is a non-strict superset has _not_ already been seen.
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
@@ -727,7 +727,7 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
-  step: uint64
+  step: uint64 # Deprecated, must be set to 1
 )
 ```
 
@@ -738,12 +738,12 @@ Response Content:
 )
 ```
 
-Requests beacon blocks in the slot range `[start_slot, start_slot + count * step)`, leading up to the current head block as selected by fork choice.
-`step` defines the slot increment between blocks.
-For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at slots [2, 4, 6, …].
+Requests beacon blocks in the slot range `[start_slot, start_slot + count)`, leading up to the current head block as selected by fork choice.
+For example, requesting blocks starting at `start_slot=2` and `count=4` would return the blocks at slots `[2, 3, 4, 5]`.
 In cases where a slot is empty for a given slot number, no block is returned.
-For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …].
-A request MUST NOT have a 0 slot increment, i.e. `step >= 1`.
+For example, if slot 4 were empty in the previous example, the returned array would contain `[2, 3, 5]`.
+
+`step` is deprecated and must be set to 1. Clients may respond with a single block if a larger step is returned during the deprecation transition period.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 

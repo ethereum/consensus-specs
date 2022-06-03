@@ -143,6 +143,7 @@ def test_prepare_execution_payload(spec, state):
 
         # Dummy arguments
         finalized_block_hash = b'\x56' * 32
+        safe_block_hash = b'\x58' * 32
         suggested_fee_recipient = b'\x78' * 20
 
         # Mock execution_engine
@@ -157,6 +158,7 @@ def test_prepare_execution_payload(spec, state):
         payload_id = spec.prepare_execution_payload(
             state=state,
             pow_chain=pow_chain.to_dict(),
+            safe_block_hash=safe_block_hash,
             finalized_block_hash=finalized_block_hash,
             suggested_fee_recipient=suggested_fee_recipient,
             execution_engine=TestEngine(),
