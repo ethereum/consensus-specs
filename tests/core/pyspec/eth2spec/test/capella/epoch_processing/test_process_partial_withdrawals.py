@@ -153,6 +153,7 @@ def test_success_max_partial_withdrawable(spec, state):
 
 
 @with_capella_and_later
+@with_presets([MINIMAL], reason="not no enough validators with mainnet config")
 @spec_state_test
 def test_success_max_plus_one_withdrawable(spec, state):
     # Sanity check that this test works for this state
