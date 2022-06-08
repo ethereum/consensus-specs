@@ -52,7 +52,7 @@ Capella is a consensus-layer upgrade containing a number of features related
 to validator withdrawals. Including:
 * Automatic withdrawals of `withdrawable` validators
 * Partial withdrawals sweep for validators with 0x01 withdrawal
-  credentials an balances in exceess of `MAX_EFFECTIVE_BALANCE`
+  credentials and balances in exceess of `MAX_EFFECTIVE_BALANCE`
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
   `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator
 
@@ -255,9 +255,9 @@ class BeaconState(Container):
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
+    withdrawal_queue: List[Withdrawal, WITHDRAWAL_QUEUE_LIMIT]  # [New in Capella]
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_partial_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
-    withdrawal_queue: List[Withdrawal, WITHDRAWAL_QUEUE_LIMIT]  # [New in Capella]
 ```
 
 ## Helpers

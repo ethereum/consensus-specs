@@ -23,7 +23,7 @@ def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
     run_epoch_processing_to(spec, state, 'process_partial_withdrawals')
 
     pre_next_withdrawal_index = state.next_withdrawal_index
-    pre_withdrawal_queue = state.withdrawal_queue
+    pre_withdrawal_queue = state.withdrawal_queue.copy()
 
     partially_withdrawable_indices = [
         index for index, validator in enumerate(state.validators)
@@ -158,7 +158,7 @@ def test_success_max_plus_one_withdrawable(spec, state):
     # Sanity check that this test works for this state
     assert len(state.validators) >= spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH + 1
 
-    # More than MAX_PARTIAL_WITHDRAWALS_PER_EPOCH paritally withdrawable
+    # More than MAX_PARTIAL_WITHDRAWALS_PER_EPOCH partially withdrawable
     for i in range(spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH + 1):
         set_validator_partially_withdrawable(spec, state, i)
 
@@ -179,7 +179,7 @@ def run_random_partial_withdrawals_test(spec, state, rng):
     for index in partially_withdrawable_indices:
         set_validator_partially_withdrawable(spec, state, index)
 
-    # Note: due the randomness and other epoch processing, some of these set as "partially withdrawable"
+    # Note: due to the randomness and other epoch processing, some of these set as "partially withdrawable"
     # may not be partially withdrawable once we get to ``process_partial_withdrawals``,
     # thus *not* using the optional third param in this call
     yield from run_process_partial_withdrawals(spec, state)

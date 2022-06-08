@@ -89,9 +89,9 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
+        withdrawal_queue=[],
         next_withdrawal_index=WithdrawalIndex(0),
         next_partial_withdrawal_validator_index=ValidatorIndex(0),
-        withdrawal_queue=[],
     )
 
     for pre_validator in pre.validators:

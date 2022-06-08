@@ -18,7 +18,7 @@ def set_validator_withdrawable(spec, state, index, withdrawable_epoch=None):
 
 def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
     pre_next_withdrawal_index = state.next_withdrawal_index
-    pre_withdrawal_queue = state.withdrawal_queue
+    pre_withdrawal_queue = state.withdrawal_queue.copy()
     to_be_withdrawn_indices = [
         index for index, validator in enumerate(state.validators)
         if spec.is_fully_withdrawable_validator(validator, spec.get_current_epoch(state))
