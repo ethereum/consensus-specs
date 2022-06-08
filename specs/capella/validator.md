@@ -61,8 +61,8 @@ helper `get_expected_withdrawals`) and passed into the `ExecutionEngine` within 
 
 ```python
 def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
-    num_withdrawals = min(MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawals_queue))
-    return state.withdrawals_queue[:num_withdrawals]
+    num_withdrawals = min(MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
+    return state.withdrawal_queue[:num_withdrawals]
 ```
 
 *Note*: The only change made to `prepare_execution_payload` is to call
