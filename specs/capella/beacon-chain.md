@@ -302,7 +302,7 @@ def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     return (
         has_eth1_withdrawal_credential(validator)
-         and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
+        and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
     )
 ```
 

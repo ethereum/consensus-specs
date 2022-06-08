@@ -1,7 +1,9 @@
 import random
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     with_capella_and_later,
     spec_state_test,
+    with_presets,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
 from eth2spec.test.helpers.state import next_epoch
