@@ -31,6 +31,7 @@
   - [Beacon state mutators](#beacon-state-mutators)
     - [`withdraw`](#withdraw)
   - [Predicates](#predicates)
+    - [`has_eth1_withdrawal_credential`](#has_eth1_withdrawal_credential)
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -282,6 +283,16 @@ def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) ->
 
 ### Predicates
 
+#### `has_eth1_withdrawal_credential`
+
+```python
+def has_eth1_withdrawal_credential(validator: Validator) -> bool:
+    """
+    Check if ``validator`` has an 0x01 prefixed "eth1" withdrawal credential
+    """
+    return validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+```
+
 #### `is_fully_withdrawable_validator`
 
 ```python
@@ -289,8 +300,10 @@ def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
-    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-    return is_eth1_withdrawal_prefix and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
+    return (
+        has_eth1_withdrawal_credential(validator)
+         and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
+    )
 ```
 
 #### `is_partially_withdrawable_validator`
@@ -300,10 +313,9 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     Check if ``validator`` is partially withdrawable.
     """
-    is_eth1_withdrawal_prefix = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
     has_max_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
     has_excess_balance = balance > MAX_EFFECTIVE_BALANCE
-    return is_eth1_withdrawal_prefix and has_max_effective_balance and has_excess_balance
+    return has_eth1_withdrawal_credential(validator) and has_max_effective_balance and has_excess_balance
 ```
 
 ## Beacon chain state transition function
