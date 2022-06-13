@@ -45,6 +45,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | `Blob` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | |
 | `VersionedHash` | `Bytes32` | |
 | `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
+| `KZGProof` | Bytes48 | Same as for `KZGCommitment` |
 
 ## Constants
 

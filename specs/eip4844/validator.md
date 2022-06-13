@@ -59,9 +59,25 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
+    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
     assert len(expected_kzgs) == len(blobs)
-    for kzg, blob in zip(expected_kzgs, blobs):
-        assert blob_to_kzg(blob) == kzg
+
+    # Generate random linear combination challenges
+    r = hash_to_bls_field([blobs, expected_kzgs])
+    r_powers = compute_powers(r, len(expected_kzgs))
+
+    # Compute commitment to aggregated polynomial
+    aggregated_poly_commitment = lincomb(expected_kzgs, r_powers)
+
+    # Create aggregated polynomial in evaluation form
+    aggregated_poly = vector_lincomb(blobs, r_powers)
+
+    # Generate challenge `x` and evaluate the aggregated polynomial at `x`
+    x = hash_to_bls_field([aggregated_poly, aggregated_poly_commitment])
+    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
+
+    # Verify aggregated proof
+    assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
 ```
 
 
