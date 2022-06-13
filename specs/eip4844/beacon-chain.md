@@ -54,6 +54,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
 | `FIELD_ELEMENTS_PER_BLOB` | `4096` |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
+| `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` |
 
 ### Domain types
 
@@ -110,15 +111,17 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 #### `blob_to_kzg`
 
 ```python
+def lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
+    """
+    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    """
+    r = bls.Z1
+    for x, a in zip(points, scalars):
+        r = bls.add(r, bls.multiply(x, a))
+    return r
+
 def blob_to_kzg(blob: Blob) -> KZGCommitment:
-    computed_kzg = bls.Z1
-    for value, point_kzg in zip(blob, KZG_SETUP_LAGRANGE):
-        assert value < BLS_MODULUS
-        computed_kzg = bls.add(
-            computed_kzg,
-            bls.multiply(point_kzg, value)
-        )
-    return computed_kzg
+    return lincomb(blob, KZG_SETUP_LAGRANGE)
 ```
 
 #### `kzg_to_versioned_hash`

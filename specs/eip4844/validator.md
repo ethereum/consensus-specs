@@ -54,6 +54,87 @@ def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCom
 ### `verify_blobs_sidecar`
 
 ```python
+def hash_to_bls_field(x: Container) -> BLSFieldElement:
+    """
+    This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
+    """
+    return int.from_bytes(hash_tree_root(x), "little") % BLS_MODULUS
+
+
+def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
+    current_power = 1
+    powers = []
+    for _ in range(n):
+        powers.append(BLSFieldElement(current_power))
+        current_power = current_power * int(x) % BLS_MODULUS
+    return powers
+
+
+def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
+    """
+    Given a list of vectors, compute the linear combination of each column with `scalars`, and return the resulting
+    vector.
+    """
+    r = [0]*len(vectors[0])
+    for v, a in zip(vectors, scalars):
+        for i, x in enumerate(v):
+            r[i] = (r[i] + a * x) % BLS_MODULUS
+    return [BLSFieldElement(x) for x in r]
+
+
+def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
+    """
+    Compute the modular inverse of x using the eGCD algorithm
+    i.e. return y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
+    """
+    if x == 0:
+        return 0
+
+    lm, hm = 1, 0
+    low, high = x % BLS_MODULUS, BLS_MODULUS
+    while low > 1:
+        r = high // low
+        nm, new = hm - lm * r, high - low * r
+        lm, low, hm, high = nm, new, lm, low
+    return lm % BLS_MODULUS
+
+
+def div(x, y):
+    """Divide two field elements: `x` by `y`"""
+    return x * inv(y) % MODULUS
+
+
+def verify_kzg_proof(polynomial_kzg: KZGCommitment,
+                     x: BLSFieldElement,
+                     y: BLSFieldElement,
+                     quotient_kzg: KZGProof) -> bool:
+    """Verify KZG proof that `p(x) == y` where `p(x)` is the polynomial represented by `polynomial_kzg`"""
+    # Verify: P - y = Q * (X - x)
+    X_minus_x = bls.add(KZG_SETUP_G2[1], bls.multiply(bls.G2, BLS_MODULUS - x))
+    P_minus_y = bls.add(polynomial_kzg, bls.multiply(bls.G1, BLS_MODULUS - y))
+    return bls.pairing_check([
+        [P_minus_y, bls.neg(bls.G2)],
+        [quotient_kzg, X_minus_x]
+    ])
+
+
+def evaluate_polynomial_in_evaluation_form(poly: List[BLSFieldElement], x: BLSFieldElement) -> BLSFieldElement:
+    """
+    Evaluate a polynomial (in evaluation form) at an arbitrary point `x`
+    Uses the barycentric formula:
+       f(x) = (1 - x**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (x - DOMAIN[i])
+    """
+    width = len(poly)
+    assert width == FIELD_ELEMENTS_PER_BLOB
+    inverse_width = bls_modular_inverse(width)
+
+    for i in range(width):
+        r += div(poly[i] * ROOTS_OF_UNITY[i], (x - ROOTS_OF_UNITY[i]) )
+    r = r * (pow(x, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
+
+    return r
+
+
 def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
                          expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar):
     assert slot == blobs_sidecar.beacon_block_slot
