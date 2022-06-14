@@ -110,7 +110,6 @@ Before publishing a prepared beacon block proposal, the corresponding blobs are 
 blobs_sidecar = BlobsSidecar(
     beacon_block_root=hash_tree_root(beacon_block)
     beacon_block_slot=beacon_block.slot
-    shard=0,
     blobs=blobs,
 )
 ```
