@@ -52,7 +52,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators | |
 | `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
 
 ## Containers
@@ -73,6 +73,8 @@ class LightClientUpdate(Container):
     sync_aggregate: SyncAggregate
     # Fork version for the aggregate signature
     fork_version: Version
+    # Slot at which the aggregate signature was created (untrusted)
+    signature_slot: Slot
 ```
 
 ### `LightClientStore`
@@ -162,15 +164,16 @@ def validate_light_client_update(store: LightClientStore,
                                  genesis_validators_root: Root) -> None:
     # Verify update slot is larger than slot of current best finalized header
     active_header = get_active_header(update)
-    assert current_slot >= active_header.slot > store.finalized_header.slot
+    assert current_slot >= update.signature_slot > active_header.slot > store.finalized_header.slot
 
     # Verify update does not skip a sync committee period
     finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
     update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
-    assert update_period in (finalized_period, finalized_period + 1)
+    signature_period = compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))
+    assert signature_period in (finalized_period, finalized_period + 1)
 
     # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
-    # state of the `attested header`
+    # state of the `attested_header`
     if not is_finality_update(update):
         assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
     else:
@@ -184,10 +187,8 @@ def validate_light_client_update(store: LightClientStore,
 
     # Verify update next sync committee if the update period incremented
     if update_period == finalized_period:
-        sync_committee = store.current_sync_committee
         assert update.next_sync_committee_branch == [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
     else:
-        sync_committee = store.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
@@ -202,6 +203,10 @@ def validate_light_client_update(store: LightClientStore,
     assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify sync committee aggregate signature
+    if signature_period == finalized_period:
+        sync_committee = store.current_sync_committee
+    else:
+        sync_committee = store.next_sync_committee
     participant_pubkeys = [
         pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
         if bit
