@@ -34,7 +34,6 @@ from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
     expect_assertion_error, always_bls,
-    disable_process_reveal_deadlines,
     with_presets,
     with_custom_state,
     large_validator_set,
@@ -841,7 +840,6 @@ def test_attestation(spec, state):
 
 @with_all_phases
 @spec_state_test
-@disable_process_reveal_deadlines
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
@@ -891,7 +889,6 @@ def test_double_validator_exit_same_block(spec, state):
 
 @with_all_phases
 @spec_state_test
-@disable_process_reveal_deadlines
 def test_multiple_different_validator_exits_same_block(spec, state):
     validator_indices = [
         spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
@@ -924,7 +921,6 @@ def test_multiple_different_validator_exits_same_block(spec, state):
 
 @with_all_phases
 @spec_state_test
-@disable_process_reveal_deadlines
 def test_slash_and_exit_same_index(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     yield from run_slash_and_exit(spec, state, validator_index, validator_index, valid=False)
@@ -932,7 +928,6 @@ def test_slash_and_exit_same_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@disable_process_reveal_deadlines
 def test_slash_and_exit_diff_index(spec, state):
     slash_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     exit_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-2]
