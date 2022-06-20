@@ -20,6 +20,7 @@
     - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
   - [KZG core](#kzg-core)
+    - [`lincomb`](#lincomb)
     - [`blob_to_kzg`](#blob_to_kzg)
     - [`kzg_to_versioned_hash`](#kzg_to_versioned_hash)
   - [Misc](#misc)
@@ -108,7 +109,7 @@ class BeaconBlockBody(Container):
 
 KZG core functions. These are also defined in EIP-4844 execution specs.
 
-#### `blob_to_kzg`
+#### `lincomb`
 
 ```python
 def lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
@@ -119,7 +120,11 @@ def lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGC
     for x, a in zip(points, scalars):
         r = bls.add(r, bls.multiply(x, a))
     return r
+```
 
+#### `blob_to_kzg`
+
+```python
 def blob_to_kzg(blob: Blob) -> KZGCommitment:
     return lincomb(blob, KZG_SETUP_LAGRANGE)
 ```
