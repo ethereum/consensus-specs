@@ -54,6 +54,7 @@ def get_lagrange(setup):
     root_of_unity = generate_root_of_unity(len(setup))
     assert pow(root_of_unity, len(setup), curve_order) == 1
     domain = [pow(root_of_unity, i, curve_order) for i in range(len(setup))]
+    # TODO: introduce an IFFT function for simplicity
     fft_output = fft(setup, curve_order, domain)
     inv_length = pow(len(setup), curve_order - 2, curve_order)
     return [multiply(fft_output[-i], inv_length) for i in range(len(fft_output))]

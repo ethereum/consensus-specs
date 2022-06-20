@@ -14,7 +14,7 @@ from eth2spec.test.context import (
 def _create_blob(spec):
     rng = random.Random(5566)
     return spec.Blob([
-        rng.randint(0, spec.BLS_MODULUS)
+        rng.randint(0, spec.BLS_MODULUS - 1)
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ])
 
