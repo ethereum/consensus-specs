@@ -384,6 +384,13 @@ compute_shuffled_index = cache_this(
     lambda index, index_count, seed: (index, index_count, seed),
     _compute_shuffled_index, lru_size=SLOTS_PER_EPOCH * 3)
 
+
+_get_total_balance = get_total_balance
+get_total_balance = cache_this(
+    lambda state, indices: (state.validators.hash_tree_root(), str(set(indices))),
+    _get_total_balance, lru_size=16)
+
+
 _get_total_active_balance = get_total_active_balance
 get_total_active_balance = cache_this(
     lambda state: (state.validators.hash_tree_root(), compute_epoch_at_slot(state.slot)),
@@ -474,7 +481,28 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
-    return GeneralizedIndex(ssz_path.gindex())'''
+    return GeneralizedIndex(ssz_path.gindex())
+
+
+_get_unslashed_participating_indices = get_unslashed_participating_indices
+get_unslashed_participating_indices = cache_this(
+    lambda state, flag_index, epoch: (state.hash_tree_root(), flag_index, epoch),
+    _get_unslashed_participating_indices, lru_size=24)
+
+
+_get_base_reward_per_increment = get_base_reward_per_increment
+get_base_reward_per_increment = cache_this(
+    lambda state: (state.validators.hash_tree_root(), compute_epoch_at_slot(state.slot)),
+    _get_base_reward_per_increment, lru_size=16)
+
+
+_get_next_sync_committee = get_next_sync_committee
+get_next_sync_committee = cache_this(
+    lambda state: (
+        state.validators.hash_tree_root(),
+        state.randao_mixes.hash_tree_root(),
+        compute_epoch_at_slot(state.slot)),
+    _get_next_sync_committee, lru_size=16)'''
 
 
     @classmethod
