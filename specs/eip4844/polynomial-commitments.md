@@ -66,19 +66,10 @@ but reusing the `mainnet` settings in public networks is a critical security req
 ```python
 def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
     """
-    Compute the modular inverse of x using the eGCD algorithm
+    Compute the modular inverse of x
     i.e. return y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
     """
-    if x == 0:
-        return 0
-
-    lm, hm = 1, 0
-    low, high = x % BLS_MODULUS, BLS_MODULUS
-    while low > 1:
-        r = high // low
-        nm, new = hm - lm * r, high - low * r
-        lm, low, hm, high = nm, new, lm, low
-    return lm % BLS_MODULUS
+    return pow(x, -1, BLS_MODULUS) if x != 0 else 0
 ```
 
 #### `div`
