@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from eth2spec.test.context import (
-    spec_state_test,
+    spec_state_test_with_matching_config,
     with_presets,
     with_altair_and_later,
 )
@@ -16,7 +16,6 @@ from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.light_client import (
     get_sync_aggregate,
     initialize_light_client_store,
-    override_config_fork_epochs,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
@@ -26,11 +25,8 @@ from eth2spec.test.helpers.merkle import build_proof
 
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
-    old_config = spec.config
-    override_config_fork_epochs(spec, state)
-
     store = initialize_light_client_store(spec, state)
 
     # Block at slot 1 doesn't increase sync committee period, so it won't force update store.finalized_header
@@ -73,16 +69,11 @@ def test_process_light_client_update_not_timeout(spec, state):
     assert store.finalized_header == pre_store.finalized_header
     assert store.best_valid_update == update
 
-    spec.config = old_config
-
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
-    old_config = spec.config
-    override_config_fork_epochs(spec, state)
-
     store = initialize_light_client_store(spec, state)
 
     # Forward to slot before next sync committee period so that next block is final one in period
@@ -128,16 +119,11 @@ def test_process_light_client_update_at_period_boundary(spec, state):
     assert store.best_valid_update == update
     assert store.finalized_header == pre_store.finalized_header
 
-    spec.config = old_config
-
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
-    old_config = spec.config
-    override_config_fork_epochs(spec, state)
-
     store = initialize_light_client_store(spec, state)
 
     # Forward to next sync committee period
@@ -184,16 +170,11 @@ def test_process_light_client_update_timeout(spec, state):
     assert store.best_valid_update == update
     assert store.finalized_header == pre_store.finalized_header
 
-    spec.config = old_config
-
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
-    old_config = spec.config
-    override_config_fork_epochs(spec, state)
-
     store = initialize_light_client_store(spec, state)
 
     # Change finality
@@ -245,5 +226,3 @@ def test_process_light_client_update_finality_updated(spec, state):
     assert store.optimistic_header == update.attested_header
     assert store.finalized_header == update.finalized_header
     assert store.best_valid_update is None
-
-    spec.config = old_config

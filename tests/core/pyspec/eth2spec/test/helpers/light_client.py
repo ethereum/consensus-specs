@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.test.helpers.state import (
     transition_to,
 )
@@ -7,35 +5,6 @@ from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
 )
-
-
-def override_config_fork_epochs(spec, state):
-    # Test framework adjusts state fork but leaves spec config constants inconsistent
-    config_overrides = {}
-    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
-        pass
-    elif state.fork.current_version == spec.config.ALTAIR_FORK_VERSION:
-        config_overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif state.fork.current_version == spec.config.BELLATRIX_FORK_VERSION:
-        config_overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        config_overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif state.fork.current_version == spec.config.CAPELLA_FORK_VERSION:
-        config_overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        config_overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        config_overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif state.fork.current_version == spec.config.SHARDING_FORK_VERSION:
-        config_overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        config_overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        config_overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        config_overrides['SHARDING_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    else:
-        assert False
-
-    tmp_config = deepcopy(spec.config._asdict())
-    tmp_config.update(config_overrides)
-    config_types = spec.Configuration.__annotations__
-    test_config = {k: config_types[k](v) for k, v in tmp_config.items()}
-    spec.config = spec.Configuration(**test_config)
 
 
 def initialize_light_client_store(spec, state):
