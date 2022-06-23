@@ -83,7 +83,7 @@ def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldE
 
 
 def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
-                         expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar):
+                         expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> None:
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs

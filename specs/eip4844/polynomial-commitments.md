@@ -75,7 +75,7 @@ def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
 #### `div`
 
 ```python
-def div(x, y):
+def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
     """Divide two field elements: `x` by `y`"""
     return x * inv(y) % BLS_MODULUS
 ```
@@ -111,7 +111,9 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
                      x: BLSFieldElement,
                      y: BLSFieldElement,
                      quotient_kzg: KZGProof) -> bool:
-    """Verify KZG proof that `p(x) == y` where `p(x)` is the polynomial represented by `polynomial_kzg`"""
+    """
+    Verify KZG proof that ``p(x) == y`` where ``p(x)`` is the polynomial represented by ``polynomial_kzg``.
+    """
     # Verify: P - y = Q * (X - x)
     X_minus_x = bls.add(KZG_SETUP_G2[1], bls.multiply(bls.G2, BLS_MODULUS - x))
     P_minus_y = bls.add(polynomial_kzg, bls.multiply(bls.G1, BLS_MODULUS - y))
@@ -137,7 +139,7 @@ def evaluate_polynomial_in_evaluation_form(poly: List[BLSFieldElement], x: BLSFi
     inverse_width = bls_modular_inverse(width)
 
     for i in range(width):
-        r += div(poly[i] * ROOTS_OF_UNITY[i], (x - ROOTS_OF_UNITY[i]) )
+        r += div(poly[i] * ROOTS_OF_UNITY[i], (x - ROOTS_OF_UNITY[i]))
     r = r * (pow(x, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
 
     return r
