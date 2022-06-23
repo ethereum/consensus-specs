@@ -34,8 +34,6 @@
     - [`has_eth1_withdrawal_credential`](#has_eth1_withdrawal_credential)
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
-  - [Misc](#misc-1)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
     - [Full withdrawals](#full-withdrawals)
@@ -318,24 +316,6 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     has_max_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
     has_excess_balance = balance > MAX_EFFECTIVE_BALANCE
     return has_eth1_withdrawal_credential(validator) and has_max_effective_balance and has_excess_balance
-```
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
 ```
 
 ## Beacon chain state transition function

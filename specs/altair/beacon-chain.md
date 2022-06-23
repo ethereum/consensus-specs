@@ -28,7 +28,6 @@
 - [Helper functions](#helper-functions)
   - [Crypto](#crypto)
   - [Misc](#misc-1)
-    - [`compute_fork_version`](#compute_fork_version)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -226,18 +225,6 @@ and the extensions defined in the [Altair BLS document](./bls.md). This specific
 the functionality described in those documents.
 
 ### Misc
-
-#### `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
 
 #### `add_flag`
 
