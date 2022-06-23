@@ -9,7 +9,7 @@ MAX_PARTIAL_WITHDRAWALS_PER_EPOCH: 16
 # State list lengths
 # ---------------------------------------------------------------
 # 2**40 (= 1,099,511,627,776) withdrawals
-WITHDRAWALS_QUEUE_LIMIT: 1099511627776
+WITHDRAWAL_QUEUE_LIMIT: 1099511627776
 
 
 # Max operations per block
