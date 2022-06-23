@@ -12,6 +12,9 @@
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
   - [`is_data_available`](#is_data_available)
+  - [`hash_to_bls_field`](#hash_to_bls_field)
+  - [`compute_powers`](#compute_powers)
+  - [`vector_lincomb`](#vector_lincomb)
   - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
@@ -40,7 +43,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 The implementation of `is_data_available` is meant to change with later sharding upgrades.
 Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
-and verify the sidecar with `verify_blobs`.
+and verify the sidecar with `verify_blobs_sidecar`.
 
 Without the sidecar the block may be processed further optimistically,
 but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
@@ -51,7 +54,7 @@ def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCom
     verify_blobs_sidecar(slot, beacon_block_root, kzgs, sidecar)
 ```
 
-### `verify_blobs_sidecar`
+### `hash_to_bls_field`
 
 ```python
 def hash_to_bls_field(x: Container) -> BLSFieldElement:
@@ -59,8 +62,10 @@ def hash_to_bls_field(x: Container) -> BLSFieldElement:
     This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
     """
     return int.from_bytes(hash_tree_root(x), "little") % BLS_MODULUS
+```
 
-
+### `compute_powers`
+```python
 def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
     current_power = 1
     powers = []
@@ -68,8 +73,11 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
         powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % BLS_MODULUS
     return powers
+```
 
+### `vector_lincomb`
 
+```python
 def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
     """
     Given a list of vectors, compute the linear combination of each column with `scalars`, and return the resulting
@@ -80,8 +88,11 @@ def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldE
         for i, x in enumerate(v):
             r[i] = (r[i] + a * x) % BLS_MODULUS
     return [BLSFieldElement(x) for x in r]
+```
 
+### `verify_blobs_sidecar`
 
+```python
 def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
                          expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> None:
     assert slot == blobs_sidecar.beacon_block_slot
@@ -107,7 +118,6 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     # Verify aggregated proof
     assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
 ```
-
 
 ## Beacon chain responsibilities
 
@@ -175,4 +185,3 @@ The validator MUST hold on to blobs for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
 to ensure the data-availability of these blobs throughout the network.
 
 After `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` nodes MAY prune the blobs and/or stop serving them.
-
