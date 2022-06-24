@@ -77,7 +77,7 @@ def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
 ```python
 def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
     """Divide two field elements: `x` by `y`"""
-    return x * inv(y) % BLS_MODULUS
+    return x * bls_modular_inverse(y) % BLS_MODULUS
 ```
 
 #### `lincomb`
