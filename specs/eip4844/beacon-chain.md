@@ -12,17 +12,13 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Domain types](#domain-types)
-- [Preset](#preset)
-  - [Trusted setup](#trusted-setup)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
-  - [KZG core](#kzg-core)
-    - [`blob_to_kzg`](#blob_to_kzg)
-    - [`kzg_to_versioned_hash`](#kzg_to_versioned_hash)
   - [Misc](#misc)
+    - [`kzg_to_versioned_hash`](#kzg_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzgs_against_transactions`](#verify_kzgs_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -41,10 +37,8 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `BLSFieldElement` | `uint256` | `x < BLS_MODULUS` |
 | `Blob` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | |
 | `VersionedHash` | `Bytes32` | |
-| `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
 
 ## Constants
 
@@ -52,25 +46,12 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
 | `FIELD_ELEMENTS_PER_BLOB` | `4096` |
-| `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
 
 ### Domain types
 
 | Name | Value |
 | - | - |
 | `DOMAIN_BLOBS_SIDECAR` | `DomainType('0x0a000000')` |
-
-## Preset
-
-### Trusted setup
-
-The trusted setup is part of the preset: during testing a `minimal` insecure variant may be used,
-but reusing the `mainnet` settings in public networks is a critical security requirement.
-
-| Name | Value |
-| - | - |
-| `KZG_SETUP_G2` | `Vector[G2Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Configuration
 
@@ -102,23 +83,7 @@ class BeaconBlockBody(Container):
 
 ## Helper functions
 
-### KZG core
-
-KZG core functions. These are also defined in EIP-4844 execution specs.
-
-#### `blob_to_kzg`
-
-```python
-def blob_to_kzg(blob: Blob) -> KZGCommitment:
-    computed_kzg = bls.Z1
-    for value, point_kzg in zip(blob, KZG_SETUP_LAGRANGE):
-        assert value < BLS_MODULUS
-        computed_kzg = bls.add(
-            computed_kzg,
-            bls.multiply(point_kzg, value)
-        )
-    return computed_kzg
-```
+### Misc
 
 #### `kzg_to_versioned_hash`
 
@@ -126,8 +91,6 @@ def blob_to_kzg(blob: Blob) -> KZGCommitment:
 def kzg_to_versioned_hash(kzg: KZGCommitment) -> VersionedHash:
     return BLOB_COMMITMENT_VERSION_KZG + hash(kzg)[1:]
 ```
-
-### Misc
 
 #### `tx_peek_blob_versioned_hashes`
 
