@@ -170,8 +170,9 @@ def validate_light_client_update(store: LightClientStore,
     signature_period = compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))
     assert signature_period in (finalized_period, finalized_period + 1)
 
-    # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
-    # state of the `attested_header`
+    # Verify that the `finality_branch`, if present, confirms `finalized_header`
+    # to match the finalized checkpoint root saved in the state of `attested_header`.
+    # Note that the genesis finalized checkpoint root is represented as a zero hash.
     if not is_finality_update(update):
         assert update.finalized_header == BeaconBlockHeader()
     else:
