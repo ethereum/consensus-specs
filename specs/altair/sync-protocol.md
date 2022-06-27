@@ -175,11 +175,11 @@ def validate_light_client_update(store: LightClientStore,
     if not is_finality_update(update):
         assert update.finalized_header == BeaconBlockHeader()
     else:
-        if update.finalized_header.slot != GENESIS_SLOT:
-            finalized_root = hash_tree_root(update.finalized_header)
-        else:
+        if update.finalized_header.slot == GENESIS_SLOT:
             finalized_root = Bytes32()
             assert update.finalized_header == BeaconBlockHeader()
+        else:
+            finalized_root = hash_tree_root(update.finalized_header)
         assert is_valid_merkle_branch(
             leaf=finalized_root,
             branch=update.finality_branch,
