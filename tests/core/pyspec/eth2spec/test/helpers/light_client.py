@@ -45,5 +45,4 @@ def get_sync_aggregate(spec, state, block_header, signature_slot=None):
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
     )
-    fork_version = signature_state.fork.current_version
-    return sync_aggregate, fork_version, signature_slot
+    return sync_aggregate, signature_slot

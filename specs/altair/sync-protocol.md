@@ -71,8 +71,6 @@ class LightClientUpdate(Container):
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
-    # Fork version for the aggregate signature
-    fork_version: Version
     # Slot at which the aggregate signature was created (untrusted)
     signature_slot: Slot
 ```
@@ -211,7 +209,8 @@ def validate_light_client_update(store: LightClientStore,
         pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
         if bit
     ]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
+    fork_version = compute_fork_version(compute_epoch_at_slot(update.signature_slot))
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
 ```

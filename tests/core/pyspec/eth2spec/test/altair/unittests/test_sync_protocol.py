@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from eth2spec.test.context import (
-    spec_state_test,
+    spec_state_test_with_matching_config,
     with_presets,
     with_altair_and_later,
 )
@@ -25,7 +25,7 @@ from eth2spec.test.helpers.merkle import build_proof
 
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
     store = initialize_light_client_store(spec, state)
 
@@ -41,7 +41,7 @@ def test_process_light_client_update_not_timeout(spec, state):
     )
 
     # Sync committee signing the block_header
-    sync_aggregate, fork_version, signature_slot = get_sync_aggregate(spec, state, block_header)
+    sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Ensure that finality checkpoint is genesis
@@ -57,7 +57,6 @@ def test_process_light_client_update_not_timeout(spec, state):
         finalized_header=finality_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
-        fork_version=fork_version,
         signature_slot=signature_slot,
     )
 
@@ -72,7 +71,7 @@ def test_process_light_client_update_not_timeout(spec, state):
 
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
     store = initialize_light_client_store(spec, state)
@@ -94,7 +93,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
     )
 
     # Sync committee signing the block_header
-    sync_aggregate, fork_version, signature_slot = get_sync_aggregate(spec, state, block_header)
+    sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Finality is unchanged
@@ -108,7 +107,6 @@ def test_process_light_client_update_at_period_boundary(spec, state):
         finalized_header=finality_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
-        fork_version=fork_version,
         signature_slot=signature_slot,
     )
 
@@ -123,7 +121,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
     store = initialize_light_client_store(spec, state)
@@ -145,7 +143,7 @@ def test_process_light_client_update_timeout(spec, state):
     )
 
     # Sync committee signing the block_header
-    sync_aggregate, fork_version, signature_slot = get_sync_aggregate(spec, state, block_header)
+    sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
 
     # Sync committee is updated
     next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
@@ -160,7 +158,6 @@ def test_process_light_client_update_timeout(spec, state):
         finalized_header=finality_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
-        fork_version=fork_version,
         signature_slot=signature_slot,
     )
 
@@ -175,7 +172,7 @@ def test_process_light_client_update_timeout(spec, state):
 
 
 @with_altair_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
     store = initialize_light_client_store(spec, state)
@@ -211,7 +208,7 @@ def test_process_light_client_update_finality_updated(spec, state):
     )
 
     # Sync committee signing the block_header
-    sync_aggregate, fork_version, signature_slot = get_sync_aggregate(spec, state, block_header)
+    sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
 
     update = spec.LightClientUpdate(
         attested_header=block_header,
@@ -220,7 +217,6 @@ def test_process_light_client_update_finality_updated(spec, state):
         finalized_header=finalized_block_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
-        fork_version=fork_version,
         signature_slot=signature_slot,
     )
 

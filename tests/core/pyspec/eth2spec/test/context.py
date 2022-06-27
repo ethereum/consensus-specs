@@ -277,6 +277,39 @@ def spec_configured_state_test(conf):
     return decorator
 
 
+def config_fork_epoch_overrides(spec, state):
+    overrides = {}
+    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
+        pass
+    elif state.fork.current_version == spec.config.ALTAIR_FORK_VERSION:
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif state.fork.current_version == spec.config.BELLATRIX_FORK_VERSION:
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif state.fork.current_version == spec.config.CAPELLA_FORK_VERSION:
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif state.fork.current_version == spec.config.SHARDING_FORK_VERSION:
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['SHARDING_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    else:
+        assert False  # Fork is missing
+    return overrides
+
+
+def spec_state_test_with_matching_config(fn):
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            conf = config_fork_epoch_overrides(spec, kw['state'])
+            overrides = with_config_overrides(conf)
+            return overrides(fn)(*args, spec=spec, **kw)
+        return wrapper
+    return spec_test(with_state(decorator(single_phase(fn))))
+
+
 def expect_assertion_error(fn):
     bad = False
     try:
