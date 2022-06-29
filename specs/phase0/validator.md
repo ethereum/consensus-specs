@@ -260,7 +260,7 @@ A validator should plan for future assignments by noting their assigned attestat
 slot and joining the committee index attestation subnet related to their committee assignment.
 
 Specifically a validator should:
-* Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+* Call `_, committee_index, _ = get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 * Calculate the committees per slot for the next epoch: `committees_per_slot = get_committee_count_per_slot(state, next_epoch)`
 * Calculate the subnet index: `subnet_id = compute_subnet_for_attestation(committees_per_slot, slot, committee_index)`
 * Find peers of the pubsub topic `beacon_attestation_{subnet_id}`.
@@ -510,7 +510,7 @@ Finally, the validator broadcasts `attestation` to the associated attestation su
 
 The `subnet_id` for the `attestation` is calculated with:
 - Let `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`.
-- Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.committee_index)`.
+- Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)`.
 
 ```python
 def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:

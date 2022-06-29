@@ -71,8 +71,6 @@ class LightClientUpdate(Container):
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
-    # Fork version for the aggregate signature
-    fork_version: Version
     # Slot at which the aggregate signature was created (untrusted)
     signature_slot: Slot
 ```
@@ -102,7 +100,7 @@ class LightClientStore(object):
 
 ```python
 def is_finality_update(update: LightClientUpdate) -> bool:
-    return update.finalized_header != BeaconBlockHeader()
+    return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
 ```
 
 ### `get_subtree_index`
@@ -172,13 +170,19 @@ def validate_light_client_update(store: LightClientStore,
     signature_period = compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))
     assert signature_period in (finalized_period, finalized_period + 1)
 
-    # Verify that the `finalized_header`, if present, actually is the finalized header saved in the
-    # state of the `attested_header`
+    # Verify that the `finality_branch`, if present, confirms `finalized_header`
+    # to match the finalized checkpoint root saved in the state of `attested_header`.
+    # Note that the genesis finalized checkpoint root is represented as a zero hash.
     if not is_finality_update(update):
-        assert update.finality_branch == [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+        assert update.finalized_header == BeaconBlockHeader()
     else:
+        if update.finalized_header.slot == GENESIS_SLOT:
+            finalized_root = Bytes32()
+            assert update.finalized_header == BeaconBlockHeader()
+        else:
+            finalized_root = hash_tree_root(update.finalized_header)
         assert is_valid_merkle_branch(
-            leaf=hash_tree_root(update.finalized_header),
+            leaf=finalized_root,
             branch=update.finality_branch,
             depth=floorlog2(FINALIZED_ROOT_INDEX),
             index=get_subtree_index(FINALIZED_ROOT_INDEX),
@@ -211,7 +215,8 @@ def validate_light_client_update(store: LightClientStore,
         pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
         if bit
     ]
-    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, update.fork_version, genesis_validators_root)
+    fork_version = compute_fork_version(compute_epoch_at_slot(update.signature_slot))
+    domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
 ```

@@ -49,6 +49,7 @@ class BlobsSidecar(Container):
     beacon_block_root: Root
     beacon_block_slot: Slot
     blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
+    kzg_aggregated_proof: KZGProof
 ```
 
 ### `SignedBlobsSidecar`
@@ -106,6 +107,7 @@ The following validations MUST pass before forwarding the `signed_blobs_sidecar`
 Alias `sidecar = signed_blobs_sidecar.message`.
 - _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `blobs_sidecar.beacon_block_slot == current_slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
+- _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
 ```python
 domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)

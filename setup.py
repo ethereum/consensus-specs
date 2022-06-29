@@ -941,6 +941,7 @@ class PySpecCommand(Command):
                 self.md_doc_paths += """
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
+                    specs/eip4844/polynomial-commitments.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
