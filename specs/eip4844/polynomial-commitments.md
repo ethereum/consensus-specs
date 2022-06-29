@@ -16,6 +16,7 @@
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
     - [`lincomb`](#lincomb)
+    - [`vector_lincomb`](#vector_lincomb)
   - [KZG](#kzg)
     - [`blob_to_kzg`](#blob_to_kzg)
     - [`verify_kzg_proof`](#verify_kzg_proof)
@@ -93,6 +94,22 @@ def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement])
     for x, a in zip(points, scalars):
         r = bls.add(r, bls.multiply(x, a))
     return r
+```
+
+#### `vector_lincomb`
+
+```python
+def vector_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
+                   scalars: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+    """
+    Given a list of vectors, compute the linear combination of each column with `scalars`, and return the resulting
+    vector.
+    """
+    r = [0] * len(vectors[0])
+    for v, a in zip(vectors, scalars):
+        for i, x in enumerate(v):
+            r[i] = (r[i] + a * x) % BLS_MODULUS
+    return [BLSFieldElement(x) for x in r]
 ```
 
 ### KZG

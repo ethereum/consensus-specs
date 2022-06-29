@@ -15,7 +15,6 @@
   - [Crypto](#crypto)
   - [Domain types](#domain-types)
 - [Preset](#preset)
-  - [Trusted setup](#trusted-setup)
   - [Execution](#execution)
 - [Configuration](#configuration)
 - [Containers](#containers)

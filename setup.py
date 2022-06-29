@@ -209,6 +209,9 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
             elif source.startswith("class"):
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
+                if class_name != current_name:
+                    print('class_name', class_name, 'current_name', current_name)
+
                 assert class_name == current_name
                 if parent_class:
                     assert parent_class == "Container"
@@ -231,7 +234,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List")):
                             custom_types[name] = value
                         continue
 
@@ -592,12 +595,17 @@ TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_
 TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
 
 KZG_SETUP_G2 = TESTING_KZG_SETUP_G2
-KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE'''
+KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
+
+
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
+    pass'''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
+            'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
         }
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
@@ -610,7 +618,7 @@ spec_builders = {
 
 
 def is_spec_defined_type(value: str) -> bool:
-    return value.startswith(('ByteList', 'Union', 'Vector'))
+    return value.startswith(('ByteList', 'Union', 'Vector', 'List'))
 
 
 def objects_to_spec(preset_name: str,
@@ -942,6 +950,8 @@ class PySpecCommand(Command):
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
                     specs/eip4844/polynomial-commitments.md
+                    specs/eip4844/p2p-interface.md
+                    specs/eip4844/validator.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)

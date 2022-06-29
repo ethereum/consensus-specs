@@ -38,8 +38,6 @@ The specification of these changes continues in the same format as the network s
 | `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                | Maximum number of blobs sidecars in a single request                |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
 
-
-
 ## Containers
 
 ### `BlobsSidecar`
@@ -59,7 +57,6 @@ class SignedBlobsSidecar(Container):
     message: BlobsSidecar
     signature: BLSSignature
 ```
-
 
 ## The gossip domain: gossipsub
 
@@ -109,12 +106,14 @@ Alias `sidecar = signed_blobs_sidecar.message`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
-```python
+
+```
 domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
 signing_root = compute_signing_root(blobs_sidecar, domain)
 assert bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature)
 ```
-  where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
+
+where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
   where `proposer_index` is the validator index of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
 
