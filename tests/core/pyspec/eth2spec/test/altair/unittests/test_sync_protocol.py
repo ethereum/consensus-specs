@@ -42,6 +42,7 @@ def test_process_light_client_update_not_timeout(spec, state):
 
     # Sync committee signing the block_header
     sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
+    next_sync_committee = spec.SyncCommittee()
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Ensure that finality checkpoint is genesis
@@ -52,7 +53,7 @@ def test_process_light_client_update_not_timeout(spec, state):
 
     update = spec.LightClientUpdate(
         attested_header=block_header,
-        next_sync_committee=state.next_sync_committee,
+        next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finality_header,
         finality_branch=finality_branch,
@@ -94,6 +95,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
     # Sync committee signing the block_header
     sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
+    next_sync_committee = spec.SyncCommittee()
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Finality is unchanged
@@ -102,7 +104,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
     update = spec.LightClientUpdate(
         attested_header=block_header,
-        next_sync_committee=state.next_sync_committee,
+        next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finality_header,
         finality_branch=finality_branch,
@@ -146,6 +148,7 @@ def test_process_light_client_update_timeout(spec, state):
     sync_aggregate, signature_slot = get_sync_aggregate(spec, state, block_header)
 
     # Sync committee is updated
+    next_sync_committee = state.next_sync_committee
     next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
     # Finality is unchanged
     finality_header = spec.BeaconBlockHeader()
@@ -153,7 +156,7 @@ def test_process_light_client_update_timeout(spec, state):
 
     update = spec.LightClientUpdate(
         attested_header=block_header,
-        next_sync_committee=state.next_sync_committee,
+        next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finality_header,
         finality_branch=finality_branch,
@@ -191,6 +194,7 @@ def test_process_light_client_update_finality_updated(spec, state):
     assert snapshot_period == update_period
 
     # Updated sync_committee and finality
+    next_sync_committee = spec.SyncCommittee()
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
     finalized_block_header = blocks[spec.SLOTS_PER_EPOCH - 1].message
     assert finalized_block_header.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
@@ -212,7 +216,7 @@ def test_process_light_client_update_finality_updated(spec, state):
 
     update = spec.LightClientUpdate(
         attested_header=block_header,
-        next_sync_committee=state.next_sync_committee,
+        next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
         finalized_header=finalized_block_header,
         finality_branch=finality_branch,
