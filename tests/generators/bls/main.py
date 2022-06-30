@@ -513,7 +513,6 @@ def create_provider(fork_name: SpecForkName,
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for data in test_case_fn():
-            print(data)
             (case_name, case_content) = data
             yield gen_typing.TestCase(
                 fork_name=fork_name,
