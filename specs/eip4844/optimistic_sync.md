@@ -1,9 +1,23 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [EIP-4844 -- Optimistic Sync](#eip-4844----optimistic-sync)
+  - [Introduction](#introduction)
+  - [Helpers](#helpers)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # EIP-4844 -- Optimistic Sync
+
+## Introduction
 
 This document is an extension of the [Optimistic Sync](/sync/optimistic.md) guide for EIP-4844.
 All behaviors and definitions defined in Optimistic Sync guide carry over unless explicitly noted or overridden.
 
 EIP-4844 extends the block validity requirement for [data availability](./validator.md#is_data_available). When a block transitions from `NOT_VALIDATED` -> `VALID`, its ancestors no longer unconditionally transition as well. But rather, only ancestors that do not have ancestors themselves with missing blocks can be considered `VALID`.
+
+## Helpers
 
 ```python
 def latest_valid_candidate_block(opt_store: OptimisticStore, block: BeaconBlock) -> BeaconBlock:
