@@ -891,6 +891,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/fork.md
                     specs/bellatrix/fork-choice.md
                     specs/bellatrix/validator.md
+                    specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
             if self.spec_fork == CAPELLA:
