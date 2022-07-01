@@ -4,7 +4,7 @@ from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
 from eth2spec.test.helpers.sharding import (
-    create_blob,
+    get_sample_blob,
 )
 from eth2spec.test.context import (
     with_phases,
@@ -17,5 +17,5 @@ from eth2spec.test.context import (
 @spec_state_test
 @with_presets([MINIMAL])
 def test_blob_to_kzg(spec, state):
-    blob = create_blob(spec)
+    blob = get_sample_blob(spec)
     spec.blob_to_kzg(blob)
