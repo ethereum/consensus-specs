@@ -124,8 +124,14 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
     assert opaque_tx[0] == BLOB_TX_TYPE
     message_offset = 1 + uint32.decode_bytes(opaque_tx[1:5])
     # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 = 156
-    blob_versioned_hashes_offset = uint32.decode_bytes(opaque_tx[(message_offset + 156):(message_offset + 160)])
-    return [VersionedHash(opaque_tx[x:(x + 32)]) for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)]
+    blob_versioned_hashes_offset = (
+        message_offset
+        + uint32.decode_bytes(opaque_tx[(message_offset + 156):(message_offset + 160)])
+    )
+    return [
+        VersionedHash(opaque_tx[x:(x + 32)])
+        for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)
+    ]
 ```
 
 #### `verify_kzgs_against_transactions`

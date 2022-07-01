@@ -93,7 +93,7 @@ def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement])
     r = bls.Z1
     for x, a in zip(points, scalars):
         r = bls.add(r, bls.multiply(x, a))
-    return r
+    return KZGCommitment(kzg.G1_to_bytes48(r))
 ```
 
 #### `matrix_lincomb`

@@ -185,7 +185,7 @@ blobs_sidecar = BlobsSidecar(
 And then signed:
 
 ```
-domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot / SLOTS_PER_EPOCH)
+domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
 signing_root = compute_signing_root(blobs_sidecar, domain)
 signature = bls.Sign(privkey, signing_root)
 signed_blobs_sidecar = SignedBlobsSidecar(message=blobs_sidecar, signature=signature)

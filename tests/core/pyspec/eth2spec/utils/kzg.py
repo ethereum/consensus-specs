@@ -1,5 +1,4 @@
 # Ref: https://github.com/ethereum/research/blob/8f084630528ba33d92b2bc05edf5338dd193c6f1/trusted_setup/trusted_setup.py
-
 from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1,
     G2,
@@ -10,6 +9,9 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     add,
     multiply,
     neg,
+)
+from py_ecc.bls.g2_primitives import (  # noqa: F401
+    G1_to_pubkey as G1_to_bytes48,
 )
 
 
