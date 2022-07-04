@@ -77,10 +77,10 @@ Without the sidecar the block may be processed further optimistically,
 but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
 
 ```python
-def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCommitment]):
+def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-    verify_blobs_sidecar(slot, beacon_block_root, kzgs, sidecar)
+    return verify_blobs_sidecar(slot, beacon_block_root, kzgs, sidecar)
 ```
 
 ### `hash_to_bls_field`
