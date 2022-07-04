@@ -1,0 +1,18 @@
+name: Run tests
+
+# Run tests on workflow_Dispatch
+on: 
+  workflow_dispatch:
+
+jobs:
+  git-sync:
+    runs-on: self-hosted
+    working_directory: ~/specs-repo
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v2
+  install-pyspec-test:
+    runs-on: self-hosted
+    steps:
+      - name: Install pyspec requirements
+        run: make install_test
