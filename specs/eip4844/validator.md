@@ -18,7 +18,10 @@
   - [`is_data_available`](#is_data_available)
   - [`hash_to_bls_field`](#hash_to_bls_field)
   - [`compute_powers`](#compute_powers)
+  - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
   - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
+  - [`compute_proof_single`](#compute_proof_single)
+  - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -96,12 +99,36 @@ def hash_to_bls_field(x: Container) -> BLSFieldElement:
 ### `compute_powers`
 ```python
 def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
+    """
+    Return ``x`` to power of [0, n-1].
+    """
     current_power = 1
     powers = []
     for _ in range(n):
         powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % BLS_MODULUS
     return powers
+```
+
+### `compute_aggregated_poly_and_commitment`
+
+```python
+def compute_aggregated_poly_and_commitment(blobs: Sequence[BLSFieldElement],
+                                           blob_kzgs: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
+    """
+    Return the aggregated polynomial and aggregated KZG commitment.
+    """
+    # Generate random linear combination challenges
+    r = hash_to_bls_field(BlobsAndCommmitments(blobs=blobs, blob_kzgs=blob_kzgs))
+    r_powers = compute_powers(r, len(blob_kzgs))
+
+    # Create aggregated polynomial in evaluation form
+    aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
+
+    # Compute commitment to aggregated polynomial
+    aggregated_poly_commitment = KZGCommitment(lincomb(blob_kzgs, r_powers))
+
+    return aggregated_poly, aggregated_poly_commitment
 ```
 
 ### `verify_blobs_sidecar`
@@ -115,15 +142,7 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
     assert len(expected_kzgs) == len(blobs)
 
-    # Generate random linear combination challenges
-    r = hash_to_bls_field(BlobsAndCommmitments(blobs=blobs, blob_kzgs=expected_kzgs))
-    r_powers = compute_powers(r, len(expected_kzgs))
-
-    # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
-
-    # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(lincomb(expected_kzgs, r_powers))
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, expected_kzgs)
 
     # Generate challenge `x` and evaluate the aggregated polynomial at `x`
     x = hash_to_bls_field(PolynomialAndCommitment(polynomial=aggregated_poly, commitment=aggregated_poly_commitment))
@@ -131,6 +150,36 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
 
     # Verify aggregated proof
     return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+```
+
+### `compute_proof_single`
+
+```python
+def compute_proof_single(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement) -> KZGProof:
+    # To avoid SSZ overflow/underflow, convert element into int
+    polynomial = [int(i) for i in polynomial]
+
+    # Convert `polynomial` to coefficient form
+    assert pow(ROOTS_OF_UNITY[1], len(polynomial), BLS_MODULUS) == 1
+    fft_output = fft(polynomial, ROOTS_OF_UNITY)
+    inv_length = pow(len(polynomial), BLS_MODULUS - 2, BLS_MODULUS)
+    polynomial_in_coefficient_form = [fft_output[-i] * inv_length % BLS_MODULUS for i in range(len(fft_output))]
+
+    quotient_polynomial = div_polys(polynomial_in_coefficient_form, [-int(x), 1])
+    return KZGProof(lincomb(KZG_SETUP_G1[:len(quotient_polynomial)], quotient_polynomial))
+```
+
+### `compute_proof_from_blobs`
+
+```python
+def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
+    blob_kzgs = [blob_to_kzg(blob) for blob in blobs]
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, blob_kzgs)
+    x = hash_to_bls_field(PolynomialAndCommitment(
+        polynomial=aggregated_poly,
+        commitment=aggregated_poly_commitment,
+    ))
+    return compute_proof_single(aggregated_poly, x)
 ```
 
 ## Beacon chain responsibilities
@@ -180,6 +229,7 @@ def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar
         beacon_block_root=hash_tree_root(block),
         beacon_block_slot=block.slot,
         blobs=blobs,
+        kzg_aggregated_proof=compute_proof_from_blobs(blobs),
     )
 ```
 

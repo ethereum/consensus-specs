@@ -22,6 +22,8 @@
     - [`verify_kzg_proof`](#verify_kzg_proof)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
+    - [`fft`](#fft)
+    - [`div_polys`](#div_polys)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -35,6 +37,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
+| `G1Point` | `Bytes48` | |
 | `G2Point` | `Bytes96` | |
 | `BLSFieldElement` | `uint256` | `x < BLS_MODULUS` |
 | `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
@@ -56,6 +59,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 
 | Name | Value |
 | - | - |
+| `KZG_SETUP_G1` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 | `KZG_SETUP_G2` | `Vector[G2Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 | `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
@@ -162,4 +166,45 @@ def evaluate_polynomial_in_evaluation_form(poly: Sequence[BLSFieldElement], x: B
         r += div(int(poly[i]) * int(ROOTS_OF_UNITY[i]), (x - ROOTS_OF_UNITY[i]))
     r = r * (pow(x, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return r
+```
+
+#### `fft`
+
+```python
+def fft(vals, domain):
+    """
+    FFT for ``BLSFieldElement``.
+    """
+    if len(vals) == 1:
+        return vals
+    L = fft(vals[::2], domain[::2])
+    R = fft(vals[1::2], domain[::2])
+    o = [0] * len(vals)
+    for i, (x, y) in enumerate(zip(L, R)):
+        y_times_root = y * domain[i] % BLS_MODULUS
+        o[i] = x + y_times_root % BLS_MODULUS
+        o[i + len(L)] = x + (BLS_MODULUS - y_times_root) % BLS_MODULUS
+    return o
+```
+
+#### `div_polys`
+
+```python
+def div_polys(a: Sequence[int], b: Sequence[int]) -> Sequence[int]:
+    """
+    Long polynomial division for two polynomials in coefficient form.
+    """
+    a = [x for x in a]
+    o = []
+    apos = len(a) - 1
+    bpos = len(b) - 1
+    diff = apos - bpos
+    while diff >= 0:
+        quot = div(a[apos], b[bpos])
+        o.insert(0, quot)
+        for i in range(bpos, -1, -1):
+            a[diff + i] -= b[i] * quot
+        apos -= 1
+        diff -= 1
+    return [x % BLS_MODULUS for x in o]
 ```

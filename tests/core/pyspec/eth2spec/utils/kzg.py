@@ -57,11 +57,11 @@ def compute_roots_of_unity(field_elements_per_blob):
     The order must divide the BLS multiplicative group order, i.e. BLS_MODULUS - 1
     """
     assert (BLS_MODULUS - 1) % field_elements_per_blob == 0
-    roots = []
-    root_of_unity = pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // field_elements_per_blob, BLS_MODULUS)
+    root_of_unity = compute_root_of_unity(length=field_elements_per_blob)
 
+    roots = []
     current_root_of_unity = 1
-    for i in range(field_elements_per_blob):
+    for _ in range(field_elements_per_blob):
         roots.append(current_root_of_unity)
         current_root_of_unity = current_root_of_unity * root_of_unity % BLS_MODULUS
     return roots

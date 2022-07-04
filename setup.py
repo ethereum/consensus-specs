@@ -588,8 +588,9 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '''
 # TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
-TESTING_SECRET = 1337
+# TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
 TESTING_FIELD_ELEMENTS_PER_BLOB = 4
+TESTING_SECRET = 1337
 TESTING_KZG_SETUP_G1 = kzg.generate_setup(bls.G1, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
 TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
 TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
