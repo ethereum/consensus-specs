@@ -19,8 +19,20 @@ from eth2spec.test.helpers.keys import privkeys
 
 @with_eip4844_and_later
 @spec_state_test
-def test_verify_blobs_sidecar(spec, state):
-    blob_count = 1
+def test_single_proof(spec, state):
+    x = 3
+    polynomial = get_sample_blob(spec)
+    polynomial = [int(i) for i in polynomial]
+    commitment = spec.blob_to_kzg(polynomial)
+
+    # Get the proof
+    proof = compute_proof_single(spec, polynomial, x)
+
+    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
+    assert spec.verify_kzg_proof(commitment, x, y, proof)
+
+
+def _run_verify_blobs_sidecar_test(spec, state, blob_count):
     block = build_empty_block_for_next_slot(spec, state)
     opaque_tx, blobs, blob_kzgs = get_sample_opaque_tx(spec, blob_count=blob_count)
     block.body.blob_kzgs = blob_kzgs
@@ -38,14 +50,11 @@ def test_verify_blobs_sidecar(spec, state):
 
 @with_eip4844_and_later
 @spec_state_test
-def test_single_proof(spec, state):
-    x = 3
-    polynomial = get_sample_blob(spec)
-    polynomial = [int(i) for i in polynomial]
-    commitment = spec.blob_to_kzg(polynomial)
+def test_verify_blobs_sidecar_one_blob(spec, state):
+    _run_verify_blobs_sidecar_test(spec, state, blob_count=1)
 
-    # Get the proof
-    proof = compute_proof_single(spec, polynomial, x)
 
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
-    assert spec.verify_kzg_proof(commitment, x, y, proof)
+@with_eip4844_and_later
+@spec_state_test
+def test_verify_blobs_sidecar_two_blobs(spec, state):
+    _run_verify_blobs_sidecar_test(spec, state, blob_count=2)

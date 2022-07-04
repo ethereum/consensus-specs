@@ -108,7 +108,7 @@ def matrix_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
     r = [0] * len(vectors[0])
     for v, a in zip(vectors, scalars):
         for i, x in enumerate(v):
-            r[i] = (r[i] + a * x) % BLS_MODULUS
+            r[i] = (r[i] + int(a) * int(x)) % BLS_MODULUS
     return [BLSFieldElement(x) for x in r]
 ```
 
