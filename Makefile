@@ -107,13 +107,13 @@ find_test: pyspec
 	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
-	mkdir -p tests/core/pyspec/test-reports/eth2spec;
+	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --bls-type=milagro --fork=$(fork) --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=milagro --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=milagro --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
