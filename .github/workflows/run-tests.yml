@@ -41,10 +41,10 @@ jobs:
         - name: Run linter for test generators
           run: make lint_test_generators  
   store_test_results:
-      - uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: test-results
-          path: tests/core/pyspec/test-reports
+      steps:
+        - uses: actions/upload-artifact@v2
+          if: always()
+          with:
+            name: test-results
+            path: tests/core/pyspec/test-reports
 
-          
