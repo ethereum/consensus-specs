@@ -41,6 +41,7 @@ jobs:
         - name: Run linter for test generators
           run: make lint_test_generators  
   store_test_results:
+      runs-on: self-hosted
       steps:
         - uses: actions/upload-artifact@v2
           if: always()
