@@ -24,7 +24,7 @@ def test_verify_kzg_proof(spec, state):
     commitment = spec.blob_to_kzg(polynomial)
 
     # Get the proof
-    proof = spec.compute_kzg_single(polynomial, x)
+    proof = spec.compute_kzg_proof(polynomial, x)
 
     y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert spec.verify_kzg_proof(commitment, x, y, proof)
