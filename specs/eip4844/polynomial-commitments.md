@@ -20,7 +20,7 @@
   - [KZG](#kzg)
     - [`blob_to_kzg`](#blob_to_kzg)
     - [`verify_kzg_proof`](#verify_kzg_proof)
-    - [`compute_kzg_single`](#compute_kzg_single)
+    - [`compute_kzg_proof`](#compute_kzg_proof)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
     - [`fft`](#fft)
@@ -147,10 +147,10 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
     ])
 ```
 
-#### `compute_kzg_single`
+#### `compute_kzg_proof`
 
 ```python
-def compute_kzg_single(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement) -> KZGProof:
+def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement) -> KZGProof:
     # To avoid SSZ overflow/underflow, convert element into int
     polynomial = [int(i) for i in polynomial]
 

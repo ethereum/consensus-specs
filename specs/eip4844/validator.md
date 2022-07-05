@@ -161,7 +161,7 @@ def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
         polynomial=aggregated_poly,
         commitment=aggregated_poly_commitment,
     ))
-    return compute_kzg_single(aggregated_poly, x)
+    return compute_kzg_proof(aggregated_poly, x)
 ```
 
 ## Beacon chain responsibilities
