@@ -20,7 +20,6 @@
   - [`compute_powers`](#compute_powers)
   - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
   - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
-  - [`compute_proof_single`](#compute_proof_single)
   - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
@@ -152,23 +151,6 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
 ```
 
-### `compute_proof_single`
-
-```python
-def compute_proof_single(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement) -> KZGProof:
-    # To avoid SSZ overflow/underflow, convert element into int
-    polynomial = [int(i) for i in polynomial]
-
-    # Convert `polynomial` to coefficient form
-    assert pow(ROOTS_OF_UNITY[1], len(polynomial), BLS_MODULUS) == 1
-    fft_output = fft(polynomial, ROOTS_OF_UNITY)
-    inv_length = pow(len(polynomial), BLS_MODULUS - 2, BLS_MODULUS)
-    polynomial_in_coefficient_form = [fft_output[-i] * inv_length % BLS_MODULUS for i in range(len(fft_output))]
-
-    quotient_polynomial = div_polys(polynomial_in_coefficient_form, [-int(x), 1])
-    return KZGProof(lincomb(KZG_SETUP_G1[:len(quotient_polynomial)], quotient_polynomial))
-```
-
 ### `compute_proof_from_blobs`
 
 ```python
@@ -179,7 +161,7 @@ def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
         polynomial=aggregated_poly,
         commitment=aggregated_poly_commitment,
     ))
-    return compute_proof_single(aggregated_poly, x)
+    return compute_kzg_single(aggregated_poly, x)
 ```
 
 ## Beacon chain responsibilities

@@ -17,14 +17,14 @@ from eth2spec.test.helpers.keys import privkeys
 
 @with_eip4844_and_later
 @spec_state_test
-def test_single_proof(spec, state):
+def test_verify_kzg_proof(spec, state):
     x = 3
     polynomial = get_sample_blob(spec)
     polynomial = [int(i) for i in polynomial]
     commitment = spec.blob_to_kzg(polynomial)
 
     # Get the proof
-    proof = spec.compute_proof_single(polynomial, x)
+    proof = spec.compute_kzg_single(polynomial, x)
 
     y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert spec.verify_kzg_proof(commitment, x, y, proof)
@@ -54,3 +54,9 @@ def test_verify_blobs_sidecar_one_blob(spec, state):
 @spec_state_test
 def test_verify_blobs_sidecar_two_blobs(spec, state):
     _run_verify_blobs_sidecar_test(spec, state, blob_count=2)
+
+
+@with_eip4844_and_later
+@spec_state_test
+def test_verify_blobs_sidecar_ten_blobs(spec, state):
+    _run_verify_blobs_sidecar_test(spec, state, blob_count=10)

@@ -20,6 +20,7 @@
   - [KZG](#kzg)
     - [`blob_to_kzg`](#blob_to_kzg)
     - [`verify_kzg_proof`](#verify_kzg_proof)
+    - [`compute_kzg_single`](#compute_kzg_single)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
     - [`fft`](#fft)
@@ -94,10 +95,10 @@ def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement])
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
     assert len(points) == len(scalars)
-    r = bls.Z1
+    result = bls.Z1
     for x, a in zip(points, scalars):
-        r = bls.add(r, bls.multiply(bls.bytes48_to_G1(x), a))
-    return KZGCommitment(bls.G1_to_bytes48(r))
+        result = bls.add(result, bls.multiply(bls.bytes48_to_G1(x), a))
+    return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 
 #### `matrix_lincomb`
@@ -109,11 +110,11 @@ def matrix_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
     Given a list of ``vectors``, interpret it as a 2D matrix and compute the linear combination
     of each column with `scalars`: return the resulting vector.
     """
-    r = [0] * len(vectors[0])
-    for v, a in zip(vectors, scalars):
+    result = [0] * len(vectors[0])
+    for v, s in zip(vectors, scalars):
         for i, x in enumerate(v):
-            r[i] = (r[i] + int(a) * int(x)) % BLS_MODULUS
-    return [BLSFieldElement(x) for x in r]
+            result[i] = (result[i] + int(s) * int(x)) % BLS_MODULUS
+    return [BLSFieldElement(x) for x in result]
 ```
 
 ### KZG
@@ -133,7 +134,7 @@ def blob_to_kzg(blob: Blob) -> KZGCommitment:
 def verify_kzg_proof(polynomial_kzg: KZGCommitment,
                      x: BLSFieldElement,
                      y: BLSFieldElement,
-                     quotient_kzg: KZGProof) -> bool:
+                     kzg_proof: KZGProof) -> bool:
     """
     Verify KZG proof that ``p(x) == y`` where ``p(x)`` is the polynomial represented by ``polynomial_kzg``.
     """
@@ -142,8 +143,25 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
     P_minus_y = bls.add(bls.bytes48_to_G1(polynomial_kzg), bls.multiply(bls.G1, BLS_MODULUS - y))
     return bls.pairing_check([
         [P_minus_y, bls.neg(bls.G2)],
-        [bls.bytes48_to_G1(quotient_kzg), X_minus_x]
+        [bls.bytes48_to_G1(kzg_proof), X_minus_x]
     ])
+```
+
+#### `compute_kzg_single`
+
+```python
+def compute_kzg_single(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement) -> KZGProof:
+    # To avoid SSZ overflow/underflow, convert element into int
+    polynomial = [int(i) for i in polynomial]
+
+    # Convert `polynomial` to coefficient form
+    assert pow(ROOTS_OF_UNITY[1], len(polynomial), BLS_MODULUS) == 1
+    fft_output = fft(polynomial, ROOTS_OF_UNITY)
+    inv_length = pow(len(polynomial), BLS_MODULUS - 2, BLS_MODULUS)
+    polynomial_in_coefficient_form = [fft_output[-i] * inv_length % BLS_MODULUS for i in range(len(fft_output))]
+
+    quotient_polynomial = div_polys(polynomial_in_coefficient_form, [-int(x), 1])
+    return KZGProof(lincomb(KZG_SETUP_G1[:len(quotient_polynomial)], quotient_polynomial))
 ```
 
 ### Polynomials
@@ -151,21 +169,22 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
 #### `evaluate_polynomial_in_evaluation_form`
 
 ```python
-def evaluate_polynomial_in_evaluation_form(poly: Sequence[BLSFieldElement], x: BLSFieldElement) -> BLSFieldElement:
+def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement],
+                                           x: BLSFieldElement) -> BLSFieldElement:
     """
     Evaluate a polynomial (in evaluation form) at an arbitrary point `x`
     Uses the barycentric formula:
        f(x) = (1 - x**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (x - DOMAIN[i])
     """
-    width = len(poly)
+    width = len(polynomial)
     assert width == FIELD_ELEMENTS_PER_BLOB
     inverse_width = bls_modular_inverse(width)
 
-    r = 0
+    result = 0
     for i in range(width):
-        r += div(int(poly[i]) * int(ROOTS_OF_UNITY[i]), (x - ROOTS_OF_UNITY[i]))
-    r = r * (pow(x, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
-    return r
+        result += div(int(polynomial[i]) * int(ROOTS_OF_UNITY[i]), (x - ROOTS_OF_UNITY[i]))
+    result = result * (pow(x, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
+    return result
 ```
 
 #### `fft`
@@ -179,32 +198,32 @@ def fft(vals, domain):
         return vals
     L = fft(vals[::2], domain[::2])
     R = fft(vals[1::2], domain[::2])
-    o = [0] * len(vals)
+    result = [0] * len(vals)
     for i, (x, y) in enumerate(zip(L, R)):
         y_times_root = y * domain[i] % BLS_MODULUS
-        o[i] = x + y_times_root % BLS_MODULUS
-        o[i + len(L)] = x + (BLS_MODULUS - y_times_root) % BLS_MODULUS
-    return o
+        result[i] = x + y_times_root % BLS_MODULUS
+        result[i + len(L)] = x + (BLS_MODULUS - y_times_root) % BLS_MODULUS
+    return result
 ```
 
 #### `div_polys`
 
 ```python
-def div_polys(a: Sequence[int], b: Sequence[int]) -> Sequence[int]:
+def div_polys(a: Sequence[int], b: Sequence[int]) -> Sequence[BLSFieldElement]:
     """
     Long polynomial division for two polynomials in coefficient form.
     """
-    a = [x for x in a]
-    o = []
-    apos = len(a) - 1
-    bpos = len(b) - 1
-    diff = apos - bpos
+    a = a.copy()  # avoid side effects
+    result = []
+    a_position = len(a) - 1
+    b_position = len(b) - 1
+    diff = a_position - b_position
     while diff >= 0:
-        quot = div(a[apos], b[bpos])
-        o.insert(0, quot)
-        for i in range(bpos, -1, -1):
-            a[diff + i] -= b[i] * quot
-        apos -= 1
+        quotient = div(a[a_position], b[b_position])
+        result.insert(0, quotient)
+        for i in range(b_position, -1, -1):
+            a[diff + i] -= b[i] * quotient
+        a_position -= 1
         diff -= 1
-    return [x % BLS_MODULUS for x in o]
+    return [x % BLS_MODULUS for x in result]
 ```

@@ -118,6 +118,7 @@ def kzg_to_versioned_hash(kzg: KZGCommitment) -> VersionedHash:
 
 This function retrieves the hashes from the `SignedBlobTransaction` as defined in EIP-4844, using SSZ offsets.
 Offsets are little-endian `uint32` values, as defined in the [SSZ specification](../../ssz/simple-serialize.md).
+See [the full details of `blob_versioned_hashes` offset calculation](https://gist.github.com/protolambda/23bd106b66f6d4bb854ce46044aa3ca3).
 
 ```python
 def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedHash]:
