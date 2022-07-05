@@ -39,7 +39,7 @@ jobs:
         - name: Run linter for pyspec
           run: make lint
         - name: Run linter for test generators
-          run: make lint_test_generators  
+          run: make lint_generators  
   store_test_results:
       runs-on: self-hosted
       steps:
