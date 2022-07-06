@@ -236,7 +236,7 @@ def bytes_to_field_elements(block: bytes) -> List[BLSFieldElement]:
 ```python
 def add_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients) -> BLSPolynomialByCoefficients:
     """
-    Sums the polynomials `a` and `b` given by their coefficients
+    Sum the polynomials ``a`` and ``b`` given by their coefficients.
     """
     a, b = (a, b) if len(a >= b) else (b, a)
     return [(a[i] + (b[i] if i < len(b) else 0)) % BLS_MODULUS for i in range(len(a))]
