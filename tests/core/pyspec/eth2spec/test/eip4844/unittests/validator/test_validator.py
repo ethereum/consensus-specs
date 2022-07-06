@@ -21,7 +21,7 @@ def test_verify_kzg_proof(spec, state):
     x = 3
     polynomial = get_sample_blob(spec)
     polynomial = [int(i) for i in polynomial]
-    commitment = spec.blob_to_commitment(polynomial)
+    commitment = spec.blob_to_kzg_commitment(polynomial)
 
     # Get the proof
     proof = spec.compute_kzg_proof(polynomial, x)
@@ -32,15 +32,15 @@ def test_verify_kzg_proof(spec, state):
 
 def _run_verify_blobs_sidecar_test(spec, state, blob_count):
     block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, blobs, blob_commitments = get_sample_opaque_tx(spec, blob_count=blob_count)
-    block.body.blob_commitments = blob_commitments
+    opaque_tx, blobs, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=blob_count)
+    block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
     state_transition_and_sign_block(spec, state, block)
 
     blobs_sidecar = spec.get_blobs_sidecar(block, blobs)
     privkey = privkeys[1]
     spec.get_signed_blobs_sidecar(state, blobs_sidecar, privkey)
-    expected_commitments = [spec.blob_to_commitment(blobs[i]) for i in range(blob_count)]
+    expected_commitments = [spec.blob_to_kzg_commitment(blobs[i]) for i in range(blob_count)]
     assert spec.verify_blobs_sidecar(block.slot, block.hash_tree_root(), expected_commitments, blobs_sidecar)
 
 

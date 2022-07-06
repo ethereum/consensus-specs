@@ -61,14 +61,14 @@ def get_sample_blob(spec, rng=None):
 
 def get_sample_opaque_tx(spec, blob_count=1, rng=None):
     blobs = []
-    blob_commitments = []
+    blob_kzg_commitments = []
     blob_versioned_hashes = []
     for _ in range(blob_count):
         blob = get_sample_blob(spec, rng)
-        blob_commitment = spec.KZGCommitment(spec.blob_to_commitment(blob))
-        blob_versioned_hash = spec.commitment_to_versioned_hash(blob_commitment)
+        blob_commitment = spec.KZGCommitment(spec.blob_to_kzg_commitment(blob))
+        blob_versioned_hash = spec.kzg_commitment_to_versioned_hash(blob_commitment)
         blobs.append(blob)
-        blob_commitments.append(blob_commitment)
+        blob_kzg_commitments.append(blob_commitment)
         blob_versioned_hashes.append(blob_versioned_hash)
 
     signed_blob_tx = SignedBlobTransaction(
@@ -78,4 +78,4 @@ def get_sample_opaque_tx(spec, blob_count=1, rng=None):
     )
     serialized_tx = serialize(signed_blob_tx)
     opaque_tx = spec.uint_to_bytes(spec.BLOB_TX_TYPE) + serialized_tx
-    return opaque_tx, blobs, blob_commitments
+    return opaque_tx, blobs, blob_kzg_commitments

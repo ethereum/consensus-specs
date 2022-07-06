@@ -18,7 +18,7 @@
     - [`lincomb`](#lincomb)
     - [`matrix_lincomb`](#matrix_lincomb)
   - [KZG](#kzg)
-    - [`blob_to_commitment`](#blob_to_commitment)
+    - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
     - [`compute_kzg_proof`](#compute_kzg_proof)
   - [Polynomials](#polynomials)
@@ -121,10 +121,10 @@ def matrix_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
 
 KZG core functions. These are also defined in EIP-4844 execution specs.
 
-#### `blob_to_commitment`
+#### `blob_to_kzg_commitment`
 
 ```python
-def blob_to_commitment(blob: Blob) -> KZGCommitment:
+def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
     return lincomb(KZG_SETUP_LAGRANGE, blob)
 ```
 

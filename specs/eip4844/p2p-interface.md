@@ -92,9 +92,9 @@ In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
-  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_commitments)`
+  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
-  -- i.e. `verify_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_commitments)`
+  -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 ##### `blobs_sidecar`
 
