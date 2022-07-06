@@ -361,7 +361,10 @@ def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldE
 #### `verify_kzg_multiproof`
 
 ```python
-def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], ys: List[BLSFieldElement], proof: KZGCommitment) -> None:
+def verify_kzg_multiproof(commitment: KZGCommitment,
+                          xs: List[BLSFieldElement],
+                          ys: List[BLSFieldElement],
+                          proof: KZGCommitment) -> None:
     """
     Verify a KZG multiproof.
     """
