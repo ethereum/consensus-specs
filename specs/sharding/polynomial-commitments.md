@@ -87,7 +87,7 @@ def next_power_of_two(x: int) -> int:
 #### `reverse_bit_order`
 
 ```python
-def reverse_bit_order(n, order):
+def reverse_bit_order(n: int, order: int) -> int:
     """
     Reverse the bit order of an integer n
     """
