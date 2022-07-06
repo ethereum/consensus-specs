@@ -363,7 +363,7 @@ def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldE
 ```python
 def verify_kzg_multiproof(commitment: KZGCommitment, xs: List[BLSFieldElement], ys: List[BLSFieldElement], proof: KZGCommitment) -> None:
     """
-    Verifies a KZG multiproof.
+    Verify a KZG multiproof.
     """
     zero_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_polynomial(xs, [0] * len(ys)))
     interpolated_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_polynomial(xs, ys))
