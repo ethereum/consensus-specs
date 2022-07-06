@@ -55,7 +55,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 ```python
 class BlobsAndCommmitments(Container):
     blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
-    blob_kzgs: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
+    commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
 ```
 
 ### `PolynomialAndCommitment`
@@ -79,10 +79,10 @@ Without the sidecar the block may be processed further optimistically,
 but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
 
 ```python
-def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCommitment]) -> bool:
+def is_data_available(slot: Slot, beacon_block_root: Root, blob_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-    return verify_blobs_sidecar(slot, beacon_block_root, kzgs, sidecar)
+    return verify_blobs_sidecar(slot, beacon_block_root, blob_commitments, sidecar)
 ```
 
 ### `hash_to_bls_field`
@@ -112,20 +112,21 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 ### `compute_aggregated_poly_and_commitment`
 
 ```python
-def compute_aggregated_poly_and_commitment(blobs: Sequence[BLSFieldElement],
-                                           blob_kzgs: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
+def compute_aggregated_poly_and_commitment(
+        blobs: Sequence[BLSFieldElement],
+        commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
     """
     Return the aggregated polynomial and aggregated KZG commitment.
     """
     # Generate random linear combination challenges
-    r = hash_to_bls_field(BlobsAndCommmitments(blobs=blobs, blob_kzgs=blob_kzgs))
-    r_powers = compute_powers(r, len(blob_kzgs))
+    r = hash_to_bls_field(BlobsAndCommmitments(blobs=blobs, commitments=commitments))
+    r_powers = compute_powers(r, len(commitments))
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
 
     # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(lincomb(blob_kzgs, r_powers))
+    aggregated_poly_commitment = KZGCommitment(lincomb(commitments, r_powers))
 
     return aggregated_poly, aggregated_poly_commitment
 ```
@@ -134,14 +135,14 @@ def compute_aggregated_poly_and_commitment(blobs: Sequence[BLSFieldElement],
 
 ```python
 def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
-                         expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> bool:
+                         expected_commitments: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> bool:
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
     kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
-    assert len(expected_kzgs) == len(blobs)
+    assert len(expected_commitments) == len(blobs)
 
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, expected_kzgs)
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, expected_commitments)
 
     # Generate challenge `x` and evaluate the aggregated polynomial at `x`
     x = hash_to_bls_field(PolynomialAndCommitment(polynomial=aggregated_poly, commitment=aggregated_poly_commitment))
@@ -155,8 +156,8 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
 
 ```python
 def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
-    blob_kzgs = [blob_to_kzg(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, blob_kzgs)
+    commitments = [blob_to_commitment(blob) for blob in blobs]
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
     x = hash_to_bls_field(PolynomialAndCommitment(
         polynomial=aggregated_poly,
         commitment=aggregated_poly_commitment,
@@ -183,16 +184,17 @@ the blobs are retrieved and processed:
 # block.body.execution_payload = execution_payload
 # ...
 
-kzgs, blobs = get_blobs(payload_id)
+blobs, blob_commitments = get_blobs(payload_id)
 
 # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
-assert verify_kzgs_against_transactions(execution_payload.transactions, kzgs)
+assert verify_commitments_against_transactions(execution_payload.transactions, blob_commitments)
 
 # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
-assert len(kzgs) == len(blobs) and [blob_to_kzg(blob) == kzg for blob, kzg in zip(blobs, kzgs)]
+assert len(blob_commitments) == len(blobs)
+assert [blob_to_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_commitments)]
 
 # Update the block body 
-block.body.blob_kzgs = kzgs
+block.body.blob_commitments = blob_commitments
 ```
 
 The `blobs` should be held with the block in preparation of publishing.

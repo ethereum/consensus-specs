@@ -21,12 +21,12 @@
     - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [`kzg_to_versioned_hash`](#kzg_to_versioned_hash)
+    - [`commitment_to_versioned_hash`](#commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
-    - [`verify_kzgs_against_transactions`](#verify_kzgs_against_transactions)
+    - [`verify_commitments_against_transactions`](#verify_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Blob KZGs](#blob-kzgs)
+    - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -52,7 +52,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
-| `BLOB_COMMITMENT_VERSION_KZG` | `Bytes1(0x01)` | 
+| `BLOB_COMMITMENT_VERSION` | `Bytes1(0x01)` | 
 
 ### Domain types
 
@@ -93,18 +93,18 @@ class BeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload 
-    blob_kzgs: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
+    blob_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
 
 ## Helper functions
 
 ### Misc
 
-#### `kzg_to_versioned_hash`
+#### `commitment_to_versioned_hash`
 
 ```python
-def kzg_to_versioned_hash(kzg: KZGCommitment) -> VersionedHash:
-    return BLOB_COMMITMENT_VERSION_KZG + hash(kzg)[1:]
+def commitment_to_versioned_hash(commitment: KZGCommitment) -> VersionedHash:
+    return BLOB_COMMITMENT_VERSION + hash(commitment)[1:]
 ```
 
 #### `tx_peek_blob_versioned_hashes`
@@ -128,15 +128,16 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
     ]
 ```
 
-#### `verify_kzgs_against_transactions`
+#### `verify_commitments_against_transactions`
 
 ```python
-def verify_kzgs_against_transactions(transactions: Sequence[Transaction], blob_kzgs: Sequence[KZGCommitment]) -> bool:
+def verify_commitments_against_transactions(transactions: Sequence[Transaction],
+                                            commitments: Sequence[KZGCommitment]) -> bool:
     all_versioned_hashes = []
     for tx in transactions:
         if tx[0] == BLOB_TX_TYPE:
             all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
-    return all_versioned_hashes == [kzg_to_versioned_hash(kzg) for kzg in blob_kzgs]
+    return all_versioned_hashes == [commitment_to_versioned_hash(commitment) for commitment in commitments]
 ```
 
 ## Beacon chain state transition function
@@ -152,14 +153,14 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzgs(state, block.body)  # [New in EIP-4844]
+    process_blob_commitments(state, block.body)  # [New in EIP-4844]
 ```
 
-#### Blob KZGs
+#### Blob KZG commitments
 
 ```python
-def process_blob_kzgs(state: BeaconState, body: BeaconBlockBody):
-    assert verify_kzgs_against_transactions(body.execution_payload.transactions, body.blob_kzgs)
+def process_blob_commitments(state: BeaconState, body: BeaconBlockBody):
+    assert verify_commitments_against_transactions(body.execution_payload.transactions, body.blob_commitments)
 ```
 
 ## Testing

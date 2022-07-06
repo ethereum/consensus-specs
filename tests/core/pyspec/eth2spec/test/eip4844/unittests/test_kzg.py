@@ -16,6 +16,6 @@ from eth2spec.test.context import (
 @with_phases([EIP4844])
 @spec_state_test
 @with_presets([MINIMAL])
-def test_blob_to_kzg(spec, state):
+def test_blob_to_commitment(spec, state):
     blob = get_sample_blob(spec)
-    spec.blob_to_kzg(blob)
+    spec.blob_to_commitment(blob)
