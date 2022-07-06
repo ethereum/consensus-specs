@@ -209,7 +209,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
 ```python
 def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
     """
-    Compute a linear combination of field element vectors
+    Compute a linear combination of field element vectors.
     """
     r = [0 for i in len(vectors[0])]
     for v, a in zip(vectors, scalars):
