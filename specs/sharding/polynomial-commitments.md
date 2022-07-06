@@ -272,7 +272,9 @@ def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement])
         for j in range(len(ys)):
             if j != i:
                 weight_adjustment = bls_modular_inverse(xs[j] - xs[i])
-                summand  = multiply_polynomials(summand, [weight_adjustment, ((MODULUS - weight_adjustment) * xs[i])])
+                summand = multiply_polynomials(
+                    summand, [weight_adjustment, ((BLS_MODULUS - weight_adjustment) * xs[i])]
+                )
         r = add_polynomials(r, summand)
     
     return r
