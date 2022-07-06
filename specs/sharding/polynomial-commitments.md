@@ -99,7 +99,7 @@ def reverse_bit_order(n: int, order: int) -> int:
 #### `list_to_reverse_bit_order`
 
 ```python
-def list_to_reverse_bit_order(l):
+def list_to_reverse_bit_order(l: List[int]) -> List[int]:
     """
     Convert a list between normal and reverse bit order. This operation is idempotent.
     """
