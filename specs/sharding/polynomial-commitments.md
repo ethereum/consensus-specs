@@ -318,7 +318,8 @@ We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldber
 ```python
 def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
     """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants. This is a non-optimized implementation.
+    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    This is a non-optimized implementation.
     """
     r = bls.Z1()
     for x, a in zip(points, scalars):
