@@ -348,7 +348,8 @@ def hash_to_bls_field(x: Container, challenge_number: uint64) -> BLSFieldElement
 ```python
 def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldElement, proof: KZGCommitment) -> None:
     """
-    Checks that `proof` is a valid KZG proof for the polynomial committed to by `commitment` evaluated at `x` equals `y`
+    Check that `proof` is a valid KZG proof for the polynomial committed to by `commitment` evaluated
+    at `x` equals `y`.
     """
     zero_poly = G2_SETUP[1].add(G2_SETUP[0].mult(x).neg())
 
