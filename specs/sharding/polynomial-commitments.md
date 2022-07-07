@@ -81,6 +81,7 @@ We define the following Python custom types for type hinting and readability:
 
 ```python
 def next_power_of_two(x: int) -> int:
+    assert x > 0
     return 2 ** ((x - 1).bit_length())
 ```
 
