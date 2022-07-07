@@ -96,15 +96,15 @@ pyspec:
 install_test:
 	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
 
-# Testing against `minimal` config by default
+# Testing against `minimal` or `mainnet` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.$(TEST_TYPE) --cov=eth2spec.altair.$(TEST_TYPE) --cov=eth2spec.bellatrix.$(TEST_TYPE) --cov=eth2spec.capella.$(TEST_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
-# Testing against `minimal` config by default
+# Testing against `minimal` or `mainnet` config by default
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.$(TEST_TYPE) --cov=eth2spec.altair.$(TEST_TYPE) --cov=eth2spec.bellatrix.$(TEST_TYPE) --cov=eth2spec.capella.$(TEST_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
