@@ -116,7 +116,7 @@ def list_to_reverse_bit_order(l: List[int]) -> List[int]:
 ```python
 def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
     """
-    Compute the modular inverse of x, i.e. y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
+    Compute the modular inverse of x, i.e. y such that x * y % BLS_MODULUS == 1 and return 1 for x == 0
     """
     lm, hm = 1, 0
     low, high = x % BLS_MODULUS, BLS_MODULUS
