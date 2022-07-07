@@ -8,7 +8,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [BLS Field](#bls-field)
@@ -16,6 +15,8 @@
 - [Custom types](#custom-types)
 - [Helper functions](#helper-functions)
     - [`next_power_of_two`](#next_power_of_two)
+    - [`reverse_bit_order`](#reverse_bit_order)
+    - [`list_to_reverse_bit_order`](#list_to_reverse_bit_order)
 - [Field operations](#field-operations)
   - [Generic field operations](#generic-field-operations)
     - [`bls_modular_inverse`](#bls_modular_inverse)
