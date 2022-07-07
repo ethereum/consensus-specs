@@ -133,7 +133,7 @@ class BuilderBlockBid(Container):
     validator_index: ValidatorIndex # Validator index for this bid
     
     # Block builders use an Eth1 address -- need signature as
-    # block builder fees and data gas base fees will be charged to this address
+    # block bid and data gas base fees will be charged to this address
     signature_y_parity: bool
     signature_r: uint256
     signature_s: uint256    
@@ -241,7 +241,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     if is_execution_enabled(state, block.body):
         process_execution_payload(state, block, EXECUTION_ENGINE)
 
-    process_randao(state, block.body)
+    if not is_builder_block_slot(block.slot):
+        process_randao(state, block.body)
+
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
@@ -309,6 +311,11 @@ def verify_builder_block_bid(state: BeaconState, block: BeaconBlock) -> None:
         # We do not check that the builder address exists or has sufficient balance here.
         # If it does not have sufficient balance, the block proposer loses out, so it is their
         # responsibility to check.
+
+        # Check that the builder is a slashable validator. We can probably reduce this requirement and only
+        # ensure that they have 1 ETH in their account as a DOS protection.
+        builder = state.validators[builder_block_bid.validator_index]
+        assert is_slashable_validator(builder, get_current_epoch(state))
 ```
 
 #### Sharded data

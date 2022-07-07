@@ -44,8 +44,22 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 |---------------------------------|--------------------------|
 | `shard_row_{subnet_id}`         | `SignedShardSample`      |
 | `shard_column_{subnet_id}`      | `SignedShardSample`      |
+| `builder_block_bid`             | `BuilderBlockBid`        |
 
 The [DAS network specification](./das-p2p.md) defines additional topics.
+
+#### Builder block bid
+
+##### `builder_block_bid`
+
+- _[IGNORE]_ The `bid` is published 1 slot early or later (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. validate that `bid.slot <= current_slot + 1`
+  (a client MAY queue future samples for propagation at the appropriate slot).
+- _[IGNORE]_ The `bid` is for the current or next block
+  i.e. validate that `bid.slot >= current_slot`
+- _[IGNORE]_ The `bid` is the first `bid` valid bid for `bid.slot`, or the bid is at least 1% higher than the previous known `bid`
+- _[REJECT]_ The validator defined by `bid.validator_index` exists and is slashable.
+- _[REJECT]_ The bid signature, which is an Eth1 signature, needs to be valid and the address needs to contain enough Ether to cover the bid and the data gas base fee.
 
 #### Shard sample subnets
 
