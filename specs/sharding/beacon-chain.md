@@ -100,12 +100,6 @@ With the introduction of builder blocks the number of slots per epoch is doubled
 | - | - | - |
 | `SAMPLES_PER_BLOB` | `uint64(2**9)` (= 512) | 248 * 512 = 126,976 bytes |
 
-### Precomputed root of unity
-
-| Name | Value | Notes |
-| - | - | - |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE), BLS_MODULUS)` |
-
 ## Configuration
 
 Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.  
