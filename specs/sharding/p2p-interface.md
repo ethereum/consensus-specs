@@ -8,12 +8,13 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Gossip domain](#gossip-domain)
   - [Topics and messages](#topics-and-messages)
+    - [Builder block bid](#builder-block-bid)
+      - [`builder_block_bid`](#builder_block_bid)
     - [Shard sample subnets](#shard-sample-subnets)
       - [`shard_row_{subnet_id}`](#shard_row_subnet_id)
 
