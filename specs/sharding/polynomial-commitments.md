@@ -213,7 +213,7 @@ def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldE
     """
     Compute a linear combination of field element vectors.
     """
-    r = [0 for i in len(vectors[0])]
+    r = [0]*len(vectors[0])
     for v, a in zip(vectors, scalars):
         for i, x in enumerate(v):
             r[i] = (r[i] + a * x) % BLS_MODULUS
