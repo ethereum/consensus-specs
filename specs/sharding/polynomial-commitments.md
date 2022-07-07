@@ -154,7 +154,7 @@ def roots_of_unity(order: uint64) -> List[BLSFieldElement]:
 def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
     current_power = 1
     powers = []
-    for i in range(n):
+    for _ in range(n):
         powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % BLS_MODULUS
     return powers
