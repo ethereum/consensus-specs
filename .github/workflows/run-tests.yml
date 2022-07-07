@@ -12,6 +12,7 @@ jobs:
         uses: actions/checkout@v2
   pyspec-tests:
     runs-on: self-hosted
+    needs: git-sync
     steps:
       - name: Install pyspec requirements
         run: make install_test
@@ -25,16 +26,19 @@ jobs:
         run: make citest fork=capella    
   table_of_contents:
      runs-on: self-hosted
+     needs: git-sync
      steps:
         - name: Check table of contents
           run: sudo npm install -g doctoc@2 && make check_toc
   codespell:
      runs-on: self-hosted
+     needs: git-sync
      steps:
         - name: Check codespell
           run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
   lint: 
       runs-on: self-hosted
+      needs: git-sync
       steps:
         - name: Run linter for pyspec
           run: make lint
@@ -42,6 +46,7 @@ jobs:
           run: make lint_generators  
   store_test_results:
       runs-on: self-hosted
+      needs: pyspec-tests
       steps:
         - uses: actions/upload-artifact@v2
           if: always()
