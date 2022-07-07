@@ -26,7 +26,7 @@
     - [`BuilderBlockBid`](#BuilderBlockbid)
     - [`BuilderBlockBidWithRecipientAddress`](#BuilderBlockbidwithrecipientaddress)
     - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
-    - [`SignedShardSample`](#signedshardsample)
+    - [`ShardSample`](#ShardSample)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
     - [`BuilderBlockData`](#builderblockdata)
@@ -172,10 +172,10 @@ class ShardedCommitmentsContainer(Container):
     block_verification_kzg_proof: KZGCommitment
 ```
 
-#### `SignedShardSample`
+#### `ShardSample`
 
 ```python
-class SignedShardSample(Container):
+class ShardSample(Container):
     slot: Slot
     row: uint64
     column: uint64
