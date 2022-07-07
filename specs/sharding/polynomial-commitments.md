@@ -201,7 +201,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
     for i in range(d + 1):
         coefs[i] = (coefs[i] + B(r) * bls_modular_inverse(Bprime(r) * (r - roots[i]))) % BLS_MODULUS
     
-    assert elliptic_curve_lincomb(commitments, coefs) == bls.Z1()
+    assert elliptic_curve_lincomb(commitments, coefs) == bls.inf_G1()
 ```
 
 #### `vector_lincomb`
@@ -321,7 +321,7 @@ def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldEl
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     This is a non-optimized implementation.
     """
-    r = bls.Z1()
+    r = bls.inf_G1()
     for x, a in zip(points, scalars):
         r = r.add(x.mult(a))
     return r
