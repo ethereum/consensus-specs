@@ -46,7 +46,7 @@
 
 ## Introduction
 
-This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the sharding specification. The implementations are not optimized for performance, but readability. All practical implementations shoul optimize the polynomial operations, and hints what the best known algorithms for these implementations are are included below.
+This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the sharding specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations, and hints what the best known algorithms for these implementations are are included below.
 
 ## Constants
 
