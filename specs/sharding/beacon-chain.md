@@ -333,7 +333,9 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
         combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
 
-        verify_degree_proof(combined_commitment, SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE, sharded_commitments_container.degree_proof)
+        payload_field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE // 2
+
+        verify_degree_proof(combined_commitment, payload_field_elements_per_blob, sharded_commitments_container.degree_proof)
 
         # Verify that the 2*N commitments lie on a degree < N polynomial
         low_degree_check(sharded_commitments_container.sharded_commitments)
@@ -341,11 +343,11 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         # Verify that blocks since the last builder block have been included
         blocks_chunked = [bytes_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_builder_block]
         block_vectors = []
-        field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE
+
         for block_chunked in blocks_chunked:
-            for i in range(0, len(block_chunked), field_elements_per_blob):
-                block_vectors.append(block_chunked[i:i + field_elements_per_blob])
-            
+            for i in range(0, len(block_chunked), payload_field_elements_per_blob):
+                block_vectors.append(block_chunked[i:i + payload_field_elements_per_blob])
+
         number_of_blobs = len(block_vectors)
         r = hash_to_bls_field(sharded_commitments_container.sharded_commitments[:number_of_blobs], 0)
         x = hash_to_bls_field(sharded_commitments_container.sharded_commitments[:number_of_blobs], 1)
