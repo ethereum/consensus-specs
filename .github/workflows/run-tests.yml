@@ -1,5 +1,9 @@
 name: Run tests
 
+env:
+  TEST_TYPE: "minimal"
+  DEFAULT_BRANCH: "dev"
+
 # Run tests on workflow_Dispatch
 on: 
   push:
@@ -13,24 +17,45 @@ on:
         description: Type of test to run, either mainnet or minimal
         type: string
         required: true
+      commitRef:
+        description: The branch, tag or SHA to checkout and build from
+        default: dev
+        required: true  
   schedule:
     - cron: '0 0 * * *'
 
 jobs:
-  git-sync:
+  setup-env:
     runs-on: self-hosted
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - uses: actions/cache@v2
         id: cache-git
         with:
           path: ./*
           key: ${{ github.sha }}
-  
+      - name: set TEST_TYPE
+        if: github.event.inputs.an_input != ''        
+        run: |
+          echo "::set-output name=test-type::${{ github.event.inputs.test_type || env.TEST_TYPE }}"      
+      - name: set TEST_TYPE
+        if: ${{ github.event_name == 'push' && github.ref_name == 'dev' }}
+        run: |
+          echo "::set-env name=test_type::env.TEST_TYPE"    
+       - name: set TEST_TYPE
+        if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
+        run: |
+          echo "::set-env name=test_type::mainnet"        
+      - name: set TEST_TYPE
+        if: github.event.schedule=='0 0 * * *'
+        run: |
+          echo "::set-env name=test_type::mainnet"
   pyspec-tests:
     runs-on: self-hosted
-    needs: git-sync
+    needs: setup-env
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix","capella"]
@@ -41,13 +66,13 @@ jobs:
           path: ./*
           key: ${{ github.sha }}
       - name: Install pyspec requirements
-        run: make install_test TEST_TYPE=minimal
+        run: make install_test TEST_TYPE=$test_type
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_TYPE=minimal
+        run: make citest fork=${{ matrix.version }} TEST_TYPE=$test_type
 
   table_of_contents:
      runs-on: self-hosted
-     needs: git-sync
+     needs: setup-env
      steps:
         - uses: actions/cache@v2
           id: restore-build
@@ -58,7 +83,7 @@ jobs:
           run: sudo npm install -g doctoc@2 && make check_toc
   codespell:
      runs-on: self-hosted
-     needs: git-sync
+     needs: setup-env
      steps:
         - uses: actions/cache@v2
           id: restore-build
@@ -69,7 +94,7 @@ jobs:
           run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
   lint: 
       runs-on: self-hosted
-      needs: git-sync
+      needs: setup-env
       steps:
         - uses: actions/cache@v2
           id: restore-build
