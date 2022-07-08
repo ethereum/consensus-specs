@@ -69,6 +69,11 @@ jobs:
         run: make install_test TEST_TYPE=${{ env.test_type }}
       - name: test-${{ matrix.version }}
         run: make citest fork=${{ matrix.version }} TEST_TYPE=${{ env.test_type }}
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: test-${{ matrix.version }}
+          path: tests/core/pyspec/test-reports
 
   table_of_contents:
      runs-on: self-hosted
@@ -105,13 +110,3 @@ jobs:
           run: make lint
         - name: Run linter for test generators
           run: make lint_generators  
-  store_test_results:
-      runs-on: self-hosted
-      needs: pyspec-tests
-      steps:
-        - uses: actions/upload-artifact@v2
-          if: always()
-          with:
-            name: test-results
-            path: tests/core/pyspec/test-reports
-
