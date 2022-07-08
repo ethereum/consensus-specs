@@ -7,7 +7,6 @@ on:
 jobs:
   pyspec-tests:
     runs-on: self-hosted
-    needs: pyspec-deps
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix","capella"]
