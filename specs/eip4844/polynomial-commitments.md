@@ -150,18 +150,24 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
 #### `compute_kzg_proof`
 
 ```python
-def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement) -> KZGProof:
+def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement) -> KZGProof:
+    """Compute KZG proof at point `z` with `polynomial` being in evaluation form"""
+
     # To avoid SSZ overflow/underflow, convert element into int
     polynomial = [int(i) for i in polynomial]
+    z = int(z)
 
-    # Convert `polynomial` to coefficient form
-    assert pow(ROOTS_OF_UNITY[1], len(polynomial), BLS_MODULUS) == 1
-    fft_output = fft(polynomial, ROOTS_OF_UNITY)
-    inv_length = pow(len(polynomial), BLS_MODULUS - 2, BLS_MODULUS)
-    polynomial_in_coefficient_form = [fft_output[-i] * inv_length % BLS_MODULUS for i in range(len(fft_output))]
+    # Shift our polynomial first (in evaluation form we can't handle the division remainder)
+    y = evaluate_polynomial_in_evaluation_form(polynomial, z)
+    polynomial_shifted = [(p - int(y)) % BLS_MODULUS for p in polynomial]
 
-    quotient_polynomial = div_polys(polynomial_in_coefficient_form, [-int(x), 1])
-    return KZGProof(lincomb(KZG_SETUP_G1[:len(quotient_polynomial)], quotient_polynomial))
+    # Make sure we won't divide by zero during division
+    assert z not in ROOTS_OF_UNITY
+    denominator_poly = [(x - z) % BLS_MODULUS for x in ROOTS_OF_UNITY]
+
+    # Calculate quotient polynomial by doing point-by-point division
+    quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
+    return KZGProof(lincomb(KZG_SETUP_LAGRANGE, quotient_polynomial))
 ```
 
 ### Polynomials
@@ -180,6 +186,9 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement]
     assert width == FIELD_ELEMENTS_PER_BLOB
     inverse_width = bls_modular_inverse(width)
 
+    # Make sure we won't divide by zero during division
+    assert z not in ROOTS_OF_UNITY
+
     result = 0
     for i in range(width):
         result += div(int(polynomial[i]) * int(ROOTS_OF_UNITY[i]), (z - ROOTS_OF_UNITY[i]))
@@ -187,43 +196,3 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement]
     return result
 ```
 
-#### `fft`
-
-```python
-def fft(vals, domain):
-    """
-    FFT for ``BLSFieldElement``.
-    """
-    if len(vals) == 1:
-        return vals
-    L = fft(vals[::2], domain[::2])
-    R = fft(vals[1::2], domain[::2])
-    result = [0] * len(vals)
-    for i, (x, y) in enumerate(zip(L, R)):
-        y_times_root = y * domain[i] % BLS_MODULUS
-        result[i] = x + y_times_root % BLS_MODULUS
-        result[i + len(L)] = x + (BLS_MODULUS - y_times_root) % BLS_MODULUS
-    return result
-```
-
-#### `div_polys`
-
-```python
-def div_polys(a: Sequence[int], b: Sequence[int]) -> Sequence[BLSFieldElement]:
-    """
-    Long polynomial division for two polynomials in coefficient form.
-    """
-    a = a.copy()  # avoid side effects
-    result = []
-    a_position = len(a) - 1
-    b_position = len(b) - 1
-    diff = a_position - b_position
-    while diff >= 0:
-        quotient = div(a[a_position], b[b_position])
-        result.insert(0, quotient)
-        for i in range(b_position, -1, -1):
-            a[diff + i] -= b[i] * quotient
-        a_position -= 1
-        diff -= 1
-    return [x % BLS_MODULUS for x in result]
-```

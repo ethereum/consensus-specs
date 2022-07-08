@@ -151,6 +151,7 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     x = hash_to_bls_field(
         PolynomialAndCommitment(polynomial=aggregated_poly, kzg_commitment=aggregated_poly_commitment)
     )
+    # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
     y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
 
     # Verify aggregated proof
