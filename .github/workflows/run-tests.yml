@@ -38,14 +38,14 @@ jobs:
           path: ./*
           key: ${{ github.sha }}
       - name: set TEST_TYPE
-        if: github.event.inputs.an_input != ''        
+        if: github.event.inputs.test_type != ''        
         run: |
           echo "::set-output name=test-type::${{ github.event.inputs.test_type || env.TEST_TYPE }}"      
       - name: set TEST_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'dev' }}
         run: |
           echo "::set-env name=test_type::env.TEST_TYPE"    
-       - name: set TEST_TYPE
+      - name: set TEST_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
           echo "::set-env name=test_type::mainnet"        
