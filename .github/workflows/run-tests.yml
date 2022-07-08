@@ -14,7 +14,7 @@ on:
         type: string
         required: true
   schedule:
-    - cron: "20 * * * *"      
+    - cron: '30 * * * *'
 
 jobs:
   git-sync:
