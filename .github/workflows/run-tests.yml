@@ -3,7 +3,19 @@ name: Run tests
 # Run tests on workflow_Dispatch
 on: 
   workflow_dispatch:
-
+    inputs:
+      test_type:
+        default: minimal
+        description: Type of test to run, either mainnet or minimal
+        type: string
+        required: true
+  schedule:
+    - cron: "0 0 * * *"      
+      inputs: 
+        test_type:
+          default: mainnet
+          description: Type of test to run, either mainnet or minimal
+          type: string
 jobs:
   git-sync:
     runs-on: self-hosted
