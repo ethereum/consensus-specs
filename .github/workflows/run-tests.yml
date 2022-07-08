@@ -2,6 +2,10 @@ name: Run tests
 
 # Run tests on workflow_Dispatch
 on: 
+  push:
+    branches:
+      - dev 
+      - master
   workflow_dispatch:
     inputs:
       test_type:
@@ -10,7 +14,7 @@ on:
         type: string
         required: true
   schedule:
-    - cron: "53 14 * * *"      
+    - cron: "10 15 * * *"      
 
 jobs:
   git-sync:
