@@ -10,12 +10,12 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v2
-    pyspec-deps:
-      runs-on: self-hosted
-      needs: git-sync
-      steps:
-        - name: Install pyspec requirements
-          run: make install_test TEST_TYPE=minimal      
+  pyspec-deps:
+    runs-on: self-hosted
+    needs: git-sync
+    steps:
+      - name: Install pyspec requirements
+        run: make install_test TEST_TYPE=minimal      
   pyspec-tests:
     runs-on: self-hosted
     needs: pyspec-deps
