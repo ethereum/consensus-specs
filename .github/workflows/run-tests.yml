@@ -10,12 +10,8 @@ on:
         type: string
         required: true
   schedule:
-    - cron: "40 14 * * *"      
-      inputs: 
-        test_type:
-          default: mainnet
-          description: Type of test to run, either mainnet or minimal
-          type: string
+    - cron: "53 14 * * *"      
+
 jobs:
   git-sync:
     runs-on: self-hosted
