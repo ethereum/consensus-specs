@@ -10,20 +10,24 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v2
+    pyspec-deps:
+      runs-on: self-hosted
+      needs: git-sync
+      steps:
+        - name: Install pyspec requirements
+          run: make install_test TEST_TYPE=minimal      
   pyspec-tests:
     runs-on: self-hosted
-    needs: git-sync
+    needs: pyspec-deps
+    strategy:
+      matrix:
+        version: ["phase0", "altair", "bellatrix","capella"]
     steps:
       - name: Install pyspec requirements
         run: make install_test TEST_TYPE=minimal
-      - name: test-phase0
-        run: make citest fork=phase0 TEST_TYPE=minimal
-      - name: test-altair
-        run: make citest fork=altair TEST_TYPE=minimal
-      - name: test-bellatrix
-        run: make citest fork=bellatrix TEST_TYPE=minimal
-      - name: test-capella
-        run: make citest fork=capella TEST_TYPE=minimal     
+      - name: test-${{ matrix.version }}
+        run: make citest fork=${{ matrix.version }} TEST_TYPE=minimal
+
   table_of_contents:
      runs-on: self-hosted
      needs: git-sync
