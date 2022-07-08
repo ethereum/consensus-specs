@@ -10,7 +10,7 @@ on:
         type: string
         required: true
   schedule:
-    - cron: "30 15 * * *"      
+    - cron: "40 14 * * *"      
       inputs: 
         test_type:
           default: mainnet
