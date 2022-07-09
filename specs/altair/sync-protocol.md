@@ -195,7 +195,10 @@ def process_slot_for_light_client_store(store: LightClientStore, current_slot: S
         current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
         and store.best_valid_update is not None
     ):
-        # Forced best update when the update timeout has elapsed
+        # Forced best update when the update timeout has elapsed.
+        # Because the apply logic waits for `finalized_header.slot` to indicate sync committee finality,
+        # the `attested_header` may be treated as `finalized_header` in extended periods of non-finality
+        # to guarantee progression into later sync committee periods according to `is_better_update`.
         if store.best_valid_update.finalized_header.slot <= store.finalized_header.slot:
             store.best_valid_update.finalized_header = store.best_valid_update.attested_header
         apply_light_client_update(store, store.best_valid_update)
