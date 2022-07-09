@@ -21,6 +21,7 @@
   - [`is_better_update`](#is_better_update)
   - [`get_safety_threshold`](#get_safety_threshold)
   - [`get_subtree_index`](#get_subtree_index)
+  - [`compute_sync_committee_period_at_slot`](#compute_sync_committee_period_at_slot)
 - [Light client state updates](#light-client-state-updates)
     - [`process_slot_for_light_client_store`](#process_slot_for_light_client_store)
     - [`validate_light_client_update`](#validate_light_client_update)
@@ -135,12 +136,12 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     # Compare sync committee finality
     if new_has_finality:
         new_has_sync_committee_finality = (
-            compute_sync_committee_period(compute_epoch_at_slot(new_update.finalized_header.slot)) ==
-            compute_sync_committee_period(compute_epoch_at_slot(new_update.attested_header.slot))
+            compute_sync_committee_period_at_slot(new_update.finalized_header.slot) ==
+            compute_sync_committee_period_at_slot(new_update.attested_header.slot)
         )
         old_has_sync_committee_finality = (
-            compute_sync_committee_period(compute_epoch_at_slot(old_update.finalized_header.slot)) ==
-            compute_sync_committee_period(compute_epoch_at_slot(old_update.attested_header.slot))
+            compute_sync_committee_period_at_slot(old_update.finalized_header.slot) ==
+            compute_sync_committee_period_at_slot(old_update.attested_header.slot)
         )
         if new_has_sync_committee_finality != old_has_sync_committee_finality:
             return new_has_sync_committee_finality > old_has_sync_committee_finality
@@ -170,6 +171,13 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
 ```python
 def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
+```
+
+### `compute_sync_committee_period_at_slot`
+
+```python
+def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+    return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 
 ## Light client state updates
@@ -207,12 +215,12 @@ def validate_light_client_update(store: LightClientStore,
 
     # Verify update does not skip a sync committee period
     assert current_slot >= update.signature_slot > update.attested_header.slot >= update.finalized_header.slot
-    store_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
-    signature_period = compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))
+    store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
+    signature_period = compute_sync_committee_period_at_slot(update.signature_slot)
     assert signature_period in (store_period, store_period + 1)
 
     # Verify update is relevant
-    attested_period = compute_sync_committee_period(compute_epoch_at_slot(update.attested_header.slot))
+    attested_period = compute_sync_committee_period_at_slot(update.attested_header.slot)
     assert update.attested_header.slot > store.finalized_header.slot
 
     # Verify that the `finality_branch`, if present, confirms `finalized_header`
@@ -269,8 +277,8 @@ def validate_light_client_update(store: LightClientStore,
 
 ```python
 def apply_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
-    store_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
-    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(update.finalized_header.slot))
+    store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
+    finalized_period = compute_sync_committee_period_at_slot(update.finalized_header.slot)
     if finalized_period == store_period + 1:
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
