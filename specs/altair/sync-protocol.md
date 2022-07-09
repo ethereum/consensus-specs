@@ -136,12 +136,12 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     # Compare sync committee finality
     if new_has_finality:
         new_has_sync_committee_finality = (
-            compute_sync_committee_period_at_slot(new_update.finalized_header.slot) ==
-            compute_sync_committee_period_at_slot(new_update.attested_header.slot)
+            compute_sync_committee_period_at_slot(new_update.finalized_header.slot)
+            == compute_sync_committee_period_at_slot(new_update.attested_header.slot)
         )
         old_has_sync_committee_finality = (
-            compute_sync_committee_period_at_slot(old_update.finalized_header.slot) ==
-            compute_sync_committee_period_at_slot(old_update.attested_header.slot)
+            compute_sync_committee_period_at_slot(old_update.finalized_header.slot)
+            == compute_sync_committee_period_at_slot(old_update.attested_header.slot)
         )
         if new_has_sync_committee_finality != old_has_sync_committee_finality:
             return new_has_sync_committee_finality > old_has_sync_committee_finality
