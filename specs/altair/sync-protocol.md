@@ -131,7 +131,7 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     new_has_finality = is_finality_update(new_update)
     old_has_finality = is_finality_update(old_update)
     if new_has_finality != old_has_finality:
-        return new_has_finality > old_has_finality
+        return new_has_finality
 
     # Compare sync committee finality
     if new_has_finality:
