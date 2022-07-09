@@ -144,7 +144,7 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
             == compute_sync_committee_period_at_slot(old_update.attested_header.slot)
         )
         if new_has_sync_committee_finality != old_has_sync_committee_finality:
-            return new_has_sync_committee_finality > old_has_sync_committee_finality
+            return new_has_sync_committee_finality
 
     # Tiebreaker 1: Sync committee participation beyond supermajority
     if new_num_active_participants != old_num_active_participants:
