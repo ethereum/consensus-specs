@@ -60,7 +60,7 @@ jobs:
         run: |
           echo "spec_test_type=${{ github.event.inputs.test_type || env.TEST_TYPE }}" >> $GITHUB_ENV
       - name: set TEST_TYPE
-        if: ${{ github.event_name == 'push' && github.ref_name != 'master' }}
+        if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
         run: |
           echo "spec_test_type=${{ env.TEST_TYPE}}" >> $GITHUB_ENV    
       - name: set TEST_TYPE
@@ -116,5 +116,3 @@ jobs:
           run: make lint
         - name: Run linter for test generators
           run: make lint_generators  
-
-
