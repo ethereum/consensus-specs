@@ -2,7 +2,7 @@ name: Run tests
 
 defaults:
   run:
-    shell: /usr/bin/zsh{0}
+    shell: /usr/bin/zsh
 
 env:
   TEST_TYPE: "minimal"
