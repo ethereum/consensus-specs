@@ -132,18 +132,18 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
 
 ```python
 def verify_kzg_proof(polynomial_kzg: KZGCommitment,
-                     x: BLSFieldElement,
+                     z: BLSFieldElement,
                      y: BLSFieldElement,
                      kzg_proof: KZGProof) -> bool:
     """
-    Verify KZG proof that ``p(x) == y`` where ``p(x)`` is the polynomial represented by ``polynomial_kzg``.
+    Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
-    # Verify: P - y = Q * (X - x)
-    X_minus_x = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2, BLS_MODULUS - x))
+    # Verify: P - y = Q * (X - z)
+    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2, BLS_MODULUS - z))
     P_minus_y = bls.add(bls.bytes48_to_G1(polynomial_kzg), bls.multiply(bls.G1, BLS_MODULUS - y))
     return bls.pairing_check([
         [P_minus_y, bls.neg(bls.G2)],
-        [bls.bytes48_to_G1(kzg_proof), X_minus_x]
+        [bls.bytes48_to_G1(kzg_proof), X_minus_z]
     ])
 ```
 
@@ -170,11 +170,11 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], x: BLSFieldElement)
 
 ```python
 def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement],
-                                           x: BLSFieldElement) -> BLSFieldElement:
+                                           z: BLSFieldElement) -> BLSFieldElement:
     """
-    Evaluate a polynomial (in evaluation form) at an arbitrary point `x`
+    Evaluate a polynomial (in evaluation form) at an arbitrary point `z`
     Uses the barycentric formula:
-       f(x) = (1 - x**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (x - DOMAIN[i])
+       f(z) = (1 - z**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
     width = len(polynomial)
     assert width == FIELD_ELEMENTS_PER_BLOB
@@ -182,8 +182,8 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement]
 
     result = 0
     for i in range(width):
-        result += div(int(polynomial[i]) * int(ROOTS_OF_UNITY[i]), (x - ROOTS_OF_UNITY[i]))
-    result = result * (pow(x, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
+        result += div(int(polynomial[i]) * int(ROOTS_OF_UNITY[i]), (z - ROOTS_OF_UNITY[i]))
+    result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return result
 ```
 
