@@ -57,23 +57,23 @@ jobs:
       - name: set TEST_TYPE
         if: github.event.inputs.test_type != ''        
         run: |
-          echo "test_type=${{ github.event.inputs.test_type || env.TEST_TYPE }}" >> $GITHUB_ENV
+          echo "spec_test_type=${{ github.event.inputs.test_type || env.TEST_TYPE }}" >> $GITHUB_ENV
       - name: set TEST_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'dev' }}
         run: |
-          echo "test_type=env.TEST_TYPE" >> $GITHUB_ENV    
+          echo "spec_test_type=env.TEST_TYPE" >> $GITHUB_ENV    
       - name: set TEST_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
-          echo "test_type=mainnet" >> $GITHUB_ENV    
+          echo "spec_test_type=mainnet" >> $GITHUB_ENV    
       - name: set TEST_TYPE
         if: github.event.schedule=='0 0 * * *'
         run: |
-          echo "test_type=mainnet" >> $GITHUB_ENV
+          echo "spec_test_type=mainnet" >> $GITHUB_ENV
       - name: Install pyspec requirements
-        run: make install_test TEST_TYPE=${{env.test_type}}
+        run: make install_test TEST_TYPE=${{env.spec_test_type}}
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{env.test_type}}
+        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{env.spec_test_type}}
       - uses: actions/upload-artifact@v2
         if: always()
         with:
