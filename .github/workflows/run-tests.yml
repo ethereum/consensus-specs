@@ -41,6 +41,19 @@ jobs:
         with:
           path: ./*
           key: ${{ github.sha }}
+
+  pyspec-tests:
+    runs-on: self-hosted
+    needs: setup-env
+    strategy:
+      matrix:
+        version: ["phase0", "altair", "bellatrix","capella"]
+    steps:
+      - uses: actions/cache@v2
+        id: restore-build
+        with:
+          path: ./*
+          key: ${{ github.sha }}
       - name: set TEST_TYPE
         if: github.event.inputs.test_type != ''        
         run: |
@@ -59,20 +72,7 @@ jobs:
           echo "test_type=mainnet" >> $GITHUB_ENV
       - name: export test_type
         id: set_test_type
-        run: echo "::set-output name=testType::${{env.test_type}}"
-
-  pyspec-tests:
-    runs-on: self-hosted
-    needs: setup-env
-    strategy:
-      matrix:
-        version: ["phase0", "altair", "bellatrix","capella"]
-    steps:
-      - uses: actions/cache@v2
-        id: restore-build
-        with:
-          path: ./*
-          key: ${{ github.sha }}
+        run: echo "::set-output name=testType::${{env.test_type}}"    
       - name: Step 2
         run: |
           echo "State is: '${{ steps.set_test_type.outputs.testType }}'"
