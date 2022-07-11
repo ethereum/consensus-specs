@@ -62,7 +62,7 @@ jobs:
       - name: set TEST_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name != 'master' }}
         run: |
-          echo "spec_test_type=env.TEST_TYPE" >> $GITHUB_ENV    
+          echo "spec_test_type=${{ env.TEST_TYPE}}" >> $GITHUB_ENV    
       - name: set TEST_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
