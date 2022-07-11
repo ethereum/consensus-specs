@@ -72,7 +72,7 @@ jobs:
         run: |
           echo "spec_test_type=mainnet" >> $GITHUB_ENV
       - name: Install pyspec requirements
-        run: make install_test TEST_TYPE=${{env.spec_test_type}}
+        run: make install_test
       - name: test-${{ matrix.version }}
         run: make citest fork=${{ matrix.version }} TEST_TYPE=${{env.spec_test_type}}
       - uses: actions/upload-artifact@v2
