@@ -1,5 +1,9 @@
 name: Run tests
 
+defaults:
+  run:
+    shell: /usr/bin/zsh{0}
+
 env:
   TEST_TYPE: "minimal"
   DEFAULT_BRANCH: "dev"
