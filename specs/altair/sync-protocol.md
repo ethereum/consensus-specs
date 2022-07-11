@@ -219,11 +219,11 @@ def validate_light_client_update(store: LightClientStore,
     # Verify update does not skip a sync committee period
     assert current_slot >= update.signature_slot > update.attested_header.slot >= update.finalized_header.slot
     store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
-    signature_period = compute_sync_committee_period_at_slot(update.signature_slot)
-    assert signature_period in (store_period, store_period + 1)
+    update_signature_period = compute_sync_committee_period_at_slot(update.signature_slot)
+    assert update_signature_period in (store_period, store_period + 1)
 
     # Verify update is relevant
-    attested_period = compute_sync_committee_period_at_slot(update.attested_header.slot)
+    update_attested_period = compute_sync_committee_period_at_slot(update.attested_header.slot)
     assert update.attested_header.slot > store.finalized_header.slot
 
     # Verify that the `finality_branch`, if present, confirms `finalized_header`
@@ -248,10 +248,10 @@ def validate_light_client_update(store: LightClientStore,
     # Verify that the `next_sync_committee`, if present, actually is the next sync committee saved in the
     # state of the `attested_header`
     if not is_sync_committee_update(update):
-        assert attested_period == store_period
+        assert update_attested_period == store_period
         assert update.next_sync_committee == SyncCommittee()
     else:
-        if attested_period == store_period:
+        if update_attested_period == store_period:
             assert update.next_sync_committee == store.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
@@ -262,7 +262,7 @@ def validate_light_client_update(store: LightClientStore,
         )
 
     # Verify sync committee aggregate signature
-    if signature_period == store_period:
+    if update_signature_period == store_period:
         sync_committee = store.current_sync_committee
     else:
         sync_committee = store.next_sync_committee
@@ -281,8 +281,8 @@ def validate_light_client_update(store: LightClientStore,
 ```python
 def apply_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
     store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
-    finalized_period = compute_sync_committee_period_at_slot(update.finalized_header.slot)
-    if finalized_period == store_period + 1:
+    update_finalized_period = compute_sync_committee_period_at_slot(update.finalized_header.slot)
+    if update_finalized_period == store_period + 1:
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
     store.finalized_header = update.finalized_header
