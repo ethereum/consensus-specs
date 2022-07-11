@@ -129,7 +129,7 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 	rm $*.tmp
 
 codespell:
-	codespell . --skip ./.git -I .codespell-whitelist
+	codespell . --skip "./.git,./venv" -I .codespell-whitelist
 
 # TODO: add future protocol upgrade patch packages to linting.
 # NOTE: we use `pylint` just for catching unused arguments in spec code
