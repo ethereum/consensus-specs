@@ -70,16 +70,10 @@ jobs:
         if: github.event.schedule=='0 0 * * *'
         run: |
           echo "test_type=mainnet" >> $GITHUB_ENV
-      - name: export test_type
-        id: set_test_type
-        run: echo "::set-output name=testType::${{env.test_type}}"    
-      - name: Step 2
-        run: |
-          echo "State is: '${{ steps.set_test_type.outputs.testType }}'"
       - name: Install pyspec requirements
-        run: make install_test TEST_TYPE=${{ steps.set_test_type.outputs.testType }}
+        run: make install_test TEST_TYPE=${{env.test_type}}
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{ steps.set_test_type.outputs.testType }}
+        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{env.test_type}}
       - uses: actions/upload-artifact@v2
         if: always()
         with:
