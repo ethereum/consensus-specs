@@ -55,7 +55,7 @@ jobs:
           echo "test_type=mainnet" >> $GITHUB_ENV
       - name: export test_type
         id: set_test_type
-        run: echo "::set-output name=testType::${{env.TEST_TYPE}}"
+        run: echo "::set-output name=testType::${{env.test_type}}"
 
   pyspec-tests:
     runs-on: self-hosted
@@ -71,11 +71,11 @@ jobs:
           key: ${{ github.sha }}
       - name: Step 2
         run: |
-          echo "State is: '${{ steps.set_test_type.outputs.test_type }}'"
+          echo "State is: '${{ steps.set_test_type.outputs.testType }}'"
       - name: Install pyspec requirements
-        run: make install_test TEST_TYPE=${{ steps.set_test_type.outputs.test_type }}
+        run: make install_test TEST_TYPE=${{ steps.set_test_type.outputs.testType }}
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{ steps.set_test_type.outputs.test_type }}
+        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{ steps.set_test_type.outputs.testType }}
       - uses: actions/upload-artifact@v2
         if: always()
         with:
