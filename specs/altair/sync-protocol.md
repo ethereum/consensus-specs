@@ -18,9 +18,10 @@
 - [Helper functions](#helper-functions)
   - [`is_sync_committee_update`](#is_sync_committee_update)
   - [`is_finality_update`](#is_finality_update)
-  - [`get_subtree_index`](#get_subtree_index)
-  - [`get_active_header`](#get_active_header)
+  - [`is_better_update`](#is_better_update)
   - [`get_safety_threshold`](#get_safety_threshold)
+  - [`get_subtree_index`](#get_subtree_index)
+  - [`compute_sync_committee_period_at_slot`](#compute_sync_committee_period_at_slot)
 - [Light client state updates](#light-client-state-updates)
     - [`process_slot_for_light_client_store`](#process_slot_for_light_client_store)
     - [`validate_light_client_update`](#validate_light_client_update)
@@ -64,7 +65,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 class LightClientUpdate(Container):
     # The beacon block header that is attested to by the sync committee
     attested_header: BeaconBlockHeader
-    # Next sync committee corresponding to the active header
+    # Next sync committee corresponding to `attested_header`
     next_sync_committee: SyncCommittee
     next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
     # The finalized beacon block header attested to by Merkle branch
@@ -111,24 +112,48 @@ def is_finality_update(update: LightClientUpdate) -> bool:
     return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
 ```
 
-### `get_subtree_index`
+### `is_better_update`
 
 ```python
-def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
-    return uint64(generalized_index % 2**(floorlog2(generalized_index)))
-```
+def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdate) -> bool:
+    # Compare supermajority (> 2/3) sync committee participation
+    max_active_participants = len(new_update.sync_aggregate.sync_committee_bits)
+    new_num_active_participants = sum(new_update.sync_aggregate.sync_committee_bits)
+    old_num_active_participants = sum(old_update.sync_aggregate.sync_committee_bits)
+    new_has_supermajority = new_num_active_participants * 3 >= max_active_participants * 2
+    old_has_supermajority = old_num_active_participants * 3 >= max_active_participants * 2
+    if new_has_supermajority != old_has_supermajority:
+        return new_has_supermajority > old_has_supermajority
+    if not new_has_supermajority and new_num_active_participants != old_num_active_participants:
+        return new_num_active_participants > old_num_active_participants
 
-### `get_active_header`
+    # Compare indication of any finality
+    new_has_finality = is_finality_update(new_update)
+    old_has_finality = is_finality_update(old_update)
+    if new_has_finality != old_has_finality:
+        return new_has_finality
 
-```python
-def get_active_header(update: LightClientUpdate) -> BeaconBlockHeader:
-    # The "active header" is the header that the update is trying to convince us
-    # to accept. If a finalized header is present, it's the finalized header,
-    # otherwise it's the attested header
-    if is_finality_update(update):
-        return update.finalized_header
-    else:
-        return update.attested_header
+    # Compare sync committee finality
+    if new_has_finality:
+        new_has_sync_committee_finality = (
+            compute_sync_committee_period_at_slot(new_update.finalized_header.slot)
+            == compute_sync_committee_period_at_slot(new_update.attested_header.slot)
+        )
+        old_has_sync_committee_finality = (
+            compute_sync_committee_period_at_slot(old_update.finalized_header.slot)
+            == compute_sync_committee_period_at_slot(old_update.attested_header.slot)
+        )
+        if new_has_sync_committee_finality != old_has_sync_committee_finality:
+            return new_has_sync_committee_finality
+
+    # Tiebreaker 1: Sync committee participation beyond supermajority
+    if new_num_active_participants != old_num_active_participants:
+        return new_num_active_participants > old_num_active_participants
+
+    # Tiebreaker 2: Prefer older data (fewer changes to best)
+    if new_update.attested_header.slot != old_update.attested_header.slot:
+        return new_update.attested_header.slot < old_update.attested_header.slot
+    return new_update.signature_slot < old_update.signature_slot
 ```
 
 ### `get_safety_threshold`
@@ -139,6 +164,20 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
         store.previous_max_active_participants,
         store.current_max_active_participants,
     ) // 2
+```
+
+### `get_subtree_index`
+
+```python
+def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
+    return uint64(generalized_index % 2**(floorlog2(generalized_index)))
+```
+
+### `compute_sync_committee_period_at_slot`
+
+```python
+def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+    return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 
 ## Light client state updates
@@ -156,7 +195,12 @@ def process_slot_for_light_client_store(store: LightClientStore, current_slot: S
         current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
         and store.best_valid_update is not None
     ):
-        # Forced best update when the update timeout has elapsed
+        # Forced best update when the update timeout has elapsed.
+        # Because the apply logic waits for `finalized_header.slot` to indicate sync committee finality,
+        # the `attested_header` may be treated as `finalized_header` in extended periods of non-finality
+        # to guarantee progression into later sync committee periods according to `is_better_update`.
+        if store.best_valid_update.finalized_header.slot <= store.finalized_header.slot:
+            store.best_valid_update.finalized_header = store.best_valid_update.attested_header
         apply_light_client_update(store, store.best_valid_update)
         store.best_valid_update = None
 ```
@@ -168,15 +212,19 @@ def validate_light_client_update(store: LightClientStore,
                                  update: LightClientUpdate,
                                  current_slot: Slot,
                                  genesis_validators_root: Root) -> None:
-    # Verify update slot is larger than slot of current best finalized header
-    active_header = get_active_header(update)
-    assert current_slot >= update.signature_slot > active_header.slot > store.finalized_header.slot
+    # Verify sync committee has sufficient participants
+    sync_aggregate = update.sync_aggregate
+    assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify update does not skip a sync committee period
-    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
-    update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
-    signature_period = compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))
-    assert signature_period in (finalized_period, finalized_period + 1)
+    assert current_slot >= update.signature_slot > update.attested_header.slot >= update.finalized_header.slot
+    store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
+    update_signature_period = compute_sync_committee_period_at_slot(update.signature_slot)
+    assert update_signature_period in (store_period, store_period + 1)
+
+    # Verify update is relevant
+    update_attested_period = compute_sync_committee_period_at_slot(update.attested_header.slot)
+    assert update.attested_header.slot > store.finalized_header.slot
 
     # Verify that the `finality_branch`, if present, confirms `finalized_header`
     # to match the finalized checkpoint root saved in the state of `attested_header`.
@@ -198,28 +246,23 @@ def validate_light_client_update(store: LightClientStore,
         )
 
     # Verify that the `next_sync_committee`, if present, actually is the next sync committee saved in the
-    # state of the `active_header`
+    # state of the `attested_header`
     if not is_sync_committee_update(update):
-        assert update_period == finalized_period
+        assert update_attested_period == store_period
         assert update.next_sync_committee == SyncCommittee()
     else:
-        if update_period == finalized_period:
+        if update_attested_period == store_period:
             assert update.next_sync_committee == store.next_sync_committee
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
             depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
             index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
-            root=active_header.state_root,
+            root=update.attested_header.state_root,
         )
 
-    sync_aggregate = update.sync_aggregate
-
-    # Verify sync committee has sufficient participants
-    assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
-
     # Verify sync committee aggregate signature
-    if signature_period == finalized_period:
+    if update_signature_period == store_period:
         sync_committee = store.current_sync_committee
     else:
         sync_committee = store.next_sync_committee
@@ -237,13 +280,12 @@ def validate_light_client_update(store: LightClientStore,
 
 ```python
 def apply_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
-    active_header = get_active_header(update)
-    finalized_period = compute_sync_committee_period(compute_epoch_at_slot(store.finalized_header.slot))
-    update_period = compute_sync_committee_period(compute_epoch_at_slot(active_header.slot))
-    if update_period == finalized_period + 1:
+    store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
+    update_finalized_period = compute_sync_committee_period_at_slot(update.finalized_header.slot)
+    if update_finalized_period == store_period + 1:
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
-    store.finalized_header = active_header
+    store.finalized_header = update.finalized_header
     if store.finalized_header.slot > store.optimistic_header.slot:
         store.optimistic_header = store.finalized_header
 ```
@@ -262,7 +304,7 @@ def process_light_client_update(store: LightClientStore,
     # Update the best update in case we have to force-update to it if the timeout elapses
     if (
         store.best_valid_update is None
-        or sum(sync_committee_bits) > sum(store.best_valid_update.sync_aggregate.sync_committee_bits)
+        or is_better_update(update, store.best_valid_update)
     ):
         store.best_valid_update = update
 
@@ -282,7 +324,7 @@ def process_light_client_update(store: LightClientStore,
     # Update finalized header
     if (
         sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
-        and is_finality_update(update)
+        and update.finalized_header.slot > store.finalized_header.slot
     ):
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)
