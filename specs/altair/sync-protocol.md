@@ -153,7 +153,7 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
         == compute_sync_committee_period_at_slot(old_update.signature_slot)
     )
     if new_has_relevant_sync_committee != old_has_relevant_sync_committee:
-        return new_has_relevant_sync_committee > old_has_relevant_sync_committee
+        return new_has_relevant_sync_committee
 
     # Compare indication of any finality
     new_has_finality = is_finality_update(new_update)
