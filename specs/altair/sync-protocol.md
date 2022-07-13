@@ -292,12 +292,12 @@ def validate_light_client_update(store: LightClientStore,
 
     # Verify update is relevant
     update_attested_period = compute_sync_committee_period_at_slot(update.attested_header.slot)
+    update_has_next_sync_committee = not is_next_sync_committee_known(store) and (
+        is_sync_committee_update(update) and update_attested_period == store_period
+    )
     assert (
         update.attested_header.slot > store.finalized_header.slot
-        or (
-            not is_next_sync_committee_known(store)
-            and update_attested_period == store_period and is_sync_committee_update(update)
-        )
+        or update_has_next_sync_committee
     )
 
     # Verify that the `finality_branch`, if present, confirms `finalized_header`
@@ -399,17 +399,18 @@ def process_light_client_update(store: LightClientStore,
         store.optimistic_header = update.attested_header
 
     # Update finalized header
+    update_has_finalized_next_sync_committee = (
+        not is_next_sync_committee_known(store)
+        and is_sync_committee_update(update) and is_finality_update(update) and (
+            compute_sync_committee_period_at_slot(update.finalized_header.slot)
+            == compute_sync_committee_period_at_slot(update.attested_header.slot)
+        )
+    )
     if (
         sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
         and (
             update.finalized_header.slot > store.finalized_header.slot
-            or (
-                not is_next_sync_committee_known(store)
-                and is_sync_committee_update(update) and is_finality_update(update) and (
-                    compute_sync_committee_period_at_slot(update.finalized_header.slot)
-                    == compute_sync_committee_period_at_slot(update.attested_header.slot)
-                )
-            )
+            or update_has_finalized_next_sync_committee
         )
     ):
         # Normal update through 2/3 threshold
