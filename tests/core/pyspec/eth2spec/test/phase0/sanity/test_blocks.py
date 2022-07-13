@@ -45,6 +45,7 @@ from eth2spec.test.context import (
 @with_all_phases
 @spec_state_test
 def test_prev_slot_block_transition(spec, state):
+    print('spec.fork', spec.fork)
     # Go to clean slot
     spec.process_slots(state, state.slot + 1)
     # Make a block for it

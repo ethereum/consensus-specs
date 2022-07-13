@@ -14,9 +14,15 @@ CAPELLA = SpecForkName('capella')
 SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
+EIP4844 = SpecForkName('eip4844')
 
-# The forks that pytest runs with.
-ALL_PHASES = (PHASE0, ALTAIR, BELLATRIX, CAPELLA)
+# The forks that pytest can run with.
+ALL_PHASES = (
+    # Formal forks
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA,
+    # Experimental patches
+    EIP4844,
+)
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX)
 

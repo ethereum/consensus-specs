@@ -45,6 +45,7 @@ PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
+EIP4844 = 'eip4844'
 
 
 # The helper functions that are used when defining constants
@@ -208,6 +209,9 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
             elif source.startswith("class"):
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
+                if class_name != current_name:
+                    print('class_name', class_name, 'current_name', current_name)
+
                 assert class_name == current_name
                 if parent_class:
                     assert parent_class == "Container"
@@ -230,7 +234,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List")):
                             custom_types[name] = value
                         continue
 
@@ -304,7 +308,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:  # TODO
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
         """
         The constants that are required for custom types.
         """
@@ -432,7 +436,7 @@ get_attesting_indices = cache_this(
         return {}
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
         return {}
 
     @classmethod
@@ -547,11 +551,11 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> str:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
-            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**30)',
+            'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 #
@@ -567,14 +571,57 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
+#
+# EIP4844SpecBuilder
+#
+class EIP4844SpecBuilder(BellatrixSpecBuilder):
+    fork: str = EIP4844
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.utils import kzg
+from eth2spec.bellatrix import {preset_name} as bellatrix
+'''
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() + '''
+# TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
+# TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
+TESTING_FIELD_ELEMENTS_PER_BLOB = 4
+TESTING_SECRET = 1337
+TESTING_KZG_SETUP_G1 = kzg.generate_setup(bls.G1, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
+TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
+TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
+
+KZG_SETUP_G1 = [bls.G1_to_bytes48(p) for p in TESTING_KZG_SETUP_G1]
+KZG_SETUP_G2 = [bls.G2_to_bytes96(p) for p in TESTING_KZG_SETUP_G2]
+KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
+ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
+
+
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
+    pass'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+        constants = {
+            'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
+            'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
+        }
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
+
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
 }
 
 
 def is_spec_defined_type(value: str) -> bool:
-    return value.startswith('ByteList') or value.startswith('Union')
+    return value.startswith(('ByteList', 'Union', 'Vector', 'List'))
 
 
 def objects_to_spec(preset_name: str,
@@ -652,7 +699,7 @@ def objects_to_spec(preset_name: str,
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
-    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
+    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants(spec_object)[x]), builder.hardcoded_custom_type_dep_constants(spec_object)))
     spec = (
             builder.imports(preset_name)
             + builder.preparations()
@@ -869,14 +916,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
@@ -885,7 +932,7 @@ class PySpecCommand(Command):
                     specs/altair/p2p-interface.md
                     specs/altair/sync-protocol.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA):
+            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -901,6 +948,14 @@ class PySpecCommand(Command):
                     specs/capella/fork-choice.md
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
+                """
+            if self.spec_fork == EIP4844:
+                self.md_doc_paths += """
+                    specs/eip4844/beacon-chain.md
+                    specs/eip4844/fork.md
+                    specs/eip4844/polynomial-commitments.md
+                    specs/eip4844/p2p-interface.md
+                    specs/eip4844/validator.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
