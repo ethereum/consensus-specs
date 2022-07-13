@@ -10,16 +10,21 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Custom types](#custom-types)
+- [Containers](#containers)
+  - [`BlobsAndCommmitments`](#blobsandcommmitments)
+  - [`PolynomialAndCommitment`](#polynomialandcommitment)
 - [Helpers](#helpers)
   - [`is_data_available`](#is_data_available)
   - [`hash_to_bls_field`](#hash_to_bls_field)
   - [`compute_powers`](#compute_powers)
-  - [`vector_lincomb`](#vector_lincomb)
+  - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
   - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
+  - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Blob commitments](#blob-commitments)
+      - [Blob KZG commitments](#blob-kzg-commitments)
   - [Beacon Block publishing time](#beacon-block-publishing-time)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -74,9 +79,10 @@ Without the sidecar the block may be processed further optimistically,
 but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
 
 ```python
-def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCommitment]):
-    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)  # implementation dependent, raises an exception if not available
-    verify_blobs_sidecar(slot, beacon_block_root, kzgs, sidecar)
+def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
+    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
+    return verify_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
 ```
 
 ### `hash_to_bls_field`

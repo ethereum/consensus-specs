@@ -10,7 +10,6 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobsSidecar`](#blobssidecar)
@@ -32,21 +31,12 @@ The specification of these changes continues in the same format as the network s
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
-## Preset
-
-| Name | Value |
-| - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
-
 ## Configuration
 
 | Name                                     | Value                         | Description                                                         |
 |------------------------------------------|-------------------------------|---------------------------------------------------------------------|
 | `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                | Maximum number of blobs sidecars in a single request                |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
-
-
 
 ## Containers
 
@@ -67,7 +57,6 @@ class SignedBlobsSidecar(Container):
     message: BlobsSidecar
     signature: BLSSignature
 ```
-
 
 ## The gossip domain: gossipsub
 

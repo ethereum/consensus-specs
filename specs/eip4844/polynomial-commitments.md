@@ -16,9 +16,11 @@
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
     - [`lincomb`](#lincomb)
+    - [`matrix_lincomb`](#matrix_lincomb)
   - [KZG](#kzg)
-    - [`blob_to_kzg`](#blob_to_kzg)
+    - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
+    - [`compute_kzg_proof`](#compute_kzg_proof)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
 
