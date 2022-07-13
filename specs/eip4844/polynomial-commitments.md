@@ -23,8 +23,6 @@
     - [`compute_kzg_proof`](#compute_kzg_proof)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
-    - [`fft`](#fft)
-    - [`div_polys`](#div_polys)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
