@@ -37,6 +37,31 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP4844](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `Polynomial` | `List[BLSFieldElement, MAX_BLOBS_PER_BLOCK]` | a polynomial in evaluation form |
+
+## Containers
+
+### `BlobsAndCommmitments`
+
+```python
+class BlobsAndCommmitments(Container):
+    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
+    kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
+```
+
+### `PolynomialAndCommitment`
+
+```python
+class PolynomialAndCommitment(Container):
+    polynomial: Polynomial
+    kzg_commitment: KZGCommitment
+```
+
+
 ## Helpers
 
 ### `is_data_available`
@@ -66,7 +91,10 @@ def hash_to_bls_field(x: Container) -> BLSFieldElement:
 
 ### `compute_powers`
 ```python
-def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
+def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
+    """
+    Return ``x`` to power of [0, n-1].
+    """
     current_power = 1
     powers = []
     for _ in range(n):
@@ -75,48 +103,66 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
     return powers
 ```
 
-### `vector_lincomb`
+### `compute_aggregated_poly_and_commitment`
 
 ```python
-def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
+def compute_aggregated_poly_and_commitment(
+        blobs: Sequence[BLSFieldElement],
+        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
     """
-    Given a list of vectors, compute the linear combination of each column with `scalars`, and return the resulting
-    vector.
+    Return the aggregated polynomial and aggregated KZG commitment.
     """
-    r = [0]*len(vectors[0])
-    for v, a in zip(vectors, scalars):
-        for i, x in enumerate(v):
-            r[i] = (r[i] + a * x) % BLS_MODULUS
-    return [BLSFieldElement(x) for x in r]
+    # Generate random linear combination challenges
+    r = hash_to_bls_field(BlobsAndCommmitments(blobs=blobs, kzg_commitments=kzg_commitments))
+    r_powers = compute_powers(r, len(kzg_commitments))
+
+    # Create aggregated polynomial in evaluation form
+    aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
+
+    # Compute commitment to aggregated polynomial
+    aggregated_poly_commitment = KZGCommitment(lincomb(kzg_commitments, r_powers))
+
+    return aggregated_poly, aggregated_poly_commitment
 ```
 
 ### `verify_blobs_sidecar`
 
 ```python
 def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
-                         expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> None:
+                         expected_kzg_commitments: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> bool:
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
     kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
-    assert len(expected_kzgs) == len(blobs)
+    assert len(expected_kzg_commitments) == len(blobs)
 
-    # Generate random linear combination challenges
-    r = hash_to_bls_field([blobs, expected_kzgs])
-    r_powers = compute_powers(r, len(expected_kzgs))
-
-    # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = lincomb(expected_kzgs, r_powers)
-
-    # Create aggregated polynomial in evaluation form
-    aggregated_poly = vector_lincomb(blobs, r_powers)
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(
+        blobs,
+        expected_kzg_commitments,
+    )
 
     # Generate challenge `x` and evaluate the aggregated polynomial at `x`
-    x = hash_to_bls_field([aggregated_poly, aggregated_poly_commitment])
+    x = hash_to_bls_field(
+        PolynomialAndCommitment(polynomial=aggregated_poly, kzg_commitment=aggregated_poly_commitment)
+    )
+    # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
     y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
 
     # Verify aggregated proof
-    assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+    return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+```
+
+### `compute_proof_from_blobs`
+
+```python
+def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
+    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
+    x = hash_to_bls_field(PolynomialAndCommitment(
+        polynomial=aggregated_poly,
+        kzg_commitment=aggregated_poly_commitment,
+    ))
+    return compute_kzg_proof(aggregated_poly, x)
 ```
 
 ## Beacon chain responsibilities
@@ -128,26 +174,27 @@ Namely, the blob handling and the addition of `BlobsSidecar`.
 
 #### Constructing the `BeaconBlockBody`
 
-##### Blob commitments
+##### Blob KZG commitments
 
 After retrieving the execution payload from the execution engine as specified in Bellatrix,
 the blobs are retrieved and processed: 
 
-```python
+```
 # execution_payload = execution_engine.get_payload(payload_id)
 # block.body.execution_payload = execution_payload
 # ...
 
-kzgs, blobs = get_blobs(payload_id)
+blobs, blob_kzg_commitments = get_blobs(payload_id)
 
 # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
-assert verify_kzgs_against_transactions(execution_payload.transactions, kzgs)
+assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
 
 # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
-assert len(kzgs) == len(blobs) and [blob_to_kzg(blob) == kzg for blob, kzg in zip(blobs, kzgs)]
+assert len(blob_kzg_commitments) == len(blobs)
+assert [blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments)]
 
 # Update the block body 
-block.body.blob_kzgs = kzgs
+block.body.blob_kzg_commitments = blob_kzg_commitments
 ```
 
 The `blobs` should be held with the block in preparation of publishing.
@@ -161,20 +208,23 @@ Implementers may also retrieve blobs individually per transaction.
 Before publishing a prepared beacon block proposal, the corresponding blobs are packaged into a sidecar object for distribution to the network:
 
 ```python
-blobs_sidecar = BlobsSidecar(
-    beacon_block_root=hash_tree_root(beacon_block)
-    beacon_block_slot=beacon_block.slot
-    blobs=blobs,
-)
+def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar:
+    return BlobsSidecar(
+        beacon_block_root=hash_tree_root(block),
+        beacon_block_slot=block.slot,
+        blobs=blobs,
+        kzg_aggregated_proof=compute_proof_from_blobs(blobs),
+    )
 ```
 
 And then signed:
 
 ```python
-domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot / SLOTS_PER_EPOCH)
-signing_root = compute_signing_root(blobs_sidecar, domain)
-signature = bls.Sign(privkey, signing_root)
-signed_blobs_sidecar = SignedBlobsSidecar(message=blobs_sidecar, signature=signature)
+def get_signed_blobs_sidecar(state: BeaconState, blobs_sidecar: BlobsSidecar, privkey: int) -> SignedBlobsSidecar:
+    domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
+    signing_root = compute_signing_root(blobs_sidecar, domain)
+    signature = bls.Sign(privkey, signing_root)
+    return SignedBlobsSidecar(message=blobs_sidecar, signature=signature)
 ```
 
 This `signed_blobs_sidecar` is then published to the global `blobs_sidecar` topic as soon as the `beacon_block` is published.

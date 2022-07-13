@@ -103,9 +103,9 @@ In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
-  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzgs)`
+  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
-  -- i.e. `verify_kzgs_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzgs)` 
+  -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 ##### `blobs_sidecar`
 
@@ -117,12 +117,14 @@ Alias `sidecar = signed_blobs_sidecar.message`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
-```python
+
+```
 domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
 signing_root = compute_signing_root(blobs_sidecar, domain)
 assert bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature)
 ```
-  where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
+
+where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
   where `proposer_index` is the validator index of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
 

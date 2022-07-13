@@ -39,6 +39,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | - | - | - |
 | `Blob` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | |
 | `VersionedHash` | `Bytes32` | |
+| `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
 
 ## Constants
 
@@ -78,18 +79,18 @@ class BeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload 
-    blob_kzgs: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
 
 ## Helper functions
 
 ### Misc
 
-#### `kzg_to_versioned_hash`
+#### `kzg_commitment_to_versioned_hash`
 
 ```python
-def kzg_to_versioned_hash(kzg: KZGCommitment) -> VersionedHash:
-    return BLOB_COMMITMENT_VERSION_KZG + hash(kzg)[1:]
+def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> VersionedHash:
+    return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
 #### `tx_peek_blob_versioned_hashes`
@@ -106,15 +107,16 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
     return [VersionedHash(opaque_tx[x:x+32]) for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)]
 ```
 
-#### `verify_kzgs_against_transactions`
+#### `verify_kzg_commitments_against_transactions`
 
 ```python
-def verify_kzgs_against_transactions(transactions: Sequence[Transaction], blob_kzgs: Sequence[KZGCommitment]) -> bool:
-   all_versioned_hashes = []
-   for tx in transactions:
-      if tx[0] == BLOB_TX_TYPE:
-         all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
-   return all_versioned_hashes == [kzg_to_versioned_hash(kzg) for kzg in blob_kzgs]
+def verify_kzg_commitments_against_transactions(transactions: Sequence[Transaction],
+                                                kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    all_versioned_hashes = []
+    for tx in transactions:
+        if tx[0] == BLOB_TX_TYPE:
+            all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
+    return all_versioned_hashes == [kzg_commitment_to_versioned_hash(commitment) for commitment in kzg_commitments]
 ```
 
 ## Beacon chain state transition function
@@ -130,14 +132,14 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzgs(state, block.body)  # [New in EIP-4844]
+    process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
 ```
 
-#### Blob KZGs
+#### Blob KZG commitments
 
 ```python
-def process_blob_kzgs(state: BeaconState, body: BeaconBlockBody):
-    assert verify_kzgs_against_transactions(body.execution_payload.transactions, body.blob_kzgs)
+def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody):
+    assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 
 ## Testing
