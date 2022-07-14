@@ -98,10 +98,10 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
     - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
        -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
     - If `exection_payload` verification of block's parent by an execution node is *not* complete:
-    	- [REJECT] The block's parent (defined by `block.parent_root`) passes all
+    	- [IGNORE] The block's parent (defined by `block.parent_root`) passes all
     	  validation (excluding execution node verification of the `block.body.execution_payload`).
     - otherwise:
-    	- [IGNORE] The block's parent (defined by `block.parent_root`) passes all
+    	- [REJECT] The block's parent (defined by `block.parent_root`) passes all
     	  validation (including execution node verification of the `block.body.execution_payload`).
 
 The following gossip validation from prior specifications MUST NOT be applied if the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
