@@ -85,10 +85,8 @@ def test_update_ranking(spec, state):
     # Create updates (in descending order of quality)
     updates = [
         # Updates with sync committee finality
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=1.0),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=1, participation_rate=1.0),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=1, participation_rate=1.0),
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=0.8),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=1, participation_rate=0.8),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=1, participation_rate=0.8),
 
@@ -97,34 +95,66 @@ def test_update_ranking(spec, state):
         create_update(spec, att, with_next_sync_committee=1, with_finality=1, participation_rate=0.8),
 
         # Updates without indication of any finality
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=1.0),
         create_update(spec, att, with_next_sync_committee=1, with_finality=0, participation_rate=1.0),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=0, participation_rate=1.0),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=0, participation_rate=1.0),
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=0.8),
         create_update(spec, att, with_next_sync_committee=1, with_finality=0, participation_rate=0.8),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=0, participation_rate=0.8),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=0, participation_rate=0.8),
 
+        # Updates with sync committee finality but no `next_sync_committee`
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=1.0),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=1, participation_rate=1.0),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=1, participation_rate=1.0),
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=0.8),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=1, participation_rate=0.8),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=1, participation_rate=0.8),
+
+        # Updates without sync committee finality and also no `next_sync_committee`
+        create_update(spec, att, with_next_sync_committee=0, with_finality=1, participation_rate=1.0),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=1, participation_rate=0.8),
+
+        # Updates without indication of any finality nor `next_sync_committee`
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=1.0),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=0, participation_rate=1.0),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=0, participation_rate=1.0),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=0, participation_rate=1.0),
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=0.8),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=0, participation_rate=0.8),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=0, participation_rate=0.8),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=0, participation_rate=0.8),
+
         # Updates with low sync committee participation
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=0.4),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=1, participation_rate=0.4),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=1, participation_rate=0.4),
         create_update(spec, att, with_next_sync_committee=1, with_finality=1, participation_rate=0.4),
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=0.4),
         create_update(spec, att, with_next_sync_committee=1, with_finality=0, participation_rate=0.4),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=0, participation_rate=0.4),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=0, participation_rate=0.4),
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=0.4),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=1, participation_rate=0.4),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=1, participation_rate=0.4),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=1, participation_rate=0.4),
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=0.4),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=0, participation_rate=0.4),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=0, participation_rate=0.4),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=0, participation_rate=0.4),
 
         # Updates with very low sync committee participation
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=0.2),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=1, participation_rate=0.2),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=1, participation_rate=0.2),
         create_update(spec, att, with_next_sync_committee=1, with_finality=1, participation_rate=0.2),
-        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=0.2),
         create_update(spec, att, with_next_sync_committee=1, with_finality=0, participation_rate=0.2),
         create_update(spec, fin, with_next_sync_committee=1, with_finality=0, participation_rate=0.2),
         create_update(spec, lat, with_next_sync_committee=1, with_finality=0, participation_rate=0.2),
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=1, participation_rate=0.2),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=1, participation_rate=0.2),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=1, participation_rate=0.2),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=1, participation_rate=0.2),
+        create_update(spec, sig, with_next_sync_committee=0, with_finality=0, participation_rate=0.2),
+        create_update(spec, att, with_next_sync_committee=0, with_finality=0, participation_rate=0.2),
+        create_update(spec, fin, with_next_sync_committee=0, with_finality=0, participation_rate=0.2),
+        create_update(spec, lat, with_next_sync_committee=0, with_finality=0, participation_rate=0.2),
     ]
     yield "updates", updates
 
