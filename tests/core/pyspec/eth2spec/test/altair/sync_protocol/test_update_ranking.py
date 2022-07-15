@@ -15,7 +15,6 @@ from eth2spec.test.helpers.light_client import (
 from eth2spec.test.helpers.state import (
     next_slots,
 )
-from eth2spec.test.helpers.merkle import build_proof
 from math import floor
 
 
@@ -27,14 +26,14 @@ def create_update(spec, test, with_next_sync_committee, with_finality, participa
 
     if with_next_sync_committee:
         next_sync_committee = attested_state.next_sync_committee
-        next_sync_committee_branch = build_proof(attested_state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
+        next_sync_committee_branch = spec.compute_merkle_proof_for_state(attested_state, spec.NEXT_SYNC_COMMITTEE_INDEX)
     else:
         next_sync_committee = spec.SyncCommittee()
         next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     if with_finality:
         finalized_header = signed_block_to_header(spec, finalized_block)
-        finality_branch = build_proof(attested_state.get_backing(), spec.FINALIZED_ROOT_INDEX)
+        finality_branch = spec.compute_merkle_proof_for_state(attested_state, spec.FINALIZED_ROOT_INDEX)
     else:
         finalized_header = spec.BeaconBlockHeader()
         finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]

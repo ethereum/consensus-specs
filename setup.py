@@ -475,7 +475,12 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
-    return GeneralizedIndex(ssz_path.gindex())'''
+    return GeneralizedIndex(ssz_path.gindex())
+
+
+def compute_merkle_proof_for_state(state: BeaconState,
+                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+    return build_proof(state.get_backing(), index)'''
 
 
     @classmethod
@@ -613,7 +618,11 @@ def objects_to_spec(preset_name: str,
 
     protocols_spec = '\n\n\n'.join(format_protocol(k, v) for k, v in spec_object.protocols.items())
     for k in list(spec_object.functions):
-        if "ceillog2" in k or "floorlog2" in k:
+        if k in [
+            "ceillog2",
+            "floorlog2",
+            "compute_merkle_proof_for_state",
+        ]:
             del spec_object.functions[k]
     functions = builder.implement_optimizations(spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())

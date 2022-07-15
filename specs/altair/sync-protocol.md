@@ -22,8 +22,9 @@
   - [`is_better_update`](#is_better_update)
   - [`is_next_sync_committee_known`](#is_next_sync_committee_known)
   - [`get_safety_threshold`](#get_safety_threshold)
-  - [`get_subtree_index`](#get_subtree_index)
   - [`compute_sync_committee_period_at_slot`](#compute_sync_committee_period_at_slot)
+  - [`get_subtree_index`](#get_subtree_index)
+  - [`compute_merkle_proof_for_state`](#compute_merkle_proof_for_state)
 - [Light client initialization](#light-client-initialization)
   - [`initialize_light_client_store`](#initialize_light_client_store)
 - [Light client state updates](#light-client-state-updates)
@@ -204,6 +205,13 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
     ) // 2
 ```
 
+### `compute_sync_committee_period_at_slot`
+
+```python
+def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+    return compute_sync_committee_period(compute_epoch_at_slot(slot))
+```
+
 ### `get_subtree_index`
 
 ```python
@@ -211,11 +219,12 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
 ```
 
-### `compute_sync_committee_period_at_slot`
+### `compute_merkle_proof_for_state`
 
 ```python
-def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
-    return compute_sync_committee_period(compute_epoch_at_slot(slot))
+def compute_merkle_proof_for_state(state: BeaconState,
+                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+    ...
 ```
 
 ## Light client initialization
@@ -441,7 +450,7 @@ def create_light_client_bootstrap(state: BeaconState) -> LightClientBootstrap:
             body_root=state.latest_block_header.body_root,
         ),
         current_sync_committee=state.current_sync_committee,
-        current_sync_committee_branch=build_proof(state.get_backing(), CURRENT_SYNC_COMMITTEE_INDEX)
+        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX)
     )
 ```
 
@@ -482,7 +491,7 @@ def create_light_client_update(state: BeaconState,
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
         next_sync_committee = attested_state.next_sync_committee
-        next_sync_committee_branch = build_proof(attested_state.get_backing(), NEXT_SYNC_COMMITTEE_INDEX)
+        next_sync_committee_branch = compute_merkle_proof_for_state(attested_state, NEXT_SYNC_COMMITTEE_INDEX)
     else:
         next_sync_committee = SyncCommittee()
         next_sync_committee_branch = [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
@@ -501,7 +510,7 @@ def create_light_client_update(state: BeaconState,
         else:
             finalized_header = BeaconBlockHeader()
             assert attested_state.finalized_checkpoint.root == Bytes32()
-        finality_branch = build_proof(attested_state.get_backing(), FINALIZED_ROOT_INDEX)
+        finality_branch = compute_merkle_proof_for_state(attested_state, FINALIZED_ROOT_INDEX)
     else:
         finalized_header = BeaconBlockHeader()
         finality_branch = [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
