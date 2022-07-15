@@ -118,9 +118,6 @@ def compute_start_slot_at_next_sync_committee_period(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_sync(spec, state):
-    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
-        return  # Test requires Altair or later (`make test` does not honor phases)
-
     # Start test
     test = yield from setup_test(spec, state)
 
@@ -335,9 +332,6 @@ def test_light_client_sync(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_supply_sync_committee_from_past_update(spec, state):
-    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
-        return  # Test requires Altair or later (`make test` does not honor phases)
-
     # Advance the chain, so that a `LightClientUpdate` from the past is available
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2 - 1)
     finalized_block = state_transition_with_full_block(spec, state, True, True)
@@ -367,9 +361,6 @@ def test_supply_sync_committee_from_past_update(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_advance_finality_without_sync_committee(spec, state):
-    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
-        return  # Test requires Altair or later (`make test` does not honor phases)
-
     # Start test
     test = yield from setup_test(spec, state)
 
