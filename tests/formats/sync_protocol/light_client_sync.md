@@ -19,7 +19,7 @@ An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to initi
 
 The steps to execute in sequence.
 
-#### `checks` execution step
+#### Checks to run after each step
 
 Each step includes checks to verify the expected impact on the `store` object.
 

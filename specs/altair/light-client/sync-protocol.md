@@ -204,18 +204,18 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
     ) // 2
 ```
 
-### `compute_sync_committee_period_at_slot`
-
-```python
-def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
-    return compute_sync_committee_period(compute_epoch_at_slot(slot))
-```
-
 ### `get_subtree_index`
 
 ```python
 def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
+```
+
+### `compute_sync_committee_period_at_slot`
+
+```python
+def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+    return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 
 ## Light client initialization
