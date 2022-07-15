@@ -18,11 +18,11 @@ Features are researched and developed in parallel, and then consolidated into se
 | Seq. | Code Name | Fork Epoch | Specs |
 | - | - | - | - |
 | 0 | **Phase0** |`0` | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> |
-| 1 |  **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/sync-protocol.md)</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
+| 1 |  **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/light-client/sync-protocol.md)</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
 | 2 | **Bellatrix** <br/> (["The Merge"](https://ethereum.org/en/upgrades/merge/)) | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> |
 
 ### In-development Specifications
-| Code Name or Topic | Specs | Notes | 
+| Code Name or Topic | Specs | Notes |
 | - | - | - |
 | Capella (tentative) | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Validator additions](specs/capella/validator.md)</li></ul></ul> |
 | EIP4844 (tentative) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/eip4844/beacon-chain.md)</li><li>[EIP-4844 fork](specs/eip4844/fork.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/eip4844/validator.md)</li><li>[P2P networking](specs/eip4844/p2p-interface.md)</li></ul></ul> |

@@ -889,12 +889,12 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
                 self.md_doc_paths += """
+                    specs/altair/light-client/sync-protocol.md
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
-                    specs/altair/sync-protocol.md
                 """
             if self.spec_fork in (BELLATRIX, CAPELLA):
                 self.md_doc_paths += """
