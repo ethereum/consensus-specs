@@ -136,7 +136,7 @@ def verify_kzg_commitments_against_transactions(transactions: Sequence[Transacti
     all_versioned_hashes = []
     for tx in transactions:
         if tx[0] == BLOB_TX_TYPE:
-            all_versioned_hashes.extend(tx_peek_blob_versioned_hashes(tx))
+            all_versioned_hashes += tx_peek_blob_versioned_hashes(tx)
     return all_versioned_hashes == [kzg_commitment_to_versioned_hash(commitment) for commitment in kzg_commitments]
 ```
 

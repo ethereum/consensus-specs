@@ -209,9 +209,6 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
             elif source.startswith("class"):
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
-                if class_name != current_name:
-                    print('class_name', class_name, 'current_name', current_name)
-
                 assert class_name == current_name
                 if parent_class:
                     assert parent_class == "Container"

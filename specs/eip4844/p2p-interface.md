@@ -107,7 +107,7 @@ Alias `sidecar = signed_blobs_sidecar.message`.
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
 
-```
+```py
 domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
 signing_root = compute_signing_root(blobs_sidecar, domain)
 assert bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature)
@@ -238,8 +238,6 @@ Clients MUST respond with blobs sidecars that are consistent from a single chain
 After the initial blobs sidecar, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-
-
 # Design decision rationale
 
 ## Why are blobs relayed as a sidecar, separate from beacon blocks?
@@ -250,4 +248,3 @@ thus avoiding all blobs being downloaded by all beacon nodes on the network.
 
 Such sharding design may introduce an updated `BlobsSidecar` to identify the shard,
 but does not affect the `BeaconBlock` structure.
-
