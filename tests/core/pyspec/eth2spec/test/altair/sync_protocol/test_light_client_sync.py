@@ -43,7 +43,7 @@ def setup_test(spec, state):
     return test
 
 
-def finalize_test(test):
+def finish_test(test):
     yield "steps", test.steps
     yield "expected_finalized_header", test.store.finalized_header
     yield "expected_optimistic_header", test.store.optimistic_header
@@ -313,7 +313,7 @@ def test_light_client_sync(spec, state):
     assert test.store.optimistic_header.slot == attested_state.slot
 
     # Finish test
-    yield from finalize_test(test)
+    yield from finish_test(test)
 
 
 @with_altair_and_later
@@ -345,7 +345,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
     assert test.store.optimistic_header.slot == state.slot
 
     # Finish test
-    yield from finalize_test(test)
+    yield from finish_test(test)
 
 
 @with_altair_and_later
@@ -421,4 +421,4 @@ def test_advance_finality_without_sync_committee(spec, state):
     assert test.store.optimistic_header.slot == attested_state.slot
 
     # Finish test
-    yield from finalize_test(test)
+    yield from finish_test(test)
