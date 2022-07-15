@@ -1,7 +1,6 @@
 import pytest
 from dataclasses import dataclass
 import importlib
-from eth_utils import encode_hex
 
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
@@ -506,18 +505,22 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+class quoted_str(str):
+    pass
+
+
 def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Get dict of Python built-in types from a dict of SSZ objects.
+    Get dict of basic types from a dict of SSZ objects.
     """
     result = {}
     for k, v in ssz_dict.items():
         if isinstance(v, int):
             value = int(v)
         elif isinstance(v, bytes):
-            value = encode_hex(v)
+            value = bytes(bytearray(v))
         else:
-            value = str(v)
+            value = quoted_str(v)
         result[k] = value
     return result
 
@@ -553,7 +556,7 @@ def with_config_overrides(config_overrides):
             # To output the changed config to could be serialized with yaml test vectors,
             # the dict SSZ objects have to be converted into Python built-in types.
             output_config = _get_basic_dict(modified_config)
-            yield 'config', 'data', output_config
+            yield 'config', 'cfg', output_config
 
             spec.config = spec.Configuration(**modified_config)
 

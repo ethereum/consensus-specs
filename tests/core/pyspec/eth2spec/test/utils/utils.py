@@ -17,6 +17,7 @@ def vector_test(description: str = None):
         # this wraps the function, to yield type-annotated entries of data.
         # Valid types are:
         #   - "meta": all key-values with this type can be collected by the generator, to put somewhere together.
+        #   - "cfg": spec config dictionary
         #   - "ssz": raw SSZ bytes
         #   - "data": a python structure to be encoded by the user.
         def entry(*args, **kw):

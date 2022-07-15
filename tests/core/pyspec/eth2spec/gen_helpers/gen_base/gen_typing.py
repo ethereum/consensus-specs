@@ -10,9 +10,10 @@ from dataclasses import dataclass
 # Elements: name, out_kind, data
 #
 # out_kind is the type of data:
+#  - "meta" for generic data to collect into a meta data dict
+#  - "cfg" for a spec config dictionary
 #  - "data" for generic
 #  - "ssz" for SSZ encoded bytes
-#  - "meta" for generic data to collect into a meta data dict.
 TestCasePart = NewType("TestCasePart", Tuple[str, str, Any])
 
 

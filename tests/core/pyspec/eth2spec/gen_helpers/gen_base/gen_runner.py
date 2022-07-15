@@ -1,3 +1,4 @@
+from eth_utils import encode_hex
 import os
 import time
 import shutil
@@ -95,6 +96,20 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
 
+    # Spec config is using a YAML subset
+    cfg_yaml = YAML(pure=True)
+    cfg_yaml.default_flow_style = False  # Emit separate line for each key
+
+    def cfg_represent_bytes(self, data):
+        return self.represent_int(encode_hex(data))
+
+    cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
+
+    def cfg_represent_quoted_str(self, data):
+        return self.represent_scalar(u'tag:yaml.org,2002:str', data, style="'")
+
+    cfg_yaml.representer.add_representer(context.quoted_str, cfg_represent_quoted_str)
+
     log_file = Path(output_dir) / 'testgen_error_log.txt'
 
     print(f"Generating tests into {output_dir}")
@@ -167,10 +182,14 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                         written_part = True
                         if out_kind == "meta":
                             meta[name] = data
-                        if out_kind == "data":
-                            output_part("data", name, dump_yaml_fn(data, name, file_mode, yaml))
-                        if out_kind == "ssz":
-                            output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
+                        elif out_kind == "cfg":
+                            output_part(out_kind, name, dump_yaml_fn(data, name, file_mode, cfg_yaml))
+                        elif out_kind == "data":
+                            output_part(out_kind, name, dump_yaml_fn(data, name, file_mode, yaml))
+                        elif out_kind == "ssz":
+                            output_part(out_kind, name, dump_ssz_fn(data, name, file_mode))
+                        else:
+                            assert False  # Unknown kind
                 except SkippedTest as e:
                     print(e)
                     skipped_test_count += 1
