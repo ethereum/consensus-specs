@@ -9,6 +9,9 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to EIP-4844](#fork-to-eip-4844)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -25,8 +28,28 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `EIP4844_FORK_VERSION` | `Version('0x03000000')` |
+| `EIP4844_FORK_VERSION` | `Version('0x04000000')` |
 | `EIP4844_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+
+## Helper functions
+
+### Misc
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= EIP4844_FORK_EPOCH:
+        return EIP4844_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ## Fork to EIP-4844
 

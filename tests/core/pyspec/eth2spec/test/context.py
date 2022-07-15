@@ -12,7 +12,7 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, SHARDING,
     MINIMAL, MAINNET,
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
     ALL_FORK_UPGRADES,
@@ -280,20 +280,34 @@ def spec_configured_state_test(conf):
     return decorator
 
 
+def _check_current_version(spec, state, version_name):
+    fork_version_field = version_name.upper() + '_FORK_VERSION'
+    try:
+        fork_version = getattr(spec.config, fork_version_field)
+    except Exception:
+        return False
+    else:
+        return state.fork.current_version == fork_version
+
+
 def config_fork_epoch_overrides(spec, state):
     overrides = {}
     if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
         pass
-    elif state.fork.current_version == spec.config.ALTAIR_FORK_VERSION:
+    elif _check_current_version(spec, state, ALTAIR):
         overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif state.fork.current_version == spec.config.BELLATRIX_FORK_VERSION:
+    elif _check_current_version(spec, state, BELLATRIX):
         overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif state.fork.current_version == spec.config.CAPELLA_FORK_VERSION:
+    elif _check_current_version(spec, state, CAPELLA):
         overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif state.fork.current_version == spec.config.SHARDING_FORK_VERSION:
+    elif _check_current_version(spec, state, EIP4844):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['EIP4844_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, SHARDING):
         overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
