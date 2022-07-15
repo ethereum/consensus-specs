@@ -319,8 +319,8 @@ def validate_light_client_update(store: LightClientStore,
         assert update.finalized_header == BeaconBlockHeader()
     else:
         if update.finalized_header.slot == GENESIS_SLOT:
-            finalized_root = Bytes32()
             assert update.finalized_header == BeaconBlockHeader()
+            finalized_root = Bytes32()
         else:
             finalized_root = hash_tree_root(update.finalized_header)
         assert is_valid_merkle_branch(
@@ -508,8 +508,8 @@ def create_light_client_update(state: BeaconState,
             )
             assert hash_tree_root(finalized_header) == attested_state.finalized_checkpoint.root
         else:
-            finalized_header = BeaconBlockHeader()
             assert attested_state.finalized_checkpoint.root == Bytes32()
+            finalized_header = BeaconBlockHeader()
         finality_branch = compute_merkle_proof_for_state(attested_state, FINALIZED_ROOT_INDEX)
     else:
         finalized_header = BeaconBlockHeader()
