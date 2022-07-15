@@ -21,6 +21,7 @@
   - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
   - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
   - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
+  - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -171,6 +172,18 @@ def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
     return compute_kzg_proof(aggregated_poly, x)
 ```
 
+### `get_blobs_and_kzg_commitments`
+
+The interface to retrieve blobs and corresponding kzg commitments.
+
+Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` may be unified.
+Implementers may also retrieve blobs individually per transaction.
+
+```python
+def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment]]:
+    ...
+```
+
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.
@@ -182,32 +195,27 @@ Namely, the blob handling and the addition of `BlobsSidecar`.
 
 ##### Blob KZG commitments
 
-After retrieving the execution payload from the execution engine as specified in Bellatrix,
-the blobs are retrieved and processed: 
+1. After retrieving the execution payload from the execution engine as specified in Bellatrix,
+use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blobs_and_kzg_commitments(payload_id)`.
+2. Verify `blobs` and `blob_kzg_commitments`:
 
-```
-# execution_payload = execution_engine.get_payload(payload_id)
-# block.body.execution_payload = execution_payload
-# ...
+```python
+def verify_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
+                                     blobs: Sequence[BLSFieldElement],
+                                     blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
+    assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
 
-blobs, blob_kzg_commitments = get_blobs(payload_id)
-
-# Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
-assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
-
-# Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
-assert len(blob_kzg_commitments) == len(blobs)
-assert [blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments)]
-
-# Update the block body 
-block.body.blob_kzg_commitments = blob_kzg_commitments
+    # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
+    assert len(blob_kzg_commitments) == len(blobs)
+    assert [blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments)]
+    return True
 ```
 
-The `blobs` should be held with the block in preparation of publishing.
+3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
+
+Note that the `blobs` should be held with the block in preparation of publishing.
 Without the `blobs`, the published block will effectively be ignored by honest validators.
-
-Note: This API is *unstable*. `get_blobs` and `get_payload` may be unified.
-Implementers may also retrieve blobs individually per transaction.
 
 ### Beacon Block publishing time
 
