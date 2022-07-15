@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX,
+    ALTAIR, BELLATRIX, CAPELLA,
     FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
 )
 from eth2spec.test.helpers.keys import pubkeys
@@ -57,6 +57,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == BELLATRIX:
         previous_version = spec.config.ALTAIR_FORK_VERSION
         current_version = spec.config.BELLATRIX_FORK_VERSION
+    elif spec.fork == CAPELLA:
+        previous_version = spec.config.BELLATRIX_FORK_VERSION
+        current_version = spec.config.CAPELLA_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
