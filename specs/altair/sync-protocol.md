@@ -466,7 +466,7 @@ To form a `LightClientUpdate`, the following historical states and blocks are ne
 - `state`: the post state of any block with a post-Altair parent block
 - `block`: the corresponding block
 - `attested_state`: the post state of the block referred to by `block.parent_root`
-- `finalized_block`: the block referred to by `attested_state.finalized_checkpoint.root`
+- `finalized_block`: the block referred to by `attested_state.finalized_checkpoint.root`, if locally available (may be unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
 
 ```python
 def create_light_client_update(state: BeaconState,
