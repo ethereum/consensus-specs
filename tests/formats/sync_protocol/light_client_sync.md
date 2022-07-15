@@ -17,7 +17,22 @@ An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to initi
 
 ### `steps.yaml`
 
-The steps to execute in sequence. There may be multiple items of the following types:
+The steps to execute in sequence.
+
+#### `checks` execution step
+
+Each step includes checks to verify the expected impact on the `store` object.
+
+```yaml
+finalized_header: {
+    slot: int,                -- Integer value from store.finalized_header.slot
+    root: string,             -- Encoded 32-byte value from store.finalized_header.hash_tree_root()
+}
+optimistic_header: {
+    slot: int,                -- Integer value from store.optimistic_header.slot
+    root: string,             -- Encoded 32-byte value from store.optimistic_header.hash_tree_root()
+}
+```
 
 #### `process_slot` execution step
 
@@ -26,7 +41,8 @@ should be executed with the specified parameters:
 
 ```yaml
 {
-    current_slot: int  -- integer, decimal
+    current_slot: int                  -- integer, decimal
+    checks: {<store_attibute>: value}  -- the assertions.
 }
 ```
 
@@ -38,22 +54,15 @@ The function `process_light_client_update(store, update, current_slot, genesis_v
 
 ```yaml
 {
-    update: string             -- name of the `*.ssz_snappy` file to load
-                                  as a `LightClientUpdate` object
-    current_slot: int          -- integer, decimal
+    update: string                     -- name of the `*.ssz_snappy` file to load
+                                          as a `LightClientUpdate` object
+    current_slot: int                  -- integer, decimal
+    checks: {<store_attibute>: value}  -- the assertions.
 }
 ```
 
 After this step, the `store` object may have been updated.
 
-### `expected_finalized_header.ssz_snappy`
-
-An SSZ-snappy encoded `expected_finalized_header` object of type `BeaconBlockHeader` that represents the expected `store.finalized_header` after applying all the test steps.
-
-### `expected_optimistic_header.ssz_snappy`
-
-An SSZ-snappy encoded `expected_optimistic_header` object of type `BeaconBlockHeader` that represents the expected `store.finalized_header` after applying all the test steps.
-
 ## Condition
 
-A test-runner should initialize a local `LightClientStore` using the provided `bootstrap` object. It should then proceed to execute all the test steps in sequence. Finally, it should verify that the resulting `store` refers to the provided `expected_finalized_header` and `expected_optimistic_header`.
+A test-runner should initialize a local `LightClientStore` using the provided `bootstrap` object. It should then proceed to execute all the test steps in sequence. After each step, it should verify that the resulting `store` verifies against the provided `checks`.

@@ -45,8 +45,6 @@ def setup_test(spec, state):
 
 def finish_test(test):
     yield "steps", test.steps
-    yield "expected_finalized_header", test.store.finalized_header
-    yield "expected_optimistic_header", test.store.optimistic_header
 
 
 def get_update_file_name(spec, update):
@@ -61,15 +59,30 @@ def get_update_file_name(spec, update):
     return f"update_{encode_hex(update.attested_header.hash_tree_root())}_{suffix1}{suffix2}"
 
 
+def get_checks(store):
+    return {
+        "finalized_header": {
+            'slot': int(store.finalized_header.slot),
+            'root': encode_hex(store.finalized_header.hash_tree_root()),
+        },
+        "optimistic_header": {
+            'slot': int(store.optimistic_header.slot),
+            'root': encode_hex(store.optimistic_header.hash_tree_root()),
+        },
+    }
+
+
 def emit_slot(test, spec, state):
     current_slot = state.slot
-    yield from []
+    spec.process_slot_for_light_client_store(test.store, current_slot)
+
+    yield from []  # Consistently enable `yield from` syntax in calling tests
     test.steps.append({
         "process_slot": {
             "current_slot": int(current_slot),
+            "checks": get_checks(test.store),
         }
     })
-    spec.process_slot_for_light_client_store(test.store, current_slot)
 
 
 def emit_update(test, spec, state, block, attested_state, finalized_block, with_next_sync_committee=True):
@@ -79,14 +92,16 @@ def emit_update(test, spec, state, block, attested_state, finalized_block, with_
         update.next_sync_committee_branch = \
             [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
     current_slot = state.slot
+    spec.process_light_client_update(test.store, update, current_slot, test.genesis_validators_root)
+
     yield get_update_file_name(spec, update), update
     test.steps.append({
         "process_update": {
             "update": get_update_file_name(spec, update),
             "current_slot": int(current_slot),
+            "checks": get_checks(test.store),
         }
     })
-    spec.process_light_client_update(test.store, update, current_slot, test.genesis_validators_root)
     return update
 
 
