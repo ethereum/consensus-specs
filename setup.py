@@ -482,6 +482,7 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         constants = {
             'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
+            'CURRENT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
             'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}
@@ -1094,7 +1095,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
-        "generator": ["python-snappy==0.5.4"],
+        "generator": ["python-snappy==0.5.4", "filelock"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
