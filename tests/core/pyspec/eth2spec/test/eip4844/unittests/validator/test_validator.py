@@ -30,7 +30,7 @@ def test_verify_kzg_proof(spec, state):
     assert spec.verify_kzg_proof(commitment, x, y, proof)
 
 
-def _run_verify_blobs_sidecar_test(spec, state, blob_count):
+def _run_validate_blobs_sidecar_test(spec, state, blob_count):
     block = build_empty_block_for_next_slot(spec, state)
     opaque_tx, blobs, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=blob_count)
     block.body.blob_kzg_commitments = blob_kzg_commitments
@@ -41,22 +41,22 @@ def _run_verify_blobs_sidecar_test(spec, state, blob_count):
     privkey = privkeys[1]
     spec.get_signed_blobs_sidecar(state, blobs_sidecar, privkey)
     expected_commitments = [spec.blob_to_kzg_commitment(blobs[i]) for i in range(blob_count)]
-    assert spec.verify_blobs_sidecar(block.slot, block.hash_tree_root(), expected_commitments, blobs_sidecar)
+    spec.validate_blobs_sidecar(block.slot, block.hash_tree_root(), expected_commitments, blobs_sidecar)
 
 
 @with_eip4844_and_later
 @spec_state_test
-def test_verify_blobs_sidecar_one_blob(spec, state):
-    _run_verify_blobs_sidecar_test(spec, state, blob_count=1)
+def test_validate_blobs_sidecar_one_blob(spec, state):
+    _run_validate_blobs_sidecar_test(spec, state, blob_count=1)
 
 
 @with_eip4844_and_later
 @spec_state_test
-def test_verify_blobs_sidecar_two_blobs(spec, state):
-    _run_verify_blobs_sidecar_test(spec, state, blob_count=2)
+def test_validate_blobs_sidecar_two_blobs(spec, state):
+    _run_validate_blobs_sidecar_test(spec, state, blob_count=2)
 
 
 @with_eip4844_and_later
 @spec_state_test
-def test_verify_blobs_sidecar_ten_blobs(spec, state):
-    _run_verify_blobs_sidecar_test(spec, state, blob_count=10)
+def test_validate_blobs_sidecar_ten_blobs(spec, state):
+    _run_validate_blobs_sidecar_test(spec, state, blob_count=10)

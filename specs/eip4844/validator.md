@@ -19,7 +19,7 @@
   - [`hash_to_bls_field`](#hash_to_bls_field)
   - [`compute_powers`](#compute_powers)
   - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
-  - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
+  - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
   - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
   - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -74,7 +74,7 @@ class PolynomialAndCommitment(Container):
 
 The implementation of `is_data_available` is meant to change with later sharding upgrades.
 Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
-and verify the sidecar with `verify_blobs_sidecar`.
+and validate the sidecar with `validate_blobs_sidecar`.
 
 Without the sidecar the block may be processed further optimistically,
 but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
@@ -83,7 +83,9 @@ but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloade
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-    return verify_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
+    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
+
+    return True
 ```
 
 ### `hash_to_bls_field`
@@ -132,11 +134,13 @@ def compute_aggregated_poly_and_commitment(
     return aggregated_poly, aggregated_poly_commitment
 ```
 
-### `verify_blobs_sidecar`
+### `validate_blobs_sidecar`
 
 ```python
-def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
-                         expected_kzg_commitments: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> bool:
+def validate_blobs_sidecar(slot: Slot,
+                           beacon_block_root: Root,
+                           expected_kzg_commitments: Sequence[KZGCommitment],
+                           blobs_sidecar: BlobsSidecar) -> None:
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
@@ -156,7 +160,7 @@ def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
     y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
 
     # Verify aggregated proof
-    return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+    assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
 ```
 
 ### `compute_proof_from_blobs`
@@ -197,19 +201,18 @@ Namely, the blob handling and the addition of `BlobsSidecar`.
 
 1. After retrieving the execution payload from the execution engine as specified in Bellatrix,
 use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blobs_and_kzg_commitments(payload_id)`.
-2. Verify `blobs` and `blob_kzg_commitments`:
+2. Validate `blobs` and `blob_kzg_commitments`:
 
 ```python
-def verify_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
-                                     blobs: Sequence[BLSFieldElement],
-                                     blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
+                                       blobs: Sequence[BLSFieldElement],
+                                       blob_kzg_commitments: Sequence[KZGCommitment]) -> None:
     # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
     assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
 
     # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
     assert len(blob_kzg_commitments) == len(blobs)
     assert [blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments)]
-    return True
 ```
 
 3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.

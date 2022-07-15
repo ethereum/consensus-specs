@@ -119,7 +119,7 @@ where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sid
 
 Note that a sidecar may be propagated before or after the corresponding beacon block.
 
-Once both sidecar and beacon block are received, `verify_blobs_sidecar` can unlock the data-availability fork-choice dependency.
+Once both sidecar and beacon block are received, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
 
 ### Transitioning the gossip
 
@@ -190,7 +190,7 @@ The response is unsigned, i.e. `BlobsSidecarsByRange`, as the signature of the b
 may not be available beyond the initial distribution via gossip.
 
 Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
-correct w.r.t. the expected KZG commitments through `verify_blobs_sidecar`.
+correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
 
 `BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip.
 
