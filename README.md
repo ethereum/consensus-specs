@@ -1,6 +1,7 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![gitpoap badge](https://public-api.gitpoap.io/v1/repo/ethereum/consensus-specs/badge)](https://www.gitpoap.io/gh/ethereum/consensus-specs)
 
 To learn more about proof-of-stake and sharding, see the [PoS FAQ](https://eth.wiki/en/concepts/proof-of-stake-faqs), [sharding FAQ](https://eth.wiki/sharding/Sharding-FAQs) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
