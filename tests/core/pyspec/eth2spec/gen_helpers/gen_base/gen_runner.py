@@ -3,7 +3,9 @@ import time
 import shutil
 import argparse
 from pathlib import Path
+from filelock import FileLock
 import sys
+import json
 from typing import Iterable, AnyStr, Any, Callable
 import traceback
 
@@ -111,6 +113,8 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     collected_test_count = 0
     generated_test_count = 0
     skipped_test_count = 0
+    test_identifiers = []
+
     provider_start = time.time()
     for tprov in test_providers:
         if not collect_only:
@@ -123,12 +127,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 / Path(test_case.runner_name) / Path(test_case.handler_name)
                 / Path(test_case.suite_name) / Path(test_case.case_name)
             )
-            incomplete_tag_file = case_dir / "INCOMPLETE"
-
             collected_test_count += 1
-            if collect_only:
-                print(f"Collected test at: {case_dir}")
-                continue
+            print(f"Collected test at: {case_dir}")
+
+            incomplete_tag_file = case_dir / "INCOMPLETE"
 
             if case_dir.exists():
                 if not args.force and not incomplete_tag_file.exists():
@@ -198,6 +200,15 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     shutil.rmtree(case_dir)
                 else:
                     generated_test_count += 1
+                    test_identifier = "::".join([
+                        test_case.preset_name,
+                        test_case.fork_name,
+                        test_case.runner_name,
+                        test_case.handler_name,
+                        test_case.suite_name,
+                        test_case.case_name
+                    ])
+                    test_identifiers.append(test_identifier)
                     # Only remove `INCOMPLETE` tag file
                     os.remove(incomplete_tag_file)
             test_end = time.time()
@@ -216,6 +227,28 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         if span > TIME_THRESHOLD_TO_PRINT:
             summary_message += f" in {span} seconds"
         print(summary_message)
+    diagnostics = {
+        "collected_test_count": collected_test_count,
+        "generated_test_count": generated_test_count,
+        "skipped_test_count": skipped_test_count,
+        "test_identifiers": test_identifiers,
+        "durations": [f"{span} seconds"],
+    }
+    diagnostics_path = Path(os.path.join(output_dir, "diagnostics.json"))
+    diagnostics_lock = FileLock(os.path.join(output_dir, "diagnostics.json.lock"))
+    with diagnostics_lock:
+        diagnostics_path.touch(exist_ok=True)
+        if os.path.getsize(diagnostics_path) == 0:
+            with open(diagnostics_path, "w+") as f:
+                json.dump(diagnostics, f)
+        else:
+            with open(diagnostics_path, "r+") as f:
+                existing_diagnostics = json.load(f)
+                for k, v in diagnostics.items():
+                    existing_diagnostics[k] += v
+            with open(diagnostics_path, "w+") as f:
+                json.dump(existing_diagnostics, f)
+        print(f"wrote diagnostics to {diagnostics_path}")
 
 
 def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):

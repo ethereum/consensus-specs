@@ -1043,7 +1043,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
-        "generator": ["python-snappy==0.5.4"],
+        "generator": ["python-snappy==0.5.4", "filelock"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
