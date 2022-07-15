@@ -102,20 +102,16 @@ This topic is used to propagate data blobs included in any given beacon block.
 
 The following validations MUST pass before forwarding the `signed_blobs_sidecar` on the network;
 Alias `sidecar = signed_blobs_sidecar.message`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `blobs_sidecar.beacon_block_slot == current_slot`.
+- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == current_slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
-
-```py
-domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
-signing_root = compute_signing_root(blobs_sidecar, domain)
-assert bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature)
-```
-
-where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
+    - Let `domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, sidecar.beacon_block_slot // SLOTS_PER_EPOCH)`
+    - Let `signing_root = compute_signing_root(sidecar, domain)`
+    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature) is True`,   
+      where `proposer_pubkey` is the pubkey of the beacon block proposer of `sidecar.beacon_block_slot`
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
-  where `proposer_index` is the validator index of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
+  where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
 
 Note that a sidecar may be propagated before or after the corresponding beacon block.
 
