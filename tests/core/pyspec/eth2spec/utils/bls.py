@@ -1,5 +1,25 @@
 from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
 from py_ecc.bls.g2_primatives import signature_to_G2 as _signature_to_G2
+from py_ecc.optimized_bls12_381 import (  # noqa: F401
+    G1,
+    G2,
+    Z1,
+    Z2,
+    add,
+    multiply,
+    neg,
+    pairing,
+    final_exponentiate,
+    FQ12
+)
+from py_ecc.bls.g2_primitives import (  # noqa: F401
+    G1_to_pubkey as G1_to_bytes48,
+    pubkey_to_G1 as bytes48_to_G1,
+    G2_to_signature as G2_to_bytes96,
+    signature_to_G2 as bytes96_to_G2,
+)
+
+
 import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
 
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
@@ -109,3 +129,12 @@ def SkToPk(SK):
         return bls.SkToPk(SK)
     else:
         return bls.SkToPk(SK.to_bytes(32, 'big'))
+
+
+def pairing_check(values):
+    p_q_1, p_q_2 = values
+    final_exponentiation = final_exponentiate(
+        pairing(p_q_1[1], p_q_1[0], final_exponentiate=False)
+        * pairing(p_q_2[1], p_q_2[0], final_exponentiate=False)
+    )
+    return final_exponentiation == FQ12.one()

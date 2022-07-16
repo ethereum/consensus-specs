@@ -1,8 +1,10 @@
 from eth2spec.test.context import (
+    is_post_capella,
+    is_post_eip4844,
     spec_configured_state_test,
     spec_state_test_with_matching_config,
     with_all_phases,
-    with_phases
+    with_phases,
 )
 from eth2spec.test.helpers.constants import ALTAIR
 
@@ -38,9 +40,15 @@ def test_override_config_fork_epoch(spec, state):
     if state.fork.current_version == spec.config.BELLATRIX_FORK_VERSION:
         return
 
-    assert spec.config.CAPELLA_FORK_EPOCH == spec.GENESIS_EPOCH
-    if state.fork.current_version == spec.config.CAPELLA_FORK_VERSION:
-        return
+    if is_post_capella(spec):
+        assert spec.config.CAPELLA_FORK_EPOCH == spec.GENESIS_EPOCH
+        if state.fork.current_version == spec.config.CAPELLA_FORK_VERSION:
+            return
+
+    if is_post_eip4844(spec):
+        assert spec.config.EIP4844_FORK_EPOCH == spec.GENESIS_EPOCH
+        if state.fork.current_version == spec.config.EIP4844_FORK_VERSION:
+            return
 
     assert spec.config.SHARDING_FORK_EPOCH == spec.GENESIS_EPOCH
     if state.fork.current_version == spec.config.SHARDING_FORK_VERSION:

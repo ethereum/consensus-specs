@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.constants import FORKS_BEFORE_CAPELLA
+from eth2spec.test.context import is_post_capella
 
 
 def build_empty_execution_payload(spec, state, randao_mix=None):
@@ -28,7 +28,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
-    if spec.fork not in FORKS_BEFORE_CAPELLA:
+    if is_post_capella(spec):
         num_withdrawals = min(spec.MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
         payload.withdrawals = state.withdrawal_queue[:num_withdrawals]
 
@@ -55,7 +55,7 @@ def get_execution_payload_header(spec, execution_payload):
         block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
-    if spec.fork not in FORKS_BEFORE_CAPELLA:
+    if is_post_capella(spec):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
     return payload_header
 
