@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
+    ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -20,7 +20,7 @@ def build_mock_validator(spec, i: int, balance: int):
         effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     )
 
-    if spec.fork not in FORKS_BEFORE_CAPELLA:
+    if spec.fork in (CAPELLA):
         validator.fully_withdrawn_epoch = spec.FAR_FUTURE_EPOCH
 
     return validator
@@ -60,6 +60,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == CAPELLA:
         previous_version = spec.config.BELLATRIX_FORK_VERSION
         current_version = spec.config.CAPELLA_FORK_VERSION
+    elif spec.fork == EIP4844:
+        previous_version = spec.config.BELLATRIX_FORK_VERSION
+        current_version = spec.config.EIP4844_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
