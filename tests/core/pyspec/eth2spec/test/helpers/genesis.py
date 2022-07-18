@@ -57,6 +57,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == BELLATRIX:
         previous_version = spec.config.ALTAIR_FORK_VERSION
         current_version = spec.config.BELLATRIX_FORK_VERSION
+    elif spec.fork == CAPELLA:
+        previous_version = spec.config.BELLATRIX_FORK_VERSION
+        current_version = spec.config.CAPELLA_FORK_VERSION
     elif spec.fork == EIP4844:
         previous_version = spec.config.BELLATRIX_FORK_VERSION
         current_version = spec.config.EIP4844_FORK_VERSION
