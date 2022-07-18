@@ -495,7 +495,7 @@ def process_bls_to_execution_change(state: BeaconState,
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Capella testing only.
 Modifications include:
-1. Use `CAPELLA_FORK_VERSION` as the current fork version.
+1. Use `CAPELLA_FORK_VERSION` as the previous and current fork version.
 2. Utilize the Capella `BeaconBlockBody` when constructing the initial `latest_block_header`.
 
 ```python
@@ -541,7 +541,6 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     state.next_sync_committee = get_next_sync_committee(state)
 
     # Initialize the execution payload header
-    # If empty, will initialize a chain that has not yet gone through the Merge transition
     state.latest_execution_payload_header = execution_payload_header
 
     return state
