@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
 )
 from eth2spec.test.helpers.keys import pubkeys
 

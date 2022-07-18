@@ -399,7 +399,7 @@ def process_slashings(state: BeaconState) -> None:
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Bellatrix testing only.
 Modifications include:
-1. Use `BELLATRIX_FORK_VERSION` as the current fork version.
+1. Use `BELLATRIX_FORK_VERSION` as the previous and current fork version.
 2. Utilize the Bellatrix `BeaconBlockBody` when constructing the initial `latest_block_header`.
 3. Initialize `latest_execution_payload_header`.
   If `execution_payload_header == ExecutionPayloadHeader()`, then the Merge has not yet occurred.
