@@ -281,7 +281,11 @@ def initialize_light_client_store(trusted_block_root: Root,
 
 ## Light client state updates
 
-A light client receives `update`, `finality_update` and `optimistic_update` objects of type `LightClientUpdate`, `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock. Likewise, every `finality_update` triggers `process_light_client_finality_update`, and every `optimistic_update` triggers `process_light_client_optimistic_update`. `process_slot_for_light_client_store` is triggered every time the current slot increments.
+- A light client receives objects of type `LightClientUpdate`, `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`:
+    - **`update: LightClientUpdate`**: Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock.
+    - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update` triggers `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
+    - **`optimistic_update: LightClientOptimisticUpdate`**: Every `optimistic_update` triggers `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
+- `process_slot_for_light_client_store` is triggered every time the current slot increments.
 
 ### `process_slot_for_light_client_store`
 
