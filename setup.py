@@ -458,6 +458,7 @@ class AltairSpecBuilder(Phase0SpecBuilder):
 from typing import NewType, Union as PyUnion
 
 from eth2spec.phase0 import {preset_name} as phase0
+from eth2spec.test.helpers.merkle import build_proof
 from eth2spec.utils.ssz.ssz_typing import Path
 '''
 
@@ -475,7 +476,12 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
-    return GeneralizedIndex(ssz_path.gindex())'''
+    return GeneralizedIndex(ssz_path.gindex())
+
+
+def compute_merkle_proof_for_state(state: BeaconState,
+                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+    return build_proof(state.get_backing(), index)'''
 
 
     @classmethod
@@ -656,7 +662,11 @@ def objects_to_spec(preset_name: str,
 
     protocols_spec = '\n\n\n'.join(format_protocol(k, v) for k, v in spec_object.protocols.items())
     for k in list(spec_object.functions):
-        if "ceillog2" in k or "floorlog2" in k:
+        if k in [
+            "ceillog2",
+            "floorlog2",
+            "compute_merkle_proof_for_state",
+        ]:
             del spec_object.functions[k]
     functions = builder.implement_optimizations(spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())
@@ -817,7 +827,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
     for k, v in conf.items():
         if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
-            # Everything is either byte data or an integer, with PRESET_BASE as one exception.
+            # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"
         else:
             out[k] = str(int(v))
@@ -923,12 +933,13 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
+                    specs/altair/light-client/full-node.md
+                    specs/altair/light-client/sync-protocol.md
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
-                    specs/altair/sync-protocol.md
                 """
             if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """

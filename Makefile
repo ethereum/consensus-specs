@@ -23,13 +23,15 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) \
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
+                 $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SPEC_DIR)/altair/**/*.md) \
                  $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
                  $(wildcard $(SPEC_DIR)/capella/*.md) \
                  $(wildcard $(SPEC_DIR)/custody/*.md) \
                  $(wildcard $(SPEC_DIR)/das/*.md) \
                  $(wildcard $(SPEC_DIR)/sharding/*.md) \
-                 $(wildcard $(SPEC_DIR)/eip4844/*.md)
+                 $(wildcard $(SPEC_DIR)/eip4844/*.md) \
+                 $(wildcard $(SSZ_DIR)/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)

@@ -1,4 +1,4 @@
-# Altair -- Minimal Light Client
+# Altair Light Client -- Sync Protocol
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -44,6 +44,9 @@ and metered VMs (e.g. blockchain VMs for cross-chain bridges).
 
 This document suggests a minimal light client design for the beacon chain that
 uses sync committees introduced in [this beacon chain extension](./beacon-chain.md).
+
+Additional documents describe how the light client sync protocol can be used:
+- [Full node](./full-node.md)
 
 ## Constants
 
@@ -307,8 +310,8 @@ def validate_light_client_update(store: LightClientStore,
         assert update.finalized_header == BeaconBlockHeader()
     else:
         if update.finalized_header.slot == GENESIS_SLOT:
-            finalized_root = Bytes32()
             assert update.finalized_header == BeaconBlockHeader()
+            finalized_root = Bytes32()
         else:
             finalized_root = hash_tree_root(update.finalized_header)
         assert is_valid_merkle_branch(
