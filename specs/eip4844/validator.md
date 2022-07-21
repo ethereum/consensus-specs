@@ -47,7 +47,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `Polynomial` | `List[BLSFieldElement, MAX_BLOBS_PER_BLOCK]` | a polynomial in evaluation form |
+| `Polynomial` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
 
 ## Containers
 
