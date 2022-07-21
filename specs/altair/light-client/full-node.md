@@ -14,6 +14,8 @@
 - [Deriving light client data](#deriving-light-client-data)
   - [`create_light_client_bootstrap`](#create_light_client_bootstrap)
   - [`create_light_client_update`](#create_light_client_update)
+  - [`create_light_client_finality_update`](#create_light_client_finality_update)
+  - [`create_light_client_optimistic_update`](#create_light_client_optimistic_update)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -133,3 +135,31 @@ Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `
 - `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.slot`
 - `LightClientUpdate` are only considered if `compute_sync_committee_period(compute_epoch_at_slot(update.attested_header.slot)) == compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))`
 - Only `LightClientUpdate` with `next_sync_committee` as selected by fork choice are provided, regardless of ranking by `is_better_update`. To uniquely identify a non-finalized sync committee fork, all of `period`, `current_sync_committee` and `next_sync_committee` need to be incorporated, as sync committees may reappear over time.
+
+### `create_light_client_finality_update`
+
+```python
+def create_light_client_finality_update(update: LightClientUpdate) -> LightClientFinalityUpdate:
+    return LightClientFinalityUpdate(
+        attested_header=update.attested_header,
+        finalized_header=update.finalized_header,
+        finality_branch=update.finality_branch,
+        sync_aggregate=update.sync_aggregate,
+        signature_slot=update.signature_slot,
+    )
+```
+
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
+
+### `create_light_client_optimistic_update`
+
+```python
+def create_light_client_optimistic_update(update: LightClientUpdate) -> LightClientOptimisticUpdate:
+    return LightClientOptimisticUpdate(
+        attested_header=update.attested_header,
+        sync_aggregate=update.sync_aggregate,
+        signature_slot=update.signature_slot,
+    )
+```
+
+Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest `attested_header.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientOptimisticUpdate` whenever `attested_header` changes.

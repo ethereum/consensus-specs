@@ -15,6 +15,8 @@
 - [Containers](#containers)
   - [`LightClientBootstrap`](#lightclientbootstrap)
   - [`LightClientUpdate`](#lightclientupdate)
+  - [`LightClientFinalityUpdate`](#lightclientfinalityupdate)
+  - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
   - [`is_sync_committee_update`](#is_sync_committee_update)
@@ -31,6 +33,8 @@
   - [`validate_light_client_update`](#validate_light_client_update)
   - [`apply_light_client_update`](#apply_light_client_update)
   - [`process_light_client_update`](#process_light_client_update)
+  - [`process_light_client_finality_update`](#process_light_client_finality_update)
+  - [`process_light_client_optimistic_update`](#process_light_client_optimistic_update)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -90,6 +94,33 @@ class LightClientUpdate(Container):
     # The finalized beacon block header attested to by Merkle branch
     finalized_header: BeaconBlockHeader
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    # Sync committee aggregate signature
+    sync_aggregate: SyncAggregate
+    # Slot at which the aggregate signature was created (untrusted)
+    signature_slot: Slot
+```
+
+### `LightClientFinalityUpdate`
+
+```python
+class LightClientFinalityUpdate(Container):
+    # The beacon block header that is attested to by the sync committee
+    attested_header: BeaconBlockHeader
+    # The finalized beacon block header attested to by Merkle branch
+    finalized_header: BeaconBlockHeader
+    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    # Sync committee aggregate signature
+    sync_aggregate: SyncAggregate
+    # Slot at which the aggregate signature was created (untrusted)
+    signature_slot: Slot
+```
+
+### `LightClientOptimisticUpdate`
+
+```python
+class LightClientOptimisticUpdate(Container):
+    # The beacon block header that is attested to by the sync committee
+    attested_header: BeaconBlockHeader
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
     # Slot at which the aggregate signature was created (untrusted)
@@ -250,7 +281,11 @@ def initialize_light_client_store(trusted_block_root: Root,
 
 ## Light client state updates
 
-A light client receives `update` objects of type `LightClientUpdate`. Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock. `process_slot_for_light_client_store` is triggered every time the current slot increments.
+- A light client receives objects of type `LightClientUpdate`, `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`:
+    - **`update: LightClientUpdate`**: Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock.
+    - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update` triggers `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
+    - **`optimistic_update: LightClientOptimisticUpdate`**: Every `optimistic_update` triggers `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
+- `process_slot_for_light_client_store` is triggered every time the current slot increments.
 
 ### `process_slot_for_light_client_store`
 
@@ -419,4 +454,42 @@ def process_light_client_update(store: LightClientStore,
         # Normal update through 2/3 threshold
         apply_light_client_update(store, update)
         store.best_valid_update = None
+```
+
+### `process_light_client_finality_update`
+
+```python
+def process_light_client_finality_update(store: LightClientStore,
+                                         finality_update: LightClientFinalityUpdate,
+                                         current_slot: Slot,
+                                         genesis_validators_root: Root) -> None:
+    update = LightClientUpdate(
+        attested_header=finality_update.attested_header,
+        next_sync_committee=SyncCommittee(),
+        next_sync_committee_branch=[Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))],
+        finalized_header=finality_update.finalized_header,
+        finality_branch=finality_update.finality_branch,
+        sync_aggregate=finality_update.sync_aggregate,
+        signature_slot=finality_update.signature_slot,
+    )
+    process_light_client_update(store, update, current_slot, genesis_validators_root)
+```
+
+### `process_light_client_optimistic_update`
+
+```python
+def process_light_client_optimistic_update(store: LightClientStore,
+                                           optimistic_update: LightClientOptimisticUpdate,
+                                           current_slot: Slot,
+                                           genesis_validators_root: Root) -> None:
+    update = LightClientUpdate(
+        attested_header=optimistic_update.attested_header,
+        next_sync_committee=SyncCommittee(),
+        next_sync_committee_branch=[Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))],
+        finalized_header=BeaconBlockHeader(),
+        finality_branch=[Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))],
+        sync_aggregate=optimistic_update.sync_aggregate,
+        signature_slot=optimistic_update.signature_slot,
+    )
+    process_light_client_update(store, update, current_slot, genesis_validators_root)
 ```
