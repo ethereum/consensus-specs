@@ -12,7 +12,7 @@
 - [Prerequisites](#prerequisites)
 - [Custom types](#custom-types)
 - [Containers](#containers)
-  - [`BlobsAndCommmitments`](#blobsandcommmitments)
+  - [`BlobsAndCommitments`](#blobsandcommitments)
   - [`PolynomialAndCommitment`](#polynomialandcommitment)
 - [Helpers](#helpers)
   - [`is_data_available`](#is_data_available)
@@ -51,10 +51,10 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ## Containers
 
-### `BlobsAndCommmitments`
+### `BlobsAndCommitments`
 
 ```python
-class BlobsAndCommmitments(Container):
+class BlobsAndCommitments(Container):
     blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
 ```
@@ -122,7 +122,7 @@ def compute_aggregated_poly_and_commitment(
     Return the aggregated polynomial and aggregated KZG commitment.
     """
     # Generate random linear combination challenges
-    r = hash_to_bls_field(BlobsAndCommmitments(blobs=blobs, kzg_commitments=kzg_commitments))
+    r = hash_to_bls_field(BlobsAndCommitments(blobs=blobs, kzg_commitments=kzg_commitments))
     r_powers = compute_powers(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form
