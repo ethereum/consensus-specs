@@ -34,9 +34,9 @@ optimistic_header: {
 }
 ```
 
-#### `process_slot` execution step
+#### `force_update` execution step
 
-The function `process_slot_for_light_client_store(store, current_slot)`
+The function `process_light_client_store_force_update(store, current_slot)`
 should be executed with the specified parameters:
 
 ```yaml
