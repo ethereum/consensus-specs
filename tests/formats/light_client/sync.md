@@ -36,7 +36,7 @@ optimistic_header: {
 
 #### `force_update` execution step
 
-The function `try_light_client_store_force_update(store, current_slot)`
+The function `process_light_client_store_force_update(store, current_slot)`
 should be executed with the specified parameters:
 
 ```yaml

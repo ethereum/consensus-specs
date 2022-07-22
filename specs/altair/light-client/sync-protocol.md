@@ -31,7 +31,7 @@
 - [Light client state updates](#light-client-state-updates)
   - [`validate_light_client_update`](#validate_light_client_update)
   - [`apply_light_client_update`](#apply_light_client_update)
-  - [`try_light_client_store_force_update`](#try_light_client_store_force_update)
+  - [`process_light_client_store_force_update`](#process_light_client_store_force_update)
   - [`process_light_client_update`](#process_light_client_update)
   - [`process_light_client_finality_update`](#process_light_client_finality_update)
   - [`process_light_client_optimistic_update`](#process_light_client_optimistic_update)
@@ -285,7 +285,7 @@ def initialize_light_client_store(trusted_block_root: Root,
     - **`update: LightClientUpdate`**: Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock.
     - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update` triggers `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
     - **`optimistic_update: LightClientOptimisticUpdate`**: Every `optimistic_update` triggers `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
-- `try_light_client_store_force_update` MAY be called based on use case dependent heuristics if light client sync appears stuck.
+- `process_light_client_store_force_update` MAY be called based on use case dependent heuristics if light client sync appears stuck.
 
 ### `validate_light_client_update`
 
@@ -386,10 +386,10 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
             store.optimistic_header = store.finalized_header
 ```
 
-### `try_light_client_store_force_update`
+### `process_light_client_store_force_update`
 
 ```python
-def try_light_client_store_force_update(store: LightClientStore, current_slot: Slot) -> None:
+def process_light_client_store_force_update(store: LightClientStore, current_slot: Slot) -> None:
     if (
         current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
         and store.best_valid_update is not None

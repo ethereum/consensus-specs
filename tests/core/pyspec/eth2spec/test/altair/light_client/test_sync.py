@@ -74,7 +74,7 @@ def get_checks(store):
 
 def emit_force_update(test, spec, state):
     current_slot = state.slot
-    spec.try_light_client_store_force_update(test.store, current_slot)
+    spec.process_light_client_store_force_update(test.store, current_slot)
 
     yield from []  # Consistently enable `yield from` syntax in calling tests
     test.steps.append({
