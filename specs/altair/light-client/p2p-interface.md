@@ -41,7 +41,7 @@ This section extends the [networking specification for Altair](../p2p-interface.
 
 ### The gossip domain: gossipsub
 
-Gossip meshes are added to allow light clients stay in sync with the network.
+Gossip meshes are added to allow light clients to stay in sync with the network.
 
 #### Topics and messages
 
