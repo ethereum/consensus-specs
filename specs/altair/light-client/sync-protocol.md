@@ -52,6 +52,7 @@ uses sync committees introduced in [this beacon chain extension](./beacon-chain.
 Additional documents describe how the light client sync protocol can be used:
 - [Full node](./full-node.md)
 - [Light client](./light-client.md)
+- [Networking](./p2p-interface.md)
 
 ## Constants
 

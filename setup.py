@@ -935,6 +935,7 @@ class PySpecCommand(Command):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
+                    specs/altair/light-client/p2p-interface.md
                     specs/altair/light-client/sync-protocol.md
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
