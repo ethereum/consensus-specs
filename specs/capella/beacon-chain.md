@@ -269,13 +269,13 @@ class BeaconState(Container):
 #### `withdraw`
 
 ```python
-def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
+def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount: Gwei) -> None:
     # Decrease the validator's balance
-    decrease_balance(state, index, amount)
+    decrease_balance(state, validator_index, amount)
     # Create a corresponding withdrawal receipt
     withdrawal = Withdrawal(
         index=state.next_withdrawal_index,
-        address=ExecutionAddress(state.validators[index].withdrawal_credentials[12:]),
+        address=ExecutionAddress(state.validators[validator_index].withdrawal_credentials[12:]),
         amount=amount,
     )
     state.next_withdrawal_index = WithdrawalIndex(state.next_withdrawal_index + 1)
