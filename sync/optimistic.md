@@ -89,8 +89,12 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
     return False
 ```
 
-Let only a node which returns `is_optimistic(opt_store, head) is True` be an *optimistic
-node*. Let only a validator on an optimistic node be an *optimistic validator*.
+Let a node be an *optimistic node* if its fork choice is in one of the following states:
+1. `is_optimistic(opt_store, head) is True`
+1. Blocks from every viable (with respect to FFG) branch have transitioned from `NOT_VALIDATED` to `INVALIDATED`
+leaving the block tree without viable branches
+
+Let only a validator on an optimistic node be an *optimistic validator*.
 
 When this specification only defines behaviour for an optimistic
 node/validator, but *not* for the non-optimistic case, assume default
