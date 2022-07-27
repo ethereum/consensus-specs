@@ -163,6 +163,24 @@ the merge block MUST be treated the same as
 an `INVALIDATED` block (i.e., it and all its descendants are invalidated and
 removed from the block tree).
 
+### How to apply `latestValidHash` when payload status is `INVALID`
+
+Processing the `INVALID` payload status by consensus engine
+depends on the value returned in `latestValidHash` parameter.
+The general approach is as follows:
+1. Consensus engine MUST identify `invalidBlock` as per definition in the table below
+2. `invalidBlock` and all its descendants MUST be transitioned from `NOT_VALIDATED` to `INVALIDATED`
+
+| `latestValidHash` | `invalidBlock` |
+|:- |:- |
+| Execution block hash | The *child* of a block with `body.execution_payload.block_hash == latestValidHash` in the chain containing a block with payload in question |
+| `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload()` in the chain containing a block with payload in question |
+| `null` | Block with payload in question |
+
+When `latestValidHash` is a meaningful execution block hash but consensus engine
+can't find a block satisfying `body.execution_payload.block_hash == latestValidHash`,
+consensus engine SHOULD behave the same as if `latestValidHash` was `null`.
+
 ### Execution Engine Errors
 
 When an execution engine returns an error or fails to respond to a payload
