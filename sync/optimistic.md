@@ -270,6 +270,23 @@ optimistic blocks (and vice-versa).
 
 ## Design Decision Rationale
 
+### Why sync optimistically?
+
+Most of execution engines use state sync as a default sync mechanism on Ethereum Mainnet 
+because executing blocks from genesis takes several weeks on commodity hardware.
+
+State sync requires the knowledge of the current head of the chain to eventually converge.
+If not constantly fed with the most recent head, state sync won't be able to complete
+because the recent state soon becomes unavailable due to state trie pruning.
+
+Optimistic block import (i.e. import without waiting for a payload to be executed by the engine)
+breaks a deadlock between the state sync and processing a beacon block by skipping payload
+execution as long as execution engine is syncing.
+
+Optimistic sync works nicely with execution engines using block execution as a default
+sync mechanism (e.g. Erigon). It makes optimistic sync a *generalized* solution for
+interaction between consensus and execution engine during the sync process.
+
 ### Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?
 
 Nodes can only import an optimistic block if their justified checkpoint is
