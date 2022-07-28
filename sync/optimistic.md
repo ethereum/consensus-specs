@@ -1,5 +1,37 @@
 # Optimistic Sync
 
+## Table of contents
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [Constants](#constants)
+- [Helpers](#helpers)
+- [Mechanisms](#mechanisms)
+  - [When to optimistically import blocks](#when-to-optimistically-import-blocks)
+  - [How to optimistically import blocks](#how-to-optimistically-import-blocks)
+  - [How to apply `latestValidHash` when payload status is `INVALID`](#how-to-apply-latestvalidhash-when-payload-status-is-invalid)
+  - [Execution Engine Errors](#execution-engine-errors)
+  - [Assumptions about Execution Engine Behaviour](#assumptions-about-execution-engine-behaviour)
+  - [Re-Orgs](#re-orgs)
+- [Fork Choice](#fork-choice)
+  - [Fork Choice Poisoning](#fork-choice-poisoning)
+- [Checkpoint Sync (Weak Subjectivity Sync)](#checkpoint-sync-weak-subjectivity-sync)
+- [Validator assignments](#validator-assignments)
+  - [Block Production](#block-production)
+  - [Attesting](#attesting)
+  - [Participating in Sync Committees](#participating-in-sync-committees)
+- [Ethereum Beacon APIs](#ethereum-beacon-apis)
+- [Design Decision Rationale](#design-decision-rationale)
+  - [Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?](#why-safe_slots_to_import_optimistically)
+  - [Transitioning from VALID -> INVALIDATED or INVALIDATED -> VALID](#transitioning-from-valid---invalidated-or-invalidated---valid)
+  - [What about Light Clients?](#what-about-light-clients)
+  - [What if `TERMINAL_BLOCK_HASH` is used?](#what-if-terminal_block_hash-is-used)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 ## Introduction
 
 In order to provide a syncing execution engine with a partial view of the head
@@ -346,7 +378,7 @@ specification since it's only possible with a faulty EE.
 
 Such a scenario requires manual intervention.
 
-## What about Light Clients?
+### What about Light Clients?
 
 An alternative to optimistic sync is to run a light client inside/alongside
 beacon nodes that mitigates the need for optimistic sync by providing
@@ -358,7 +390,7 @@ A notable thing about optimistic sync is that it's *optional*. Should an
 implementation decide to go the light-client route, then they can just ignore
 optimistic sync all together.
 
-## What if `TERMINAL_BLOCK_HASH` is used?
+### What if `TERMINAL_BLOCK_HASH` is used?
 
 If the terminal block hash override is used (i.e., `TERMINAL_BLOCK_HASH !=
 Hash32()`), the [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
