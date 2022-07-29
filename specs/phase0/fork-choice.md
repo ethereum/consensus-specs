@@ -406,7 +406,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert block.parent_root in store.block_states
     # Make a copy of the state to avoid mutability issues
     pre_state = copy(store.block_states[block.parent_root])
-    # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
+    # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
     # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
