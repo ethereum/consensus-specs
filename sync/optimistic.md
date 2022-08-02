@@ -279,9 +279,9 @@ State sync requires the knowledge of the current head of the chain to converge e
 If not constantly fed with the most recent head, state sync won't be able to complete
 because the recent state soon becomes unavailable due to state trie pruning.
 
-Optimistic block import (i.e. import without waiting for a payload to be executed by the engine)
-breaks a deadlock between the state sync and processing a beacon block by skipping payload
-execution as long as execution engine is syncing.
+Optimistic block import (i.e. import when the execution engine *cannot* currently validate the payload)
+breaks a deadlock between the execution layer sync process and importing beacon blocks
+while the execution engine is syncing.
 
 Optimistic sync works nicely with execution engines using block execution as a default
 sync mechanism (e.g. Erigon). It makes optimistic sync a *generalized* solution for
