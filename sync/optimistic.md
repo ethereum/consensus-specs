@@ -283,9 +283,14 @@ Optimistic block import (i.e. import when the execution engine *cannot* currentl
 breaks a deadlock between the execution layer sync process and importing beacon blocks
 while the execution engine is syncing.
 
-Optimistic sync works nicely with execution engines using block execution as a default
-sync mechanism (e.g. Erigon). It makes optimistic sync a *generalized* solution for
-interaction between consensus and execution engine during the sync process.
+Optimistic sync is also an optimal strategy for execution engines using block execution as a default
+sync mechanism (e.g. Erigon). Alternatively, a consensus engine may inform the execution engine with a payload
+obtained from a checkpoint block, then wait till the execution layer catches up with it and proceed
+in lock step after that. This alternative approach would keep user in limbo for several hours and
+would increase time of the sync process as batch sync has more opportunities for optimisation than the lock step.
+
+Aforementioned premises make optimistic sync a *generalized* solution for interaction between consensus and
+execution engines during the sync process.
 
 ### Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?
 
