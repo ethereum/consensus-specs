@@ -1,5 +1,4 @@
-import os
-from random import Random
+from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.context import is_post_capella
 
 
@@ -40,24 +39,27 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     return payload
 
 
-def build_randomized_execution_payload(spec, state, rng=Random(4444)):
+def build_randomized_execution_payload(spec, state, rng):
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.fee_recipient = spec.ExecutionAddress(os.urandom(20))
-    execution_payload.state_root = spec.Bytes32(os.urandom(32))
-    execution_payload.receipts_root = spec.Bytes32(os.urandom(32))
-    execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](os.urandom(spec.BYTES_PER_LOGS_BLOOM))
+    execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
+    execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
+    execution_payload.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32))
+    execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
+        get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
+    )
     execution_payload.block_number = rng.randint(0, 10e10)
     execution_payload.gas_limit = rng.randint(0, 10e10)
     execution_payload.gas_used = rng.randint(0, 10e10)
+    extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
     execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
-        os.urandom(rng.randint(0, spec.MAX_EXTRA_DATA_BYTES))
+        get_random_bytes_list(rng, extra_data_length)
     )
     execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
-    execution_payload.block_hash = spec.Hash32(os.urandom(32))
+    execution_payload.block_hash = spec.Hash32(get_random_bytes_list(rng, 32))
 
     num_transactions = rng.randint(0, 100)
     execution_payload.transactions = [
-        spec.Transaction(os.urandom(rng.randint(0, 1000)))
+        spec.Transaction(get_random_bytes_list(rng, rng.randint(0, 1000)))
         for _ in range(num_transactions)
     ]
 

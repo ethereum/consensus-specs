@@ -1,5 +1,7 @@
+from random import Random
 from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block
+    state_transition_and_sign_block,
+    next_slot,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot
@@ -32,7 +34,9 @@ def test_empty_block_transition_randomized_payload(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload = build_randomized_execution_payload(spec, state)
+    next_slot_state = state.copy()
+    next_slot(spec, next_slot_state)
+    block.body.execution_payload = build_randomized_execution_payload(spec, next_slot_state, rng=Random(34433))
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 

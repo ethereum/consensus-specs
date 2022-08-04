@@ -39,10 +39,14 @@ def test_sample_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
 
 
 @with_fork_metas([
-    ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in AFTER_BELLATRIX_PRE_POST_FORKS
+    ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=8) for pre, post in AFTER_BELLATRIX_PRE_POST_FORKS
 ])
 def test_transition_randomized_state(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     randomize_state(spec, state)
+    # `transition_until_fork` does not play nicely with slashed validator proposals
+    # bypassing for now
+    for validator in state.validators:
+        validator.slashed = False
     transition_until_fork(spec, state, fork_epoch)
 
     # check pre state
