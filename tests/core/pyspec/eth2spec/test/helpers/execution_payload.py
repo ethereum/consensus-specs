@@ -61,14 +61,20 @@ def get_execution_payload_header(spec, execution_payload):
 
 
 def build_state_with_incomplete_transition(spec, state):
-    return build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    state = build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    assert not spec.is_merge_transition_complete(state)
+
+    return state
 
 
 def build_state_with_complete_transition(spec, state):
     pre_state_payload = build_empty_execution_payload(spec, state)
     payload_header = get_execution_payload_header(spec, pre_state_payload)
 
-    return build_state_with_execution_payload_header(spec, state, payload_header)
+    state = build_state_with_execution_payload_header(spec, state, payload_header)
+    assert spec.is_merge_transition_complete(state)
+
+    return state
 
 
 def build_state_with_execution_payload_header(spec, state, execution_payload_header):
