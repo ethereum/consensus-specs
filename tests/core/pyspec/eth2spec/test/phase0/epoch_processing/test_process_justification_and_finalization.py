@@ -375,3 +375,25 @@ def test_balance_threshold_with_exited_validators(spec, state):
     yield from run_process_just_and_fin(spec, state)
 
     assert state.current_justified_checkpoint.epoch != epoch
+
+
+@with_all_phases
+@spec_state_test
+def test_balances_used_to_update_justification(spec, state):
+    # move past genesis conditions
+    for _ in range(3):
+        next_epoch_via_block(spec, state)
+
+    # Create state in which justification bit set in previous epoch but no checkpoint was updated [degenerate state]
+    # and now not enough balance to justify in current epoch
+    state.justification_bits[0] = 0b1
+
+    p_current_justified_checkpoint = state.current_justified_checkpoint.copy()
+    p_finalized_checkpoint = state.finalized_checkpoint.copy()
+
+    yield from run_process_just_and_fin(spec, state)
+
+    # No justification/finalization checkpoint updates due to insufficient balance
+    assert state.current_justified_checkpoint == p_current_justified_checkpoint
+    assert state.previous_justified_checkpoint == p_current_justified_checkpoint
+    assert state.finalized_checkpoint == p_finalized_checkpoint
