@@ -285,7 +285,7 @@ while the execution engine is syncing.
 
 Optimistic sync is also an optimal strategy for execution engines using block execution as a default
 sync mechanism (e.g. Erigon). Alternatively, a consensus engine may inform the execution engine with a payload
-obtained from a checkpoint block, then wait till the execution layer catches up with it and proceed
+obtained from a checkpoint block, then wait until the execution layer catches up with it and proceed
 in lock step after that. This alternative approach would keep user in limbo for several hours and
 would increase time of the sync process as batch sync has more opportunities for optimisation than the lock step.
 
