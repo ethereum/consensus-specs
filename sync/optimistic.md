@@ -24,6 +24,7 @@
   - [Participating in Sync Committees](#participating-in-sync-committees)
 - [Ethereum Beacon APIs](#ethereum-beacon-apis)
 - [Design Decision Rationale](#design-decision-rationale)
+  - [Why sync optimistically?](#why-sync-optimistically)
   - [Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?](#why-safe_slots_to_import_optimistically)
   - [Transitioning from VALID -> INVALIDATED or INVALIDATED -> VALID](#transitioning-from-valid---invalidated-or-invalidated---valid)
   - [What about Light Clients?](#what-about-light-clients)
