@@ -24,6 +24,7 @@
   - [Participating in Sync Committees](#participating-in-sync-committees)
 - [Ethereum Beacon APIs](#ethereum-beacon-apis)
 - [Design Decision Rationale](#design-decision-rationale)
+  - [Why sync optimistically?](#why-sync-optimistically)
   - [Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?](#why-safe_slots_to_import_optimistically)
   - [Transitioning from VALID -> INVALIDATED or INVALIDATED -> VALID](#transitioning-from-valid---invalidated-or-invalidated---valid)
   - [What about Light Clients?](#what-about-light-clients)
@@ -318,6 +319,28 @@ APIs](https://github.com/ethereum/beacon-APIs) must take care to ensure the
 optimistic blocks (and vice-versa).
 
 ## Design Decision Rationale
+
+### Why sync optimistically?
+
+Most execution engines use state sync as a default sync mechanism on Ethereum Mainnet 
+because executing blocks from genesis takes several weeks on commodity hardware.
+
+State sync requires the knowledge of the current head of the chain to converge eventually.
+If not constantly fed with the most recent head, state sync won't be able to complete
+because the recent state soon becomes unavailable due to state trie pruning.
+
+Optimistic block import (i.e. import when the execution engine *cannot* currently validate the payload)
+breaks a deadlock between the execution layer sync process and importing beacon blocks
+while the execution engine is syncing.
+
+Optimistic sync is also an optimal strategy for execution engines using block execution as a default
+sync mechanism (e.g. Erigon). Alternatively, a consensus engine may inform the execution engine with a payload
+obtained from a checkpoint block, then wait until the execution layer catches up with it and proceed
+in lock step after that. This alternative approach would keep user in limbo for several hours and
+would increase time of the sync process as batch sync has more opportunities for optimisation than the lock step.
+
+Aforementioned premises make optimistic sync a *generalized* solution for interaction between consensus and
+execution engines during the sync process.
 
 ### Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?
 
