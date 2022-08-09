@@ -298,8 +298,6 @@ def slash_validator(state: BeaconState,
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
 
-
-
 ## Beacon chain state transition function
 
 ### Execution engine
