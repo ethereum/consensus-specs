@@ -91,7 +91,7 @@ Bellatrix updates a few configuration values to move penalty parameters to their
 
 | Name | Value |
 | - | - |
-| `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
+| `TERMINAL_TOTAL_DIFFICULTY` | `58750000000000000000000` (Estimated: Sept 15, 2022)|
 | `TERMINAL_BLOCK_HASH` | `Hash32()` |
 | `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
 
