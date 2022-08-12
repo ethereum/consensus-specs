@@ -43,10 +43,7 @@ def test_sample_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ])
 def test_transition_randomized_state(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     randomize_state(spec, state)
-    # `transition_until_fork` does not play nicely with slashed validator proposals
-    # bypassing for now
-    for validator in state.validators:
-        validator.slashed = False
+
     transition_until_fork(spec, state, fork_epoch)
 
     # check pre state
@@ -56,11 +53,19 @@ def test_transition_randomized_state(state, fork_epoch, spec, post_spec, pre_tag
 
     # irregular state transition to handle fork:
     blocks = []
-    state, block = do_fork(state, spec, post_spec, fork_epoch)
-    blocks.append(post_tag(block))
+    # since there are slashed validators, set with_block=False here
+    state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
+    slashed_indices = [index for index, validator in enumerate(state.validators) if validator.slashed]
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec,
+        state,
+        post_tag,
+        blocks,
+        only_last_block=True,
+        ignoring_proposers=slashed_indices,
+    )
 
     yield "blocks", blocks
     yield "post", state
