@@ -10,7 +10,6 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobsSidecar`](#blobssidecar)
@@ -32,21 +31,12 @@ The specification of these changes continues in the same format as the network s
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
-## Preset
-
-| Name | Value |
-| - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
-
 ## Configuration
 
 | Name                                     | Value                         | Description                                                         |
 |------------------------------------------|-------------------------------|---------------------------------------------------------------------|
 | `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                | Maximum number of blobs sidecars in a single request                |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
-
-
 
 ## Containers
 
@@ -57,6 +47,7 @@ class BlobsSidecar(Container):
     beacon_block_root: Root
     beacon_block_slot: Slot
     blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
+    kzg_aggregated_proof: KZGProof
 ```
 
 ### `SignedBlobsSidecar`
@@ -66,7 +57,6 @@ class SignedBlobsSidecar(Container):
     message: BlobsSidecar
     signature: BLSSignature
 ```
-
 
 ## The gossip domain: gossipsub
 
@@ -102,9 +92,9 @@ In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
-  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzgs)`
+  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
-  -- i.e. `verify_kzgs_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzgs)` 
+  -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 ##### `blobs_sidecar`
 
@@ -112,21 +102,20 @@ This topic is used to propagate data blobs included in any given beacon block.
 
 The following validations MUST pass before forwarding the `signed_blobs_sidecar` on the network;
 Alias `sidecar = signed_blobs_sidecar.message`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `blobs_sidecar.beacon_block_slot == current_slot`.
+- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == current_slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
+- _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
-```python
-domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot // SLOTS_PER_EPOCH)
-signing_root = compute_signing_root(blobs_sidecar, domain)
-assert bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature)
-```
-  where `proposer_pubkey` is the pubkey of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
+    - Let `domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, sidecar.beacon_block_slot // SLOTS_PER_EPOCH)`
+    - Let `signing_root = compute_signing_root(sidecar, domain)`
+    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature) is True`,   
+      where `proposer_pubkey` is the pubkey of the beacon block proposer of `sidecar.beacon_block_slot`
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
-  where `proposer_index` is the validator index of the beacon block proposer of `blobs_sidecar.beacon_block_slot`
+  where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
 
 Note that a sidecar may be propagated before or after the corresponding beacon block.
 
-Once both sidecar and beacon block are received, `verify_blobs_sidecar` can unlock the data-availability fork-choice dependency.
+Once both sidecar and beacon block are received, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
 
 ### Transitioning the gossip
 
@@ -197,14 +186,14 @@ The response is unsigned, i.e. `BlobsSidecarsByRange`, as the signature of the b
 may not be available beyond the initial distribution via gossip.
 
 Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
-correct w.r.t. the expected KZG commitments through `verify_blobs_sidecar`.
+correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
 
 `BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip.
 
 The request MUST be encoded as an SSZ-container.
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `SignedBlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 `[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
@@ -245,8 +234,6 @@ Clients MUST respond with blobs sidecars that are consistent from a single chain
 After the initial blobs sidecar, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-
-
 # Design decision rationale
 
 ## Why are blobs relayed as a sidecar, separate from beacon blocks?
@@ -257,4 +244,3 @@ thus avoiding all blobs being downloaded by all beacon nodes on the network.
 
 Such sharding design may introduce an updated `BlobsSidecar` to identify the shard,
 but does not affect the `BeaconBlock` structure.
-

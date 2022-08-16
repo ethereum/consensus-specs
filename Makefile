@@ -23,13 +23,15 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) \
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
+                 $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SPEC_DIR)/altair/**/*.md) \
                  $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
                  $(wildcard $(SPEC_DIR)/capella/*.md) \
                  $(wildcard $(SPEC_DIR)/custody/*.md) \
                  $(wildcard $(SPEC_DIR)/das/*.md) \
                  $(wildcard $(SPEC_DIR)/sharding/*.md) \
-                 $(wildcard $(SPEC_DIR)/eip4844/*.md)
+                 $(wildcard $(SPEC_DIR)/eip4844/*.md) \
+                 $(wildcard $(SSZ_DIR)/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
@@ -107,13 +109,13 @@ find_test: pyspec
 	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
-	mkdir -p tests/core/pyspec/test-reports/eth2spec;
+	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --bls-type=milagro --fork=$(fork) --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n 4 --bls-type=milagro --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n 4 --bls-type=milagro --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
@@ -136,7 +138,7 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix \
+	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella
 
 lint_generators: pyspec

@@ -29,7 +29,7 @@ This document defines the YAML format and structure used for consensus spec test
 
 ## About
 
-Ethereum 2.0 uses YAML as the format for all cross client tests. This document describes at a high level the general format to which all test files should conform.
+The consensus layer uses YAML as the format for all cross client tests. This document describes at a high level the general format to which all test files should conform.
 
 ### Test-case formats
 
@@ -115,7 +115,6 @@ some tests of earlier forks repeat with updated state data.
 
 The well known bls/shuffling/ssz_static/operations/epoch_processing/etc. Handlers can change the format, but there is a general target to test.
 
-
 ### `<test handler name>/`
 
 Specialization within category. All suites in here will have the same test case format.
@@ -171,9 +170,6 @@ bls_setting: int     -- optional, can have 3 different values:
                                  but there is no change of outcome when running the test if BLS is ON or OFF.
                             1: known as "BLS required" - if the test validity is strictly dependent on BLS being ON
                             2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
-reveal_deadlines_setting:   -- optional, can have 2 different values:
-                            0: default, `process_reveal_deadlines` is ON.
-                            1: `process_reveal_deadlines` is OFF.
 ```
 
 ##### `config.yaml`

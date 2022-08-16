@@ -6,7 +6,6 @@ To learn more about proof-of-stake and sharding, see the [PoS FAQ](https://eth.w
 
 This repository hosts the current Ethereum proof-of-stake specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
-
 ## Specs
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
@@ -14,55 +13,22 @@ This repository hosts the current Ethereum proof-of-stake specifications. Discus
 Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs/). These are divided into features.
 Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
 
-The current features are:
+### Stable Specifications
 
-### Phase 0
+| Seq. | Code Name | Fork Epoch | Specs |
+| - | - | - | - |
+| 0 | **Phase0** |`0` | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> |
+| 1 |  **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/light-client/sync-protocol.md) ([full node](specs/altair/light-client/full-node.md), [light client](specs/altair/light-client/light-client.md), [networking](specs/altair/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
+| 2 | **Bellatrix** <br/> (["The Merge"](https://ethereum.org/en/upgrades/merge/)) | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> |
 
-* [The Beacon Chain](specs/phase0/beacon-chain.md)
-* [Beacon Chain Fork Choice](specs/phase0/fork-choice.md)
-* [Deposit Contract](specs/phase0/deposit-contract.md)
-* [Honest Validator](specs/phase0/validator.md)
-* [P2P Networking](specs/phase0/p2p-interface.md)
-* [Weak Subjectivity](specs/phase0/weak-subjectivity.md)
-
-### Altair
-
-* [Beacon chain changes](specs/altair/beacon-chain.md)
-* [Altair fork](specs/altair/fork.md)
-* [Light client sync protocol](specs/altair/sync-protocol.md)
-* [Honest Validator guide changes](specs/altair/validator.md)
-* [P2P Networking](specs/altair/p2p-interface.md)
-
-### Bellatrix (also known as The Merge)
-
-The Bellatrix protocol upgrade is still actively in development. The exact specification has not been formally accepted as final and details are still subject to change.
-
-* Background material:
-  * An [ethresear.ch](https://ethresear.ch) post [describing the basic mechanism of the CL+EL merge](https://ethresear.ch/t/the-eth1-eth2-transition/6265)
-  * [ethereum.org](https://ethereum.org) high-level description of the CL+EL merge [here](https://ethereum.org/en/eth2/docking/)
-* Specifications:
-  * [Beacon Chain changes](specs/bellatrix/beacon-chain.md)
-  * [Bellatrix fork](specs/bellatrix/fork.md)
-  * [Fork Choice changes](specs/bellatrix/fork-choice.md)
-  * [Validator additions](specs/bellatrix/validator.md)
-  * [P2P Networking](specs/bellatrix/p2p-interface.md)
-
-### Sharding
-
-Sharding follows Bellatrix, and is divided into three parts:
-
-* Sharding base functionality - In early engineering phase
-  * [Beacon Chain changes](specs/sharding/beacon-chain.md)
-  * [P2P Network changes](specs/sharding/p2p-interface.md)
-* Custody Game - Ready, dependent on sharding
-  * [Beacon Chain changes](specs/custody_game/beacon-chain.md)
-  * [Validator custody work](specs/custody_game/validator.md)
-* Data Availability Sampling - In active R&D
-  * Technical details [here](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD).
-  * [Core types and functions](specs/das/das-core.md)
-  * [P2P Networking](specs/das/p2p-interface.md)
-  * [Fork Choice](specs/das/fork-choice.md)
-  * [Sampling process](specs/das/sampling.md)
+### In-development Specifications
+| Code Name or Topic | Specs | Notes |
+| - | - | - |
+| Capella (tentative) | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Validator additions](specs/capella/validator.md)</li></ul></ul> |
+| EIP4844 (tentative) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/eip4844/beacon-chain.md)</li><li>[EIP-4844 fork](specs/eip4844/fork.md)</li><li>[Polynomial commitments](specs/eip4844/polynomial-commitments.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/eip4844/validator.md)</li><li>[P2P networking](specs/eip4844/p2p-interface.md)</li></ul></ul> |
+| Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/sharding/p2p-interface.md)</li></ul></ul> |
+| Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
+| Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/das/das-core.md)</li><li>[Fork choice changes](specs/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/das/p2p-interface.md)</li><li>[Sampling process](specs/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 

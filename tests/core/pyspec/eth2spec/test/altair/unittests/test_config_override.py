@@ -1,4 +1,11 @@
-from eth2spec.test.context import spec_configured_state_test, with_phases
+from eth2spec.test.context import (
+    is_post_capella,
+    is_post_eip4844,
+    spec_configured_state_test,
+    spec_state_test_with_matching_config,
+    with_all_phases,
+    with_phases,
+)
 from eth2spec.test.helpers.constants import ALTAIR
 
 
@@ -17,3 +24,34 @@ def test_config_override(spec, state):
     # TODO: it would be nice if the create_genesis_state actually outputs a state
     #  for the fork with a slot that matches at least the fork boundary.
     # assert spec.get_current_epoch(state) >= 4
+
+
+@with_all_phases
+@spec_state_test_with_matching_config
+def test_override_config_fork_epoch(spec, state):
+    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
+        return
+
+    assert spec.config.ALTAIR_FORK_EPOCH == spec.GENESIS_EPOCH
+    if state.fork.current_version == spec.config.ALTAIR_FORK_VERSION:
+        return
+
+    assert spec.config.BELLATRIX_FORK_EPOCH == spec.GENESIS_EPOCH
+    if state.fork.current_version == spec.config.BELLATRIX_FORK_VERSION:
+        return
+
+    if is_post_capella(spec):
+        assert spec.config.CAPELLA_FORK_EPOCH == spec.GENESIS_EPOCH
+        if state.fork.current_version == spec.config.CAPELLA_FORK_VERSION:
+            return
+
+    if is_post_eip4844(spec):
+        assert spec.config.EIP4844_FORK_EPOCH == spec.GENESIS_EPOCH
+        if state.fork.current_version == spec.config.EIP4844_FORK_VERSION:
+            return
+
+    assert spec.config.SHARDING_FORK_EPOCH == spec.GENESIS_EPOCH
+    if state.fork.current_version == spec.config.SHARDING_FORK_VERSION:
+        return
+
+    assert False  # Fork is missing

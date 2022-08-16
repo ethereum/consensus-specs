@@ -7,6 +7,9 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to Capella](#fork-to-capella)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -26,6 +29,26 @@ Warning: this configuration is not definitive.
 | `CAPELLA_FORK_VERSION` | `Version('0x03000000')` |
 | `CAPELLA_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
+
+## Helper functions
+
+### Misc
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ## Fork to Capella
 
@@ -89,8 +112,9 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
-        withdrawal_index=WithdrawalIndex(0),
-        withdrawals_queue=[],
+        withdrawal_queue=[],
+        next_withdrawal_index=WithdrawalIndex(0),
+        next_partial_withdrawal_validator_index=ValidatorIndex(0),
     )
 
     for pre_validator in pre.validators:

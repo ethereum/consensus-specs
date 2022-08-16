@@ -1,19 +1,19 @@
 import pytest
 from dataclasses import dataclass
 import importlib
-from eth_utils import encode_hex
 
 from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
 from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
+from eth2spec.eip4844 import mainnet as spec_eip4844_mainnet, minimal as spec_eip4844_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, SHARDING,
     MINIMAL, MAINNET,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
     ALL_FORK_UPGRADES,
 )
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -76,12 +76,14 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         ALTAIR: spec_altair_minimal,
         BELLATRIX: spec_bellatrix_minimal,
         CAPELLA: spec_capella_minimal,
+        EIP4844: spec_eip4844_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
         BELLATRIX: spec_bellatrix_mainnet,
         CAPELLA: spec_capella_mainnet,
+        EIP4844: spec_eip4844_mainnet
     },
 }
 
@@ -275,6 +277,53 @@ def spec_configured_state_test(conf):
     def decorator(fn):
         return spec_test(overrides(with_state(single_phase(fn))))
     return decorator
+
+
+def _check_current_version(spec, state, version_name):
+    fork_version_field = version_name.upper() + '_FORK_VERSION'
+    try:
+        fork_version = getattr(spec.config, fork_version_field)
+    except Exception:
+        return False
+    else:
+        return state.fork.current_version == fork_version
+
+
+def config_fork_epoch_overrides(spec, state):
+    overrides = {}
+    if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
+        pass
+    elif _check_current_version(spec, state, ALTAIR):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, BELLATRIX):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, CAPELLA):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, EIP4844):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['EIP4844_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, SHARDING):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['SHARDING_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    else:
+        assert False  # Fork is missing
+    return overrides
+
+
+def spec_state_test_with_matching_config(fn):
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            conf = config_fork_epoch_overrides(spec, kw['state'])
+            overrides = with_config_overrides(conf)
+            return overrides(fn)(*args, spec=spec, **kw)
+        return wrapper
+    return spec_test(with_state(decorator(single_phase(fn))))
 
 
 def expect_assertion_error(fn):
@@ -473,18 +522,22 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+class quoted_str(str):
+    pass
+
+
 def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Get dict of Python built-in types from a dict of SSZ objects.
+    Get dict of basic types from a dict of SSZ objects.
     """
     result = {}
     for k, v in ssz_dict.items():
         if isinstance(v, int):
             value = int(v)
         elif isinstance(v, bytes):
-            value = encode_hex(v)
+            value = bytes(bytearray(v))
         else:
-            value = str(v)
+            value = quoted_str(v)
         result[k] = value
     return result
 
@@ -520,7 +573,7 @@ def with_config_overrides(config_overrides):
             # To output the changed config to could be serialized with yaml test vectors,
             # the dict SSZ objects have to be converted into Python built-in types.
             output_config = _get_basic_dict(modified_config)
-            yield 'config', 'data', output_config
+            yield 'config', 'cfg', output_config
 
             spec.config = spec.Configuration(**modified_config)
 
@@ -543,12 +596,17 @@ def is_post_bellatrix(spec):
 
 
 def is_post_capella(spec):
-    return spec.fork not in FORKS_BEFORE_CAPELLA
+    return spec.fork == CAPELLA
+
+
+def is_post_eip4844(spec):
+    return spec.fork == EIP4844
 
 
 with_altair_and_later = with_all_phases_except([PHASE0])
 with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
-with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX])
+with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, EIP4844])
+with_eip4844_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 
 
 def only_generator(reason):

@@ -7,8 +7,8 @@ from eth2spec.test.context import spec_state_test, expect_assertion_error, with_
 from eth2spec.test.helpers.state import next_slot
 
 
-def prepare_withdrawals_queue(spec, state, num_withdrawals):
-    pre_queue_len = len(state.withdrawals_queue)
+def prepare_withdrawal_queue(spec, state, num_withdrawals):
+    pre_queue_len = len(state.withdrawal_queue)
 
     for i in range(num_withdrawals):
         withdrawal = spec.Withdrawal(
@@ -16,9 +16,9 @@ def prepare_withdrawals_queue(spec, state, num_withdrawals):
             address=b'\x42' * 20,
             amount=200000 + i,
         )
-        state.withdrawals_queue.append(withdrawal)
+        state.withdrawal_queue.append(withdrawal)
 
-    assert len(state.withdrawals_queue) == num_withdrawals + pre_queue_len
+    assert len(state.withdrawal_queue) == num_withdrawals + pre_queue_len
 
 
 def run_withdrawals_processing(spec, state, execution_payload, valid=True):
@@ -30,8 +30,8 @@ def run_withdrawals_processing(spec, state, execution_payload, valid=True):
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    pre_withdrawals_queue = state.withdrawals_queue.copy()
-    num_withdrawals = min(spec.MAX_WITHDRAWALS_PER_PAYLOAD, len(pre_withdrawals_queue))
+    pre_withdrawal_queue = state.withdrawal_queue.copy()
+    num_withdrawals = min(spec.MAX_WITHDRAWALS_PER_PAYLOAD, len(pre_withdrawal_queue))
 
     yield 'pre', state
     yield 'execution_payload', execution_payload
@@ -45,18 +45,18 @@ def run_withdrawals_processing(spec, state, execution_payload, valid=True):
 
     yield 'post', state
 
-    if len(pre_withdrawals_queue) == 0:
-        assert len(state.withdrawals_queue) == 0
-    elif len(pre_withdrawals_queue) <= num_withdrawals:
-        assert len(state.withdrawals_queue) == 0
+    if len(pre_withdrawal_queue) == 0:
+        assert len(state.withdrawal_queue) == 0
+    elif len(pre_withdrawal_queue) <= num_withdrawals:
+        assert len(state.withdrawal_queue) == 0
     else:
-        assert state.withdrawals_queue == pre_withdrawals_queue[num_withdrawals:]
+        assert state.withdrawal_queue == pre_withdrawal_queue[num_withdrawals:]
 
 
 @with_capella_and_later
 @spec_state_test
 def test_success_empty_queue(spec, state):
-    assert len(state.withdrawals_queue) == 0
+    assert len(state.withdrawal_queue) == 0
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -67,7 +67,7 @@ def test_success_empty_queue(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_one_in_queue(spec, state):
-    prepare_withdrawals_queue(spec, state, 1)
+    prepare_withdrawal_queue(spec, state, 1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -78,7 +78,7 @@ def test_success_one_in_queue(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_max_per_slot_in_queue(spec, state):
-    prepare_withdrawals_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+    prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -89,7 +89,7 @@ def test_success_max_per_slot_in_queue(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_a_lot_in_queue(spec, state):
-    prepare_withdrawals_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
+    prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -104,7 +104,7 @@ def test_success_a_lot_in_queue(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_empty_queue_non_empty_withdrawals(spec, state):
-    assert len(state.withdrawals_queue) == 0
+    assert len(state.withdrawal_queue) == 0
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -121,7 +121,7 @@ def test_fail_empty_queue_non_empty_withdrawals(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_one_in_queue_none_in_withdrawals(spec, state):
-    prepare_withdrawals_queue(spec, state, 1)
+    prepare_withdrawal_queue(spec, state, 1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -133,7 +133,7 @@ def test_fail_one_in_queue_none_in_withdrawals(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_one_in_queue_two_in_withdrawals(spec, state):
-    prepare_withdrawals_queue(spec, state, 1)
+    prepare_withdrawal_queue(spec, state, 1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -145,7 +145,7 @@ def test_fail_one_in_queue_two_in_withdrawals(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_max_per_slot_in_queue_one_less_in_withdrawals(spec, state):
-    prepare_withdrawals_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+    prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -157,7 +157,7 @@ def test_fail_max_per_slot_in_queue_one_less_in_withdrawals(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_a_lot_in_queue_too_few_in_withdrawals(spec, state):
-    prepare_withdrawals_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
+    prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -173,7 +173,7 @@ def test_fail_a_lot_in_queue_too_few_in_withdrawals(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_incorrect_dequeue_index(spec, state):
-    prepare_withdrawals_queue(spec, state, 1)
+    prepare_withdrawal_queue(spec, state, 1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -185,7 +185,7 @@ def test_fail_incorrect_dequeue_index(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_incorrect_dequeue_address(spec, state):
-    prepare_withdrawals_queue(spec, state, 1)
+    prepare_withdrawal_queue(spec, state, 1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -197,7 +197,7 @@ def test_fail_incorrect_dequeue_address(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_incorrect_dequeue_amount(spec, state):
-    prepare_withdrawals_queue(spec, state, 1)
+    prepare_withdrawal_queue(spec, state, 1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -209,7 +209,7 @@ def test_fail_incorrect_dequeue_amount(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_one_of_many_dequeued_incorrectly(spec, state):
-    prepare_withdrawals_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
+    prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -227,7 +227,7 @@ def test_fail_one_of_many_dequeued_incorrectly(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_fail_many_dequeued_incorrectly(spec, state):
-    prepare_withdrawals_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
+    prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)

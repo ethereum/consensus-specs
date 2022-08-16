@@ -45,6 +45,7 @@ PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
+EIP4844 = 'eip4844'
 
 
 # The helper functions that are used when defining constants
@@ -230,7 +231,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List")):
                             custom_types[name] = value
                         continue
 
@@ -304,7 +305,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:  # TODO
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
         """
         The constants that are required for custom types.
         """
@@ -432,7 +433,7 @@ get_attesting_indices = cache_this(
         return {}
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
         return {}
 
     @classmethod
@@ -457,6 +458,7 @@ class AltairSpecBuilder(Phase0SpecBuilder):
 from typing import NewType, Union as PyUnion
 
 from eth2spec.phase0 import {preset_name} as phase0
+from eth2spec.test.helpers.merkle import build_proof
 from eth2spec.utils.ssz.ssz_typing import Path
 '''
 
@@ -474,13 +476,19 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
-    return GeneralizedIndex(ssz_path.gindex())'''
+    return GeneralizedIndex(ssz_path.gindex())
+
+
+def compute_merkle_proof_for_state(state: BeaconState,
+                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+    return build_proof(state.get_backing(), index)'''
 
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         constants = {
             'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
+            'CURRENT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
             'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}
@@ -547,11 +555,11 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> str:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
-            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**30)',
+            'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 #
@@ -567,14 +575,57 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
+#
+# EIP4844SpecBuilder
+#
+class EIP4844SpecBuilder(BellatrixSpecBuilder):
+    fork: str = EIP4844
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.utils import kzg
+from eth2spec.bellatrix import {preset_name} as bellatrix
+'''
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() + '''
+# TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
+# TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
+TESTING_FIELD_ELEMENTS_PER_BLOB = 4
+TESTING_SECRET = 1337
+TESTING_KZG_SETUP_G1 = kzg.generate_setup(bls.G1, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
+TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
+TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
+
+KZG_SETUP_G1 = [bls.G1_to_bytes48(p) for p in TESTING_KZG_SETUP_G1]
+KZG_SETUP_G2 = [bls.G2_to_bytes96(p) for p in TESTING_KZG_SETUP_G2]
+KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
+ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
+
+
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
+    pass'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+        constants = {
+            'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
+            'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
+        }
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
+
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
 }
 
 
 def is_spec_defined_type(value: str) -> bool:
-    return value.startswith('ByteList') or value.startswith('Union')
+    return value.startswith(('ByteList', 'Union', 'Vector', 'List'))
 
 
 def objects_to_spec(preset_name: str,
@@ -611,7 +662,11 @@ def objects_to_spec(preset_name: str,
 
     protocols_spec = '\n\n\n'.join(format_protocol(k, v) for k, v in spec_object.protocols.items())
     for k in list(spec_object.functions):
-        if "ceillog2" in k or "floorlog2" in k:
+        if k in [
+            "ceillog2",
+            "floorlog2",
+            "compute_merkle_proof_for_state",
+        ]:
             del spec_object.functions[k]
     functions = builder.implement_optimizations(spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())
@@ -652,7 +707,7 @@ def objects_to_spec(preset_name: str,
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
-    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
+    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants(spec_object)[x]), builder.hardcoded_custom_type_dep_constants(spec_object)))
     spec = (
             builder.imports(preset_name)
             + builder.preparations()
@@ -772,7 +827,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
     for k, v in conf.items():
         if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
-            # Everything is either byte data or an integer, with PRESET_BASE as one exception.
+            # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"
         else:
             out[k] = str(int(v))
@@ -869,28 +924,32 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
+                    specs/altair/light-client/full-node.md
+                    specs/altair/light-client/light-client.md
+                    specs/altair/light-client/p2p-interface.md
+                    specs/altair/light-client/sync-protocol.md
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
-                    specs/altair/sync-protocol.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA):
+            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
                     specs/bellatrix/fork-choice.md
                     specs/bellatrix/validator.md
+                    specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
             if self.spec_fork == CAPELLA:
@@ -900,6 +959,14 @@ class PySpecCommand(Command):
                     specs/capella/fork-choice.md
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
+                """
+            if self.spec_fork == EIP4844:
+                self.md_doc_paths += """
+                    specs/eip4844/beacon-chain.md
+                    specs/eip4844/fork.md
+                    specs/eip4844/polynomial-commitments.md
+                    specs/eip4844/p2p-interface.md
+                    specs/eip4844/validator.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -1041,7 +1108,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
-        "generator": ["python-snappy==0.5.4"],
+        "generator": ["python-snappy==0.5.4", "filelock"],
     },
     install_requires=[
         "eth-utils>=1.3.0,<2",
