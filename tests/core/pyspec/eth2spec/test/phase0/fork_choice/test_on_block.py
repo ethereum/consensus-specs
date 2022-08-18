@@ -28,6 +28,8 @@ from eth2spec.test.helpers.state import (
     next_slots,
     state_transition_and_sign_block,
 )
+from tests.core.pyspec.eth2spec.test.helpers.attestations import get_valid_attestation
+from tests.core.pyspec.eth2spec.test.helpers.state import next_slot
 
 
 rng = random.Random(2020)
@@ -795,5 +797,60 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
             'proposer_boost_root': encode_hex(store.proposer_boost_root),
         }
     })
+
+    yield 'steps', test_steps
+
+
+@with_all_phases
+@spec_state_test
+def test_attestation_consideration_delay(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    # Process state
+    next_epoch(spec, state)
+
+    # Create empty block A
+    state_a = state.copy()
+    block_a = build_empty_block_for_next_slot(spec, state_a)
+    signed_block_a = state_transition_and_sign_block(spec, state_a, block_a)
+    # Create attestation for A from a single validator
+    attn_a = get_valid_attestation(spec, state_a, filter_participant_set=lambda c: [list(c)[0]])
+    assert attn_a.data.slot == block_a.slot
+    assert attn_a.data.beacon_block_root == hash_tree_root(block_a)
+
+    # Create empty block B
+    next_slot(spec, state)
+    block_b = build_empty_block_for_next_slot(spec, state)
+    signed_block_b = state_transition_and_sign_block(spec, state, block_b)
+    # Create attestation for B from a full committee
+    attn_b = get_valid_attestation(spec, state)
+    assert attn_b.data.slot == block_b.slot
+    assert attn_b.data.beacon_block_root == hash_tree_root(block_b)
+
+    # Add everything to the store
+    yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
+    assert spec.get_head(store) == hash_tree_root(block_a)
+    yield from tick_and_add_block(spec, store, signed_block_b, test_steps)
+    assert spec.get_current_slot(store) == block_b.slot
+
+    print(hash_tree_root(block_a))
+    print(hash_tree_root(block_b))
+    print(spec.get_head(store))
+
+    spec.on_attestation(store, attn_a)
+    assert spec.get_head(store) == hash_tree_root(block_a)
+
+    spec.on_attestation(store, attn_b)
+    assert spec.get_head(store) == hash_tree_root(block_a)
 
     yield 'steps', test_steps
