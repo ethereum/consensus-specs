@@ -13,13 +13,17 @@ from eth2spec.test.helpers.voluntary_exits import (
 )
 
 
-def _run_voluntary_exit_processing_with_specific_fork_version(
+def _run_voluntary_exit_processing_test(
         spec,
         state,
         fork_version,
+        is_before_fork_epoch,
         valid):
+    # create a fork
     next_epoch(spec, state)
     state.fork.epoch = spec.get_current_epoch(state)
+
+    voluntary_exit_epoch = 0 if is_before_fork_epoch else state.fork.epoch
 
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -29,7 +33,7 @@ def _run_voluntary_exit_processing_with_specific_fork_version(
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     voluntary_exit = spec.VoluntaryExit(
-        epoch=0,
+        epoch=voluntary_exit_epoch,
         validator_index=validator_index,
     )
     signed_voluntary_exit = sign_voluntary_exit(
@@ -46,13 +50,25 @@ def _run_voluntary_exit_processing_with_specific_fork_version(
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_voluntary_exit_with_previous_fork_version__valid(spec, state):
-    assert state.fork.previous_version != state.fork.current_version
-
-    yield from _run_voluntary_exit_processing_with_specific_fork_version(
+def test_voluntary_exit_with_current_fork_version_is_before_fork_epoch__invalid(spec, state):
+    yield from _run_voluntary_exit_processing_test(
         spec,
         state,
-        fork_version=state.fork.previous_version,
+        fork_version=state.fork.current_version,
+        is_before_fork_epoch=True,
+        valid=False,
+    )
+
+
+@with_bellatrix_and_later
+@spec_state_test
+@always_bls
+def test_voluntary_exit_with_current_fork_version_not_is_before_fork_epoch__valid(spec, state):
+    yield from _run_voluntary_exit_processing_test(
+        spec,
+        state,
+        fork_version=state.fork.current_version,
+        is_before_fork_epoch=False,
         valid=True,
     )
 
@@ -60,12 +76,58 @@ def test_voluntary_exit_with_previous_fork_version__valid(spec, state):
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_voluntary_exit_with_genesis_fork_version__invalid(spec, state):
+def test_voluntary_exit_with_previous_fork_version_is_before_fork_epoch__valid(spec, state):
+    assert state.fork.previous_version != state.fork.current_version
+
+    yield from _run_voluntary_exit_processing_test(
+        spec,
+        state,
+        fork_version=state.fork.previous_version,
+        is_before_fork_epoch=True,
+        valid=True,
+    )
+
+
+@with_bellatrix_and_later
+@spec_state_test
+@always_bls
+def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch__invalid(spec, state):
+    assert state.fork.previous_version != state.fork.current_version
+
+    yield from _run_voluntary_exit_processing_test(
+        spec,
+        state,
+        fork_version=state.fork.previous_version,
+        is_before_fork_epoch=False,
+        valid=False,
+    )
+
+
+@with_bellatrix_and_later
+@spec_state_test
+@always_bls
+def test_voluntary_exit_with_genesis_fork_version_is_before_fork_epoch__invalid(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
 
-    yield from _run_voluntary_exit_processing_with_specific_fork_version(
+    yield from _run_voluntary_exit_processing_test(
         spec,
         state,
         fork_version=spec.config.GENESIS_FORK_VERSION,
+        is_before_fork_epoch=True,
+        valid=False,
+    )
+
+
+@with_bellatrix_and_later
+@spec_state_test
+@always_bls
+def test_voluntary_exit_with_genesis_fork_version_not_is_before_fork_epoch__invalid(spec, state):
+    assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
+
+    yield from _run_voluntary_exit_processing_test(
+        spec,
+        state,
+        fork_version=spec.config.GENESIS_FORK_VERSION,
+        is_before_fork_epoch=False,
         valid=False,
     )
