@@ -1,7 +1,11 @@
 from random import Random
 
-from eth2spec.test.context import is_post_altair
+from eth2spec.test.context import (
+    is_post_altair,
+    expect_assertion_error,
+)
 from eth2spec.test.helpers.keys import pubkeys, privkeys
+from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
@@ -160,3 +164,57 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
     state.eth1_data.deposit_root = root
     state.eth1_data.deposit_count = len(deposit_data_list)
     return deposit
+
+
+#
+# Run processing
+#
+
+
+def run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True):
+    """
+    Run ``process_deposit``, yielding:
+      - pre-state ('pre')
+      - deposit ('deposit')
+      - post-state ('post').
+    If ``valid == False``, run expecting ``AssertionError``
+    """
+    pre_validator_count = len(state.validators)
+    pre_balance = 0
+    if validator_index < pre_validator_count:
+        pre_balance = get_balance(state, validator_index)
+
+    yield 'pre', state
+    yield 'deposit', deposit
+
+    if not valid:
+        expect_assertion_error(lambda: spec.process_deposit(state, deposit))
+        yield 'post', None
+        return
+
+    spec.process_deposit(state, deposit)
+
+    yield 'post', state
+
+    if not effective:
+        assert len(state.validators) == pre_validator_count
+        assert len(state.balances) == pre_validator_count
+        if validator_index < pre_validator_count:
+            assert get_balance(state, validator_index) == pre_balance
+    else:
+        if validator_index < pre_validator_count:
+            # top-up
+            assert len(state.validators) == pre_validator_count
+            assert len(state.balances) == pre_validator_count
+        else:
+            # new validator
+            assert len(state.validators) == pre_validator_count + 1
+            assert len(state.balances) == pre_validator_count + 1
+        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
+
+        effective = min(spec.MAX_EFFECTIVE_BALANCE,
+                        pre_balance + deposit.data.amount)
+        effective -= effective % spec.EFFECTIVE_BALANCE_INCREMENT
+        assert state.validators[validator_index].effective_balance == effective
+
+    assert state.eth1_deposit_index == state.eth1_data.deposit_count
