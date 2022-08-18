@@ -60,7 +60,7 @@ def test_deposit_with_previous_fork_version__valid_effective(spec, state):
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_deposit_with_genesis_fork_version__valid_ineffective(spec, state):
+def test_deposit_with_genesis_fork_version__valid_effective(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
 
     yield from _run_deposit_processing_with_specific_fork_version(
