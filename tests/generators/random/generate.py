@@ -3,7 +3,7 @@ This test format currently uses code generation to assemble the tests
 as the current test infra does not have a facility to dynamically
 generate tests that can be seen by ``pytest``.
 
-This will likley change in future releases of the testing infra.
+This will likely change in future releases of the testing infra.
 
 NOTE: To add additional scenarios, add test cases below in ``_generate_randomized_scenarios``.
 """
