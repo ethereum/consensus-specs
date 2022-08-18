@@ -1,40 +1,15 @@
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    spec_state_test, expect_assertion_error,
+    spec_state_test,
     always_bls, with_all_phases, with_presets,
     spec_test, single_phase,
     with_custom_state, scaled_churn_balances,
 )
 from eth2spec.test.helpers.keys import pubkey_to_privkey
-from eth2spec.test.helpers.voluntary_exits import sign_voluntary_exit
-
-
-def run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=True):
-    """
-    Run ``process_voluntary_exit``, yielding:
-      - pre-state ('pre')
-      - voluntary_exit ('voluntary_exit')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    """
-    validator_index = signed_voluntary_exit.message.validator_index
-
-    yield 'pre', state
-    yield 'voluntary_exit', signed_voluntary_exit
-
-    if not valid:
-        expect_assertion_error(lambda: spec.process_voluntary_exit(state, signed_voluntary_exit))
-        yield 'post', None
-        return
-
-    pre_exit_epoch = state.validators[validator_index].exit_epoch
-
-    spec.process_voluntary_exit(state, signed_voluntary_exit)
-
-    yield 'post', state
-
-    assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+from eth2spec.test.helpers.voluntary_exits import (
+    run_voluntary_exit_processing,
+    sign_voluntary_exit,
+)
 
 
 @with_all_phases
