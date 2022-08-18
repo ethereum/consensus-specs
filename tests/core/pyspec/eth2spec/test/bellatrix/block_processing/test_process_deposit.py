@@ -45,7 +45,7 @@ def _run_deposit_processing_with_specific_fork_version(
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_deposit_with_previous_fork_version__valid_effective(spec, state):
+def test_deposit_with_previous_fork_version__valid_ineffective(spec, state):
     assert state.fork.previous_version != state.fork.current_version
 
     yield from _run_deposit_processing_with_specific_fork_version(
