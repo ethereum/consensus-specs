@@ -115,4 +115,17 @@ jobs:
         - name: Run linter for pyspec
           run: make lint
         - name: Run linter for test generators
-          run: make lint_generators  
+          run: make lint_generators
+  detect_generators:
+      runs-on: self-hosted
+      needs: setup-env
+      steps:
+        - uses: actions/cache@v2
+          id: restore-build
+          with:
+            path: ./*
+            key: ${{ github.sha }}
+        - name: Run detect_generator_incomplete
+          run: make detect_generator_incomplete
+        - name: Run detect_generator_error_logs
+          run: make detect_generator_error_log
