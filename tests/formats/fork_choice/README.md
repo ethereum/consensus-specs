@@ -106,8 +106,8 @@ Optional step for optimistic sync tests.
     block_hash: string,             -- Encoded 32-byte value of payload's block hash.
     payload_status: {
         status: string,             -- Enum, "VALID" | "INVALID" | "SYNCING" | "ACCEPTED" | "INVALID_BLOCK_HASH".
-        latestValidHash: string,    -- Encoded 32-byte value of the latest valid block hash, may be `null`.
-        validationError: string,    -- Message providing additional details on the validation error, may be `null`.
+        latest_valid_hash: string,    -- Encoded 32-byte value of the latest valid block hash, may be `null`.
+        validation_error: string,    -- Message providing additional details on the validation error, may be `null`.
     }
 }
 ```
