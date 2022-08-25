@@ -25,6 +25,7 @@
 - [Merkleization](#merkleization)
 - [Summaries and expansions](#summaries-and-expansions)
 - [Implementations](#implementations)
+- [Canonical JSON mapping](#canonical-json-mapping)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -41,6 +42,7 @@
 ### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+* `byte`: 8-bit opaque data container, equivalent in serialization to `uint8`
 * `boolean`: `True` or `False`
 
 ### Composite types
@@ -69,14 +71,19 @@
 
 We recursively define "variable-size" types to be lists, unions, `Bitlist` and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
+### Byte
+
+Although the SSZ serialization of `byte` is equivalent to that of `uint8`, the former is used for opaque date while the latter is intended as a number.
+
 ### Aliases
 
 For convenience we alias:
 
 * `bit` to `boolean`
-* `byte` to `uint8` (this is a basic type)
 * `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
 * `ByteList[N]` to `List[byte, N]`
+
+Aliases are semantically equivalent to their underlying type and therefore share canonical representations both in SSZ and in related formats.
 
 ### Default values
 Assuming a helper function `default(type)` which returns the default value for `type`, we can recursively define the default value for all types.
@@ -256,3 +263,35 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 ## Implementations
 
 See https://github.com/ethereum/eth2.0-specs/issues/2138 for a list of current known implementations.
+
+## JSON mapping
+
+The canonical JSON mapping assigns to each SSZ type a corresponding JSON encoding, enabling an SSZ schema to also define the JSON encoding.
+
+When decoding JSON data, all fields in the SSZ schema must be present with a value. Parsers may ignore additional JSON fields.
+
+| SSZ | JSON | Example |
+| --- | --- | --- |
+| `uintN` | string | `"0"` |
+| `byte` | hex-byte-string | `"0x00"` |
+| `boolean` | bool | `false` |
+| `Container` | object | `{ "field": ... }` |
+| `Vector[type, N]` | array | `[element, ...]` |
+| `Vector[byte, N]` | hex-byte-string | `"0x1122"` |
+| `Bitvector[N]` | hex-byte-string | `"0x1122"` |
+| `List[type, N]` | array | `[element, ...]` |
+| `List[byte, N]` | hex-byte-string | `"0x1122"` |
+| `Bitlist[N]` | hex-byte-string | `"0x1122"` |
+| `Union[type_0, type_1, ...]` | selector-object | `{ "selector": number, "data": type_N }`  |
+
+Integers are encoded as strings to avoid loss of precision in 64-bit values.
+
+Aliases are encoded as their underlying type.
+
+`hex-byte-string` is a `0x`-prefixed hex encoding of byte data, as it would appear in an SSZ stream.
+
+`List` and `Vector` of `byte` (and aliases thereof) are encoded as `hex-byte-string`. `Bitlist` and `Bitvector` similarly map their SSZ-byte encodings to a `hex-byte-string`.
+
+`Union` is encoded as an object with a `selector` and `data` field, where the contents of `data` change according to the selector.
+
+> This encoding is used in [beacon-APIs](https://github.com/ethereum/beacon-APIs) with one exception: the `ParticipationFlags` type for the `getStateV2` response, although it is an alias of `uint8`, is encoded as a list of numbers. Future versions of the beacon API may address this incompatibility.
