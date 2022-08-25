@@ -93,9 +93,10 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
 ```python
 def hash_to_bls_field(x: Container) -> BLSFieldElement:
     """
-    This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
+    Compute 32-byte hash of serialized container and convert it to BLS field.
+    The output is not uniform over the BLS field.
     """
-    return int.from_bytes(hash_tree_root(x), "little") % BLS_MODULUS
+    return int.from_bytes(hash(ssz_serialize(x)), "little") % BLS_MODULUS
 ```
 
 ### `compute_powers`
