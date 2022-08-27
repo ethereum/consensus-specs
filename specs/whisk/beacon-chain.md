@@ -6,7 +6,7 @@
 | `WHISK_PROPOSER_TRACKERS_COUNT` | `uint64(2**13)` (= 8,192) | number of proposer trackers |
 | `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256) | epochs per shuffling phase |
 | `WHISK_VALIDATORS_PER_SHUFFLE` | `uint64(2**7)` (= 128) | number of validators shuffled per shuffle step |
-| `WHISK_SHUFFLE_STEPS_PER_ROUND` | `uint64(2**7)` (= 128) | Feistel permutation steps to complete a pass over all rows |
+| `WHISK_SHUFFLE_STEPS_PER_ROUND` | `uint64(2**7)` (= 128) | Number of stirs to complete a pass over all rows |
 | `WHISK_PROPOSER_SELECTION_GAP` | `Epoch(2)` | gap between proposer selection and the block proposal phase |
 
 | Name | Value |
@@ -142,29 +142,29 @@ class BeaconBlockBody(Container):
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # [New in Whisk]
 
-def get_feistel_encryption(index: uint64, rounds: uin64, K: uint64) -> uint64:
-    def F(x):
-        return (x ** 3) % K  # F(x) = x^3 (mod K) is a bijective non-linear function
 
-    x, y = index // K, index % K  # Compute 2D coordinates (x, y) from 1D coordinates
-    for _ in range(rounds):  # Apply Feistel rounds
-        x, y = y, (F(y) + x) % K
-    return x * K + y  # Convert 2D coordinates (x, y) back to 1D coordinates
+def get_squareshuffle_indices(s: uint64, r: uint64, k: uint64) -> Sequence[uint64]:
+    """
+    Get indices of row `s` in round `r` assuming a square matrix of order `k`.
+    """
+    if r % 2 == 0: # rows get shuffled on even rounds
+        return [i + k * (s % k) for i in range(k)] # indices of row `s % k`
+    else: # columns get shuffled on odd rounds
+        return [s + k * (i % k) for i in range(k)] # indices of column `s % k`
 
 
-def get_shuffle_indices(state: BeaconState, epoch: Epoch) -> Sequence[uint64]:
+def get_shuffle_indices(state: BeaconState, randao_reveal: BLSSignature, epoch: Epoch) -> Sequence[uint64]:
     """
     Return the indices that the Feistel permutation shuffles in this slot.
     """
     shuffle_round = state.slot // WHISK_SHUFFLE_STEPS_PER_ROUND
-    shuffle_step = state.slot % WHISK_SHUFFLE_STEPS_PER_ROUND
-    row_indices = [i + WHISK_VALIDATORS_PER_SHUFFLE * shuffle_step for i in range(WHISK_VALIDATORS_PER_SHUFFLE)]
-    return [get_feistel_encryption(index, shuffle_round, WHISK_VALIDATORS_PER_SHUFFLE) for index in row_indices]
+    shuffled_row = uint256(hash(randao_reveal)) % WHISK_SHUFFLE_STEPS_PER_ROUND
+    return get_squareshuffle_indices(shuffled_row, shuffle_round, WHISK_VALIDATORS_PER_SHUFFLE)
 
 
 def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None:
     # Check the shuffle proof
-    shuffle_indices = get_shuffle_indices(state, get_current_epoch(state))
+    shuffle_indices = get_shuffle_indices(state, body.randao_reveal, get_current_epoch(state))
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
     post_shuffle_trackers = body.whisk_post_shuffle_trackers
     assert whisk.IsValidWhiskShuffleProof(pre_shuffle_trackers, post_shuffle_trackers, body.whisk_shuffle_proof)
