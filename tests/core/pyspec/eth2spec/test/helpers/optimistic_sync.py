@@ -76,7 +76,14 @@ def get_optimistic_store(spec, anchor_state, anchor_block):
 
 
 def add_optimistic_block(spec, mega_store, signed_block, test_steps,
-                         payload_status=None, status=PayloadStatusV1Status.SYNCING):
+                         payload_status=None, status=PayloadStatusV1Status.SYNCING,
+                         valid=True):
+    """
+    Add a block with optimistic sync logic
+
+    ``valid`` indicates if the given ``signed_block.message.body.execution_payload`` is valid/invalid
+    from ``notify_new_payload`` method response.
+    """
     block = signed_block.message
     block_root = block.hash_tree_root()
     el_block_hash = block.body.execution_payload.block_hash
@@ -93,8 +100,6 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
 
     # Optimistic sync
 
-    valid = True
-
     # Case: INVALID
     if payload_status.status == PayloadStatusV1Status.INVALID:
         # Update parent status to INVALID
@@ -107,9 +112,6 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
             # Get parent
             current_block = mega_store.fc_store.blocks[current_block.parent_root]
             el_block_hash = current_block.body.execution_payload.block_hash
-
-    if payload_status.status != PayloadStatusV1Status.VALID:
-        valid = False
 
     yield from add_block(spec, mega_store.fc_store, signed_block,
                          valid=valid,

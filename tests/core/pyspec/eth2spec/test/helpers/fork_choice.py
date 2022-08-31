@@ -137,9 +137,9 @@ def add_block(spec,
                 return
             else:
                 assert False
-
-    run_on_block(spec, store, signed_block, valid=True)
-    test_steps.append({'block': get_block_file_name(signed_block)})
+    else:
+        run_on_block(spec, store, signed_block, valid=True)
+        test_steps.append({'block': get_block_file_name(signed_block)})
 
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:
