@@ -42,9 +42,9 @@ class PayloadStatusV1:
     @property
     def formatted_output(self):
         return {
-            'status': str(self.status),
-            'latest_valid_hash': encode_hex(self.latest_valid_hash) if self.latest_valid_hash is not None else 'null',
-            'validation_error': str(self.validation_error) if self.validation_error is not None else 'null'
+            'status': str(self.status.value),
+            'latest_valid_hash': encode_hex(self.latest_valid_hash) if self.latest_valid_hash is not None else None,
+            'validation_error': str(self.validation_error) if self.validation_error is not None else None
         }
 
 
@@ -95,6 +95,7 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
 
     mega_store.block_payload_statuses[block_root] = payload_status
     test_steps.append({
+        'block_hash': encode_hex(el_block_hash),
         'payload_status': payload_status.formatted_output,
     })
 
