@@ -253,7 +253,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         "test_identifiers": test_identifiers,
         "durations": [f"{span} seconds"],
     }
-    diagnostics_path = Path(os.path.join(output_dir, "diagnostics.json"))
+    diagnostics_path = Path(output_dir).parent / "diagnostics.json"
     diagnostics_lock = FileLock(os.path.join(output_dir, "diagnostics.json.lock"))
     with diagnostics_lock:
         diagnostics_path.touch(exist_ok=True)
