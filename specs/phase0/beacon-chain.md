@@ -1868,6 +1868,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
+        # Validate the public key which is not checked by the deposit contract
+        if not bls.KeyValidate(pubkey):
+            return
+            
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
             pubkey=deposit.data.pubkey,
