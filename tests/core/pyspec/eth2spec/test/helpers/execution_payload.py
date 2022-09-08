@@ -1,3 +1,4 @@
+from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.context import is_post_capella
 
 
@@ -38,6 +39,33 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     return payload
 
 
+def build_randomized_execution_payload(spec, state, rng):
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
+    execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
+    execution_payload.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32))
+    execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
+        get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
+    )
+    execution_payload.block_number = rng.randint(0, 10e10)
+    execution_payload.gas_limit = rng.randint(0, 10e10)
+    execution_payload.gas_used = rng.randint(0, 10e10)
+    extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
+    execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
+        get_random_bytes_list(rng, extra_data_length)
+    )
+    execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
+    execution_payload.block_hash = spec.Hash32(get_random_bytes_list(rng, 32))
+
+    num_transactions = rng.randint(0, 100)
+    execution_payload.transactions = [
+        spec.Transaction(get_random_bytes_list(rng, rng.randint(0, 1000)))
+        for _ in range(num_transactions)
+    ]
+
+    return execution_payload
+
+
 def get_execution_payload_header(spec, execution_payload):
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
@@ -61,14 +89,20 @@ def get_execution_payload_header(spec, execution_payload):
 
 
 def build_state_with_incomplete_transition(spec, state):
-    return build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    state = build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    assert not spec.is_merge_transition_complete(state)
+
+    return state
 
 
 def build_state_with_complete_transition(spec, state):
     pre_state_payload = build_empty_execution_payload(spec, state)
     payload_header = get_execution_payload_header(spec, pre_state_payload)
 
-    return build_state_with_execution_payload_header(spec, state, payload_header)
+    state = build_state_with_execution_payload_header(spec, state, payload_header)
+    assert spec.is_merge_transition_complete(state)
+
+    return state
 
 
 def build_state_with_execution_payload_header(spec, state, execution_payload_header):
