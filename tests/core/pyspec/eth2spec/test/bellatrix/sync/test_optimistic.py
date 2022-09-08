@@ -79,7 +79,7 @@ def test_from_syncing_to_invalid(spec, state):
         signed_block = state_transition_with_full_block(spec, state, True, True, block=block)
         signed_blocks_b.append(signed_block.copy())
         yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
-                                        status=PayloadStatusV1Status.SYNCING, valid=False)
+                                        status=PayloadStatusV1Status.SYNCING)
         assert spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
 
     # Now add block 4 to chain `b` with INVALID
@@ -93,7 +93,7 @@ def test_from_syncing_to_invalid(spec, state):
         validation_error="invalid",
     )
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
-                                    payload_status=payload_status, valid=False)
+                                    payload_status=payload_status)
     assert mega_store.opt_store.head_block_root == signed_blocks_a[-1].message.hash_tree_root()
 
     yield 'steps', test_steps

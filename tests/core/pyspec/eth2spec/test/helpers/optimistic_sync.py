@@ -75,9 +75,18 @@ def get_optimistic_store(spec, anchor_state, anchor_block):
     return opt_store
 
 
+def get_valid_flag_value(status: PayloadStatusV1Status) -> bool:
+    if status == PayloadStatusV1Status.VALID:
+        return True
+    elif status.alias == PayloadStatusV1StatusAlias.NOT_VALIDATED:
+        return True
+    else:
+        # status.alias == PayloadStatusV1StatusAlias.INVALIDATED or other cases
+        return False
+
+
 def add_optimistic_block(spec, mega_store, signed_block, test_steps,
-                         payload_status=None, status=PayloadStatusV1Status.SYNCING,
-                         valid=True):
+                         payload_status=None, status=PayloadStatusV1Status.SYNCING):
     """
     Add a block with optimistic sync logic
 
@@ -98,6 +107,9 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
         'block_hash': encode_hex(el_block_hash),
         'payload_status': payload_status.formatted_output,
     })
+
+    # Set `valid` flag
+    valid = get_valid_flag_value(payload_status.status)
 
     # Optimistic sync
 
