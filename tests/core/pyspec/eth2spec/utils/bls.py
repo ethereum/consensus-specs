@@ -110,7 +110,8 @@ def Sign(SK, message):
 @only_with_bls(alt_return=True)
 def KeyValidate(pubkey):
     try:
-        result = bls.KeyValidate(pubkey)
+        # Fallback to py_ecc as milagro_bls_binding has no KeyValidate binding
+        result = py_ecc_bls.KeyValidate(pubkey)
     except Exception:
         result = False
     finally:
