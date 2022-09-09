@@ -116,6 +116,7 @@ def KeyValidate(pubkey):
     finally:
         return result
 
+
 @only_with_bls(alt_return=STUB_COORDINATES)
 def signature_to_G2(signature):
     return _signature_to_G2(signature)
