@@ -233,3 +233,17 @@ def test_bad_merkle_proof(spec, state):
     sign_deposit_data(spec, deposit.data, privkeys[validator_index])
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
+
+
+@with_all_phases
+@spec_state_test
+def test_key_validate_invalid(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey = b'\x00' * 48
+
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
