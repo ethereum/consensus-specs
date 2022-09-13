@@ -138,3 +138,8 @@ def pairing_check(values):
         * pairing(p_q_2[1], p_q_2[0], final_exponentiate=False)
     )
     return final_exponentiation == FQ12.one()
+
+
+@only_with_bls(alt_return=True)
+def KeyValidate(pubkey):
+    return py_ecc_bls.KeyValidate(pubkey)
