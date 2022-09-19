@@ -117,7 +117,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 
 ```python
 def compute_aggregated_poly_and_commitment(
-        blobs: Sequence[BLSFieldElement],
+        blobs: Sequence[Sequence[BLSFieldElement]],
         kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
     """
     Return the aggregated polynomial and aggregated KZG commitment.
