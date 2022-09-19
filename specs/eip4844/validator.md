@@ -127,10 +127,10 @@ def compute_aggregated_poly_and_commitment(
     r_powers = compute_powers(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
+    aggregated_poly = Polynomial(vector_lincomb(blobs, r_powers))
 
     # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(lincomb(kzg_commitments, r_powers))
+    aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
 
     return aggregated_poly, aggregated_poly_commitment
 ```

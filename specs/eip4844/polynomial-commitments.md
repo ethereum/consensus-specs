@@ -15,8 +15,8 @@
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
-    - [`lincomb`](#lincomb)
-    - [`matrix_lincomb`](#matrix_lincomb)
+    - [`g1_lincomb`](#g1_lincomb)
+    - [`vector_lincomb`](#vector_lincomb)
   - [KZG](#kzg)
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
@@ -85,10 +85,10 @@ def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
     return (int(x) * int(bls_modular_inverse(y))) % BLS_MODULUS
 ```
 
-#### `lincomb`
+#### `g1_lincomb`
 
 ```python
-def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
+def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
     """
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
@@ -99,10 +99,10 @@ def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement])
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 
-#### `matrix_lincomb`
+#### `vector_lincomb`
 
 ```python
-def matrix_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
+def vector_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
                    scalars: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
     """
     Given a list of ``vectors``, interpret it as a 2D matrix and compute the linear combination
@@ -123,7 +123,7 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 
 ```python
 def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
-    return lincomb(KZG_SETUP_LAGRANGE, blob)
+    return g1_lincomb(KZG_SETUP_LAGRANGE, blob)
 ```
 
 #### `verify_kzg_proof`
@@ -165,7 +165,7 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement)
 
     # Calculate quotient polynomial by doing point-by-point division
     quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
-    return KZGProof(lincomb(KZG_SETUP_LAGRANGE, quotient_polynomial))
+    return KZGProof(g1_lincomb(KZG_SETUP_LAGRANGE, quotient_polynomial))
 ```
 
 ### Polynomials
