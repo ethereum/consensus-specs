@@ -85,7 +85,7 @@ We define the following Python custom types for type hinting and readability:
 ### State list lengths
 
 | Name | Value | Unit |
-| - | - | :-: | :-: |
+| - | - | :-: |
 | `WITHDRAWAL_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state |
 
 ### Max operations per block
