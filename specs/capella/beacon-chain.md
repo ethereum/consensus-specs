@@ -52,11 +52,11 @@
 
 Capella is a consensus-layer upgrade containing a number of features related
 to validator withdrawals. Including:
-* Automatic withdrawals of `withdrawable` validators
+* Automatic withdrawals of `withdrawable` validators.
 * Partial withdrawals sweep for validators with 0x01 withdrawal
-  credentials and balances in exceess of `MAX_EFFECTIVE_BALANCE`
+  credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
-  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator
+  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
 
 ## Custom types
 
@@ -64,7 +64,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal`|
+| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
 
 ## Constants
 
@@ -84,9 +84,9 @@ We define the following Python custom types for type hinting and readability:
 
 ### State list lengths
 
-| Name | Value | Unit | Duration |
+| Name | Value | Unit |
 | - | - | :-: | :-: |
-| `WITHDRAWAL_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state|
+| `WITHDRAWAL_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state |
 
 ### Max operations per block
 
@@ -289,7 +289,7 @@ def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount
 ```python
 def has_eth1_withdrawal_credential(validator: Validator) -> bool:
     """
-    Check if ``validator`` has an 0x01 prefixed "eth1" withdrawal credential
+    Check if ``validator`` has an 0x01 prefixed "eth1" withdrawal credential.
     """
     return validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
 ```
