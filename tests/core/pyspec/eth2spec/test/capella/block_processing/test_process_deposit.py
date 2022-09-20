@@ -28,3 +28,9 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     state.balances[validator_index] == amount
+    state.validators[validator_index].effective_balance == 0
+
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    current_epoch = spec.get_current_epoch(state)
+    assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
