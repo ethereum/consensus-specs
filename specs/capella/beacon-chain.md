@@ -266,7 +266,7 @@ class BeaconState(Container):
 
 ### Beacon state mutators
 
-#### `withdraw`
+#### `withdraw_balance`
 
 ```python
 def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount: Gwei) -> None:
