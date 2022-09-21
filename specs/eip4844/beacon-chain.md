@@ -19,6 +19,8 @@
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
@@ -26,6 +28,8 @@
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
+    - [Execution payload](#execution-payload)
+      - [`process_execution_payload`](#process_execution_payload)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
 
@@ -96,6 +100,52 @@ class BeaconBlockBody(Container):
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
 
+#### `ExecutionPayload`
+
+```python
+class ExecutionPayload(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32  # 'difficulty' in the yellow paper
+    block_number: uint64  # 'number' in the yellow paper
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    excess_blobs: uint64  # [New in EIP-4844]
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+```
+
+#### `ExecutionPayloadHeader`
+
+```python
+class ExecutionPayloadHeader(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    excess_blobs: uint64  # [New in EIP-4844]
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions_root: Root
+```
+
 ## Helper functions
 
 ### Misc
@@ -154,6 +204,41 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
+```
+
+#### Execution payload
+
+##### `process_execution_payload`
+
+```python
+def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    if is_merge_transition_complete(state):
+        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    # Verify prev_randao
+    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
+    # Verify timestamp
+    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify the execution payload is valid
+    assert execution_engine.notify_new_payload(payload)
+    # Cache execution payload header
+    state.latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_hash=payload.parent_hash,
+        fee_recipient=payload.fee_recipient,
+        state_root=payload.state_root,
+        receipts_root=payload.receipts_root,
+        logs_bloom=payload.logs_bloom,
+        prev_randao=payload.prev_randao,
+        block_number=payload.block_number,
+        gas_limit=payload.gas_limit,
+        gas_used=payload.gas_used,
+        timestamp=payload.timestamp,
+        extra_data=payload.extra_data,
+        base_fee_per_gas=payload.base_fee_per_gas,
+        excess_blobs=payload.excess_blobs,  # [New in EIP-4844]
+        block_hash=payload.block_hash,
+        transactions_root=hash_tree_root(payload.transactions),
+    )
 ```
 
 #### Blob KZG commitments
