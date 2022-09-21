@@ -71,6 +71,20 @@ bit-reversal permutation. In practice, clients can implement this by storing the
 `KZG_SETUP_LAGRANGE` and `ROOTS_OF_UNITY` in bit-reversal permutation, so these functions only
 have to be called once at startup.
 
+#### `is_power_of_two`
+
+```python
+def is_power_of_two(value: int) -> bool:
+    """
+    Check if ``value`` is a power of two integer.
+    """
+    if value == 0:
+        return False
+    else:
+        return 2**int(math.log2(value)) == value
+    return (value > 0) and (value & (value - 1) == 0)
+```
+
 #### `reverse_bits`
 
 ```python
