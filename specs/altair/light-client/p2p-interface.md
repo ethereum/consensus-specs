@@ -158,6 +158,8 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Peers SHOULD provide results as defined in [`create_light_client_update`](./full-node.md#create_light_client_update). They MUST respond with at least the earliest known result within the requested range, and MUST send results in consecutive order (by period). The response MUST NOT contain more than `min(MAX_REQUEST_LIGHT_CLIENT_UPDATES, count)` results.
 
+When `LightClientUpdate` instances cannot be produced for a given `start_period` and `count`, peers SHOULD respond with error code `3: ResourceUnavailable`.
+
 For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(update.attested_header.slot))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `update.sync_aggregate`, which is based on `update.signature_slot`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
