@@ -100,7 +100,7 @@ def reverse_bits(n: int, order: int) -> int:
 #### `bit_reversal_permutation`
 
 ```python
-def bit_reversal_permutation(l: List[int]) -> List[int]:
+def bit_reversal_permutation(l: Sequence[int]) -> Sequence[int]:
     """
     Apply the bit-reversal permutation to a list. This operation is idempotent.
     """
