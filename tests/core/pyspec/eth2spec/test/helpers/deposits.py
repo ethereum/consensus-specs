@@ -137,14 +137,21 @@ def prepare_random_genesis_deposits(spec,
     return deposits, root, deposit_data_list
 
 
-def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_credentials=None, signed=False):
+def prepare_state_and_deposit(spec, state, validator_index, amount,
+                              pubkey=None,
+                              privkey=None,
+                              withdrawal_credentials=None,
+                              signed=False):
     """
     Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
     """
     deposit_data_list = []
 
-    pubkey = pubkeys[validator_index]
-    privkey = privkeys[validator_index]
+    if pubkey is None:
+        pubkey = pubkeys[validator_index]
+
+    if privkey is None:
+        privkey = privkeys[validator_index]
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
@@ -196,7 +203,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
 
     yield 'post', state
 
-    if not effective:
+    if not effective or not bls.KeyValidate(deposit.data.pubkey):
         assert len(state.validators) == pre_validator_count
         assert len(state.balances) == pre_validator_count
         if validator_index < pre_validator_count:

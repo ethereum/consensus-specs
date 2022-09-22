@@ -93,9 +93,10 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
 ```python
 def hash_to_bls_field(x: Container) -> BLSFieldElement:
     """
-    This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
+    Compute 32-byte hash of serialized container and convert it to BLS field.
+    The output is not uniform over the BLS field.
     """
-    return int.from_bytes(hash_tree_root(x), "little") % BLS_MODULUS
+    return int.from_bytes(hash(ssz_serialize(x)), "little") % BLS_MODULUS
 ```
 
 ### `compute_powers`
@@ -116,7 +117,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 
 ```python
 def compute_aggregated_poly_and_commitment(
-        blobs: Sequence[BLSFieldElement],
+        blobs: Sequence[Sequence[BLSFieldElement]],
         kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
     """
     Return the aggregated polynomial and aggregated KZG commitment.
@@ -126,10 +127,10 @@ def compute_aggregated_poly_and_commitment(
     r_powers = compute_powers(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
+    aggregated_poly = Polynomial(vector_lincomb(blobs, r_powers))
 
     # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(lincomb(kzg_commitments, r_powers))
+    aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
 
     return aggregated_poly, aggregated_poly_commitment
 ```

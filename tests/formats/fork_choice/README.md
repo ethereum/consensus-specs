@@ -69,7 +69,7 @@ The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
 
-#### `on_merge_block` execution
+#### `on_merge_block` execution step
 
 Adds `PowBlock` data which is required for executing `on_block(store, block)`.
 ```yaml
@@ -96,6 +96,30 @@ The parameter that is required for executing `on_attester_slashing(store, attest
 The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
+
+#### `on_payload_info` execution step
+
+Optional step for optimistic sync tests.
+
+```yaml
+{
+    block_hash: string,             -- Encoded 32-byte value of payload's block hash.
+    payload_status: {
+        status: string,             -- Enum, "VALID" | "INVALID" | "SYNCING" | "ACCEPTED" | "INVALID_BLOCK_HASH".
+        latest_valid_hash: string,    -- Encoded 32-byte value of the latest valid block hash, may be `null`.
+        validation_error: string,    -- Message providing additional details on the validation error, may be `null`.
+    }
+}
+```
+
+This step sets the [`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/specification.md#PayloadStatusV1)
+value that Execution Layer client mock returns in responses to the following Engine API calls:
+* [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/specification.md#engine_newpayloadv1) if `payload.blockHash == payload_info.block_hash`
+* [`engine_forkchoiceUpdatedV1(forkchoiceState, ...)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/specification.md#engine_forkchoiceupdatedv1) if `forkchoiceState.headBlockHash == payload_info.block_hash`
+
+*Note:* Status of a payload must be *initialized* via `on_payload_info` before the corresponding `on_block` execution step.
+
+*Note:* Status of the same payload may be updated for several times throughout the test.
 
 #### Checks step
 
