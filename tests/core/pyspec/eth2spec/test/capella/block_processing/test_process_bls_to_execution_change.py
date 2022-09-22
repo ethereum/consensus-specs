@@ -185,7 +185,7 @@ def test_fail_incorrect_from_bls_pubkey(spec, state):
 @always_bls
 def test_fail_bad_signature(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
-    # Mutate sigature
+    # Mutate signature
     signed_address_change.signature = spec.BLSSignature(b'\x42' * 96)
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
