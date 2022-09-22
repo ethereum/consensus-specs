@@ -29,7 +29,7 @@
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [`withdraw`](#withdraw)
+    - [`withdraw_balance`](#withdraw_balance)
   - [Predicates](#predicates)
     - [`has_eth1_withdrawal_credential`](#has_eth1_withdrawal_credential)
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
@@ -266,7 +266,7 @@ class BeaconState(Container):
 
 ### Beacon state mutators
 
-#### `withdraw`
+#### `withdraw_balance`
 
 ```python
 def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount: Gwei) -> None:
