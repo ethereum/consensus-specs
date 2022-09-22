@@ -108,7 +108,7 @@ Alias `sidecar = signed_blobs_sidecar.message`.
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
     - Let `domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, sidecar.beacon_block_slot // SLOTS_PER_EPOCH)`
     - Let `signing_root = compute_signing_root(sidecar, domain)`
-    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature) is True`,   
+    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blobs_sidecar.signature) is True`,   
       where `proposer_pubkey` is the pubkey of the beacon block proposer of `sidecar.beacon_block_slot`
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
   where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
