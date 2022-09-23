@@ -15,7 +15,8 @@
   - [Bit-reversal permutation](#bit-reversal-permutation)
     - [`is_power_of_two`](#is_power_of_two)
     - [`reverse_bits`](#reverse_bits)
-    - [`bit_reversal_permutation`](#bit_reversal_permutation)
+    - [`bit_reversal_permutation_scalars`](#bit_reversal_permutation_scalars)
+    - [`bit_reversal_permutation_commitments`](#bit_reversal_permutation_commitments)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
@@ -97,10 +98,20 @@ def reverse_bits(n: int, order: int) -> int:
     return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
 ```
 
-#### `bit_reversal_permutation`
+#### `bit_reversal_permutation_scalars`
 
 ```python
-def bit_reversal_permutation(l: Sequence[int]) -> Sequence[int]:
+def bit_reversal_permutation_scalars(l: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+    """
+    Apply the bit-reversal permutation to a list. This operation is idempotent.
+    """
+    return [l[reverse_bits(i, len(l))] for i in range(len(l))]
+```
+
+#### `bit_reversal_permutation_commitments`
+
+```python
+def bit_reversal_permutation_commitments(l: Sequence[KZGCommitment]) -> Sequence[KZGCommitment]:
     """
     Apply the bit-reversal permutation to a list. This operation is idempotent.
     """
@@ -166,7 +177,7 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 
 ```python
 def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
-    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob)
+    return g1_lincomb(bit_reversal_permutation_commitments(KZG_SETUP_LAGRANGE), blob)
 ```
 
 #### `verify_kzg_proof`
@@ -206,11 +217,11 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement)
 
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
-    denominator_poly = [(x - z) % BLS_MODULUS for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
+    denominator_poly = [(x - z) % BLS_MODULUS for x in bit_reversal_permutation_scalars(ROOTS_OF_UNITY)]
 
     # Calculate quotient polynomial by doing point-by-point division
     quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
-    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
+    return KZGProof(g1_lincomb(bit_reversal_permutation_commitments(KZG_SETUP_LAGRANGE), quotient_polynomial))
 ```
 
 ### Polynomials
@@ -232,7 +243,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement]
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
 
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation_scalars(ROOTS_OF_UNITY)
 
     result = 0
     for i in range(width):
