@@ -10,13 +10,18 @@ from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.random import randomize_state
 
 
-def set_validator_partially_withdrawable(spec, state, index, rng=random.Random(666)):
+def set_eth1_withdrawal_credential_with_balance(spec, state, index, balance):
     validator = state.validators[index]
     validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
-    validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE
-    state.balances[index] = spec.MAX_EFFECTIVE_BALANCE + rng.randint(1, 100000000)
+    validator.effective_balance = min(balance, spec.MAX_EFFECTIVE_BALANCE)
+    state.balances[index] = balance
 
-    assert spec.is_partially_withdrawable_validator(validator, state.balances[index])
+
+def set_validator_partially_withdrawable(spec, state, index, rng=random.Random(666)):
+    balance = spec.MAX_EFFECTIVE_BALANCE + rng.randint(1, 100000000)
+    set_eth1_withdrawal_credential_with_balance(spec, state, index, balance)
+
+    assert spec.is_partially_withdrawable_validator(state.validators[index], state.balances[index])
 
 
 def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
@@ -60,6 +65,49 @@ def test_success_no_withdrawable(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 0)
 
     assert pre_validators == state.validators
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_no_max_effective_balance(spec, state):
+    validator_index = len(state.validators) // 2
+    # To be partially withdrawable, the validator's effective balance must be maxed out
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE - 1)
+    validator = state.validators[validator_index]
+
+    assert validator.effective_balance < spec.MAX_EFFECTIVE_BALANCE
+    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
+
+    yield from run_process_partial_withdrawals(spec, state, 0)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_no_excess_balance(spec, state):
+    validator_index = len(state.validators) // 2
+    # To be partially withdrawable, the validator needs an excess balance
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE)
+    validator = state.validators[validator_index]
+
+    assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
+    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
+
+    yield from run_process_partial_withdrawals(spec, state, 0)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_success_excess_balance_but_no_max_effective_balance(spec, state):
+    validator_index = len(state.validators) // 2
+    set_validator_partially_withdrawable(spec, state, validator_index)
+    validator = state.validators[validator_index]
+
+    # To be partially withdrawable, the validator needs both a maxed out effective balance and an excess balance
+    validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE - 1
+
+    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
+
+    yield from run_process_partial_withdrawals(spec, state, 0)
 
 
 @with_capella_and_later
@@ -155,7 +203,7 @@ def test_success_max_partial_withdrawable(spec, state):
 
 
 @with_capella_and_later
-@with_presets([MINIMAL], reason="not no enough validators with mainnet config")
+@with_presets([MINIMAL], reason="not enough validators with mainnet config")
 @spec_state_test
 def test_success_max_plus_one_withdrawable(spec, state):
     # Sanity check that this test works for this state
