@@ -589,9 +589,12 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
 '''
 
+
     @classmethod
-    def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '''
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
+T = TypeVar('T')  # For generic functions
+
 # TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
 # TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
 TESTING_FIELD_ELEMENTS_PER_BLOB = 4
@@ -604,8 +607,11 @@ KZG_SETUP_G1 = [bls.G1_to_bytes48(p) for p in TESTING_KZG_SETUP_G1]
 KZG_SETUP_G2 = [bls.G2_to_bytes96(p) for p in TESTING_KZG_SETUP_G2]
 KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
 ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
+'''
 
-
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() + '\n\n' + '''
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
     pass'''
 
