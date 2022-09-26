@@ -96,7 +96,7 @@ def hash_to_bls_field(x: Container) -> BLSFieldElement:
     Compute 32-byte hash of serialized container and convert it to BLS field.
     The output is not uniform over the BLS field.
     """
-    return int.from_bytes(hash(ssz_serialize(x)), "little") % BLS_MODULUS
+    return bytes_to_bls_field(hash(ssz_serialize(x)))
 ```
 
 ### `compute_powers`

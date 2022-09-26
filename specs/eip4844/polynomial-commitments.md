@@ -17,6 +17,7 @@
     - [`reverse_bits`](#reverse_bits)
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`bytes_to_bls_field`](#bytes_to_bls_field)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
     - [`g1_lincomb`](#g1_lincomb)
@@ -110,6 +111,16 @@ def bit_reversal_permutation(l: Sequence[T]) -> Sequence[T]:
 ```
 
 ### BLS12-381 helpers
+
+#### `bytes_to_bls_field`
+
+```python
+def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
+    """
+    Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
+    """
+    return int.from_bytes(b, "little") % BLS_MODULUS
+```
 
 #### `bls_modular_inverse`
 
