@@ -589,9 +589,16 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
 '''
 
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
+T = TypeVar('T')  # For generic function
+'''
+
     @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '''
+        return super().sundry_functions() + '\n\n' + '''
 # TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
 # TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
 TESTING_FIELD_ELEMENTS_PER_BLOB = 4
