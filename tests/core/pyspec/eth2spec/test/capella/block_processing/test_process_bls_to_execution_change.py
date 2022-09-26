@@ -82,7 +82,9 @@ def test_success_not_activated(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert not spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
 @with_capella_and_later
@@ -98,7 +100,9 @@ def test_success_in_activation_queue(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert not spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
 @with_capella_and_later
@@ -126,7 +130,9 @@ def test_success_exited(spec, state):
     signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert not spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
 @with_capella_and_later
@@ -142,7 +148,9 @@ def test_success_withdrawable(spec, state):
     signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
 @with_capella_and_later

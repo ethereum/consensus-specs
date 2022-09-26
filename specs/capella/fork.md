@@ -90,7 +90,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
         # Registry
-        validators=[],
+        validators=pre.validators,
         balances=pre.balances,
         # Randomness
         randao_mixes=pre.randao_mixes,
@@ -116,20 +116,6 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         next_withdrawal_index=WithdrawalIndex(0),
         next_partial_withdrawal_validator_index=ValidatorIndex(0),
     )
-
-    for pre_validator in pre.validators:
-        post_validator = Validator(
-            pubkey=pre_validator.pubkey,
-            withdrawal_credentials=pre_validator.withdrawal_credentials,
-            effective_balance=pre_validator.effective_balance,
-            slashed=pre_validator.slashed,
-            activation_eligibility_epoch=pre_validator.activation_eligibility_epoch,
-            activation_epoch=pre_validator.activation_epoch,
-            exit_epoch=pre_validator.exit_epoch,
-            withdrawable_epoch=pre_validator.withdrawable_epoch,
-            fully_withdrawn_epoch=FAR_FUTURE_EPOCH,
-        )
-        post.validators.append(post_validator)
 
     return post
 ```
