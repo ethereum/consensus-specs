@@ -41,6 +41,8 @@ CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
 
+SCRIPTS_DIR = ${CURRENT_DIR}/scripts
+
 export DAPP_SKIP_BUILD:=1
 export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
 export DAPP_LIB:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)/lib
@@ -192,6 +194,14 @@ $(TEST_VECTOR_DIR):
 	mkdir -p $@
 $(TEST_VECTOR_DIR)/:
 	$(info ignoring duplicate tests dir)
+
+gen_kzg_setups:
+	cd $(SCRIPTS_DIR); \
+	if ! test -d venv; then python3 -m venv venv; fi; \
+	. venv/bin/activate; \
+	pip3 install -r requirements.txt; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --length=4 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --length=4096 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
 
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)
