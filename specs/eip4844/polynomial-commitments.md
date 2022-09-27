@@ -219,7 +219,7 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement)
 
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
-    denominator_poly = [(x - z) % BLS_MODULUS for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
+    denominator_poly = [(int(x) - z) % BLS_MODULUS for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
 
     # Calculate quotient polynomial by doing point-by-point division
     quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
@@ -249,7 +249,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement]
 
     result = 0
     for i in range(width):
-        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (z - roots_of_unity_brp[i]))
+        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (z - int(roots_of_unity_brp[i])))
     result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return result
 ```
