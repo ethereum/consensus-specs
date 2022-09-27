@@ -634,6 +634,12 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
+_bit_reversal_permutation = bit_reversal_permutation
+bit_reversal_permutation = cache_this(
+    lambda l: l,
+    _bit_reversal_permutation, lru_size=8)
+
+
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
     pass'''
 
