@@ -157,10 +157,10 @@ def _load_kzg_trusted_setups(preset_name):
 
     return trusted_setup_G1, trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
 
-
-MINIMAL_KZG_SETUPS = _load_kzg_trusted_setups('minimal')
-MAINNET_KZG_SETUPS = _load_kzg_trusted_setups('mainnet')
-
+ALL_KZG_SETUPS = {
+    'minimal': _load_kzg_trusted_setups('minimal'),
+    'mainnet': _load_kzg_trusted_setups('mainnet')
+}
 
 ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
 
@@ -187,6 +187,15 @@ def _parse_value(name: str, typed_value: str) -> VariableDefinition:
     type_name = typed_value[:i]
 
     return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment)
+
+
+def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
+    comment = "noqa: E501"
+    kzg_setups = ALL_KZG_SETUPS[preset_name]
+    constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(kzg_setups[0]), comment)
+    constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[1]), comment)
+    constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(kzg_setups[2]), comment)
+    constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(kzg_setups[3]), comment)
 
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
@@ -277,17 +286,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
     # Load KZG trusted setup from files
     if any('KZG_SETUP' in name for name in constant_vars):
-        comment = "noqa: E501"
-        if preset_name == 'mainnet':
-            constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(MAINNET_KZG_SETUPS[0]), comment)
-            constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(MAINNET_KZG_SETUPS[1]), comment)
-            constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(MAINNET_KZG_SETUPS[2]), comment)
-            constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(MAINNET_KZG_SETUPS[3]), comment)
-        elif preset_name == 'minimal':
-            constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(MINIMAL_KZG_SETUPS[0]), comment)
-            constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(MINIMAL_KZG_SETUPS[1]), comment)
-            constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(MINIMAL_KZG_SETUPS[2]), comment)
-            constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(MINIMAL_KZG_SETUPS[3]), comment)
+        _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
 
     return SpecObject(
         functions=functions,
