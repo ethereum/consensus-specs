@@ -101,13 +101,13 @@ def reverse_bits(n: int, order: int) -> int:
 #### `bit_reversal_permutation`
 
 ```python
-def bit_reversal_permutation(l: Sequence[T]) -> Sequence[T]:
+def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
     """
     Return a copy with bit-reversed permutation. This operation is idempotent.
 
     The input and output are a sequence of generic type ``T`` objects.
     """
-    return [l[reverse_bits(i, len(l))] for i in range(len(l))]
+    return [sequence[reverse_bits(i, len(sequence))] for i in range(len(sequence))]
 ```
 
 ### BLS12-381 helpers
