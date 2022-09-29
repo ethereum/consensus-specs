@@ -245,7 +245,7 @@ def get_signed_blobs_sidecar(state: BeaconState, blobs_sidecar: BlobsSidecar, pr
     return SignedBlobsSidecar(message=blobs_sidecar, signature=signature)
 ```
 
-This `signed_blobs_sidecar` is then published to the global `blobs_sidecar` topic as soon as the `beacon_block` is published.
+This `signed_blobs_sidecar` is then published to the global `blobs_sidecar` topic as soon as the `signed_beacon_block` is published.
 
 After publishing the sidecar peers on the network may request the sidecar through sync-requests, or a local user may be interested.
 The validator MUST hold on to blobs for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,
