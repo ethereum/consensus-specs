@@ -33,10 +33,10 @@ The specification of these changes continues in the same format as the network s
 
 ## Configuration
 
-| Name                                     | Value                              | Description                                                         |
-|------------------------------------------|------------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                     | Maximum number of blobs sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13epoch` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
+| Name                                     | Value                               | Description                                                         |
+|------------------------------------------|-------------------------------------|---------------------------------------------------------------------|
+| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                      | Maximum number of blobs sidecars in a single request                |
+| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192epochs, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
 
