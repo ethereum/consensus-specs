@@ -103,7 +103,7 @@ def reverse_bits(n: int, order: int) -> int:
 ```python
 def bit_reversal_permutation(l: Sequence[T]) -> Sequence[T]:
     """
-    Return a copy with bit-reversed permutation. This operation is idempotent.
+    Return a copy with bit-reversed permutation. The permutation is an involution (inverts itself).
 
     The input and output are a sequence of generic type ``T`` objects.
     """
