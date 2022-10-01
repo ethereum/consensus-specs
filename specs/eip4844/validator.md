@@ -117,7 +117,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 
 ```python
 def compute_aggregated_poly_and_commitment(
-        blobs: Sequence[Sequence[BLSFieldElement]],
+        blobs: Sequence[Blob],
         kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
     """
     Return the aggregated polynomial and aggregated KZG commitment.
@@ -167,7 +167,7 @@ def validate_blobs_sidecar(slot: Slot,
 ### `compute_proof_from_blobs`
 
 ```python
-def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
+def compute_proof_from_blobs(blobs: Sequence[Blob]) -> KZGProof:
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
     x = hash_to_bls_field(PolynomialAndCommitment(
@@ -185,7 +185,7 @@ Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` 
 Implementers may also retrieve blobs individually per transaction.
 
 ```python
-def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment]]:
+def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[Blob], Sequence[KZGCommitment]]:
     ...
 ```
 
@@ -206,7 +206,7 @@ use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blo
 
 ```python
 def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
-                                       blobs: Sequence[BLSFieldElement],
+                                       blobs: Sequence[Blob],
                                        blob_kzg_commitments: Sequence[KZGCommitment]) -> None:
     # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
     assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
