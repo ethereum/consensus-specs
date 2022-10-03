@@ -120,7 +120,7 @@ class Withdrawal(Container):
 ```python
 class BLSToExecutionChange(Container):
     validator_index: ValidatorIndex
-    from_bls_pubkey: BLSPubkey
+    from_bls_withdrawal_pubkey: BLSPubkey
     to_execution_address: ExecutionAddress
 ```
 
@@ -478,11 +478,11 @@ def process_bls_to_execution_change(state: BeaconState,
     validator = state.validators[address_change.validator_index]
 
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
-    assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
+    assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_withdrawal_pubkey)[1:]
 
     domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE)
     signing_root = compute_signing_root(address_change, domain)
-    assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
+    assert bls.Verify(address_change.from_bls_withdrawal_pubkey, signing_root, signed_address_change.signature)
 
     validator.withdrawal_credentials = (
         ETH1_ADDRESS_WITHDRAWAL_PREFIX

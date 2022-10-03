@@ -51,7 +51,7 @@ def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubk
     domain = spec.get_domain(state, spec.DOMAIN_BLS_TO_EXECUTION_CHANGE)
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,
-        from_bls_pubkey=withdrawal_pubkey,
+        from_bls_withdrawal_pubkey=withdrawal_pubkey,
         to_execution_address=b'\x42' * 20,
     )
 
@@ -176,7 +176,7 @@ def test_fail_already_0x01(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-def test_fail_incorrect_from_bls_pubkey(spec, state):
+def test_fail_incorrect_from_bls_withdrawal_pubkey(spec, state):
     # Create for one validator beyond the validator list length
     validator_index = 2
     signed_address_change = get_signed_address_change(
