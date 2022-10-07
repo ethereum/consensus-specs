@@ -1,16 +1,16 @@
 ### Constants
 
-| Name | Value | Description |
-| - | - | - |
-| `WHISK_CANDIDATE_TRACKERS_COUNT` | `uint64(2**14)` (= 16,384) | number of candidate trackers |
-| `WHISK_PROPOSER_TRACKERS_COUNT` | `uint64(2**13)` (= 8,192) | number of proposer trackers |
-| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256) | epochs per shuffling phase |
-| `WHISK_VALIDATORS_PER_SHUFFLE` | `uint64(2**7)` (= 128) | number of validators shuffled per shuffle step |
-| `WHISK_SHUFFLE_STEPS_PER_ROUND` | `uint64(2**7)` (= 128) | Number of stirs to complete a pass over all rows |
-| `WHISK_PROPOSER_SELECTION_GAP` | `Epoch(2)` | gap between proposer selection and the block proposal phase |
+| Name                               | Value                      | Description                                                 |
+| ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
+| `WHISK_CANDIDATE_TRACKERS_COUNT`   | `uint64(2**14)` (= 16,384) | number of candidate trackers                                |
+| `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
+| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
+| `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7)` (= 128)     | number of validators shuffled per shuffle step              |
+| `WHISK_SHUFFLE_STEPS_PER_ROUND`    | `uint64(2**7)` (= 128)     | Number of stirs to complete a pass over all rows            |
+| `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
 
-| Name | Value |
-| - | - |
+| Name                               | Value                      |
+| ---------------------------------- | -------------------------- |
 | `DOMAIN_WHISK_CANDIDATE_SELECTION` | `DomainType('0x07000000')` |
 | `DOMAIN_WHISK_SHUFFLE`             | `DomainType('0x07100000')` |
 | `DOMAIN_WHISK_PROPOSER_SELECTION`  | `DomainType('0x07200000')` |
@@ -19,10 +19,10 @@
 
 #### BLS
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `BLSScalar` | `Bytes48` | BLS12-381 scalar |
-| `BLSG1Point` | `Bytes48` | compressed BLS12-381 G1 point |
+| Name         | SSZ equivalent | Description                   |
+| ------------ | -------------- | ----------------------------- |
+| `BLSScalar`  | `Bytes48`      | BLS12-381 scalar              |
+| `BLSG1Point` | `Bytes48`      | compressed BLS12-381 G1 point |
 
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
 
@@ -33,25 +33,43 @@ def BLSG1PointFromAffine(x: int, y: int) -> BLSG1Point
 def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point
 ```
 
-| Name | Value |
-| - | - |
+| Name                 | Value                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
 | `BLS_G1_GENERATOR_X` | `0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb` |
 | `BLS_G1_GENERATOR_Y` | `0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1` |
 | `BLS_G1_GENERATOR`   | `BLSG1PointFromAffine(BLS_G1_GENERATOR_X, BLS_G1_GENERATOR_Y)`                                       |
 
 #### Whisk
 
+Note that CurdleProofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only) repository.
+
 ```python
-class WhiskShuffleProof:
+class CurdleproofsCrs:
+    """
+    A CRS for curdleproofs defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only
+    """
+class CurdleProofsProof:
+    """
+    Shuffle proof defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only
+    """
 
 class WhiskOpeningProof:
 
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
-                             shuffle_proof: WhiskShuffleProof) -> bool:
+                             M: BLSG1Point,
+                             shuffle_proof: CurdleProofsProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     """
+    crs = CurdleproofsCrs()
+    vec_R = [pre_shuffle_tracker.r_G for pre_shuffle_tracker in pre_shuffle_trackers]
+    vec_S = [pre_shuffle_tracker.k_r_G for pre_shuffle_tracker in pre_shuffle_trackers]
+
+    vec_T = [post_shuffle_tracker.r_G for post_shuffle_tracker in post_shuffle_trackers]
+    vec_U = [post_shuffle_tracker.k_r_G for post_shuffle_tracker in post_shuffle_trackers]
+
+    return shuffle_proof.verify(crs, vec_R, vec_S, vec_T, vec_U, M, shuffle_proof)
 
 
 def IsValidWhiskOpeningProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof) -> bool:
@@ -138,6 +156,7 @@ class BeaconBlockBody(Container):
     # Whisk
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
     whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
+    whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
     whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # [New in Whisk]
@@ -167,12 +186,14 @@ def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -
     shuffle_indices = get_shuffle_indices(state, body.randao_reveal, get_current_epoch(state))
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
     post_shuffle_trackers = body.whisk_post_shuffle_trackers
-    assert whisk.IsValidWhiskShuffleProof(pre_shuffle_trackers, post_shuffle_trackers, body.whisk_shuffle_proof)
 
-    # Require unchanged trackers during cooldown
     shuffle_epoch = get_current_epoch(state) % WHISK_EPOCHS_PER_SHUFFLING_PHASE
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
+        # Require unchanged trackers during cooldown
         assert pre_shuffle_trackers == post_shuffle_trackers
+    else:
+        # Require shuffled trackers during shuffle
+        assert whisk.IsValidWhiskShuffleProof(pre_shuffle_trackers, post_shuffle_trackers, body.whisk_shuffle_proof_M_commitment, body.whisk_shuffle_proof)
 
     # Shuffle candidate trackers
     for i, shuffle_index in enumerate(shuffle_indices):
@@ -194,10 +215,12 @@ def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
         assert whisk.IsValidWhiskOpeningProof(body.whisk_tracker, body.whisk_k_commitment, body.whisk_registration_proof)
         proposer.whisk_tracker = body.whisk_tracker
         proposer.whisk_k_commitment = body.whisk_k_commitment
+        proposer.whisk_shuffle_proof_M_commitment = body.whisk_shuffle_proof_M_commitment
     else:  # next Whisk proposals
         assert body.whisk_registration_proof == WhiskTrackerProof()
         assert body.whisk_tracker == WhiskTracker()
         assert body.whisk_k_commitment == BLSG1Point()
+        assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
 
 
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
