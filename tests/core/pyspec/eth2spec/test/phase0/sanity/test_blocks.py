@@ -773,7 +773,7 @@ def test_deposit_top_up(spec, state):
     # Altair introduces sync committee (sm) reward and penalty
     sync_committee_reward = sync_committee_penalty = 0
     if is_post_altair(spec):
-        committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+        committee_indices = compute_committee_indices(state, state.current_sync_committee)
         committee_bits = block.body.sync_aggregate.sync_committee_bits
         sync_committee_reward, sync_committee_penalty = compute_sync_committee_participant_reward_and_penalty(
             spec,

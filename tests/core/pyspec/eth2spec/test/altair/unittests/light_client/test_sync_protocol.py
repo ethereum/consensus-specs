@@ -18,7 +18,6 @@ from eth2spec.test.helpers.light_client import (
 from eth2spec.test.helpers.state import (
     next_slots,
 )
-from eth2spec.test.helpers.merkle import build_proof
 
 
 @with_altair_and_later
@@ -125,7 +124,7 @@ def test_process_light_client_update_timeout(spec, state):
 
     # Sync committee is updated
     next_sync_committee = state.next_sync_committee
-    next_sync_committee_branch = build_proof(state.get_backing(), spec.NEXT_SYNC_COMMITTEE_INDEX)
+    next_sync_committee_branch = spec.compute_merkle_proof_for_state(state, spec.NEXT_SYNC_COMMITTEE_INDEX)
     # Finality is unchanged
     finality_header = spec.BeaconBlockHeader()
     finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
@@ -182,7 +181,7 @@ def test_process_light_client_update_finality_updated(spec, state):
     finalized_header = signed_block_to_header(spec, finalized_block)
     assert finalized_header.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
     assert finalized_header.hash_tree_root() == state.finalized_checkpoint.root
-    finality_branch = build_proof(state.get_backing(), spec.FINALIZED_ROOT_INDEX)
+    finality_branch = spec.compute_merkle_proof_for_state(state, spec.FINALIZED_ROOT_INDEX)
 
     update = spec.LightClientUpdate(
         attested_header=attested_header,

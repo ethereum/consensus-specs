@@ -13,18 +13,8 @@ def get_anchor_root(spec, state):
     return spec.hash_tree_root(anchor_block_header)
 
 
-def add_block_to_store(spec, store, signed_block):
-    pre_state = store.block_states[signed_block.message.parent_root]
-    block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
-
-    if store.time < block_time:
-        spec.on_tick(store, block_time)
-
-    spec.on_block(store, signed_block)
-
-
 def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
-                       merge_block=False, block_not_found=False):
+                       merge_block=False, block_not_found=False, is_optimistic=False):
     pre_state = store.block_states[signed_block.message.parent_root]
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     if merge_block:
@@ -37,6 +27,7 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
         spec, store, signed_block, test_steps,
         valid=valid,
         block_not_found=block_not_found,
+        is_optimistic=is_optimistic,
     )
 
     return post_state
@@ -119,28 +110,36 @@ def add_block(spec,
               signed_block,
               test_steps,
               valid=True,
-              block_not_found=False):
+              block_not_found=False,
+              is_optimistic=False):
     """
     Run on_block and on_attestation
     """
     yield get_block_file_name(signed_block), signed_block
 
     if not valid:
-        try:
+        if is_optimistic:
             run_on_block(spec, store, signed_block, valid=True)
-        except (AssertionError, BlockNotFoundException) as e:
-            if isinstance(e, BlockNotFoundException) and not block_not_found:
-                assert False
             test_steps.append({
                 'block': get_block_file_name(signed_block),
                 'valid': False,
             })
-            return
         else:
-            assert False
-
-    run_on_block(spec, store, signed_block, valid=True)
-    test_steps.append({'block': get_block_file_name(signed_block)})
+            try:
+                run_on_block(spec, store, signed_block, valid=True)
+            except (AssertionError, BlockNotFoundException) as e:
+                if isinstance(e, BlockNotFoundException) and not block_not_found:
+                    assert False
+                test_steps.append({
+                    'block': get_block_file_name(signed_block),
+                    'valid': False,
+                })
+                return
+            else:
+                assert False
+    else:
+        run_on_block(spec, store, signed_block, valid=True)
+        test_steps.append({'block': get_block_file_name(signed_block)})
 
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:
@@ -153,25 +152,26 @@ def add_block(spec,
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message
     assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
-    test_steps.append({
-        'checks': {
-            'time': int(store.time),
-            'head': get_formatted_head_output(spec, store),
-            'justified_checkpoint': {
-                'epoch': int(store.justified_checkpoint.epoch),
-                'root': encode_hex(store.justified_checkpoint.root),
-            },
-            'finalized_checkpoint': {
-                'epoch': int(store.finalized_checkpoint.epoch),
-                'root': encode_hex(store.finalized_checkpoint.root),
-            },
-            'best_justified_checkpoint': {
-                'epoch': int(store.best_justified_checkpoint.epoch),
-                'root': encode_hex(store.best_justified_checkpoint.root),
-            },
-            'proposer_boost_root': encode_hex(store.proposer_boost_root),
-        }
-    })
+    if not is_optimistic:
+        test_steps.append({
+            'checks': {
+                'time': int(store.time),
+                'head': get_formatted_head_output(spec, store),
+                'justified_checkpoint': {
+                    'epoch': int(store.justified_checkpoint.epoch),
+                    'root': encode_hex(store.justified_checkpoint.root),
+                },
+                'finalized_checkpoint': {
+                    'epoch': int(store.finalized_checkpoint.epoch),
+                    'root': encode_hex(store.finalized_checkpoint.root),
+                },
+                'best_justified_checkpoint': {
+                    'epoch': int(store.best_justified_checkpoint.epoch),
+                    'root': encode_hex(store.best_justified_checkpoint.root),
+                },
+                'proposer_boost_root': encode_hex(store.proposer_boost_root),
+            }
+        })
 
     return store.block_states[signed_block.message.hash_tree_root()]
 

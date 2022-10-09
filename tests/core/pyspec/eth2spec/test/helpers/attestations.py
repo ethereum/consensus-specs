@@ -246,11 +246,18 @@ def next_epoch_with_attestations(spec,
     )
 
 
-def state_transition_with_full_block(spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None):
+def state_transition_with_full_block(spec,
+                                     state,
+                                     fill_cur_epoch,
+                                     fill_prev_epoch,
+                                     participation_fn=None,
+                                     sync_aggregate=None,
+                                     block=None):
     """
     Build and apply a block with attestions at the calculated `slot_to_attest` of current epoch and/or previous epoch.
     """
-    block = build_empty_block_for_next_slot(spec, state)
+    if block is None:
+        block = build_empty_block_for_next_slot(spec, state)
     if fill_cur_epoch and state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
         slot_to_attest = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
         if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(state)):
@@ -272,6 +279,8 @@ def state_transition_with_full_block(spec, state, fill_cur_epoch, fill_prev_epoc
         )
         for attestation in attestations:
             block.body.attestations.append(attestation)
+    if sync_aggregate is not None:
+        block.body.sync_aggregate = sync_aggregate
 
     signed_block = state_transition_and_sign_block(spec, state, block)
     return signed_block

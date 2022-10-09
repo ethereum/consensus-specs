@@ -1,7 +1,11 @@
 from random import Random
 
-from eth2spec.test.context import is_post_altair
+from eth2spec.test.context import (
+    is_post_altair,
+    expect_assertion_error,
+)
 from eth2spec.test.helpers.keys import pubkeys, privkeys
+from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
@@ -133,14 +137,21 @@ def prepare_random_genesis_deposits(spec,
     return deposits, root, deposit_data_list
 
 
-def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_credentials=None, signed=False):
+def prepare_state_and_deposit(spec, state, validator_index, amount,
+                              pubkey=None,
+                              privkey=None,
+                              withdrawal_credentials=None,
+                              signed=False):
     """
     Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
     """
     deposit_data_list = []
 
-    pubkey = pubkeys[validator_index]
-    privkey = privkeys[validator_index]
+    if pubkey is None:
+        pubkey = pubkeys[validator_index]
+
+    if privkey is None:
+        privkey = privkeys[validator_index]
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
@@ -160,3 +171,64 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
     state.eth1_data.deposit_root = root
     state.eth1_data.deposit_count = len(deposit_data_list)
     return deposit
+
+
+#
+# Run processing
+#
+
+
+def run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True):
+    """
+    Run ``process_deposit``, yielding:
+      - pre-state ('pre')
+      - deposit ('deposit')
+      - post-state ('post').
+    If ``valid == False``, run expecting ``AssertionError``
+    """
+    pre_validator_count = len(state.validators)
+    pre_balance = 0
+    is_top_up = False
+    # is a top-up
+    if validator_index < pre_validator_count:
+        is_top_up = True
+        pre_balance = get_balance(state, validator_index)
+        pre_effective_balance = state.validators[validator_index].effective_balance
+
+    yield 'pre', state
+    yield 'deposit', deposit
+
+    if not valid:
+        expect_assertion_error(lambda: spec.process_deposit(state, deposit))
+        yield 'post', None
+        return
+
+    spec.process_deposit(state, deposit)
+
+    yield 'post', state
+
+    if not effective or not bls.KeyValidate(deposit.data.pubkey):
+        assert len(state.validators) == pre_validator_count
+        assert len(state.balances) == pre_validator_count
+        if validator_index < pre_validator_count:
+            assert get_balance(state, validator_index) == pre_balance
+    else:
+        if validator_index < pre_validator_count:
+            # top-up
+            assert len(state.validators) == pre_validator_count
+            assert len(state.balances) == pre_validator_count
+        else:
+            # new validator
+            assert len(state.validators) == pre_validator_count + 1
+            assert len(state.balances) == pre_validator_count + 1
+        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
+
+        if is_top_up:
+            # Top-ups do not change effective balance
+            assert state.validators[validator_index].effective_balance == pre_effective_balance
+        else:
+            effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
+            effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
+            assert state.validators[validator_index].effective_balance == effective_balance
+
+    assert state.eth1_deposit_index == state.eth1_data.deposit_count

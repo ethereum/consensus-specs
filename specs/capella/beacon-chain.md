@@ -29,7 +29,7 @@
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [`withdraw`](#withdraw)
+    - [`withdraw_balance`](#withdraw_balance)
   - [Predicates](#predicates)
     - [`has_eth1_withdrawal_credential`](#has_eth1_withdrawal_credential)
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
@@ -43,6 +43,7 @@
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_operations`](#modified-process_operations)
     - [New `process_bls_to_execution_change`](#new-process_bls_to_execution_change)
+- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -51,11 +52,11 @@
 
 Capella is a consensus-layer upgrade containing a number of features related
 to validator withdrawals. Including:
-* Automatic withdrawals of `withdrawable` validators
+* Automatic withdrawals of `withdrawable` validators.
 * Partial withdrawals sweep for validators with 0x01 withdrawal
-  credentials and balances in exceess of `MAX_EFFECTIVE_BALANCE`
+  credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
-  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator
+  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
 
 ## Custom types
 
@@ -63,7 +64,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal`|
+| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
 
 ## Constants
 
@@ -83,9 +84,9 @@ We define the following Python custom types for type hinting and readability:
 
 ### State list lengths
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `WITHDRAWAL_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state|
+| Name | Value | Unit |
+| - | - | :-: |
+| `WITHDRAWAL_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state |
 
 ### Max operations per block
 
@@ -192,7 +193,6 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch  # When validator can withdraw funds
-    fully_withdrawn_epoch: Epoch  # [New in Capella]
 ```
 
 #### `BeaconBlockBody`
@@ -265,16 +265,16 @@ class BeaconState(Container):
 
 ### Beacon state mutators
 
-#### `withdraw`
+#### `withdraw_balance`
 
 ```python
-def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) -> None:
+def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount: Gwei) -> None:
     # Decrease the validator's balance
-    decrease_balance(state, index, amount)
+    decrease_balance(state, validator_index, amount)
     # Create a corresponding withdrawal receipt
     withdrawal = Withdrawal(
         index=state.next_withdrawal_index,
-        address=ExecutionAddress(state.validators[index].withdrawal_credentials[12:]),
+        address=ExecutionAddress(state.validators[validator_index].withdrawal_credentials[12:]),
         amount=amount,
     )
     state.next_withdrawal_index = WithdrawalIndex(state.next_withdrawal_index + 1)
@@ -288,7 +288,7 @@ def withdraw_balance(state: BeaconState, index: ValidatorIndex, amount: Gwei) ->
 ```python
 def has_eth1_withdrawal_credential(validator: Validator) -> bool:
     """
-    Check if ``validator`` has an 0x01 prefixed "eth1" withdrawal credential
+    Check if ``validator`` has an 0x01 prefixed "eth1" withdrawal credential.
     """
     return validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
 ```
@@ -296,13 +296,14 @@ def has_eth1_withdrawal_credential(validator: Validator) -> bool:
 #### `is_fully_withdrawable_validator`
 
 ```python
-def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
+def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
     return (
         has_eth1_withdrawal_credential(validator)
-        and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
+        and validator.withdrawable_epoch <= epoch
+        and balance > 0
     )
 ```
 
@@ -348,11 +349,11 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_full_withdrawals(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    for index, validator in enumerate(state.validators):
-        if is_fully_withdrawable_validator(validator, current_epoch):
-            # TODO, consider the zero-balance case
-            withdraw_balance(state, ValidatorIndex(index), state.balances[index])
-            validator.fully_withdrawn_epoch = current_epoch
+    for index in range(len(state.validators)):
+        balance = state.balances[index]
+        validator = state.validators[index]
+        if is_fully_withdrawable_validator(validator, balance, current_epoch):
+            withdraw_balance(state, ValidatorIndex(index), balance)
 ```
 
 #### Partial withdrawals
@@ -488,4 +489,59 @@ def process_bls_to_execution_change(state: BeaconState,
         + b'\x00' * 11
         + address_change.to_execution_address
     )
+```
+
+## Testing
+
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Capella testing only.
+Modifications include:
+1. Use `CAPELLA_FORK_VERSION` as the previous and current fork version.
+2. Utilize the Capella `BeaconBlockBody` when constructing the initial `latest_block_header`.
+
+```python
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
+                                      eth1_timestamp: uint64,
+                                      deposits: Sequence[Deposit],
+                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
+                                      ) -> BeaconState:
+    fork = Fork(
+        previous_version=CAPELLA_FORK_VERSION,  # [Modified in Capella] for testing only
+        current_version=CAPELLA_FORK_VERSION,  # [Modified in Capella]
+        epoch=GENESIS_EPOCH,
+    )
+    state = BeaconState(
+        genesis_time=eth1_timestamp + GENESIS_DELAY,
+        fork=fork,
+        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
+        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
+        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
+    )
+
+    # Process deposits
+    leaves = list(map(lambda deposit: deposit.data, deposits))
+    for index, deposit in enumerate(deposits):
+        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
+        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
+        process_deposit(state, deposit)
+
+    # Process activations
+    for index, validator in enumerate(state.validators):
+        balance = state.balances[index]
+        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+            validator.activation_eligibility_epoch = GENESIS_EPOCH
+            validator.activation_epoch = GENESIS_EPOCH
+
+    # Set genesis validators root for domain separation and chain versioning
+    state.genesis_validators_root = hash_tree_root(state.validators)
+
+    # Fill in sync committees
+    # Note: A duplicate committee is assigned for the current and next committee at genesis
+    state.current_sync_committee = get_next_sync_committee(state)
+    state.next_sync_committee = get_next_sync_committee(state)
+
+    # Initialize the execution payload header
+    state.latest_execution_payload_header = execution_payload_header
+
+    return state
 ```

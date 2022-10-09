@@ -29,7 +29,7 @@ def initialize_light_client_store(spec, state):
     )
 
 
-def get_sync_aggregate(spec, state, signature_slot=None):
+def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
     # By default, the sync committee signs the previous slot
     if signature_slot is None:
         signature_slot = state.slot + 1
@@ -39,16 +39,21 @@ def get_sync_aggregate(spec, state, signature_slot=None):
     transition_to(spec, signature_state, signature_slot)
 
     # Fetch sync committee
-    committee_indices = compute_committee_indices(spec, signature_state)
+    committee_indices = compute_committee_indices(signature_state)
     committee_size = len(committee_indices)
 
+    # By default, use full participation
+    if num_participants is None:
+        num_participants = committee_size
+    assert committee_size >= num_participants >= 0
+
     # Compute sync aggregate
-    sync_committee_bits = [True] * committee_size
+    sync_committee_bits = [True] * num_participants + [False] * (committee_size - num_participants)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         signature_state,
         signature_slot,
-        committee_indices,
+        committee_indices[:num_participants],
     )
     sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,

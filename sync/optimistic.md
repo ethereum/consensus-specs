@@ -1,5 +1,38 @@
 # Optimistic Sync
 
+## Table of contents
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [Constants](#constants)
+- [Helpers](#helpers)
+- [Mechanisms](#mechanisms)
+  - [When to optimistically import blocks](#when-to-optimistically-import-blocks)
+  - [How to optimistically import blocks](#how-to-optimistically-import-blocks)
+  - [How to apply `latestValidHash` when payload status is `INVALID`](#how-to-apply-latestvalidhash-when-payload-status-is-invalid)
+  - [Execution Engine Errors](#execution-engine-errors)
+  - [Assumptions about Execution Engine Behaviour](#assumptions-about-execution-engine-behaviour)
+  - [Re-Orgs](#re-orgs)
+- [Fork Choice](#fork-choice)
+  - [Fork Choice Poisoning](#fork-choice-poisoning)
+- [Checkpoint Sync (Weak Subjectivity Sync)](#checkpoint-sync-weak-subjectivity-sync)
+- [Validator assignments](#validator-assignments)
+  - [Block Production](#block-production)
+  - [Attesting](#attesting)
+  - [Participating in Sync Committees](#participating-in-sync-committees)
+- [Ethereum Beacon APIs](#ethereum-beacon-apis)
+- [Design Decision Rationale](#design-decision-rationale)
+  - [Why sync optimistically?](#why-sync-optimistically)
+  - [Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?](#why-safe_slots_to_import_optimistically)
+  - [Transitioning from VALID -> INVALIDATED or INVALIDATED -> VALID](#transitioning-from-valid---invalidated-or-invalidated---valid)
+  - [What about Light Clients?](#what-about-light-clients)
+  - [What if `TERMINAL_BLOCK_HASH` is used?](#what-if-terminal_block_hash-is-used)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 ## Introduction
 
 In order to provide a syncing execution engine with a partial view of the head
@@ -55,8 +88,8 @@ Let `current_slot: Slot` be `(time - genesis_time) // SECONDS_PER_SLOT` where
 class OptimisticStore(object):
     optimistic_roots: Set[Root]
     head_block_root: Root
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
 ```
 
 ```python
@@ -89,8 +122,12 @@ def is_optimistic_candidate_block(opt_store: OptimisticStore, current_slot: Slot
     return False
 ```
 
-Let only a node which returns `is_optimistic(opt_store, head) is True` be an *optimistic
-node*. Let only a validator on an optimistic node be an *optimistic validator*.
+Let a node be an *optimistic node* if its fork choice is in one of the following states:
+1. `is_optimistic(opt_store, head) is True`
+2. Blocks from every viable (with respect to FFG) branch have transitioned from `NOT_VALIDATED` to `INVALIDATED`
+leaving the block tree without viable branches
+
+Let only a validator on an optimistic node be an *optimistic validator*.
 
 When this specification only defines behaviour for an optimistic
 node/validator, but *not* for the non-optimistic case, assume default
@@ -162,6 +199,23 @@ fails [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_
 the merge block MUST be treated the same as
 an `INVALIDATED` block (i.e., it and all its descendants are invalidated and
 removed from the block tree).
+
+### How to apply `latestValidHash` when payload status is `INVALID`
+
+Processing an `INVALID` payload status depends on the `latestValidHash` parameter.
+The general approach is as follows:
+1. Consensus engine MUST identify `invalidBlock` as per definition in the table below.
+2. `invalidBlock` and all of its descendants MUST be transitioned from `NOT_VALIDATED` to `INVALIDATED`.
+
+| `latestValidHash` | `invalidBlock` |
+|:- |:- |
+| Execution block hash | The *child* of a block with `body.execution_payload.block_hash == latestValidHash` in the chain containing the block with payload in question |
+| `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload()` in the chain containing a block with payload in question |
+| `null` | Block with payload in question |
+
+When `latestValidHash` is a meaningful execution block hash but consensus engine
+cannot find a block satisfying `body.execution_payload.block_hash == latestValidHash`,
+consensus engine SHOULD behave the same as if `latestValidHash` was `null`.
 
 ### Execution Engine Errors
 
@@ -270,6 +324,28 @@ optimistic blocks (and vice-versa).
 
 ## Design Decision Rationale
 
+### Why sync optimistically?
+
+Most execution engines use state sync as a default sync mechanism on Ethereum Mainnet 
+because executing blocks from genesis takes several weeks on commodity hardware.
+
+State sync requires the knowledge of the current head of the chain to converge eventually.
+If not constantly fed with the most recent head, state sync won't be able to complete
+because the recent state soon becomes unavailable due to state trie pruning.
+
+Optimistic block import (i.e. import when the execution engine *cannot* currently validate the payload)
+breaks a deadlock between the execution layer sync process and importing beacon blocks
+while the execution engine is syncing.
+
+Optimistic sync is also an optimal strategy for execution engines using block execution as a default
+sync mechanism (e.g. Erigon). Alternatively, a consensus engine may inform the execution engine with a payload
+obtained from a checkpoint block, then wait until the execution layer catches up with it and proceed
+in lock step after that. This alternative approach would keep user in limbo for several hours and
+would increase time of the sync process as batch sync has more opportunities for optimisation than the lock step.
+
+Aforementioned premises make optimistic sync a *generalized* solution for interaction between consensus and
+execution engines during the sync process.
+
 ### Why `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`?
 
 Nodes can only import an optimistic block if their justified checkpoint is
@@ -328,7 +404,7 @@ specification since it's only possible with a faulty EE.
 
 Such a scenario requires manual intervention.
 
-## What about Light Clients?
+### What about Light Clients?
 
 An alternative to optimistic sync is to run a light client inside/alongside
 beacon nodes that mitigates the need for optimistic sync by providing
@@ -340,7 +416,7 @@ A notable thing about optimistic sync is that it's *optional*. Should an
 implementation decide to go the light-client route, then they can just ignore
 optimistic sync all together.
 
-## What if `TERMINAL_BLOCK_HASH` is used?
+### What if `TERMINAL_BLOCK_HASH` is used?
 
 If the terminal block hash override is used (i.e., `TERMINAL_BLOCK_HASH !=
 Hash32()`), the [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
