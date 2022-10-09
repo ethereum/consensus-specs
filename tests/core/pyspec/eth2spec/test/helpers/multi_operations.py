@@ -180,7 +180,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
 
 
 def get_random_sync_aggregate(spec, state, slot, block_root=None, fraction_participated=1.0, rng=Random(2099)):
-    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    committee_indices = compute_committee_indices(state, state.current_sync_committee)
     participant_count = int(len(committee_indices) * fraction_participated)
     participant_indices = rng.sample(range(len(committee_indices)), participant_count)
     participants = [

@@ -74,7 +74,7 @@ def compute_sync_committee_proposer_reward(spec, state, committee_indices, commi
     return spec.Gwei(participant_reward * participant_number)
 
 
-def compute_committee_indices(spec, state, committee=None):
+def compute_committee_indices(state, committee=None):
     """
     Given a ``committee``, calculate and return the related indices
     """
@@ -129,11 +129,7 @@ def run_sync_committee_processing(spec, state, block, expect_exception=False):
     if expect_exception:
         assert pre_state.balances == state.balances
     else:
-        committee_indices = compute_committee_indices(
-            spec,
-            state,
-            state.current_sync_committee,
-        )
+        committee_indices = compute_committee_indices(state, state.current_sync_committee)
         committee_bits = block.body.sync_aggregate.sync_committee_bits
         validate_sync_committee_rewards(
             spec,

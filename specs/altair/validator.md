@@ -54,7 +54,7 @@ It builds on the [previous document for the behavior of an "honest validator" fr
 This previous document is referred to below as the "Phase 0 document".
 
 Altair introduces a new type of committee: the sync committee. Sync committees are responsible for signing each block of the canonical chain and there exists an efficient algorithm for light clients to sync the chain using the output of the sync committees.
-See the [sync protocol](./sync-protocol.md) for further details on the light client sync.
+See the [sync protocol](./light-client/sync-protocol.md) for further details on the light client sync.
 Under this network upgrade, validators track their participation in this new committee type and produce the relevant signatures as required.
 Block proposers incorporate the (aggregated) sync committee signatures into each block they produce.
 
@@ -146,7 +146,7 @@ This function is a predicate indicating the presence or absence of the validator
 *Note*: Being assigned to a sync committee for a given `slot` means that the validator produces and broadcasts signatures for `slot - 1` for inclusion in `slot`.
 This means that when assigned to an `epoch` sync committee signatures must be produced and broadcast for slots on range `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
 rather than for the range `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
-To reduce complexity during the Altair fork, sync committees are not expected to produce signatures for `compute_epoch_at_slot(ALTAIR_FORK_EPOCH) - 1`.
+To reduce complexity during the Altair fork, sync committees are not expected to produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
 
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
@@ -265,7 +265,7 @@ This process occurs each slot.
 
 ##### Prepare sync committee message
 
-If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`. This means that when assigned to `slot` a `SyncCommitteeMessage` is prepared and broadcast in `slot-1 ` instead of `slot`.   
+If a validator is in the current sync committee (i.e. `is_assigned_to_sync_committee()` above returns `True`), then for every `slot` in the current sync committee period, the validator should prepare a `SyncCommitteeMessage` for the previous slot (`slot - 1`) according to the logic in `get_sync_committee_message` as soon as they have determined the head block of `slot - 1`. This means that when assigned to `slot` a `SyncCommitteeMessage` is prepared and broadcast in `slot-1 ` instead of `slot`.
 
 This logic is triggered upon the same conditions as when producing an attestation.
 Meaning, a sync committee member should produce and broadcast a `SyncCommitteeMessage` either when (a) the validator has received a valid block from the expected block proposer for the current `slot` or (b) one-third of the slot has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot) -- whichever comes first.

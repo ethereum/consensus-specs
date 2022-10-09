@@ -65,7 +65,7 @@ an irregular state change is made to upgrade to Capella.
 
 The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `CAPELLA_FORK_EPOCH * SLOTS_PER_EPOCH`.
 Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
-In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead the logic must be within `process_slots`.
+In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead, the logic must be within `process_slots`.
 
 ```python
 def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
@@ -90,7 +90,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
         # Registry
-        validators=[],
+        validators=pre.validators,
         balances=pre.balances,
         # Randomness
         randao_mixes=pre.randao_mixes,
@@ -116,20 +116,6 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         next_withdrawal_index=WithdrawalIndex(0),
         next_partial_withdrawal_validator_index=ValidatorIndex(0),
     )
-
-    for pre_validator in pre.validators:
-        post_validator = Validator(
-            pubkey=pre_validator.pubkey,
-            withdrawal_credentials=pre_validator.withdrawal_credentials,
-            effective_balance=pre_validator.effective_balance,
-            slashed=pre_validator.slashed,
-            activation_eligibility_epoch=pre_validator.activation_eligibility_epoch,
-            activation_epoch=pre_validator.activation_epoch,
-            exit_epoch=pre_validator.exit_epoch,
-            withdrawable_epoch=pre_validator.withdrawable_epoch,
-            fully_withdrawn_epoch=FAR_FUTURE_EPOCH,
-        )
-        post.validators.append(post_validator)
 
     return post
 ```

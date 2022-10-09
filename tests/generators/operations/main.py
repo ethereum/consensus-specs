@@ -18,7 +18,9 @@ if __name__ == "__main__":
     altair_mods = combine_mods(_new_altair_mods, phase_0_mods)
 
     _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.block_processing.test_process_' + key for key in [
+        'deposit',
         'execution_payload',
+        'voluntary_exit',
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
 

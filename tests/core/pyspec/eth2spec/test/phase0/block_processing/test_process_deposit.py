@@ -1,61 +1,13 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
+    deposit_from_context,
     prepare_state_and_deposit,
+    run_deposit_processing,
     sign_deposit_data,
-    deposit_from_context)
-from eth2spec.test.helpers.state import get_balance
+)
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.utils import bls
-
-
-def run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True):
-    """
-    Run ``process_deposit``, yielding:
-      - pre-state ('pre')
-      - deposit ('deposit')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    """
-    pre_validator_count = len(state.validators)
-    pre_balance = 0
-    if validator_index < pre_validator_count:
-        pre_balance = get_balance(state, validator_index)
-
-    yield 'pre', state
-    yield 'deposit', deposit
-
-    if not valid:
-        expect_assertion_error(lambda: spec.process_deposit(state, deposit))
-        yield 'post', None
-        return
-
-    spec.process_deposit(state, deposit)
-
-    yield 'post', state
-
-    if not effective:
-        assert len(state.validators) == pre_validator_count
-        assert len(state.balances) == pre_validator_count
-        if validator_index < pre_validator_count:
-            assert get_balance(state, validator_index) == pre_balance
-    else:
-        if validator_index < pre_validator_count:
-            # top-up
-            assert len(state.validators) == pre_validator_count
-            assert len(state.balances) == pre_validator_count
-        else:
-            # new validator
-            assert len(state.validators) == pre_validator_count + 1
-            assert len(state.balances) == pre_validator_count + 1
-        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
-
-        effective = min(spec.MAX_EFFECTIVE_BALANCE,
-                        pre_balance + deposit.data.amount)
-        effective -= effective % spec.EFFECTIVE_BALANCE_INCREMENT
-        assert state.validators[validator_index].effective_balance == effective
-
-    assert state.eth1_deposit_index == state.eth1_data.deposit_count
 
 
 @with_all_phases
@@ -189,12 +141,56 @@ def test_invalid_sig_new_deposit(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_success_top_up(spec, state):
+def test_success_top_up__max_effective_balance(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
+    state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+
     yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+
+@with_all_phases
+@spec_state_test
+def test_success_top_up__less_effective_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    initial_balance = spec.MAX_EFFECTIVE_BALANCE - 1000
+    initial_effective_balance = spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    state.balances[validator_index] = initial_balance
+    state.validators[validator_index].effective_balance = initial_effective_balance
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+    assert state.balances[validator_index] == initial_balance + amount
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
+
+
+@with_all_phases
+@spec_state_test
+def test_success_top_up__zero_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    initial_balance = 0
+    initial_effective_balance = 0
+    state.balances[validator_index] = initial_balance
+    state.validators[validator_index].effective_balance = initial_effective_balance
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+    assert state.balances[validator_index] == initial_balance + amount
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
 @with_all_phases
@@ -281,3 +277,33 @@ def test_bad_merkle_proof(spec, state):
     sign_deposit_data(spec, deposit.data, privkeys[validator_index])
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
+
+
+@with_all_phases
+@spec_state_test
+def test_key_validate_invalid_subgroup(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey = b'\x00' * 48
+
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+def test_key_validate_invalid_decompression(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
+    # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey_hex = 'c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)

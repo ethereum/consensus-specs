@@ -23,13 +23,15 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) \
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
+                 $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SPEC_DIR)/altair/**/*.md) \
                  $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
                  $(wildcard $(SPEC_DIR)/capella/*.md) \
                  $(wildcard $(SPEC_DIR)/custody/*.md) \
                  $(wildcard $(SPEC_DIR)/das/*.md) \
                  $(wildcard $(SPEC_DIR)/sharding/*.md) \
-                 $(wildcard $(SPEC_DIR)/eip4844/*.md)
+                 $(wildcard $(SPEC_DIR)/eip4844/*.md) \
+                 $(wildcard $(SSZ_DIR)/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
@@ -136,12 +138,12 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix \
+	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella \
 	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE)
+	flake8 --config $(LINTER_CONFIG_FILE)
 
 compile_deposit_contract:
 	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)
