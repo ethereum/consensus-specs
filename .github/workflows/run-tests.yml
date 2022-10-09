@@ -50,7 +50,7 @@ jobs:
       matrix:
         version: ["phase0", "altair", "bellatrix","capella"]
     steps:
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3.0.10
         id: restore-build
         with:
           path: ./*
@@ -85,7 +85,7 @@ jobs:
      runs-on: self-hosted
      needs: setup-env
      steps:
-        - uses: actions/cache@v2
+        - uses: actions/cache@v3.0.10
           id: restore-build
           with:
             path: ./*
@@ -96,7 +96,7 @@ jobs:
      runs-on: self-hosted
      needs: setup-env
      steps:
-        - uses: actions/cache@v2
+        - uses: actions/cache@v3.0.10
           id: restore-build
           with:
             path: ./*
@@ -107,7 +107,7 @@ jobs:
       runs-on: self-hosted
       needs: setup-env
       steps:
-        - uses: actions/cache@v2
+        - uses: actions/cache@v3.0.10
           id: restore-build
           with:
             path: ./*
