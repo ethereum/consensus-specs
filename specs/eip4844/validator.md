@@ -15,13 +15,8 @@
   - [Custom types](#custom-types)
   - [Helpers](#helpers)
     - [`is_data_available`](#is_data_available)
-    - [`hash_to_bls_field`](#hash_to_bls_field)
-    - [`compute_powers`](#compute_powers)
-    - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
     - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
-    - [`compute_aggregrate_kzg_proof`](#compute_aggregrate_kzg_proof)
-    - [`verify_aggregrate_kzg_proof`](#verify_aggregrate_kzg_proof)
     - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
   - [Beacon chain responsibilities](#beacon-chain-responsibilities)
     - [Block proposal](#block-proposal)
@@ -72,65 +67,8 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
     return True
 ```
 
-### `hash_to_bls_field`
 
-```python
-def hash_to_bls_field(polys: List[Tuple[Polynomial | Blob]], comms: List[KZGCommitment]) -> BLSFieldElement:
-   """
-   Compute 32-byte hash of serialised polynomials and commitments concatenated
-   This hash is then converted to a BLS field.
-   The output is not uniform over the BLS field.
-   """
-   
-    bytes = []
-   
-    # Append each polynomial
-    for poly in polys:
-        for serialised_evaluation in poly:
-            bytes.extend(serialised_evaluation)
-   
-    # Append serialised g1 points
-    for serialised_comm in comms:
-        bytes.extend(serialised_comm)
-       
-    return bytes_to_bls_field(hash(bytes))
-```
 
-### `compute_powers`
-```python
-def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
-    """
-    Return ``x`` to power of [0, n-1].
-    """
-    current_power = 1
-    powers = []
-    for _ in range(n):
-        powers.append(BLSFieldElement(current_power))
-        current_power = current_power * int(x) % BLS_MODULUS
-    return powers
-```
-
-### `compute_aggregated_poly_and_commitment`
-
-```python
-def compute_aggregated_poly_and_commitment(
-        blobs: Sequence[Sequence[BLSFieldElement]],
-        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
-    """
-    Return the aggregated polynomial and aggregated KZG commitment.
-    """
-    # Generate random linear combination challenges
-    r = hash_to_bls_field(blobs, kzg_commitments)
-    r_powers = compute_powers(r, len(kzg_commitments))
-
-    # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(vector_lincomb(blobs, r_powers))
-
-    # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
-
-    return aggregated_poly, aggregated_poly_commitment
-```
 
 ### `validate_blobs_sidecar`
 
@@ -156,34 +94,7 @@ def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
 ```
 
 
-### `compute_aggregrate_kzg_proof`
 
-```python
-def compute_aggregrate_kzg_proof(blobs: Sequence[BLSFieldElement]) -> KZGProof:
-    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
-    x = hash_to_bls_field([aggregated_poly],[aggregated_poly_commitment])
-    return compute_kzg_proof(aggregated_poly, x)
-```
-
-### `verify_aggregrate_kzg_proof`
-
-```python
-def verify_aggregrate_kzg_proof(blobs: Sequence[BLSFieldElement],expected_kzg_commitments: Sequence[KZGCommitment], kzg_aggregated_proof : KZGCommitment):
-
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(
-        blobs,
-        expected_kzg_commitments,
-    )
-
-    # Generate challenge `x` and evaluate the aggregated polynomial at `x`
-    x = hash_to_bls_field([aggregated_poly], [aggregated_poly_commitment])
-    # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
-    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
-
-    # Verify aggregated proof
-    assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
-```
 
 ### `get_blobs_and_kzg_commitments`
 
