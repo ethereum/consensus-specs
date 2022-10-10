@@ -8,25 +8,24 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-- [Custom types](#custom-types)
-- [Containers](#containers)
-  - [`BlobsAndCommitments`](#blobsandcommitments)
-  - [`PolynomialAndCommitment`](#polynomialandcommitment)
-- [Helpers](#helpers)
-  - [`is_data_available`](#is_data_available)
-  - [`hash_to_bls_field`](#hash_to_bls_field)
-  - [`compute_powers`](#compute_powers)
-  - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
-  - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
-  - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
-  - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
-- [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Block proposal](#block-proposal)
-    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Blob KZG commitments](#blob-kzg-commitments)
-  - [Beacon Block publishing time](#beacon-block-publishing-time)
+- [EIP-4844 -- Honest Validator](#eip-4844----honest-validator)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Prerequisites](#prerequisites)
+  - [Custom types](#custom-types)
+  - [Helpers](#helpers)
+    - [`is_data_available`](#is_data_available)
+    - [`hash_to_bls_field`](#hash_to_bls_field)
+    - [`compute_powers`](#compute_powers)
+    - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
+    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
+    - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
+    - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
+  - [Beacon chain responsibilities](#beacon-chain-responsibilities)
+    - [Block proposal](#block-proposal)
+      - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+        - [Blob KZG commitments](#blob-kzg-commitments)
+    - [Beacon Block publishing time](#beacon-block-publishing-time)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -49,23 +48,6 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 | - | - | - |
 | `Polynomial` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
 
-## Containers
-
-### `BlobsAndCommitments`
-
-```python
-class BlobsAndCommitments(Container):
-    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
-    kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-```
-
-### `PolynomialAndCommitment`
-
-```python
-class PolynomialAndCommitment(Container):
-    polynomial: Polynomial
-    kzg_commitment: KZGCommitment
-```
 
 
 ## Helpers
@@ -91,12 +73,25 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
 ### `hash_to_bls_field`
 
 ```python
-def hash_to_bls_field(x: Container) -> BLSFieldElement:
-    """
-    Compute 32-byte hash of serialized container and convert it to BLS field.
-    The output is not uniform over the BLS field.
-    """
-    return bytes_to_bls_field(hash(ssz_serialize(x)))
+def hash_to_bls_field(polys: List[Tuple[Polynomial | Blob]], comms: List[KZGCommitment]) -> BLSFieldElement:
+   """
+   Compute 32-byte hash of serialised polynomials and commitments concatenated
+   This hash is then converted to a BLS field.
+   The output is not uniform over the BLS field.
+   """
+   
+    bytes = []
+   
+    # Append each polynomial
+    for poly in polys:
+        for serialised_evaluation in poly:
+            bytes.extend(serialised_evaluation)
+   
+    # Append serialised g1 points
+    for serialised_comm in comms:
+        bytes.extend(serialised_comm)
+       
+    return bytes_to_bls_field(hash(bytes))
 ```
 
 ### `compute_powers`
@@ -123,7 +118,7 @@ def compute_aggregated_poly_and_commitment(
     Return the aggregated polynomial and aggregated KZG commitment.
     """
     # Generate random linear combination challenges
-    r = hash_to_bls_field(BlobsAndCommitments(blobs=blobs, kzg_commitments=kzg_commitments))
+    r = hash_to_bls_field(blobs, kzg_commitments)
     r_powers = compute_powers(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form
@@ -154,9 +149,7 @@ def validate_blobs_sidecar(slot: Slot,
     )
 
     # Generate challenge `x` and evaluate the aggregated polynomial at `x`
-    x = hash_to_bls_field(
-        PolynomialAndCommitment(polynomial=aggregated_poly, kzg_commitment=aggregated_poly_commitment)
-    )
+    x = hash_to_bls_field([aggregated_poly], [aggregated_poly_commitment])
     # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
     y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
 
@@ -170,10 +163,7 @@ def validate_blobs_sidecar(slot: Slot,
 def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
-    x = hash_to_bls_field(PolynomialAndCommitment(
-        polynomial=aggregated_poly,
-        kzg_commitment=aggregated_poly_commitment,
-    ))
+    x = hash_to_bls_field([aggregated_poly],[aggregated_poly_commitment])
     return compute_kzg_proof(aggregated_poly, x)
 ```
 
