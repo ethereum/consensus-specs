@@ -20,6 +20,8 @@
     - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
     - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
+    - [`compute_aggregrate_kzg_proof`](#compute_aggregrate_kzg_proof)
+    - [`verify_aggregrate_kzg_proof`](#verify_aggregrate_kzg_proof)
     - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
   - [Beacon chain responsibilities](#beacon-chain-responsibilities)
     - [Block proposal](#block-proposal)
@@ -143,6 +145,32 @@ def validate_blobs_sidecar(slot: Slot,
     kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
     assert len(expected_kzg_commitments) == len(blobs)
 
+    verify_aggregrate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
+```
+
+### `compute_proof_from_blobs`
+
+```python
+def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
+    return compute_aggregrate_kzg_proof(blobs)
+```
+
+
+### `compute_aggregrate_kzg_proof`
+
+```python
+def compute_aggregrate_kzg_proof(blobs: Sequence[BLSFieldElement]) -> KZGProof:
+    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
+    x = hash_to_bls_field([aggregated_poly],[aggregated_poly_commitment])
+    return compute_kzg_proof(aggregated_poly, x)
+```
+
+### `verify_aggregrate_kzg_proof`
+
+```python
+def verify_aggregrate_kzg_proof(blobs: Sequence[BLSFieldElement],expected_kzg_commitments: Sequence[KZGCommitment], kzg_aggregated_proof : KZGCommitment):
+
     aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,
@@ -155,16 +183,6 @@ def validate_blobs_sidecar(slot: Slot,
 
     # Verify aggregated proof
     assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
-```
-
-### `compute_proof_from_blobs`
-
-```python
-def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
-    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
-    x = hash_to_bls_field([aggregated_poly],[aggregated_poly_commitment])
-    return compute_kzg_proof(aggregated_poly, x)
 ```
 
 ### `get_blobs_and_kzg_commitments`
