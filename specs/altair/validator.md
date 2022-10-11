@@ -82,11 +82,11 @@ This document is currently illustrative for early Altair testnets and some parts
 
 ```python
 class SyncCommitteeMessage(Container):
-    # Slot to which this contribution pertains
+    # Slot to which this message pertains
     slot: Slot
-    # Block root for this signature
+    # Block root for this message
     beacon_block_root: Root
-    # Index of the validator that produced this signature
+    # Index of the validator that produced this message
     validator_index: ValidatorIndex
     # Signature by the validator over the block root of `slot`
     signature: BLSSignature
