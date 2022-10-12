@@ -80,7 +80,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
-| `MAX_PARTIAL_WITHDRAWALS_PER_EPOCH` | `uint64(2**8)` (= 256) |
+| `MAX_WITHDRAWALS_PER_EPOCH` | `uint64(2**8)` (= 256) |
 
 ### State list lengths
 
@@ -259,7 +259,7 @@ class BeaconState(Container):
     # Withdrawals
     withdrawal_queue: List[Withdrawal, WITHDRAWAL_QUEUE_LIMIT]  # [New in Capella]
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
-    next_partial_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
+    next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
 ```
 
 ## Helpers
@@ -337,48 +337,39 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_roots_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_full_withdrawals(state)  # [New in Capella]
-    process_partial_withdrawals(state)  # [New in Capella]
+    process_withdrawals_buffer(state) # [New in Capella]
 
 ```
 
-#### Full withdrawals
+#### Process Withdrawals
 
-*Note*: The function `process_full_withdrawals` is new.
+*Note*: The function `process_withdrawals_buffer` is new.
 
 ```python
-def process_full_withdrawals(state: BeaconState) -> None:
+def process_withdrawals_buffer(state: BeaconState) -> None:
+    withdrawals_count = 0
     current_epoch = get_current_epoch(state)
-    for index, validator in enumerate(state.validators):
+    # Begin where we left off last time
+    validator_index = state.next_withdrawal_validator_index
+    for _ in range(MAX_WITHDRAWALS_PER_EPOCH):
+
         if is_fully_withdrawable_validator(validator, current_epoch):
-            # TODO, consider the zero-balance case
             withdraw_balance(state, ValidatorIndex(index), state.balances[index])
             validator.fully_withdrawn_epoch = current_epoch
-```
+            withdrawals_count += 1
+        else     
+            balance = state.balances[validator_index]
+            validator = state.validators[validator_index]
+            if is_partially_withdrawable_validator(validator, balance):
+                withdraw_balance(state, validator_index, balance - MAX_EFFECTIVE_BALANCE)
+                withdrawals_count += 1
+        # ensure the validator list bounds is not overrun.
+        if validator_index >= state.validators.length:
+            validator_index = 0
+        else
+            validator_index += 1
 
-#### Partial withdrawals
-
-*Note*: The function `process_partial_withdrawals` is new.
-
-```python
-def process_partial_withdrawals(state: BeaconState) -> None:
-    partial_withdrawals_count = 0
-    # Begin where we left off last time
-    validator_index = state.next_partial_withdrawal_validator_index
-    for _ in range(len(state.validators)):
-        balance = state.balances[validator_index]
-        validator = state.validators[validator_index]
-        if is_partially_withdrawable_validator(validator, balance):
-            withdraw_balance(state, validator_index, balance - MAX_EFFECTIVE_BALANCE)
-            partial_withdrawals_count += 1
-
-        # Iterate to next validator to check for partial withdrawal
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-        # Exit if performed maximum allowable withdrawals
-        if partial_withdrawals_count == MAX_PARTIAL_WITHDRAWALS_PER_EPOCH:
-            break
-
-    state.next_partial_withdrawal_validator_index = validator_index
+    state.next_withdrawal_validator_index = validator_index
 ```
 
 ### Block processing
