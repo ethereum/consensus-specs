@@ -8,20 +8,10 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.random import randomize_state
-
-
-def set_eth1_withdrawal_credential_with_balance(spec, state, index, balance):
-    validator = state.validators[index]
-    validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
-    validator.effective_balance = min(balance, spec.MAX_EFFECTIVE_BALANCE)
-    state.balances[index] = balance
-
-
-def set_validator_partially_withdrawable(spec, state, index, rng=random.Random(666)):
-    balance = spec.MAX_EFFECTIVE_BALANCE + rng.randint(1, 100000000)
-    set_eth1_withdrawal_credential_with_balance(spec, state, index, balance)
-
-    assert spec.is_partially_withdrawable_validator(state.validators[index], state.balances[index])
+from eth2spec.test.helpers.withdrawals import (
+    set_validator_partially_withdrawable,
+    set_eth1_withdrawal_credential_with_balance,
+)
 
 
 def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
@@ -228,7 +218,7 @@ def run_random_partial_withdrawals_test(spec, state, rng):
     num_partially_withdrawable = rng.randint(0, num_validators - 1)
     partially_withdrawable_indices = rng.sample(range(num_validators), num_partially_withdrawable)
     for index in partially_withdrawable_indices:
-        set_validator_partially_withdrawable(spec, state, index)
+        set_validator_partially_withdrawable(spec, state, index, excess_balance=rng.randint(1, 1000000000))
 
     # Note: due to the randomness and other epoch processing, some of these set as "partially withdrawable"
     # may not be partially withdrawable once we get to ``process_partial_withdrawals``,
