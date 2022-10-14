@@ -122,6 +122,18 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return int.from_bytes(b, "little") % BLS_MODULUS
 ```
 
+### `hash_to_bls_field`
+
+```python
+def hash_to_bls_field(x: Container) -> BLSFieldElement:
+    """
+    Compute 32-byte hash of serialized container and convert it to BLS field.
+    The output is not uniform over the BLS field.
+    """
+    return bytes_to_bls_field(hash(ssz_serialize(x)))
+```
+
+
 #### `bls_modular_inverse`
 
 ```python
@@ -169,6 +181,20 @@ def vector_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
         for i, x in enumerate(v):
             result[i] = (result[i] + int(s) * int(x)) % BLS_MODULUS
     return [BLSFieldElement(x) for x in result]
+```
+
+### `compute_powers`
+```python
+def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
+    """
+    Return ``x`` to power of [0, n-1].
+    """
+    current_power = 1
+    powers = []
+    for _ in range(n):
+        powers.append(BLSFieldElement(current_power))
+        current_power = current_power * int(x) % BLS_MODULUS
+    return powers
 ```
 
 ### KZG
@@ -224,6 +250,29 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement)
     # Calculate quotient polynomial by doing point-by-point division
     quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
     return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
+```
+
+
+### `compute_aggregated_poly_and_commitment`
+
+```python
+def compute_aggregated_poly_and_commitment(
+        blobs: Sequence[Blob],
+        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
+    """
+    Return the aggregated polynomial and aggregated KZG commitment.
+    """
+    # Generate random linear combination challenges
+    r = hash_to_bls_field(BlobsAndCommitments(blobs=blobs, kzg_commitments=kzg_commitments))
+    r_powers = compute_powers(r, len(kzg_commitments))
+
+    # Create aggregated polynomial in evaluation form
+    aggregated_poly = Polynomial(vector_lincomb(blobs, r_powers))
+
+    # Compute commitment to aggregated polynomial
+    aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
+
+    return aggregated_poly, aggregated_poly_commitment
 ```
 
 ### Polynomials
