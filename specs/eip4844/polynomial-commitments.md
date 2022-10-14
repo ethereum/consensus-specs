@@ -294,12 +294,42 @@ def compute_aggregated_poly_and_commitment(
     return aggregated_poly, aggregated_poly_commitment
 ```
 
+#### `compute_aggregate_kzg_proof`
+
+```python
+def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
+    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
+    x = hash_to_bls_field([aggregated_poly],[aggregated_poly_commitment])
+    return compute_kzg_proof(aggregated_poly, x)
+```
+
+#### `verify_aggregate_kzg_proof`
+
+```python
+def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
+                               expected_kzg_commitments: Sequence[KZGCommitment],
+                               kzg_aggregated_proof : KZGCommitment) -> bool:
+    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(
+        blobs,
+        expected_kzg_commitments,
+    )
+
+    # Generate challenge `x` and evaluate the aggregated polynomial at `x`
+    x = hash_to_bls_field([aggregated_poly], [aggregated_poly_commitment])
+    # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
+    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
+
+    # Verify aggregated proof
+    return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+```
+
 ### Polynomials
 
 #### `evaluate_polynomial_in_evaluation_form`
 
 ```python
-def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement],
+def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
                                            z: BLSFieldElement) -> BLSFieldElement:
     """
     Evaluate a polynomial (in evaluation form) at an arbitrary point `z`

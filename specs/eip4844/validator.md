@@ -77,33 +77,7 @@ def validate_blobs_sidecar(slot: Slot,
     kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
     assert len(expected_kzg_commitments) == len(blobs)
 
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(
-        blobs,
-        expected_kzg_commitments,
-    )
-
-    # Generate challenge `x` and evaluate the aggregated polynomial at `x`
-    x = hash_to_bls_field(
-        PolynomialAndCommitment(polynomial=aggregated_poly, kzg_commitment=aggregated_poly_commitment)
-    )
-    # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
-    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
-
-    # Verify aggregated proof
-    assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
-```
-
-### `compute_proof_from_blobs`
-
-```python
-def compute_proof_from_blobs(blobs: Sequence[Blob]) -> KZGProof:
-    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
-    x = hash_to_bls_field(PolynomialAndCommitment(
-        polynomial=aggregated_poly,
-        kzg_commitment=aggregated_poly_commitment,
-    ))
-    return compute_kzg_proof(aggregated_poly, x)
+    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
 ```
 
 ### `get_blobs_and_kzg_commitments`
@@ -160,7 +134,7 @@ def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar
         beacon_block_root=hash_tree_root(block),
         beacon_block_slot=block.slot,
         blobs=blobs,
-        kzg_aggregated_proof=compute_proof_from_blobs(blobs),
+        kzg_aggregated_proof=compute_aggregate_kzg_proof(blobs),
     )
 ```
 
