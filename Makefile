@@ -64,6 +64,8 @@ partial_clean:
 	rm -rf $(ETH2SPEC_MODULE_DIR)/phase0
 	rm -rf $(ETH2SPEC_MODULE_DIR)/altair
 	rm -rf $(ETH2SPEC_MODULE_DIR)/bellatrix
+	rm -rf $(ETH2SPEC_MODULE_DIR)/capella
+	rm -rf $(ETH2SPEC_MODULE_DIR)/eip4844
 	rm -rf $(COV_HTML_OUT_DIR)
 	rm -rf $(TEST_REPORT_DIR)
 	rm -rf eth2spec.egg-info dist build

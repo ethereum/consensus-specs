@@ -71,6 +71,15 @@ def randomize_state_bellatrix(spec, state, stats, exit_fraction=0.1, slash_fract
     return scenario_state
 
 
+def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_bellatrix(spec,
+                                               state,
+                                               stats,
+                                               exit_fraction=exit_fraction,
+                                               slash_fraction=slash_fraction)
+    return scenario_state
+
+
 # epochs
 
 def epochs_until_leak(spec):
@@ -192,6 +201,11 @@ def random_block_altair_with_cycling_sync_committee_participation(spec,
 def random_block_bellatrix(spec, state, signed_blocks, scenario_state):
     block = random_block_altair_with_cycling_sync_committee_participation(spec, state, signed_blocks, scenario_state)
     # TODO: return randomized execution payload
+    return block
+
+
+def random_block_capella(spec, state, signed_blocks, scenario_state):
+    block = random_block_bellatrix(spec, state, signed_blocks, scenario_state)
     return block
 
 
