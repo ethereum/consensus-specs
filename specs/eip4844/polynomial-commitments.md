@@ -46,6 +46,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | `BLSFieldElement` | `uint256` | `x < BLS_MODULUS` |
 | `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
+| `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
 
 ## Constants
 
@@ -53,6 +54,10 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
 | `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
+| `DOMAIN_SEPARATOR_FIELD_ELEMENT` | `b"FIELD_ELEMENT"` | Fiat-Shamir domain separator for field elements |
+| `DOMAIN_SEPARATOR_POINT` | `b"POINT"` | Fiat-Shamir domain separator for G1 points |
+| `DOMAIN_SEPARATOR_SQUEEZE` | `b"SQUEEZE"` | Fiat-Shamir domain separator before hashing |
+
 
 ## Preset
 
@@ -122,17 +127,31 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return int.from_bytes(b, "little") % BLS_MODULUS
 ```
 
-### `hash_to_bls_field`
+#### `hash_to_bls_field`
 
 ```python
-def hash_to_bls_field(x: Container) -> BLSFieldElement:
+def hash_to_bls_field(polys: Sequence[Polynomial], comms: Sequence[KZGCommitment]) -> BLSFieldElement:
     """
-    Compute 32-byte hash of serialized container and convert it to BLS field.
+    Compute 32-byte hash of serialised polynomials and commitments concatenated.
+    This hash is then converted to a BLS field element.
     The output is not uniform over the BLS field.
     """
-    return bytes_to_bls_field(hash(ssz_serialize(x)))
-```
+    data = bytes()
 
+    # Append each polynomial which is composed by field elements
+    for poly in polys:
+        for field_element in poly:
+            data += DOMAIN_SEPARATOR_FIELD_ELEMENT
+            data += int.to_bytes(field_element, 32, ENDIANNESS)
+
+    # Append serialised G1 points
+    for commitment in comms:
+        data += DOMAIN_SEPARATOR_POINT
+        data += commitment
+
+    data += DOMAIN_SEPARATOR_SQUEEZE
+    return bytes_to_bls_field(hash(data))
+```
 
 #### `bls_modular_inverse`
 
@@ -263,7 +282,7 @@ def compute_aggregated_poly_and_commitment(
     Return the aggregated polynomial and aggregated KZG commitment.
     """
     # Generate random linear combination challenges
-    r = hash_to_bls_field(BlobsAndCommitments(blobs=blobs, kzg_commitments=kzg_commitments))
+    r = hash_to_bls_field(blobs, kzg_commitments)
     r_powers = compute_powers(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form

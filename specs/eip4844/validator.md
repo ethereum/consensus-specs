@@ -43,31 +43,6 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP4844](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
-## Custom types
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Polynomial` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
-
-## Containers
-
-### `BlobsAndCommitments`
-
-```python
-class BlobsAndCommitments(Container):
-    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
-    kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-```
-
-### `PolynomialAndCommitment`
-
-```python
-class PolynomialAndCommitment(Container):
-    polynomial: Polynomial
-    kzg_commitment: KZGCommitment
-```
-
-
 ## Helpers
 
 ### `is_data_available`
