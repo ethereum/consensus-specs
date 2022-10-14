@@ -10,17 +10,9 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Custom types](#custom-types)
-- [Containers](#containers)
-  - [`BlobsAndCommitments`](#blobsandcommitments)
-  - [`PolynomialAndCommitment`](#polynomialandcommitment)
 - [Helpers](#helpers)
   - [`is_data_available`](#is_data_available)
-  - [`hash_to_bls_field`](#hash_to_bls_field)
-  - [`compute_powers`](#compute_powers)
-  - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
   - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
-  - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
   - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
@@ -62,7 +54,6 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
 
     return True
 ```
-
 
 ### `validate_blobs_sidecar`
 

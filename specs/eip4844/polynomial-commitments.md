@@ -18,14 +18,19 @@
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
+    - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
     - [`g1_lincomb`](#g1_lincomb)
     - [`vector_lincomb`](#vector_lincomb)
+    - [`compute_powers`](#compute_powers)
   - [KZG](#kzg)
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
     - [`compute_kzg_proof`](#compute_kzg_proof)
+    - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
+    - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
+    - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
 
@@ -202,7 +207,8 @@ def vector_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
     return [BLSFieldElement(x) for x in result]
 ```
 
-### `compute_powers`
+#### `compute_powers`
+
 ```python
 def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
     """
@@ -271,8 +277,7 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement)
     return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
 ```
 
-
-### `compute_aggregated_poly_and_commitment`
+#### `compute_aggregated_poly_and_commitment`
 
 ```python
 def compute_aggregated_poly_and_commitment(
