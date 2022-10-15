@@ -305,7 +305,7 @@ def compute_aggregated_poly_and_commitment(
 def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
-    x = hash_to_bls_field([aggregated_poly],[aggregated_poly_commitment])
+    x = hash_to_bls_field([aggregated_poly], [aggregated_poly_commitment])
     return compute_kzg_proof(aggregated_poly, x)
 ```
 
@@ -314,7 +314,7 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 ```python
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
-                               kzg_aggregated_proof : KZGCommitment) -> bool:
+                               kzg_aggregated_proof: KZGCommitment) -> bool:
     aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,

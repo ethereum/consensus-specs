@@ -590,7 +590,6 @@ class EIP4844SpecBuilder(BellatrixSpecBuilder):
         return super().imports(preset_name) + f'''
 from eth2spec.utils import kzg
 from eth2spec.bellatrix import {preset_name} as bellatrix
-from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
 '''
 
 
