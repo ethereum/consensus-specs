@@ -3,7 +3,7 @@
 # Misc
 # ---------------------------------------------------------------
 # 2**8 (= 256) withdrawals
-MAX_PARTIAL_WITHDRAWALS_PER_EPOCH: 256
+MAX_WITHDRAWALS_PER_EPOCH: 256
 
 
 # State list lengths
