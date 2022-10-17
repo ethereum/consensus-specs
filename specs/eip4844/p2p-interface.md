@@ -14,11 +14,11 @@ The specification of these changes continues in the same format as the network s
   - [Containers](#containers)
     - [`BlobsSidecar`](#blobssidecar)
     - [`SignedBlobsSidecar`](#signedblobssidecar)
+    - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`blobs_sidecar`](#blobs_sidecar)
+        - [`beacon_block_and_blob_sidecar`](#beacon_block_and_blob_sidecar)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -94,14 +94,14 @@ EIP4844 introduces a new global topic for beacon block and blobs-sidecars.
 
 This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
 
-The following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network;
+The following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.  
 Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
   -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
-Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar.message`.
+Alias `signed_blobs_sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`, `sidecar = signed_blobs_sidecar.message`.
 - _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == current_slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
@@ -114,7 +114,6 @@ Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar.message`.
   where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
 
 Once both sidecar and beacon block are received, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
-
 
 ### Transitioning the gossip
 
