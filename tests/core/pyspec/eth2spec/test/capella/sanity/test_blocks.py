@@ -85,7 +85,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
 @spec_state_test
 def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     assert len(state.validators) > spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    assert spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH > spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    assert spec.MAX_WITHDRAWALS_PER_EPOCH > spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
     for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1):
         index = (i + state.next_withdrawal_index) % len(state.validators)
