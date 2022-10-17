@@ -1635,7 +1635,8 @@ def process_effective_balance_updates(state: BeaconState) -> None:
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         # Update effective balances with hysteresis on active validator
-        if (is_active_validator(validator, get_current_epoch(state)) and
+        if (
+            is_active_validator(validator, get_current_epoch(state)) and
             (balance + DOWNWARD_THRESHOLD < validator.effective_balance
             or validator.effective_balance + UPWARD_THRESHOLD < balance)
         ):
