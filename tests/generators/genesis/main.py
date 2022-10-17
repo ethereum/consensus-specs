@@ -15,7 +15,7 @@ if __name__ == "__main__":
         'initialization',
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
-    capella_mods = bellatrix_mods
+    capella_mods = bellatrix_mods  # No additional Capella specific genesis tests
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
