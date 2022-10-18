@@ -13,6 +13,7 @@ def prepare_withdrawal_queue(spec, state, num_withdrawals):
     for i in range(num_withdrawals):
         withdrawal = spec.Withdrawal(
             index=i + 5,
+            validator_index=i + 1000,
             address=b'\x42' * 20,
             amount=200000 + i,
         )
@@ -110,6 +111,7 @@ def test_fail_empty_queue_non_empty_withdrawals(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     withdrawal = spec.Withdrawal(
         index=0,
+        validator_index=0,
         address=b'\x30' * 20,
         amount=420,
     )

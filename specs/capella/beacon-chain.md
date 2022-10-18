@@ -111,6 +111,7 @@ We define the following Python custom types for type hinting and readability:
 ```python
 class Withdrawal(Container):
     index: WithdrawalIndex
+    validator_index: ValidatorIndex
     address: ExecutionAddress
     amount: Gwei
 ```
@@ -275,6 +276,7 @@ def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount
     # Create a corresponding withdrawal receipt
     withdrawal = Withdrawal(
         index=state.next_withdrawal_index,
+        validator_index=validator_index,
         address=ExecutionAddress(state.validators[validator_index].withdrawal_credentials[12:]),
         amount=amount,
     )
