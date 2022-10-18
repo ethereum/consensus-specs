@@ -63,7 +63,7 @@ class SignedBlobsSidecar(Container):
 ```python
 class SignedBeaconBlockAndBlobsSidecar(Container):
     beacon_block: SignedBeaconBlock
-    blobs_sidecar: SignedBlobsSidecar
+    blobs_sidecar: BlobsSidecar
 ```
 
 ## The gossip domain: gossipsub
@@ -101,17 +101,10 @@ Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
-Alias `signed_blobs_sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`, `sidecar = signed_blobs_sidecar.message`.
+Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
 - _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == block.slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
-- _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
-    - Let `domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, sidecar.beacon_block_slot // SLOTS_PER_EPOCH)`
-    - Let `signing_root = compute_signing_root(sidecar, domain)`
-    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blobs_sidecar.signature) is True`,   
-      where `proposer_pubkey` is the pubkey of the beacon block proposer of `sidecar.beacon_block_slot`
-- _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
-  where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
 
 Once the sidecar and beacon block are received together, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
 
