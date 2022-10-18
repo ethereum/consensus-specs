@@ -102,7 +102,7 @@ Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 Alias `signed_blobs_sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`, `sidecar = signed_blobs_sidecar.message`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == current_slot`.
+- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == block.slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
