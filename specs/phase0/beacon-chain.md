@@ -1638,9 +1638,10 @@ def process_effective_balance_updates(state: BeaconState) -> None:
         if is_active_validator(validator, get_current_epoch(state)):
             if (
                 (balance + DOWNWARD_THRESHOLD < validator.effective_balance
-                or validator.effective_balance + UPWARD_THRESHOLD < balance)
+                    or validator.effective_balance + UPWARD_THRESHOLD < balance)
             ):
-                validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+                validator.effective_balance = min(
+                    balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
         # Update effective balances without hysteresis when inactive validator
         else:
             validator.effective_balance = min(balance, MAX_EFFECTIVE_BALANCE)
