@@ -147,6 +147,10 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             continue
 
         validator = state.validators[index]
+        # Skipping delta check when there's no delta
+        if not spec.is_active_validator(validator, spec.get_current_epoch(state)):
+          continue
+
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
             if is_post_altair(spec):
@@ -206,7 +210,7 @@ def run_get_inclusion_delay_deltas(spec, state):
             rewarded_proposer_indices.add(earliest_attestation.proposer_index)
 
     # Ensure all expected proposers have been rewarded
-    # Track rewarde indices
+    # Track reward indices
     proposing_indices = [a.proposer_index for a in eligible_attestations]
     for index in proposing_indices:
         if index in rewarded_proposer_indices:
