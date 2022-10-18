@@ -58,5 +58,5 @@ class PayloadAttributes(object):
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
-    withdrawals: Sequence[Withdrawal]  # [New in Capella]
+    withdrawals: Sequence[Withdrawal]  # new in Capella
 ```
