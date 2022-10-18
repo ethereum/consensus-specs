@@ -113,7 +113,7 @@ Alias `signed_blobs_sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sideca
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
   where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
 
-Once both sidecar and beacon block are received, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
+Once the sidecar and beacon block are received together, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
 
 ### Transitioning the gossip
 
