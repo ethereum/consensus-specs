@@ -63,7 +63,6 @@ def run_process_withdrawals_into_queue(spec, state, num_expected_withdrawals=Non
             and spec.is_partially_withdrawable_validator(validator, state.balances[index])
         )
     ]
-    print('partially_withdrawable_indices', partially_withdrawable_indices)
     assert len(partially_withdrawable_indices) - num_partial_withdrawals == len(post_partially_withdrawable_indices)
 
     assert len(state.withdrawal_queue) == len(pre_withdrawal_queue) + num_expected_withdrawals
