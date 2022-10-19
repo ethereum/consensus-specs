@@ -1,4 +1,40 @@
-### Constants
+# Whisk -- The Beacon Chain
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
+## Table of contents
+
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Whisk -- The Beacon Chain](#whisk----the-beacon-chain)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Constants](#constants)
+  - [Cryptography](#cryptography)
+    - [BLS](#bls)
+    - [Curdleproofs and opening proofs](#curdleproofs-and-opening-proofs)
+  - [Epoch processing](#epoch-processing)
+    - [`WhiskTracker`](#whisktracker)
+    - [`Validator`](#validator)
+    - [`BeaconState`](#beaconstate)
+  - [Block processing](#block-processing)
+    - [Block header](#block-header)
+      - [`BeaconBlock`](#beaconblock)
+    - [Whisk](#whisk)
+      - [`BeaconBlockBody`](#beaconblockbody)
+    - [Deposits](#deposits)
+    - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
+## Introduction
+
+This document details the beacon chain additions and changes of to support the Whisk SSLE,
+building upon the [phase0](../phase0/beacon-chain.md) specification.
+
+## Constants
 
 | Name                               | Value                      | Description                                                 |
 | ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
@@ -15,9 +51,9 @@
 | `DOMAIN_WHISK_SHUFFLE`             | `DomainType('0x07100000')` |
 | `DOMAIN_WHISK_PROPOSER_SELECTION`  | `DomainType('0x07200000')` |
 
-### Cryptography
+## Cryptography
 
-#### BLS
+### BLS
 
 | Name         | SSZ equivalent | Description                   |
 | ------------ | -------------- | ----------------------------- |
@@ -27,10 +63,12 @@
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
 
 ```python
-def BLSG1PointFromAffine(x: int, y: int) -> BLSG1Point
+def BLSG1PointFromAffine(x: int, y: int) -> BLSG1Point:
+    pass
 
 
-def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point
+def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point:
+    pass
 ```
 
 | Name                 | Value                                                                                                |
@@ -39,64 +77,61 @@ def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point
 | `BLS_G1_GENERATOR_Y` | `0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1` |
 | `BLS_G1_GENERATOR`   | `BLSG1PointFromAffine(BLS_G1_GENERATOR_X, BLS_G1_GENERATOR_Y)`                                       |
 
-#### Whisk
+### Curdleproofs and opening proofs
 
-Note that CurdleProofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only) repository.
+Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only) repository.
 
 ```python
-class CurdleproofsCrs:
-    """
-    A CRS for curdleproofs defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only
-    """
-class CurdleProofsProof:
-    """
-    Shuffle proof defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only
-    """
-
-class WhiskOpeningProof:
-
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
                              M: BLSG1Point,
-                             shuffle_proof: CurdleProofsProof) -> bool:
+                             shuffle_proof: SerializedCurdleProofsProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
-    crs = CurdleproofsCrs()
-    vec_R = [pre_shuffle_tracker.r_G for pre_shuffle_tracker in pre_shuffle_trackers]
-    vec_S = [pre_shuffle_tracker.k_r_G for pre_shuffle_tracker in pre_shuffle_trackers]
-
-    vec_T = [post_shuffle_tracker.r_G for post_shuffle_tracker in post_shuffle_trackers]
-    vec_U = [post_shuffle_tracker.k_r_G for post_shuffle_tracker in post_shuffle_trackers]
-
-    return shuffle_proof.verify(crs, vec_R, vec_S, vec_T, vec_U, M, shuffle_proof)
+    pass
 
 
-def IsValidWhiskOpeningProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof) -> bool:
+def IsValidWhiskOpeningProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: SerializedWhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
+    pass
 ```
 
-### Epoch processing
+## Epoch processing
+
+### `WhiskTracker`
 
 ```python
 class WhiskTracker(Container):
     r_G: BLSG1Point  # r * G
     k_r_G: BLSG1Point  # k * r * G
+```
 
+### `Validator`
+
+```python
 class Validator(Container):
     # ...
     # Whisk
     whisk_tracker: WhiskTracker  # Whisk tracker (r * G, k * r * G) [New in Whisk]
     whisk_k_commitment: BLSG1Point  # Whisk k commitment k * BLS_G1_GENERATOR [New in Whisk]
+```
 
+### `BeaconState`
+
+```python
 class BeaconState(Container):
     # ...
     # Whisk
     whisk_candidate_trackers: Vector[WhiskTracker, WHISK_CANDIDATE_TRACKERS_COUNT]  # [New in Whisk]
     whisk_proposer_trackers: Vector[WhiskTracker, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
+```
 
+```python
 def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
     proposer_seed = get_seed(state, epoch - WHISK_PROPOSER_SELECTION_GAP, DOMAIN_WHISK_PROPOSER_SELECTION)
@@ -120,20 +155,25 @@ def process_whisk_updates(state: BeaconState) -> None:
 
 def process_epoch(state: BeaconState) -> None:
     # ...
+    print("process_whisk_updates")
     process_whisk_updates(state)  # [New in Whisk]
 ```
 
-### Block processing
+## Block processing
 
-#### Block header
+### Block header
+
+#### `BeaconBlock`
 
 ```python
 class BeaconBlock(Container):
     # ...
     proposer_index: ValidatorIndex
-    whisk_opening_proof: WhiskOpeningProof  # [New in Whisk]
+    whisk_opening_proof: SerializedWhiskTrackerProof  # [New in Whisk]
     # ...
+```
 
+```python
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
     k_commitment = state.validators[block.proposer_index].whisk_k_commitment
@@ -148,20 +188,23 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # ...
 ```
 
-#### Whisk
+### Whisk
+
+#### `BeaconBlockBody`
 
 ```python
 class BeaconBlockBody(Container):
     # ...
     # Whisk
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
-    whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
+    whisk_shuffle_proof: SerializedCurdleProofsProof  # [New in Whisk]
     whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
-    whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
+    whisk_registration_proof: SerializedWhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # [New in Whisk]
+```
 
-
+```python
 def get_squareshuffle_indices(s: uint64, r: uint64, k: uint64) -> Sequence[uint64]:
     """
     Get indices of row `s` in round `r` assuming a square matrix of order `k`.
@@ -228,7 +271,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_whisk(state, block.body)  # [New in Whisk]
 ```
 
-#### Deposits
+### Deposits
 
 ```python
 def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSScalar:
@@ -248,7 +291,7 @@ def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validato
     return validator
 ```
 
-#### `get_beacon_proposer_index`
+### `get_beacon_proposer_index`
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
