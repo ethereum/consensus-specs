@@ -9,11 +9,11 @@ from eth2spec.test.helpers.state import next_slot
 
 def prepare_withdrawal_queue(spec, state, num_withdrawals):
     pre_queue_len = len(state.withdrawal_queue)
-
+    validator_len = len(state.validators)
     for i in range(num_withdrawals):
         withdrawal = spec.Withdrawal(
             index=i + 5,
-            validator_index=i + 1000,
+            validator_index=(i + 1000) % validator_len,
             address=b'\x42' * 20,
             amount=200000 + i,
         )
