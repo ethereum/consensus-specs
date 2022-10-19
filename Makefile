@@ -143,7 +143,7 @@ lint: pyspec
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE)
+	flake8 --config $(LINTER_CONFIG_FILE)
 
 compile_deposit_contract:
 	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)

@@ -237,7 +237,7 @@ def test_fail_many_dequeued_incorrectly(spec, state):
         if i % 3 == 0:
             withdrawal.index += 1
         elif i % 3 == 1:
-            withdrawal.address = (i).to_bytes(20, 'big')
+            withdrawal.address = i.to_bytes(20, 'big')
         else:
             withdrawal.amount += 1
 

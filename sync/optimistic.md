@@ -88,8 +88,8 @@ Let `current_slot: Slot` be `(time - genesis_time) // SECONDS_PER_SLOT` where
 class OptimisticStore(object):
     optimistic_roots: Set[Root]
     head_block_root: Root
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
 ```
 
 ```python

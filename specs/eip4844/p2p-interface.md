@@ -33,10 +33,10 @@ The specification of these changes continues in the same format as the network s
 
 ## Configuration
 
-| Name                                     | Value                         | Description                                                         |
-|------------------------------------------|-------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                | Maximum number of blobs sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
+| Name                                     | Value                               | Description                                                         |
+|------------------------------------------|-------------------------------------|---------------------------------------------------------------------|
+| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                      | Maximum number of blobs sidecars in a single request                |
+| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192 epochs, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
 
@@ -108,7 +108,7 @@ Alias `sidecar = signed_blobs_sidecar.message`.
 - _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
     - Let `domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, sidecar.beacon_block_slot // SLOTS_PER_EPOCH)`
     - Let `signing_root = compute_signing_root(sidecar, domain)`
-    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blob_header.signature) is True`,   
+    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blobs_sidecar.signature) is True`,   
       where `proposer_pubkey` is the pubkey of the beacon block proposer of `sidecar.beacon_block_slot`
 - _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
   where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
@@ -207,10 +207,7 @@ or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
 MUST backfill the local blobs database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-to be fully compliant with `BlobsSidecarsByRange` requests. To safely perform such a
-backfill of blocks to the recent state, the node MUST validate both (1) the
-proposer signatures and (2) that the blocks form a valid chain up to the most
-recent block referenced in the weak subjectivity state.
+to be fully compliant with `BlobsSidecarsByRange` requests.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
 participating in the networking immediately, other peers MAY

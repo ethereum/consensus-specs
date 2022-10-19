@@ -9,7 +9,6 @@ import sys
 import json
 from typing import Iterable, AnyStr, Any, Callable
 import traceback
-
 from ruamel.yaml import (
     YAML,
 )
@@ -97,6 +96,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
+
+    def _represent_none(self, _):
+        return self.represent_scalar('tag:yaml.org,2002:null', 'null')
+
+    yaml.representer.add_representer(type(None), _represent_none)
 
     # Spec config is using a YAML subset
     cfg_yaml = YAML(pure=True)

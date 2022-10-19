@@ -196,7 +196,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
 def test_ex_ante_sandwich_without_attestations(spec, state):
     """
     Simple Sandwich test with boost and no attestations.
-    Obejcts:
+    Objects:
         Block A - slot N
         Block B (parent A) - slot N+1
         Block C (parent A) - slot N+2

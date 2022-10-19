@@ -12,11 +12,16 @@
 - [Preset](#preset)
   - [Trusted setup](#trusted-setup)
 - [Helper functions](#helper-functions)
+  - [Bit-reversal permutation](#bit-reversal-permutation)
+    - [`is_power_of_two`](#is_power_of_two)
+    - [`reverse_bits`](#reverse_bits)
+    - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`bytes_to_bls_field`](#bytes_to_bls_field)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
-    - [`lincomb`](#lincomb)
-    - [`matrix_lincomb`](#matrix_lincomb)
+    - [`g1_lincomb`](#g1_lincomb)
+    - [`vector_lincomb`](#vector_lincomb)
   - [KZG](#kzg)
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
@@ -64,7 +69,58 @@ but reusing the `mainnet` settings in public networks is a critical security req
 
 ## Helper functions
 
+### Bit-reversal permutation
+
+All polynomials (which are always given in Lagrange form) should be interpreted as being in
+bit-reversal permutation. In practice, clients can implement this by storing the lists
+`KZG_SETUP_LAGRANGE` and `ROOTS_OF_UNITY` in bit-reversal permutation, so these functions only
+have to be called once at startup.
+
+#### `is_power_of_two`
+
+```python
+def is_power_of_two(value: int) -> bool:
+    """
+    Check if ``value`` is a power of two integer.
+    """
+    return (value > 0) and (value & (value - 1) == 0)
+```
+
+#### `reverse_bits`
+
+```python
+def reverse_bits(n: int, order: int) -> int:
+    """
+    Reverse the bit order of an integer n
+    """
+    assert is_power_of_two(order)
+    # Convert n to binary with the same number of bits as "order" - 1, then reverse its bit order
+    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
+```
+
+#### `bit_reversal_permutation`
+
+```python
+def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
+    """
+    Return a copy with bit-reversed permutation. The permutation is an involution (inverts itself).
+
+    The input and output are a sequence of generic type ``T`` objects.
+    """
+    return [sequence[reverse_bits(i, len(sequence))] for i in range(len(sequence))]
+```
+
 ### BLS12-381 helpers
+
+#### `bytes_to_bls_field`
+
+```python
+def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
+    """
+    Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
+    """
+    return int.from_bytes(b, "little") % BLS_MODULUS
+```
 
 #### `bls_modular_inverse`
 
@@ -85,10 +141,10 @@ def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
     return (int(x) * int(bls_modular_inverse(y))) % BLS_MODULUS
 ```
 
-#### `lincomb`
+#### `g1_lincomb`
 
 ```python
-def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
+def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
     """
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
@@ -99,10 +155,10 @@ def lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement])
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 
-#### `matrix_lincomb`
+#### `vector_lincomb`
 
 ```python
-def matrix_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
+def vector_lincomb(vectors: Sequence[Sequence[BLSFieldElement]],
                    scalars: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
     """
     Given a list of ``vectors``, interpret it as a 2D matrix and compute the linear combination
@@ -123,7 +179,7 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 
 ```python
 def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
-    return lincomb(KZG_SETUP_LAGRANGE, blob)
+    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob)
 ```
 
 #### `verify_kzg_proof`
@@ -149,7 +205,9 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
 
 ```python
 def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement) -> KZGProof:
-    """Compute KZG proof at point `z` with `polynomial` being in evaluation form"""
+    """
+    Compute KZG proof at point `z` with `polynomial` being in evaluation form
+    """
 
     # To avoid SSZ overflow/underflow, convert element into int
     polynomial = [int(i) for i in polynomial]
@@ -161,11 +219,11 @@ def compute_kzg_proof(polynomial: Sequence[BLSFieldElement], z: BLSFieldElement)
 
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
-    denominator_poly = [(x - z) % BLS_MODULUS for x in ROOTS_OF_UNITY]
+    denominator_poly = [(x - z) % BLS_MODULUS for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
 
     # Calculate quotient polynomial by doing point-by-point division
     quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
-    return KZGProof(lincomb(KZG_SETUP_LAGRANGE, quotient_polynomial))
+    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
 ```
 
 ### Polynomials
@@ -187,9 +245,11 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Sequence[BLSFieldElement]
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
 
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+
     result = 0
     for i in range(width):
-        result += div(int(polynomial[i]) * int(ROOTS_OF_UNITY[i]), (z - ROOTS_OF_UNITY[i]))
+        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (z - roots_of_unity_brp[i]))
     result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return result
 ```

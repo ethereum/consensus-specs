@@ -20,7 +20,7 @@ from collections import OrderedDict
 def installPackage(package: str):
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
 
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.16.5"
+RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
 try:
     import ruamel.yaml
 except ImportError:
@@ -78,6 +78,7 @@ class VariableDefinition(NamedTuple):
     type_name: Optional[str]
     value: str
     comment: Optional[str]  # e.g. "noqa: E501"
+    type_hint: Optional[str]  # e.g., "Final"
 
 
 class SpecObject(NamedTuple):
@@ -152,18 +153,18 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
     return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
-def _parse_value(name: str, typed_value: str) -> VariableDefinition:
+def _parse_value(name: str, typed_value: str, type_hint: Optional[str]=None) -> VariableDefinition:
     comment = None
     if name == "BLS12_381_Q":
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
     if '(' not in typed_value:
-        return VariableDefinition(type_name=None, value=typed_value, comment=comment)
+        return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
     i = typed_value.index('(')
     type_name = typed_value[:i]
 
-    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment)
+    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
 
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) -> SpecObject:
@@ -241,10 +242,13 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     value_def = _parse_value(name, value)
                     if name in preset:
-                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment)
+                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment, None)
                     elif name in config:
-                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment)
+                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
+                        if name == 'ENDIANNESS':
+                            # Deal with mypy Literal typing check
+                            value_def = _parse_value(name, value, type_hint='Final')
                         constant_vars[name] = value_def
 
         elif isinstance(child, LinkRefDef):
@@ -337,7 +341,7 @@ from dataclasses import (
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
@@ -589,9 +593,16 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
 '''
 
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
+T = TypeVar('T')  # For generic function
+'''
+
     @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '''
+        return super().sundry_functions() + '\n\n' + '''
 # TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
 # TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
 TESTING_FIELD_ELEMENTS_PER_BLOB = 4
@@ -696,7 +707,10 @@ def objects_to_spec(preset_name: str,
 
     def format_constant(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:
-            out = f'{name} = {vardef.value}'
+            if vardef.type_hint is None:
+                out = f'{name} = {vardef.value}'
+            else:
+                out = f'{name}: {vardef.type_hint} = {vardef.value}'
         else:
             out = f'{name} = {vardef.type_name}({vardef.value})'
         if vardef.comment is not None:
@@ -1108,19 +1122,18 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
-        "generator": ["python-snappy==0.5.4", "filelock"],
+        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
+        "generator": ["python-snappy==0.6.1", "filelock"],
     },
     install_requires=[
-        "eth-utils>=1.3.0,<2",
-        "eth-typing>=2.1.0,<3.0.0",
-        "pycryptodome==3.9.4",
-        "py_ecc==5.2.0",
+        "eth-utils>=2.0.0,<3",
+        "eth-typing>=3.2.0,<4.0.0",
+        "pycryptodome==3.15.0",
+        "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "dataclasses==0.6",
         "remerkleable==0.1.24",
         RUAMEL_YAML_VERSION,
-        "lru-dict==1.1.6",
+        "lru-dict==1.1.8",
         MARKO_VERSION,
     ]
 )

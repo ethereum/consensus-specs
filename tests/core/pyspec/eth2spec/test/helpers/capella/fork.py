@@ -16,7 +16,7 @@ def run_fork_test(post_spec, pre_state):
         # Eth1
         'eth1_data', 'eth1_data_votes', 'eth1_deposit_index',
         # Registry
-        'balances',
+        'validators', 'balances',
         # Randomness
         'randao_mixes',
         # Slashings
@@ -36,7 +36,7 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) == getattr(post_state, field)
 
     # Modified fields
-    modified_fields = ['fork', 'validators']
+    modified_fields = ['fork']
     for field in modified_fields:
         assert getattr(pre_state, field) != getattr(post_state, field)
 
@@ -50,7 +50,6 @@ def run_fork_test(post_spec, pre_state):
         ]
         for field in stable_validator_fields:
             assert getattr(pre_validator, field) == getattr(post_validator, field)
-        assert post_validator.fully_withdrawn_epoch == post_spec.FAR_FUTURE_EPOCH
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.CAPELLA_FORK_VERSION

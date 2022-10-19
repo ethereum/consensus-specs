@@ -96,7 +96,7 @@ def hash_to_bls_field(x: Container) -> BLSFieldElement:
     Compute 32-byte hash of serialized container and convert it to BLS field.
     The output is not uniform over the BLS field.
     """
-    return int.from_bytes(hash(ssz_serialize(x)), "little") % BLS_MODULUS
+    return bytes_to_bls_field(hash(ssz_serialize(x)))
 ```
 
 ### `compute_powers`
@@ -117,7 +117,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 
 ```python
 def compute_aggregated_poly_and_commitment(
-        blobs: Sequence[BLSFieldElement],
+        blobs: Sequence[Blob],
         kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment]:
     """
     Return the aggregated polynomial and aggregated KZG commitment.
@@ -127,10 +127,10 @@ def compute_aggregated_poly_and_commitment(
     r_powers = compute_powers(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(matrix_lincomb(blobs, r_powers))
+    aggregated_poly = Polynomial(vector_lincomb(blobs, r_powers))
 
     # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(lincomb(kzg_commitments, r_powers))
+    aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
 
     return aggregated_poly, aggregated_poly_commitment
 ```
@@ -167,7 +167,7 @@ def validate_blobs_sidecar(slot: Slot,
 ### `compute_proof_from_blobs`
 
 ```python
-def compute_proof_from_blobs(blobs: Sequence[BLSFieldElement]) -> KZGProof:
+def compute_proof_from_blobs(blobs: Sequence[Blob]) -> KZGProof:
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment = compute_aggregated_poly_and_commitment(blobs, commitments)
     x = hash_to_bls_field(PolynomialAndCommitment(
@@ -206,7 +206,7 @@ use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blo
 
 ```python
 def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
-                                       blobs: Sequence[BLSFieldElement],
+                                       blobs: Sequence[Blob],
                                        blob_kzg_commitments: Sequence[KZGCommitment]) -> None:
     # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
     assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
@@ -245,7 +245,7 @@ def get_signed_blobs_sidecar(state: BeaconState, blobs_sidecar: BlobsSidecar, pr
     return SignedBlobsSidecar(message=blobs_sidecar, signature=signature)
 ```
 
-This `signed_blobs_sidecar` is then published to the global `blobs_sidecar` topic as soon as the `beacon_block` is published.
+This `signed_blobs_sidecar` is then published to the global `blobs_sidecar` topic as soon as the `signed_beacon_block` is published.
 
 After publishing the sidecar peers on the network may request the sidecar through sync-requests, or a local user may be interested.
 The validator MUST hold on to blobs for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,

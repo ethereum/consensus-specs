@@ -89,7 +89,7 @@ def case01_sign():
     # Edge case: privkey == 0
     expect_exception(bls.Sign, ZERO_PRIVKEY, message)
     expect_exception(milagro_bls.Sign, ZERO_PRIVKEY_BYTES, message)
-    yield f'sign_case_zero_privkey', {
+    yield 'sign_case_zero_privkey', {
         'input': {
             'privkey': encode_hex(ZERO_PRIVKEY_BYTES),
             'message': encode_hex(message),
@@ -153,7 +153,7 @@ def case02_verify():
     # Invalid pubkey and signature with the point at infinity
     assert not bls.Verify(G1_POINT_AT_INFINITY, SAMPLE_MESSAGE, G2_POINT_AT_INFINITY)
     assert not milagro_bls.Verify(G1_POINT_AT_INFINITY, SAMPLE_MESSAGE, G2_POINT_AT_INFINITY)
-    yield f'verify_infinity_pubkey_and_infinity_signature', {
+    yield 'verify_infinity_pubkey_and_infinity_signature', {
         'input': {
             'pubkey': encode_hex(G1_POINT_AT_INFINITY),
             'message': encode_hex(SAMPLE_MESSAGE),
@@ -177,7 +177,7 @@ def case03_aggregate():
     expect_exception(bls.Aggregate, [])
     # No signatures to aggregate. Follow IETF BLS spec, return `None` to represent INVALID.
     # https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-2.8
-    yield f'aggregate_na_signatures', {
+    yield 'aggregate_na_signatures', {
         'input': [],
         'output': None,
     }
@@ -185,7 +185,7 @@ def case03_aggregate():
     # Valid to aggregate G2 point at infinity
     aggregate_sig = bls.Aggregate([G2_POINT_AT_INFINITY])
     assert aggregate_sig == milagro_bls.Aggregate([G2_POINT_AT_INFINITY]) == G2_POINT_AT_INFINITY
-    yield f'aggregate_infinity_signature', {
+    yield 'aggregate_infinity_signature', {
         'input': [encode_hex(G2_POINT_AT_INFINITY)],
         'output': encode_hex(aggregate_sig),
     }
@@ -244,7 +244,7 @@ def case04_fast_aggregate_verify():
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == Z1_SIGNATURE
     assert not bls.FastAggregateVerify([], message, G2_POINT_AT_INFINITY)
     assert not milagro_bls.FastAggregateVerify([], message, G2_POINT_AT_INFINITY)
-    yield f'fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
+    yield 'fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
             'pubkeys': [],
             'message': encode_hex(message),
@@ -256,7 +256,7 @@ def case04_fast_aggregate_verify():
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
     assert not bls.FastAggregateVerify([], message, ZERO_SIGNATURE)
     assert not milagro_bls.FastAggregateVerify([], message, ZERO_SIGNATURE)
-    yield f'fast_aggregate_verify_na_pubkeys_and_zero_signature', {
+    yield 'fast_aggregate_verify_na_pubkeys_and_zero_signature', {
         'input': {
             'pubkeys': [],
             'message': encode_hex(message),
@@ -272,7 +272,7 @@ def case04_fast_aggregate_verify():
     aggregate_signature = bls.Aggregate(signatures)
     assert not bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
     assert not milagro_bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
-    yield f'fast_aggregate_verify_infinity_pubkey', {
+    yield 'fast_aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
             'message': encode_hex(SAMPLE_MESSAGE),
@@ -300,7 +300,7 @@ def case05_aggregate_verify():
     aggregate_signature = bls.Aggregate(sigs)
     assert bls.AggregateVerify(pubkeys, messages, aggregate_signature)
     assert milagro_bls.AggregateVerify(pubkeys, messages, aggregate_signature)
-    yield f'aggregate_verify_valid', {
+    yield 'aggregate_verify_valid', {
         'input': {
             'pubkeys': pubkeys_serial,
             'messages': messages_serial,
@@ -312,7 +312,7 @@ def case05_aggregate_verify():
     tampered_signature = aggregate_signature[:4] + b'\xff\xff\xff\xff'
     assert not bls.AggregateVerify(pubkey, messages, tampered_signature)
     assert not milagro_bls.AggregateVerify(pubkeys, messages, tampered_signature)
-    yield f'aggregate_verify_tampered_signature', {
+    yield 'aggregate_verify_tampered_signature', {
         'input': {
             'pubkeys': pubkeys_serial,
             'messages': messages_serial,
@@ -324,7 +324,7 @@ def case05_aggregate_verify():
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == Z1_SIGNATURE
     assert not bls.AggregateVerify([], [], G2_POINT_AT_INFINITY)
     assert not milagro_bls.AggregateVerify([], [], G2_POINT_AT_INFINITY)
-    yield f'aggregate_verify_na_pubkeys_and_infinity_signature', {
+    yield 'aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
             'pubkeys': [],
             'messages': [],
@@ -336,7 +336,7 @@ def case05_aggregate_verify():
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
     assert not bls.AggregateVerify([], [], ZERO_SIGNATURE)
     assert not milagro_bls.AggregateVerify([], [], ZERO_SIGNATURE)
-    yield f'aggregate_verify_na_pubkeys_and_zero_signature', {
+    yield 'aggregate_verify_na_pubkeys_and_zero_signature', {
         'input': {
             'pubkeys': [],
             'messages': [],
@@ -350,7 +350,7 @@ def case05_aggregate_verify():
     messages_with_sample = messages + [SAMPLE_MESSAGE]
     assert not bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
     assert not milagro_bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
-    yield f'aggregate_verify_infinity_pubkey', {
+    yield 'aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
             'messages': [encode_hex(message) for message in messages_with_sample],
@@ -375,7 +375,7 @@ def case06_eth_aggregate_pubkeys():
     # Valid pubkeys
     aggregate_pubkey = spec.eth_aggregate_pubkeys(PUBKEYS)
     assert aggregate_pubkey == milagro_bls._AggregatePKs(PUBKEYS)
-    yield f'eth_aggregate_pubkeys_valid_pubkeys', {
+    yield 'eth_aggregate_pubkeys_valid_pubkeys', {
         'input': [encode_hex(pubkey) for pubkey in PUBKEYS],
         'output': encode_hex(aggregate_pubkey),
     }
@@ -383,7 +383,7 @@ def case06_eth_aggregate_pubkeys():
     # Invalid pubkeys -- len(pubkeys) == 0
     expect_exception(spec.eth_aggregate_pubkeys, [])
     expect_exception(milagro_bls._AggregatePKs, [])
-    yield f'eth_aggregate_pubkeys_empty_list', {
+    yield 'eth_aggregate_pubkeys_empty_list', {
         'input': [],
         'output': None,
     }
@@ -391,7 +391,7 @@ def case06_eth_aggregate_pubkeys():
     # Invalid pubkeys -- [ZERO_PUBKEY]
     expect_exception(spec.eth_aggregate_pubkeys, [ZERO_PUBKEY])
     expect_exception(milagro_bls._AggregatePKs, [ZERO_PUBKEY])
-    yield f'eth_aggregate_pubkeys_zero_pubkey', {
+    yield 'eth_aggregate_pubkeys_zero_pubkey', {
         'input': [encode_hex(ZERO_PUBKEY)],
         'output': None,
     }
@@ -399,7 +399,7 @@ def case06_eth_aggregate_pubkeys():
     # Invalid pubkeys -- G1 point at infinity
     expect_exception(spec.eth_aggregate_pubkeys, [G1_POINT_AT_INFINITY])
     expect_exception(milagro_bls._AggregatePKs, [G1_POINT_AT_INFINITY])
-    yield f'eth_aggregate_pubkeys_infinity_pubkey', {
+    yield 'eth_aggregate_pubkeys_infinity_pubkey', {
         'input': [encode_hex(G1_POINT_AT_INFINITY)],
         'output': None,
     }
@@ -408,7 +408,7 @@ def case06_eth_aggregate_pubkeys():
     x40_pubkey = b'\x40' + b'\00' * 47
     expect_exception(spec.eth_aggregate_pubkeys, [x40_pubkey])
     expect_exception(milagro_bls._AggregatePKs, [x40_pubkey])
-    yield f'eth_aggregate_pubkeys_x40_pubkey', {
+    yield 'eth_aggregate_pubkeys_x40_pubkey', {
         'input': [encode_hex(x40_pubkey)],
         'output': None,
     }
@@ -455,7 +455,7 @@ def case07_eth_fast_aggregate_verify():
         tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
         identifier = f'{pubkeys_serial}_{encode_hex(message)}'
         assert not spec.eth_fast_aggregate_verify(pubkeys, message, tampered_signature)
-        yield f'eth_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield 'eth_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_serial,
                 'message': encode_hex(message),
@@ -466,7 +466,7 @@ def case07_eth_fast_aggregate_verify():
 
     # NOTE: Unlike `FastAggregateVerify`, len(pubkeys) == 0 and signature == G2_POINT_AT_INFINITY is VALID
     assert spec.eth_fast_aggregate_verify([], message, G2_POINT_AT_INFINITY)
-    yield f'eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
+    yield 'eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature', {
         'input': {
             'pubkeys': [],
             'message': encode_hex(message),
@@ -477,7 +477,7 @@ def case07_eth_fast_aggregate_verify():
 
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...
     assert not spec.eth_fast_aggregate_verify([], message, ZERO_SIGNATURE)
-    yield f'eth_fast_aggregate_verify_na_pubkeys_and_zero_signature', {
+    yield 'eth_fast_aggregate_verify_na_pubkeys_and_zero_signature', {
         'input': {
             'pubkeys': [],
             'message': encode_hex(message),
@@ -492,7 +492,7 @@ def case07_eth_fast_aggregate_verify():
     signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
     aggregate_signature = bls.Aggregate(signatures)
     assert not spec.eth_fast_aggregate_verify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
-    yield f'eth_fast_aggregate_verify_infinity_pubkey', {
+    yield 'eth_fast_aggregate_verify_infinity_pubkey', {
         'input': {
             'pubkeys': [encode_hex(pubkey) for pubkey in pubkeys_with_infinity],
             'message': encode_hex(SAMPLE_MESSAGE),
