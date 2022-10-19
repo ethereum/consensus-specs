@@ -47,6 +47,7 @@ ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 EIP4844 = 'eip4844'
+WHISK = 'whisk'
 
 
 # The helper functions that are used when defining constants
@@ -652,9 +653,25 @@ def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[Blobs
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
+#
+# WhiskSpecBuilder
+#
+class WhiskSpecBuilder(BellatrixSpecBuilder):
+    fork: str = WHISK
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from curdleproofs import IsValidWhiskShuffleProof, IsValidWhiskOpeningProof, SerializedCurdleProofsProof, SerializedWhiskTrackerProof
+'''
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions()
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder, WhiskSpecBuilder)
 }
 
 
@@ -785,7 +802,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
-    'Optional', 'Sequence',
+    'Optional', 'Sequence', 'SerializedCurdleProofsProof', 'SerializedWhiskTrackerProof',
 ]
 
 
@@ -952,14 +969,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, WHISK):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844, WHISK):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
@@ -971,7 +988,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844, WHISK):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -996,6 +1013,10 @@ class PySpecCommand(Command):
                     specs/eip4844/polynomial-commitments.md
                     specs/eip4844/p2p-interface.md
                     specs/eip4844/validator.md
+                """
+            if self.spec_fork == WHISK:
+                self.md_doc_paths += """
+                    specs/whisk/beacon-chain.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -1150,5 +1171,6 @@ setup(
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@master#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )

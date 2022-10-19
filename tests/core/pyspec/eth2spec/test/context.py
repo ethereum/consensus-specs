@@ -450,6 +450,7 @@ def _get_run_phases(phases, kw):
         run_phases = [phase]
     else:
         # If pytest `--fork` flag is set, filter out the rest of the forks
+        print("phases 2", phases, DEFAULT_PYTEST_FORKS, set(phases).intersection(DEFAULT_PYTEST_FORKS))
         run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
 
     return run_phases
@@ -466,9 +467,12 @@ def _get_available_phases(run_phases, other_phases):
 
 
 def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_transition=False):
+    print("phases", phases)
     run_phases = _get_run_phases(phases, kw)
+    print("run_phases", run_phases)
 
     if len(run_phases) == 0:
+        print("skipping")
         if not is_fork_transition:
             dump_skipping_message("none of the recognized phases are executable, skipping test.")
         return None
