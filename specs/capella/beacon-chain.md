@@ -24,7 +24,6 @@
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
-    - [`Validator`](#validator)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
@@ -178,21 +177,6 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root  # [New in Capella]
-```
-
-#### `Validator`
-
-```python
-class Validator(Container):
-    pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
-    effective_balance: Gwei  # Balance at stake
-    slashed: boolean
-    # Status epochs
-    activation_eligibility_epoch: Epoch  # When criteria for activation were met
-    activation_epoch: Epoch
-    exit_epoch: Epoch
-    withdrawable_epoch: Epoch  # When validator can withdraw funds
 ```
 
 #### `BeaconBlockBody`

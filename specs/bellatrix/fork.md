@@ -1,7 +1,5 @@
 # Bellatrix -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
