@@ -274,6 +274,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals) if ENABLE_WITHDRAWALS else Bytes32(),  # [New in EIP-4844]
+    )
 ```
 
 #### Modified `process_operations`
