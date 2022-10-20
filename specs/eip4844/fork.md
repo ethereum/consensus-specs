@@ -44,6 +44,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP4844_FORK_EPOCH:
         return EIP4844_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
     if epoch >= BELLATRIX_FORK_EPOCH:
         return BELLATRIX_FORK_VERSION
     if epoch >= ALTAIR_FORK_EPOCH:
@@ -62,12 +64,11 @@ Note that for the pure EIP-4844 networks, we don't apply `upgrade_to_eip4844` si
 
 ### Upgrading the state
 
-Since the `eip4844.BeaconState` format is equal to the `bellatrix.BeaconState` format, we only have to update `BeaconState.fork`.
+Since the `eip4844.BeaconState` format is equal to the `Capella.BeaconState` format, we only have to update `BeaconState.fork`.
 
 ```python
-def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
-    # TODO: if Capella gets scheduled, add sync it with Capella.BeaconState
-    epoch = bellatrix.get_current_epoch(pre)
+def upgrade_to_eip4844(pre: Capella.BeaconState) -> BeaconState:
+    epoch = capella.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -109,6 +110,10 @@ def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
+        # Withdrawals
+        withdrawal_queue=[],
+        next_withdrawal_index=WithdrawalIndex(0),
+        next_partial_withdrawal_validator_index=ValidatorIndex(0),
     )
 
     return post

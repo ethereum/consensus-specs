@@ -15,6 +15,7 @@
   - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
+  - [Test Parameters](#test-parameters)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
@@ -27,9 +28,11 @@
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
+    - [Modified `process_operations`](#modified-process_operations)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
 
@@ -38,7 +41,7 @@
 
 ## Introduction
 
-This upgrade adds blobs to the beacon chain as part of EIP-4844.
+This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an extension of the Capella upgrade. We introduce a new feature flag, `ENABLE_WITHDRAWALS`, to disable Capella-specific updates to the state transition function. This is done to minimize Capella specific issues that may arise during testing. `ENABLE_WITHDRAWALS` will be removed in the final upgrade specification.
 
 ## Custom types
 
@@ -72,6 +75,10 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | - | - |
 | `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
 
+### Test Parameters
+| Name | Value |
+| `ENABLE_WITHDRAWALS` | `uint64(0)` |
+
 ## Configuration
 
 
@@ -97,6 +104,7 @@ class BeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload 
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
 
@@ -121,6 +129,7 @@ class ExecutionPayload(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -144,6 +153,7 @@ class ExecutionPayloadHeader(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
+    withdrawals_root: Root
 ```
 
 ## Helper functions
@@ -192,13 +202,37 @@ def verify_kzg_commitments_against_transactions(transactions: Sequence[Transacti
 
 ## Beacon chain state transition function
 
+### Epoch processing
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_roots_update(state)
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
+    if ENABLE_WITHDRAWALS:
+        process_full_withdrawals(state)
+        process_partial_withdrawals(state)
+```
+
+
 ### Block processing
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
+        if ENABLE_WITHDRAWALS:  # [New in EIP-4844]
+            process_withdrawals(state, block.body.execution_payload)
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP-4844]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -221,6 +255,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.notify_new_payload(payload)
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -238,8 +273,31 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         excess_blobs=payload.excess_blobs,  # [New in EIP-4844]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-    )
+        withdrawals_root=hash_tree_root(payload.withdrawals) if ENABLE_WITHDRAWALS else Bytes32(),  # [New in EIP-4844]
 ```
+
+#### Modified `process_operations`
+
+*Note*: The function `process_operations` is modified to feature flag Withdrawals.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    if ENABLE_WITHDRAWALS:  # [New in EIP-4844]
+        for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+```
+
 
 #### Blob KZG commitments
 

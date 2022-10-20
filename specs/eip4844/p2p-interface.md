@@ -67,7 +67,7 @@ Some gossip meshes are upgraded in the fork of EIP4844 to support upgraded types
 Topics follow the same specification as in prior upgrades.
 All topics remain stable except the beacon block topic which is updated with the modified type.
 
-The specification around the creation, validation, and dissemination of messages has not changed from the Bellatrix document unless explicitly noted here.
+The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
 
