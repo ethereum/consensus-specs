@@ -151,6 +151,41 @@ class ExecutionPayloadHeader(Container):
 
 ### Misc
 
+#### `validate_blobs_sidecar`
+
+```python
+def validate_blobs_sidecar(slot: Slot,
+                           beacon_block_root: Root,
+                           expected_kzg_commitments: Sequence[KZGCommitment],
+                           blobs_sidecar: BlobsSidecar) -> None:
+    assert slot == blobs_sidecar.beacon_block_slot
+    assert beacon_block_root == blobs_sidecar.beacon_block_root
+    blobs = blobs_sidecar.blobs
+    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
+    assert len(expected_kzg_commitments) == len(blobs)
+
+    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
+```
+
+#### `is_data_available`
+
+The implementation of `is_data_available` is meant to change with later sharding upgrades.
+Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
+and validate the sidecar with `validate_blobs_sidecar`.
+
+Without the sidecar the block may be processed further optimistically,
+but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+
+```python
+def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
+    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
+    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
+
+    return True
+```
+
+
 #### `kzg_commitment_to_versioned_hash`
 
 ```python
@@ -205,6 +240,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
+
+    # New in EIP-4844, note: Can sync optimistically without this condition, see note on `is_data_available`
+    assert is_data_available(block.slot, hash_tree_root(block), body.blob_kzg_commitments)
 ```
 
 #### Execution payload
