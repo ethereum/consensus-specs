@@ -147,7 +147,6 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             continue
 
         validator = state.validators[index]
-
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
             if is_post_altair(spec):
