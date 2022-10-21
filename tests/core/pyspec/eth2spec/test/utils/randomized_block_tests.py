@@ -9,6 +9,7 @@ from typing import Callable
 
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state_for_next_slot,
+    get_random_bls_to_execution_changes,
     get_random_sync_aggregate,
     prepare_state_and_get_random_deposits,
 )
@@ -204,8 +205,13 @@ def random_block_bellatrix(spec, state, signed_blocks, scenario_state):
     return block
 
 
-def random_block_capella(spec, state, signed_blocks, scenario_state):
+def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_bellatrix(spec, state, signed_blocks, scenario_state)
+    block.body.bls_to_execution_changes = get_random_bls_to_execution_changes(
+        spec,
+        state,
+        num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
+    )
     return block
 
 

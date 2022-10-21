@@ -16,6 +16,7 @@ from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
+from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 
 
 def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
@@ -126,13 +127,15 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     # First build deposit data leaves
     for i in range(num_deposits):
         index = len(state.validators) + i
+        withdrawal_pubkey = pubkeys[-1 - index]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
             deposit_data_leaves,
             pubkeys[index],
             privkeys[index],
             spec.MAX_EFFECTIVE_BALANCE,
-            withdrawal_credentials=b'\x00' * 32,
+            withdrawal_credentials=withdrawal_credentials,
             signed=True,
         )
 
@@ -198,6 +201,20 @@ def get_random_sync_aggregate(spec, state, slot, block_root=None, fraction_parti
         sync_committee_bits=[index in participant_indices for index in range(len(committee_indices))],
         sync_committee_signature=signature,
     )
+
+
+def get_random_bls_to_execution_changes(spec, state, rng=Random(2188), num_address_changes=0):
+    bls_indices = [
+        index
+        for index, validator in enumerate(state.validators)
+        if validator.withdrawal_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
+    ]
+    assert len(bls_indices) > 0
+
+    return [
+        get_signed_address_change(spec, state, validator_index=validator_index)
+        for validator_index in rng.sample(bls_indices, min(num_address_changes, len(bls_indices)))
+    ]
 
 
 def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188), deposits=None):
