@@ -55,13 +55,17 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 ## Constants
 
+*Note*: Domain separators are set to an empty string as they are not required according to current understanding (and are not "free").
+Should we determine that they are required at a later point we can set 
+
 | Name | Value | Notes |
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
 | `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
-| `DOMAIN_SEPARATOR_FIELD_ELEMENT` | `b"FIELD_ELEMENT"` | Fiat-Shamir domain separator for field elements |
-| `DOMAIN_SEPARATOR_POINT` | `b"POINT"` | Fiat-Shamir domain separator for G1 points |
-| `DOMAIN_SEPARATOR_SQUEEZE` | `b"SQUEEZE"` | Fiat-Shamir domain separator before hashing |
+| `DOMAIN_SEPARATOR_BLOB_PROTOCOL` | `b""` | Fiat-Shamir domain separator blob verification |
+| `DOMAIN_SEPARATOR_FIELD_ELEMENT` | `b""` | Fiat-Shamir domain separator for field elements |
+| `DOMAIN_SEPARATOR_POINT` | `b""` | Fiat-Shamir domain separator for G1 points |
+| `DOMAIN_SEPARATOR_SQUEEZE` | `b""` | Fiat-Shamir domain separator before hashing |
 
 
 ## Preset
@@ -155,7 +159,7 @@ def hash_to_bls_field(polys: Sequence[Polynomial], comms: Sequence[KZGCommitment
     This hash is then converted to a BLS field element.
     The output is not uniform over the BLS field.
     """
-    data = bytes()
+    data = DOMAIN_SEPARATOR_BLOB_PROTOCOL
 
     # Append each polynomial which is composed by field elements
     for poly in polys:
