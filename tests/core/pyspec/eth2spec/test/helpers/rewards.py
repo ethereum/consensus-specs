@@ -147,7 +147,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             continue
 
         validator = state.validators[index]
-        # Skipping delta check when there's no delta
+        # Skipping delta check when non-necessary or no delta when hysteresis-fix
         if not spec.is_active_validator(validator, spec.get_current_epoch(state)):
             continue
 
