@@ -232,7 +232,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
                             custom_types[name] = value
                         continue
 
@@ -590,6 +590,7 @@ class EIP4844SpecBuilder(BellatrixSpecBuilder):
         return super().imports(preset_name) + f'''
 from eth2spec.utils import kzg
 from eth2spec.bellatrix import {preset_name} as bellatrix
+from eth2spec.utils.ssz.ssz_typing import ByteVector
 '''
 
 
@@ -617,12 +618,13 @@ ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
 
 
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
-    pass'''
+    return "TEST"'''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
+            'BYTES_PER_FIELD_ELEMENT': spec_object.preset_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
         }
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
@@ -771,7 +773,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
-    'Optional', 'Sequence',
+    'Optional', 'Sequence', 
 ]
 
 

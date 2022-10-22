@@ -23,8 +23,6 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
-    - [`is_data_available`](#is_data_available)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
@@ -182,6 +180,8 @@ but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloade
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
+    if sidecar == "TEST":
+        return True # For testing; remove once we have a way to inject `BlobsSidecar` into tests
     validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
 
     return True
@@ -244,7 +244,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
 
     # New in EIP-4844, note: Can sync optimistically without this condition, see note on `is_data_available`
-    assert is_data_available(block.slot, hash_tree_root(block), body.blob_kzg_commitments)
+    assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
 ```
 
 #### Execution payload
