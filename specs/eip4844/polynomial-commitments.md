@@ -149,13 +149,15 @@ def blob_to_field_elements(blob: Blob) -> Vector[BLSFieldElement, FIELD_ELEMENTS
     for i in range(FIELD_ELEMENTS_PER_BLOB):
         value = int.from_bytes(blob[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT], "little")
         assert value < BLS_MODULUS
-        r[i] = int.from_bytes(b, "little") % BLS_MODULUS
+        r[i] = value
 ```
 
 #### `hash_to_bls_field`
 
 ```python
-def hash_to_bls_field(initializer: bytes, polys: Sequence[Polynomial], comms: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, bytes]:
+def hash_to_bls_field(initializer: bytes,
+                      polys: Sequence[Polynomial],
+                      comms: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, bytes]:
     """
     Compute 32-byte hash of serialised polynomials and commitments concatenated.
     This hash is then converted to a BLS field element.
