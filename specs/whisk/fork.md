@@ -1,6 +1,6 @@
 ### Fork
 
-```python
+```
 """
     WHISK_FORK_EPOCH
         |                     cooldown
@@ -19,10 +19,10 @@
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `WHISK_FORK_VERSION` | `Version('0x02000000')` |
-| `WHISK_FORK_EPOCH` | **TBD** |
+| Name                 | Value                   |
+| -------------------- | ----------------------- |
+| `WHISK_FORK_VERSION` | `Version('0x05000000')` |
+| `WHISK_FORK_EPOCH`   | **TBD**                 |
 
 ## Fork to WHISK
 
@@ -33,8 +33,8 @@ The upgrade occurs after the completion of the inner loop of `process_slots` tha
 This ensures that we drop right into the beginning of the shuffling phase but without `process_whisk_epoch()` triggering for this Whisk run. Hence we handle all the setup ourselves in `upgrade_to_whisk()` below.
 
 ```python
-def upgrade_to_whisk(pre: merge.BeaconState) -> BeaconState:
-    epoch = merge.get_current_epoch(pre)
+def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
+    epoch = bellatrix.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,

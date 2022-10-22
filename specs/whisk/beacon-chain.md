@@ -44,6 +44,8 @@ building upon the [phase0](../phase0/beacon-chain.md) specification.
 | `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7)` (= 128)     | number of validators shuffled per shuffle step              |
 | `WHISK_SHUFFLE_STEPS_PER_ROUND`    | `uint64(2**7)` (= 128)     | Number of stirs to complete a pass over all rows            |
 | `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
+| `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
+| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
 
 | Name                               | Value                      |
 | ---------------------------------- | -------------------------- |
@@ -75,17 +77,17 @@ def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point:
 | -------------------- | ---------------------------------------------------------------------------------------------------- |
 | `BLS_G1_GENERATOR_X` | `0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb` |
 | `BLS_G1_GENERATOR_Y` | `0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1` |
-| `BLS_G1_GENERATOR`   | `BLSG1PointFromAffine(BLS_G1_GENERATOR_X, BLS_G1_GENERATOR_Y)`                                       |
+| `BLS_G1_GENERATOR`   | `(BLS_G1_GENERATOR_X, BLS_G1_GENERATOR_Y)`                                                           |
 
 ### Curdleproofs and opening proofs
 
 Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only) repository.
 
-```python
+```
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
                              M: BLSG1Point,
-                             shuffle_proof: SerializedCurdleProofsProof) -> bool:
+                             shuffle_proof: ByteList[WHISK_MAX_SHUFFLE_PROOF_SIZE]) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
@@ -93,7 +95,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
     pass
 
 
-def IsValidWhiskOpeningProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: SerializedWhiskTrackerProof) -> bool:
+def IsValidWhiskOpeningProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: ByteList[WHISK_MAX_OPENING_PROOF_SIZE]) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
@@ -114,7 +116,7 @@ class WhiskTracker(Container):
 ### `Validator`
 
 ```python
-class Validator(Container):
+class Validator(bellatrix.Validator):
     # ...
     # Whisk
     whisk_tracker: WhiskTracker  # Whisk tracker (r * G, k * r * G) [New in Whisk]
@@ -124,9 +126,10 @@ class Validator(Container):
 ### `BeaconState`
 
 ```python
-class BeaconState(Container):
+class BeaconState(bellatrix.BeaconState):
     # ...
     # Whisk
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     whisk_candidate_trackers: Vector[WhiskTracker, WHISK_CANDIDATE_TRACKERS_COUNT]  # [New in Whisk]
     whisk_proposer_trackers: Vector[WhiskTracker, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
 ```
@@ -154,8 +157,8 @@ def process_whisk_updates(state: BeaconState) -> None:
 
 
 def process_epoch(state: BeaconState) -> None:
+    bellatrix.process_epoch(state)
     # ...
-    print("process_whisk_updates")
     process_whisk_updates(state)  # [New in Whisk]
 ```
 
@@ -166,10 +169,11 @@ def process_epoch(state: BeaconState) -> None:
 #### `BeaconBlock`
 
 ```python
-class BeaconBlock(Container):
+class BeaconBlock(bellatrix.BeaconBlock):
     # ...
+    body: BeaconBlockBody
     proposer_index: ValidatorIndex
-    whisk_opening_proof: SerializedWhiskTrackerProof  # [New in Whisk]
+    whisk_opening_proof: ByteList[WHISK_MAX_OPENING_PROOF_SIZE]  # [New in Whisk]
     # ...
 ```
 
@@ -181,6 +185,7 @@ def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
 
 
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
+    # bellatrix.process_block_header(state, block)
     # ...
     # [Removed in Whisk] Verify that proposer index is the correct index
     # [Removed in Whisk] assert block.proposer_index == get_beacon_proposer_index(state)
@@ -193,13 +198,13 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(Container):
+class BeaconBlockBody(bellatrix.BeaconBlockBody):
     # ...
     # Whisk
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
-    whisk_shuffle_proof: SerializedCurdleProofsProof  # [New in Whisk]
+    whisk_shuffle_proof: ByteList[WHISK_MAX_SHUFFLE_PROOF_SIZE]  # [New in Whisk]
     whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
-    whisk_registration_proof: SerializedWhiskTrackerProof  # [New in Whisk]
+    whisk_registration_proof: ByteList[WHISK_MAX_OPENING_PROOF_SIZE]  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # [New in Whisk]
 ```
@@ -267,6 +272,7 @@ def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
 
 
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    bellatrix.process_block(state, block)
     # ...
     process_whisk(state, block.body)  # [New in Whisk]
 ```

@@ -1,4 +1,7 @@
 from eth2spec.test.context import (
+    is_post_capella,
+    is_post_eip4844,
+    is_post_whisk,
     spec_configured_state_test,
     spec_state_test_with_matching_config,
     spec_test,
@@ -61,6 +64,15 @@ def test_config_override_matching_fork_epochs(spec, state):
         fork_epoch_field = fork.upper() + '_FORK_EPOCH'
         assert getattr(spec.config, fork_epoch_field) <= epoch
 
+    if is_post_eip4844(spec):
+        assert spec.config.EIP4844_FORK_EPOCH == spec.GENESIS_EPOCH
+        if state.fork.current_version == spec.config.EIP4844_FORK_VERSION:
+            return
+    
+    if is_post_whisk(spec):
+        assert spec.config.WHISK_FORK_EPOCH == spec.GENESIS_EPOCH
+        if state.fork.current_version == spec.config.WHISK_FORK_VERSION:
+            return
 
 @with_phases(phases=[ALTAIR], other_phases=[BELLATRIX])
 @spec_test

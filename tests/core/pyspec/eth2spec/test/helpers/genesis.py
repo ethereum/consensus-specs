@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    ALTAIR, BELLATRIX, CAPELLA, EIP4844, WHISK,
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
@@ -80,7 +81,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == EIP4844:
         previous_version = spec.config.CAPELLA_FORK_VERSION
         current_version = spec.config.EIP4844_FORK_VERSION
-
+    elif spec.fork == WHISK:
+        previous_version = spec.config.BELLATRIX_FORK_VERSION
+        current_version = spec.config.WHISK_FORK_VERSION
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),

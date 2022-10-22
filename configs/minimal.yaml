@@ -1,14 +1,14 @@
 # Minimal config
 
 # Extends the minimal preset
-PRESET_BASE: 'minimal'
+PRESET_BASE: "minimal"
 
 # Free-form short name of the network that this configuration applies to - known
 # canonical network names include:
 # * 'mainnet' - there can be only one
 # * 'prater' - testnet
 # Must match the regex: [a-z0-9\-]
-CONFIG_NAME: 'minimal'
+CONFIG_NAME: "minimal"
 
 # Transition
 # ---------------------------------------------------------------
@@ -17,8 +17,6 @@ TERMINAL_TOTAL_DIFFICULTY: 11579208923731619542357098500868790785326998466564056
 # By default, don't use these params
 TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
-
-
 
 # Genesis
 # ---------------------------------------------------------------
@@ -30,7 +28,6 @@ MIN_GENESIS_TIME: 1578009600
 GENESIS_FORK_VERSION: 0x00000001
 # [customized] Faster to spin up testnets, but does not give validator reasonable warning time for genesis
 GENESIS_DELAY: 300
-
 
 # Forking
 # ---------------------------------------------------------------
@@ -49,7 +46,9 @@ CAPELLA_FORK_EPOCH: 18446744073709551615
 # EIP4844
 EIP4844_FORK_VERSION: 0x04000001
 EIP4844_FORK_EPOCH: 18446744073709551615
-
+# Whisk
+WHISK_FORK_VERSION: 0x05000001
+WHISK_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -64,7 +63,6 @@ SHARD_COMMITTEE_PERIOD: 64
 # [customized] process deposits more quickly, but insecure
 ETH1_FOLLOW_DISTANCE: 16
 
-
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -78,12 +76,10 @@ MIN_PER_EPOCH_CHURN_LIMIT: 4
 # [customized] scale queue churn at much lower validator counts for testing
 CHURN_LIMIT_QUOTIENT: 32
 
-
 # Fork choice
 # ---------------------------------------------------------------
 # 40%
 PROPOSER_SCORE_BOOST: 40
-
 
 # Deposit contract
 # ---------------------------------------------------------------

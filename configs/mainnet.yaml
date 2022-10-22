@@ -1,14 +1,14 @@
 # Mainnet config
 
 # Extends the mainnet preset
-PRESET_BASE: 'mainnet'
+PRESET_BASE: "mainnet"
 
 # Free-form short name of the network that this configuration applies to - known
 # canonical network names include:
 # * 'mainnet' - there can be only one
 # * 'prater' - testnet
 # Must match the regex: [a-z0-9\-]
-CONFIG_NAME: 'mainnet'
+CONFIG_NAME: "mainnet"
 
 # Transition
 # ---------------------------------------------------------------
@@ -17,8 +17,6 @@ TERMINAL_TOTAL_DIFFICULTY: 58750000000000000000000
 # By default, don't use these params
 TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
-
-
 
 # Genesis
 # ---------------------------------------------------------------
@@ -31,7 +29,6 @@ GENESIS_FORK_VERSION: 0x00000000
 # 604800 seconds (7 days)
 GENESIS_DELAY: 604800
 
-
 # Forking
 # ---------------------------------------------------------------
 # Some forks are disabled for now:
@@ -40,19 +37,19 @@ GENESIS_DELAY: 604800
 
 # Altair
 ALTAIR_FORK_VERSION: 0x01000000
-ALTAIR_FORK_EPOCH: 74240  # Oct 27, 2021, 10:56:23am UTC
+ALTAIR_FORK_EPOCH: 74240 # Oct 27, 2021, 10:56:23am UTC
 # Bellatrix
 BELLATRIX_FORK_VERSION: 0x02000000
-BELLATRIX_FORK_EPOCH: 144896  # Sept 6, 2022, 11:34:47am UTC
+BELLATRIX_FORK_EPOCH: 144896 # Sept 6, 2022, 11:34:47am UTC
 # Capella
 CAPELLA_FORK_VERSION: 0x03000000
 CAPELLA_FORK_EPOCH: 18446744073709551615
 # EIP4844
 EIP4844_FORK_VERSION: 0x04000000
 EIP4844_FORK_EPOCH: 18446744073709551615
-
-
-
+# Whisk
+WHISK_FORK_VERSION: 0x05000000
+WHISK_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -67,7 +64,6 @@ SHARD_COMMITTEE_PERIOD: 256
 # 2**11 (= 2,048) Eth1 blocks ~8 hours
 ETH1_FOLLOW_DISTANCE: 2048
 
-
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -80,7 +76,6 @@ EJECTION_BALANCE: 16000000000
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
 CHURN_LIMIT_QUOTIENT: 65536
-
 
 # Fork choice
 # ---------------------------------------------------------------

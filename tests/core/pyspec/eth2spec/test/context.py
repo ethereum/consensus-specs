@@ -8,11 +8,12 @@ from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_alta
 from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
 from eth2spec.eip4844 import mainnet as spec_eip4844_mainnet, minimal as spec_eip4844_minimal
+from eth2spec.whisk import mainnet as spec_whisk_mainnet, minimal as spec_whisk_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, WHISK, SHARDING,
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
@@ -65,6 +66,10 @@ class SpecCapella(Spec):
     ...
 
 
+class SpecWhisk(Spec):
+    ...
+
+
 @dataclass(frozen=True)
 class ForkMeta:
     pre_fork_name: str
@@ -79,13 +84,15 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         BELLATRIX: spec_bellatrix_minimal,
         CAPELLA: spec_capella_minimal,
         EIP4844: spec_eip4844_minimal,
+        WHISK: spec_whisk_minimal
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
         BELLATRIX: spec_bellatrix_mainnet,
         CAPELLA: spec_capella_mainnet,
-        EIP4844: spec_eip4844_mainnet
+        EIP4844: spec_eip4844_mainnet,
+        WHISK: spec_whisk_mainnet
     },
 }
 
@@ -95,6 +102,7 @@ class SpecForks(TypedDict, total=False):
     ALTAIR: SpecAltair
     BELLATRIX: SpecBellatrix
     CAPELLA: SpecCapella
+    WHISK: SpecWhisk
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -450,7 +458,6 @@ def _get_run_phases(phases, kw):
         run_phases = [phase]
     else:
         # If pytest `--fork` flag is set, filter out the rest of the forks
-        print("phases 2", phases, DEFAULT_PYTEST_FORKS, set(phases).intersection(DEFAULT_PYTEST_FORKS))
         run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
 
     return run_phases
@@ -467,12 +474,9 @@ def _get_available_phases(run_phases, other_phases):
 
 
 def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_transition=False):
-    print("phases", phases)
     run_phases = _get_run_phases(phases, kw)
-    print("run_phases", run_phases)
 
     if len(run_phases) == 0:
-        print("skipping")
         if not is_fork_transition:
             dump_skipping_message("none of the recognized phases are executable, skipping test.")
         return None
@@ -626,6 +630,30 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
         return wrapper
     return decorator
 
+
+def is_post_altair(spec):
+    return spec.fork not in FORKS_BEFORE_ALTAIR
+
+
+def is_post_bellatrix(spec):
+    return spec.fork not in FORKS_BEFORE_BELLATRIX
+
+
+def is_post_capella(spec):
+    return spec.fork == CAPELLA
+
+
+def is_post_eip4844(spec):
+    return spec.fork == EIP4844
+
+def is_post_whisk(spec):
+    return spec.fork == WHISK
+
+with_altair_and_later = with_all_phases_except([PHASE0])
+with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
+with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, EIP4844])
+with_eip4844_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+with_whisk_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844])
 
 def only_generator(reason):
     def _decorator(inner):
