@@ -23,6 +23,8 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
+    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
+    - [`is_data_available`](#is_data_available)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
