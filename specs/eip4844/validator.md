@@ -23,10 +23,12 @@
   - [`compute_proof_from_blobs`](#compute_proof_from_blobs)
   - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Block proposal](#block-proposal)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Blob KZG commitments](#blob-kzg-commitments)
-  - [Beacon Block publishing time](#beacon-block-publishing-time)
+    - [Constructing the `SignedBeaconBlockAndBlobsSidecar`](#constructing-the-signedbeaconblockandblobssidecar)
+      - [Block](#block)
+      - [Sidecar](#sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
