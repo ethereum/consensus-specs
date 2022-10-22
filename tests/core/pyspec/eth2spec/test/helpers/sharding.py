@@ -53,10 +53,16 @@ def get_sample_blob(spec, rng=None):
     if rng is None:
         rng = random.Random(5566)
 
-    return spec.Blob([
+    values = [
         rng.randint(0, spec.BLS_MODULUS - 1)
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
-    ])
+    ]
+
+    b = bytes()
+    for v in values:
+        b.append(v.to_bytes(32, "little"))
+
+    return spec.Blob(b)
 
 
 def get_sample_opaque_tx(spec, blob_count=1, rng=None):
