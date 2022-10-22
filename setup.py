@@ -829,7 +829,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
-    'Optional', 'Sequence', 'SerializedCurdleProofsProof', 'SerializedWhiskTrackerProof',
+    'Optional', 'Sequence',
 ]
 
 
@@ -1061,6 +1061,7 @@ class PySpecCommand(Command):
             if self.spec_fork == WHISK:
                 self.md_doc_paths += """
                     specs/whisk/beacon-chain.md
+                    specs/whisk/fork.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -1217,6 +1218,6 @@ setup(
         "lru-dict==1.1.8",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
-        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@master#egg=curdleproofs&subdirectory=curdleproofs",
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@verifier-only#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )
