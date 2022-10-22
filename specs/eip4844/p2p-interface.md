@@ -18,7 +18,7 @@ The specification of these changes continues in the same format as the network s
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block_and_blob_sidecar`](#beacon_block_and_blob_sidecar)
+        - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -83,14 +83,14 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `beacon_block_and_blob_sidecar` | `SignedBeaconBlockAndBlobsSidecar` (new) |
+| `beacon_block_and_blobs_sidecar` | `SignedBeaconBlockAndBlobsSidecar` (new) |
 
 
 #### Global topics
 
 EIP4844 introduces a new global topic for beacon block and blobs-sidecars.
 
-##### `beacon_block_and_blob_sidecar`
+##### `beacon_block_and_blobs_sidecar`
 
 This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
 
