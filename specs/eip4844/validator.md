@@ -11,8 +11,6 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
-  - [`is_data_available`](#is_data_available)
-  - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
   - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)

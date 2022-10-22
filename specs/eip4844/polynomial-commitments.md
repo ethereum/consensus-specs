@@ -18,6 +18,7 @@
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
+    - [`blob_to_field_elements`](#blob_to_field_elements)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
