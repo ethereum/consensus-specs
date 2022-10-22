@@ -176,7 +176,7 @@ def hash_to_bls_field(initializer: bytes, polys: Sequence[Polynomial], comms: Se
     data += DOMAIN_SEPARATOR_SQUEEZE
     h = hash(data)
 
-    return bytes_to_bls_field(hash(data)), h
+    return bytes_to_bls_field(h), h
 ```
 
 #### `bls_modular_inverse`
