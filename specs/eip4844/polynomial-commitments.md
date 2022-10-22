@@ -219,10 +219,10 @@ def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
 
 ```python
 def poly_lincomb(polys: Sequence[Polynomial],
-                 scalars: Sequence[BLSFieldElement]) -> Sequence[Polynomial]:
+                 scalars: Sequence[BLSFieldElement]) -> Polynomial:
     """
     Given a list of ``polynomials``, interpret it as a 2D matrix and compute the linear combination
-    of each column with `scalars`: return the resulting vector.
+    of each column with `scalars`: return the resulting polynomials.
     """
     result = [0] * len(polys[0])
     for v, s in zip(polys, scalars):
