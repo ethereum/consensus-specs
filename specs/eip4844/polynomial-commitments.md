@@ -135,21 +135,22 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     """
     Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
     """
-    return int.from_bytes(b, "little") % BLS_MODULUS
+    return int.from_bytes(b, ENDIANNESS) % BLS_MODULUS
 ```
 
 #### `blob_to_field_elements`
 
 ```python
-def blob_to_field_elements(blob: Blob) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]:
+def blob_to_field_elements(blob: Blob) -> Polynomial:
     """
     Convert blob to list of BLS field scalars.
     """
-    r = Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]()
+    r = Polynomial()
     for i in range(FIELD_ELEMENTS_PER_BLOB):
-        value = int.from_bytes(blob[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT], "little")
+        value = int.from_bytes(blob[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT], ENDIANNESS)
         assert value < BLS_MODULUS
         r[i] = value
+    return r
 ```
 
 #### `hash_to_bls_field`

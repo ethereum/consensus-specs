@@ -60,7 +60,7 @@ def get_sample_blob(spec, rng=None):
 
     b = bytes()
     for v in values:
-        b.append(v.to_bytes(32, "little"))
+        b += v.to_bytes(32, spec.ENDIANNESS)
 
     return spec.Blob(b)
 
