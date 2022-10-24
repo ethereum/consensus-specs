@@ -13,7 +13,7 @@ SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_cont
 SOLIDITY_FILE_NAME = deposit_contract.json
 DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
 CONFIGS_DIR = ./configs
-
+TEST_TYPE ?= minimal
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
