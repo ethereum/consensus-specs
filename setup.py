@@ -582,14 +582,14 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 #
 # EIP4844SpecBuilder
 #
-class EIP4844SpecBuilder(BellatrixSpecBuilder):
+class EIP4844SpecBuilder(CapellaSpecBuilder):
     fork: str = EIP4844
 
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
 from eth2spec.utils import kzg
-from eth2spec.bellatrix import {preset_name} as bellatrix
+from eth2spec.capella import {preset_name} as capella
 from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
 '''
 
@@ -967,7 +967,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork == CAPELLA:
+            if self.spec_fork in (CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/capella/beacon-chain.md
                     specs/capella/fork.md

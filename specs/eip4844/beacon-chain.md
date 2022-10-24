@@ -15,7 +15,6 @@
   - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
-  - [Test Parameters](#test-parameters)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
@@ -35,13 +34,14 @@
     - [Modified `process_operations`](#modified-process_operations)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
+  - [Disabling Withdrawals](#disabling-withdrawals)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an extension of the Capella upgrade. We introduce a new feature flag, `ENABLE_WITHDRAWALS`, to disable Capella-specific updates to the state transition function. This is done to minimize Capella specific issues that may arise during testing. `ENABLE_WITHDRAWALS` will be removed in the final upgrade specification.
+This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an extension of the Capella upgrade.
 
 ## Custom types
 
@@ -74,10 +74,6 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 | Name | Value |
 | - | - |
 | `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
-
-### Test Parameters
-| Name | Value |
-| `ENABLE_WITHDRAWALS` | `uint64(0)` |
 
 ## Configuration
 
@@ -218,9 +214,8 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_roots_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    if ENABLE_WITHDRAWALS:
-        process_full_withdrawals(state)
-        process_partial_withdrawals(state)
+    process_full_withdrawals(state)
+    process_partial_withdrawals(state)
 ```
 
 
@@ -230,8 +225,7 @@ def process_epoch(state: BeaconState) -> None:
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        if ENABLE_WITHDRAWALS:  # [New in EIP-4844]
-            process_withdrawals(state, block.body.execution_payload)
+        process_withdrawals(state, block.body.execution_payload)
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP-4844]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
@@ -273,7 +267,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         excess_blobs=payload.excess_blobs,  # [New in EIP-4844]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals) if ENABLE_WITHDRAWALS else Bytes32(),  # [New in EIP-4844]
+        withdrawals_root=hash_tree_root(payload.withdrawals),
     )
 ```
 
@@ -295,8 +289,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
-    if ENABLE_WITHDRAWALS:  # [New in EIP-4844]
-        for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 ```
 
 
@@ -362,3 +355,12 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 
     return state
 ```
+
+### Disabling Withdrawals
+During testing we avoid Capella-specific updates the state transition. We do this by replacing the following functions with a no-op implementation:
+- `process_full_withdrawals`
+- `process_partial_withdrawals`
+- `process_withdrawals`
+- `process_bls_to_execution_change`
+
+The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the PayloadAttributes used to update forkchoice does not contain withdrawals.

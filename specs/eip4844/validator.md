@@ -30,7 +30,6 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Blob KZG commitments](#blob-kzg-commitments)
   - [Beacon Block publishing time](#beacon-block-publishing-time)
-      - [ExecutionPayload](#executionpayload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -264,46 +263,3 @@ The validator MUST hold on to blobs for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
 to ensure the data-availability of these blobs throughout the network.
 
 After `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` nodes MAY prune the blobs and/or stop serving them.
-
-##### ExecutionPayload
-
-`ExecutionPayload`s are constructed as they were in Capella, except that we allow withdrawals to be disabled for testing.
-
-```python
-def prepare_execution_payload(state: BeaconState,
-                              pow_chain: Dict[Hash32, PowBlock],
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
-    if not is_merge_transition_complete(state):
-        is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
-        is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        if is_terminal_block_hash_set and not is_activation_epoch_reached:
-            # Terminal block hash is set but activation epoch is not yet reached, no prepare payload call is needed
-            return None
-
-        terminal_pow_block = get_terminal_pow_block(pow_chain)
-        if terminal_pow_block is None:
-            # Pre-merge, no prepare payload call is needed
-            return None
-        # Signify merge via producing on top of the terminal PoW block
-        parent_hash = terminal_pow_block.block_hash
-    else:
-        # Post-merge, normal payload
-        parent_hash = state.latest_execution_payload_header.block_hash
-
-    # Set the forkchoice head and initiate the payload build process
-    payload_attributes = PayloadAttributes(
-        timestamp=compute_timestamp_at_slot(state, state.slot),
-        prev_randao=get_randao_mix(state, get_current_epoch(state)),
-        suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state) if ENABLE_WITHDRAWALS else None,  # [New in EIP-4844]
-    )
-    return execution_engine.notify_forkchoice_updated(
-        head_block_hash=parent_hash,
-        safe_block_hash=safe_block_hash,
-        finalized_block_hash=finalized_block_hash,
-        payload_attributes=payload_attributes,
-    )
-```
