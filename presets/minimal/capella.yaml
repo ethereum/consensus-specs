@@ -21,4 +21,4 @@ MAX_BLS_TO_EXECUTION_CHANGES: 16
 # Execution
 # ---------------------------------------------------------------
 # [customized] Lower than MAX_PARTIAL_WITHDRAWALS_PER_EPOCH so not all processed in one block
-MAX_WITHDRAWALS_PER_PAYLOAD: 16
+MAX_WITHDRAWALS_PER_PAYLOAD: 8
