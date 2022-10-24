@@ -16,7 +16,7 @@ def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubk
     domain = spec.get_domain(state, spec.DOMAIN_BLS_TO_EXECUTION_CHANGE)
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,
-        from_bls_pubkey=withdrawal_pubkey,
+        from_bls_withdrawal_pubkey=withdrawal_pubkey,
         to_execution_address=b'\x42' * 20,
     )
 
