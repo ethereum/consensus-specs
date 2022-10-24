@@ -10,6 +10,8 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
 - [Preset](#preset)
+  - [Blob](#blob)
+  - [Crypto](#crypto)
   - [Trusted setup](#trusted-setup)
 - [Helper functions](#helper-functions)
   - [Bit-reversal permutation](#bit-reversal-permutation)
@@ -53,6 +55,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
 | `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
+| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | |
 
 ## Constants
 
@@ -62,7 +65,6 @@ Should we determine that they are required at a later point we can set
 | Name | Value | Notes |
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
-| `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 | `DOMAIN_SEPARATOR_AGGREGATE_PROTOCOL` | `b""` | Fiat-Shamir domain separator random aggregation |
 | `DOMAIN_SEPARATOR_EVAL_PROTOCOL` | `b""` | Fiat-Shamir domain separator random evaluation |
 | `DOMAIN_SEPARATOR_FIELD_ELEMENT` | `b""` | Fiat-Shamir domain separator for field elements |
@@ -71,6 +73,19 @@ Should we determine that they are required at a later point we can set
 
 
 ## Preset
+
+### Blob
+
+| Name | Value |
+| - | - |
+| `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` |
+| `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
+
+### Crypto
+
+| Name | Value | Notes |
+| - | - | - |
+| `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 
 ### Trusted setup
 
