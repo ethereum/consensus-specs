@@ -14,7 +14,7 @@ from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, SHARDING,
     MINIMAL, MAINNET,
     ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
-    ALL_FORK_UPGRADES,
+    FORKS_BEFORE_CAPELLA, ALL_FORK_UPGRADES,
 )
 from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
@@ -596,7 +596,7 @@ def is_post_bellatrix(spec):
 
 
 def is_post_capella(spec):
-    return spec.fork == CAPELLA
+    return spec.fork not in FORKS_BEFORE_CAPELLA
 
 
 def is_post_eip4844(spec):
