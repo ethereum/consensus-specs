@@ -27,6 +27,8 @@
     - [`g1_lincomb`](#g1_lincomb)
     - [`poly_lincomb`](#poly_lincomb)
     - [`compute_powers`](#compute_powers)
+  - [Polynomials](#polynomials)
+    - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
   - [KZG](#kzg)
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
@@ -34,8 +36,6 @@
     - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
     - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
-  - [Polynomials](#polynomials)
-    - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -55,7 +55,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
 | `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
-| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | |
+| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | a basic blob data |
 
 ## Constants
 
@@ -122,7 +122,7 @@ def is_power_of_two(value: int) -> bool:
 ```python
 def reverse_bits(n: int, order: int) -> int:
     """
-    Reverse the bit order of an integer n
+    Reverse the bit order of an integer ``n``.
     """
     assert is_power_of_two(order)
     # Convert n to binary with the same number of bits as "order" - 1, then reverse its bit order
@@ -148,7 +148,7 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 ```python
 def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     """
-    Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
+    Convert 32-byte value to a BLS field scalar. The output is not uniform over the BLS field.
     """
     return int.from_bytes(b, ENDIANNESS) % BLS_MODULUS
 ```
@@ -158,7 +158,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 ```python
 def blob_to_field_elements(blob: Blob) -> Polynomial:
     """
-    Convert blob to list of BLS field scalars.
+    Convert a blob to list of BLS field scalars.
     """
     r = Polynomial()
     for i in range(FIELD_ELEMENTS_PER_BLOB):
@@ -173,11 +173,11 @@ def blob_to_field_elements(blob: Blob) -> Polynomial:
 ```python
 def hash_to_bls_field(initializer: bytes,
                       polys: Sequence[Polynomial],
-                      comms: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, bytes]:
+                      comms: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, Hash32]:
     """
-    Compute 32-byte hash of serialised polynomials and commitments concatenated.
-    This hash is then converted to a BLS field element.
-    The output is not uniform over the BLS field.
+    Compute 32-byte hash of serialized polynomials and commitments concatenated.
+    This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
+    Return the BLS field element and the hash result.
     """
     data = initializer
 
@@ -213,7 +213,9 @@ def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
 
 ```python
 def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
-    """Divide two field elements: `x` by `y`"""
+    """
+    Divide two field elements: ``x`` by `y``.
+    """
     return (int(x) * int(bls_modular_inverse(y))) % BLS_MODULUS
 ```
 
@@ -260,6 +262,34 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
         powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % BLS_MODULUS
     return powers
+```
+
+### Polynomials
+
+#### `evaluate_polynomial_in_evaluation_form`
+
+```python
+def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
+                                           z: BLSFieldElement) -> BLSFieldElement:
+    """
+    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z``.
+    Uses the barycentric formula:
+       f(z) = (1 - z**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
+    """
+    width = len(polynomial)
+    assert width == FIELD_ELEMENTS_PER_BLOB
+    inverse_width = bls_modular_inverse(width)
+
+    # Make sure we won't divide by zero during division
+    assert z not in ROOTS_OF_UNITY
+
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+
+    result = 0
+    for i in range(width):
+        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (z - roots_of_unity_brp[i]))
+    result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
+    return result
 ```
 
 ### KZG
@@ -322,9 +352,10 @@ def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
 ```python
 def compute_aggregated_poly_and_commitment(
         blobs: Sequence[Blob],
-        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment, bytes]:
+        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment, Hash32]:
     """
-    Return the aggregated polynomial and aggregated KZG commitment.
+    Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
+    and (3) the hash of ``blobs`` and ``kzg_commitments``.
     """
     # Generate random linear combination challenges
     r, h = hash_to_bls_field(DOMAIN_SEPARATOR_AGGREGATE_PROTOCOL, blobs, kzg_commitments)
@@ -368,32 +399,3 @@ def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
     # Verify aggregated proof
     return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
 ```
-
-### Polynomials
-
-#### `evaluate_polynomial_in_evaluation_form`
-
-```python
-def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
-                                           z: BLSFieldElement) -> BLSFieldElement:
-    """
-    Evaluate a polynomial (in evaluation form) at an arbitrary point `z`
-    Uses the barycentric formula:
-       f(z) = (1 - z**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
-    """
-    width = len(polynomial)
-    assert width == FIELD_ELEMENTS_PER_BLOB
-    inverse_width = bls_modular_inverse(width)
-
-    # Make sure we won't divide by zero during division
-    assert z not in ROOTS_OF_UNITY
-
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
-
-    result = 0
-    for i in range(width):
-        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (z - roots_of_unity_brp[i]))
-    result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
-    return result
-```
-
