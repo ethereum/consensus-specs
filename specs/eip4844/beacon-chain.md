@@ -27,11 +27,9 @@
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Epoch processing](#epoch-processing)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
-    - [Modified `process_operations`](#modified-process_operations)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
   - [Disabling Withdrawals](#disabling-withdrawals)
@@ -198,27 +196,6 @@ def verify_kzg_commitments_against_transactions(transactions: Sequence[Transacti
 
 ## Beacon chain state transition function
 
-### Epoch processing
-
-```python
-def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)
-    process_inactivity_updates(state)
-    process_rewards_and_penalties(state)
-    process_registry_updates(state)
-    process_slashings(state)
-    process_eth1_data_reset(state)
-    process_effective_balance_updates(state)
-    process_slashings_reset(state)
-    process_randao_mixes_reset(state)
-    process_historical_roots_update(state)
-    process_participation_flag_updates(state)
-    process_sync_committee_updates(state)
-    process_full_withdrawals(state)
-    process_partial_withdrawals(state)
-```
-
-
 ### Block processing
 
 ```python
@@ -270,28 +247,6 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         withdrawals_root=hash_tree_root(payload.withdrawals),
     )
 ```
-
-#### Modified `process_operations`
-
-*Note*: The function `process_operations` is modified to feature flag Withdrawals.
-
-```python
-def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
-
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(body.proposer_slashings, process_proposer_slashing)
-    for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation)
-    for_ops(body.deposits, process_deposit)
-    for_ops(body.voluntary_exits, process_voluntary_exit)
-    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-```
-
 
 #### Blob KZG commitments
 

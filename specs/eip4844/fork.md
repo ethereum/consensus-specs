@@ -64,7 +64,7 @@ Note that for the pure EIP-4844 networks, we don't apply `upgrade_to_eip4844` si
 
 ### Upgrading the state
 
-Since the `eip4844.BeaconState` format is equal to the `Capella.BeaconState` format, we only have to update `BeaconState.fork`.
+Since the `eip4844.BeaconState` format is equal to the `capella.BeaconState` format, we only have to update `BeaconState.fork`.
 
 ```python
 def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
