@@ -312,7 +312,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 ```
 
 ### Disabling Withdrawals
-During testing we avoid Capella-specific updates the state transition. We do this by replacing the following functions with a no-op implementation:
+During testing we avoid Capella-specific updates to the state transition. We do this by replacing the following functions with a no-op implementation:
 - `process_full_withdrawals`
 - `process_partial_withdrawals`
 - `process_withdrawals`
