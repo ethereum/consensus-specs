@@ -36,7 +36,7 @@ def run_process_partial_withdrawals_no_op(spec, state, num_expected_withdrawals=
 
 @with_eip4844_and_later
 @spec_state_test
-def test_success_one_partial_withdrawable(spec, state):
+def test_no_op(spec, state):
     validator_index = len(state.validators) // 2
     set_validator_partially_withdrawable(spec, state, validator_index)
 
