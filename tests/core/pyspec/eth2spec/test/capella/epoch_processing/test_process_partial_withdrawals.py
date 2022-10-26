@@ -1,10 +1,11 @@
 import random
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    with_capella_and_later,
+    with_phases,
     spec_state_test,
     with_presets,
 )
+from eth2spec.test.helpers.constants import CAPELLA
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.random import randomize_state
@@ -48,7 +49,7 @@ def run_process_partial_withdrawals(spec, state, num_expected_withdrawals=None):
     assert state.next_withdrawal_index == pre_next_withdrawal_index + num_expected_withdrawals
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_no_withdrawable(spec, state):
     pre_validators = state.validators.copy()
@@ -57,7 +58,7 @@ def test_success_no_withdrawable(spec, state):
     assert pre_validators == state.validators
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_no_max_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
@@ -71,7 +72,7 @@ def test_success_no_max_effective_balance(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 0)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
@@ -85,7 +86,7 @@ def test_success_no_excess_balance(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 0)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_excess_balance_but_no_max_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
@@ -100,7 +101,7 @@ def test_success_excess_balance_but_no_max_effective_balance(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 0)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_partial_withdrawable(spec, state):
     validator_index = len(state.validators) // 2
@@ -109,7 +110,7 @@ def test_success_one_partial_withdrawable(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_partial_withdrawable_not_yet_active(spec, state):
     validator_index = len(state.validators) // 2
@@ -121,7 +122,7 @@ def test_success_one_partial_withdrawable_not_yet_active(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
     validator_index = len(state.validators) // 2
@@ -134,7 +135,7 @@ def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_partial_withdrawable_exited(spec, state):
     validator_index = len(state.validators) // 2
@@ -146,7 +147,7 @@ def test_success_one_partial_withdrawable_exited(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_partial_withdrawable_active_and_slashed(spec, state):
     validator_index = len(state.validators) // 2
@@ -158,7 +159,7 @@ def test_success_one_partial_withdrawable_active_and_slashed(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_partial_withdrawable_exited_and_slashed(spec, state):
     validator_index = len(state.validators) // 2
@@ -171,7 +172,7 @@ def test_success_one_partial_withdrawable_exited_and_slashed(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_two_partial_withdrawable(spec, state):
     set_validator_partially_withdrawable(spec, state, 0)
@@ -180,7 +181,7 @@ def test_success_two_partial_withdrawable(spec, state):
     yield from run_process_partial_withdrawals(spec, state, 2)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_max_partial_withdrawable(spec, state):
     # Sanity check that this test works for this state
@@ -192,7 +193,7 @@ def test_success_max_partial_withdrawable(spec, state):
     yield from run_process_partial_withdrawals(spec, state, spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @with_presets([MINIMAL], reason="not enough validators with mainnet config")
 @spec_state_test
 def test_success_max_plus_one_withdrawable(spec, state):
@@ -226,37 +227,37 @@ def run_random_partial_withdrawals_test(spec, state, rng):
     yield from run_process_partial_withdrawals(spec, state)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_0(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(0))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_1(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(1))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_2(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(2))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_3(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(3))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_4(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(4))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_5(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(5))

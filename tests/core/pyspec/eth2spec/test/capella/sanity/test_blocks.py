@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
-    with_capella_and_later, spec_state_test
+    with_phases, spec_state_test
 )
-
+from eth2spec.test.helpers.constants import CAPELLA
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -16,7 +16,7 @@ from eth2spec.test.helpers.withdrawals import (
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_successful_bls_change(spec, state):
     index = 0
@@ -39,7 +39,7 @@ def test_successful_bls_change(spec, state):
     assert post_credentials[12:] == signed_address_change.message.to_execution_address
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
@@ -57,7 +57,7 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     assert state.balances[index] == 0
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_partial_withdrawal_in_epoch_transition(spec, state):
     index = state.next_withdrawal_index
@@ -81,7 +81,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     assert len(state.withdrawal_queue) == pre_withdrawal_queue_len
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     assert len(state.validators) > spec.MAX_WITHDRAWALS_PER_PAYLOAD
@@ -106,7 +106,7 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     assert len(state.withdrawal_queue) == pre_withdrawal_queue_len + 1
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_exit_and_bls_change(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit

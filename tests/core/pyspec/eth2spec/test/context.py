@@ -606,7 +606,7 @@ def is_post_eip4844(spec):
 
 with_altair_and_later = with_all_phases_except([PHASE0])
 with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
-with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, EIP4844])
+with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX])
 with_eip4844_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 
 

@@ -1,14 +1,15 @@
 from random import Random
 
 from eth2spec.test.context import (
-    with_capella_and_later,
+    with_phases,
     spec_state_test,
+)
+from eth2spec.test.helpers.constants import CAPELLA
+from eth2spec.test.helpers.epoch_processing import (
+    run_epoch_processing_to,
 )
 from eth2spec.test.helpers.random import (
     randomize_state,
-)
-from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_to,
 )
 from eth2spec.test.helpers.withdrawals import (
     set_validator_fully_withdrawable,
@@ -41,7 +42,7 @@ def run_process_full_withdrawals(spec, state, num_expected_withdrawals=None):
     assert state.next_withdrawal_index == pre_next_withdrawal_index + num_expected_withdrawals
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_no_withdrawable_validators(spec, state):
     pre_validators = state.validators.copy()
@@ -50,7 +51,7 @@ def test_no_withdrawable_validators(spec, state):
     assert pre_validators == state.validators
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_withdrawable_epoch_but_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -62,7 +63,7 @@ def test_withdrawable_epoch_but_0_balance(spec, state):
     yield from run_process_full_withdrawals(spec, state, 0)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_withdrawable_epoch_but_0_effective_balance_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -74,7 +75,7 @@ def test_withdrawable_epoch_but_0_effective_balance_0_balance(spec, state):
     yield from run_process_full_withdrawals(spec, state, 0)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_withdrawable_epoch_but_0_effective_balance_nonzero_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -86,7 +87,7 @@ def test_withdrawable_epoch_but_0_effective_balance_nonzero_balance(spec, state)
     yield from run_process_full_withdrawals(spec, state, 1)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_no_withdrawals_but_some_next_epoch(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -98,7 +99,7 @@ def test_no_withdrawals_but_some_next_epoch(spec, state):
     yield from run_process_full_withdrawals(spec, state, 0)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_single_withdrawal(spec, state):
     # Make one validator withdrawable
@@ -110,7 +111,7 @@ def test_single_withdrawal(spec, state):
     assert state.next_withdrawal_index == 1
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_multi_withdrawal(spec, state):
     # Make a few validators withdrawable
@@ -120,7 +121,7 @@ def test_multi_withdrawal(spec, state):
     yield from run_process_full_withdrawals(spec, state, 3)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_all_withdrawal(spec, state):
     # Make all validators withdrawable
@@ -150,25 +151,25 @@ def run_random_full_withdrawals_test(spec, state, rng):
     yield from run_process_full_withdrawals(spec, state, None)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_withdrawals_0(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, Random(444))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_withdrawals_1(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, Random(420))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_withdrawals_2(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, Random(200))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_random_withdrawals_3(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, Random(2000000))

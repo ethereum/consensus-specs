@@ -617,6 +617,34 @@ KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
 ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
 
 
+#
+# Temporarily disable Withdrawals functions for EIP4844 testnets
+#
+
+
+def no_op(fn):  # type: ignore
+    def wrapper(*args, **kw):  # type: ignore
+        return None
+    return wrapper
+
+
+def get_empty_list_result(fn):  # type: ignore
+    def wrapper(*args, **kw):  # type: ignore
+        return []
+    return wrapper
+
+
+process_full_withdrawals = no_op(process_full_withdrawals)
+process_partial_withdrawals = no_op(process_partial_withdrawals)
+process_withdrawals = no_op(process_withdrawals)
+process_bls_to_execution_change = no_op(process_bls_to_execution_change)
+get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
+
+
+#
+# End
+#
+
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
     pass'''
 

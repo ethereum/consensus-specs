@@ -1,8 +1,9 @@
+from eth2spec.test.helpers.constants import CAPELLA
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_capella_and_later
+from eth2spec.test.context import spec_state_test, expect_assertion_error, with_phases
 
 from eth2spec.test.helpers.state import next_slot
 
@@ -53,7 +54,7 @@ def run_withdrawals_processing(spec, state, execution_payload, valid=True):
         assert state.withdrawal_queue == pre_withdrawal_queue[num_withdrawals:]
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_empty_queue(spec, state):
     assert len(state.withdrawal_queue) == 0
@@ -64,7 +65,7 @@ def test_success_empty_queue(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_one_in_queue(spec, state):
     prepare_withdrawal_queue(spec, state, 1)
@@ -75,7 +76,7 @@ def test_success_one_in_queue(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_max_per_slot_in_queue(spec, state):
     prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
@@ -86,7 +87,7 @@ def test_success_max_per_slot_in_queue(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_a_lot_in_queue(spec, state):
     prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
@@ -101,7 +102,7 @@ def test_success_a_lot_in_queue(spec, state):
 # Failure cases in which the number of withdrawals in the execution_payload is incorrect
 #
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_empty_queue_non_empty_withdrawals(spec, state):
     assert len(state.withdrawal_queue) == 0
@@ -118,7 +119,7 @@ def test_fail_empty_queue_non_empty_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_one_in_queue_none_in_withdrawals(spec, state):
     prepare_withdrawal_queue(spec, state, 1)
@@ -130,7 +131,7 @@ def test_fail_one_in_queue_none_in_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_one_in_queue_two_in_withdrawals(spec, state):
     prepare_withdrawal_queue(spec, state, 1)
@@ -142,7 +143,7 @@ def test_fail_one_in_queue_two_in_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_max_per_slot_in_queue_one_less_in_withdrawals(spec, state):
     prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
@@ -154,7 +155,7 @@ def test_fail_max_per_slot_in_queue_one_less_in_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_a_lot_in_queue_too_few_in_withdrawals(spec, state):
     prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
@@ -170,7 +171,7 @@ def test_fail_a_lot_in_queue_too_few_in_withdrawals(spec, state):
 # Failure cases in which the withdrawals in the execution_payload are incorrect
 #
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_incorrect_dequeue_index(spec, state):
     prepare_withdrawal_queue(spec, state, 1)
@@ -182,7 +183,7 @@ def test_fail_incorrect_dequeue_index(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_incorrect_dequeue_address(spec, state):
     prepare_withdrawal_queue(spec, state, 1)
@@ -194,7 +195,7 @@ def test_fail_incorrect_dequeue_address(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_incorrect_dequeue_amount(spec, state):
     prepare_withdrawal_queue(spec, state, 1)
@@ -206,7 +207,7 @@ def test_fail_incorrect_dequeue_amount(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_one_of_many_dequeued_incorrectly(spec, state):
     prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
@@ -224,7 +225,7 @@ def test_fail_one_of_many_dequeued_incorrectly(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_fail_many_dequeued_incorrectly(spec, state):
     prepare_withdrawal_queue(spec, state, spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
