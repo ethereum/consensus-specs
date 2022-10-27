@@ -59,18 +59,9 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 ## Constants
 
-*Note*: Domain separators are set to an empty string as they are not required according to current understanding (and are not "free").
-Should we determine that they are required at a later point we can set 
-
 | Name | Value | Notes |
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
-| `DOMAIN_SEPARATOR_AGGREGATE_PROTOCOL` | `b""` | Fiat-Shamir domain separator random aggregation |
-| `DOMAIN_SEPARATOR_EVAL_PROTOCOL` | `b""` | Fiat-Shamir domain separator random evaluation |
-| `DOMAIN_SEPARATOR_FIELD_ELEMENT` | `b""` | Fiat-Shamir domain separator for field elements |
-| `DOMAIN_SEPARATOR_POINT` | `b""` | Fiat-Shamir domain separator for G1 points |
-| `DOMAIN_SEPARATOR_SQUEEZE` | `b""` | Fiat-Shamir domain separator before hashing |
-
 
 ## Preset
 
@@ -171,31 +162,28 @@ def blob_to_field_elements(blob: Blob) -> Polynomial:
 #### `hash_to_bls_field`
 
 ```python
-def hash_to_bls_field(initializer: bytes,
-                      polys: Sequence[Polynomial],
+def hash_to_bls_field(polys: Sequence[Polynomial],
                       comms: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, Hash32]:
     """
     Compute 32-byte hash of serialized polynomials and commitments concatenated.
     This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
-    Return the BLS field element and the hash result.
+    Return the BLS field element.
     """
-    data = initializer
+    # Append the number of polynomials and the degree of each polynomial as a domain separator
+    num_polys = int.to_bytes(len(polys), 16, ENDIANNESS)
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, ENDIANNESS)
+    data = num_polys + degree_poly
 
     # Append each polynomial which is composed by field elements
     for poly in polys:
         for field_element in poly:
-            data += DOMAIN_SEPARATOR_FIELD_ELEMENT
             data += int.to_bytes(field_element, 32, ENDIANNESS)
 
     # Append serialised G1 points
     for commitment in comms:
-        data += DOMAIN_SEPARATOR_POINT
         data += commitment
 
-    data += DOMAIN_SEPARATOR_SQUEEZE
-    h = hash(data)
-
-    return bytes_to_bls_field(h), h
+    return bytes_to_bls_field(hash(data))
 ```
 
 #### `bls_modular_inverse`
@@ -352,14 +340,15 @@ def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
 ```python
 def compute_aggregated_poly_and_commitment(
         blobs: Sequence[Blob],
-        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment, Hash32]:
+        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment, BLSFieldElement]:
     """
     Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
     and (3) the hash of ``blobs`` and ``kzg_commitments``.
     """
     # Generate random linear combination challenges
-    r, h = hash_to_bls_field(DOMAIN_SEPARATOR_AGGREGATE_PROTOCOL, blobs, kzg_commitments)
+    r = hash_to_bls_field(blobs, kzg_commitments)
     r_powers = compute_powers(r, len(kzg_commitments))
+    r2 = r_powers[-1] * r
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb([blob_to_field_elements(blob) for blob in blobs], r_powers))
@@ -367,7 +356,7 @@ def compute_aggregated_poly_and_commitment(
     # Compute commitment to aggregated polynomial
     aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
 
-    return aggregated_poly, aggregated_poly_commitment, h
+    return aggregated_poly, aggregated_poly_commitment, r2
 ```
 
 #### `compute_aggregate_kzg_proof`
@@ -375,9 +364,8 @@ def compute_aggregated_poly_and_commitment(
 ```python
 def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment, h = compute_aggregated_poly_and_commitment(blobs, commitments)
-    x, _ = hash_to_bls_field(DOMAIN_SEPARATOR_EVAL_PROTOCOL + h, [aggregated_poly], [aggregated_poly_commitment])
-    return compute_kzg_proof(aggregated_poly, x)
+    aggregated_poly, aggregated_poly_commitment, r2 = compute_aggregated_poly_and_commitment(blobs, commitments)
+    return compute_kzg_proof(aggregated_poly, r2)
 ```
 
 #### `verify_aggregate_kzg_proof`
@@ -386,16 +374,14 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
                                kzg_aggregated_proof: KZGCommitment) -> bool:
-    aggregated_poly, aggregated_poly_commitment, h = compute_aggregated_poly_and_commitment(
+    aggregated_poly, aggregated_poly_commitment, r2 = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,
     )
 
-    # Generate challenge `x` and evaluate the aggregated polynomial at `x`
-    x, _ = hash_to_bls_field(DOMAIN_SEPARATOR_EVAL_PROTOCOL + h, [aggregated_poly], [aggregated_poly_commitment])
-    # Evaluate aggregated polynomial at `x` (evaluation function checks for div-by-zero)
-    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
+    # Evaluate aggregated polynomial at `r2` (evaluation function checks for div-by-zero)
+    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, r2)
 
     # Verify aggregated proof
-    return verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+    return verify_kzg_proof(aggregated_poly_commitment, r2, y, kzg_aggregated_proof)
 ```
