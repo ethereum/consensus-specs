@@ -21,6 +21,7 @@
     - [`Withdrawal`](#withdrawal)
     - [`BLSToExecutionChange`](#blstoexecutionchange)
     - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
+    - [`HistoricalBatchSummary`](#historicalbatchsummary)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -37,6 +38,7 @@
   - [Epoch processing](#epoch-processing)
     - [Full withdrawals](#full-withdrawals)
     - [Partial withdrawals](#partial-withdrawals)
+    - [Historical batches updates](#historical-batches-updates)
   - [Block processing](#block-processing)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
@@ -132,6 +134,18 @@ class SignedBLSToExecutionChange(Container):
     signature: BLSSignature
 ```
 
+#### `HistoricalBatchSummary`
+
+```python
+class HistoricalBatchSummary(Container):
+    """
+    `HistoricalBatchSummary` matches the components of the phase0 HistoricalBatch
+    making the two hash_tree_root-compatible.
+    """
+    block_batch_root: Root
+    state_batch_root: Root
+```
+
 ### Extended Containers
 
 #### `ExecutionPayload`
@@ -213,7 +227,8 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT] # Frozen in Merge, replaced by historical_batches
+    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT] # Valid from Merge onwards
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -320,7 +335,7 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    process_historical_roots_update(state)
+    process_historical_batches_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_full_withdrawals(state)  # [New in Capella]
@@ -365,6 +380,21 @@ def process_partial_withdrawals(state: BeaconState) -> None:
             break
 
     state.next_partial_withdrawal_validator_index = validator_index
+```
+
+#### Historical batches updates
+
+*Note*: The function `process_historical_batches_update` replaces `process_historical_roots_update` in phase0.
+
+```python
+def process_historical_batches_update(state: BeaconState) -> None:
+    # Set historical block root accumulator
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        historical_batch = HistoricalBatchSummary(
+            block_batch_root=hash_tree_root(state.block_roots),
+            state_batch_root=hash_tree_root(state.state_roots))
+        state.historical_batches.append(historical_batch)
 ```
 
 ### Block processing
