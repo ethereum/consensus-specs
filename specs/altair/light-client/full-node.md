@@ -84,13 +84,13 @@ def create_light_client_update(state: BeaconState,
     header = state.latest_block_header.copy()
     header.state_root = hash_tree_root(state)
     assert hash_tree_root(header) == hash_tree_root(block.message)
-    update_signature_period = compute_sync_committee_period(compute_epoch_at_slot(block.message.slot))
+    update_signature_period = compute_sync_committee_period_at_slot(block.message.slot)
 
     assert attested_state.slot == attested_state.latest_block_header.slot
     attested_header = attested_state.latest_block_header.copy()
     attested_header.state_root = hash_tree_root(attested_state)
     assert hash_tree_root(attested_header) == block.message.parent_root
-    update_attested_period = compute_sync_committee_period(compute_epoch_at_slot(attested_header.slot))
+    update_attested_period = compute_sync_committee_period_at_slot(attested_header.slot)
 
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
@@ -133,7 +133,7 @@ def create_light_client_update(state: BeaconState,
 Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `is_better_update`) for each sync committee period covering any epochs in range `[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]` where `current_epoch` is defined by the current wall-clock time. Full nodes MAY also provide `LightClientUpdate` for other sync committee periods.
 
 - `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.slot`
-- `LightClientUpdate` are only considered if `compute_sync_committee_period(compute_epoch_at_slot(update.attested_header.slot)) == compute_sync_committee_period(compute_epoch_at_slot(update.signature_slot))`
+- `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
 - Only `LightClientUpdate` with `next_sync_committee` as selected by fork choice are provided, regardless of ranking by `is_better_update`. To uniquely identify a non-finalized sync committee fork, all of `period`, `current_sync_committee` and `next_sync_committee` need to be incorporated, as sync committees may reappear over time.
 
 ### `create_light_client_finality_update`
