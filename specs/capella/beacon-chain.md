@@ -24,7 +24,6 @@
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
-    - [`Validator`](#validator)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
@@ -111,6 +110,7 @@ We define the following Python custom types for type hinting and readability:
 ```python
 class Withdrawal(Container):
     index: WithdrawalIndex
+    validator_index: ValidatorIndex
     address: ExecutionAddress
     amount: Gwei
 ```
@@ -178,22 +178,6 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root  # [New in Capella]
-```
-
-#### `Validator`
-
-```python
-class Validator(Container):
-    pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
-    effective_balance: Gwei  # Balance at stake
-    slashed: boolean
-    # Status epochs
-    activation_eligibility_epoch: Epoch  # When criteria for activation were met
-    activation_epoch: Epoch
-    exit_epoch: Epoch
-    withdrawable_epoch: Epoch  # When validator can withdraw funds
-    fully_withdrawn_epoch: Epoch  # [New in Capella]
 ```
 
 #### `BeaconBlockBody`
@@ -275,6 +259,7 @@ def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount
     # Create a corresponding withdrawal receipt
     withdrawal = Withdrawal(
         index=state.next_withdrawal_index,
+        validator_index=validator_index,
         address=ExecutionAddress(state.validators[validator_index].withdrawal_credentials[12:]),
         amount=amount,
     )
@@ -297,13 +282,14 @@ def has_eth1_withdrawal_credential(validator: Validator) -> bool:
 #### `is_fully_withdrawable_validator`
 
 ```python
-def is_fully_withdrawable_validator(validator: Validator, epoch: Epoch) -> bool:
+def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
     return (
         has_eth1_withdrawal_credential(validator)
-        and validator.withdrawable_epoch <= epoch < validator.fully_withdrawn_epoch
+        and validator.withdrawable_epoch <= epoch
+        and balance > 0
     )
 ```
 
@@ -349,11 +335,11 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_full_withdrawals(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    for index, validator in enumerate(state.validators):
-        if is_fully_withdrawable_validator(validator, current_epoch):
-            # TODO, consider the zero-balance case
-            withdraw_balance(state, ValidatorIndex(index), state.balances[index])
-            validator.fully_withdrawn_epoch = current_epoch
+    for index in range(len(state.validators)):
+        balance = state.balances[index]
+        validator = state.validators[index]
+        if is_fully_withdrawable_validator(validator, balance, current_epoch):
+            withdraw_balance(state, ValidatorIndex(index), balance)
 ```
 
 #### Partial withdrawals

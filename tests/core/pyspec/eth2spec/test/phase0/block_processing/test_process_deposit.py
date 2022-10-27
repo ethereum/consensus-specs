@@ -141,12 +141,56 @@ def test_invalid_sig_new_deposit(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_success_top_up(spec, state):
+def test_success_top_up__max_effective_balance(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
+    state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+
     yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+
+@with_all_phases
+@spec_state_test
+def test_success_top_up__less_effective_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    initial_balance = spec.MAX_EFFECTIVE_BALANCE - 1000
+    initial_effective_balance = spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    state.balances[validator_index] = initial_balance
+    state.validators[validator_index].effective_balance = initial_effective_balance
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+    assert state.balances[validator_index] == initial_balance + amount
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
+
+
+@with_all_phases
+@spec_state_test
+def test_success_top_up__zero_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    initial_balance = 0
+    initial_effective_balance = 0
+    state.balances[validator_index] = initial_balance
+    state.validators[validator_index].effective_balance = initial_effective_balance
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+    assert state.balances[validator_index] == initial_balance + amount
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
 @with_all_phases

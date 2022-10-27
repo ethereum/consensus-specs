@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA
 
 
 if __name__ == "__main__":
@@ -24,6 +24,13 @@ if __name__ == "__main__":
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
 
+    _new_capella_mods = {key: 'eth2spec.test.capella.block_processing.test_process_' + key for key in [
+        'deposit',
+        'bls_to_execution_change',
+        'withdrawals',
+    ]}
+    capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
+
     # TODO Custody Game testgen is disabled for now
     # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
     #     'attestation',
@@ -38,6 +45,7 @@ if __name__ == "__main__":
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
         BELLATRIX: bellatrix_mods,
+        CAPELLA: capella_mods,
     }
 
     run_state_test_generators(runner_name="operations", all_mods=all_mods)

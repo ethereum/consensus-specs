@@ -20,9 +20,6 @@ def build_mock_validator(spec, i: int, balance: int):
         effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     )
 
-    if spec.fork in (CAPELLA):
-        validator.fully_withdrawn_epoch = spec.FAR_FUTURE_EPOCH
-
     return validator
 
 

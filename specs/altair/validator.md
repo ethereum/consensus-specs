@@ -146,7 +146,7 @@ This function is a predicate indicating the presence or absence of the validator
 *Note*: Being assigned to a sync committee for a given `slot` means that the validator produces and broadcasts signatures for `slot - 1` for inclusion in `slot`.
 This means that when assigned to an `epoch` sync committee signatures must be produced and broadcast for slots on range `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
 rather than for the range `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
-To reduce complexity during the Altair fork, sync committees are not expected to produce signatures for `compute_epoch_at_slot(ALTAIR_FORK_EPOCH) - 1`.
+To reduce complexity during the Altair fork, sync committees are not expected to produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
 
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
