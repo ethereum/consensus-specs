@@ -7,8 +7,10 @@ from eth2spec.test.context import (
 @with_altair_and_later
 @spec_state_test
 def test_current_sync_committee_merkle_proof(spec, state):
-    yield "state", state
-    current_sync_committee_branch = spec.compute_merkle_proof_for_state(state, spec.CURRENT_SYNC_COMMITTEE_INDEX)
+    yield "object_class", "meta", "BeaconState"
+    yield "object", state
+    current_sync_committee_branch = \
+        spec.compute_merkle_proof_for_state(state, spec.CURRENT_SYNC_COMMITTEE_INDEX)
     yield "proof", {
         "leaf": "0x" + state.current_sync_committee.hash_tree_root().hex(),
         "leaf_index": spec.CURRENT_SYNC_COMMITTEE_INDEX,
@@ -26,8 +28,10 @@ def test_current_sync_committee_merkle_proof(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_next_sync_committee_merkle_proof(spec, state):
-    yield "state", state
-    next_sync_committee_branch = spec.compute_merkle_proof_for_state(state, spec.NEXT_SYNC_COMMITTEE_INDEX)
+    yield "object_class", "meta", "BeaconState"
+    yield "object", state
+    next_sync_committee_branch = \
+        spec.compute_merkle_proof_for_state(state, spec.NEXT_SYNC_COMMITTEE_INDEX)
     yield "proof", {
         "leaf": "0x" + state.next_sync_committee.hash_tree_root().hex(),
         "leaf_index": spec.NEXT_SYNC_COMMITTEE_INDEX,
@@ -45,8 +49,10 @@ def test_next_sync_committee_merkle_proof(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_finality_root_merkle_proof(spec, state):
-    yield "state", state
-    finality_branch = spec.compute_merkle_proof_for_state(state, spec.FINALIZED_ROOT_INDEX)
+    yield "object_class", "meta", "BeaconState"
+    yield "object", state
+    finality_branch = \
+        spec.compute_merkle_proof_for_state(state, spec.FINALIZED_ROOT_INDEX)
     yield "proof", {
         "leaf": "0x" + state.finalized_checkpoint.root.hex(),
         "leaf_index": spec.FINALIZED_ROOT_INDEX,
