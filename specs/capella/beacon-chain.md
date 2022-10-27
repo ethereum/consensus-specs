@@ -228,7 +228,6 @@ class BeaconState(Container):
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT] # Frozen in Merge, replaced by historical_batches
-    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT] # Valid from Merge onwards
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -259,6 +258,8 @@ class BeaconState(Container):
     withdrawal_queue: List[Withdrawal, WITHDRAWAL_QUEUE_LIMIT]  # [New in Capella]
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_partial_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
+    # Deep history
+    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT] # Valid from Merge onwards
 ```
 
 ## Helpers
