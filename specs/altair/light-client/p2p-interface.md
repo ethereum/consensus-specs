@@ -71,6 +71,17 @@ For light clients, the following validations MUST additionally pass before forwa
 
 Light clients SHOULD call `process_light_client_finality_update` even if the message is ignored.
 
+The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.slot))`.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`                  | Message SSZ type                     |
+| ------------------------------- | ------------------------------------ |
+| `GENESIS_FORK_VERSION`          | n/a                                  |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate`   |
+
 ###### `light_client_optimistic_update`
 
 This topic is used to propagate the latest `LightClientOptimisticUpdate` to light clients, allowing them to keep track of the latest `optimistic_header`.
@@ -87,6 +98,17 @@ For light clients, the following validations MUST additionally pass before forwa
 - _[IGNORE]_ The `optimistic_update` either matches corresponding fields of the most recently forwarded `LightClientFinalityUpdate` (if any), or it advances the `optimistic_header` of the local `LightClientStore` -- i.e. validate that processing `optimistic_update` increases `store.optimistic_header.slot`
 
 Light clients SHOULD call `process_light_client_optimistic_update` even if the message is ignored.
+
+The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.slot))`.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`                  | Message SSZ type                     |
+| ------------------------------- | ------------------------------------ |
+| `GENESIS_FORK_VERSION`          | n/a                                  |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientOptimisticUpdate` |
 
 ### The Req/Resp domain
 
