@@ -5,15 +5,11 @@ generation and verification of merkle proofs based on static data.
 
 ## Test case format
 
-### `meta.yaml`
-
-```yaml
-object_class: string  -- 'BeaconState'
-```
+Tests for each individual SSZ type are grouped into a `suite` indicating the SSZ type name.
 
 ### `object.yaml`
 
-A SSZ-snappy encoded object of type `object_class` from which other data is generated.
+A SSZ-snappy encoded object from which other data is generated. The SSZ type can be determined from the test `suite` name.
 
 ### `proof.yaml`
 
