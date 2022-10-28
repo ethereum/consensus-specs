@@ -1131,7 +1131,7 @@ setup(
         "pycryptodome==3.15.0",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.24",
+        "remerkleable==0.1.25",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
