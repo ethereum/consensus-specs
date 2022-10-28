@@ -37,14 +37,14 @@ def test_process_light_client_update_not_timeout(spec, state):
     # Ensure that finality checkpoint is genesis
     assert state.finalized_checkpoint.epoch == 0
     # Finality is unchanged
-    finality_header = spec.BeaconBlockHeader()
+    finalized_header = spec.BeaconBlockHeader()
     finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
     update = spec.LightClientUpdate(
         attested_header=attested_header,
         next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finality_header,
+        finalized_header=finalized_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
         signature_slot=signature_slot,
@@ -81,14 +81,14 @@ def test_process_light_client_update_at_period_boundary(spec, state):
     next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
 
     # Finality is unchanged
-    finality_header = spec.BeaconBlockHeader()
+    finalized_header = spec.BeaconBlockHeader()
     finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
     update = spec.LightClientUpdate(
         attested_header=attested_header,
         next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finality_header,
+        finalized_header=finalized_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
         signature_slot=signature_slot,
@@ -126,14 +126,14 @@ def test_process_light_client_update_timeout(spec, state):
     next_sync_committee = state.next_sync_committee
     next_sync_committee_branch = spec.compute_merkle_proof_for_state(state, spec.NEXT_SYNC_COMMITTEE_INDEX)
     # Finality is unchanged
-    finality_header = spec.BeaconBlockHeader()
+    finalized_header = spec.BeaconBlockHeader()
     finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
     update = spec.LightClientUpdate(
         attested_header=attested_header,
         next_sync_committee=next_sync_committee,
         next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finality_header,
+        finalized_header=finalized_header,
         finality_branch=finality_branch,
         sync_aggregate=sync_aggregate,
         signature_slot=signature_slot,
