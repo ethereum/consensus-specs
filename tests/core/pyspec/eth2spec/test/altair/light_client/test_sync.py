@@ -63,11 +63,11 @@ def get_checks(store):
     return {
         "finalized_header": {
             'slot': int(store.finalized_header.slot),
-            'root': encode_hex(store.finalized_header.hash_tree_root()),
+            'beacon_root': encode_hex(store.finalized_header.hash_tree_root()),
         },
         "optimistic_header": {
             'slot': int(store.optimistic_header.slot),
-            'root': encode_hex(store.optimistic_header.hash_tree_root()),
+            'beacon_root': encode_hex(store.optimistic_header.hash_tree_root()),
         },
     }
 
