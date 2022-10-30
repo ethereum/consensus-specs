@@ -30,6 +30,7 @@ from eth2spec.test.helpers.sync_committee import (
     compute_sync_committee_participant_reward_and_penalty,
 )
 from eth2spec.test.helpers.constants import PHASE0, MINIMAL
+from eth2spec.test.helpers.phases import is_post_altair, is_post_bellatrix
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
@@ -37,8 +38,6 @@ from eth2spec.test.context import (
     with_presets,
     with_custom_state,
     large_validator_set,
-    is_post_altair,
-    is_post_bellatrix,
 )
 
 

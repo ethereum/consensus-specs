@@ -1,8 +1,8 @@
 from random import Random
 
 from eth2spec.test.helpers.attestations import cached_prepare_state_with_attestations
-from eth2spec.test.context import is_post_altair
 from eth2spec.test.helpers.deposits import mock_deposit
+from eth2spec.test.helpers.phases import is_post_altair
 from eth2spec.test.helpers.state import next_epoch
 
 

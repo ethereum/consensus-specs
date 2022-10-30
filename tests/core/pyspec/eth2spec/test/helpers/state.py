@@ -1,5 +1,6 @@
-from eth2spec.test.context import expect_assertion_error, is_post_altair
+from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
+from eth2spec.test.helpers.phases import is_post_altair
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 

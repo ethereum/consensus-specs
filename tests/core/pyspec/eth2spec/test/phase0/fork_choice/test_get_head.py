@@ -2,7 +2,6 @@ import random
 from eth_utils import encode_hex
 
 from eth2spec.test.context import (
-    is_post_altair,
     spec_state_test,
     with_all_phases,
     with_presets,
@@ -23,6 +22,9 @@ from eth2spec.test.helpers.fork_choice import (
     add_attestation,
     tick_and_run_on_attestation,
     tick_and_add_block,
+)
+from eth2spec.test.helpers.phases import (
+    is_post_altair,
 )
 from eth2spec.test.helpers.state import (
     next_slots,

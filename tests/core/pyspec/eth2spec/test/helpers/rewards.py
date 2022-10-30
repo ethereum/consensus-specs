@@ -2,7 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
-from eth2spec.test.context import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.phases import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.state import (
     next_epoch,
 )

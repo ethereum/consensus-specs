@@ -13,9 +13,10 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, SHARDING,
     MINIMAL, MAINNET,
-    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
+    ALL_PHASES,
     ALL_FORK_UPGRADES,
 )
+from .helpers.phases import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
 from .utils import (
@@ -408,6 +409,15 @@ def with_all_phases(fn):
     return with_phases(ALL_PHASES)(fn)
 
 
+def with_all_phases_from(earliest_phase):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in ALL_PHASES if is_post_fork(phase, earliest_phase)])(fn)
+    return decorator
+
+
 def with_all_phases_except(exclusion_phases):
     """
     A decorator factory for running a tests with every phase except the ones listed
@@ -415,6 +425,12 @@ def with_all_phases_except(exclusion_phases):
     def decorator(fn):
         return with_phases([phase for phase in ALL_PHASES if phase not in exclusion_phases])(fn)
     return decorator
+
+
+with_altair_and_later = with_all_phases_from(ALTAIR)
+with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
+with_capella_and_later = with_all_phases_from(CAPELLA)
+with_eip4844_and_later = with_all_phases_from(EIP4844)
 
 
 def _get_preset_targets(kw):
@@ -585,28 +601,6 @@ def with_config_overrides(config_overrides):
                 yield from out
         return wrapper
     return decorator
-
-
-def is_post_altair(spec):
-    return spec.fork not in FORKS_BEFORE_ALTAIR
-
-
-def is_post_bellatrix(spec):
-    return spec.fork not in FORKS_BEFORE_BELLATRIX
-
-
-def is_post_capella(spec):
-    return spec.fork == CAPELLA
-
-
-def is_post_eip4844(spec):
-    return spec.fork == EIP4844
-
-
-with_altair_and_later = with_all_phases_except([PHASE0])
-with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
-with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, EIP4844])
-with_eip4844_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 
 
 def only_generator(reason):

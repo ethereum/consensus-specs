@@ -5,6 +5,8 @@ from eth2spec.test.context import (
     with_custom_state,
     zero_activation_threshold,
     misc_balances, low_single_balance,
+)
+from eth2spec.test.helpers.phases import (
     is_post_altair,
 )
 from eth2spec.test.helpers.state import (

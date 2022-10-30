@@ -1,6 +1,6 @@
-from eth2spec.test.context import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
+from eth2spec.test.helpers.phases import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,

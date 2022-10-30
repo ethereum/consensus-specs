@@ -1,9 +1,10 @@
 from random import Random
-from eth2spec.test.context import spec_state_test, with_all_phases, is_post_altair, is_post_bellatrix
+from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with, run_epoch_processing_to
 )
 from eth2spec.test.helpers.random import randomize_state
+from eth2spec.test.helpers.phases import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.state import has_active_balance_differential
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth2spec.test.helpers.state import next_epoch

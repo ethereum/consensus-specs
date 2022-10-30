@@ -1,5 +1,5 @@
 
-from eth2spec.test.context import is_post_altair
+from eth2spec.test.helpers.phases import is_post_altair
 
 
 def get_process_calls(spec):

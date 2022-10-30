@@ -1,5 +1,4 @@
 from eth2spec.test.context import (
-    is_post_altair,
     spec_test,
     single_phase,
     with_presets,
@@ -8,6 +7,9 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
+)
+from eth2spec.test.helpers.phases import (
+    is_post_altair,
 )
 
 
