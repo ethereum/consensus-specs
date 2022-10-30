@@ -61,7 +61,8 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 | Name | Value | Notes |
 | - | - | - |
-| `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
+| `BLS_MODULUS` | | `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
+Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 
 ## Preset
 
@@ -71,6 +72,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | - | - |
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` |
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
+| `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` | 
 
 ### Crypto
 
@@ -170,9 +172,9 @@ def hash_to_bls_field(polys: Sequence[Polynomial],
     Return the BLS field element.
     """
     # Append the number of polynomials and the degree of each polynomial as a domain separator
-    num_polys = int.to_bytes(len(polys), 16, ENDIANNESS)
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, ENDIANNESS)
-    data = num_polys + degree_poly
+    num_polys = int.to_bytes(len(polys), 8, ENDIANNESS)
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
+    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly + num_polys
 
     # Append each polynomial which is composed by field elements
     for poly in polys:
