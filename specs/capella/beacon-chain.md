@@ -7,6 +7,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
@@ -31,6 +32,7 @@
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
+    - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_operations`](#modified-process_operations)
@@ -49,6 +51,14 @@ to validator withdrawals. Including:
   credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
   `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
+
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
 
 ## Constants
 
@@ -78,6 +88,7 @@ to validator withdrawals. Including:
 
 ```python
 class Withdrawal(Container):
+    index: WithdrawalIndex
     validator_index: ValidatorIndex
     address: ExecutionAddress
     amount: Gwei
@@ -209,6 +220,7 @@ class BeaconState(Container):
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
+    next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     last_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
 ```
 
@@ -268,33 +280,54 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
+#### New `get_expected_withdrawals`
+
+```python
+def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
+    epoch = get_current_epoch(state)
+    withdrawal_index = state.next_withdrawal_index
+    index = ValidatorIndex((state.last_withdrawal_validator_index + 1) % len(state.validators))
+    ret = []
+    probed = 0
+    while (len(ret) < MAX_WITHDRAWALS_PER_PAYLOAD) and (probed < len(state.validators)):
+        val = state.validators[index]
+        balance = state.balances[index]
+        if is_fully_withdrawable(val, balance, epoch):
+            withdrawal = Withdrawal(
+                index=withdrawal_index,
+                validator_index=index,
+                address=ExecutionAddress(val.withdrawal_credentials[12:]),
+                amount=balance,
+            )
+            ret.append(withdrawal)
+            withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
+        else if is_partially_withdrawable(val, balance):
+            withdrawal = Withdrawal(
+                index=withdrawal_index,
+                validator_index=index,
+                address=ExecutionAddress(val.withdrawal_credentials[12:]),
+                amount=balance-MAX_EFFECTIVE_BALANCE,
+            )
+            ret.append(withdrawal)
+            withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
+        probed += 1
+        index = ValidatorIndex((index + probed) % len(state.validators))
+    return ret
+```
+        
 #### New `process_withdrawals`
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    epoch = get_current_epoch(state)
-    index = state.last_withdrawal_validator_index
-    for withdrawal in payload.withdrawals:
-        index = ValidatorIndex((index + 1) % len(state.validators))
-        while index != withdrawal.validator_index:
-            val state.validators[index]
-            balance = state.balances[index]
-            assert !is_fully_withdrawable_validator(val, balance, epoch):
-            assert !is_partially_withdrawable_validator(val, balance):
-            index += ValidatorIndex((index + 1) % len(state.validators))
-        assert withdrawal.validator_index == index
-        val = state.validators[index]
-        balance = state.balances[index]
-        fully_withdrawable = is_fully_withdrawable_validator(val, balance, epoch)
-        partial_withdrawable = is_partially_withdrawable_validator(val, balance)
-        assert fully_withdrawable || partial_withdrawable
-        if fully_withdrawable:
-            assert withdrawal.amount == balance
-            decrease_balance(state, index, balance)
-        else:
-            assert withdrawal.amount == balance - MAX_EFFECTIVE_BALANCE
-            decrease_balance(state, index, balance - MAX_EFFECTIVE_BALANCE)
-    state.last_withdrawal_validator_index = index
+    expected_withdrawals = get_expected_withdrawals(state)
+    assert len(payload.withdrawals) == len(expected_withdrawals)
+
+    for expected_withdrawal, withdrawal in zip(get_expected_withdrawals(state), payload.withdrawals):
+        assert withdrawal == expected_withdrawal
+        decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
+
+    state.next_withdrawal_index = WithdrawalIndex(withdrawal.index + 1)
+    state.last_withdrawal_validator_index = withdrawal.validator_index
 ```
 
 #### Modified `process_execution_payload`

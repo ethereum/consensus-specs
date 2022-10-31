@@ -58,13 +58,6 @@ All validator responsibilities remain unchanged other than those noted below.
 expected withdrawals for the slot must be gathered from the `state` (utilizing the
 helper `get_expected_withdrawals`) and passed into the `ExecutionEngine` within `prepare_execution_payload`.
 
-
-```python
-def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
-    num_withdrawals = min(MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
-    return state.withdrawal_queue[:num_withdrawals]
-```
-
 *Note*: The only change made to `prepare_execution_payload` is to call
 `get_expected_withdrawals()` to set the new `withdrawals` field of `PayloadAttributes`.
 
