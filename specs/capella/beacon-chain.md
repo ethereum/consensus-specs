@@ -11,10 +11,8 @@
 - [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
-  - [Misc](#misc)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
-- [Configuration](#configuration)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Withdrawal`](#withdrawal)
@@ -67,6 +65,8 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
+
+## Preset
 
 ### Max operations per block
 
