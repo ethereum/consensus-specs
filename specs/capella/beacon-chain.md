@@ -287,7 +287,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     index = ValidatorIndex((state.last_withdrawal_validator_index + 1) % len(state.validators))
-    ret: Sequence[Withdrawal] = []
+    ret: List[Withdrawal] = []
     probed = 0
     while (len(ret) < MAX_WITHDRAWALS_PER_PAYLOAD) and (probed < len(state.validators)):
         val = state.validators[index]
