@@ -57,27 +57,28 @@ building upon the [phase0](../phase0/beacon-chain.md) specification.
 
 ### BLS
 
-| Name         | SSZ equivalent | Description                   |
-| ------------ | -------------- | ----------------------------- |
-| `BLSScalar`  | `Bytes48`      | BLS12-381 scalar              |
-| `BLSG1Point` | `Bytes48`      | compressed BLS12-381 G1 point |
+| Name              | SSZ equivalent | Description                   |
+| ----------------- | -------------- | ----------------------------- |
+| `BLSFieldElement` | `uint256`      | BLS12-381 scalar              |
+| `BLSG1Point`      | `Bytes48`      | compressed BLS12-381 G1 point |
 
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
 
 ```python
-def BLSG1PointFromAffine(x: int, y: int) -> BLSG1Point:
-    pass
+def BLSG1ScalarMultiply(scalar: BLSFieldElement, point: BLSG1Point) -> BLSG1Point:
+    return bls.G1_to_bytes48(bls.multiply(bls.bytes48_to_G1(point), scalar))
 
-
-def BLSG1ScalarMultiply(scalar: BLSScalar, point: BLSG1Point) -> BLSG1Point:
-    pass
+def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
+     """
+     Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
+     """
+     return int.from_bytes(b, "little") % BLS_MODULUS
 ```
 
-| Name                 | Value                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------- |
-| `BLS_G1_GENERATOR_X` | `0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb` |
-| `BLS_G1_GENERATOR_Y` | `0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1` |
-| `BLS_G1_GENERATOR`   | `(BLS_G1_GENERATOR_X, BLS_G1_GENERATOR_Y)`                                                           |
+| Name               | Value                                                                           |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `BLS_G1_GENERATOR` | `bls.G1_to_bytes48(bls.G1)`                                                     |
+| `BLS_MODULUS`      | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
 
 ### Curdleproofs and opening proofs
 
@@ -181,7 +182,7 @@ class BeaconBlock(bellatrix.BeaconBlock):
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
     k_commitment = state.validators[block.proposer_index].whisk_k_commitment
-    assert whisk.IsValidWhiskOpeningProof(tracker, k_commitment, block.whisk_opening_proof)
+    assert IsValidWhiskOpeningProof(tracker, k_commitment, block.whisk_opening_proof)
 
 
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
@@ -189,8 +190,28 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # ...
     # [Removed in Whisk] Verify that proposer index is the correct index
     # [Removed in Whisk] assert block.proposer_index == get_beacon_proposer_index(state)
-    process_whisk_opening_proof(state, block)   # [New in Whisk] 
-    # ...
+    
+    # Verify that the slots match
+    assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
+    # # Verify that proposer index is the correct index
+    # assert block.proposer_index == get_beacon_proposer_index(state)
+    # Verify that the parent matches
+    assert block.parent_root == hash_tree_root(state.latest_block_header)
+    # Cache current block as the new latest block
+    state.latest_block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=Bytes32(),  # Overwritten in the next process_slot call
+        body_root=hash_tree_root(block.body),
+    )
+
+    # Verify proposer is not slashed
+    proposer = state.validators[block.proposer_index]
+    assert not proposer.slashed
+    process_whisk_opening_proof(state, block)   # [New in Whisk]
 ```
 
 ### Whisk
@@ -241,7 +262,7 @@ def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -
         assert pre_shuffle_trackers == post_shuffle_trackers
     else:
         # Require shuffled trackers during shuffle
-        assert whisk.IsValidWhiskShuffleProof(pre_shuffle_trackers, post_shuffle_trackers, body.whisk_shuffle_proof_M_commitment, body.whisk_shuffle_proof)
+        assert IsValidWhiskShuffleProof(pre_shuffle_trackers, post_shuffle_trackers, body.whisk_shuffle_proof_M_commitment, body.whisk_shuffle_proof)
 
     # Shuffle candidate trackers
     for i, shuffle_index in enumerate(shuffle_indices):
@@ -263,12 +284,11 @@ def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
         assert whisk.IsValidWhiskOpeningProof(body.whisk_tracker, body.whisk_k_commitment, body.whisk_registration_proof)
         proposer.whisk_tracker = body.whisk_tracker
         proposer.whisk_k_commitment = body.whisk_k_commitment
-        proposer.whisk_shuffle_proof_M_commitment = body.whisk_shuffle_proof_M_commitment
     else:  # next Whisk proposals
         assert body.whisk_registration_proof == WhiskTrackerProof()
         assert body.whisk_tracker == WhiskTracker()
         assert body.whisk_k_commitment == BLSG1Point()
-        assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
+    assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
 
 
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
@@ -280,21 +300,69 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ### Deposits
 
 ```python
-def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSScalar:
+def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFieldElement:
     counter = 0
     while True:
-        k = BLSScalar(hash(uint_to_bytes(validator_index) + uint_to_bytes(counter)))  # hash `validator_index || counter`
-        if is_k_commitment_unique(state, bls.BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)):
+        k = BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))  # hash `validator_index || counter`
+        if is_k_commitment_unique(state, BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)):
             return k  # unique by trial and error
         counter += 1
 
 
 def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
-    validator = bellatrix.get_validator_from_deposit(state, deposit)
-    k = get_unique_whisk_k(state, len(state.validators))
-    validator.whisk_tracker = WhiskTracker(BLS_G1_GENERATOR, bls.BLSG1ScalarMultiply(k, BLS_G1_GENERATOR))
-    validator.whisk_k_commitment = bls.BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)
+    old_validator = bellatrix.get_validator_from_deposit(deposit)
+    k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators)))
+
+    validator = Validator(
+        pubkey=old_validator.pubkey,
+        withdrawal_credentials=old_validator.withdrawal_credentials,
+        activation_eligibility_epoch=old_validator.activation_eligibility_epoch,
+        activation_epoch=old_validator.activation_epoch,
+        exit_epoch=old_validator.exit_epoch,
+        withdrawable_epoch=old_validator.withdrawable_epoch,
+        effective_balance=old_validator.effective_balance,
+        # Whisk fields
+        whisk_tracker=WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)),
+        whisk_k_commitment=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR),
+    )
     return validator
+
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+    # Verify the Merkle branch
+    assert is_valid_merkle_branch(
+        leaf=hash_tree_root(deposit.data),
+        branch=deposit.proof,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
+        index=state.eth1_deposit_index,
+        root=state.eth1_data.deposit_root,
+    )
+
+    # Deposits must be processed in order
+    state.eth1_deposit_index += 1
+
+    pubkey = deposit.data.pubkey
+    amount = deposit.data.amount
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    if pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        deposit_message = DepositMessage(
+            pubkey=deposit.data.pubkey,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
+            amount=deposit.data.amount,
+        )
+        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+        signing_root = compute_signing_root(deposit_message, domain)
+        # Initialize validator if the deposit signature is valid
+        if bls.Verify(pubkey, signing_root, deposit.data.signature):
+            state.validators.append(get_validator_from_deposit(state, deposit)) # [Change in Whisk]
+            state.balances.append(amount)
+            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.inactivity_scores.append(uint64(0))
+    else:
+        # Increase balance by deposit amount
+        index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        increase_balance(state, index, amount)
 ```
 
 ### `get_beacon_proposer_index`
@@ -304,6 +372,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at the current slot.
     """
-    assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
+    print("get_beacon_proposer_index", state.latest_block_header.slot, state.slot)
+    # assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
 ```
