@@ -57,6 +57,14 @@ class SignedBeaconBlockAndBlobsSidecar(Container):
     blobs_sidecar: BlobsSidecar
 ```
 
+### `SignedBeaconBlockAndBlobsSidecar`
+
+```python
+class SignedBeaconBlockAndBlobsSidecar(Container):
+    beacon_block: SignedBeaconBlock
+    blobs_sidecar: BlobsSidecar
+```
+
 ## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the fork of EIP4844 to support upgraded types.
