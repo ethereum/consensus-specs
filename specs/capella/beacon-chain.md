@@ -301,7 +301,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             )
             ret.append(withdrawal)
             withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
-        else if is_partially_withdrawable(val, balance):
+        elif is_partially_withdrawable(val, balance):
             withdrawal = Withdrawal(
                 index=withdrawal_index,
                 validator_index=index,
