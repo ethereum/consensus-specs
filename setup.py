@@ -662,7 +662,7 @@ class WhiskSpecBuilder(BellatrixSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
-from curdleproofs import IsValidWhiskShuffleProof, IsValidWhiskOpeningProof, SerializedCurdleProofsProof, SerializedWhiskTrackerProof
+from curdleproofs import IsValidWhiskShuffleProof, IsValidWhiskOpeningProof
 from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
@@ -1173,6 +1173,6 @@ setup(
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
-        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@verifier-only#egg=curdleproofs&subdirectory=curdleproofs",
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@master#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )

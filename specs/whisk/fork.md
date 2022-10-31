@@ -33,6 +33,18 @@ The upgrade occurs after the completion of the inner loop of `process_slots` tha
 This ensures that we drop right into the beginning of the shuffling phase but without `process_whisk_epoch()` triggering for this Whisk run. Hence we handle all the setup ourselves in `upgrade_to_whisk()` below.
 
 ```python
+def whisk_get_initial_commitments(validator_index: ValidatorIndex):
+    # TODO
+    pass
+
+def whisk_candidate_selection(state: BeaconState, epoch: Epoch):
+    # TODO
+    pass
+
+def whisk_proposer_selection(state: BeaconState, epoch: Epoch):
+    # TODO
+    pass
+
 def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
     epoch = bellatrix.get_current_epoch(pre)
     post = BeaconState(
