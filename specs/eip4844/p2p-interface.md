@@ -13,7 +13,6 @@ The specification of these changes continues in the same format as the network s
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobsSidecar`](#blobssidecar)
-    - [`SignedBlobsSidecar`](#signedblobssidecar)
     - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -48,14 +47,6 @@ class BlobsSidecar(Container):
     beacon_block_slot: Slot
     blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
     kzg_aggregated_proof: KZGProof
-```
-
-### `SignedBlobsSidecar`
-
-```python
-class SignedBlobsSidecar(Container):
-    message: BlobsSidecar
-    signature: BLSSignature
 ```
 
 ### `SignedBeaconBlockAndBlobsSidecar`
