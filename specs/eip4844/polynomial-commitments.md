@@ -349,7 +349,7 @@ def compute_aggregated_poly_and_commitment(
     # Generate random linear combination challenges
     r = hash_to_bls_field(blobs, kzg_commitments)
     r_powers = compute_powers(r, len(kzg_commitments))
-    r2 = r_powers[-1] * r
+    r2 = int(r_powers[-1]) * r % BLS_MODULUS
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb([blob_to_polynomial(blob) for blob in blobs], r_powers))
