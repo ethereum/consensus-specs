@@ -4,6 +4,8 @@
 # ---------------------------------------------------------------
 # [customized] 16 for more interesting tests at low validator count
 MAX_PARTIAL_WITHDRAWALS_PER_EPOCH: 16
+# [customized] 10 for more interesting tests ;)
+WITHDRAWAL_BOOST_FACTOR: 10
 
 
 # State list lengths
