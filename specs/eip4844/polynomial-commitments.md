@@ -20,7 +20,7 @@
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
-    - [`blob_to_field_elements`](#blob_to_field_elements)
+    - [`blob_to_polynomial`](#blob_to_polynomial)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
@@ -145,10 +145,10 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return int.from_bytes(b, ENDIANNESS) % BLS_MODULUS
 ```
 
-#### `blob_to_field_elements`
+#### `blob_to_polynomial`
 
 ```python
-def blob_to_field_elements(blob: Blob) -> Polynomial:
+def blob_to_polynomial(blob: Blob) -> Polynomial:
     """
     Convert a blob to list of BLS field scalars.
     """
@@ -289,7 +289,7 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 
 ```python
 def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
-    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_field_elements(blob))
+    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
 ```
 
 #### `verify_kzg_proof`
@@ -352,7 +352,7 @@ def compute_aggregated_poly_and_commitment(
     r2 = r_powers[-1] * r
 
     # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(poly_lincomb([blob_to_field_elements(blob) for blob in blobs], r_powers))
+    aggregated_poly = Polynomial(poly_lincomb([blob_to_polynomial(blob) for blob in blobs], r_powers))
 
     # Compute commitment to aggregated polynomial
     aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
