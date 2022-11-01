@@ -80,6 +80,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `MAX_PARTIAL_WITHDRAWALS_PER_EPOCH` | `uint64(2**8)` (= 256) |
+| `WITHDRAWAL_BOOST_FACTOR` | `1` |
 
 ### State list lengths
 
@@ -256,6 +257,8 @@ class BeaconState(Container):
 def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount: Gwei) -> None:
     # Decrease the validator's balance
     decrease_balance(state, validator_index, amount)
+    # Apply the boost factor for custom network configurations
+    amount *= WITHDRAWAL_BOOST_FACTOR
     # Create a corresponding withdrawal receipt
     withdrawal = Withdrawal(
         index=state.next_withdrawal_index,
