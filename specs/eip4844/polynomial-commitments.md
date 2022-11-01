@@ -164,7 +164,7 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 
 ```python
 def hash_to_bls_field(polys: Sequence[Polynomial],
-                      comms: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, Hash32]:
+                      comms: Sequence[KZGCommitment]) -> BLSFieldElement:
     """
     Compute 32-byte hash of serialized polynomials and commitments concatenated.
     This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
@@ -276,7 +276,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
 
     result = 0
     for i in range(width):
-        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (z - roots_of_unity_brp[i]))
+        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (int(z) - roots_of_unity_brp[i]))
     result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return result
 ```
