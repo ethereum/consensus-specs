@@ -61,8 +61,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 | Name | Value | Notes |
 | - | - | - |
-| `BLS_MODULUS` | | `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
-Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
+| `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
 
 ## Preset
 
@@ -72,7 +71,7 @@ Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 | - | - |
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` |
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
-| `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` | 
+| `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
 
 ### Crypto
 
