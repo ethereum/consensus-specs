@@ -264,7 +264,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     """
     Evaluate a polynomial (in evaluation form) at an arbitrary point ``z``.
     Uses the barycentric formula:
-       f(z) = (1 - z**WIDTH) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
+       f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
     width = len(polynomial)
     assert width == FIELD_ELEMENTS_PER_BLOB
@@ -318,13 +318,13 @@ def verify_kzg_proof(polynomial_kzg: KZGCommitment,
 def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     """
     Compute KZG proof at point `z` with `polynomial` being in evaluation form
+    Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z)
     """
 
     # To avoid SSZ overflow/underflow, convert element into int
     polynomial = [int(i) for i in polynomial]
     z = int(z)
 
-    # Shift our polynomial first (in evaluation form we can't handle the division remainder)
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [(p - int(y)) % BLS_MODULUS for p in polynomial]
 
