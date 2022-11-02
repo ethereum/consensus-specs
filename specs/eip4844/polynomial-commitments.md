@@ -152,12 +152,12 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
     """
     Convert a blob to list of BLS field scalars.
     """
-    r = Polynomial()
+    polynomial = Polynomial()
     for i in range(FIELD_ELEMENTS_PER_BLOB):
         value = int.from_bytes(blob[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT], ENDIANNESS)
         assert value < BLS_MODULUS
-        r[i] = value
-    return r
+        polynomial[i] = value
+    return polynomial
 ```
 
 #### `hash_to_bls_field`
@@ -178,9 +178,9 @@ def hash_to_bls_field(polys: Sequence[Polynomial],
     # Append each polynomial which is composed by field elements
     for poly in polys:
         for field_element in poly:
-            data += int.to_bytes(field_element, 32, ENDIANNESS)
+            data += int.to_bytes(field_element, BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
 
-    # Append serialised G1 points
+    # Append serialized G1 points
     for commitment in comms:
         data += commitment
 

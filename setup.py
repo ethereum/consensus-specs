@@ -616,7 +616,7 @@ KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
 ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
 
 
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[BlobsSidecar]:
     return "TEST"'''
 
     @classmethod
