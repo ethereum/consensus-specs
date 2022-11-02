@@ -344,12 +344,12 @@ def compute_aggregated_poly_and_commitment(
         kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment, BLSFieldElement]:
     """
     Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
-    and (3) the hash of ``blobs`` and ``kzg_commitments``.
+    and (3) the polynomial evaluation random challenge.
     """
     # Generate random linear combination challenges
     r = hash_to_bls_field(blobs, kzg_commitments)
     r_powers = compute_powers(r, len(kzg_commitments))
-    r2 = int(r_powers[-1]) * r % BLS_MODULUS
+    evaluation_challenge = int(r_powers[-1]) * r % BLS_MODULUS
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb([blob_to_polynomial(blob) for blob in blobs], r_powers))
@@ -357,7 +357,7 @@ def compute_aggregated_poly_and_commitment(
     # Compute commitment to aggregated polynomial
     aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
 
-    return aggregated_poly, aggregated_poly_commitment, r2
+    return aggregated_poly, aggregated_poly_commitment, evaluation_challenge
 ```
 
 #### `compute_aggregate_kzg_proof`
@@ -365,8 +365,11 @@ def compute_aggregated_poly_and_commitment(
 ```python
 def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment, r2 = compute_aggregated_poly_and_commitment(blobs, commitments)
-    return compute_kzg_proof(aggregated_poly, r2)
+    aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
+        blobs,
+        commitments
+    )
+    return compute_kzg_proof(aggregated_poly, evaluation_challenge)
 ```
 
 #### `verify_aggregate_kzg_proof`
@@ -375,14 +378,14 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
                                kzg_aggregated_proof: KZGCommitment) -> bool:
-    aggregated_poly, aggregated_poly_commitment, r2 = compute_aggregated_poly_and_commitment(
+    aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,
     )
 
-    # Evaluate aggregated polynomial at `r2` (evaluation function checks for div-by-zero)
-    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, r2)
+    # Evaluate aggregated polynomial at `evaluation_challenge` (evaluation function checks for div-by-zero)
+    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, evaluation_challenge)
 
     # Verify aggregated proof
-    return verify_kzg_proof(aggregated_poly_commitment, r2, y, kzg_aggregated_proof)
+    return verify_kzg_proof(aggregated_poly_commitment, evaluation_challenge, y, kzg_aggregated_proof)
 ```
