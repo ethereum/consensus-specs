@@ -745,7 +745,7 @@ def run_random_partial_withdrawals_test(spec, state, rng):
     randomize_state(spec, state, rng)
 
     num_validators = len(state.validators)
-    state.last_withdrawal_validator_index = rng.randint(0, num_validators - 1)
+    state.latest_withdrawal_validator_index = rng.randint(0, num_validators - 1)
 
     num_partially_withdrawable = rng.randint(0, num_validators - 1)
     partially_withdrawable_indices = rng.sample(range(num_validators), num_partially_withdrawable)
