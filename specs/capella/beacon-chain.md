@@ -287,28 +287,26 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     index = state.last_withdrawal_validator_index 
-    ret: List[Withdrawal] = []
-    for i in range(len(state.validators)):
+    withdrawals: List[Withdrawal] = []
+    for _ in range(len(state.validators)):
         index = ValidatorIndex((index + 1) % len(state.validators))
         val = state.validators[index]
         balance = state.balances[index]
         if is_fully_withdrawable_validator(val, balance, epoch):
-            withdrawal = Withdrawal(
+            withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=index,
                 address=ExecutionAddress(val.withdrawal_credentials[12:]),
                 amount=balance,
-            )
-            ret.append(withdrawal)
+            ))
             withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
         elif is_partially_withdrawable_validator(val, balance):
-            withdrawal = Withdrawal(
+            withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=index,
                 address=ExecutionAddress(val.withdrawal_credentials[12:]),
                 amount=balance - MAX_EFFECTIVE_BALANCE,
-            )
-            ret.append(withdrawal)
+            ))
             withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
         if len(ret) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
