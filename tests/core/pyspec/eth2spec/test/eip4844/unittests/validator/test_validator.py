@@ -10,23 +10,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.sharding import (
     get_sample_opaque_tx,
-    get_sample_blob,
 )
-
-
-@with_eip4844_and_later
-@spec_state_test
-def test_verify_kzg_proof(spec, state):
-    x = 3
-    polynomial = get_sample_blob(spec)
-    polynomial = [int(i) for i in polynomial]
-    commitment = spec.blob_to_kzg_commitment(polynomial)
-
-    # Get the proof
-    proof = spec.compute_kzg_proof(polynomial, x)
-
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
-    assert spec.verify_kzg_proof(commitment, x, y, proof)
 
 
 def _run_validate_blobs_sidecar_test(spec, state, blob_count):
