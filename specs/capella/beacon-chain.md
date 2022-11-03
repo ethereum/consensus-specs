@@ -310,7 +310,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
         if len(ret) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
-    return ret
+    return withdrawals
 ```
         
 #### New `process_withdrawals`
