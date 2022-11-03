@@ -45,6 +45,8 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
     current_epoch = spec.get_current_epoch(state)
     set_validator_fully_withdrawable(spec, state, index, current_epoch)
+    assert len(spec.get_expected_withdrawals(state)) == 1
+
     yield 'pre', state
 
     # trigger epoch transition
@@ -55,6 +57,7 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     yield 'post', state
 
     assert state.balances[index] == 0
+    assert len(spec.get_expected_withdrawals(state)) == 0
 
 
 @with_capella_and_later
@@ -63,7 +66,8 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     index = state.next_withdrawal_index
     set_validator_partially_withdrawable(spec, state, index, excess_balance=1000000000000)
     pre_balance = state.balances[index]
-    pre_withdrawal_queue_len = len(state.withdrawal_queue)
+
+    assert len(spec.get_expected_withdrawals(state)) == 1
 
     yield 'pre', state
 
@@ -77,21 +81,19 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     assert state.balances[index] < pre_balance
     # Potentially less than due to sync committee penalty
     assert state.balances[index] <= spec.MAX_EFFECTIVE_BALANCE
-    # Withdrawal is processed within the context of the block so queue empty
-    assert len(state.withdrawal_queue) == pre_withdrawal_queue_len
+    assert len(spec.get_expected_withdrawals(state)) == 0
 
 
 @with_capella_and_later
 @spec_state_test
 def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     assert len(state.validators) > spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    assert spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH > spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
     for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1):
         index = (i + state.next_withdrawal_index) % len(state.validators)
         set_validator_partially_withdrawable(spec, state, index, excess_balance=1000000000000)
 
-    pre_withdrawal_queue_len = len(state.withdrawal_queue)
+    assert len(spec.get_expected_withdrawals(state)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
     yield 'pre', state
 
@@ -102,8 +104,7 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # All new partial withdrawals processed except 1
-    assert len(state.withdrawal_queue) == pre_withdrawal_queue_len + 1
+    assert len(spec.get_expected_withdrawals(state)) == 1
 
 
 @with_capella_and_later
