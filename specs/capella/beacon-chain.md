@@ -308,7 +308,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 amount=balance - MAX_EFFECTIVE_BALANCE,
             ))
             withdrawal_index = WithdrawalIndex(withdrawal_index + 1)
-        if len(ret) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
     return withdrawals
 ```
@@ -320,12 +320,12 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     expected_withdrawals = get_expected_withdrawals(state)
     assert len(payload.withdrawals) == len(expected_withdrawals)
 
-    for expected_withdrawal, withdrawal in zip(get_expected_withdrawals(state), payload.withdrawals):
+    for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
         assert withdrawal == expected_withdrawal
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
-
-    state.next_withdrawal_index = WithdrawalIndex(withdrawal.index + 1)
-    state.last_withdrawal_validator_index = withdrawal.validator_index
+    if len(expected_withdrawals) > 0:
+        state.next_withdrawal_index = WithdrawalIndex(withdrawal.index + 1)
+        state.last_withdrawal_validator_index = withdrawal.validator_index
 ```
 
 #### Modified `process_execution_payload`
