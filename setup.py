@@ -622,8 +622,8 @@ def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[Blob
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
+            'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
-            'BYTES_PER_FIELD_ELEMENT': spec_object.preset_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
         }
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
