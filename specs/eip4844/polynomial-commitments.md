@@ -346,13 +346,16 @@ def compute_aggregated_poly_and_commitment(
     Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
     and (3) the polynomial evaluation random challenge.
     """
+    # Convert blobs to polynomials
+    polynomials = [blob_to_polynomial(blob) for blob in blobs]
+
     # Generate random linear combination challenges
-    r = hash_to_bls_field(blobs, kzg_commitments)
+    r = hash_to_bls_field(polynomials, kzg_commitments)
     r_powers = compute_powers(r, len(kzg_commitments))
     evaluation_challenge = int(r_powers[-1]) * r % BLS_MODULUS
 
     # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(poly_lincomb([blob_to_polynomial(blob) for blob in blobs], r_powers))
+    aggregated_poly = Polynomial(poly_lincomb(polynomials, r_powers))
 
     # Compute commitment to aggregated polynomial
     aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
