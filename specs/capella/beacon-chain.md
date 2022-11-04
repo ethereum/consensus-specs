@@ -431,7 +431,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        transactions_hash=payload.transaction_hash,  # [New in Capella]
+        transactions_hash=payload.transactions_hash,  # [New in Capella]
         withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
         withdrawals_hash=payload.withdrawals_hash,  # [New in Capella]
     )
