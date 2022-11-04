@@ -47,7 +47,7 @@ Note that the `ForkDigestValue` path segment of the topic separates the old and 
 
 #### Global topics
 
-Capella changes the type of the global beacon block topic and adds one global topic to propagate bls to execution change messages to all potential proposers of beacon blocks.
+Capella changes the type of the global beacon block topic and adds one global topic to propagate withdrawal credential change messages to all potential proposers of beacon blocks.
 
 ##### `beacon_block`
 
