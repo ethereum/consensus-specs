@@ -299,7 +299,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 address=ExecutionAddress(val.withdrawal_credentials[12:]),
                 amount=balance,
             ))
-            withdrawal_index += 1
+            withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(val, balance):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -307,7 +307,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 address=ExecutionAddress(val.withdrawal_credentials[12:]),
                 amount=balance - MAX_EFFECTIVE_BALANCE,
             ))
-            withdrawal_index += 1
+            withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
     return withdrawals

@@ -23,6 +23,7 @@ from eth2spec.test.helpers.withdrawals import (
     set_validator_partially_withdrawable,
 )
 
+
 def prepare_expected_withdrawals(spec, state,
                                  num_full_withdrawals=0, num_partial_withdrawals=0, rng=random.Random(5566)):
     assert num_full_withdrawals + num_partial_withdrawals <= len(state.validators)
@@ -297,6 +298,7 @@ def test_fail_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state):
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
+
 @with_capella_and_later
 @spec_state_test
 def test_fail_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, state):
@@ -308,7 +310,6 @@ def test_fail_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, sta
     execution_payload.withdrawals = execution_payload.withdrawals[:-1]
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
-
 
 
 #
@@ -794,7 +795,6 @@ def test_random_partial_withdrawals_5(spec, state):
 
 
 # Tests with multiple blocks
-
 @with_capella_and_later
 @spec_state_test
 def test_success_two_payloads(spec, state):
@@ -817,6 +817,7 @@ def test_success_two_payloads(spec, state):
     verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
     assert state.next_withdrawal_index == next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2
 
+
 @with_capella_and_later
 @spec_state_test
 def test_fail_second_payload_isnt_compatible(spec, state):
@@ -836,5 +837,4 @@ def test_fail_second_payload_isnt_compatible(spec, state):
 
     execution_payload = build_empty_execution_payload(spec, state)
     state.next_withdrawal_index += 1
-    yield from run_withdrawals_processing(spec, state, execution_payload)
-
+    yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
