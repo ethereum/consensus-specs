@@ -30,7 +30,7 @@ The specification of these changes continues in the same format as the network s
 
 ## The gossip domain: gossipsub
 
-A new topic is added to support the gossip of bls to execution change messages.
+A new topic is added to support the gossip of withdrawal credential change messages. And an existing topic is upgraded for updated types in Capella.
 
 ### Topics and messages
 
