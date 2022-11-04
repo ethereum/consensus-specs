@@ -29,8 +29,6 @@ def run_fork_test(post_spec, pre_state):
         'inactivity_scores',
         # Sync
         'current_sync_committee', 'next_sync_committee',
-        # Execution
-        'latest_execution_payload_header',
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)
@@ -54,5 +52,20 @@ def run_fork_test(post_spec, pre_state):
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.CAPELLA_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
+
+    stable_execution_payload_header_fields = [
+        'parent_hash', 'fee_recipient', 'state_root', 'receipts_root',
+        'logs_bloom', 'prev_randao', 'block_number', 'gas_limit',
+        'gas_used', 'timestamp', 'extra_data', 'base_fee_per_gas',
+        'block_hash', 'transactions_root',
+    ]
+    for field in stable_execution_payload_header_fields:
+        assert (
+            getattr(pre_state.execution_payload_header, field) ==
+            getattr(post_state.execution_payload_header, field)
+        )
+    assert post_state.execution_payload_header.transactions_hash == post_spec.Bytes32()
+    assert post_state.execution_payload_header.withdrawals_root == post_spec.Root()
+    assert post_state.execution_payload_header.withdrawals_hash == post_spec.Bytes32()
 
     yield 'post', post_state
