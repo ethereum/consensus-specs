@@ -290,21 +290,21 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
     for _ in range(len(state.validators)):
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-        val = state.validators[validator_index]
+        validator = state.validators[validator_index]
         balance = state.balances[validator_index]
-        if is_fully_withdrawable_validator(val, balance, epoch):
+        if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
-                address=ExecutionAddress(val.withdrawal_credentials[12:]),
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=balance,
             ))
             withdrawal_index += WithdrawalIndex(1)
-        elif is_partially_withdrawable_validator(val, balance):
+        elif is_partially_withdrawable_validator(validator, balance):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
-                address=ExecutionAddress(val.withdrawal_credentials[12:]),
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=balance - MAX_EFFECTIVE_BALANCE,
             ))
             withdrawal_index += WithdrawalIndex(1)
@@ -324,6 +324,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         assert withdrawal == expected_withdrawal
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
     if len(expected_withdrawals) > 0:
+        # withdrawal holds the last withdrawal object in the payload.
         state.next_withdrawal_index = WithdrawalIndex(withdrawal.index + 1)
         state.latest_withdrawal_validator_index = withdrawal.validator_index
 ```

@@ -42,6 +42,10 @@ def prepare_expected_withdrawals(spec, state,
 
 def verify_post_state(state, spec, expected_withdrawals,
                       fully_withdrawable_indices, partial_withdrawals_indices):
+    # Consider verifying also the condition when no withdrawals are expected.
+    if len(expected_withdrawals) == 0:
+        return
+
     expected_withdrawals_validator_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
     assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
     assert state.latest_withdrawal_validator_index == expected_withdrawals_validator_indices[-1]
@@ -128,7 +132,7 @@ def test_success_one_partial_withdrawal(spec, state):
     assert len(fully_withdrawable_indices) == 0
     assert len(partial_withdrawals_indices) == 1
     for index in partial_withdrawals_indices:
-        assert state.balances[index] != spec.MAX_EFFECTIVE_BALANCE
+        assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
