@@ -44,8 +44,8 @@ def get_sample_genesis_execution_payload_header(spec,
     if spec.fork not in FORKS_BEFORE_CAPELLA or spec.fork not in FORKS_BEFORE_EIP4844:
         payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
     if spec.fork not in FORKS_BEFORE_CAPELLA:
-        payload.withdrawals_root = spec.Root(b'\58' * 32)
-        payload.withdrawals_hash = spec.Root(b'\59' * 32)
+        payload.withdrawals_root = spec.Root(b'\x58' * 32)
+        payload.withdrawals_hash = spec.Bytes32(b'\x59' * 32)
     return payload
 
 
