@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
     FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
+    FORKS_BEFORE_CAPELLA, FORKS_BEFORE_EIP4844,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -27,7 +28,7 @@ def get_sample_genesis_execution_payload_header(spec,
                                                 eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b'\x55' * 32
-    return spec.ExecutionPayloadHeader(
+    payload = spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
         fee_recipient=b'\x42' * 20,
         state_root=b'\x20' * 32,
@@ -40,6 +41,12 @@ def get_sample_genesis_execution_payload_header(spec,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
+    if spec.fork not in FORKS_BEFORE_CAPELLA or spec.fork not in FORKS_BEFORE_EIP4844:
+        payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
+    if spec.fork not in FORKS_BEFORE_CAPELLA:
+        payload.withdrawals_root = spec.Root(b'\58' * 32)
+        payload.withdrawals_hash = spec.Root(b'\59' * 32)
+    return payload
 
 
 def create_genesis_state(spec, validator_balances, activation_threshold):

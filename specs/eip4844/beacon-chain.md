@@ -120,6 +120,7 @@ class ExecutionPayload(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    transactions_hash: Bytes32  # [New in EIP-4844]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -143,6 +144,7 @@ class ExecutionPayloadHeader(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
+    transactions_hash: Bytes32  # [New in EIP-4844]
 ```
 
 ## Helper functions
@@ -277,6 +279,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         excess_blobs=payload.excess_blobs,  # [New in EIP-4844]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
+        transactions_hash=payload.transactions_hash,  # [New in EIP-4844]
     )
 ```
 
