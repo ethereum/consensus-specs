@@ -77,7 +77,7 @@ def build_randomized_execution_payload(spec, state, rng):
             spec.Withdrawal(
                 index=rng.randint(0, 10e10),
                 validator_index=rng.randint(0, spec.VALIDATOR_REGISTRY_LIMIT),
-                address = spec.ExecutionAddress(get_random_bytes_list(rng, 20)),
+                address=spec.ExecutionAddress(get_random_bytes_list(rng, 20)),
                 amount=spec.Gwei(rng.randint(0, 10e10))
             )
             for _ in range(num_withdrawals)
