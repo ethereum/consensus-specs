@@ -1,7 +1,6 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
-    FORKS_BEFORE_CAPELLA, FORKS_BEFORE_EIP4844,
+    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -41,9 +40,9 @@ def get_sample_genesis_execution_payload_header(spec,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
-    if spec.fork not in FORKS_BEFORE_CAPELLA or spec.fork not in FORKS_BEFORE_EIP4844:
-        payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
     if spec.fork not in FORKS_BEFORE_CAPELLA:
+        payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
+    if spec.fork == CAPELLA:
         payload.withdrawals_root = spec.Root(b'\x58' * 32)
         payload.withdrawals_hash = spec.Bytes32(b'\x59' * 32)
     return payload
