@@ -72,16 +72,7 @@ def build_randomized_execution_payload(spec, state, rng):
             spec.Bytes32(spec.hash(execution_payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 
     if is_post_capella(spec):
-        num_withdrawals = rng.randint(0, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-        execution_payload.withdrawals = [
-            spec.Withdrawal(
-                index=rng.randint(0, 10e10),
-                validator_index=rng.randint(0, spec.VALIDATOR_REGISTRY_LIMIT),
-                address=spec.ExecutionAddress(get_random_bytes_list(rng, 20)),
-                amount=spec.Gwei(rng.randint(0, 10e10))
-            )
-            for _ in range(num_withdrawals)
-        ]
+        execution_payload.withdrawals = []
         execution_payload.withdrawals_hash = \
             spec.Bytes32(spec.hash(execution_payload.withdrawals.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 
