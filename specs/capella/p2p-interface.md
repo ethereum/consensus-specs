@@ -34,7 +34,7 @@ A new topic is added to support the gossip of withdrawal credential change messa
 
 ### Topics and messages
 
-Topics follow the same specification as in prior upgrades. All topics remain stable except the beacon block topic which is updated with the modified type.
+Topics follow the same specification as in prior upgrades. All existing topics remain stable except the beacon block topic which is updated with the modified type.
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
