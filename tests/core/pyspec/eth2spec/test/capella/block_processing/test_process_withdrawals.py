@@ -741,8 +741,8 @@ def run_random_partial_withdrawals_test(spec, state, rng):
 
     execution_payload = build_empty_execution_payload(spec, state)
 
-    # Note: due to the randomness and other epoch processing, some of these set as "partially withdrawable"
-    # may not be partially withdrawable once we get to ``process_partial_withdrawals``,
+    # Note: due to the randomness and other block processing, some of these set as "partially withdrawable"
+    # may not be partially withdrawable once we get to ``process_withdrawals``,
     # thus *not* using the optional third param in this call
     yield from run_withdrawals_processing(spec, state, execution_payload)
 

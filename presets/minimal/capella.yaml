@@ -8,5 +8,5 @@ MAX_BLS_TO_EXECUTION_CHANGES: 16
 
 # Execution
 # ---------------------------------------------------------------
-# 2**2 (= 4)
+# [customized] 2**2 (= 4)
 MAX_WITHDRAWALS_PER_PAYLOAD: 4
