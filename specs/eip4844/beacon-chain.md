@@ -12,7 +12,6 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Blob](#blob)
-  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
@@ -56,12 +55,6 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1(0x01)` | 
-
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLOBS_SIDECAR` | `DomainType('0x0a000000')` |
 
 ## Preset
 
