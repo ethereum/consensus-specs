@@ -58,6 +58,9 @@ All validator responsibilities remain unchanged other than those noted below.
 expected withdrawals for the slot must be gathered from the `state` (utilizing the
 helper `get_expected_withdrawals`) and passed into the `ExecutionEngine` within `prepare_execution_payload`.
 
+*Note*: In this section, `state` is the state of the slot for the block proposal _without_ the block yet applied.
+That is, `state` is the `previous_state` processed through any empty slots up to the assigned slot using `process_slots(previous_state, slot)`.
+
 *Note*: The only change made to `prepare_execution_payload` is to call
 `get_expected_withdrawals()` to set the new `withdrawals` field of `PayloadAttributes`.
 
