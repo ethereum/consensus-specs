@@ -18,26 +18,11 @@ from eth2spec.test.helpers.state import (
     next_slot,
 )
 from eth2spec.test.helpers.withdrawals import (
+    prepare_expected_withdrawals,
     set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
 )
-
-
-def prepare_expected_withdrawals(spec, state,
-                                 num_full_withdrawals=0, num_partial_withdrawals=0, rng=random.Random(5566)):
-    assert num_full_withdrawals + num_partial_withdrawals <= len(state.validators)
-    all_validator_indices = list(range(len(state.validators)))
-    sampled_indices = rng.sample(all_validator_indices, num_full_withdrawals + num_partial_withdrawals)
-    fully_withdrawable_indices = rng.sample(sampled_indices, num_full_withdrawals)
-    partial_withdrawals_indices = list(set(sampled_indices).difference(set(fully_withdrawable_indices)))
-
-    for index in fully_withdrawable_indices:
-        set_validator_fully_withdrawable(spec, state, index)
-    for index in partial_withdrawals_indices:
-        set_validator_partially_withdrawable(spec, state, index)
-
-    return fully_withdrawable_indices, partial_withdrawals_indices
 
 
 def verify_post_state(state, spec, expected_withdrawals,
@@ -796,49 +781,3 @@ def test_random_partial_withdrawals_4(spec, state):
 @spec_state_test
 def test_random_partial_withdrawals_5(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(5))
-
-
-# Tests with multiple blocks
-@with_capella_and_later
-@spec_state_test
-def test_success_two_payloads(spec, state):
-    fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
-        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4,
-        num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
-
-    next_slot(spec, state)
-    next_withdrawal_index = state.next_withdrawal_index
-    execution_payload = build_empty_execution_payload(spec, state)
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
-    withdrawn_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
-    fully_withdrawable_indices = list(set(fully_withdrawable_indices).difference(set(withdrawn_indices)))
-    partial_withdrawals_indices = list(set(partial_withdrawals_indices).difference(set(withdrawn_indices)))
-    assert state.next_withdrawal_index == next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
-
-    execution_payload = build_empty_execution_payload(spec, state)
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
-    assert state.next_withdrawal_index == next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2
-
-
-@with_capella_and_later
-@spec_state_test
-def test_fail_second_payload_isnt_compatible(spec, state):
-    fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
-        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4,
-        num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
-
-    next_slot(spec, state)
-    next_withdrawal_index = state.next_withdrawal_index
-    execution_payload = build_empty_execution_payload(spec, state)
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
-    withdrawn_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
-    fully_withdrawable_indices = list(set(fully_withdrawable_indices).difference(set(withdrawn_indices)))
-    partial_withdrawals_indices = list(set(partial_withdrawals_indices).difference(set(withdrawn_indices)))
-    assert state.next_withdrawal_index == next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
-
-    execution_payload = build_empty_execution_payload(spec, state)
-    state.next_withdrawal_index += 1
-    yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
