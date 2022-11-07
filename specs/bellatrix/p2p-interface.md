@@ -110,7 +110,7 @@ The following gossip validation from prior specifications MUST NOT be applied if
 ### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
-details on how to handle transitioning gossip topics for EIP-4844.
+details on how to handle transitioning gossip topics.
 
 ## The Req/Resp domain
 
