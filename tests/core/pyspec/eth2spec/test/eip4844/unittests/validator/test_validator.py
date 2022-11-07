@@ -10,24 +10,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.sharding import (
     get_sample_opaque_tx,
-    get_sample_blob,
 )
-from eth2spec.test.helpers.keys import privkeys
-
-
-@with_eip4844_and_later
-@spec_state_test
-def test_verify_kzg_proof(spec, state):
-    x = 3
-    polynomial = get_sample_blob(spec)
-    polynomial = [int(i) for i in polynomial]
-    commitment = spec.blob_to_kzg_commitment(polynomial)
-
-    # Get the proof
-    proof = spec.compute_kzg_proof(polynomial, x)
-
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
-    assert spec.verify_kzg_proof(commitment, x, y, proof)
 
 
 def _run_validate_blobs_sidecar_test(spec, state, blob_count):
@@ -38,8 +21,6 @@ def _run_validate_blobs_sidecar_test(spec, state, blob_count):
     state_transition_and_sign_block(spec, state, block)
 
     blobs_sidecar = spec.get_blobs_sidecar(block, blobs)
-    privkey = privkeys[1]
-    spec.get_signed_blobs_sidecar(state, blobs_sidecar, privkey)
     expected_commitments = [spec.blob_to_kzg_commitment(blobs[i]) for i in range(blob_count)]
     spec.validate_blobs_sidecar(block.slot, block.hash_tree_root(), expected_commitments, blobs_sidecar)
 

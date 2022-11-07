@@ -18,6 +18,7 @@
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [ExecutionPayload](#executionpayload)
+      - [BLS to execution changes](#bls-to-execution-changes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -106,3 +107,7 @@ def prepare_execution_payload(state: BeaconState,
         payload_attributes=payload_attributes,
     )
 ```
+
+##### BLS to execution changes
+
+Up to `MAX_BLS_TO_EXECUTION_CHANGES`, [`BLSToExecutionChange`](./beacon-chain.md#blstoexecutionchange) objects can be included in the `block`. The BLS to execution changes must satisfy the verification conditions found in [BLS to execution change processing](./beacon-chain.md#new-process_bls_to_execution_change).

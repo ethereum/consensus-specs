@@ -43,6 +43,7 @@ Operations:
 | `voluntary_exit`        | `SignedVoluntaryExit` | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`                      |
 | `sync_aggregate`        | `SyncAggregate`       | `sync_aggregate`     | `process_sync_aggregate(state, sync_aggregate)` (new in Altair)      |
 | `execution_payload`     | `ExecutionPayload`    | `execution_payload`  | `process_execution_payload(state, execution_payload)` (new in Bellatrix) |
+| `bls_to_execution_change` | `SignedBLSToExecutionChange` | `signed_address_change` | `process_bls_to_execution_change(state, signed_address_change)` (new in Capella) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 
