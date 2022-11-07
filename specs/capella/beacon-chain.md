@@ -324,7 +324,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         assert withdrawal == expected_withdrawal
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
     if len(expected_withdrawals) > 0:
-        latest_withdrawal = payload.withdrawals[-1]
+        latest_withdrawal = expected_withdrawals[-1]
         state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
         state.latest_withdrawal_validator_index = latest_withdrawal.validator_index
 ```
