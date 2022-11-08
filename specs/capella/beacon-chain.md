@@ -286,10 +286,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
-    validator_index = state.latest_withdrawal_validator_index 
+    validator_index = ValidatorIndex((state.latest_validator_index + 1) % len(state.validators))
     withdrawals: List[Withdrawal] = []
     for _ in range(len(state.validators)):
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
         validator = state.validators[validator_index]
         balance = state.balances[validator_index]
         if is_fully_withdrawable_validator(validator, balance, epoch):
@@ -310,6 +309,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
+        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
     return withdrawals
 ```
         
