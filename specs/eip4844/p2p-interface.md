@@ -130,9 +130,17 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-`BeaconBlocksByRoot v2` will be disabled in favor of `BeaconBlockAndBlobsSidecarByRoot v1` for tighter coupling of blocks and sidecars.
+After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`
 
-Clients MUST disable `BeaconBlocksByRoot v2` after `EIP4844_FORK_EPOCH`.
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type             |
+| ------------------------ | -------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
 #### BeaconBlockAndBlobsSidecarByRoot v1
 
