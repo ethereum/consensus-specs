@@ -123,6 +123,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `EIP4844_FORK_VERSION`   | `eip4844.SignedBeaconBlock`   |
 
 #### BeaconBlocksByRoot v2
@@ -140,6 +141,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `EIP4844_FORK_VERSION`   | `eip4844.SignedBeaconBlock`   |
 
 #### BlobsSidecarsByRange v1
