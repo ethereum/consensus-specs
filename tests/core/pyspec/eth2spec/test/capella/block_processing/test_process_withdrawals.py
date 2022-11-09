@@ -46,7 +46,8 @@ def verify_post_state(state, spec, expected_withdrawals,
             assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
 
 
-def run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=None, valid=True):
+def run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=None,
+                               fully_withdrawable_indices=None, partial_withdrawals_indices=None, valid=True):
     """
     Run ``process_execution_payload``, yielding:
       - pre-state ('pre')
@@ -79,6 +80,9 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
     elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
         raise ValueError('len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD')
 
+    if fully_withdrawable_indices is not None or partial_withdrawals_indices is not None:
+        verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
+
     return expected_withdrawals
 
 
@@ -104,9 +108,10 @@ def test_success_one_full_withdrawal(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
+    yield from run_withdrawals_processing(
+        spec, state, execution_payload,
+        fully_withdrawable_indices=fully_withdrawable_indices,
+        partial_withdrawals_indices=partial_withdrawals_indices)
 
 
 @with_capella_and_later
@@ -122,9 +127,11 @@ def test_success_one_partial_withdrawal(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
+    yield from run_withdrawals_processing(
+        spec, state, execution_payload,
+        fully_withdrawable_indices=fully_withdrawable_indices,
+        partial_withdrawals_indices=partial_withdrawals_indices
+    )
 
 
 @with_capella_and_later
@@ -139,9 +146,10 @@ def test_success_max_per_slot(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
+    yield from run_withdrawals_processing(
+        spec, state, execution_payload,
+        fully_withdrawable_indices=fully_withdrawable_indices,
+        partial_withdrawals_indices=partial_withdrawals_indices)
 
 
 @with_capella_and_later
@@ -153,9 +161,10 @@ def test_success_all_fully_withdrawable(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
+    yield from run_withdrawals_processing(
+        spec, state, execution_payload,
+        fully_withdrawable_indices=fully_withdrawable_indices,
+        partial_withdrawals_indices=partial_withdrawals_indices)
 
 
 @with_capella_and_later
@@ -167,9 +176,10 @@ def test_success_all_partially_withdrawable(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
-    expected_withdrawals = yield from run_withdrawals_processing(spec, state, execution_payload)
-
-    verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
+    yield from run_withdrawals_processing(
+        spec, state, execution_payload,
+        fully_withdrawable_indices=fully_withdrawable_indices,
+        partial_withdrawals_indices=partial_withdrawals_indices)
 
 
 #

@@ -141,7 +141,7 @@ def test_exit_and_bls_change(spec, state):
     assert spec.is_fully_withdrawable_validator(validator, balance, validator.withdrawable_epoch)
 
 
-def _valid_withdrawal(spec, state):
+def _perform_valid_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
         spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4,
         num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
@@ -173,7 +173,7 @@ def _valid_withdrawal(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_withdrawal_success_two_blocks(spec, state):
-    pre_state, signed_block_1, pre_next_withdrawal_index = _valid_withdrawal(spec, state)
+    pre_state, signed_block_1, pre_next_withdrawal_index = _perform_valid_withdrawal(spec, state)
 
     yield 'pre', pre_state
 
@@ -190,7 +190,7 @@ def test_withdrawal_success_two_blocks(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
-    _valid_withdrawal(spec, state)
+    _perform_valid_withdrawal(spec, state)
 
     # Block 2
     block = build_empty_block_for_next_slot(spec, state)
