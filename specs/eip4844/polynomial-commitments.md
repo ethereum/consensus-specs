@@ -46,6 +46,8 @@
 
 This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the EIP-4844 specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
 
+Functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
+
 ## Custom types
 
 | Name | SSZ equivalent | Description |
@@ -290,6 +292,9 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 
 ```python
 def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
+    """
+    Public method.
+    """
     return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
 ```
 
@@ -384,6 +389,9 @@ def compute_aggregated_poly_and_commitment(
 
 ```python
 def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
+    """
+    Public method.
+    """
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
@@ -398,6 +406,9 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
                                kzg_aggregated_proof: KZGCommitment) -> bool:
+    """
+    Public method.
+    """
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,
