@@ -96,7 +96,6 @@ def test_success_zero_expected_withdrawals(spec, state):
 
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
-
 @with_capella_and_later
 @spec_state_test
 def test_success_one_full_withdrawal(spec, state):
