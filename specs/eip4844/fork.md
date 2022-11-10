@@ -111,7 +111,6 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
-        withdrawal_queue=pre.withdrawal_queue,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
     )
