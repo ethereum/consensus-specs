@@ -23,7 +23,7 @@ from eth2spec.test.helpers.fork_choice import (
     tick_and_run_on_attestation,
     tick_and_add_block,
 )
-from eth2spec.test.helpers.phases import (
+from eth2spec.test.helpers.forks import (
     is_post_altair,
 )
 from eth2spec.test.helpers.state import (

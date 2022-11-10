@@ -9,7 +9,7 @@ from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
     prepare_random_genesis_deposits,
 )
-from eth2spec.test.helpers.phases import (
+from eth2spec.test.helpers.forks import (
     is_post_altair,
 )
 

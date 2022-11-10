@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
 )
-from eth2spec.test.helpers.phases import (
+from eth2spec.test.helpers.forks import (
     is_post_altair, is_post_bellatrix,
 )
 from eth2spec.test.helpers.keys import pubkeys

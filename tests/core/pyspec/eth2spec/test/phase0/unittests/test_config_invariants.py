@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     with_all_phases,
 )
 from eth2spec.test.helpers.constants import MAX_UINT_64
-from eth2spec.test.helpers.phases import (
+from eth2spec.test.helpers.forks import (
     is_post_altair, is_post_bellatrix,
 )
 

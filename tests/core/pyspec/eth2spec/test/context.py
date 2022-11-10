@@ -16,7 +16,7 @@ from .helpers.constants import (
     ALL_PHASES,
     ALL_FORK_UPGRADES,
 )
-from .helpers.phases import is_post_fork
+from .helpers.forks import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
 from .utils import (

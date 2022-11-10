@@ -1,5 +1,5 @@
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.phases import is_post_capella
+from eth2spec.test.helpers.forks import is_post_capella
 
 
 def build_empty_execution_payload(spec, state, randao_mix=None):

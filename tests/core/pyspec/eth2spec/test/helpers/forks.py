@@ -14,7 +14,7 @@ def is_post_fork(a, b):
         return b in [PHASE0, ALTAIR]
     if a == PHASE0:
         return b in [PHASE0]
-    assert False  # Fork is missing
+    raise ValueError("Unknown fork name %s" % a)
 
 
 def is_post_altair(spec):
