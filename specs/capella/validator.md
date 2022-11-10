@@ -116,35 +116,36 @@ Up to `MAX_BLS_TO_EXECUTION_CHANGES`, [`BLSToExecutionChange`](./beacon-chain.md
 
 ## Enabling validator withdrawals
 
-Stake belonging to validators that can safely be withdrawn from the beacon chain happens via an automatic process.
+Validator balances are fully or partially withdrawn via an automatic process.
 
-There is one prerequisite task to perform before a validator can participate in this automatic process:
-ensuring the withdrawal credentials are for the execution layer, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+For validators, there is one prerequisite for this automated process:
+withdrawal credentials pointing to an execution layer address, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
 
-If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, Capella adds the ability for a validator
-to make a one-time message that changes their withdrawal credential from the version authenticated with a BLS key to the
-version compatible with the execution layer.
+If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to participate in withdrawals the validator must 
+create a one-time message to change their withdrawal credential from the version authenticated with a BLS key to the
+version compatible with the execution layer. This message -- a `BLSToExecutionChange` -- is available starting in Capella
 
 Validators who wish to enable withdrawals **MUST** assemble, sign, and broadcast this message so that it is accepted
 on the beacon chain. Validators who do not want to enable withdrawals and have the `BLS_WITHDRAWAL_PREFIX` version of
-withdrawal credentials can simply wait until they are ready to create this message and will not particpate in the
-automatic withdrawal process.
+withdrawal credentials can delay creating this message until they are ready to enable withdrawals.
 
 ### Changing from BLS to execution withdrawal credentials
 
 First, the validator must construct a valid [`BLSToExecutionChange`](./beacon-chain.md#blstoexecutionchange) `message`.
-This `message` contains the `validator_index` for the validator who wishes to change their credentials, the `from_bls_pubkey` containing the BLS public key corresponding to the **withdrawal BLS secret key** used to form the `BLS_WITHDRAWAL_PREFIX` withdrawal credential, and the `to_execution_address` specifying where the validator wants stake to be withdrawn to on the execution layer.
+This `message` contains the `validator_index` for the validator who wishes to change their credentials, the `from_bls_pubkey` -- the BLS public key corresponding to the **withdrawal BLS secret key** used to form the `BLS_WITHDRAWAL_PREFIX` withdrawal credential, and the `to_execution_address` specifying the execution layer address to which the validator's balances will be withdrawn.
 
-**NOTE**: The withdrawal key pair used to construct the `BLS_WITHDRAWAL_PREFIX` withdrawal credential should be distinct from the signing key pair used to operate the validator under typical circumstances. Consult your validator deposit tooling documentation for further details if you are not aware of the difference.
+*Note*: The withdrawal key pair used to construct the `BLS_WITHDRAWAL_PREFIX` withdrawal credential should be distinct from the signing key pair used to operate the validator under typical circumstances. Consult your validator deposit tooling documentation for further details if you are not aware of the difference.
 
-The `from_bls_pubkey` is compared against the existing withdrawal credential on-chain for the given `validator_index` so
-it is unlikely a validator will incorrectly specify this data; however, this message can only be issued once and is currently
-irreversible once on-chain so take care with the `to_execution_address`.
+*Warning*: This message can only be included on-chain once and is
+irreversible so ensure the correctness and accessibility to `to_execution_address`.
 
 Next, the validator signs the assembled `message: BLSToExecutionChange` with the **withdrawal BLS secret key** and this
 `signature` is placed into a `SignedBLSToExecutionChange` message along with the inner `BLSToExecutionChange` `message`.
 Note that the `SignedBLSToExecutionChange` message should pass all of the validations in [`process_bls_to_execution_change`](./beacon-chain.md#new-process_bls_to_execution_change).
 
-The complete `SignedBLSToExecutionChange` message can be submitted to the consensus layer network. Once included on-chain,
+The `SignedBLSToExecutionChange` message should then be submitted to the consensus layer network. Once included on-chain,
 the withdrawal credential change takes effect. No further action is required for a validator to enter into the automated
 withdrawal process.
+
+*Note*: A node *should* prioritize locally received `BLSToExecutionChange` operations to ensure these changes make it on-chain
+through self published blocks even if the rest of the network censors.
