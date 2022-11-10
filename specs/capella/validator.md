@@ -141,7 +141,7 @@ The `from_bls_pubkey` is compared against the existing withdrawal credential on-
 it is unlikely a validator will incorrectly specify this data; however, this message can only be issued once and is currently
 irreversible once on-chain so take care with the `to_execution_address`.
 
-Next, the validator signs the assembled `BLSToExecutionChange` `message` with the **withdrawal BLS secret key** and this
+Next, the validator signs the assembled `message: BLSToExecutionChange` with the **withdrawal BLS secret key** and this
 `signature` is placed into a `SignedBLSToExecutionChange` message along with the inner `BLSToExecutionChange` `message`.
 Note that the `SignedBLSToExecutionChange` message should pass all of the validations in [`process_bls_to_execution_change`](./beacon-chain.md#new-process_bls_to_execution_change).
 
