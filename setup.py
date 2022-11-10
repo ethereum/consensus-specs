@@ -669,8 +669,6 @@ def get_empty_list_result(fn):  # type: ignore
     return wrapper
 
 
-process_full_withdrawals = no_op(process_full_withdrawals)
-process_partial_withdrawals = no_op(process_partial_withdrawals)
 process_withdrawals = no_op(process_withdrawals)
 process_bls_to_execution_change = no_op(process_bls_to_execution_change)
 get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
