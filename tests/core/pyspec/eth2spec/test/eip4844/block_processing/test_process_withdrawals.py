@@ -6,20 +6,6 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.state import next_slot
 
 
-def prepare_withdrawal_queue(spec, state, num_withdrawals):
-    pre_queue_len = len(state.withdrawal_queue)
-
-    for i in range(num_withdrawals):
-        withdrawal = spec.Withdrawal(
-            index=i + 5,
-            address=b'\x42' * 20,
-            amount=200000 + i,
-        )
-        state.withdrawal_queue.append(withdrawal)
-
-    assert len(state.withdrawal_queue) == num_withdrawals + pre_queue_len
-
-
 def run_withdrawals_processing(spec, state, execution_payload, valid=True):
     """
     Run ``process_execution_payload``, yielding:
@@ -49,8 +35,6 @@ def run_withdrawals_processing(spec, state, execution_payload, valid=True):
 @with_eip4844_and_later
 @spec_state_test
 def test_no_op(spec, state):
-    prepare_withdrawal_queue(spec, state, 1)
-
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
