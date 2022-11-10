@@ -283,7 +283,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 #### New `get_expected_withdrawals`
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
+def get_expected_withdrawals(state: BeaconState) -> List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
@@ -318,10 +318,10 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     expected_withdrawals = get_expected_withdrawals(state)
-    assert len(payload.withdrawals) == len(expected_withdrawals)
 
-    for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
-        assert withdrawal == expected_withdrawal
+    assert (hash_tree_root(payload.withdrawals) == hash_tree_root(expected_withdrawals))
+
+    for withdrawal in expected_withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
     if len(expected_withdrawals) > 0:
         latest_withdrawal = expected_withdrawals[-1]
