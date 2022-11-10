@@ -118,7 +118,7 @@ Up to `MAX_BLS_TO_EXECUTION_CHANGES`, [`BLSToExecutionChange`](./beacon-chain.md
 
 Stake belonging to validators that can safely be withdrawn from the beacon chain happens via an automatic process.
 
-There is one prerequisite task to perform before a validator can particpate in this automatic process:
+There is one prerequisite task to perform before a validator can participate in this automatic process:
 ensuring the withdrawal credentials are for the execution layer, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
 
 If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, Capella adds the ability for a validator
