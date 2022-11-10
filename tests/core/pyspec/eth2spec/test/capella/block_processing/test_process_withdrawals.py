@@ -33,7 +33,8 @@ def verify_post_state(state, spec, expected_withdrawals,
 
     expected_withdrawals_validator_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
     assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
-    assert state.next_withdrawal_validator_index == (expected_withdrawals_validator_indices[-1]+1) % len(state.validators)
+    next_withdrawal_validator_index = (expected_withdrawals_validator_indices[-1] + 1) % len(state.validators)
+    assert state.next_withdrawal_validator_index == next_withdrawal_validator_index
     for index in fully_withdrawable_indices:
         if index in expected_withdrawals_validator_indices:
             assert state.balances[index] == 0
@@ -95,6 +96,7 @@ def test_success_zero_expected_withdrawals(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload)
+
 
 @with_capella_and_later
 @spec_state_test
