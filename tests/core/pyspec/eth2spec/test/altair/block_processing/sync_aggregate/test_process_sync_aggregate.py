@@ -440,10 +440,7 @@ def _exit_validator_from_committee_and_transition_state(spec,
     return exited_validator_index
 
 
-@with_altair_and_later
-@spec_state_test
-@always_bls
-def test_sync_committee_with_participating_exited_member(spec, state):
+def run_sync_committe_exited_member_test(spec, state, does_participate, is_withdrawable=False, has_zero_balance=False):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -451,154 +448,144 @@ def test_sync_committee_with_participating_exited_member(spec, state):
     for _ in range(3):
         next_epoch_via_block(spec, state)
 
-    committee_indices = compute_committee_indices(state)
+    full_committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
+
+    if not is_withdrawable:
+        def target_epoch_provider(v):
+            return v.exit_epoch
+    else:
+        def target_epoch_provider(v):
+            return v.withdrawable_epoch + 1
 
     exited_index = _exit_validator_from_committee_and_transition_state(
         spec,
         state,
-        committee_indices,
+        full_committee_indices,
         rng,
-        lambda v: v.exit_epoch,
+        target_epoch_provider,
     )
+    exited_pubkey = state.validators[exited_index].pubkey
 
     current_epoch = spec.get_current_epoch(state)
-    assert current_epoch < state.validators[exited_index].withdrawable_epoch
+    if not is_withdrawable:
+        assert current_epoch < state.validators[exited_index].withdrawable_epoch
+    else:
+        assert current_epoch > state.validators[exited_index].withdrawable_epoch
 
+    exited_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
     block = build_empty_block_for_next_slot(spec, state)
+
+    if does_participate:
+        committee_bits = [True] * len(full_committee_indices)
+        participating_committee_indices = full_committee_indices
+    else:
+        committee_bits = [i != exited_committee_index for i in full_committee_indices]
+        participating_committee_indices = [index for index in full_committee_indices if index != exited_committee_index]
+
+    if has_zero_balance:
+        state.balances[exited_index] = 0
+
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[True] * len(committee_indices),
+        sync_committee_bits=committee_bits,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,
             block.slot - 1,
-            committee_indices,  # full committee signs
+            participating_committee_indices,
             block_root=block.parent_root,
         )
     )
     yield from run_sync_committee_processing(spec, state, block)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_sync_committee_with_participating_exited_member(spec, state):
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=True,
+        is_withdrawable=False,
+    )
 
 
 @with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_with_nonparticipating_exited_member(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    # move forward via some blocks
-    for _ in range(3):
-        next_epoch_via_block(spec, state)
-
-    committee_indices = compute_committee_indices(state)
-    rng = random.Random(1010)
-
-    exited_index = _exit_validator_from_committee_and_transition_state(
-        spec,
-        state,
-        committee_indices,
-        rng,
-        lambda v: v.exit_epoch,
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=False,
+        is_withdrawable=False,
     )
-    exited_pubkey = state.validators[exited_index].pubkey
-
-    current_epoch = spec.get_current_epoch(state)
-    assert current_epoch < state.validators[exited_index].withdrawable_epoch
-
-    exited_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
-    block = build_empty_block_for_next_slot(spec, state)
-    committee_bits = [i != exited_committee_index for i in committee_indices]
-    committee_indices = [index for index in committee_indices if index != exited_committee_index]
-    block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=committee_bits,
-        sync_committee_signature=compute_aggregate_sync_committee_signature(
-            spec,
-            state,
-            block.slot - 1,
-            committee_indices,  # with exited validator removed
-            block_root=block.parent_root,
-        )
-    )
-    yield from run_sync_committee_processing(spec, state, block)
 
 
 @with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_with_participating_withdrawable_member(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    # move forward via some blocks
-    for _ in range(3):
-        next_epoch_via_block(spec, state)
-
-    committee_indices = compute_committee_indices(state)
-    rng = random.Random(1010)
-
-    exited_index = _exit_validator_from_committee_and_transition_state(
-        spec,
-        state,
-        committee_indices,
-        rng,
-        lambda v: v.withdrawable_epoch + 1,
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=True,
+        is_withdrawable=True,
     )
-
-    current_epoch = spec.get_current_epoch(state)
-    assert current_epoch > state.validators[exited_index].withdrawable_epoch
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=[True] * len(committee_indices),
-        sync_committee_signature=compute_aggregate_sync_committee_signature(
-            spec,
-            state,
-            block.slot - 1,
-            committee_indices,  # full committee signs
-            block_root=block.parent_root,
-        )
-    )
-    yield from run_sync_committee_processing(spec, state, block)
 
 
 @with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    # move forward via some blocks
-    for _ in range(3):
-        next_epoch_via_block(spec, state)
-
-    committee_indices = compute_committee_indices(state)
-    rng = random.Random(1010)
-
-    exited_index = _exit_validator_from_committee_and_transition_state(
-        spec,
-        state,
-        committee_indices,
-        rng,
-        lambda v: v.withdrawable_epoch + 1,
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=False,
+        is_withdrawable=True,
     )
-    exited_pubkey = state.validators[exited_index].pubkey
 
-    current_epoch = spec.get_current_epoch(state)
-    assert current_epoch > state.validators[exited_index].withdrawable_epoch
 
-    target_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
-    block = build_empty_block_for_next_slot(spec, state)
-    committee_bits = [i != target_committee_index for i in committee_indices]
-    committee_indices = [index for index in committee_indices if index != target_committee_index]
-    block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=committee_bits,
-        sync_committee_signature=compute_aggregate_sync_committee_signature(
-            spec,
-            state,
-            block.slot - 1,
-            committee_indices,  # with withdrawable validator removed
-            block_root=block.parent_root,
-        )
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_sync_committee_with_participating_exited_member_zero_balance(spec, state):
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=True,
+        is_withdrawable=False,
+        has_zero_balance=True,
     )
-    yield from run_sync_committee_processing(spec, state, block)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_sync_committee_with_nonparticipating_exited_member_zero_balance(spec, state):
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=False,
+        is_withdrawable=False,
+        has_zero_balance=True,
+    )
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_sync_committee_with_participating_withdrawable_member_zero_balance(spec, state):
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=True,
+        is_withdrawable=True,
+        has_zero_balance=True,
+    )
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_sync_committee_with_nonparticipating_withdrawable_member_zero_balance(spec, state):
+    yield from run_sync_committe_exited_member_test(
+        spec, state,
+        does_participate=False,
+        is_withdrawable=True,
+        has_zero_balance=True,
+    )

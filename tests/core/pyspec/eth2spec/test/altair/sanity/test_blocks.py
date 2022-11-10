@@ -18,6 +18,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
+from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
 def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(454545)):
@@ -86,6 +87,49 @@ def test_half_sync_committee_committee_genesis(spec, state):
 @spec_state_test
 def test_empty_sync_committee_committee_genesis(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
+
+
+def run_exit_test(spec, state, validator_index):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    signed_exits = prepare_signed_exits(spec, state, [validator_index])
+
+    yield 'pre', state
+
+    # Add to state via block transition
+    initiate_exit_block = build_empty_block_for_next_slot(spec, state)
+    initiate_exit_block.body.voluntary_exits = signed_exits
+    signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
+
+    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+    # Process within epoch transition
+    exit_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+    signed_exit_block = state_transition_and_sign_block(spec, state, exit_block)
+
+    yield 'blocks', [signed_initiate_exit_block, signed_exit_block]
+    yield 'post', state
+
+    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+
+@with_altair_and_later
+@spec_state_test
+def test_exit_from_current_sync_committee(spec, state):
+    pubkey_from_current_committee = state.current_sync_committee.pubkeys[0]
+    validator_index = [validator.pubkey for validator in state.validators].index(pubkey_from_current_committee)
+
+    yield from run_exit_test(spec, state, validator_index)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_exit_from_next_sync_committee(spec, state):
+    pubkey_from_current_committee = state.next_sync_committee.pubkeys[0]
+    validator_index = [validator.pubkey for validator in state.validators].index(pubkey_from_current_committee)
+
+    yield from run_exit_test(spec, state, validator_index)
 
 
 @with_altair_and_later
