@@ -12,7 +12,6 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Blob](#blob)
-  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
@@ -57,12 +56,6 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1(0x01)` | 
-
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLOBS_SIDECAR` | `DomainType('0x0a000000')` |
 
 ## Preset
 
@@ -352,8 +345,6 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 
 ### Disabling Withdrawals
 During testing we avoid Capella-specific updates to the state transition. We do this by replacing the following functions with a no-op implementation:
-- `process_full_withdrawals`
-- `process_partial_withdrawals`
 - `process_withdrawals`
 - `process_bls_to_execution_change`
 

@@ -113,7 +113,7 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         # Withdrawals
         withdrawal_queue=pre.withdrawal_queue,
         next_withdrawal_index=pre.next_withdrawal_index,
-        next_partial_withdrawal_validator_index=pre.next_partial_withdrawal_validator_index,
+        next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
     )
 
     return post
