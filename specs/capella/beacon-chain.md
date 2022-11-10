@@ -221,7 +221,7 @@ class BeaconState(Container):
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
-    latest_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
+    next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
 ```
 
 ## Helpers
@@ -286,7 +286,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
-    validator_index = ValidatorIndex((state.latest_withdrawal_validator_index + 1) % len(state.validators))
+    validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
     for _ in range(len(state.validators)):
         validator = state.validators[validator_index]
@@ -326,7 +326,8 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     if len(expected_withdrawals) > 0:
         latest_withdrawal = expected_withdrawals[-1]
         state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
-        state.latest_withdrawal_validator_index = latest_withdrawal.validator_index
+        next_validator_index = ValidatorIndex((latest_withdrawal.validator_index + 1) % len(state.validators))
+        state.next_withdrawal_validator_index = next_validator_index
 ```
 
 #### Modified `process_execution_payload`

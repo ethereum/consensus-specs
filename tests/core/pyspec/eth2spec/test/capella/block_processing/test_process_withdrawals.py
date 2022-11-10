@@ -33,7 +33,7 @@ def verify_post_state(state, spec, expected_withdrawals,
 
     expected_withdrawals_validator_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
     assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
-    assert state.latest_withdrawal_validator_index == expected_withdrawals_validator_indices[-1]
+    assert state.next_withdrawal_validator_index == (expected_withdrawals_validator_indices[-1]+1) % len(state.validators)
     for index in fully_withdrawable_indices:
         if index in expected_withdrawals_validator_indices:
             assert state.balances[index] == 0
@@ -732,7 +732,7 @@ def run_random_partial_withdrawals_test(spec, state, rng):
     randomize_state(spec, state, rng)
 
     num_validators = len(state.validators)
-    state.latest_withdrawal_validator_index = rng.randint(0, num_validators - 1)
+    state.next_withdrawal_validator_index = rng.randint(0, num_validators - 1)
 
     num_partially_withdrawable = rng.randint(0, num_validators - 1)
     partially_withdrawable_indices = rng.sample(range(num_validators), num_partially_withdrawable)

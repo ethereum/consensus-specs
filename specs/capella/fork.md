@@ -130,7 +130,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         latest_execution_payload_header=latest_execution_payload_header,
         # Withdrawals
         next_withdrawal_index=WithdrawalIndex(0),
-        latest_withdrawal_validator_index=ValidatorIndex(0),
+        next_withdrawal_validator_index=ValidatorIndex(0),
     )
 
     return post
