@@ -26,10 +26,6 @@ ALL_PHASES = (
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844)
 
-FORKS_BEFORE_ALTAIR = (PHASE0,)
-FORKS_BEFORE_BELLATRIX = FORKS_BEFORE_ALTAIR + (ALTAIR,)
-FORKS_BEFORE_CAPELLA = FORKS_BEFORE_BELLATRIX + (BELLATRIX,)
-
 # TODO: no EIP4844 fork tests now. Should add when we figure out the content of Capella.
 ALL_FORK_UPGRADES = {
     # pre_fork_name: post_fork_name
@@ -39,7 +35,7 @@ ALL_FORK_UPGRADES = {
     CAPELLA: EIP4844,
 }
 ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
-AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key not in FORKS_BEFORE_ALTAIR}
+AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
 AFTER_BELLATRIX_PRE_POST_FORKS = AFTER_BELLATRIX_UPGRADES.items()
 
 #
