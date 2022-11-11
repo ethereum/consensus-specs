@@ -27,7 +27,6 @@
     - [`g1_lincomb`](#g1_lincomb)
     - [`poly_lincomb`](#poly_lincomb)
     - [`compute_powers`](#compute_powers)
-    - [`compute_challenges`](#compute_challenges)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
   - [KZG](#kzg)
@@ -37,9 +36,6 @@
     - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
     - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
 
 
 ## Introduction
@@ -253,24 +249,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
         current_power = current_power * int(x) % BLS_MODULUS
     return powers
 ```
-#### `compute_challenges`
 
-```python
-def compute_challenges(x: BLSFieldElement, n: uint64) -> Tuple[Sequence[BLSFieldElement], BLSFieldElement]:
-    """
-    Return the random linear combination challenges and the evaluation challenge.
-    ``x`` is the initial challenge to which we will generate ``n + 1`` challenges from.
-    """
-    powers = compute_powers(x, n)
-    evaluation_challenge = 0
-
-    # When n == 0, this means that the blobs are empty
-    # in that case, we define the evaluation challenge to be 0
-    if n != 0:
-        evaluation_challenge = int(powers[-1]) * x % BLS_MODULUS
-
-    return powers, evaluation_challenge
-```
 
 ### Polynomials
 
@@ -373,7 +352,9 @@ def compute_aggregated_poly_and_commitment(
 
     # Generate random linear combination challenges
     r = hash_to_bls_field(polynomials, kzg_commitments)
-    r_powers, evaluation_challenge = compute_challenges(r, len(kzg_commitments))
+    all_r_powers = compute_powers(r, len(kzg_commitments) + 1)
+    evaluation_challenge = all_r_powers[-1]
+    r_powers = all_r_powers[:-1]
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb(polynomials, r_powers))
