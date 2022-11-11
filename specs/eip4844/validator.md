@@ -11,9 +11,7 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
-- [Protocols](#protocols)
-  - [`ExecutionEngine`](#executionengine)
-    - [`get_payload`](#get_payload)
+  - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -39,13 +37,17 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ## Helpers
 
-## Protocols
+### `get_blobs_and_kzg_commitments`
 
-### `ExecutionEngine`
+The interface to retrieve blobs and corresponding kzg commitments.
 
-#### `get_payload`
+Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` may be unified.
+Implementers may also retrieve blobs individually per transaction.
 
-`get_payload` returns the upgraded EIP-4844 `ExecutionPayload` type.
+```python
+def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment]]:
+    ...
+```
 
 ## Beacon chain responsibilities
 
