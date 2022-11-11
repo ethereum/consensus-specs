@@ -27,6 +27,7 @@
     - [`g1_lincomb`](#g1_lincomb)
     - [`poly_lincomb`](#poly_lincomb)
     - [`compute_powers`](#compute_powers)
+    - [`compute_challenges`](#compute_challenges)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
   - [KZG](#kzg)
@@ -231,7 +232,7 @@ def poly_lincomb(polys: Sequence[Polynomial],
     Given a list of ``polynomials``, interpret it as a 2D matrix and compute the linear combination
     of each column with `scalars`: return the resulting polynomials.
     """
-    result = [0] * len(polys[0])
+    result = [0] * FIELD_ELEMENTS_PER_BLOB
     for v, s in zip(polys, scalars):
         for i, x in enumerate(v):
             result[i] = (result[i] + int(s) * int(x)) % BLS_MODULUS
@@ -251,6 +252,24 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
         powers.append(BLSFieldElement(current_power))
         current_power = current_power * int(x) % BLS_MODULUS
     return powers
+```
+#### `compute_challenges`
+
+```python
+def compute_challenges(x: BLSFieldElement, n: uint64) -> Tuple[Sequence[BLSFieldElement], BLSFieldElement]:
+    """
+    Return the random linear combination challenges and the evaluation challenge
+    """
+    powers = compute_powers(x, n)
+    evaluation_challenge = 0
+    
+    # When n == 0, this means that the blobs are empty
+    # in that case, we define the evaluation challenge to be 0
+    if len(powers) != 0:
+        evaluation_challenge = int(r_powers[-1]) * r % BLS_MODULUS
+    
+    return powers, evaluation_challenge
+
 ```
 
 ### Polynomials
@@ -351,8 +370,7 @@ def compute_aggregated_poly_and_commitment(
 
     # Generate random linear combination challenges
     r = hash_to_bls_field(polynomials, kzg_commitments)
-    r_powers = compute_powers(r, len(kzg_commitments))
-    evaluation_challenge = int(r_powers[-1]) * r % BLS_MODULUS
+    r_powers, evaluation_challenge = compute_challenges(r, len(kzg_commitments))
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb(polynomials, r_powers))
