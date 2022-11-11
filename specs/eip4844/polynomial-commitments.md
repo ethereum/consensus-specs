@@ -276,7 +276,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
 
     result = 0
     for i in range(width):
-        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (int(z) - roots_of_unity_brp[i]))
+        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (int(z) - int(roots_of_unity_brp[i])))
     result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return result
 ```
