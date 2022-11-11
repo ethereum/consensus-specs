@@ -366,6 +366,8 @@ def compute_aggregated_poly_and_commitment(
     and (3) the polynomial evaluation random challenge.
     This function should be able to work with blobs == [] and kzg_commitments == []
     """
+    assert len(blobs) == len(kzg_commitments)
+
     # Convert blobs to polynomials
     polynomials = [blob_to_polynomial(blob) for blob in blobs]
 
