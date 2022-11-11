@@ -269,10 +269,10 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     assert width == FIELD_ELEMENTS_PER_BLOB
     inverse_width = bls_modular_inverse(width)
 
-    # Make sure we won't divide by zero during division
-    assert z not in ROOTS_OF_UNITY
-
     roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+
+    # Make sure we won't divide by zero during division
+    assert z not in roots_of_unity_brp
 
     result = 0
     for i in range(width):
@@ -328,7 +328,7 @@ def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     polynomial_shifted = [(p - int(y)) % BLS_MODULUS for p in polynomial]
 
     # Make sure we won't divide by zero during division
-    assert z not in ROOTS_OF_UNITY
+    assert z not in bit_reversal_permutation(ROOTS_OF_UNITY)
     denominator_poly = [(int(x) - z) % BLS_MODULUS for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
 
     # Calculate quotient polynomial by doing point-by-point division
