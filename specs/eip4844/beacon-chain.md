@@ -111,7 +111,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint64  # [New in EIP-4844]
+    excess_data_gas: uint256  # [New in EIP-4844]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -135,7 +135,7 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint64  # [New in EIP-4844]
+    excess_data_gas: uint256  # [New in EIP-4844]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
