@@ -473,19 +473,18 @@ def run_sync_committe_exited_member_test(spec, state, does_participate, is_withd
     else:
         assert current_epoch > state.validators[exited_index].withdrawable_epoch
 
-    exited_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
-    block = build_empty_block_for_next_slot(spec, state)
-
     if does_participate:
         committee_bits = [True] * len(full_committee_indices)
         participating_committee_indices = full_committee_indices
     else:
+        exited_committee_index = state.current_sync_committee.pubkeys.index(exited_pubkey)
         committee_bits = [i != exited_committee_index for i in full_committee_indices]
         participating_committee_indices = [index for index in full_committee_indices if index != exited_committee_index]
 
     if has_zero_balance:
         state.balances[exited_index] = 0
 
+    block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
         sync_committee_bits=committee_bits,
         sync_committee_signature=compute_aggregate_sync_committee_signature(
