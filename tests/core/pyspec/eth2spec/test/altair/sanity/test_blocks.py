@@ -126,8 +126,8 @@ def test_exit_from_current_sync_committee(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_exit_from_next_sync_committee(spec, state):
-    pubkey_from_current_committee = state.next_sync_committee.pubkeys[0]
-    validator_index = [validator.pubkey for validator in state.validators].index(pubkey_from_current_committee)
+    pubkey_from_next_committee = state.next_sync_committee.pubkeys[0]
+    validator_index = [validator.pubkey for validator in state.validators].index(pubkey_from_next_committee)
 
     yield from run_exit_test(spec, state, validator_index)
 
