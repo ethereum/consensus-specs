@@ -266,7 +266,7 @@ def compute_challenges(x: BLSFieldElement, n: uint64) -> Tuple[Sequence[BLSField
     # When n == 0, this means that the blobs are empty
     # in that case, we define the evaluation challenge to be 0
     if len(powers) != 0:
-        evaluation_challenge = int(r_powers[-1]) * r % BLS_MODULUS
+        evaluation_challenge = int(powers[-1]) * x % BLS_MODULUS
     
     return powers, evaluation_challenge
 
