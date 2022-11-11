@@ -85,7 +85,7 @@ EIP4844 introduces a new global topic for beacon block and blobs-sidecars.
 ##### `beacon_block`
 
 This topic is deprecated and clients **MUST NOT** expose in their topic set to any peer. Implementers do not need to do
-anything beyond simply skip implementation and it is explicitly called out as it is a departure from previous versioning
+anything beyond simply skip implementation, and it is explicitly called out as it is a departure from previous versioning
 of this topic.
 
 ##### `beacon_block_and_blobs_sidecar`
