@@ -59,7 +59,7 @@ New global topics are added to provide light clients with the latest updates.
 This topic is used to propagate the latest `LightClientFinalityUpdate` to light clients, allowing them to keep track of the latest `finalized_header`.
 
 The following validations MUST pass before forwarding the `finality_update` on the network.
-- _[IGNORE]_ No other `finality_update` with a lower or equal `finalized_header.slot` was already forwarded on the network
+- _[IGNORE]_ The `finalized_header.slot` is greater than that of all previously forwarded `finality_update`s
 - _[IGNORE]_ The `finality_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `finality_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
@@ -87,7 +87,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 This topic is used to propagate the latest `LightClientOptimisticUpdate` to light clients, allowing them to keep track of the latest `optimistic_header`.
 
 The following validations MUST pass before forwarding the `optimistic_update` on the network.
-- _[IGNORE]_ No other `optimistic_update` with a lower or equal `attested_header.slot` was already forwarded on the network
+- _[IGNORE]_ The `attested_header.slot` is greater than that of all previously forwarded `optimistic_update`s
 - _[IGNORE]_ The `optimistic_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `optimistic_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
