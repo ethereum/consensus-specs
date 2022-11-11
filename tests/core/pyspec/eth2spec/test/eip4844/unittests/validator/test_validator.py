@@ -30,6 +30,7 @@ def _run_validate_blobs_sidecar_test(spec, state, blob_count):
 def test_validate_blobs_sidecar_zero_blobs(spec, state):
     _run_validate_blobs_sidecar_test(spec, state, blob_count=0)
 
+
 @with_eip4844_and_later
 @spec_state_test
 def test_validate_blobs_sidecar_one_blob(spec, state):

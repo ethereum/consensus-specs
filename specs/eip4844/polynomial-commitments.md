@@ -258,18 +258,18 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 ```python
 def compute_challenges(x: BLSFieldElement, n: uint64) -> Tuple[Sequence[BLSFieldElement], BLSFieldElement]:
     """
-    Return the random linear combination challenges and the evaluation challenge. ``x`` is the initial challenge to which we will generate ``n + 1`` challenges from.
+    Return the random linear combination challenges and the evaluation challenge.
+    ``x`` is the initial challenge to which we will generate ``n + 1`` challenges from.
     """
     powers = compute_powers(x, n)
     evaluation_challenge = 0
-    
+
     # When n == 0, this means that the blobs are empty
     # in that case, we define the evaluation challenge to be 0
     if n != 0:
         evaluation_challenge = int(powers[-1]) * x % BLS_MODULUS
-    
-    return powers, evaluation_challenge
 
+    return powers, evaluation_challenge
 ```
 
 ### Polynomials
