@@ -33,8 +33,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         payload.transactions_hash = \
             spec.Bytes32(spec.hash(payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
     if is_post_capella(spec):
-        num_withdrawals = min(spec.MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
-        payload.withdrawals = state.withdrawal_queue[:num_withdrawals]
+        payload.withdrawals = spec.get_expected_withdrawals(state)
         payload.withdrawals_hash = \
             spec.Bytes32(spec.hash(payload.withdrawals.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 

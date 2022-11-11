@@ -12,7 +12,6 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Blob](#blob)
-  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
@@ -56,12 +55,6 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1(0x01)` | 
-
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLOBS_SIDECAR` | `DomainType('0x0a000000')` |
 
 ## Preset
 
@@ -205,10 +198,10 @@ See [the full details of `blob_versioned_hashes` offset calculation](https://gis
 def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedHash]:
     assert opaque_tx[0] == BLOB_TX_TYPE
     message_offset = 1 + uint32.decode_bytes(opaque_tx[1:5])
-    # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 = 156
+    # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 + 32 = 188
     blob_versioned_hashes_offset = (
         message_offset
-        + uint32.decode_bytes(opaque_tx[(message_offset + 156):(message_offset + 160)])
+        + uint32.decode_bytes(opaque_tx[(message_offset + 188):(message_offset + 192)])
     )
     return [
         VersionedHash(opaque_tx[x:(x + 32)])

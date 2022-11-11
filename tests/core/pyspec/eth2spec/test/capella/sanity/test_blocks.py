@@ -6,12 +6,17 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot, build_empty_block,
+    build_empty_block_for_next_slot,
+    build_empty_block,
 )
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth2spec.test.helpers.state import (
+    next_slot,
+)
 from eth2spec.test.helpers.withdrawals import (
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
+    prepare_expected_withdrawals,
 )
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
@@ -45,6 +50,8 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
     current_epoch = spec.get_current_epoch(state)
     set_validator_fully_withdrawable(spec, state, index, current_epoch)
+    assert len(spec.get_expected_withdrawals(state)) == 1
+
     yield 'pre', state
 
     # trigger epoch transition
@@ -55,6 +62,7 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     yield 'post', state
 
     assert state.balances[index] == 0
+    assert len(spec.get_expected_withdrawals(state)) == 0
 
 
 @with_capella_and_later
@@ -63,7 +71,8 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     index = state.next_withdrawal_index
     set_validator_partially_withdrawable(spec, state, index, excess_balance=1000000000000)
     pre_balance = state.balances[index]
-    pre_withdrawal_queue_len = len(state.withdrawal_queue)
+
+    assert len(spec.get_expected_withdrawals(state)) == 1
 
     yield 'pre', state
 
@@ -77,21 +86,19 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     assert state.balances[index] < pre_balance
     # Potentially less than due to sync committee penalty
     assert state.balances[index] <= spec.MAX_EFFECTIVE_BALANCE
-    # Withdrawal is processed within the context of the block so queue empty
-    assert len(state.withdrawal_queue) == pre_withdrawal_queue_len
+    assert len(spec.get_expected_withdrawals(state)) == 0
 
 
 @with_capella_and_later
 @spec_state_test
 def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     assert len(state.validators) > spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    assert spec.MAX_PARTIAL_WITHDRAWALS_PER_EPOCH > spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
     for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1):
         index = (i + state.next_withdrawal_index) % len(state.validators)
         set_validator_partially_withdrawable(spec, state, index, excess_balance=1000000000000)
 
-    pre_withdrawal_queue_len = len(state.withdrawal_queue)
+    assert len(spec.get_expected_withdrawals(state)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
     yield 'pre', state
 
@@ -102,8 +109,7 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # All new partial withdrawals processed except 1
-    assert len(state.withdrawal_queue) == pre_withdrawal_queue_len + 1
+    assert len(spec.get_expected_withdrawals(state)) == 1
 
 
 @with_capella_and_later
@@ -133,3 +139,69 @@ def test_exit_and_bls_change(spec, state):
     assert not spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
     assert validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     assert spec.is_fully_withdrawable_validator(validator, balance, validator.withdrawable_epoch)
+
+
+def _perform_valid_withdrawal(spec, state):
+    fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
+        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4,
+        num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
+
+    next_slot(spec, state)
+    pre_next_withdrawal_index = state.next_withdrawal_index
+
+    expected_withdrawals = spec.get_expected_withdrawals(state)
+
+    pre_state = state.copy()
+
+    # Block 1
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block_1 = state_transition_and_sign_block(spec, state, block)
+
+    withdrawn_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
+    fully_withdrawable_indices = list(set(fully_withdrawable_indices).difference(set(withdrawn_indices)))
+    partial_withdrawals_indices = list(set(partial_withdrawals_indices).difference(set(withdrawn_indices)))
+    assert state.next_withdrawal_index == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
+
+    withdrawn_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
+    fully_withdrawable_indices = list(set(fully_withdrawable_indices).difference(set(withdrawn_indices)))
+    partial_withdrawals_indices = list(set(partial_withdrawals_indices).difference(set(withdrawn_indices)))
+    assert state.next_withdrawal_index == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
+
+    return pre_state, signed_block_1, pre_next_withdrawal_index
+
+
+@with_capella_and_later
+@spec_state_test
+def test_withdrawal_success_two_blocks(spec, state):
+    pre_state, signed_block_1, pre_next_withdrawal_index = _perform_valid_withdrawal(spec, state)
+
+    yield 'pre', pre_state
+
+    # Block 2
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block_2 = state_transition_and_sign_block(spec, state, block)
+
+    assert state.next_withdrawal_index == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2
+
+    yield 'blocks', [signed_block_1, signed_block_2]
+    yield 'post', state
+
+
+@with_capella_and_later
+@spec_state_test
+def test_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
+    _perform_valid_withdrawal(spec, state)
+
+    # Block 2
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Modify state.next_withdrawal_index to incorrect number
+    state.next_withdrawal_index += 1
+
+    # Only need to output the state transition of signed_block_2
+    yield 'pre', state
+
+    signed_block_2 = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block_2]
+    yield 'post', None
