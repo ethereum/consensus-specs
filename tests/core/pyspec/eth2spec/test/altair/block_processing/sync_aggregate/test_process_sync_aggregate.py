@@ -203,7 +203,6 @@ def test_sync_committee_rewards_duplicate_committee_full_participation(spec, sta
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
     committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
@@ -214,7 +213,6 @@ def test_sync_committee_rewards_not_full_participants(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_rewards_empty_participants(spec, state):
     committee_indices = compute_committee_indices(state)
     committee_bits = [False for _ in committee_indices]
@@ -500,7 +498,6 @@ def run_sync_committe_exited_member_test(spec, state, does_participate, is_withd
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_participating_exited_member(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -511,7 +508,6 @@ def test_sync_committee_with_participating_exited_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_nonparticipating_exited_member(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -522,7 +518,6 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_participating_withdrawable_member(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -533,7 +528,6 @@ def test_sync_committee_with_participating_withdrawable_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -544,7 +538,6 @@ def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_participating_exited_member_zero_balance(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -556,7 +549,6 @@ def test_sync_committee_with_participating_exited_member_zero_balance(spec, stat
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_nonparticipating_exited_member_zero_balance(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -568,7 +560,6 @@ def test_sync_committee_with_nonparticipating_exited_member_zero_balance(spec, s
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_participating_withdrawable_member_zero_balance(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
@@ -580,7 +571,6 @@ def test_sync_committee_with_participating_withdrawable_member_zero_balance(spec
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_nonparticipating_withdrawable_member_zero_balance(spec, state):
     yield from run_sync_committe_exited_member_test(
         spec, state,
