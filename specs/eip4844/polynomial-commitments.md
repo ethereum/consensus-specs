@@ -258,14 +258,14 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 ```python
 def compute_challenges(x: BLSFieldElement, n: uint64) -> Tuple[Sequence[BLSFieldElement], BLSFieldElement]:
     """
-    Return the random linear combination challenges and the evaluation challenge
+    Return the random linear combination challenges and the evaluation challenge. ``x`` is the initial challenge to which we will generate ``n + 1`` challenges from.
     """
     powers = compute_powers(x, n)
     evaluation_challenge = 0
     
     # When n == 0, this means that the blobs are empty
     # in that case, we define the evaluation challenge to be 0
-    if len(powers) != 0:
+    if n != 0:
         evaluation_challenge = int(powers[-1]) * x % BLS_MODULUS
     
     return powers, evaluation_challenge
@@ -364,6 +364,7 @@ def compute_aggregated_poly_and_commitment(
     """
     Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
     and (3) the polynomial evaluation random challenge.
+    This function should be able to work with blobs == [] and kzg_commitments == []
     """
     # Convert blobs to polynomials
     polynomials = [blob_to_polynomial(blob) for blob in blobs]
