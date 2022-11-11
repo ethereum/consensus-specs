@@ -111,7 +111,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_blobs: uint64  # [New in EIP-4844]
+    excess_data_gas: uint64  # [New in EIP-4844]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -135,7 +135,7 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_blobs: uint64  # [New in EIP-4844]
+    excess_data_gas: uint64  # [New in EIP-4844]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
@@ -273,7 +273,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         timestamp=payload.timestamp,
         extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
-        excess_blobs=payload.excess_blobs,  # [New in EIP-4844]
+        excess_data_gas=payload.excess_data_gas,  # [New in EIP-4844]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
