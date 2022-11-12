@@ -1,9 +1,7 @@
 from random import Random
 
-from eth2spec.test.context import (
-    is_post_altair,
-    expect_assertion_error,
-)
+from eth2spec.test.context import expect_assertion_error
+from eth2spec.test.helpers.forks import is_post_altair
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls

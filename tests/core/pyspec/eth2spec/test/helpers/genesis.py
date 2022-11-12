@@ -1,6 +1,8 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX, FORKS_BEFORE_CAPELLA,
+)
+from eth2spec.test.helpers.forks import (
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip4844,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -40,9 +42,9 @@ def get_sample_genesis_execution_payload_header(spec,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
-    if spec.fork not in FORKS_BEFORE_CAPELLA:
+    if is_post_capella(spec) or is_post_eip4844(spec):
         payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
-    if spec.fork == CAPELLA:
+    if is_post_capella(spec):
         payload.withdrawals_root = spec.Root(b'\x58' * 32)
         payload.withdrawals_hash = spec.Bytes32(b'\x59' * 32)
     return payload
@@ -94,7 +96,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
-        if spec.fork not in FORKS_BEFORE_ALTAIR:
+        if is_post_altair(spec):
             state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(spec.uint64(0))
@@ -102,13 +104,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
 
-    if spec.fork not in FORKS_BEFORE_ALTAIR:
+    if is_post_altair(spec):
         # Fill in sync committees
         # Note: A duplicate committee is assigned for the current and next committee at genesis
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
-    if spec.fork not in FORKS_BEFORE_BELLATRIX:
+    if is_post_bellatrix(spec):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,

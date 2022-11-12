@@ -1,12 +1,13 @@
 from eth2spec.test.context import (
-    is_post_capella,
-    is_post_eip4844,
     spec_configured_state_test,
     spec_state_test_with_matching_config,
     with_all_phases,
     with_phases,
 )
 from eth2spec.test.helpers.constants import ALTAIR
+from eth2spec.test.helpers.forks import (
+    is_post_capella, is_post_eip4844,
+)
 
 
 @with_phases([ALTAIR])
