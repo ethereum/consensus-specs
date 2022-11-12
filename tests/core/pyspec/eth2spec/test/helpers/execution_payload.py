@@ -70,11 +70,6 @@ def build_randomized_execution_payload(spec, state, rng):
         execution_payload.transactions_hash = \
             spec.Bytes32(spec.hash(execution_payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 
-    if is_post_capella(spec):
-        execution_payload.withdrawals = []
-        execution_payload.withdrawals_hash = \
-            spec.Bytes32(spec.hash(execution_payload.withdrawals.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
-
     return execution_payload
 
 
