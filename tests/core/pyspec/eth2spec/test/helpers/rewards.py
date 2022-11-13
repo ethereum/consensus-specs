@@ -206,7 +206,7 @@ def run_get_inclusion_delay_deltas(spec, state):
             rewarded_proposer_indices.add(earliest_attestation.proposer_index)
 
     # Ensure all expected proposers have been rewarded
-    # Track rewarde indices
+    # Track reward indices
     proposing_indices = [a.proposer_index for a in eligible_attestations]
     for index in proposing_indices:
         if index in rewarded_proposer_indices:
