@@ -13,6 +13,8 @@
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
+- [Configuration](#Configuration)
+  - [Time Parameters](#time-parameters)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Withdrawal`](#withdrawal)
@@ -73,6 +75,14 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `MAX_BLS_TO_EXECUTION_CHANGES` | `2**4` (= 16) |
+
+## Configuration
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**9)` (= 512) | epochs | ~54 hours |
 
 ### Execution
 
