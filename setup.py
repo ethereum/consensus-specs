@@ -7,20 +7,21 @@ import os
 import re
 import string
 import textwrap
-from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar
+from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar, Tuple
 from abc import ABC, abstractmethod
 import ast
 import subprocess
 import sys
 import copy
 from collections import OrderedDict
+import json
 
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
 def installPackage(package: str):
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
 
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.16.5"
+RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
 try:
     import ruamel.yaml
 except ImportError:
@@ -78,6 +79,7 @@ class VariableDefinition(NamedTuple):
     type_name: Optional[str]
     value: str
     comment: Optional[str]  # e.g. "noqa: E501"
+    type_hint: Optional[str]  # e.g., "Final"
 
 
 class SpecObject(NamedTuple):
@@ -120,7 +122,7 @@ def _get_self_type_from_source(source: str) -> Optional[str]:
     return args[0].annotation.id
 
 
-def _get_class_info_from_source(source: str) -> (str, Optional[str]):
+def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     class_def = ast.parse(source).body[0]
     base = class_def.bases[0]
     if isinstance(base, ast.Name):
@@ -139,6 +141,28 @@ def _is_constant_id(name: str) -> bool:
     return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
 
 
+def _load_kzg_trusted_setups(preset_name):
+    """
+    [TODO] it's not the final mainnet trusted setup.
+    We will update it after the KZG ceremony.
+    """
+    file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/testing_trusted_setups.json'
+
+    with open(file_path, 'r') as f:
+        json_data = json.load(f)
+
+    trusted_setup_G1 = json_data['setup_G1']
+    trusted_setup_G2 = json_data['setup_G2']
+    trusted_setup_G1_lagrange = json_data['setup_G1_lagrange']
+    roots_of_unity = json_data['roots_of_unity']
+
+    return trusted_setup_G1, trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
+
+ALL_KZG_SETUPS = {
+    'minimal': _load_kzg_trusted_setups('minimal'),
+    'mainnet': _load_kzg_trusted_setups('mainnet')
+}
+
 ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
 
 
@@ -152,21 +176,30 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
     return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
-def _parse_value(name: str, typed_value: str) -> VariableDefinition:
+def _parse_value(name: str, typed_value: str, type_hint: Optional[str]=None) -> VariableDefinition:
     comment = None
     if name == "BLS12_381_Q":
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
     if '(' not in typed_value:
-        return VariableDefinition(type_name=None, value=typed_value, comment=comment)
+        return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
     i = typed_value.index('(')
     type_name = typed_value[:i]
 
-    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment)
+    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
 
 
-def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) -> SpecObject:
+def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
+    comment = "noqa: E501"
+    kzg_setups = ALL_KZG_SETUPS[preset_name]
+    constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(kzg_setups[0]), comment, None)
+    constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[1]), comment, None)
+    constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(kzg_setups[2]), comment, None)
+    constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(kzg_setups[3]), comment, None)
+
+
+def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
     constant_vars: Dict[str, VariableDefinition] = {}
@@ -231,7 +264,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
                             custom_types[name] = value
                         continue
 
@@ -241,16 +274,23 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     value_def = _parse_value(name, value)
                     if name in preset:
-                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment)
+                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment, None)
                     elif name in config:
-                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment)
+                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
+                        if name == 'ENDIANNESS':
+                            # Deal with mypy Literal typing check
+                            value_def = _parse_value(name, value, type_hint='Final')
                         constant_vars[name] = value_def
 
         elif isinstance(child, LinkRefDef):
             comment = _get_eth2_spec_comment(child)
             if comment == "skip":
                 should_skip = True
+
+    # Load KZG trusted setup from files
+    if any('KZG_SETUP' in name for name in constant_vars):
+        _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
 
     return SpecObject(
         functions=functions,
@@ -337,7 +377,7 @@ from dataclasses import (
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
@@ -586,12 +626,18 @@ class EIP4844SpecBuilder(BellatrixSpecBuilder):
         return super().imports(preset_name) + f'''
 from eth2spec.utils import kzg
 from eth2spec.bellatrix import {preset_name} as bellatrix
-from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
+'''
+
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
+T = TypeVar('T')  # For generic function
 '''
 
     @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '''
+        return super().sundry_functions() + '\n\n' + '''
 # TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
 # TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
 TESTING_FIELD_ELEMENTS_PER_BLOB = 4
@@ -606,17 +652,17 @@ KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
 ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
 
 
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> BlobsSidecar:
-    pass'''
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[BlobsSidecar]:
+    return "TEST"'''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
+            'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
             'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
         }
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
-
 
 
 spec_builders = {
@@ -696,7 +742,10 @@ def objects_to_spec(preset_name: str,
 
     def format_constant(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:
-            out = f'{name} = {vardef.value}'
+            if vardef.type_hint is None:
+                out = f'{name} = {vardef.value}'
+            else:
+                out = f'{name}: {vardef.type_hint} = {vardef.value}'
         else:
             out = f'{name} = {vardef.type_name}({vardef.value})'
         if vardef.comment is not None:
@@ -866,7 +915,7 @@ def _build_spec(preset_name: str, fork: str,
                 source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
     preset = load_preset(preset_files)
     config = load_config(config_file)
-    all_specs = [get_spec(spec, preset, config) for spec in source_files]
+    all_specs = [get_spec(spec, preset, config, preset_name) for spec in source_files]
 
     spec_object = all_specs[0]
     for value in all_specs[1:]:
@@ -1108,19 +1157,18 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
-        "generator": ["python-snappy==0.5.4", "filelock"],
+        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
+        "generator": ["python-snappy==0.6.1", "filelock"],
     },
     install_requires=[
-        "eth-utils>=1.3.0,<2",
-        "eth-typing>=2.1.0,<3.0.0",
-        "pycryptodome==3.9.4",
-        "py_ecc==5.2.0",
+        "eth-utils>=2.0.0,<3",
+        "eth-typing>=3.2.0,<4.0.0",
+        "pycryptodome==3.15.0",
+        "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "dataclasses==0.6",
-        "remerkleable==0.1.24",
+        "remerkleable==0.1.25",
         RUAMEL_YAML_VERSION,
-        "lru-dict==1.1.6",
+        "lru-dict==1.1.8",
         MARKO_VERSION,
     ]
 )

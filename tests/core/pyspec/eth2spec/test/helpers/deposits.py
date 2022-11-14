@@ -1,9 +1,7 @@
 from random import Random
 
-from eth2spec.test.context import (
-    is_post_altair,
-    expect_assertion_error,
-)
+from eth2spec.test.context import expect_assertion_error
+from eth2spec.test.helpers.forks import is_post_altair
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
@@ -188,8 +186,12 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     """
     pre_validator_count = len(state.validators)
     pre_balance = 0
+    is_top_up = False
+    # is a top-up
     if validator_index < pre_validator_count:
+        is_top_up = True
         pre_balance = get_balance(state, validator_index)
+        pre_effective_balance = state.validators[validator_index].effective_balance
 
     yield 'pre', state
     yield 'deposit', deposit
@@ -219,9 +221,12 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
             assert len(state.balances) == pre_validator_count + 1
         assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
 
-        effective = min(spec.MAX_EFFECTIVE_BALANCE,
-                        pre_balance + deposit.data.amount)
-        effective -= effective % spec.EFFECTIVE_BALANCE_INCREMENT
-        assert state.validators[validator_index].effective_balance == effective
+        if is_top_up:
+            # Top-ups do not change effective balance
+            assert state.validators[validator_index].effective_balance == pre_effective_balance
+        else:
+            effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
+            effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
+            assert state.validators[validator_index].effective_balance == effective_balance
 
     assert state.eth1_deposit_index == state.eth1_data.deposit_count

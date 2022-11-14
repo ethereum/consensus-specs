@@ -5,6 +5,7 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G2,
     Z1,
     Z2,
+    FQ,
     add,
     multiply,
     neg,

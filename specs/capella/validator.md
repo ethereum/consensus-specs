@@ -18,6 +18,9 @@
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [ExecutionPayload](#executionpayload)
+      - [BLS to execution changes](#bls-to-execution-changes)
+- [Enabling validator withdrawals](#enabling-validator-withdrawals)
+  - [Changing from BLS to execution withdrawal credentials](#changing-from-bls-to-execution-withdrawal-credentials)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -58,12 +61,8 @@ All validator responsibilities remain unchanged other than those noted below.
 expected withdrawals for the slot must be gathered from the `state` (utilizing the
 helper `get_expected_withdrawals`) and passed into the `ExecutionEngine` within `prepare_execution_payload`.
 
-
-```python
-def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
-    num_withdrawals = min(MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
-    return state.withdrawal_queue[:num_withdrawals]
-```
+*Note*: In this section, `state` is the state of the slot for the block proposal _without_ the block yet applied.
+That is, `state` is the `previous_state` processed through any empty slots up to the assigned slot using `process_slots(previous_state, slot)`.
 
 *Note*: The only change made to `prepare_execution_payload` is to call
 `get_expected_withdrawals()` to set the new `withdrawals` field of `PayloadAttributes`.
@@ -106,3 +105,43 @@ def prepare_execution_payload(state: BeaconState,
         payload_attributes=payload_attributes,
     )
 ```
+
+##### BLS to execution changes
+
+Up to `MAX_BLS_TO_EXECUTION_CHANGES`, [`BLSToExecutionChange`](./beacon-chain.md#blstoexecutionchange) objects can be included in the `block`. The BLS to execution changes must satisfy the verification conditions found in [BLS to execution change processing](./beacon-chain.md#new-process_bls_to_execution_change).
+
+## Enabling validator withdrawals
+
+Validator balances are fully or partially withdrawn via an automatic process.
+
+For validators, there is one prerequisite for this automated process:
+withdrawal credentials pointing to an execution layer address, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+
+If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to participate in withdrawals the validator must 
+create a one-time message to change their withdrawal credential from the version authenticated with a BLS key to the
+version compatible with the execution layer. This message -- a `BLSToExecutionChange` -- is available starting in Capella
+
+Validators who wish to enable withdrawals **MUST** assemble, sign, and broadcast this message so that it is accepted
+on the beacon chain. Validators who do not want to enable withdrawals and have the `BLS_WITHDRAWAL_PREFIX` version of
+withdrawal credentials can delay creating this message until they are ready to enable withdrawals.
+
+### Changing from BLS to execution withdrawal credentials
+
+First, the validator must construct a valid [`BLSToExecutionChange`](./beacon-chain.md#blstoexecutionchange) `message`.
+This `message` contains the `validator_index` for the validator who wishes to change their credentials, the `from_bls_pubkey` -- the BLS public key corresponding to the **withdrawal BLS secret key** used to form the `BLS_WITHDRAWAL_PREFIX` withdrawal credential, and the `to_execution_address` specifying the execution layer address to which the validator's balances will be withdrawn.
+
+*Note*: The withdrawal key pair used to construct the `BLS_WITHDRAWAL_PREFIX` withdrawal credential should be distinct from the signing key pair used to operate the validator under typical circumstances. Consult your validator deposit tooling documentation for further details if you are not aware of the difference.
+
+*Warning*: This message can only be included on-chain once and is
+irreversible so ensure the correctness and accessibility to `to_execution_address`.
+
+Next, the validator signs the assembled `message: BLSToExecutionChange` with the **withdrawal BLS secret key** and this
+`signature` is placed into a `SignedBLSToExecutionChange` message along with the inner `BLSToExecutionChange` `message`.
+Note that the `SignedBLSToExecutionChange` message should pass all of the validations in [`process_bls_to_execution_change`](./beacon-chain.md#new-process_bls_to_execution_change).
+
+The `SignedBLSToExecutionChange` message should then be submitted to the consensus layer network. Once included on-chain,
+the withdrawal credential change takes effect. No further action is required for a validator to enter into the automated
+withdrawal process.
+
+*Note*: A node *should* prioritize locally received `BLSToExecutionChange` operations to ensure these changes make it on-chain
+through self published blocks even if the rest of the network censors.

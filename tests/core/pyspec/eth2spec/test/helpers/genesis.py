@@ -1,6 +1,8 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
+)
+from eth2spec.test.helpers.forks import (
+    is_post_altair, is_post_bellatrix,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -19,9 +21,6 @@ def build_mock_validator(spec, i: int, balance: int):
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
         effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     )
-
-    if spec.fork in (CAPELLA):
-        validator.fully_withdrawn_epoch = spec.FAR_FUTURE_EPOCH
 
     return validator
 
@@ -91,7 +90,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
-        if spec.fork not in FORKS_BEFORE_ALTAIR:
+        if is_post_altair(spec):
             state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(spec.uint64(0))
@@ -99,13 +98,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
 
-    if spec.fork not in FORKS_BEFORE_ALTAIR:
+    if is_post_altair(spec):
         # Fill in sync committees
         # Note: A duplicate committee is assigned for the current and next committee at genesis
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
-    if spec.fork not in FORKS_BEFORE_BELLATRIX:
+    if is_post_bellatrix(spec):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,

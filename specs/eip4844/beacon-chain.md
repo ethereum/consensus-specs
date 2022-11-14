@@ -12,20 +12,25 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Blob](#blob)
-  - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
+    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
+    - [`is_data_available`](#is_data_available)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
+    - [Execution payload](#execution-payload)
+      - [`process_execution_payload`](#process_execution_payload)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
 
@@ -40,9 +45,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `Blob` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | |
 | `VersionedHash` | `Bytes32` | |
-| `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
 
 ## Constants
 
@@ -51,14 +54,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844.
 | Name | Value |
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
-| `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1(0x01)` | 
-
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLOBS_SIDECAR` | `DomainType('0x0a000000')` |
 
 ## Preset
 
@@ -96,9 +92,92 @@ class BeaconBlockBody(Container):
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
 
+#### `ExecutionPayload`
+
+```python
+class ExecutionPayload(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32  # 'difficulty' in the yellow paper
+    block_number: uint64  # 'number' in the yellow paper
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    excess_blobs: uint64  # [New in EIP-4844]
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+```
+
+#### `ExecutionPayloadHeader`
+
+```python
+class ExecutionPayloadHeader(Container):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    excess_blobs: uint64  # [New in EIP-4844]
+    # Extra payload fields
+    block_hash: Hash32  # Hash of execution block
+    transactions_root: Root
+```
+
 ## Helper functions
 
 ### Misc
+
+#### `validate_blobs_sidecar`
+
+```python
+def validate_blobs_sidecar(slot: Slot,
+                           beacon_block_root: Root,
+                           expected_kzg_commitments: Sequence[KZGCommitment],
+                           blobs_sidecar: BlobsSidecar) -> None:
+    assert slot == blobs_sidecar.beacon_block_slot
+    assert beacon_block_root == blobs_sidecar.beacon_block_root
+    blobs = blobs_sidecar.blobs
+    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
+    assert len(expected_kzg_commitments) == len(blobs)
+
+    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
+```
+
+#### `is_data_available`
+
+The implementation of `is_data_available` is meant to change with later sharding upgrades.
+Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
+and validate the sidecar with `validate_blobs_sidecar`.
+
+Without the sidecar the block may be processed further optimistically,
+but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+
+```python
+def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
+    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
+    if sidecar == "TEST":
+        return True  # For testing; remove once we have a way to inject `BlobsSidecar` into tests
+    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
+
+    return True
+```
+
 
 #### `kzg_commitment_to_versioned_hash`
 
@@ -117,10 +196,10 @@ See [the full details of `blob_versioned_hashes` offset calculation](https://gis
 def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedHash]:
     assert opaque_tx[0] == BLOB_TX_TYPE
     message_offset = 1 + uint32.decode_bytes(opaque_tx[1:5])
-    # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 = 156
+    # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 + 32 = 188
     blob_versioned_hashes_offset = (
         message_offset
-        + uint32.decode_bytes(opaque_tx[(message_offset + 156):(message_offset + 160)])
+        + uint32.decode_bytes(opaque_tx[(message_offset + 188):(message_offset + 192)])
     )
     return [
         VersionedHash(opaque_tx[x:(x + 32)])
@@ -154,6 +233,44 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
+
+    # New in EIP-4844, note: Can sync optimistically without this condition, see note on `is_data_available`
+    assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
+```
+
+#### Execution payload
+
+##### `process_execution_payload`
+
+```python
+def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    if is_merge_transition_complete(state):
+        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    # Verify prev_randao
+    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
+    # Verify timestamp
+    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify the execution payload is valid
+    assert execution_engine.notify_new_payload(payload)
+    # Cache execution payload header
+    state.latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_hash=payload.parent_hash,
+        fee_recipient=payload.fee_recipient,
+        state_root=payload.state_root,
+        receipts_root=payload.receipts_root,
+        logs_bloom=payload.logs_bloom,
+        prev_randao=payload.prev_randao,
+        block_number=payload.block_number,
+        gas_limit=payload.gas_limit,
+        gas_used=payload.gas_used,
+        timestamp=payload.timestamp,
+        extra_data=payload.extra_data,
+        base_fee_per_gas=payload.base_fee_per_gas,
+        excess_blobs=payload.excess_blobs,  # [New in EIP-4844]
+        block_hash=payload.block_hash,
+        transactions_root=hash_tree_root(payload.transactions),
+    )
 ```
 
 #### Blob KZG commitments

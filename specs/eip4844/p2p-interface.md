@@ -13,12 +13,11 @@ The specification of these changes continues in the same format as the network s
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobsSidecar`](#blobssidecar)
-    - [`SignedBlobsSidecar`](#signedblobssidecar)
+    - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`blobs_sidecar`](#blobs_sidecar)
+        - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -33,10 +32,10 @@ The specification of these changes continues in the same format as the network s
 
 ## Configuration
 
-| Name                                     | Value                         | Description                                                         |
-|------------------------------------------|-------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                | Maximum number of blobs sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**13` (= 8192, ~1.2 months) | The minimum epoch range over which a node must serve blobs sidecars |
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                    | Maximum number of blobs sidecars in a single request                |
+| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
 
@@ -50,12 +49,12 @@ class BlobsSidecar(Container):
     kzg_aggregated_proof: KZGProof
 ```
 
-### `SignedBlobsSidecar`
+### `SignedBeaconBlockAndBlobsSidecar`
 
 ```python
-class SignedBlobsSidecar(Container):
-    message: BlobsSidecar
-    signature: BLSSignature
+class SignedBeaconBlockAndBlobsSidecar(Container):
+    beacon_block: SignedBeaconBlock
+    blobs_sidecar: BlobsSidecar
 ```
 
 ## The gossip domain: gossipsub
@@ -75,47 +74,30 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `beacon_block` | `SignedBeaconBlock` (modified) |
-| `blobs_sidecar` | `SignedBlobsSidecar` (new) |
+| `beacon_block_and_blobs_sidecar` | `SignedBeaconBlockAndBlobsSidecar` (new) |
 
-Note that the `ForkDigestValue` path segment of the topic separates the old and the new `beacon_block` topics.
 
 #### Global topics
 
-EIP4844 changes the type of the global beacon block topic and introduces a new global topic for blobs-sidecars.
+EIP4844 introduces a new global topic for beacon block and blobs-sidecars.
 
-##### `beacon_block`
+##### `beacon_block_and_blobs_sidecar`
 
-The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in EIP4844.
+This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
 
-In addition to the gossip validations for this topic from prior specifications,
-the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
-Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
+In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.  
+Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
   -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
-##### `blobs_sidecar`
-
-This topic is used to propagate data blobs included in any given beacon block.
-
-The following validations MUST pass before forwarding the `signed_blobs_sidecar` on the network;
-Alias `sidecar = signed_blobs_sidecar.message`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == current_slot`.
+Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
+- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == block.slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
-- _[REJECT]_ the beacon proposer signature, `signed_blobs_sidecar.signature`, is valid -- i.e.
-    - Let `domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, sidecar.beacon_block_slot // SLOTS_PER_EPOCH)`
-    - Let `signing_root = compute_signing_root(sidecar, domain)`
-    - Verify `bls.Verify(proposer_pubkey, signing_root, signed_blobs_sidecar.signature) is True`,   
-      where `proposer_pubkey` is the pubkey of the beacon block proposer of `sidecar.beacon_block_slot`
-- _[IGNORE]_ The sidecar is the first sidecar with valid signature received for the `(proposer_index, sidecar.beacon_block_slot)` combination,
-  where `proposer_index` is the validator index of the beacon block proposer of `sidecar.beacon_block_slot`
 
-Note that a sidecar may be propagated before or after the corresponding beacon block.
-
-Once both sidecar and beacon block are received, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
+Once the sidecar and beacon block are received together, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
 
 ### Transitioning the gossip
 
@@ -207,10 +189,7 @@ or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
 MUST backfill the local blobs database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-to be fully compliant with `BlobsSidecarsByRange` requests. To safely perform such a
-backfill of blocks to the recent state, the node MUST validate both (1) the
-proposer signatures and (2) that the blocks form a valid chain up to the most
-recent block referenced in the weak subjectivity state.
+to be fully compliant with `BlobsSidecarsByRange` requests.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
 participating in the networking immediately, other peers MAY

@@ -41,6 +41,8 @@ CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
 
+SCRIPTS_DIR = ${CURRENT_DIR}/scripts
+
 export DAPP_SKIP_BUILD:=1
 export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
 export DAPP_LIB:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)/lib
@@ -64,6 +66,8 @@ partial_clean:
 	rm -rf $(ETH2SPEC_MODULE_DIR)/phase0
 	rm -rf $(ETH2SPEC_MODULE_DIR)/altair
 	rm -rf $(ETH2SPEC_MODULE_DIR)/bellatrix
+	rm -rf $(ETH2SPEC_MODULE_DIR)/capella
+	rm -rf $(ETH2SPEC_MODULE_DIR)/eip4844
 	rm -rf $(COV_HTML_OUT_DIR)
 	rm -rf $(TEST_REPORT_DIR)
 	rm -rf eth2spec.egg-info dist build
@@ -143,7 +147,7 @@ lint: pyspec
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE)
+	flake8 --config $(LINTER_CONFIG_FILE)
 
 compile_deposit_contract:
 	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)
@@ -192,6 +196,14 @@ $(TEST_VECTOR_DIR):
 	mkdir -p $@
 $(TEST_VECTOR_DIR)/:
 	$(info ignoring duplicate tests dir)
+
+gen_kzg_setups:
+	cd $(SCRIPTS_DIR); \
+	if ! test -d venv; then python3 -m venv venv; fi; \
+	. venv/bin/activate; \
+	pip3 install -r requirements.txt; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --length=4 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --length=4096 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
 
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)

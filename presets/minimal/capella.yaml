@@ -1,17 +1,5 @@
 # Minimal preset - Capella
 
-# Misc
-# ---------------------------------------------------------------
-# [customized] 16 for more interesting tests at low validator count
-MAX_PARTIAL_WITHDRAWALS_PER_EPOCH: 16
-
-
-# State list lengths
-# ---------------------------------------------------------------
-# 2**40 (= 1,099,511,627,776) withdrawals
-WITHDRAWAL_QUEUE_LIMIT: 1099511627776
-
-
 # Max operations per block
 # ---------------------------------------------------------------
 # 2**4 (= 16)
@@ -20,5 +8,5 @@ MAX_BLS_TO_EXECUTION_CHANGES: 16
 
 # Execution
 # ---------------------------------------------------------------
-# [customized] Lower than MAX_PARTIAL_WITHDRAWALS_PER_EPOCH so not all processed in one block
-MAX_WITHDRAWALS_PER_PAYLOAD: 16
+# [customized] 2**2 (= 4)
+MAX_WITHDRAWALS_PER_PAYLOAD: 4
