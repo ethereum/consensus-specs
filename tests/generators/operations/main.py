@@ -37,7 +37,6 @@ if __name__ == "__main__":
     ]}
     eip4844_mods = combine_mods(_new_eip4844_mods, capella_mods)
 
-
     # TODO Custody Game testgen is disabled for now
     # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
     #     'attestation',
