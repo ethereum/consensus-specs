@@ -23,6 +23,7 @@ The specification of these changes continues in the same format as the network s
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [BeaconBlockAndBlobsSidecarByRoot v1](#beaconblockandblobssidecarbyroot-v1)
       - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
@@ -129,7 +130,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-The EIP-4844 fork-digest is introduced to the `context` enum to specify EIP-4844 beacon block type.
+After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`
+clients MUST support requesting blocks by root for pre-fork-epoch blocks.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -140,7 +142,42 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
-| `EIP4844_FORK_VERSION`   | `eip4844.SignedBeaconBlock`   |
+
+#### BeaconBlockAndBlobsSidecarByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_block_and_blobs_sidecar_by_root/1/`
+
+Request Content:
+
+```
+(
+  List[Root, MAX_REQUEST_BLOCKS]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlockAndBlobsSidecar, MAX_REQUEST_BLOCKS]
+)
+```
+
+Requests blocks by block root (= `hash_tree_root(SignedBeaconBlockAndBlobsSidecar.beacon_block.message)`).
+The response is a list of `SignedBeaconBlockAndBlobsSidecar` whose length is less than or equal to the number of requests.
+It may be less in the case that the responding peer is missing blocks and sidecars.
+
+No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
+
+`BeaconBlockAndBlobsSidecarByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
+
+The response MUST consist of zero or more `response_chunk`.
+Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
+
+Clients MUST support requesting blocks and sidecars since the latest finalized epoch.
+
+Clients MUST respond with at least one block and sidecar, if they have it.
+Clients MAY limit the number of blocks and sidecars in the response.
 
 #### BlobsSidecarsByRange v1
 
