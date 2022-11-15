@@ -88,6 +88,8 @@ This topic is deprecated and clients **MUST NOT** expose in their topic set to a
 anything beyond simply skip implementation, and it is explicitly called out as it is a departure from previous versioning
 of this topic.
 
+Refer to [the section below](#transitioning-the-gossip) for details on how to transition the gossip.
+
 ##### `beacon_block_and_blobs_sidecar`
 
 This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
