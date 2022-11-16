@@ -10,6 +10,7 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
+      - [`finalized_block_hash`](#finalized_block_hash)
       - [`safe_block_hash`](#safe_block_hash)
 - [Helpers](#helpers)
   - [`PayloadAttributes`](#payloadattributes)
