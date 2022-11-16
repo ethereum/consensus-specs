@@ -11,7 +11,7 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, SHARDING,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
@@ -267,7 +267,7 @@ def spec_test(fn):
     return vector_test()(bls_switch(fn))
 
 
-# shorthand for decorating @spectest() @with_state @single_phase
+# shorthand for decorating @spec_test() @with_state @single_phase
 def spec_state_test(fn):
     return spec_test(with_state(single_phase(fn)))
 
@@ -291,30 +291,16 @@ def _check_current_version(spec, state, version_name):
 
 
 def config_fork_epoch_overrides(spec, state):
-    overrides = {}
     if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
-        pass
-    elif _check_current_version(spec, state, ALTAIR):
-        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif _check_current_version(spec, state, BELLATRIX):
-        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif _check_current_version(spec, state, CAPELLA):
-        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif _check_current_version(spec, state, EIP4844):
-        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['EIP4844_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    elif _check_current_version(spec, state, SHARDING):
-        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
-        overrides['SHARDING_FORK_EPOCH'] = spec.GENESIS_EPOCH
-    else:
-        assert False  # Fork is missing
-    return overrides
+        return {}
+
+    for fork in ALL_PHASES:
+        if fork != PHASE0 and _check_current_version(spec, state, fork):
+            overrides = {}
+            for f in ALL_PHASES:
+                if f != PHASE0 and is_post_fork(fork, f):
+                    overrides[f.upper() + '_FORK_EPOCH'] = spec.GENESIS_EPOCH
+            return overrides
 
 
 def spec_state_test_with_matching_config(fn):
