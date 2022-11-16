@@ -97,8 +97,8 @@ Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
 - _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == block.slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
-
-Once the sidecar and beacon block are received together, `validate_blobs_sidecar` can unlock the data-availability fork-choice dependency.
+- _[REJECT]_ The KZG commitments in the block are valid against the provided blobs sidecar.
+  -- i.e. `validate_blobs_sidecar(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments, sidecar)`
 
 ### Transitioning the gossip
 
