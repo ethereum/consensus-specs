@@ -77,9 +77,13 @@ The `finalized_block_hash` parameter MUST be set to return value of the followin
 def get_finalized_execution_payload_hash(store: Store) -> Hash32:
     finalized_block_root = store.finalized_checkpoint.root
     finalized_block = store.blocks[finalized_block_root]
-
-    # Returns Hash32() if no payload is yet finalized
-    return finalized_block.body.execution_payload.block_hash
+    
+    # Consider finalized blocks before Bellatrix
+    # Return Hash32() if no payload is yet finalized
+    if compute_epoch_at_slot(finalized_block.slot) >= BELLATRIX_FORK_EPOCH:
+        return finalized_block.body.execution_payload.block_hash
+    else:
+        return Hash32()
 ```
 
 ##### `safe_block_hash`
