@@ -66,7 +66,7 @@ Since the `eip4844.BeaconState` format is equal to the `bellatrix.BeaconState` f
 
 ```python
 def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
-    # TODO: if Capella gets scheduled, add sync it with Capella.BeaconState and Capella.ExecutionPayloadHeader
+    # TODO: if Capella gets scheduled, add sync it with Capella.BeaconState
     epoch = bellatrix.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
