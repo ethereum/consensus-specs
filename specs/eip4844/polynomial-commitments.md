@@ -161,7 +161,7 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 
 ```python
 def hash_to_bls_field(polys: Sequence[Polynomial],
-                      comms: Sequence[KZGCommitment], challenge_index : uint8) -> BLSFieldElement:
+                      comms: Sequence[KZGCommitment], challenge_index : int) -> BLSFieldElement:
     """
     Compute 32-byte hash of serialized polynomials and commitments concatenated.
     This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
@@ -183,7 +183,7 @@ def hash_to_bls_field(polys: Sequence[Polynomial],
 
     # Append challenge index last so we can cache the data buffer
     # in the case of multiple challenges
-    data += challenge_index
+    data += int.to_bytes(challenge_index, 1, ENDIANNESS)
 
     return bytes_to_bls_field(hash(data))
 ```
