@@ -17,6 +17,7 @@ The specification of these changes continues in the same format as the network s
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
+        - [`beacon_block`](#beacon_block)
         - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -65,9 +66,9 @@ Some gossip meshes are upgraded in the fork of EIP4844 to support upgraded types
 ### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
-All topics remain stable except the beacon block topic which is updated with the modified type.
+The `beacon_block` topic is deprecated and replaced by the `beacon_block_and_blobs_sidecar` topic. All other topics remain stable.
 
-The specification around the creation, validation, and dissemination of messages has not changed from the Bellatrix document unless explicitly noted here.
+The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
 
@@ -82,11 +83,19 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 EIP4844 introduces a new global topic for beacon block and blobs-sidecars.
 
+##### `beacon_block`
+
+This topic is deprecated and clients **MUST NOT** expose in their topic set to any peer. Implementers do not need to do
+anything beyond simply skip implementation, and it is explicitly called out as it is a departure from previous versioning
+of this topic.
+
+Refer to [the section below](#transitioning-the-gossip) for details on how to transition the gossip.
+
 ##### `beacon_block_and_blobs_sidecar`
 
 This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
 
-In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.  
+In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.
 Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
 - _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
   -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
