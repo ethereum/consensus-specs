@@ -89,7 +89,7 @@ class BeaconBlockBody(Container):
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
-    execution_payload: ExecutionPayload 
+    execution_payload: ExecutionPayload  # [Modified in EIP-4844]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
 ```
