@@ -161,7 +161,7 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 
 ```python
 def hash_to_bls_field(polys: Sequence[Polynomial],
-                      comms: Sequence[KZGCommitment]) -> BLSFieldElement:
+                      comms: Sequence[KZGCommitment], challenge_index : uint8) -> BLSFieldElement:
     """
     Compute 32-byte hash of serialized polynomials and commitments concatenated.
     This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
@@ -180,6 +180,10 @@ def hash_to_bls_field(polys: Sequence[Polynomial],
     # Append serialized G1 points
     for commitment in comms:
         data += commitment
+
+    # Append challenge index last so we can cache the data buffer
+    # in the case of multiple challenges
+    data += challenge_index
 
     return bytes_to_bls_field(hash(data))
 ```
@@ -350,11 +354,10 @@ def compute_aggregated_poly_and_commitment(
     # Convert blobs to polynomials
     polynomials = [blob_to_polynomial(blob) for blob in blobs]
 
-    # Generate random linear combination challenges
-    r = hash_to_bls_field(polynomials, kzg_commitments)
-    all_r_powers = compute_powers(r, len(kzg_commitments) + 1)
-    evaluation_challenge = all_r_powers[-1]
-    r_powers = all_r_powers[:-1]
+    # Generate random linear combination and evaluation challenges
+    r = hash_to_bls_field(polynomials, kzg_commitments, 0)
+    r_powers = compute_powers(r, len(kzg_commitments))
+    evaluation_challenge = hash_to_bls_field(polynomials, kzg_commitments, 1)
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb(polynomials, r_powers))
