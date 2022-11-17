@@ -615,6 +615,13 @@ def only_generator(reason):
     return _decorator
 
 
+def with_test_suite_name(suite_name: str):
+    def _decorator(inner):
+        inner.suite_name = suite_name
+        return inner
+    return _decorator
+
+
 #
 # Fork transition state tests
 #
