@@ -34,14 +34,14 @@ def run_fork_test(post_spec, pre_state):
         'inactivity_scores',
         # Sync
         'current_sync_committee', 'next_sync_committee',
-        # Execution
-        'latest_execution_payload_header',
+        # Withdrawals
+        'next_withdrawal_index', 'next_withdrawal_validator_index',
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)
 
     # Modified fields
-    modified_fields = ['fork']
+    modified_fields = ['fork', 'latest_execution_payload_header']
     for field in modified_fields:
         assert getattr(pre_state, field) != getattr(post_state, field)
 
