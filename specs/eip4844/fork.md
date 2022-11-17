@@ -68,6 +68,24 @@ Since the `eip4844.BeaconState` format is equal to the `bellatrix.BeaconState` f
 def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
     # TODO: if Capella gets scheduled, add sync it with Capella.BeaconState
     epoch = bellatrix.get_current_epoch(pre)
+    latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_hash=pre.latest_execution_payload_header.parent_hash,
+        fee_recipient=pre.latest_execution_payload_header.fee_recipient,
+        state_root=pre.latest_execution_payload_header.state_root,
+        receipts_root=pre.latest_execution_payload_header.receipts_root,
+        logs_bloom=pre.latest_execution_payload_header.logs_bloom,
+        prev_randao=pre.latest_execution_payload_header.prev_randao,
+        block_number=pre.latest_execution_payload_header.block_number,
+        gas_limit=pre.latest_execution_payload_header.gas_limit,
+        gas_used=pre.latest_execution_payload_header.gas_used,
+        timestamp=pre.latest_execution_payload_header.timestamp,
+        extra_data=pre.latest_execution_payload_header.extra_data,
+        base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
+        excess_data_gas=uint256(0),     # [New in EIP-4844]
+        block_hash=pre.latest_execution_payload_header.block_hash,
+        transactions_root=pre.latest_execution_payload_header.transactions_root,
+        withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
+    )
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -108,7 +126,7 @@ def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=pre.latest_execution_payload_header,
+        latest_execution_payload_header=latest_execution_payload_header,
     )
 
     return post
