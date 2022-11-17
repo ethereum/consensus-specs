@@ -81,9 +81,10 @@ def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
         timestamp=pre.latest_execution_payload_header.timestamp,
         extra_data=pre.latest_execution_payload_header.extra_data,
         base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
-        excess_blobs=uint64(0),     # [New in EIP-4844]
+        excess_data_gas=uint256(0),     # [New in EIP-4844]
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
+        withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
     )
     post = BeaconState(
         # Versioning
