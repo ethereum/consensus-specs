@@ -2,7 +2,7 @@ from eth2spec.utils import bls
 from eth2spec.test.helpers.keys import pubkeys, privkeys, pubkey_to_privkey
 
 
-def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubkey=None):
+def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubkey=None, to_execution_address=None):
     if validator_index is None:
         validator_index = 0
 
@@ -13,11 +13,14 @@ def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubk
     else:
         withdrawal_privkey = pubkey_to_privkey[withdrawal_pubkey]
 
+    if to_execution_address is None:
+        to_execution_address = b'\x42' * 20
+
     domain = spec.get_domain(state, spec.DOMAIN_BLS_TO_EXECUTION_CHANGE)
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,
         from_bls_pubkey=withdrawal_pubkey,
-        to_execution_address=b'\x42' * 20,
+        to_execution_address=to_execution_address,
     )
 
     signing_root = spec.compute_signing_root(address_change, domain)

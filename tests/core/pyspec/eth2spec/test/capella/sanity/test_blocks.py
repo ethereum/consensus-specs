@@ -79,7 +79,7 @@ def test_success_exit_and_bls_change(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_double_bls_changes_same_block(spec, state):
+def test_invalid_double_bls_changes_same_block(spec, state):
     index = 0
     signed_address_change = get_signed_address_change(spec, state, validator_index=index)
     yield 'pre', state
@@ -89,6 +89,30 @@ def test_fail_double_bls_changes_same_block(spec, state):
     # Double BLSToExecutionChange of the same validator
     for _ in range(2):
         block.body.bls_to_execution_changes.append(signed_address_change)
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+@with_phases([CAPELLA])
+@spec_state_test
+def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_block(spec, state):
+    index = 0
+
+    signed_address_change_1 = get_signed_address_change(spec, state, validator_index=index,
+                                                        to_execution_address=b'\x12' * 20)
+    signed_address_change_2 = get_signed_address_change(spec, state, validator_index=index,
+                                                        to_execution_address=b'\x34' * 20)
+    assert signed_address_change_1 != signed_address_change_2
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    block.body.bls_to_execution_changes.append(signed_address_change_1)
+    block.body.bls_to_execution_changes.append(signed_address_change_2)
 
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
