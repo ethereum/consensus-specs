@@ -37,6 +37,8 @@
     - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
     - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
 
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
 
@@ -161,7 +163,8 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 
 ```python
 def hash_to_bls_field(polys: Sequence[Polynomial],
-                      comms: Sequence[KZGCommitment], challenge_index : int) -> BLSFieldElement:
+                      comms: Sequence[KZGCommitment],
+                      challenge_index: int) -> BLSFieldElement:
     """
     Compute 32-byte hash of serialized polynomials and commitments concatenated.
     This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
