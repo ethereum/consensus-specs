@@ -21,9 +21,13 @@ from eth2spec.test.helpers.withdrawals import (
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
+#
+# BLSToExecutionChange
+#
+
 @with_phases([CAPELLA])
 @spec_state_test
-def test_successful_bls_change(spec, state):
+def test_success_bls_change(spec, state):
     index = 0
     signed_address_change = get_signed_address_change(spec, state, validator_index=index)
     pre_credentials = state.validators[index].withdrawal_credentials
@@ -43,6 +47,82 @@ def test_successful_bls_change(spec, state):
     assert post_credentials[1:12] == b'\x00' * 11
     assert post_credentials[12:] == signed_address_change.message.to_execution_address
 
+
+@with_phases([CAPELLA])
+@spec_state_test
+def test_success_exit_and_bls_change(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    index = 0
+    signed_address_change = get_signed_address_change(spec, state, validator_index=index)
+    signed_exit = prepare_signed_exits(spec, state, [index])[0]
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.voluntary_exits.append(signed_exit)
+    block.body.bls_to_execution_changes.append(signed_address_change)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    validator = state.validators[index]
+    balance = state.balances[index]
+    current_epoch = spec.get_current_epoch(state)
+    assert not spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
+    assert validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+    assert spec.is_fully_withdrawable_validator(validator, balance, validator.withdrawable_epoch)
+
+
+@with_phases([CAPELLA])
+@spec_state_test
+def test_invalid_duplicate_bls_changes_same_block(spec, state):
+    index = 0
+    signed_address_change = get_signed_address_change(spec, state, validator_index=index)
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Double BLSToExecutionChange of the same validator
+    for _ in range(2):
+        block.body.bls_to_execution_changes.append(signed_address_change)
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+@with_phases([CAPELLA])
+@spec_state_test
+def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_block(spec, state):
+    index = 0
+
+    signed_address_change_1 = get_signed_address_change(spec, state, validator_index=index,
+                                                        to_execution_address=b'\x12' * 20)
+    signed_address_change_2 = get_signed_address_change(spec, state, validator_index=index,
+                                                        to_execution_address=b'\x34' * 20)
+    assert signed_address_change_1 != signed_address_change_2
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    block.body.bls_to_execution_changes.append(signed_address_change_1)
+    block.body.bls_to_execution_changes.append(signed_address_change_2)
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+#
+# Withdrawals
+#
 
 @with_phases([CAPELLA])
 @spec_state_test
@@ -110,35 +190,6 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     yield 'post', state
 
     assert len(spec.get_expected_withdrawals(state)) == 1
-
-
-@with_phases([CAPELLA])
-@spec_state_test
-def test_exit_and_bls_change(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    index = 0
-    signed_address_change = get_signed_address_change(spec, state, validator_index=index)
-    signed_exit = prepare_signed_exits(spec, state, [index])[0]
-
-    yield 'pre', state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.voluntary_exits.append(signed_exit)
-    block.body.bls_to_execution_changes.append(signed_address_change)
-
-    signed_block = state_transition_and_sign_block(spec, state, block)
-
-    yield 'blocks', [signed_block]
-    yield 'post', state
-
-    validator = state.validators[index]
-    balance = state.balances[index]
-    current_epoch = spec.get_current_epoch(state)
-    assert not spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
-    assert validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-    assert spec.is_fully_withdrawable_validator(validator, balance, validator.withdrawable_epoch)
 
 
 def _perform_valid_withdrawal(spec, state):
