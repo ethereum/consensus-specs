@@ -79,7 +79,7 @@ def test_success_exit_and_bls_change(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_double_bls_changes_in_same_block(spec, state):
+def test_fail_double_bls_changes_same_block(spec, state):
     index = 0
     signed_address_change = get_signed_address_change(spec, state, validator_index=index)
     yield 'pre', state
