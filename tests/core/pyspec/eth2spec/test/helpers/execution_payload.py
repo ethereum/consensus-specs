@@ -1,5 +1,5 @@
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.context import is_post_capella
+from eth2spec.test.helpers.forks import is_post_capella
 
 
 def build_empty_execution_payload(spec, state, randao_mix=None):
@@ -30,8 +30,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         transactions=empty_txs,
     )
     if is_post_capella(spec):
-        num_withdrawals = min(spec.MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
-        payload.withdrawals = state.withdrawal_queue[:num_withdrawals]
+        payload.withdrawals = spec.get_expected_withdrawals(state)
 
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
     payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))

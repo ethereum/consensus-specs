@@ -186,7 +186,7 @@ if __name__ == "__main__":
         ALTAIR: altair_mods,
     }
 
-    run_state_test_generators(runner_name="sanity", specs=specs, all_mods=all_mods)
+    run_state_test_generators(runner_name="sanity", all_mods=all_mods)
 ```
 
 Here multiple phases load the configuration, and the stream of test cases is derived from a pytest file using the `eth2spec.gen_helpers.gen_from_tests.gen.run_state_test_generators` utility. Note that this helper generates all available tests of `TESTGEN_FORKS` forks of `ALL_CONFIGS` configs of the given runner.
@@ -210,7 +210,7 @@ To add a new test generator that builds `New Tests`:
  with any dependencies it may need. Leave it empty if your generator has none.
 3. Your generator is assumed to have a `main.py` file in its root.
  By adding the base generator to your requirements, you can make a generator really easily. See docs below.
-4. Your generator is called with `-o some/file/path/for_testing/can/be_anything -c some/other/path/to_configs/`.
+4. Your generator is called with `-o some/file/path/for_testing/can/be_anything --preset-list mainnet minimal`.
  The base generator helps you handle this; you only have to define test case providers.
 5. Finally, add any linting or testing commands to the
  [circleci config file](../../.circleci/config.yml) if desired to increase code quality.

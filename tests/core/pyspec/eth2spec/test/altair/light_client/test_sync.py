@@ -63,11 +63,11 @@ def get_checks(store):
     return {
         "finalized_header": {
             'slot': int(store.finalized_header.slot),
-            'root': encode_hex(store.finalized_header.hash_tree_root()),
+            'beacon_root': encode_hex(store.finalized_header.hash_tree_root()),
         },
         "optimistic_header": {
             'slot': int(store.optimistic_header.slot),
-            'root': encode_hex(store.optimistic_header.hash_tree_root()),
+            'beacon_root': encode_hex(store.optimistic_header.hash_tree_root()),
         },
     }
 
@@ -110,7 +110,7 @@ def compute_start_slot_at_sync_committee_period(spec, sync_committee_period):
 
 
 def compute_start_slot_at_next_sync_committee_period(spec, state):
-    sync_committee_period = spec.compute_sync_committee_period(spec.compute_epoch_at_slot(state.slot))
+    sync_committee_period = spec.compute_sync_committee_period_at_slot(state.slot)
     return compute_start_slot_at_sync_committee_period(spec, sync_committee_period + 1)
 
 

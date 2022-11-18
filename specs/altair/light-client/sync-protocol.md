@@ -77,9 +77,9 @@ Additional documents describe how the light client sync protocol can be used:
 
 ```python
 class LightClientBootstrap(Container):
-    # The requested beacon block header
+    # Header matching the requested beacon block root
     header: BeaconBlockHeader
-    # Current sync committee corresponding to `header`
+    # Current sync committee corresponding to `header.state_root`
     current_sync_committee: SyncCommittee
     current_sync_committee_branch: Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]
 ```
@@ -88,12 +88,12 @@ class LightClientBootstrap(Container):
 
 ```python
 class LightClientUpdate(Container):
-    # The beacon block header that is attested to by the sync committee
+    # Header attested to by the sync committee
     attested_header: BeaconBlockHeader
-    # Next sync committee corresponding to `attested_header`
+    # Next sync committee corresponding to `attested_header.state_root`
     next_sync_committee: SyncCommittee
     next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
-    # The finalized beacon block header attested to by Merkle branch
+    # Finalized header corresponding to `attested_header.state_root`
     finalized_header: BeaconBlockHeader
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
@@ -106,9 +106,9 @@ class LightClientUpdate(Container):
 
 ```python
 class LightClientFinalityUpdate(Container):
-    # The beacon block header that is attested to by the sync committee
+    # Header attested to by the sync committee
     attested_header: BeaconBlockHeader
-    # The finalized beacon block header attested to by Merkle branch
+    # Finalized header corresponding to `attested_header.state_root`
     finalized_header: BeaconBlockHeader
     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
     # Sync committee aggregate signature
@@ -121,7 +121,7 @@ class LightClientFinalityUpdate(Container):
 
 ```python
 class LightClientOptimisticUpdate(Container):
-    # The beacon block header that is attested to by the sync committee
+    # Header attested to by the sync committee
     attested_header: BeaconBlockHeader
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
@@ -134,9 +134,9 @@ class LightClientOptimisticUpdate(Container):
 ```python
 @dataclass
 class LightClientStore(object):
-    # Beacon block header that is finalized
+    # Header that is finalized
     finalized_header: BeaconBlockHeader
-    # Sync committees corresponding to the header
+    # Sync committees corresponding to the finalized header
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Best available header to switch finalized head to if we see nothing else
