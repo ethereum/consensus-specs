@@ -32,6 +32,7 @@
   - [KZG](#kzg)
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
+    - [`verify_kzg_proof_impl`](#verify_kzg_proof_impl)
     - [`compute_kzg_proof`](#compute_kzg_proof)
     - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
@@ -44,6 +45,8 @@
 ## Introduction
 
 This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the EIP-4844 specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
+
+Functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
 
 ## Custom types
 
@@ -289,6 +292,9 @@ KZG core functions. These are also defined in EIP-4844 execution specs.
 
 ```python
 def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
+    """
+    Public method.
+    """
     return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
 ```
 
@@ -296,9 +302,25 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
 
 ```python
 def verify_kzg_proof(polynomial_kzg: KZGCommitment,
-                     z: BLSFieldElement,
-                     y: BLSFieldElement,
+                     z: Bytes32,
+                     y: Bytes32,
                      kzg_proof: KZGProof) -> bool:
+    """
+    Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
+    Receives inputs as bytes.
+    Public method.
+    """
+    return verify_kzg_proof_impl(polynomial_kzg, bytes_to_bls_field(z), bytes_to_bls_field(y), kzg_proof)
+```
+
+
+#### `verify_kzg_proof_impl`
+
+```python
+def verify_kzg_proof_impl(polynomial_kzg: KZGCommitment,
+                          z: BLSFieldElement,
+                          y: BLSFieldElement,
+                          kzg_proof: KZGProof) -> bool:
     """
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
@@ -367,6 +389,9 @@ def compute_aggregated_poly_and_commitment(
 
 ```python
 def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
+    """
+    Public method.
+    """
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
@@ -381,6 +406,9 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
                                kzg_aggregated_proof: KZGCommitment) -> bool:
+    """
+    Public method.
+    """
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,
@@ -390,5 +418,5 @@ def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
     y = evaluate_polynomial_in_evaluation_form(aggregated_poly, evaluation_challenge)
 
     # Verify aggregated proof
-    return verify_kzg_proof(aggregated_poly_commitment, evaluation_challenge, y, kzg_aggregated_proof)
+    return verify_kzg_proof_impl(aggregated_poly_commitment, evaluation_challenge, y, kzg_aggregated_proof)
 ```
