@@ -433,7 +433,7 @@ def test_proposer_slashing(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_double_same_proposer_slashings_same_block(spec, state):
+def test_invalid_duplicate_proposer_slashings_same_block(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_index = proposer_slashing.signed_header_1.message.proposer_index
     assert not state.validators[slashed_index].slashed
@@ -450,7 +450,7 @@ def test_invalid_double_same_proposer_slashings_same_block(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_double_similar_proposer_slashings_same_block(spec, state):
+def test_invalid_similar_proposer_slashings_same_block(spec, state):
     slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # Same validator, but different slashable offences in the same block
@@ -549,7 +549,7 @@ def test_attester_slashing(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_double_same_attester_slashing_same_block(spec, state):
+def test_invalid_duplicate_attester_slashing_same_block(spec, state):
     if spec.MAX_ATTESTER_SLASHINGS < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
@@ -746,7 +746,7 @@ def test_deposit_in_block(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_double_same_deposit_same_block(spec, state):
+def test_invalid_duplicate_deposit_same_block(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
@@ -854,7 +854,7 @@ def test_attestation(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_double_same_attestation_same_block(spec, state):
+def test_duplicate_attestation_same_block(spec, state):
     next_epoch(spec, state)
 
     yield 'pre', state
@@ -930,7 +930,7 @@ def test_voluntary_exit(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_double_validator_exit_same_block(spec, state):
+def test_invalid_duplicate_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
