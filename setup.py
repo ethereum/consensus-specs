@@ -624,7 +624,6 @@ class EIP4844SpecBuilder(CapellaSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
-from eth2spec.utils import kzg
 from eth2spec.capella import {preset_name} as capella
 '''
 
@@ -638,20 +637,6 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-# TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
-# TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
-TESTING_FIELD_ELEMENTS_PER_BLOB = 4
-TESTING_SECRET = 1337
-TESTING_KZG_SETUP_G1 = kzg.generate_setup(bls.G1, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
-TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
-TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
-
-KZG_SETUP_G1 = [bls.G1_to_bytes48(p) for p in TESTING_KZG_SETUP_G1]
-KZG_SETUP_G2 = [bls.G2_to_bytes96(p) for p in TESTING_KZG_SETUP_G2]
-KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
-ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
-
-
 #
 # Temporarily disable Withdrawals functions for EIP4844 testnets
 #
