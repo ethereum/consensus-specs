@@ -618,14 +618,13 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 #
 # EIP4844SpecBuilder
 #
-class EIP4844SpecBuilder(BellatrixSpecBuilder):
+class EIP4844SpecBuilder(CapellaSpecBuilder):
     fork: str = EIP4844
 
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
-from eth2spec.utils import kzg
-from eth2spec.bellatrix import {preset_name} as bellatrix
+from eth2spec.capella import {preset_name} as capella
 '''
 
 
@@ -638,19 +637,31 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-# TODO: for mainnet, load pre-generated trusted setup file to reduce building time.
-# TESTING_FIELD_ELEMENTS_PER_BLOB is hardcoded copy from minimal presets
-TESTING_FIELD_ELEMENTS_PER_BLOB = 4
-TESTING_SECRET = 1337
-TESTING_KZG_SETUP_G1 = kzg.generate_setup(bls.G1, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
-TESTING_KZG_SETUP_G2 = kzg.generate_setup(bls.G2, TESTING_SECRET, TESTING_FIELD_ELEMENTS_PER_BLOB)
-TESTING_KZG_SETUP_LAGRANGE = kzg.get_lagrange(TESTING_KZG_SETUP_G1)
+#
+# Temporarily disable Withdrawals functions for EIP4844 testnets
+#
 
-KZG_SETUP_G1 = [bls.G1_to_bytes48(p) for p in TESTING_KZG_SETUP_G1]
-KZG_SETUP_G2 = [bls.G2_to_bytes96(p) for p in TESTING_KZG_SETUP_G2]
-KZG_SETUP_LAGRANGE = TESTING_KZG_SETUP_LAGRANGE
-ROOTS_OF_UNITY = kzg.compute_roots_of_unity(TESTING_FIELD_ELEMENTS_PER_BLOB)
 
+def no_op(fn):  # type: ignore
+    def wrapper(*args, **kw):  # type: ignore
+        return None
+    return wrapper
+
+
+def get_empty_list_result(fn):  # type: ignore
+    def wrapper(*args, **kw):  # type: ignore
+        return []
+    return wrapper
+
+
+process_withdrawals = no_op(process_withdrawals)
+process_bls_to_execution_change = no_op(process_bls_to_execution_change)
+get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
+
+
+#
+# End
+#
 
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[BlobsSidecar]:
     return "TEST"'''
@@ -1002,7 +1013,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork == CAPELLA:
+            if self.spec_fork in (CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/capella/beacon-chain.md
                     specs/capella/fork.md
