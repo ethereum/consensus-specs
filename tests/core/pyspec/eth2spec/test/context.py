@@ -318,14 +318,16 @@ def config_fork_epoch_overrides(spec, state):
     return overrides
 
 
+def with_matching_spec_config(fn):
+    def decorator(*args, spec: Spec, **kw):
+        conf = config_fork_epoch_overrides(spec, kw['state'])
+        overrides = with_config_overrides(conf)
+        return overrides(fn)(*args, spec=spec, **kw)
+    return decorator
+
+
 def spec_state_test_with_matching_config(fn):
-    def decorator(fn):
-        def wrapper(*args, spec: Spec, **kw):
-            conf = config_fork_epoch_overrides(spec, kw['state'])
-            overrides = with_config_overrides(conf)
-            return overrides(fn)(*args, spec=spec, **kw)
-        return wrapper
-    return spec_test(with_state(decorator(single_phase(fn))))
+    return spec_test(with_state(with_matching_spec_config(single_phase(fn))))
 
 
 def expect_assertion_error(fn):
@@ -569,6 +571,22 @@ def _get_copy_of_spec(spec):
     return module
 
 
+def spec_with_config_overrides(spec, config_overrides):
+    # apply our overrides to a copy of it, and apply it to the spec
+    config = spec.config._asdict()
+    config.update(config_overrides)
+    config_types = spec.Configuration.__annotations__
+    modified_config = {k: config_types[k](v) for k, v in config.items()}
+
+    spec.config = spec.Configuration(**modified_config)
+
+    # To output the changed config in a format compatible with yaml test vectors,
+    # the dict SSZ objects have to be converted into Python built-in types.
+    output_config = _get_basic_dict(modified_config)
+
+    return spec, output_config
+
+
 def with_config_overrides(config_overrides):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
@@ -579,20 +597,14 @@ def with_config_overrides(config_overrides):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            spec = _get_copy_of_spec(spec)
-
-            # apply our overrides to a copy of it, and apply it to the spec
-            config = spec.config._asdict()
-            config.update(config_overrides)
-            config_types = spec.Configuration.__annotations__
-            modified_config = {k: config_types[k](v) for k, v in config.items()}
-
-            # To output the changed config to could be serialized with yaml test vectors,
-            # the dict SSZ objects have to be converted into Python built-in types.
-            output_config = _get_basic_dict(modified_config)
+            spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
             yield 'config', 'cfg', output_config
 
-            spec.config = spec.Configuration(**modified_config)
+            if 'phases' in kw:
+                for fork in kw['phases']:
+                    if is_post_fork(fork, spec.fork):
+                        kw['phases'][fork], _ = \
+                            spec_with_config_overrides(_get_copy_of_spec(kw['phases'][fork]), config_overrides)
 
             # Run the function
             out = fn(*args, spec=spec, **kw)

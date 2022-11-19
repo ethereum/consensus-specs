@@ -1,10 +1,13 @@
 from eth2spec.test.context import (
     spec_configured_state_test,
     spec_state_test_with_matching_config,
+    spec_test,
     with_all_phases,
+    with_matching_spec_config,
     with_phases,
+    with_state,
 )
-from eth2spec.test.helpers.constants import ALTAIR
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX
 from eth2spec.test.helpers.forks import (
     is_post_capella, is_post_eip4844,
 )
@@ -56,3 +59,12 @@ def test_override_config_fork_epoch(spec, state):
         return
 
     assert False  # Fork is missing
+
+
+@with_phases(phases=[ALTAIR], other_phases=[BELLATRIX])
+@spec_test
+@with_state
+@with_matching_spec_config
+def test_capella_store_with_legacy_data(spec, phases, state):
+    assert state.fork.current_version == spec.config.ALTAIR_FORK_VERSION
+    assert phases[BELLATRIX].ALTAIR_FORK_EPOCH == spec.config.ALTAIR_FORK_EPOCH
