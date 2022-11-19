@@ -20,6 +20,9 @@ from eth2spec.test.helpers.random import (
     randomize_state as randomize_state_helper,
     patch_state_to_non_leaking,
 )
+from eth2spec.test.helpers.sharding import (
+    get_sample_opaque_tx,
+)
 from eth2spec.test.helpers.state import (
     next_slot,
     next_epoch,
@@ -78,6 +81,17 @@ def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fractio
                                                stats,
                                                exit_fraction=exit_fraction,
                                                slash_fraction=slash_fraction)
+    # TODO: randomize withdrawals
+    return scenario_state
+
+
+def randomize_state_eip4844(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_capella(spec,
+                                             state,
+                                             stats,
+                                             exit_fraction=exit_fraction,
+                                             slash_fraction=slash_fraction)
+    # TODO: randomize execution payload
     return scenario_state
 
 
@@ -212,6 +226,16 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
         state,
         num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
     )
+    return block
+
+
+def random_block_eip4844(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+    block = random_block_capella(spec, state, signed_blocks, scenario_state)
+    # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
+    opaque_tx, _, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=1)
+    block.body.execution_payload.transactions = [opaque_tx]
+    block.body.blob_kzg_commitments = blob_kzg_commitments
+
     return block
 
 
