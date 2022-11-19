@@ -55,7 +55,7 @@ def test_is_assigned_to_sync_committee(spec, state):
     disqualified_pubkeys = set(
         filter(lambda key: key not in sync_committee_pubkeys, active_pubkeys)
     )
-    # NOTE: only check `disqualified_pubkeys` if SYNC_COMMITEE_SIZE < validator count
+    # NOTE: only check `disqualified_pubkeys` if SYNC_COMMITTEE_SIZE < validator count
     if disqualified_pubkeys:
         sample_size = 3
         assert validator_count >= sample_size

@@ -122,7 +122,7 @@ This backbone is based on a pure function of the *node* identity and time:
   peers on a vertical topic can be found by searching the local peerstore for identities that hash to the desired topic(s),
   assuming the peerstore already has a large enough variety of peers.
 - Nodes can be held accountable for contributing to the backbone:
-  peers that particpate in DAS but are not active on the appropriate backbone topics can be scored down.
+  peers that participate in DAS but are not active on the appropriate backbone topics can be scored down.
   *Note: This is experimental, DAS should be light enough for all participants to run, but scoring needs to undergo testing*
 
 A node should anticipate backbone topics to subscribe to based their own identity.

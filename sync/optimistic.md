@@ -143,7 +143,7 @@ This ensures that blocks are only optimistically imported if one or more of the
 following are true:
 
 1. The parent of the block has execution enabled.
-1. The current slot (as per the system clock) is at least
+2. The current slot (as per the system clock) is at least
    `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY` ahead of the slot of the block being
    imported.
 

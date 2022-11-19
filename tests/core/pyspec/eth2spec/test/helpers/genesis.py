@@ -2,7 +2,7 @@ from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip4844,
+    is_post_altair, is_post_bellatrix, is_post_capella
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -42,9 +42,8 @@ def get_sample_genesis_execution_payload_header(spec,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
-    if is_post_capella(spec) or is_post_eip4844(spec):
-        payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
     if is_post_capella(spec):
+        payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
         payload.withdrawals_root = spec.Root(b'\x58' * 32)
         payload.withdrawals_hash = spec.Bytes32(b'\x59' * 32)
     return payload

@@ -1,5 +1,5 @@
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.forks import is_post_capella, is_post_eip4844
+from eth2spec.test.helpers.forks import is_post_capella
 
 
 def build_empty_execution_payload(spec, state, randao_mix=None):
@@ -29,10 +29,9 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
-    if is_post_capella(spec) or is_post_eip4844(spec):
+    if is_post_capella(spec):
         payload.transactions_hash = \
             spec.Bytes32(spec.hash(payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
-    if is_post_capella(spec):
         payload.withdrawals = spec.get_expected_withdrawals(state)
         payload.withdrawals_hash = \
             spec.Bytes32(spec.hash(payload.withdrawals.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
@@ -66,7 +65,7 @@ def build_randomized_execution_payload(spec, state, rng):
         spec.Transaction(get_random_bytes_list(rng, rng.randint(0, 1000)))
         for _ in range(num_transactions)
     ]
-    if is_post_capella(spec) or is_post_eip4844(spec):
+    if is_post_capella(spec):
         execution_payload.transactions_hash = \
             spec.Bytes32(spec.hash(execution_payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 
@@ -90,9 +89,8 @@ def get_execution_payload_header(spec, execution_payload):
         block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions),
     )
-    if is_post_capella(spec) or is_post_eip4844(spec):
-        payload_header.transactions_hash = execution_payload.transactions_hash
     if is_post_capella(spec):
+        payload_header.transactions_hash = execution_payload.transactions_hash
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
         payload_header.withdrawals_hash = execution_payload.withdrawals_hash
     return payload_header

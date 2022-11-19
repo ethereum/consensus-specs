@@ -29,7 +29,7 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Bellatrix -- Honest Validator](../bellatrix/validator.md) guide.
+This document is an extension of the [Capella -- Honest Validator](../capella/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP4844](./beacon-chain.md) are requisite for this document and used throughout.
@@ -60,7 +60,7 @@ Namely, the blob handling and the addition of `SignedBeaconBlockAndBlobsSidecar`
 
 ##### Blob KZG commitments
 
-1. After retrieving the execution payload from the execution engine as specified in Bellatrix,
+1. After retrieving the execution payload from the execution engine as specified in Capella,
 use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blobs_and_kzg_commitments(payload_id)`.
 2. Validate `blobs` and `blob_kzg_commitments`:
 
