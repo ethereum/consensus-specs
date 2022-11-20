@@ -67,4 +67,4 @@ def test_override_config_fork_epoch(spec, state):
 @with_matching_spec_config
 def test_capella_store_with_legacy_data(spec, phases, state):
     assert state.fork.current_version == spec.config.ALTAIR_FORK_VERSION
-    assert phases[BELLATRIX].ALTAIR_FORK_EPOCH == spec.config.ALTAIR_FORK_EPOCH
+    assert phases[BELLATRIX].config.ALTAIR_FORK_EPOCH == spec.config.ALTAIR_FORK_EPOCH
