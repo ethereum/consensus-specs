@@ -85,7 +85,9 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         excess_data_gas=uint256(0),  # [New in EIP-4844]
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
+        transactions_hash=pre.latest_execution_payload_header.transactions_hash,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
+        withdrawals_hash=pre.latest_execution_payload_header.withdrawals_hash,
     )
     post = BeaconState(
         # Versioning

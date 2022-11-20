@@ -34,7 +34,7 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) == getattr(post_state, field)
 
     # Modified fields
-    modified_fields = ['fork']
+    modified_fields = ['fork', 'latest_execution_payload_header']
     for field in modified_fields:
         assert getattr(pre_state, field) != getattr(post_state, field)
 

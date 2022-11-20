@@ -60,4 +60,18 @@ def run_fork_test(post_spec, pre_state):
     assert post_state.fork.current_version == post_spec.config.EIP4844_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
+    stable_execution_payload_header_fields = [
+        'parent_hash', 'fee_recipient', 'state_root', 'receipts_root',
+        'logs_bloom', 'prev_randao', 'block_number', 'gas_limit',
+        'gas_used', 'timestamp', 'extra_data', 'base_fee_per_gas',
+        'block_hash', 'transactions_root', 'transactions_hash',
+        'withdrawals_root', 'withdrawals_hash',
+    ]
+    for field in stable_execution_payload_header_fields:
+        assert (
+            getattr(pre_state.latest_execution_payload_header, field) ==
+            getattr(post_state.latest_execution_payload_header, field)
+        )
+    assert post_state.latest_execution_payload_header.excess_data_gas == post_spec.uint256(0)
+
     yield 'post', post_state
