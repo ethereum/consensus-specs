@@ -136,6 +136,6 @@ def test_inactivity_scores_full_participation_leaking(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # Full particiaption during a leak so all scores should decrease by 1
+    # Full participation during a leak so all scores should decrease by 1
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
         assert post == pre - 1
