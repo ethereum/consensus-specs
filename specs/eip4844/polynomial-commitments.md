@@ -235,6 +235,7 @@ def poly_lincomb(polys: Sequence[Polynomial],
     Given a list of ``polynomials``, interpret it as a 2D matrix and compute the linear combination
     of each column with `scalars`: return the resulting polynomials.
     """
+    assert len(polys) == len(scalars)
     result = [0] * FIELD_ELEMENTS_PER_BLOB
     for v, s in zip(polys, scalars):
         for i, x in enumerate(v):
@@ -350,7 +351,7 @@ def compute_aggregated_poly_and_commitment(
     """
     Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
     and (3) the polynomial evaluation random challenge.
-    This function should be able to work with blobs == [] and kzg_commitments == []
+    This function should also work with blobs == [] and kzg_commitments == []
     """
     assert len(blobs) == len(kzg_commitments)
 
@@ -375,6 +376,9 @@ def compute_aggregated_poly_and_commitment(
 
 ```python
 def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
+    """
+    Given a list of blobs, return the aggregated KZG proof that is used to verify them against their commitments.
+    """
     commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
@@ -389,6 +393,9 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
                                kzg_aggregated_proof: KZGCommitment) -> bool:
+    """
+    Given a list of blobs and an aggregated KZG proof, verify that they correspond to the provided commitments.
+    """
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
         expected_kzg_commitments,
