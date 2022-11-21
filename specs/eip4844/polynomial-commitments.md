@@ -405,7 +405,7 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
 ```python
 def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                expected_kzg_commitments: Sequence[KZGCommitment],
-                               kzg_aggregated_proof: KZGCommitment) -> bool:
+                               kzg_aggregated_proof: KZGProof) -> bool:
     """
     Public method.
     """
