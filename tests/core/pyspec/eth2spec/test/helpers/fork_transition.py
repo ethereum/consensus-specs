@@ -165,6 +165,9 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
     elif post_spec.fork == CAPELLA:
         assert state.fork.previous_version == post_spec.config.BELLATRIX_FORK_VERSION
         assert state.fork.current_version == post_spec.config.CAPELLA_FORK_VERSION
+    elif post_spec.fork == EIP4844:
+        assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.EIP4844_FORK_VERSION
 
     if with_block:
         return state, _state_transition_and_sign_block_at_slot(post_spec, state, operation_dict=operation_dict)
