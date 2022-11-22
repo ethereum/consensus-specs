@@ -10,24 +10,22 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Configuration](#configuration)
-  - [Containers](#containers)
-    - [`BlobsSidecar`](#blobssidecar)
-    - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BeaconBlockAndBlobsSidecarByRoot v1](#beaconblockandblobssidecarbyroot-v1)
-      - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
-- [Design decision rationale](#design-decision-rationale)
-  - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
+- [Configuration](#configuration)
+- [Containers](#containers)
+  - [`BlobsSidecar`](#blobssidecar)
+  - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [`beacon_block`](#beacon_block)
+      - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [BeaconBlockAndBlobsSidecarByRoot v1](#beaconblockandblobssidecarbyroot-v1)
+    - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -260,14 +258,3 @@ Clients MUST respond with blobs sidecars that are consistent from a single chain
 
 After the initial blobs sidecar, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
-
-# Design decision rationale
-
-## Why are blobs relayed as a sidecar, separate from beacon blocks?
-
-This "sidecar" design provides forward compatibility for further data increases by black-boxing `is_data_available()`:
-with full sharding `is_data_available()` can be replaced by data-availability-sampling (DAS)
-thus avoiding all blobs being downloaded by all beacon nodes on the network.
-
-Such sharding design may introduce an updated `BlobsSidecar` to identify the shard,
-but does not affect the `BeaconBlock` structure.
