@@ -1178,6 +1178,7 @@ setup(
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
         "remerkleable==0.1.25",
+        "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,

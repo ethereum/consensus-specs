@@ -1,8 +1,11 @@
 from eth2spec.test.helpers.constants import (
     ALTAIR, BELLATRIX, CAPELLA, EIP4844,
 )
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_header_block_hash,
+)
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix,
+    is_post_altair, is_post_bellatrix, is_post_capella,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -29,7 +32,7 @@ def get_sample_genesis_execution_payload_header(spec,
                                                 eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b'\x55' * 32
-    return spec.ExecutionPayloadHeader(
+    payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
         fee_recipient=b'\x42' * 20,
         state_root=b'\x20' * 32,
@@ -42,6 +45,21 @@ def get_sample_genesis_execution_payload_header(spec,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
+
+    transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+
+    if is_post_capella(spec):
+        withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    else:
+        withdrawals_trie_root = None
+
+    payload_header.block_hash = compute_el_header_block_hash(
+        spec,
+        payload_header,
+        transactions_trie_root,
+        withdrawals_trie_root,
+    )
+    return payload_header
 
 
 def create_genesis_state(spec, validator_balances, activation_threshold):
