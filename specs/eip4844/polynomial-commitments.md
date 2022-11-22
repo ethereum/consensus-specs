@@ -188,7 +188,9 @@ def hash_to_bls_field(polys: Sequence[Polynomial],
         data += commitment
 
     hashed_data = hash(data)
-    return bytes_to_bls_field(hash(hashed_data +  int.to_bytes(challenge_index, 1, ENDIANNESS)))
+    challenge_index_bytes = int.to_bytes(challenge_index, 1, ENDIANNESS)
+
+    return bytes_to_bls_field(hash(hashed_data + challenge_index_bytes))
 ```
 
 #### `bls_modular_inverse`
