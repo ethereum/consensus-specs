@@ -189,7 +189,8 @@ def hash_to_bls_field(polys: Sequence[Polynomial],
 
     # Append challenge index last so we can cache the data buffer
     # in the case of multiple challenges
-    data += int.to_bytes(challenge_index, 1, ENDIANNESS)
+    hashed_data = hash(data)
+    return bytes_to_bls_field(hash(hashed_data, int.to_bytes(challenge_index, 1, ENDIANNESS)))
 
     return bytes_to_bls_field(hash(data))
 ```
