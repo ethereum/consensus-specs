@@ -173,7 +173,7 @@ def compute_challenges(polynomials: Sequence[Polynomial],
 
        hashed_data = hash(DOMAIN_SEPARATOR, polynomials, commitments)
        r = hash(hashed_data, 0)
-       r_powers = [r, r**2, r**3, ...]
+       r_powers = [1, r, r**2, r**3, ...]
        eval_challenge = hash(hashed_data, 1)
 
     Then return `r_powers` and `eval_challenge` after converting them to BLS field elements.
@@ -259,7 +259,7 @@ def poly_lincomb(polys: Sequence[Polynomial],
 ```python
 def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
     """
-    Return ``x`` to power of [0, n-1].
+    Return ``x`` to power of [0, n-1], if n > 0. When n==0, an empty array is returned
     """
     current_power = 1
     powers = []
