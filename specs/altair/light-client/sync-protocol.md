@@ -168,17 +168,6 @@ def is_finality_update(update: LightClientUpdate) -> bool:
 
 ```python
 def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdate) -> bool:
-    # Compare supermajority (> 2/3) sync committee participation
-    max_active_participants = len(new_update.sync_aggregate.sync_committee_bits)
-    new_num_active_participants = sum(new_update.sync_aggregate.sync_committee_bits)
-    old_num_active_participants = sum(old_update.sync_aggregate.sync_committee_bits)
-    new_has_supermajority = new_num_active_participants * 3 >= max_active_participants * 2
-    old_has_supermajority = old_num_active_participants * 3 >= max_active_participants * 2
-    if new_has_supermajority != old_has_supermajority:
-        return new_has_supermajority > old_has_supermajority
-    if not new_has_supermajority and new_num_active_participants != old_num_active_participants:
-        return new_num_active_participants > old_num_active_participants
-
     # Compare presence of relevant sync committee
     new_has_relevant_sync_committee = is_sync_committee_update(new_update) and (
         compute_sync_committee_period_at_slot(new_update.attested_header.slot)
@@ -191,30 +180,35 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     if new_has_relevant_sync_committee != old_has_relevant_sync_committee:
         return new_has_relevant_sync_committee
 
+    # Compare supermajority (> 2/3) sync committee participation
+    max_active_participants = len(new_update.sync_aggregate.sync_committee_bits)
+    new_num_active_participants = sum(new_update.sync_aggregate.sync_committee_bits)
+    old_num_active_participants = sum(old_update.sync_aggregate.sync_committee_bits)
+    new_has_supermajority = new_num_active_participants * 3 >= max_active_participants * 2
+    old_has_supermajority = old_num_active_participants * 3 >= max_active_participants * 2
+
     # Compare indication of any finality
-    new_has_finality = is_finality_update(new_update)
-    old_has_finality = is_finality_update(old_update)
-    if new_has_finality != old_has_finality:
-        return new_has_finality
+    new_has_sync_committee_finality = new_has_supermajority and is_finality_update(new_update) and (
+        compute_sync_committee_period_at_slot(new_update.finalized_header.slot)
+        == compute_sync_committee_period_at_slot(new_update.attested_header.slot)
+    )
+    old_has_sync_committee_finality = old_has_supermajority and is_finality_update(old_update) and (
+        compute_sync_committee_period_at_slot(old_update.finalized_header.slot)
+        == compute_sync_committee_period_at_slot(old_update.attested_header.slot)
+    )
 
-    # Compare sync committee finality
-    if new_has_finality:
-        new_has_sync_committee_finality = (
-            compute_sync_committee_period_at_slot(new_update.finalized_header.slot)
-            == compute_sync_committee_period_at_slot(new_update.attested_header.slot)
-        )
-        old_has_sync_committee_finality = (
-            compute_sync_committee_period_at_slot(old_update.finalized_header.slot)
-            == compute_sync_committee_period_at_slot(old_update.attested_header.slot)
-        )
-        if new_has_sync_committee_finality != old_has_sync_committee_finality:
-            return new_has_sync_committee_finality
+    if new_has_sync_committee_finality != old_has_sync_committee_finality:
+        return new_has_sync_committee_finality
 
-    # Tiebreaker 1: Sync committee participation beyond supermajority
-    if new_num_active_participants != old_num_active_participants:
-        return new_num_active_participants > old_num_active_participants
+    new_update_score, old_update_score = new_num_active_participants, old_num_active_participants
+    if not new_has_sync_committee_finality:
+        new_update_score -= 2 ** (10 - (new_update.attested_header.slot % 8192) / 32)
+        old_update_score -= 2 ** (10 - (old_update.attested_header.slot % 8192) / 32)
 
-    # Tiebreaker 2: Prefer older data (fewer changes to best)
+    if new_update_score != old_update_score:
+        return new_update_score > old_update_score
+
+    # Tiebreaker: Prefer older data (fewer changes to best)
     if new_update.attested_header.slot != old_update.attested_header.slot:
         return new_update.attested_header.slot < old_update.attested_header.slot
     return new_update.signature_slot < old_update.signature_slot
