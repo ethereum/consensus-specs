@@ -259,7 +259,7 @@ def poly_lincomb(polys: Sequence[Polynomial],
 ```python
 def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
     """
-    Return ``x`` to power of [0, n-1], if n > 0. When n==0, an empty array is returned
+    Return ``x`` to power of [0, n-1], if n > 0. When n==0, an empty array is returned.
     """
     current_power = 1
     powers = []
