@@ -21,7 +21,7 @@
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
     - [`blob_to_polynomial`](#blob_to_polynomial)
-    - [`hash_to_bls_field`](#hash_to_bls_field)
+    - [`compute_challenges`](#compute_challenges)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
     - [`g1_lincomb`](#g1_lincomb)
@@ -162,35 +162,44 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
     return polynomial
 ```
 
-#### `hash_to_bls_field`
+#### `compute_challenges`
 
 ```python
-def hash_to_bls_field(polys: Sequence[Polynomial],
-                      comms: Sequence[KZGCommitment],
-                      challenge_index: int) -> BLSFieldElement:
+def compute_challenges(polynomials: Sequence[Polynomial],
+                       commitments: Sequence[KZGCommitment]) -> BLSFieldElement:
     """
-    Compute 32-byte hash of serialized polynomials and commitments concatenated.
-    This hash is then converted to a BLS field element, where the result is not uniform over the BLS field.
-    Return the BLS field element.
+    Return the Fiat-Shamir challenges required by the rest of the protocol.
+    The Fiat-Shamir logic works as per the following pseudocode:
+
+       hashed_data = hash(DOMAIN_SEPARATOR, polynomials, commitments)
+       r = hash(hashed_data, 0)
+       r_powers = [r, r**2, r**3, ...]
+       eval_challenge = hash(hashed_data, 1)
+
+    Then return `r_powers` and `eval_challenge` after converting them to BLS field elements.
+    The resulting field elements are not uniform over the BLS field.
     """
     # Append the number of polynomials and the degree of each polynomial as a domain separator
-    num_polys = int.to_bytes(len(polys), 8, ENDIANNESS)
+    num_polynomials = int.to_bytes(len(polynomials), 8, ENDIANNESS)
     degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
-    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly + num_polys
+    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly + num_polynomials
 
     # Append each polynomial which is composed by field elements
-    for poly in polys:
+    for poly in polynomials:
         for field_element in poly:
             data += int.to_bytes(field_element, BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
 
     # Append serialized G1 points
-    for commitment in comms:
+    for commitment in commitments:
         data += commitment
 
+    # Transcript has been prepared: time to create the challenges
     hashed_data = hash(data)
-    challenge_index_bytes = int.to_bytes(challenge_index, 1, ENDIANNESS)
+    r = hash(hashed_data + b'\x00')
+    r_powers = compute_powers(bytes_to_bls_field(r), len(commitments))
+    eval_challenge = hash(hashed_data + b'\x01')
 
-    return bytes_to_bls_field(hash(hashed_data + challenge_index_bytes))
+    return r_powers, bytes_to_bls_field(eval_challenge)
 ```
 
 #### `bls_modular_inverse`
@@ -380,9 +389,7 @@ def compute_aggregated_poly_and_commitment(
     polynomials = [blob_to_polynomial(blob) for blob in blobs]
 
     # Generate random linear combination and evaluation challenges
-    r = hash_to_bls_field(polynomials, kzg_commitments, 0)
-    r_powers = compute_powers(r, len(kzg_commitments))
-    evaluation_challenge = hash_to_bls_field(polynomials, kzg_commitments, 1)
+    r_powers, evaluation_challenge = compute_challenges(polynomials, kzg_commitments)
 
     # Create aggregated polynomial in evaluation form
     aggregated_poly = Polynomial(poly_lincomb(polynomials, r_powers))
