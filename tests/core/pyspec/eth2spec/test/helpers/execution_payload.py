@@ -155,7 +155,6 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
         base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
-        block_hash=spec.Hash32(),
         transactions=empty_txs,
     )
     if is_post_capella(spec):
