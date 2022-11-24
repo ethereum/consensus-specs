@@ -166,7 +166,7 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 
 ```python
 def compute_challenges(polynomials: Sequence[Polynomial],
-                       commitments: Sequence[KZGCommitment]) -> Tuple[BLSFieldElement, BLSFieldElement]:
+                       commitments: Sequence[KZGCommitment]) -> Tuple[Sequence[BLSFieldElement], BLSFieldElement]:
     """
     Return the Fiat-Shamir challenges required by the rest of the protocol.
     The Fiat-Shamir logic works as per the following pseudocode:
