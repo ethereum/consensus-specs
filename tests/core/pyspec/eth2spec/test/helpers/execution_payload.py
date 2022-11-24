@@ -95,7 +95,7 @@ def compute_el_header_block_hash(spec,
 
 
 # https://eips.ethereum.org/EIPS/eip-4895
-def get_withdrawal_rlp(withdrawal):
+def get_withdrawal_rlp(spec, withdrawal):
     withdrawal_rlp = [
         # index
         (big_endian_int, withdrawal.index),
@@ -104,7 +104,7 @@ def get_withdrawal_rlp(withdrawal):
         # address
         (Binary(20, 20), withdrawal.address),
         # amount
-        (big_endian_int, withdrawal.amount * (10**9)),
+        (big_endian_int, spec.uint256(withdrawal.amount) * (10**9)),
     ]
 
     sedes = List([schema for schema, _ in withdrawal_rlp])
@@ -116,7 +116,7 @@ def compute_el_block_hash(spec, payload):
     transactions_trie_root = compute_trie_root_from_indexed_data(payload.transactions)
 
     if is_post_capella(spec):
-        withdrawals_encoded = map(get_withdrawal_rlp, payload.withdrawals)
+        withdrawals_encoded = [get_withdrawal_rlp(spec, withdrawal) for withdrawal in payload.withdrawals]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     else:
         withdrawals_trie_root = None
