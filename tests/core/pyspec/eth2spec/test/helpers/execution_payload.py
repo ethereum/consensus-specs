@@ -104,7 +104,7 @@ def get_withdrawal_rlp(withdrawal):
         # address
         (Binary(20, 20), withdrawal.address),
         # amount
-        (big_endian_int, withdrawal.amount)
+        (big_endian_int, withdrawal.amount * (10**9))
     ]
 
     sedes = List([schema for schema, _ in withdrawal_rlp])
