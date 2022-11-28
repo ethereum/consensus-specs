@@ -55,7 +55,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 | Name | Value |
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1(0x01)` |
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
 
