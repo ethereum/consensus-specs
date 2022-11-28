@@ -43,9 +43,9 @@ def get_sample_genesis_execution_payload_header(spec,
         transactions_root=spec.Root(b'\x56' * 32),
     )
     if is_post_capella(spec):
-        payload.transactions_hash = spec.Bytes32(b'\x57' * 32)
+        payload.transactions_trie_root = spec.Bytes32(b'\x57' * 32)
         payload.withdrawals_root = spec.Root(b'\x58' * 32)
-        payload.withdrawals_hash = spec.Bytes32(b'\x59' * 32)
+        payload.withdrawals_trie_root = spec.Bytes32(b'\x59' * 32)
     return payload
 
 

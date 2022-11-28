@@ -133,9 +133,9 @@ class ExecutionPayload(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    transactions_hash: Bytes32  # [New in Capella]
+    transactions_trie_root: Bytes32  # [New in Capella]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
-    withdrawals_hash: Bytes32  # [New in Capella]
+    withdrawals_trie_root: Bytes32  # [New in Capella]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -158,9 +158,9 @@ class ExecutionPayloadHeader(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
-    transactions_hash: Bytes32  # [New in Capella]
+    transactions_trie_root: Bytes32  # [New in Capella]
     withdrawals_root: Root  # [New in Capella]
-    withdrawals_hash: Bytes32  # [New in Capella]
+    withdrawals_trie_root: Bytes32  # [New in Capella]
 ```
 
 #### `BeaconBlockBody`
@@ -349,7 +349,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.notify_new_payload(payload)
-    
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -366,9 +366,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        transactions_hash=payload.transactions_hash,  # [New in Capella]
+        transactions_trie_root=payload.transactions_trie_root,  # [New in Capella]
         withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
-        withdrawals_hash=payload.withdrawals_hash,  # [New in Capella]
+        withdrawals_trie_root=payload.withdrawals_trie_root,  # [New in Capella]
     )
 ```
 

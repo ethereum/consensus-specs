@@ -30,10 +30,10 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         transactions=empty_txs,
     )
     if is_post_capella(spec):
-        payload.transactions_hash = \
+        payload.transactions_trie_root = \
             spec.Bytes32(spec.hash(payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
         payload.withdrawals = spec.get_expected_withdrawals(state)
-        payload.withdrawals_hash = \
+        payload.withdrawals_trie_root = \
             spec.Bytes32(spec.hash(payload.withdrawals.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 
     # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
@@ -66,7 +66,7 @@ def build_randomized_execution_payload(spec, state, rng):
         for _ in range(num_transactions)
     ]
     if is_post_capella(spec):
-        execution_payload.transactions_hash = \
+        execution_payload.transactions_trie_root = \
             spec.Bytes32(spec.hash(execution_payload.transactions.hash_tree_root() + b"FAKE RLP HASH"))  # TODO: RLP
 
     return execution_payload
@@ -90,9 +90,9 @@ def get_execution_payload_header(spec, execution_payload):
         transactions_root=spec.hash_tree_root(execution_payload.transactions),
     )
     if is_post_capella(spec):
-        payload_header.transactions_hash = execution_payload.transactions_hash
+        payload_header.transactions_trie_root = execution_payload.transactions_trie_root
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
-        payload_header.withdrawals_hash = execution_payload.withdrawals_hash
+        payload_header.withdrawals_trie_root = execution_payload.withdrawals_trie_root
     return payload_header
 
 

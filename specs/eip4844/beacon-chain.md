@@ -115,9 +115,9 @@ class ExecutionPayload(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    transactions_hash: Bytes32
+    transactions_trie_root: Bytes32
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    withdrawals_hash: Bytes32
+    withdrawals_trie_root: Bytes32
 ```
 
 #### `ExecutionPayloadHeader`
@@ -141,9 +141,9 @@ class ExecutionPayloadHeader(Container):
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
-    transactions_hash: Bytes32
+    transactions_trie_root: Bytes32
     withdrawals_root: Root
-    withdrawals_hash: Bytes32
+    withdrawals_trie_root: Bytes32
 ```
 
 ## Helper functions
@@ -280,9 +280,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         excess_data_gas=payload.excess_data_gas,  # [New in EIP-4844]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        transactions_hash=payload.transactions_hash,
+        transactions_trie_root=payload.transactions_trie_root,
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        withdrawals_hash=payload.withdrawals_hash,
+        withdrawals_trie_root=payload.withdrawals_trie_root,
     )
 ```
 

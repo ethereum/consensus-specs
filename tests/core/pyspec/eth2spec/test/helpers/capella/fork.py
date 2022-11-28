@@ -64,8 +64,8 @@ def run_fork_test(post_spec, pre_state):
             getattr(pre_state.latest_execution_payload_header, field) ==
             getattr(post_state.latest_execution_payload_header, field)
         )
-    assert post_state.latest_execution_payload_header.transactions_hash == post_spec.Bytes32()
+    assert post_state.latest_execution_payload_header.transactions_trie_root == post_spec.Bytes32()
     assert post_state.latest_execution_payload_header.withdrawals_root == post_spec.Root()
-    assert post_state.latest_execution_payload_header.withdrawals_hash == post_spec.Bytes32()
+    assert post_state.latest_execution_payload_header.withdrawals_trie_root == post_spec.Bytes32()
 
     yield 'post', post_state

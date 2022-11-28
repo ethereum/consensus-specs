@@ -64,8 +64,8 @@ def run_fork_test(post_spec, pre_state):
         'parent_hash', 'fee_recipient', 'state_root', 'receipts_root',
         'logs_bloom', 'prev_randao', 'block_number', 'gas_limit',
         'gas_used', 'timestamp', 'extra_data', 'base_fee_per_gas',
-        'block_hash', 'transactions_root', 'transactions_hash',
-        'withdrawals_root', 'withdrawals_hash',
+        'block_hash', 'transactions_root', 'transactions_trie_root',
+        'withdrawals_root', 'withdrawals_trie_root',
     ]
     for field in stable_execution_payload_header_fields:
         assert (
