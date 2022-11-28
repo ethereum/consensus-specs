@@ -666,7 +666,7 @@ get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
 # End
 #
 
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[BlobsSidecar]:
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
     # pylint: disable=unused-argument
     return "TEST"'''
 
@@ -686,10 +686,6 @@ spec_builders = {
 }
 
 
-def is_spec_defined_type(value: str) -> bool:
-    return value.startswith(('ByteList', 'Union', 'Vector', 'List'))
-
-
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     builder: SpecBuilder,
@@ -702,15 +698,6 @@ def objects_to_spec(preset_name: str,
             [
                 f"class {key}({value}):\n    pass\n"
                 for key, value in spec_object.custom_types.items()
-                if not is_spec_defined_type(value)
-            ]
-        )
-        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if is_spec_defined_type(value)]) > 0 else '')
-        + '\n\n'.join(
-            [
-                f"{key} = {value}\n"
-                for key, value in spec_object.custom_types.items()
-                if is_spec_defined_type(value)
             ]
         )
     )
