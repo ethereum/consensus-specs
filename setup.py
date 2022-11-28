@@ -588,6 +588,7 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
 
@@ -643,12 +644,14 @@ T = TypeVar('T')  # For generic function
 
 
 def no_op(fn):  # type: ignore
+    # pylint: disable=unused-argument
     def wrapper(*args, **kw):  # type: ignore
         return None
     return wrapper
 
 
 def get_empty_list_result(fn):  # type: ignore
+    # pylint: disable=unused-argument
     def wrapper(*args, **kw):  # type: ignore
         return []
     return wrapper
@@ -664,6 +667,7 @@ get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
 #
 
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[BlobsSidecar]:
+    # pylint: disable=unused-argument
     return "TEST"'''
 
     @classmethod

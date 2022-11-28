@@ -46,6 +46,7 @@ Implementers may also retrieve blobs individually per transaction.
 
 ```python
 def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment]]:
+    # pylint: disable=unused-argument
     ...
 ```
 
