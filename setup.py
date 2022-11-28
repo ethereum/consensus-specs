@@ -686,6 +686,10 @@ spec_builders = {
 }
 
 
+def is_byte_vector(value: str) -> bool:
+    return value.startswith(('ByteVector'))
+
+
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     builder: SpecBuilder,
@@ -696,7 +700,7 @@ def objects_to_spec(preset_name: str,
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n    pass\n"
+                f"class {key}({value}):\n    pass\n" if not is_byte_vector(value) else f"class {key}({value}):  # type: ignore\n    pass\n"
                 for key, value in spec_object.custom_types.items()
             ]
         )
