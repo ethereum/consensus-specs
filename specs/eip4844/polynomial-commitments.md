@@ -147,7 +147,7 @@ def hash_to_bls_field(data: bytes) -> BLSFieldElement:
     The output is not uniform over the BLS field.
     """
     hashed_data = hash(data)
-    return int.from_bytes(hashed_data, ENDIANNESS) % BLS_MODULUS
+    return BLSFieldElement(int.from_bytes(hashed_data, ENDIANNESS) % BLS_MODULUS)
 ```
 
 #### `bytes_to_bls_field`
@@ -160,7 +160,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     """
     field_element = int.from_bytes(b, ENDIANNESS)
     assert field_element < BLS_MODULUS
-    return field_element
+    return BLSFieldElement(field_element)
 ```
 
 #### `blob_to_polynomial`
@@ -172,8 +172,7 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
     """
     polynomial = Polynomial()
     for i in range(FIELD_ELEMENTS_PER_BLOB):
-        value = int.from_bytes(blob[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT], ENDIANNESS)
-        assert value < BLS_MODULUS
+        value = bytes_to_bls_field(blob[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT])
         polynomial[i] = value
     return polynomial
 ```
@@ -310,7 +309,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     result = 0
     for i in range(width):
         result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (int(z) - int(roots_of_unity_brp[i])))
-    result = result * (pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
+    result = result * int(pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
     return result
 ```
 
@@ -440,7 +439,7 @@ def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
                                kzg_aggregated_proof: KZGProof) -> bool:
     """
     Given a list of blobs and an aggregated KZG proof, verify that they correspond to the provided commitments.
-    
+
     Public method.
     """
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
