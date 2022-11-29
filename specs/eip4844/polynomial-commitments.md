@@ -19,6 +19,7 @@
     - [`reverse_bits`](#reverse_bits)
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
     - [`blob_to_polynomial`](#blob_to_polynomial)
     - [`compute_challenges`](#compute_challenges)
@@ -137,6 +138,18 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 
 ### BLS12-381 helpers
 
+#### `hash_to_bls_field`
+
+```python
+def hash_to_bls_field(data: bytes) -> BLSFieldElement:
+    """
+    Hash ``data`` and convert the output to a BLS scalar field element.
+    The output is not uniform over the BLS field.
+    """
+    hashed_data = hash(data)
+    return int.from_bytes(hashed_data, ENDIANNESS) % BLS_MODULUS
+```
+
 #### `bytes_to_bls_field`
 
 ```python
@@ -198,11 +211,11 @@ def compute_challenges(polynomials: Sequence[Polynomial],
 
     # Transcript has been prepared: time to create the challenges
     hashed_data = hash(data)
-    r = hash(hashed_data + b'\x00')
-    r_powers = compute_powers(bytes_to_bls_field(r), len(commitments))
-    eval_challenge = hash(hashed_data + b'\x01')
+    r = hash_to_bls_field(hashed_data + b'\x00')
+    r_powers = compute_powers(r, len(commitments))
+    eval_challenge = hash_to_bls_field(hashed_data + b'\x01')
 
-    return r_powers, bytes_to_bls_field(eval_challenge)
+    return r_powers, eval_challenge
 ```
 
 #### `bls_modular_inverse`
