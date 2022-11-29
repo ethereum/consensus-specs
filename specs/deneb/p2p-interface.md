@@ -23,7 +23,7 @@ The specification of these changes continues in the same format as the network s
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BeaconBlockAndBlobsSidecarByRoot v1](#beaconblockandblobssidecarbyroot-v1)
+      - [BlobsSidecarByRoot v1](#blobssidecarbyroot-v1)
       - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
@@ -125,9 +125,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-After `DENEB_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
-Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
-
+The Deneb fork-digest is introduced to the `context` enum to specify Deneb beacon block type.
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [1]: # (eth2spec: skip)
@@ -139,9 +137,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
-#### BeaconBlockAndBlobsSidecarByRoot v1
+#### BlobsSidecarByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_block_and_blobs_sidecar_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/blobs_sidecar_by_root/1/`
 
 Request Content:
 
@@ -155,22 +153,22 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlockAndBlobsSidecar, MAX_REQUEST_BLOCKS]
+  List[BlobsSidecar, MAX_REQUEST_BLOCKS]
 )
 ```
 
-Requests blocks by block root (= `hash_tree_root(SignedBeaconBlockAndBlobsSidecar.beacon_block.message)`).
-The response is a list of `SignedBeaconBlockAndBlobsSidecar` whose length is less than or equal to the number of requests.
-It may be less in the case that the responding peer is missing blocks and sidecars.
+Requests blocks by block root (= `hash_tree_root(BlobsSidecar.beacon_block_root)`).
+The response is a list of `BlobsSidecar` whose length is less than or equal to the number of requests.
+It may be less in the case that the responding peer is missing sidecars.
 
 No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 
-`BeaconBlockAndBlobsSidecarByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
+`BlobsSidecar` is primarily used to recover the sidecar of recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
-Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
+Clients MUST support requesting blocks since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
 Clients MUST respond with at least one block and sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
