@@ -255,7 +255,7 @@ def state_transition_with_full_block(spec,
                                      sync_aggregate=None,
                                      block=None):
     """
-    Build and apply a block with attestions at the calculated `slot_to_attest` of current epoch and/or previous epoch.
+    Build and apply a block with attestations at the calculated `slot_to_attest` of current epoch and/or previous epoch.
     """
     if block is None:
         block = build_empty_block_for_next_slot(spec, state)

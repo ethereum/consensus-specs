@@ -306,6 +306,7 @@ def config_fork_epoch_overrides(spec, state):
     elif _check_current_version(spec, state, EIP4844):
         overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
         overrides['EIP4844_FORK_EPOCH'] = spec.GENESIS_EPOCH
     elif _check_current_version(spec, state, SHARDING):
         overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
@@ -611,6 +612,13 @@ def only_generator(reason):
                 return None
             return inner(*args, **kwargs)
         return _wrapper
+    return _decorator
+
+
+def with_test_suite_name(suite_name: str):
+    def _decorator(inner):
+        inner.suite_name = suite_name
+        return inner
     return _decorator
 
 
