@@ -173,6 +173,9 @@ but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloade
 
 ```python
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    if slot <= finalized_slot and slot < clock_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS:
+        return True
+
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
     if sidecar == "TEST":
