@@ -142,9 +142,12 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 ```python
 def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     """
-    Convert 32-byte value to a BLS field scalar. The output is not uniform over the BLS field.
+    Convert 32-byte value to a BLS scalar field element.
+    This function does not accept inputs greater than the BLS modulus.
     """
-    return int.from_bytes(b, ENDIANNESS) % BLS_MODULUS
+    field_element = int.from_bytes(b, ENDIANNESS)
+    assert field_element < BLS_MODULUS
+    return field_element
 ```
 
 #### `blob_to_polynomial`
