@@ -46,13 +46,7 @@ def create_light_client_bootstrap(state: BeaconState) -> LightClientBootstrap:
     assert state.slot == state.latest_block_header.slot
 
     return LightClientBootstrap(
-        header=BeaconBlockHeader(
-            slot=state.latest_block_header.slot,
-            proposer_index=state.latest_block_header.proposer_index,
-            parent_root=state.latest_block_header.parent_root,
-            state_root=hash_tree_root(state),
-            body_root=state.latest_block_header.body_root,
-        ),
+        header=state.latest_block_header,
         current_sync_committee=state.current_sync_committee,
         current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX)
     )
