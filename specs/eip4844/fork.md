@@ -64,11 +64,16 @@ Note that for the pure EIP-4844 networks, we don't apply `upgrade_to_eip4844` si
 
 ### Upgrading the state
 
-Since the `eip4844.BeaconState` format is equal to the `capella.BeaconState` format, we only have to update `BeaconState.fork`.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP4844_FORK_EPOCH`,
+an irregular state change is made to upgrade to EIP4844.
+
+The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIP4844_FORK_EPOCH * SLOTS_PER_EPOCH`.
+Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
+In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead, the logic must be within `process_slots`.
 
 ```python
-def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
-    epoch = capella.get_current_epoch(pre)
+def upgrade_to_eip4844(pre: bellatrix.BeaconState) -> BeaconState:
+    epoch = bellatrix.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
         fee_recipient=pre.latest_execution_payload_header.fee_recipient,
@@ -85,7 +90,7 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         excess_data_gas=uint256(0),  # [New in EIP-4844]
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
-        withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
+        withdrawals_root=Root(),  # [New in Capella]
     )
     post = BeaconState(
         # Versioning
@@ -129,8 +134,8 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=latest_execution_payload_header,  # [Modified in EIP4844]
         # Withdrawals
-        next_withdrawal_index=pre.next_withdrawal_index,
-        next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
+        next_withdrawal_index=WithdrawalIndex(0),
+        next_withdrawal_validator_index=ValidatorIndex(0),
     )
 
     return post
