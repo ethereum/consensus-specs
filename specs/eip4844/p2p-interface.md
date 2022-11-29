@@ -226,17 +226,16 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
+`[min(finalized_epoch, max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS)), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 
-Peers that are unable to reply to block requests within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-epoch range SHOULD respond with error code `3: ResourceUnavailable`.
+Peers that are unable to reply to block requests within the range above SHOULD respond with error code `3: ResourceUnavailable`.
 Such peers that are unable to successfully reply to this range of requests MAY get descored
 or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
-MUST backfill the local blobs database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
+MUST backfill the local blobs database to at least the epoch range above
 to be fully compliant with `BlobsSidecarsByRange` requests.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
