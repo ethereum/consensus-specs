@@ -63,7 +63,8 @@ The following validations MUST pass before forwarding the `signed_bls_to_executi
 
 - _[IGNORE]_ The `signed_bls_to_execution_change` is the first valid signed bls to execution change received
   for the validator with index `signed_bls_to_execution_change.message.validator_index`.
-- _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation.
+- _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation
+  using the signing domain implied by `ForkDigestValue` (_not_ the current head state).
 
 ### Transitioning the gossip
 
