@@ -240,7 +240,7 @@ def test_withdrawal_success_two_blocks(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
+def test_invalid_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
     _perform_valid_withdrawal(spec, state)
 
     # Block 2
