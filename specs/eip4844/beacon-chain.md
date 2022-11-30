@@ -63,7 +63,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 
 | Name | Value |
 | - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(2**2)` (= 4) |
 
 ## Configuration
 
