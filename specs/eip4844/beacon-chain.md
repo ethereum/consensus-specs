@@ -175,10 +175,13 @@ but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloade
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-    if sidecar == "TEST":
-        return True  # For testing; remove once we have a way to inject `BlobsSidecar` into tests
-    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
 
+    # For testing, `retrieve_blobs_sidecar` returns "TEST.
+    # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
+    if isinstance(sidecar, str):
+        return True
+
+    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
     return True
 ```
 
@@ -216,7 +219,7 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
 ```python
 def verify_kzg_commitments_against_transactions(transactions: Sequence[Transaction],
                                                 kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    all_versioned_hashes = []
+    all_versioned_hashes: List[VersionedHash] = []
     for tx in transactions:
         if tx[0] == BLOB_TX_TYPE:
             all_versioned_hashes += tx_peek_blob_versioned_hashes(tx)
@@ -283,7 +286,8 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 #### Blob KZG commitments
 
 ```python
-def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody):
+def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> None:
+    # pylint: disable=unused-argument
     assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 

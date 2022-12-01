@@ -588,6 +588,7 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
 
@@ -643,12 +644,14 @@ T = TypeVar('T')  # For generic function
 
 
 def no_op(fn):  # type: ignore
+    # pylint: disable=unused-argument
     def wrapper(*args, **kw):  # type: ignore
         return None
     return wrapper
 
 
 def get_empty_list_result(fn):  # type: ignore
+    # pylint: disable=unused-argument
     def wrapper(*args, **kw):  # type: ignore
         return []
     return wrapper
@@ -663,7 +666,8 @@ get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
 # End
 #
 
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> Optional[BlobsSidecar]:
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
+    # pylint: disable=unused-argument
     return "TEST"'''
 
     @classmethod
@@ -682,8 +686,8 @@ spec_builders = {
 }
 
 
-def is_spec_defined_type(value: str) -> bool:
-    return value.startswith(('ByteList', 'Union', 'Vector', 'List'))
+def is_byte_vector(value: str) -> bool:
+    return value.startswith(('ByteVector'))
 
 
 def objects_to_spec(preset_name: str,
@@ -696,17 +700,8 @@ def objects_to_spec(preset_name: str,
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n    pass\n"
+                f"class {key}({value}):\n    pass\n" if not is_byte_vector(value) else f"class {key}({value}):  # type: ignore\n    pass\n"
                 for key, value in spec_object.custom_types.items()
-                if not is_spec_defined_type(value)
-            ]
-        )
-        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if is_spec_defined_type(value)]) > 0 else '')
-        + '\n\n'.join(
-            [
-                f"{key} = {value}\n"
-                for key, value in spec_object.custom_types.items()
-                if is_spec_defined_type(value)
             ]
         )
     )

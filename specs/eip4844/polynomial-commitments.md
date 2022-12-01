@@ -225,7 +225,7 @@ def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
     Compute the modular inverse of x
     i.e. return y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
     """
-    return pow(x, -1, BLS_MODULUS) if x != 0 else 0
+    return BLSFieldElement(pow(x, -1, BLS_MODULUS)) if x != 0 else BLSFieldElement(0)
 ```
 
 #### `div`
@@ -235,7 +235,7 @@ def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
     """
     Divide two field elements: ``x`` by `y``.
     """
-    return (int(x) * int(bls_modular_inverse(y))) % BLS_MODULUS
+    return BLSFieldElement((int(x) * int(bls_modular_inverse(y))) % BLS_MODULUS)
 ```
 
 #### `g1_lincomb`
@@ -266,7 +266,7 @@ def poly_lincomb(polys: Sequence[Polynomial],
     for v, s in zip(polys, scalars):
         for i, x in enumerate(v):
             result[i] = (result[i] + int(s) * int(x)) % BLS_MODULUS
-    return [BLSFieldElement(x) for x in result]
+    return Polynomial([BLSFieldElement(x) for x in result])
 ```
 
 #### `compute_powers`
@@ -299,7 +299,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     """
     width = len(polynomial)
     assert width == FIELD_ELEMENTS_PER_BLOB
-    inverse_width = bls_modular_inverse(width)
+    inverse_width = bls_modular_inverse(BLSFieldElement(width))
 
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
@@ -308,9 +308,11 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
 
     result = 0
     for i in range(width):
-        result += div(int(polynomial[i]) * int(roots_of_unity_brp[i]), (int(z) - int(roots_of_unity_brp[i])))
-    result = result * int(pow(z, width, BLS_MODULUS) - 1) * inverse_width % BLS_MODULUS
-    return result
+        a = BLSFieldElement(int(polynomial[i]) * int(roots_of_unity_brp[i]) % BLS_MODULUS)
+        b = BLSFieldElement((int(BLS_MODULUS) + int(z) - int(roots_of_unity_brp[i])) % BLS_MODULUS)
+        result += int(div(a, b) % BLS_MODULUS)
+    result = result * int(pow(z, width, BLS_MODULUS) - 1) * int(inverse_width)
+    return BLSFieldElement(result % BLS_MODULUS)
 ```
 
 ### KZG
@@ -370,17 +372,13 @@ def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     Compute KZG proof at point `z` with `polynomial` being in evaluation form
     Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z)
     """
-
-    # To avoid SSZ overflow/underflow, convert element into int
-    polynomial = [int(i) for i in polynomial]
-    z = int(z)
-
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
-    polynomial_shifted = [(p - int(y)) % BLS_MODULUS for p in polynomial]
+    polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
 
     # Make sure we won't divide by zero during division
     assert z not in ROOTS_OF_UNITY
-    denominator_poly = [(int(x) - z) % BLS_MODULUS for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
+    denominator_poly = [BLSFieldElement((int(x) - int(z)) % BLS_MODULUS)
+                        for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
 
     # Calculate quotient polynomial by doing point-by-point division
     quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
@@ -407,7 +405,7 @@ def compute_aggregated_poly_and_commitment(
     r_powers, evaluation_challenge = compute_challenges(polynomials, kzg_commitments)
 
     # Create aggregated polynomial in evaluation form
-    aggregated_poly = Polynomial(poly_lincomb(polynomials, r_powers))
+    aggregated_poly = poly_lincomb(polynomials, r_powers)
 
     # Compute commitment to aggregated polynomial
     aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
