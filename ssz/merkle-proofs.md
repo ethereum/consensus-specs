@@ -301,57 +301,110 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
     return sorted(all_helper_indices.difference(all_path_indices), reverse=True)
 ```
 
-Now we provide the Merkle proof verification functions. First, for single item proofs:
+While generalized indices are useful for identifying specific elements of a merkle tree, they are inefficient when used directly to dynamically request specific leaves for a multiproof. This is because each generalized index must be encoded as a varint or some fixed-bitlength uint. N generalized indices would require 2N to 8N bytes to be serialized.
 
-```python
-def calculate_merkle_root(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex) -> Root:
-    assert len(proof) == get_generalized_index_length(index)
-    for i, h in enumerate(proof):
-        if get_generalized_index_bit(index, i):
-            leaf = hash(h + leaf)
-        else:
-            leaf = hash(leaf + h)
-    return leaf
+A more efficient multiproof descriptor encodes the "shape" a multiproof, rather than encoding the generalized indices individually. This shape can be encoded as a single bitlist that describes traversal through the merkle tree. Of note, in this format, leaf indices and helper indices are not treated separately, rather, the shape includes both and does not distinguish between them.
+
+We define the descriptor as a traversal through the merkle tree: starting from the root of the tree, traverse depth-first, left to right, encoding a zero bit if the node has a requested index as a descendent or a one bit if the node is a requested index.
+
+This equates to 2N - 1 bits total required to encode N leaf/witness locations: N one bits and N-1 zero bits.
+
+When the descriptor is serialized, up to 7 zero bits should be appended for byte-alignment.
+
+The proof leaves and witnesses should be ordered identically: depth-first, in-order.
+
+For example, a multiproof for generalized index 42, along with helper indices, would be: 00100101111. As bytes: 0x25e0
+
+The proof leaf order would be: 4, 20, 42, 43, 11, 3
+
+```
+        0               1
+       / \             / \
+      0   1           2   3
+     / \             / \
+    1   0           4   5
+       / \             / \
+      0   1          10   11
+     / \             / \
+    1   0          20   21
+       / \              / \
+      1   1           42   43
+      ^                ^
 ```
 
+We provide a function to convert generalized indices to a proof descriptor:
+
 ```python
-def verify_merkle_proof(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex, root: Root) -> bool:
-    return calculate_merkle_root(leaf, proof, index) == root
+def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
+    # include all helper indices
+    indices = set(indices).union(get_helper_indices(indices))
+    # sort indices in-order
+    indices = sorted(indices, key=bin)
+
+    # convert indices to bitstring
+    prev_index = 1
+    bitstring = ''
+    for index in indices:
+        bitstring += '0' * max(index.bit_length() - prev_index.bit_length(), 0) + '1'
+        prev_index = index
+
+    # append zero bits to byte-align the descriptor
+    if len(bitstring) % 8 != 0:
+        additional_bits = 8 - len(bitstring) % 8
+        bitstring += '0' * additional_bits
+
+    # convert bitstring to bytes
+    return int(bitstring, 2).to_bytes(len(bitstring) // 8, byteorder='big')
+
 ```
 
-Now for multi-item proofs:
+Now we provide the Merkle proof verification functions.
 
 ```python
 def calculate_multi_merkle_root(leaves: Sequence[Bytes32],
-                                proof: Sequence[Bytes32],
-                                indices: Sequence[GeneralizedIndex]) -> Root:
-    assert len(leaves) == len(indices)
-    helper_indices = get_helper_indices(indices)
-    assert len(proof) == len(helper_indices)
-    objects = {
-        **{index: node for index, node in zip(indices, leaves)},
-        **{index: node for index, node in zip(helper_indices, proof)}
-    }
-    keys = sorted(objects.keys(), reverse=True)
-    pos = 0
-    while pos < len(keys):
-        k = keys[pos]
-        if k in objects and k ^ 1 in objects and k // 2 not in objects:
-            objects[GeneralizedIndex(k // 2)] = hash(
-                objects[GeneralizedIndex((k | 1) ^ 1)] +
-                objects[GeneralizedIndex(k | 1)]
-            )
-            keys.append(GeneralizedIndex(k // 2))
-        pos += 1
-    return objects[GeneralizedIndex(1)]
+                                descriptor: Bytes) -> Root:
+    return calculate_multi_merkle_root_inner(
+        leaves,
+        compute_bits_from_proof_descriptor(descriptor),
+        [0, 0]
+    )
+
+def compute_bits_from_proof_descriptor(descriptor: Bytes) -> Sequence[bool]:
+    bitstring = ''.join(['{0:08b}'.format(byte) for byte in descriptor])
+    last_one_index = bitstring.rindex('1')
+    assert len(bitstring) - last_one_index < 8
+
+    count_0_vs_1 = 0
+    bits = []
+    for i in range(last_one_index + 1):
+        bit = bool(int(bitstring[i]))
+        bits.append(bit)
+        if bit:
+            count_0_vs_1 -= 1
+        else:
+            count_0_vs_1 += 1
+        if count_0_vs_1 < 0:
+            assert i == last_one_index
+    return bits
+
+def calculate_multi_merkle_root_inner(leaves: Sequence[Bytes32], bits: Sequence[bool], ptr: Tuple[int, int]) -> Bytes32:
+    bit = bits[ptr[0]]
+    ptr[0] += 1
+    if bit:
+        leaf = leaves[ptr[1]]
+        ptr[1] += 1
+        return leaf
+    else:
+        return hash(
+            calculate_multi_merkle_root_inner(leaves, bits, ptr),
+            calculate_multi_merkle_root_inner(leaves, bits, ptr)
+        )
+
 ```
 
 ```python
 def verify_merkle_multiproof(leaves: Sequence[Bytes32],
-                             proof: Sequence[Bytes32],
-                             indices: Sequence[GeneralizedIndex],
+                             descriptor: Bytes,
                              root: Root) -> bool:
-    return calculate_multi_merkle_root(leaves, proof, indices) == root
+    return calculate_multi_merkle_root(leaves, descriptor) == root
 ```
-
-Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.
