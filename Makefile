@@ -105,12 +105,12 @@ install_test:
 # Testing against `minimal` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov=eth2spec.eip4844.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 # Testing against `minimal` config by default
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov=eth2spec.eip4844.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
@@ -142,8 +142,8 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella
+	&& pylint --rcfile $(LINTER_CONFIG_FILE) ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella ./eth2spec/eip4844 \
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella -p eth2spec.eip4844
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
