@@ -4,5 +4,5 @@
 # ---------------------------------------------------------------
 # [customized]
 FIELD_ELEMENTS_PER_BLOB: 4
-# `uint64(2**4)` (= 16)
-MAX_BLOBS_PER_BLOCK: 16
+# `uint64(2**2)` (= 4)
+MAX_BLOBS_PER_BLOCK: 4
