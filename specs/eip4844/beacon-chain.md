@@ -168,8 +168,7 @@ The implementation of `is_data_available` is meant to change with later sharding
 Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
 and validate the sidecar with `validate_blobs_sidecar`.
 
-Without the sidecar the block may be processed further optimistically,
-but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
 
 ```python
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
@@ -242,7 +241,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
 
-    # New in EIP-4844, note: Can sync optimistically without this condition, see note on `is_data_available`
+    # New in EIP-4844
     assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
 ```
 
