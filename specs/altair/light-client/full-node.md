@@ -121,7 +121,7 @@ def create_light_client_update(state: BeaconState,
                 state_root=finalized_block.message.state_root,
                 body_root=hash_tree_root(finalized_block.message.body),
             )
-            assert hash_tree_root(finalized_header) == attested_state.finalized_checkpoint.root
+            assert get_lc_beacon_root(update.finalized_header) == attested_state.finalized_checkpoint.root
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
             finalized_header = BeaconBlockHeader()
@@ -143,8 +143,8 @@ def create_light_client_update(state: BeaconState,
 
 Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `is_better_update`) for each sync committee period covering any epochs in range `[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]` where `current_epoch` is defined by the current wall-clock time. Full nodes MAY also provide `LightClientUpdate` for other sync committee periods.
 
-- `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.slot`
-- `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
+- `LightClientUpdate` are assigned to sync committee periods based on their `get_lc_beacon_slot(attested_header)`
+- `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(get_lc_beacon_slot(update.attested_header)) == compute_sync_committee_period_at_slot(update.signature_slot)`
 - Only `LightClientUpdate` with `next_sync_committee` as selected by fork choice are provided, regardless of ranking by `is_better_update`. To uniquely identify a non-finalized sync committee fork, all of `period`, `current_sync_committee` and `next_sync_committee` need to be incorporated, as sync committees may reappear over time.
 
 ### `create_light_client_finality_update`
@@ -160,7 +160,7 @@ def create_light_client_finality_update(update: LightClientUpdate) -> LightClien
     )
 ```
 
-Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `get_lc_beacon_slot(attested_header)` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
 
 ### `create_light_client_optimistic_update`
 
@@ -173,4 +173,4 @@ def create_light_client_optimistic_update(update: LightClientUpdate) -> LightCli
     )
 ```
 
-Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest `attested_header.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientOptimisticUpdate` whenever `attested_header` changes.
+Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest `get_lc_beacon_slot(attested_header)` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientOptimisticUpdate` whenever `attested_header` changes.
