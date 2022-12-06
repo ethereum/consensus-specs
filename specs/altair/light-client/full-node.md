@@ -121,7 +121,7 @@ def create_light_client_update(state: BeaconState,
                 state_root=finalized_block.message.state_root,
                 body_root=hash_tree_root(finalized_block.message.body),
             )
-            assert get_lc_beacon_root(update.finalized_header) == attested_state.finalized_checkpoint.root
+            assert get_lc_beacon_root(finalized_header) == attested_state.finalized_checkpoint.root
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
             finalized_header = BeaconBlockHeader()
