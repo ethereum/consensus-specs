@@ -244,10 +244,14 @@ def process_pending_deposits(state: BeaconState) -> None:
 
     next_pending_deposit_index = 0
     for pending_deposit in state.pending_deposits:
-        # Apply only finalized deposits
-        if pending_deposit.epoch > finalized_epoch
+        # Preserve deposits per epoch boundary
+        if next_pending_deposit_index >= MAX_DEPOSITS * SLOTS_PER_EPOCH:
             break
-        
+
+        # Apply only finalized deposits
+        if pending_deposit.epoch > finalized_epoch:
+            break
+
         # Skip already applied deposits
         if pending_deposit.index >= state.eth1_deposit_index:
             apply_pending_deposit(state, pending_deposit)
