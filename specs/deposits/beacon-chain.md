@@ -348,7 +348,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Prevent potential underflow that is introduced by the mix of two deposit processing flows
+    # Prevent potential underflow introduced by mixing two deposit processing flows
     unprocessed_deposits_count = max(0, state.eth1_data.deposit_count - state.eth1_deposit_index)  # [New in DepositsEIP]
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, unprocessed_deposits_count)  # [Modified in DepositsEIP]
