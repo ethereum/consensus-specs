@@ -3,6 +3,7 @@ from eth2spec.test.context import (
     spec_state_test_with_matching_config,
     spec_test,
     with_all_phases,
+    with_config_overrides,
     with_matching_spec_config,
     with_phases,
     with_state,
@@ -32,7 +33,7 @@ def test_config_override(spec, state):
 
 @with_all_phases
 @spec_state_test_with_matching_config
-def test_override_config_fork_epoch(spec, state):
+def test_config_override_matching_fork_epochs(spec, state):
     if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
         return
 
@@ -63,8 +64,23 @@ def test_override_config_fork_epoch(spec, state):
 
 @with_phases(phases=[ALTAIR], other_phases=[BELLATRIX])
 @spec_test
+@with_config_overrides({
+    'ALTAIR_FORK_VERSION': '0x11111111',
+    'BELLATRIX_FORK_EPOCH': 4,
+}, emit=False)
 @with_state
-@with_matching_spec_config
-def test_capella_store_with_legacy_data(spec, phases, state):
+@with_matching_spec_config(emitted_fork=BELLATRIX)
+def test_config_override_across_phases(spec, phases, state):
     assert state.fork.current_version == spec.config.ALTAIR_FORK_VERSION
-    assert phases[BELLATRIX].config.ALTAIR_FORK_EPOCH == spec.config.ALTAIR_FORK_EPOCH
+
+    assert spec.config.ALTAIR_FORK_VERSION == spec.Version('0x11111111')
+    assert spec.config.ALTAIR_FORK_EPOCH == 0
+    assert not hasattr(spec.config, 'BELLATRIX_FORK_EPOCH')
+
+    assert phases[ALTAIR].config.ALTAIR_FORK_VERSION == spec.Version('0x11111111')
+    assert phases[ALTAIR].config.ALTAIR_FORK_EPOCH == 0
+    assert not hasattr(phases[ALTAIR].config, 'BELLATRIX_FORK_EPOCH')
+
+    assert phases[ALTAIR].config.ALTAIR_FORK_VERSION == spec.Version('0x11111111')
+    assert phases[BELLATRIX].config.ALTAIR_FORK_EPOCH == 0
+    assert phases[BELLATRIX].config.BELLATRIX_FORK_EPOCH == 4

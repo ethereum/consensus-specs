@@ -1,4 +1,5 @@
 import pytest
+from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
@@ -318,16 +319,18 @@ def config_fork_epoch_overrides(spec, state):
     return overrides
 
 
-def with_matching_spec_config(fn):
-    def decorator(*args, spec: Spec, **kw):
-        conf = config_fork_epoch_overrides(spec, kw['state'])
-        overrides = with_config_overrides(conf)
-        return overrides(fn)(*args, spec=spec, **kw)
+def with_matching_spec_config(emitted_fork=None):
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            overrides = config_fork_epoch_overrides(spec, kw['state'])
+            deco = with_config_overrides(overrides, emitted_fork)
+            return deco(fn)(*args, spec=spec, **kw)
+        return wrapper
     return decorator
 
 
 def spec_state_test_with_matching_config(fn):
-    return spec_test(with_state(with_matching_spec_config(single_phase(fn))))
+    return spec_test(with_state(with_matching_spec_config()(single_phase(fn))))
 
 
 def expect_assertion_error(fn):
@@ -568,13 +571,17 @@ def _get_copy_of_spec(spec):
     module_spec = importlib.util.find_spec(module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
+
+    # Preserve existing config overrides
+    module.config = deepcopy(spec.config)
+
     return module
 
 
 def spec_with_config_overrides(spec, config_overrides):
     # apply our overrides to a copy of it, and apply it to the spec
     config = spec.config._asdict()
-    config.update(config_overrides)
+    config.update((k, config_overrides[k]) for k in config.keys() & config_overrides.keys())
     config_types = spec.Configuration.__annotations__
     modified_config = {k: config_types[k](v) for k, v in config.items()}
 
@@ -587,7 +594,7 @@ def spec_with_config_overrides(spec, config_overrides):
     return spec, output_config
 
 
-def with_config_overrides(config_overrides):
+def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
     This decorator forces the test to yield, and pytest doesn't run generator tests, and instead silently passes it.
@@ -598,13 +605,16 @@ def with_config_overrides(config_overrides):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
-            yield 'config', 'cfg', output_config
+            if emit and emitted_fork is None:
+                yield 'config', 'cfg', output_config
 
             if 'phases' in kw:
                 for fork in kw['phases']:
                     if is_post_fork(fork, spec.fork):
-                        kw['phases'][fork], _ = \
+                        kw['phases'][fork], output_config = \
                             spec_with_config_overrides(_get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                        if emit and emitted_fork == fork:
+                            yield 'config', 'cfg', output_config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
