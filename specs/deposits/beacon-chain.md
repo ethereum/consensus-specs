@@ -22,7 +22,7 @@
   - [Epoch processing](#epoch-processing)
     - [Helper functions](#helper-functions)
       - [New `get_validator_from_indexed_deposit_data`](#new-get_validator_from_indexed_deposit_data)
-      - [New `apply_pending_deposit`](#new-apply_pending_deposit)
+      - [New `apply_indexed_deposit_data`](#new-apply_indexed_deposit_data)
     - [New `process_pending_deposits`](#new-process_pending_deposits)
   - [Block processing](#block-processing)
     - [New `process_deposit_receipts`](#new-process_deposit_receipts)
@@ -219,10 +219,10 @@ def get_validator_from_indexed_deposit_data(indexed_deposit_data: IndexedDeposit
     )
 ```
 
-##### New `apply_pending_deposit`
+##### New `apply_indexed_deposit_data`
 
 ```python
-def apply_pending_deposit(state: BeaconState, indexed_deposit_data: IndexedDepositData) -> None:
+def apply_indexed_deposit_data(state: BeaconState, indexed_deposit_data: IndexedDepositData) -> None:
     pubkey = indexed_deposit_data.pubkey
     amount = indexed_deposit_data.amount
     validator_pubkeys = [v.pubkey for v in state.validators]
@@ -254,7 +254,7 @@ def process_pending_deposits(state: BeaconState) -> None:
 
         # Skip already applied deposits
         if pending_deposit.index >= state.eth1_deposit_index:
-            apply_pending_deposit(state, pending_deposit)
+            apply_indexed_deposit_data(state, pending_deposit)
             state.eth1_deposit_index += 1
 
         next_pending_deposit_index += 1
@@ -348,8 +348,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Verify that outstanding deposits are processed up to the maximum number of deposits
+    # Prevent potential underflow that is introduced by the mix of two deposit processing flows
     unprocessed_deposits_count = max(0, state.eth1_data.deposit_count - state.eth1_deposit_index)  # [New in DepositsEIP]
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, unprocessed_deposits_count)  # [Modified in DepositsEIP]
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
