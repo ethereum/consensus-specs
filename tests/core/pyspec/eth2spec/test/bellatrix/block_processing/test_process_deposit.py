@@ -33,5 +33,4 @@ def test_effective_deposit_with_genesis_fork_version(spec, state):
         spec,
         state,
         fork_version=spec.config.GENESIS_FORK_VERSION,
-        effective=True,
     )

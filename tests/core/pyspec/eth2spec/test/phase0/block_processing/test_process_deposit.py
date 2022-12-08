@@ -4,6 +4,7 @@ from eth2spec.test.helpers.deposits import (
     deposit_from_context,
     prepare_state_and_deposit,
     run_deposit_processing,
+    run_deposit_processing_with_specific_fork_version,
     sign_deposit_data,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -92,7 +93,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_sig_other_version(spec, state):
+def test_incorrect_sig_other_version(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
 
@@ -125,7 +126,7 @@ def test_correct_sig_but_forked_state(spec, state):
     # deposits will always be valid, regardless of the current fork
     state.fork.current_version = spec.Version('0x1234abcd')
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing(spec, state, deposit, validator_index, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_all_phases
@@ -202,7 +203,7 @@ def test_incorrect_sig_top_up(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # invalid signatures, in top-ups, are allowed!
-    yield from run_deposit_processing(spec, state, deposit, validator_index, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_all_phases
@@ -220,7 +221,7 @@ def test_incorrect_withdrawal_credentials_top_up(spec, state):
     )
 
     # inconsistent withdrawal credentials, in top-ups, are allowed!
-    yield from run_deposit_processing(spec, state, deposit, validator_index, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_all_phases
@@ -307,3 +308,15 @@ def test_key_validate_invalid_decompression(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_ineffective_deposit_with_bad_fork_version(spec, state):
+    yield from run_deposit_processing_with_specific_fork_version(
+        spec,
+        state,
+        fork_version=spec.Version('0xAaBbCcDd'),
+        effective=False,
+    )
