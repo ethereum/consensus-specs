@@ -301,7 +301,66 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
     return sorted(all_helper_indices.difference(all_path_indices), reverse=True)
 ```
 
-While generalized indices are useful for identifying specific elements of a merkle tree, they are inefficient when used directly to dynamically request specific leaves for a multiproof. This is because each generalized index must be encoded as a varint or some fixed-bitlength uint. N generalized indices would require 2N to 8N bytes to be serialized.
+### Static multiproofs
+
+Now we provide the Merkle proof verification functions. First, for single item proofs:
+
+```python
+def calculate_merkle_root(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex) -> Root:
+    assert len(proof) == get_generalized_index_length(index)
+    for i, h in enumerate(proof):
+        if get_generalized_index_bit(index, i):
+            leaf = hash(h + leaf)
+        else:
+            leaf = hash(leaf + h)
+    return leaf
+```
+
+```python
+def verify_merkle_proof(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex, root: Root) -> bool:
+    return calculate_merkle_root(leaf, proof, index) == root
+```
+
+Now for multi-item proofs:
+
+```python
+def calculate_multi_merkle_root(leaves: Sequence[Bytes32],
+                                proof: Sequence[Bytes32],
+                                indices: Sequence[GeneralizedIndex]) -> Root:
+    assert len(leaves) == len(indices)
+    helper_indices = get_helper_indices(indices)
+    assert len(proof) == len(helper_indices)
+    objects = {
+        **{index: node for index, node in zip(indices, leaves)},
+        **{index: node for index, node in zip(helper_indices, proof)}
+    }
+    keys = sorted(objects.keys(), reverse=True)
+    pos = 0
+    while pos < len(keys):
+        k = keys[pos]
+        if k in objects and k ^ 1 in objects and k // 2 not in objects:
+            objects[GeneralizedIndex(k // 2)] = hash(
+                objects[GeneralizedIndex((k | 1) ^ 1)] +
+                objects[GeneralizedIndex(k | 1)]
+            )
+            keys.append(GeneralizedIndex(k // 2))
+        pos += 1
+    return objects[GeneralizedIndex(1)]
+```
+
+```python
+def verify_merkle_multiproof(leaves: Sequence[Bytes32],
+                             proof: Sequence[Bytes32],
+                             indices: Sequence[GeneralizedIndex],
+                             root: Root) -> bool:
+    return calculate_multi_merkle_root(leaves, proof, indices) == root
+```
+
+Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.
+
+### Dynamic multiproofs
+
+While generalized indices are useful for identifying specific elements of a merkle tree, they are inefficient when used directly to dynamically request specific leaves for a multiproof. This is because each generalized index must be encoded as a varint or some fixed-bitlength uint. N generalized indices would require somewhere between 2N to 8N bytes to be serialized.
 
 A more efficient multiproof descriptor encodes the "shape" a multiproof, rather than encoding the generalized indices individually. This shape can be encoded as a single bitlist that describes traversal through the merkle tree. Of note, in this format, leaf indices and helper indices are not treated separately, rather, the shape includes both and does not distinguish between them.
 
@@ -361,9 +420,9 @@ def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
 Now we provide the Merkle proof verification functions.
 
 ```python
-def calculate_multi_merkle_root(leaves: Sequence[Bytes32],
+def calculate_dynamic_multi_merkle_root(leaves: Sequence[Bytes32],
                                 descriptor: Bytes) -> Root:
-    return calculate_multi_merkle_root_inner(
+    return calculate_dynamic_multi_merkle_root_inner(
         leaves,
         compute_bits_from_proof_descriptor(descriptor),
         [0, 0]
@@ -387,7 +446,7 @@ def compute_bits_from_proof_descriptor(descriptor: Bytes) -> Sequence[bool]:
             assert i == last_one_index
     return bits
 
-def calculate_multi_merkle_root_inner(leaves: Sequence[Bytes32], bits: Sequence[bool], ptr: Tuple[int, int]) -> Bytes32:
+def calculate_dynamic_multi_merkle_root_inner(leaves: Sequence[Bytes32], bits: Sequence[bool], ptr: Tuple[int, int]) -> Bytes32:
     bit = bits[ptr[0]]
     ptr[0] += 1
     if bit:
@@ -403,7 +462,7 @@ def calculate_multi_merkle_root_inner(leaves: Sequence[Bytes32], bits: Sequence[
 ```
 
 ```python
-def verify_merkle_multiproof(leaves: Sequence[Bytes32],
+def verify_dynamic_merkle_multiproof(leaves: Sequence[Bytes32],
                              descriptor: Bytes,
                              root: Root) -> bool:
     return calculate_multi_merkle_root(leaves, descriptor) == root
