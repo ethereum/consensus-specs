@@ -12,6 +12,8 @@ from eth2spec.test.helpers.deposits import (
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_previous_fork_version(spec, state):
+    # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
+    # It's an ineffective deposit because it fails at BLS sig verification.
     # NOTE: it was effective in Altair.
     assert state.fork.previous_version != state.fork.current_version
 

@@ -19,6 +19,8 @@ from eth2spec.test.helpers.deposits import (
 def test_effective_deposit_with_previous_fork_version(spec, state):
     assert state.fork.previous_version != state.fork.current_version
 
+    # It's only effective in Altair because the default `fork_version` of `compute_domain` is `GENESIS_FORK_VERSION`.
+    # Therefore it's just a normal `DepositMessage`.
     yield from run_deposit_processing_with_specific_fork_version(
         spec,
         state,
