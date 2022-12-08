@@ -18,6 +18,8 @@
     - [`generalized_index_child`](#generalized_index_child)
     - [`generalized_index_parent`](#generalized_index_parent)
 - [Merkle multiproofs](#merkle-multiproofs)
+    - [`Static multiproofs`](#static-multiproofs)
+    - [`Dynamic multiproofs`](#dynamic-multiproofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
