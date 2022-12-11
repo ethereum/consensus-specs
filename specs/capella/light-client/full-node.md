@@ -1,0 +1,72 @@
+# Capella Light Client -- Full Node
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
+
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [Helper functions](#helper-functions)
+  - [`compute_merkle_proof_for_block_body`](#compute_merkle_proof_for_block_body)
+  - [Modified `block_to_light_client_header`](#modified-block_to_light_client_header)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
+## Introduction
+
+This upgrade adds information about the execution payload to light client data as part of the Capella upgrade.
+
+## Helper functions
+
+### `compute_merkle_proof_for_block_body`
+
+```python
+def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
+                                        index: GeneralizedIndex) -> Sequence[Bytes32]:
+    ...
+```
+
+### Modified `block_to_light_client_header`
+
+```python
+def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
+    if compute_epoch_at_slot(block.message.slot) >= CAPELLA_FORK_EPOCH:
+        payload = block.message.body.execution_payload
+        execution_header = ExecutionPayloadHeader(
+            parent_hash=payload.parent_hash,
+            fee_recipient=payload.fee_recipient,
+            state_root=payload.state_root,
+            receipts_root=payload.receipts_root,
+            logs_bloom=payload.logs_bloom,
+            prev_randao=payload.prev_randao,
+            block_number=payload.block_number,
+            gas_limit=payload.gas_limit,
+            gas_used=payload.gas_used,
+            timestamp=payload.timestamp,
+            extra_data=payload.extra_data,
+            base_fee_per_gas=payload.base_fee_per_gas,
+            block_hash=payload.block_hash,
+            transactions_root=hash_tree_root(payload.transactions),
+            withdrawals_root=hash_tree_root(payload.withdrawals),
+        )
+        execution_branch = compute_merkle_proof_for_block_body(block.message.body, EXECUTION_PAYLOAD_INDEX)
+    else:
+        execution_header = ExecutionPayloadHeader()
+        execution_branch = [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]
+
+    return LightClientHeader(
+        beacon=BeaconBlockHeader(
+            slot=block.message.slot,
+            proposer_index=block.message.proposer_index,
+            parent_root=block.message.parent_root,
+            state_root=block.message.state_root,
+            body_root=hash_tree_root(block.message.body),
+        ),
+        execution=execution_header,
+        execution_branch=execution_branch,
+    )
+```
