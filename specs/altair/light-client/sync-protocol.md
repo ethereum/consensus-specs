@@ -19,6 +19,8 @@
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
+  - [`get_lc_beacon_slot`](#get_lc_beacon_slot)
+  - [`get_lc_beacon_root`](#get_lc_beacon_root)
   - [`is_sync_committee_update`](#is_sync_committee_update)
   - [`is_finality_update`](#is_finality_update)
   - [`is_better_update`](#is_better_update)
@@ -150,6 +152,20 @@ class LightClientStore(object):
 
 ## Helper functions
 
+### `get_lc_beacon_slot`
+
+```python
+def get_lc_beacon_slot(header: BeaconBlockHeader) -> Slot:
+    return header.slot
+```
+
+### `get_lc_beacon_root`
+
+```python
+def get_lc_beacon_root(header: BeaconBlockHeader) -> Root:
+    return hash_tree_root(header)
+```
+
 ### `is_sync_committee_update`
 
 ```python
@@ -181,11 +197,11 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
 
     # Compare presence of relevant sync committee
     new_has_relevant_sync_committee = is_sync_committee_update(new_update) and (
-        compute_sync_committee_period_at_slot(new_update.attested_header.slot)
+        compute_sync_committee_period_at_slot(get_lc_beacon_slot(new_update.attested_header))
         == compute_sync_committee_period_at_slot(new_update.signature_slot)
     )
     old_has_relevant_sync_committee = is_sync_committee_update(old_update) and (
-        compute_sync_committee_period_at_slot(old_update.attested_header.slot)
+        compute_sync_committee_period_at_slot(get_lc_beacon_slot(old_update.attested_header))
         == compute_sync_committee_period_at_slot(old_update.signature_slot)
     )
     if new_has_relevant_sync_committee != old_has_relevant_sync_committee:
@@ -200,12 +216,12 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     # Compare sync committee finality
     if new_has_finality:
         new_has_sync_committee_finality = (
-            compute_sync_committee_period_at_slot(new_update.finalized_header.slot)
-            == compute_sync_committee_period_at_slot(new_update.attested_header.slot)
+            compute_sync_committee_period_at_slot(get_lc_beacon_slot(new_update.finalized_header))
+            == compute_sync_committee_period_at_slot(get_lc_beacon_slot(new_update.attested_header))
         )
         old_has_sync_committee_finality = (
-            compute_sync_committee_period_at_slot(old_update.finalized_header.slot)
-            == compute_sync_committee_period_at_slot(old_update.attested_header.slot)
+            compute_sync_committee_period_at_slot(get_lc_beacon_slot(old_update.finalized_header))
+            == compute_sync_committee_period_at_slot(get_lc_beacon_slot(old_update.attested_header))
         )
         if new_has_sync_committee_finality != old_has_sync_committee_finality:
             return new_has_sync_committee_finality
@@ -215,8 +231,8 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
         return new_num_active_participants > old_num_active_participants
 
     # Tiebreaker 2: Prefer older data (fewer changes to best)
-    if new_update.attested_header.slot != old_update.attested_header.slot:
-        return new_update.attested_header.slot < old_update.attested_header.slot
+    if get_lc_beacon_slot(new_update.attested_header) != get_lc_beacon_slot(old_update.attested_header):
+        return get_lc_beacon_slot(new_update.attested_header) < get_lc_beacon_slot(old_update.attested_header)
     return new_update.signature_slot < old_update.signature_slot
 ```
 
@@ -260,7 +276,7 @@ A light client maintains its state in a `store` object of type `LightClientStore
 ```python
 def initialize_light_client_store(trusted_block_root: Root,
                                   bootstrap: LightClientBootstrap) -> LightClientStore:
-    assert hash_tree_root(bootstrap.header) == trusted_block_root
+    assert get_lc_beacon_root(bootstrap.header) == trusted_block_root
 
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(bootstrap.current_sync_committee),
@@ -301,8 +317,10 @@ def validate_light_client_update(store: LightClientStore,
     assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify update does not skip a sync committee period
-    assert current_slot >= update.signature_slot > update.attested_header.slot >= update.finalized_header.slot
-    store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
+    update_attested_slot = get_lc_beacon_slot(update.attested_header)
+    update_finalized_slot = get_lc_beacon_slot(update.finalized_header)
+    assert current_slot >= update.signature_slot > update_attested_slot >= update_finalized_slot
+    store_period = compute_sync_committee_period_at_slot(get_lc_beacon_slot(store.finalized_header))
     update_signature_period = compute_sync_committee_period_at_slot(update.signature_slot)
     if is_next_sync_committee_known(store):
         assert update_signature_period in (store_period, store_period + 1)
@@ -310,12 +328,12 @@ def validate_light_client_update(store: LightClientStore,
         assert update_signature_period == store_period
 
     # Verify update is relevant
-    update_attested_period = compute_sync_committee_period_at_slot(update.attested_header.slot)
+    update_attested_period = compute_sync_committee_period_at_slot(update_attested_slot)
     update_has_next_sync_committee = not is_next_sync_committee_known(store) and (
         is_sync_committee_update(update) and update_attested_period == store_period
     )
     assert (
-        update.attested_header.slot > store.finalized_header.slot
+        update_attested_slot > get_lc_beacon_slot(store.finalized_header)
         or update_has_next_sync_committee
     )
 
@@ -325,11 +343,11 @@ def validate_light_client_update(store: LightClientStore,
     if not is_finality_update(update):
         assert update.finalized_header == BeaconBlockHeader()
     else:
-        if update.finalized_header.slot == GENESIS_SLOT:
+        if update_finalized_slot == GENESIS_SLOT:
             assert update.finalized_header == BeaconBlockHeader()
             finalized_root = Bytes32()
         else:
-            finalized_root = hash_tree_root(update.finalized_header)
+            finalized_root = get_lc_beacon_root(update.finalized_header)
         assert is_valid_merkle_branch(
             leaf=finalized_root,
             branch=update.finality_branch,
@@ -372,8 +390,8 @@ def validate_light_client_update(store: LightClientStore,
 
 ```python
 def apply_light_client_update(store: LightClientStore, update: LightClientUpdate) -> None:
-    store_period = compute_sync_committee_period_at_slot(store.finalized_header.slot)
-    update_finalized_period = compute_sync_committee_period_at_slot(update.finalized_header.slot)
+    store_period = compute_sync_committee_period_at_slot(get_lc_beacon_slot(store.finalized_header))
+    update_finalized_period = compute_sync_committee_period_at_slot(get_lc_beacon_slot(update.finalized_header))
     if not is_next_sync_committee_known(store):
         assert update_finalized_period == store_period
         store.next_sync_committee = update.next_sync_committee
@@ -382,9 +400,9 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
         store.next_sync_committee = update.next_sync_committee
         store.previous_max_active_participants = store.current_max_active_participants
         store.current_max_active_participants = 0
-    if update.finalized_header.slot > store.finalized_header.slot:
+    if get_lc_beacon_slot(update.finalized_header) > get_lc_beacon_slot(store.finalized_header):
         store.finalized_header = update.finalized_header
-        if store.finalized_header.slot > store.optimistic_header.slot:
+        if get_lc_beacon_slot(store.finalized_header) > get_lc_beacon_slot(store.optimistic_header):
             store.optimistic_header = store.finalized_header
 ```
 
@@ -393,14 +411,14 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
 ```python
 def process_light_client_store_force_update(store: LightClientStore, current_slot: Slot) -> None:
     if (
-        current_slot > store.finalized_header.slot + UPDATE_TIMEOUT
+        current_slot > get_lc_beacon_slot(store.finalized_header) + UPDATE_TIMEOUT
         and store.best_valid_update is not None
     ):
         # Forced best update when the update timeout has elapsed.
-        # Because the apply logic waits for `finalized_header.slot` to indicate sync committee finality,
+        # Because the apply logic waits for `get_lc_beacon_slot(finalized_header)` to indicate sync committee finality,
         # the `attested_header` may be treated as `finalized_header` in extended periods of non-finality
         # to guarantee progression into later sync committee periods according to `is_better_update`.
-        if store.best_valid_update.finalized_header.slot <= store.finalized_header.slot:
+        if get_lc_beacon_slot(store.best_valid_update.finalized_header) <= get_lc_beacon_slot(store.finalized_header):
             store.best_valid_update.finalized_header = store.best_valid_update.attested_header
         apply_light_client_update(store, store.best_valid_update)
         store.best_valid_update = None
@@ -433,7 +451,7 @@ def process_light_client_update(store: LightClientStore,
     # Update the optimistic header
     if (
         sum(sync_committee_bits) > get_safety_threshold(store)
-        and update.attested_header.slot > store.optimistic_header.slot
+        and get_lc_beacon_slot(update.attested_header) > get_lc_beacon_slot(store.optimistic_header)
     ):
         store.optimistic_header = update.attested_header
 
@@ -441,14 +459,14 @@ def process_light_client_update(store: LightClientStore,
     update_has_finalized_next_sync_committee = (
         not is_next_sync_committee_known(store)
         and is_sync_committee_update(update) and is_finality_update(update) and (
-            compute_sync_committee_period_at_slot(update.finalized_header.slot)
-            == compute_sync_committee_period_at_slot(update.attested_header.slot)
+            compute_sync_committee_period_at_slot(get_lc_beacon_slot(update.finalized_header))
+            == compute_sync_committee_period_at_slot(get_lc_beacon_slot(update.attested_header))
         )
     )
     if (
         sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2
         and (
-            update.finalized_header.slot > store.finalized_header.slot
+            get_lc_beacon_slot(update.finalized_header) > get_lc_beacon_slot(store.finalized_header)
             or update_has_finalized_next_sync_committee
         )
     ):

@@ -67,11 +67,11 @@ For full nodes, the following validations MUST additionally pass before forwardi
 
 For light clients, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
 - _[REJECT]_ The `finality_update` is valid -- i.e. validate that `process_light_client_finality_update` does not indicate errors
-- _[IGNORE]_ The `finality_update` advances the `finalized_header` of the local `LightClientStore` -- i.e. validate that processing `finality_update` increases `store.finalized_header.slot`
+- _[IGNORE]_ The `finality_update` advances the `finalized_header` of the local `LightClientStore` -- i.e. validate that processing `finality_update` increases `get_lc_beacon_slot(store.finalized_header)`
 
 Light clients SHOULD call `process_light_client_finality_update` even if the message is ignored.
 
-The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.slot))`.
+The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(get_lc_beacon_slot(finality_update.attested_header)))`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -95,11 +95,11 @@ For full nodes, the following validations MUST additionally pass before forwardi
 
 For light clients, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
 - _[REJECT]_ The `optimistic_update` is valid -- i.e. validate that `process_light_client_optimistic_update` does not indicate errors
-- _[IGNORE]_ The `optimistic_update` either matches corresponding fields of the most recently forwarded `LightClientFinalityUpdate` (if any), or it advances the `optimistic_header` of the local `LightClientStore` -- i.e. validate that processing `optimistic_update` increases `store.optimistic_header.slot`
+- _[IGNORE]_ The `optimistic_update` either matches corresponding fields of the most recently forwarded `LightClientFinalityUpdate` (if any), or it advances the `optimistic_header` of the local `LightClientStore` -- i.e. validate that processing `optimistic_update` increases `get_lc_beacon_slot(store.optimistic_header)`
 
 Light clients SHOULD call `process_light_client_optimistic_update` even if the message is ignored.
 
-The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.slot))`.
+The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(get_lc_beacon_slot(optimistic_update.attested_header)))`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -142,7 +142,7 @@ Peers SHOULD provide results as defined in [`create_light_client_bootstrap`](./f
 
 When a `LightClientBootstrap` instance cannot be produced for a given block root, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
-A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(bootstrap.header.slot))` is used to select the fork namespace of the Response type.
+A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(get_lc_beacon_slot(bootstrap.header)))` is used to select the fork namespace of the Response type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -180,7 +180,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_ `r
 
 Peers SHOULD provide results as defined in [`create_light_client_update`](./full-node.md#create_light_client_update). They MUST respond with at least the earliest known result within the requested range, and MUST send results in consecutive order (by period). The response MUST NOT contain more than `min(MAX_REQUEST_LIGHT_CLIENT_UPDATES, count)` results.
 
-For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(update.attested_header.slot))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `update.sync_aggregate`, which is based on `update.signature_slot`.
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(get_lc_beacon_slot(update.attested_header)))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `update.sync_aggregate`, which is based on `update.signature_slot`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -211,7 +211,7 @@ Peers SHOULD provide results as defined in [`create_light_client_finality_update
 
 When no `LightClientFinalityUpdate` is available, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
-A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.slot))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `finality_update.sync_aggregate`, which is based on `finality_update.signature_slot`.
+A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(get_lc_beacon_slot(finality_update.attested_header)))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `finality_update.sync_aggregate`, which is based on `finality_update.signature_slot`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -242,7 +242,7 @@ Peers SHOULD provide results as defined in [`create_light_client_optimistic_upda
 
 When no `LightClientOptimisticUpdate` is available, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
-A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.slot))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `optimistic_update.sync_aggregate`, which is based on `optimistic_update.signature_slot`.
+A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(get_lc_beacon_slot(optimistic_update.attested_header)))` is used to select the fork namespace of the Response type. Note that this `fork_version` may be different from the one used to verify the `optimistic_update.sync_aggregate`, which is based on `optimistic_update.signature_slot`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -273,7 +273,7 @@ All full nodes SHOULD subscribe to and provide stability on the [`light_client_f
 
 Whenever fork choice selects a new head block with a sync aggregate participation `>= MIN_SYNC_COMMITTEE_PARTICIPANTS` and a post-Altair parent block, full nodes with at least one validator assigned to the current sync committee at the block's `slot` SHOULD broadcast derived light client data as follows:
 
-- If `finalized_header.slot` increased, a `LightClientFinalityUpdate` SHOULD be broadcasted to the pubsub topic `light_client_finality_update` if no matching message has not yet been forwarded as part of gossip validation.
-- If `attested_header.slot` increased, a `LightClientOptimisticUpdate` SHOULD be broadcasted to the pubsub topic `light_client_optimistic_update` if no matching message has not yet been forwarded as part of gossip validation.
+- If `get_lc_beacon_slot(finalized_header)` increased, a `LightClientFinalityUpdate` SHOULD be broadcasted to the pubsub topic `light_client_finality_update` if no matching message has not yet been forwarded as part of gossip validation.
+- If `get_lc_beacon_slot(attested_header)` increased, a `LightClientOptimisticUpdate` SHOULD be broadcasted to the pubsub topic `light_client_optimistic_update` if no matching message has not yet been forwarded as part of gossip validation.
 
 These messages SHOULD be broadcasted after one-third of `slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot). To ensure that the corresponding block was given enough time to propagate through the network, they SHOULD NOT be sent earlier. Note that this is different from how other messages are handled, e.g., attestations, which may be sent early.
