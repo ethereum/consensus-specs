@@ -604,20 +604,26 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
+            # Apply config overrides to spec
             spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
-            if emit and emitted_fork is None:
-                yield 'config', 'cfg', output_config
 
+            # Apply config overrides to additional phases, if present
             if 'phases' in kw:
+                phases = {}
                 for fork in kw['phases']:
-                    if is_post_fork(fork, spec.fork):
-                        kw['phases'][fork], output_config = \
-                            spec_with_config_overrides(_get_copy_of_spec(kw['phases'][fork]), config_overrides)
-                        if emit and emitted_fork == fork:
-                            yield 'config', 'cfg', output_config
+                    phases[fork], output = \
+                        spec_with_config_overrides(_get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                    if emitted_fork == fork:
+                        output_config = output
+                kw['phases'] = phases
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
+
+            # Emit requested spec (with overrides)
+            if emit:
+                yield 'config', 'cfg', output_config
+
             # If it's not returning None like a normal test function,
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:
