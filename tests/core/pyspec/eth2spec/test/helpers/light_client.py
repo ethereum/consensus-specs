@@ -5,28 +5,7 @@ from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
 )
-
-
-def signed_block_to_header(spec, block):
-    return spec.BeaconBlockHeader(
-        slot=block.message.slot,
-        proposer_index=block.message.proposer_index,
-        parent_root=block.message.parent_root,
-        state_root=block.message.state_root,
-        body_root=block.message.body.hash_tree_root(),
-    )
-
-
-def initialize_light_client_store(spec, state):
-    return spec.LightClientStore(
-        finalized_header=spec.BeaconBlockHeader(),
-        current_sync_committee=state.current_sync_committee,
-        next_sync_committee=state.next_sync_committee,
-        best_valid_update=None,
-        optimistic_header=spec.BeaconBlockHeader(),
-        previous_max_active_participants=0,
-        current_max_active_participants=0,
-    )
+from math import floor
 
 
 def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
@@ -60,3 +39,32 @@ def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
         sync_committee_signature=sync_committee_signature,
     )
     return sync_aggregate, signature_slot
+
+
+def create_update(spec,
+                  attested_state,
+                  attested_block,
+                  finalized_block,
+                  with_next,
+                  with_finality,
+                  participation_rate):
+    num_participants = floor(spec.SYNC_COMMITTEE_SIZE * participation_rate)
+
+    update = spec.LightClientUpdate()
+
+    update.attested_header = spec.block_to_light_client_header(attested_block)
+
+    if with_next:
+        update.next_sync_committee = attested_state.next_sync_committee
+        update.next_sync_committee_branch = \
+            spec.compute_merkle_proof_for_state(attested_state, spec.NEXT_SYNC_COMMITTEE_INDEX)
+
+    if with_finality:
+        update.finalized_header = spec.block_to_light_client_header(finalized_block)
+        update.finality_branch = \
+            spec.compute_merkle_proof_for_state(attested_state, spec.FINALIZED_ROOT_INDEX)
+
+    update.sync_aggregate, update.signature_slot = \
+        get_sync_aggregate(spec, attested_state, num_participants)
+
+    return update

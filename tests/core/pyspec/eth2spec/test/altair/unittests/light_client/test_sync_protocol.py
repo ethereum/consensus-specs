@@ -11,43 +11,44 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.light_client import (
-    get_sync_aggregate,
-    initialize_light_client_store,
-    signed_block_to_header,
+    create_update,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
 )
 
 
+def setup_test(spec, state):
+    trusted_block = spec.SignedBeaconBlock()
+    trusted_block.message.state_root = state.hash_tree_root()
+    trusted_block_root = trusted_block.message.hash_tree_root()
+    bootstrap = spec.create_light_client_bootstrap(state, trusted_block)
+    store = spec.initialize_light_client_store(trusted_block_root, bootstrap)
+    store.next_sync_committee = state.next_sync_committee
+
+    return (trusted_block, store)
+
+
 @with_altair_and_later
 @spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
-    store = initialize_light_client_store(spec, state)
+    genesis_block, store = setup_test(spec, state)
 
     # Block at slot 1 doesn't increase sync committee period, so it won't force update store.finalized_header
     attested_block = state_transition_with_full_block(spec, state, False, False)
-    attested_header = signed_block_to_header(spec, attested_block)
-
-    # Sync committee signing the attested_header
-    sync_aggregate, signature_slot = get_sync_aggregate(spec, state)
-    next_sync_committee = spec.SyncCommittee()
-    next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
+    signature_slot = state.slot + 1
 
     # Ensure that finality checkpoint is genesis
     assert state.finalized_checkpoint.epoch == 0
-    # Finality is unchanged
-    finalized_header = spec.BeaconBlockHeader()
-    finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
 
-    update = spec.LightClientUpdate(
-        attested_header=attested_header,
-        next_sync_committee=next_sync_committee,
-        next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finalized_header,
-        finality_branch=finality_branch,
-        sync_aggregate=sync_aggregate,
-        signature_slot=signature_slot,
+    update = create_update(
+        spec,
+        attested_state=state,
+        attested_block=attested_block,
+        finalized_block=genesis_block,
+        with_next=False,
+        with_finality=False,
+        participation_rate=1.0,
     )
 
     pre_store = deepcopy(store)
@@ -64,7 +65,7 @@ def test_process_light_client_update_not_timeout(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
-    store = initialize_light_client_store(spec, state)
+    genesis_block, store = setup_test(spec, state)
 
     # Forward to slot before next sync committee period so that next block is final one in period
     next_slots(spec, state, spec.UPDATE_TIMEOUT - 2)
@@ -73,25 +74,16 @@ def test_process_light_client_update_at_period_boundary(spec, state):
     assert store_period == update_period
 
     attested_block = state_transition_with_full_block(spec, state, False, False)
-    attested_header = signed_block_to_header(spec, attested_block)
+    signature_slot = state.slot + 1
 
-    # Sync committee signing the attested_header
-    sync_aggregate, signature_slot = get_sync_aggregate(spec, state)
-    next_sync_committee = spec.SyncCommittee()
-    next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
-
-    # Finality is unchanged
-    finalized_header = spec.BeaconBlockHeader()
-    finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
-
-    update = spec.LightClientUpdate(
-        attested_header=attested_header,
-        next_sync_committee=next_sync_committee,
-        next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finalized_header,
-        finality_branch=finality_branch,
-        sync_aggregate=sync_aggregate,
-        signature_slot=signature_slot,
+    update = create_update(
+        spec,
+        attested_state=state,
+        attested_block=attested_block,
+        finalized_block=genesis_block,
+        with_next=False,
+        with_finality=False,
+        participation_rate=1.0,
     )
 
     pre_store = deepcopy(store)
@@ -108,7 +100,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
-    store = initialize_light_client_store(spec, state)
+    genesis_block, store = setup_test(spec, state)
 
     # Forward to next sync committee period
     next_slots(spec, state, spec.UPDATE_TIMEOUT)
@@ -117,26 +109,16 @@ def test_process_light_client_update_timeout(spec, state):
     assert store_period + 1 == update_period
 
     attested_block = state_transition_with_full_block(spec, state, False, False)
-    attested_header = signed_block_to_header(spec, attested_block)
+    signature_slot = state.slot + 1
 
-    # Sync committee signing the attested_header
-    sync_aggregate, signature_slot = get_sync_aggregate(spec, state)
-
-    # Sync committee is updated
-    next_sync_committee = state.next_sync_committee
-    next_sync_committee_branch = spec.compute_merkle_proof_for_state(state, spec.NEXT_SYNC_COMMITTEE_INDEX)
-    # Finality is unchanged
-    finalized_header = spec.BeaconBlockHeader()
-    finality_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.FINALIZED_ROOT_INDEX))]
-
-    update = spec.LightClientUpdate(
-        attested_header=attested_header,
-        next_sync_committee=next_sync_committee,
-        next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finalized_header,
-        finality_branch=finality_branch,
-        sync_aggregate=sync_aggregate,
-        signature_slot=signature_slot,
+    update = create_update(
+        spec,
+        attested_state=state,
+        attested_block=attested_block,
+        finalized_block=genesis_block,
+        with_next=True,
+        with_finality=False,
+        participation_rate=1.0,
     )
 
     pre_store = deepcopy(store)
@@ -153,7 +135,7 @@ def test_process_light_client_update_timeout(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
-    store = initialize_light_client_store(spec, state)
+    _, store = setup_test(spec, state)
 
     # Change finality
     blocks = []
@@ -169,28 +151,21 @@ def test_process_light_client_update_finality_updated(spec, state):
     assert store_period == update_period
 
     attested_block = blocks[-1]
-    attested_header = signed_block_to_header(spec, attested_block)
+    signature_slot = state.slot + 1
 
-    # Sync committee signing the attested_header
-    sync_aggregate, signature_slot = get_sync_aggregate(spec, state)
-
-    # Updated sync_committee and finality
-    next_sync_committee = spec.SyncCommittee()
-    next_sync_committee_branch = [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_INDEX))]
+    # Updated finality
     finalized_block = blocks[spec.SLOTS_PER_EPOCH - 1]
-    finalized_header = signed_block_to_header(spec, finalized_block)
-    assert finalized_header.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
-    assert finalized_header.hash_tree_root() == state.finalized_checkpoint.root
-    finality_branch = spec.compute_merkle_proof_for_state(state, spec.FINALIZED_ROOT_INDEX)
+    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+    assert finalized_block.message.hash_tree_root() == state.finalized_checkpoint.root
 
-    update = spec.LightClientUpdate(
-        attested_header=attested_header,
-        next_sync_committee=next_sync_committee,
-        next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finalized_header,
-        finality_branch=finality_branch,
-        sync_aggregate=sync_aggregate,
-        signature_slot=signature_slot,
+    update = create_update(
+        spec,
+        attested_state=state,
+        attested_block=attested_block,
+        finalized_block=finalized_block,
+        with_next=False,
+        with_finality=True,
+        participation_rate=1.0,
     )
 
     spec.process_light_client_update(store, update, signature_slot, state.genesis_validators_root)
