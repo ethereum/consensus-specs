@@ -13,5 +13,5 @@ MAX_WITHDRAWALS_PER_PAYLOAD: 16
 
 # Withdrawals processing
 # ---------------------------------------------------------------
-# 2**10 (= 1024) validators
-MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 1024
+# 2**14 (= 16384) validators
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 16384
