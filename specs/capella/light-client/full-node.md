@@ -34,7 +34,9 @@ def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
 
 ```python
 def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
-    if compute_epoch_at_slot(block.message.slot) >= CAPELLA_FORK_EPOCH:
+    epoch = compute_epoch_at_slot(block.message.slot)
+
+    if epoch >= CAPELLA_FORK_EPOCH:
         payload = block.message.body.execution_payload
         execution_header = ExecutionPayloadHeader(
             parent_hash=payload.parent_hash,

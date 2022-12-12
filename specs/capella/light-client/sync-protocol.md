@@ -152,7 +152,9 @@ def get_lc_beacon_root(header: LightClientHeader) -> Root:
 
 ```python
 def get_lc_execution_root(header: LightClientHeader) -> Root:
-    if compute_epoch_at_slot(get_lc_beacon_slot(header)) >= CAPELLA_FORK_EPOCH:
+    epoch = compute_epoch_at_slot(get_lc_beacon_slot(header))
+
+    if epoch >= CAPELLA_FORK_EPOCH:
         return hash_tree_root(header.execution)
 
     return Root()
@@ -162,7 +164,9 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 
 ```python
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    if compute_epoch_at_slot(get_lc_beacon_slot(header)) < CAPELLA_FORK_EPOCH:
+    epoch = compute_epoch_at_slot(get_lc_beacon_slot(header))
+
+    if epoch < CAPELLA_FORK_EPOCH:
         if header.execution != ExecutionPayloadHeader():
             return False
 
