@@ -602,12 +602,12 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
                         output_config = output
                 kw['phases'] = phases
 
-            # Run the function
-            out = fn(*args, spec=spec, **kw)
-
             # Emit requested spec (with overrides)
             if emit:
                 yield 'config', 'cfg', output_config
+
+            # Run the function
+            out = fn(*args, spec=spec, **kw)
 
             # If it's not returning None like a normal test function,
             # it's generating things, and we need to complete it before setting back the config.
