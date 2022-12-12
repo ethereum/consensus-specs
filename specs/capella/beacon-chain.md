@@ -82,7 +82,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `1024` (= 2**10 ) |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2**14 ) |
 
 ## Containers
 
