@@ -16,7 +16,7 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
     MINIMAL,
     ALL_PHASES,
 )
@@ -24,7 +24,7 @@ from eth2spec.test.helpers.fork_transition import (
     do_fork,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_capella,
+    is_post_capella, is_post_eip4844,
     is_post_fork,
 )
 from eth2spec.test.helpers.light_client import (
@@ -53,56 +53,87 @@ def needs_upgrade_to_capella(d_spec, s_spec):
     return is_post_capella(s_spec) and not is_post_capella(d_spec)
 
 
-def upgrade_lc_bootstrap_to_store(d_spec, s_spec, data):
-    if not needs_upgrade_to_capella(d_spec, s_spec):
-        return data
+def needs_upgrade_to_eip4844(d_spec, s_spec):
+    return is_post_eip4844(s_spec) and not is_post_eip4844(d_spec)
 
-    upgraded = s_spec.upgrade_lc_bootstrap_to_capella(data)
-    assert s_spec.get_lc_beacon_slot(upgraded.header) == d_spec.get_lc_beacon_slot(data.header)
-    assert s_spec.get_lc_beacon_root(upgraded.header) == d_spec.get_lc_beacon_root(data.header)
-    assert s_spec.get_lc_execution_root(upgraded.header) == s_spec.Root()
+
+def check_lc_header_equal(d_spec, s_spec, data, upgraded):
+    assert s_spec.get_lc_beacon_slot(upgraded) == d_spec.get_lc_beacon_slot(data)
+    assert s_spec.get_lc_beacon_root(upgraded) == d_spec.get_lc_beacon_root(data)
+    if is_post_capella(s_spec):
+        if is_post_capella(d_spec):
+            assert s_spec.get_lc_execution_root(upgraded) == d_spec.get_lc_execution_root(data)
+        else:
+            assert s_spec.get_lc_execution_root(upgraded) == s_spec.Root()
+
+
+def check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded):
+    check_lc_header_equal(d_spec, s_spec, data.header, upgraded.header)
     assert upgraded.current_sync_committee == data.current_sync_committee
     assert upgraded.current_sync_committee_branch == data.current_sync_committee_branch
+
+
+def upgrade_lc_bootstrap_to_store(d_spec, s_spec, data):
+    upgraded = data
+
+    if needs_upgrade_to_capella(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_bootstrap_to_capella(upgraded)
+        check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
+
+    if needs_upgrade_to_eip4844(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_bootstrap_to_eip4844(upgraded)
+        check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
+
     return upgraded
+
+
+def check_lc_update_equal(d_spec, s_spec, data, upgraded):
+    check_lc_header_equal(d_spec, s_spec, data.attested_header, upgraded.attested_header)
+    assert upgraded.next_sync_committee == data.next_sync_committee
+    assert upgraded.next_sync_committee_branch == data.next_sync_committee_branch
+    check_lc_header_equal(d_spec, s_spec, data.finalized_header, upgraded.finalized_header)
+    assert upgraded.sync_aggregate == data.sync_aggregate
+    assert upgraded.signature_slot == data.signature_slot
 
 
 def upgrade_lc_update_to_store(d_spec, s_spec, data):
-    if not needs_upgrade_to_capella(d_spec, s_spec):
-        return data
+    upgraded = data
 
-    upgraded = s_spec.upgrade_lc_update_to_capella(data)
-    assert s_spec.get_lc_beacon_slot(upgraded.attested_header) == d_spec.get_lc_beacon_slot(data.attested_header)
-    assert s_spec.get_lc_beacon_root(upgraded.attested_header) == d_spec.get_lc_beacon_root(data.attested_header)
-    assert s_spec.get_lc_execution_root(upgraded.attested_header) == s_spec.Root()
-    assert upgraded.next_sync_committee == data.next_sync_committee
-    assert upgraded.next_sync_committee_branch == data.next_sync_committee_branch
-    assert s_spec.get_lc_beacon_slot(upgraded.finalized_header) == d_spec.get_lc_beacon_slot(data.finalized_header)
-    assert s_spec.get_lc_beacon_root(upgraded.finalized_header) == d_spec.get_lc_beacon_root(data.finalized_header)
-    assert s_spec.get_lc_execution_root(upgraded.finalized_header) == s_spec.Root()
-    assert upgraded.sync_aggregate == data.sync_aggregate
-    assert upgraded.signature_slot == data.signature_slot
+    if needs_upgrade_to_capella(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_update_to_capella(upgraded)
+        check_lc_update_equal(d_spec, s_spec, data, upgraded)
+
+    if needs_upgrade_to_eip4844(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_update_to_eip4844(upgraded)
+        check_lc_update_equal(d_spec, s_spec, data, upgraded)
+
     return upgraded
 
 
-def upgrade_lc_store_to_new_spec(d_spec, s_spec, data):
-    if not needs_upgrade_to_capella(d_spec, s_spec):
-        return data
-
-    upgraded = s_spec.upgrade_lc_store_to_capella(data)
-    assert s_spec.get_lc_beacon_slot(upgraded.finalized_header) == d_spec.get_lc_beacon_slot(data.finalized_header)
-    assert s_spec.get_lc_beacon_root(upgraded.finalized_header) == d_spec.get_lc_beacon_root(data.finalized_header)
-    assert s_spec.get_lc_execution_root(upgraded.finalized_header) == s_spec.Root()
+def check_lc_store_equal(d_spec, s_spec, data, upgraded):
+    check_lc_header_equal(d_spec, s_spec, data.finalized_header, upgraded.finalized_header)
     assert upgraded.current_sync_committee == data.current_sync_committee
     assert upgraded.next_sync_committee == data.next_sync_committee
     if upgraded.best_valid_update is None:
         assert data.best_valid_update is None
     else:
-        assert upgraded.best_valid_update == upgrade_lc_update_to_store(d_spec, s_spec, data.best_valid_update)
-    assert s_spec.get_lc_beacon_slot(upgraded.optimistic_header) == d_spec.get_lc_beacon_slot(data.optimistic_header)
-    assert s_spec.get_lc_beacon_root(upgraded.optimistic_header) == d_spec.get_lc_beacon_root(data.optimistic_header)
-    assert s_spec.get_lc_execution_root(upgraded.optimistic_header) == s_spec.Root()
+        check_lc_update_equal(d_spec, s_spec, data.best_valid_update, upgraded.best_valid_update)
+    check_lc_header_equal(d_spec, s_spec, data.optimistic_header, upgraded.optimistic_header)
     assert upgraded.previous_max_active_participants == data.previous_max_active_participants
     assert upgraded.current_max_active_participants == data.current_max_active_participants
+
+
+def upgrade_lc_store_to_new_spec(d_spec, s_spec, data):
+    upgraded = data
+
+    if needs_upgrade_to_capella(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_store_to_capella(upgraded)
+        check_lc_store_equal(d_spec, s_spec, data, upgraded)
+
+    if needs_upgrade_to_eip4844(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_store_to_eip4844(upgraded)
+        check_lc_store_equal(d_spec, s_spec, data, upgraded)
+
     return upgraded
 
 
@@ -114,6 +145,8 @@ class LightClientSyncTest(object):
 
 
 def get_store_fork_version(s_spec):
+    if is_post_eip4844(s_spec):
+        return s_spec.config.EIP4844_FORK_VERSION
     if is_post_capella(s_spec):
         return s_spec.config.CAPELLA_FORK_VERSION
     return s_spec.config.ALTAIR_FORK_VERSION
@@ -699,16 +732,11 @@ def test_capella_fork(spec, phases, state):
     yield from finish_test(test)
 
 
-@with_phases(phases=[ALTAIR, BELLATRIX], other_phases=[CAPELLA])
-@spec_test
-@with_state
-@with_matching_spec_config(emitted_fork=CAPELLA)
-@with_presets([MINIMAL], reason="too slow")
-def test_capella_store_with_legacy_data(spec, phases, state):
-    # Start test (Legacy bootstrap but with a Capella store)
-    test = yield from setup_test(spec, state, s_spec=phases[CAPELLA], phases=phases)
+def run_test_upgraded_store_with_legacy_data(spec, state, s_spec, phases):
+    # Start test (Legacy bootstrap with an upgraded store)
+    test = yield from setup_test(spec, state, s_spec, phases)
 
-    # Initial `LightClientUpdate` (check that it works with Capella store)
+    # Initial `LightClientUpdate` (check that the upgraded store can process it)
     finalized_block = spec.SignedBeaconBlock()
     finalized_block.message.state_root = state.hash_tree_root()
     finalized_state = state.copy()
@@ -724,3 +752,21 @@ def test_capella_store_with_legacy_data(spec, phases, state):
 
     # Finish test
     yield from finish_test(test)
+
+
+@with_phases(phases=[ALTAIR, BELLATRIX], other_phases=[CAPELLA])
+@spec_test
+@with_state
+@with_matching_spec_config(emitted_fork=CAPELLA)
+@with_presets([MINIMAL], reason="too slow")
+def test_capella_store_with_legacy_data(spec, phases, state):
+    yield from run_test_upgraded_store_with_legacy_data(spec, state, phases[CAPELLA], phases)
+
+
+@with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA], other_phases=[EIP4844])
+@spec_test
+@with_state
+@with_matching_spec_config(emitted_fork=EIP4844)
+@with_presets([MINIMAL], reason="too slow")
+def test_eip4844_store_with_legacy_data(spec, phases, state):
+    yield from run_test_upgraded_store_with_legacy_data(spec, state, phases[EIP4844], phases)
