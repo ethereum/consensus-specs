@@ -25,7 +25,6 @@ A Capella `LightClientStore` can still process earlier light client data. In ord
 def upgrade_lc_header_to_capella(pre: BeaconBlockHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre,
-        execution=ExecutionPayloadHeader(),
     )
 ```
 
