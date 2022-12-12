@@ -162,18 +162,19 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 
 ```python
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    if compute_epoch_at_slot(get_lc_beacon_slot(header)) >= CAPELLA_FORK_EPOCH:
-        return is_valid_merkle_branch(
-            leaf=get_lc_execution_root(header),
-            branch=header.execution_branch,
-            depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
-            index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
-            root=header.beacon.body_root,
-        )
+    if compute_epoch_at_slot(get_lc_beacon_slot(header)) < CAPELLA_FORK_EPOCH:
+        if header.execution != ExecutionPayloadHeader():
+            return False
 
-    return (
-        header.execution == ExecutionPayloadHeader()
-        and header.execution_branch == [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]
+        if header.execution_branch != [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]:
+            return False
+
+    return is_valid_merkle_branch(
+        leaf=get_lc_execution_root(header),
+        branch=header.execution_branch,
+        depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
+        index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
+        root=header.beacon.body_root,
     )
 ```
 
