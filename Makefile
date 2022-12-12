@@ -30,7 +30,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
                  $(wildcard $(SPEC_DIR)/custody/*.md) \
                  $(wildcard $(SPEC_DIR)/das/*.md) \
                  $(wildcard $(SPEC_DIR)/sharding/*.md) \
-                 $(wildcard $(SPEC_DIR)/eip4844/*.md) \
+                 $(wildcard $(SPEC_DIR)/eip4844/*.md) $(wildcard $(SPEC_DIR)/eip4844/**/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
 COV_HTML_OUT=.htmlcov

@@ -1038,6 +1038,10 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork == EIP4844:
                 self.md_doc_paths += """
+                    specs/eip4844/light-client/fork.md
+                    specs/eip4844/light-client/full-node.md
+                    specs/eip4844/light-client/p2p-interface.md
+                    specs/eip4844/light-client/sync-protocol.md
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
                     specs/eip4844/polynomial-commitments.md
