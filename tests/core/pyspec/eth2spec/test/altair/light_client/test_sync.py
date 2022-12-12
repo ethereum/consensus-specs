@@ -704,8 +704,8 @@ def test_capella_fork(spec, phases, state):
 @with_state
 @with_matching_spec_config(emitted_fork=CAPELLA)
 @with_presets([MINIMAL], reason="too slow")
-def test_capella_store_with_altair_data(spec, phases, state):
-    # Start test (Altair bootstrap but with a Capella store)
+def test_capella_store_with_legacy_data(spec, phases, state):
+    # Start test (Legacy bootstrap but with a Capella store)
     test = yield from setup_test(spec, state, s_spec=phases[CAPELLA], phases=phases)
 
     # Initial `LightClientUpdate` (check that it works with Capella store)
