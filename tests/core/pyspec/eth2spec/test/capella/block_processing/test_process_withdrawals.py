@@ -180,6 +180,7 @@ def test_success_all_fully_withdrawable_in_one_sweep(spec, state):
         fully_withdrawable_indices=fully_withdrawable_indices,
         partial_withdrawals_indices=partial_withdrawals_indices)
 
+
 @with_phases([CAPELLA])
 @with_presets([MINIMAL], reason="too many validators with mainnet config")
 @spec_state_test
@@ -216,6 +217,7 @@ def test_success_all_partially_withdrawable_in_one_sweep(spec, state):
         spec, state, execution_payload,
         fully_withdrawable_indices=fully_withdrawable_indices,
         partial_withdrawals_indices=partial_withdrawals_indices)
+
 
 @with_phases([CAPELLA])
 @with_presets([MINIMAL], reason="too many validators with mainnet config")
