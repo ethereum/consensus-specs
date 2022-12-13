@@ -650,8 +650,8 @@ def test_capella_fork(spec, phases, state):
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
-    update = \
-        yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
+    update = yield from emit_update(
+        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update

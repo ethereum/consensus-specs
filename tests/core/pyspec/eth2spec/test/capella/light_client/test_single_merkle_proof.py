@@ -15,8 +15,8 @@ def test_execution_merkle_proof(spec, state):
     block = state_transition_with_full_block(spec, state, True, False)
 
     yield "object", block.message.body
-    execution_branch = \
-        spec.compute_merkle_proof_for_block_body(block.message.body, spec.EXECUTION_PAYLOAD_INDEX)
+    execution_branch = spec.compute_merkle_proof_for_block_body(
+        block.message.body, spec.EXECUTION_PAYLOAD_INDEX)
     yield "proof", {
         "leaf": "0x" + block.message.body.execution_payload.hash_tree_root().hex(),
         "leaf_index": spec.EXECUTION_PAYLOAD_INDEX,
