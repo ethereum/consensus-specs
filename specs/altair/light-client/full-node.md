@@ -118,8 +118,8 @@ def create_light_client_update(state: BeaconState,
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
         update.next_sync_committee = attested_state.next_sync_committee
-        update.next_sync_committee_branch = \
-            compute_merkle_proof_for_state(attested_state, NEXT_SYNC_COMMITTEE_INDEX)
+        update.next_sync_committee_branch = compute_merkle_proof_for_state(
+            attested_state, NEXT_SYNC_COMMITTEE_INDEX)
 
     # Indicate finality whenever possible
     if finalized_block is not None:
@@ -128,8 +128,8 @@ def create_light_client_update(state: BeaconState,
             assert hash_tree_root(update.finalized_header) == attested_state.finalized_checkpoint.root
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
-        update.finality_branch = \
-            compute_merkle_proof_for_state(attested_state, FINALIZED_ROOT_INDEX)
+        update.finality_branch = compute_merkle_proof_for_state(
+            attested_state, FINALIZED_ROOT_INDEX)
 
     update.sync_aggregate = block.message.body.sync_aggregate
     update.signature_slot = block.message.slot
