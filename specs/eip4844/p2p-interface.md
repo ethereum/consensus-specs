@@ -185,6 +185,9 @@ No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
 
+If any root in the request content references a block outside of the range `[max(EIP4844_FORK_EPOCH, finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
+ peers SHOULD respond with error code `3: ResourceUnavailable`.
+
 Clients MUST support requesting blocks and sidecars since the latest finalized epoch.
 
 Clients MUST respond with at least one block and sidecar, if they have it.
