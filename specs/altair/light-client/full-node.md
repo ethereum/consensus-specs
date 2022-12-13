@@ -40,10 +40,19 @@ Full nodes are expected to derive light client data from historic blocks and sta
 
 ### `create_light_client_bootstrap`
 
+To form a `LightClientBootstrap`, the following objects are needed:
+- `state`: the post state of any post-Altair block
+- `block`: the corresponding block
+
 ```python
-def create_light_client_bootstrap(state: BeaconState) -> LightClientBootstrap:
+def create_light_client_bootstrap(state: BeaconState,
+                                  block: SignedBeaconBlock) -> LightClientBootstrap:
     assert compute_epoch_at_slot(state.slot) >= ALTAIR_FORK_EPOCH
+
     assert state.slot == state.latest_block_header.slot
+    header = state.latest_block_header.copy()
+    header.state_root = hash_tree_root(state)
+    assert hash_tree_root(header) == hash_tree_root(block.message)
 
     return LightClientBootstrap(
         header=BeaconBlockHeader(
@@ -54,7 +63,7 @@ def create_light_client_bootstrap(state: BeaconState) -> LightClientBootstrap:
             body_root=state.latest_block_header.body_root,
         ),
         current_sync_committee=state.current_sync_committee,
-        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX)
+        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX),
     )
 ```
 
@@ -69,13 +78,15 @@ Blocks are considered to be epoch boundary blocks if their block root can occur 
 To form a `LightClientUpdate`, the following historical states and blocks are needed:
 - `state`: the post state of any block with a post-Altair parent block
 - `block`: the corresponding block
-- `attested_state`: the post state of the block referred to by `block.parent_root`
+- `attested_state`: the post state of `attested_block`
+- `attested_block`: the block referred to by `block.parent_root`
 - `finalized_block`: the block referred to by `attested_state.finalized_checkpoint.root`, if locally available (may be unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
 
 ```python
 def create_light_client_update(state: BeaconState,
                                block: SignedBeaconBlock,
                                attested_state: BeaconState,
+                               attested_block: SignedBeaconBlock,
                                finalized_block: Optional[SignedBeaconBlock]) -> LightClientUpdate:
     assert compute_epoch_at_slot(attested_state.slot) >= ALTAIR_FORK_EPOCH
     assert sum(block.message.body.sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
@@ -89,8 +100,8 @@ def create_light_client_update(state: BeaconState,
     assert attested_state.slot == attested_state.latest_block_header.slot
     attested_header = attested_state.latest_block_header.copy()
     attested_header.state_root = hash_tree_root(attested_state)
-    assert hash_tree_root(attested_header) == block.message.parent_root
-    update_attested_period = compute_sync_committee_period_at_slot(attested_header.slot)
+    assert hash_tree_root(attested_header) == hash_tree_root(attested_block.message) == block.message.parent_root
+    update_attested_period = compute_sync_committee_period_at_slot(attested_block.message.slot)
 
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:

@@ -523,6 +523,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         if bls.Verify(pubkey, signing_root, deposit.data.signature):
             state.validators.append(get_validator_from_deposit(deposit))
             state.balances.append(amount)
+            # [New in Altair]
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))

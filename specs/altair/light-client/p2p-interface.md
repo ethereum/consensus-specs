@@ -138,7 +138,7 @@ Requests the `LightClientBootstrap` structure corresponding to a given post-Alta
 
 The request MUST be encoded as an SSZ-field.
 
-Peers SHOULD provide results as defined in [`create_light_client_bootstrap`](./full-node.md#create_light_client_bootstrap). To fulfill a request, the requested block's post state needs to be known.
+Peers SHOULD provide results as defined in [`create_light_client_bootstrap`](./full-node.md#create_light_client_bootstrap). To fulfill a request, the requested block and its post state need to be known.
 
 When a `LightClientBootstrap` instance cannot be produced for a given block root, peers SHOULD respond with error code `3: ResourceUnavailable`.
 

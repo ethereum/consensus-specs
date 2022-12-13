@@ -1,13 +1,12 @@
 from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
-    deposit_from_context,
     prepare_state_and_deposit,
     run_deposit_processing,
+    run_deposit_processing_with_specific_fork_version,
     sign_deposit_data,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.utils import bls
 
 
 @with_all_phases
@@ -92,56 +91,29 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_sig_other_version(spec, state):
-    validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
-
-    pubkey = pubkeys[validator_index]
-    privkey = privkeys[validator_index]
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
-
-    # Go through the effort of manually signing, not something normally done. This sig domain will be invalid.
-    deposit_message = spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)
-    domain = spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=spec.Version('0xaabbccdd'))
-    deposit_data = spec.DepositData(
-        pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
-        signature=bls.Sign(privkey, spec.compute_signing_root(deposit_message, domain))
-    )
-    deposit, root, _ = deposit_from_context(spec, [deposit_data], 0)
-
-    state.eth1_deposit_index = 0
-    state.eth1_data.deposit_root = root
-    state.eth1_data.deposit_count = 1
-
-    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
-
-
-@with_all_phases
-@spec_state_test
-@always_bls
-def test_valid_sig_but_forked_state(spec, state):
+def test_correct_sig_but_forked_state(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     # deposits will always be valid, regardless of the current fork
     state.fork.current_version = spec.Version('0x1234abcd')
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_sig_new_deposit(spec, state):
+def test_incorrect_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
-    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, effective=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_success_top_up__max_effective_balance(spec, state):
+def test_top_up__max_effective_balance(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
@@ -157,7 +129,7 @@ def test_success_top_up__max_effective_balance(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_success_top_up__less_effective_balance(spec, state):
+def test_top_up__less_effective_balance(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
@@ -176,7 +148,7 @@ def test_success_top_up__less_effective_balance(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_success_top_up__zero_balance(spec, state):
+def test_top_up__zero_balance(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
@@ -196,18 +168,18 @@ def test_success_top_up__zero_balance(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_sig_top_up(spec, state):
+def test_incorrect_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # invalid signatures, in top-ups, are allowed!
-    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_all_phases
 @spec_state_test
-def test_invalid_withdrawal_credentials_top_up(spec, state):
+def test_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
@@ -220,12 +192,12 @@ def test_invalid_withdrawal_credentials_top_up(spec, state):
     )
 
     # inconsistent withdrawal credentials, in top-ups, are allowed!
-    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_all_phases
 @spec_state_test
-def test_wrong_deposit_for_deposit_count(spec, state):
+def test_invalid_wrong_deposit_for_deposit_count(spec, state):
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 
     # build root for deposit_1
@@ -266,7 +238,7 @@ def test_wrong_deposit_for_deposit_count(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_bad_merkle_proof(spec, state):
+def test_invalid_bad_merkle_proof(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
@@ -307,3 +279,15 @@ def test_key_validate_invalid_decompression(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_ineffective_deposit_with_bad_fork_version(spec, state):
+    yield from run_deposit_processing_with_specific_fork_version(
+        spec,
+        state,
+        fork_version=spec.Version('0xAaBbCcDd'),
+        effective=False,
+    )
