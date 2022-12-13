@@ -1,5 +1,8 @@
 from eth2spec.test.helpers.state import get_state_root
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import (
+    spec_state_test,
+    with_all_phases,
+)
 
 
 @with_all_phases

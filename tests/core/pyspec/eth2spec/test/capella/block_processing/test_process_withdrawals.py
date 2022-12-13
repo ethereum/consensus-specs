@@ -244,7 +244,7 @@ def test_success_all_partially_withdrawable(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_non_withdrawable_non_empty_withdrawals(spec, state):
+def test_invalid_non_withdrawable_non_empty_withdrawals(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     withdrawal = spec.Withdrawal(
@@ -260,7 +260,7 @@ def test_fail_non_withdrawable_non_empty_withdrawals(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_one_expected_full_withdrawal_and_none_in_withdrawals(spec, state):
+def test_invalid_one_expected_full_withdrawal_and_none_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=1)
 
     next_slot(spec, state)
@@ -272,7 +272,7 @@ def test_fail_one_expected_full_withdrawal_and_none_in_withdrawals(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, state):
+def test_invalid_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=1)
 
     next_slot(spec, state)
@@ -284,7 +284,7 @@ def test_fail_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, stat
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec, state):
+def test_invalid_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=2)
 
     next_slot(spec, state)
@@ -296,7 +296,7 @@ def test_fail_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec, st
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(spec, state):
+def test_invalid_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=2)
 
     next_slot(spec, state)
@@ -308,7 +308,7 @@ def test_fail_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(spec,
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec, state):
+def test_invalid_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD)
 
     next_slot(spec, state)
@@ -320,7 +320,7 @@ def test_fail_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec, st
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(spec, state):
+def test_invalid_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD)
 
     next_slot(spec, state)
@@ -332,7 +332,7 @@ def test_fail_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(spec,
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_a_lot_fully_withdrawable_too_few_in_withdrawals(spec, state):
+def test_invalid_a_lot_fully_withdrawable_too_few_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
@@ -344,7 +344,7 @@ def test_fail_a_lot_fully_withdrawable_too_few_in_withdrawals(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state):
+def test_invalid_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
@@ -356,7 +356,7 @@ def test_fail_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, state):
+def test_invalid_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
                                  num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD)
 
@@ -373,7 +373,7 @@ def test_fail_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, sta
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_incorrect_withdrawal_index(spec, state):
+def test_invalid_incorrect_withdrawal_index(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=1)
 
     next_slot(spec, state)
@@ -385,7 +385,7 @@ def test_fail_incorrect_withdrawal_index(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_incorrect_address_full(spec, state):
+def test_invalid_incorrect_address_full(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=1)
 
     next_slot(spec, state)
@@ -397,7 +397,7 @@ def test_fail_incorrect_address_full(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_incorrect_address_partial(spec, state):
+def test_invalid_incorrect_address_partial(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=1)
 
     next_slot(spec, state)
@@ -409,7 +409,7 @@ def test_fail_incorrect_address_partial(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_incorrect_amount_full(spec, state):
+def test_invalid_incorrect_amount_full(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=1)
 
     next_slot(spec, state)
@@ -421,7 +421,7 @@ def test_fail_incorrect_amount_full(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_incorrect_amount_partial(spec, state):
+def test_invalid_incorrect_amount_partial(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=1)
 
     next_slot(spec, state)
@@ -433,7 +433,7 @@ def test_fail_incorrect_amount_partial(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_one_of_many_incorrectly_full(spec, state):
+def test_invalid_one_of_many_incorrectly_full(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
@@ -451,7 +451,7 @@ def test_fail_one_of_many_incorrectly_full(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_one_of_many_incorrectly_partial(spec, state):
+def test_invalid_one_of_many_incorrectly_partial(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
@@ -469,7 +469,7 @@ def test_fail_one_of_many_incorrectly_partial(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_many_incorrectly_full(spec, state):
+def test_invalid_many_incorrectly_full(spec, state):
     prepare_expected_withdrawals(spec, state, num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
@@ -487,7 +487,7 @@ def test_fail_many_incorrectly_full(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_fail_many_incorrectly_partial(spec, state):
+def test_invalid_many_incorrectly_partial(spec, state):
     prepare_expected_withdrawals(spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
 
     next_slot(spec, state)
