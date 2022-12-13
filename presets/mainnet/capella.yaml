@@ -10,3 +10,8 @@ MAX_BLS_TO_EXECUTION_CHANGES: 16
 # ---------------------------------------------------------------
 # 2**4 (= 16) withdrawals
 MAX_WITHDRAWALS_PER_PAYLOAD: 16
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# 2**14 (= 16384) validators
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 16384

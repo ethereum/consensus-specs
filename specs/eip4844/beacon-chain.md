@@ -63,7 +63,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 
 | Name | Value |
 | - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(2**2)` (= 4) |
 
 ## Configuration
 
@@ -168,17 +168,19 @@ The implementation of `is_data_available` is meant to change with later sharding
 Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
 and validate the sidecar with `validate_blobs_sidecar`.
 
-Without the sidecar the block may be processed further optimistically,
-but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
 
 ```python
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-    if sidecar == "TEST":
-        return True  # For testing; remove once we have a way to inject `BlobsSidecar` into tests
-    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
 
+    # For testing, `retrieve_blobs_sidecar` returns "TEST.
+    # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
+    if isinstance(sidecar, str):
+        return True
+
+    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
     return True
 ```
 
@@ -216,7 +218,7 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
 ```python
 def verify_kzg_commitments_against_transactions(transactions: Sequence[Transaction],
                                                 kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    all_versioned_hashes = []
+    all_versioned_hashes: List[VersionedHash] = []
     for tx in transactions:
         if tx[0] == BLOB_TX_TYPE:
             all_versioned_hashes += tx_peek_blob_versioned_hashes(tx)
@@ -239,7 +241,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
 
-    # New in EIP-4844, note: Can sync optimistically without this condition, see note on `is_data_available`
+    # New in EIP-4844
     assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
 ```
 
@@ -283,7 +285,8 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 #### Blob KZG commitments
 
 ```python
-def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody):
+def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> None:
+    # pylint: disable=unused-argument
     assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 

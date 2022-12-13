@@ -36,9 +36,10 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
 
 def prepare_expected_withdrawals(spec, state,
                                  num_full_withdrawals=0, num_partial_withdrawals=0, rng=random.Random(5566)):
-    assert num_full_withdrawals + num_partial_withdrawals <= len(state.validators)
-    all_validator_indices = list(range(len(state.validators)))
-    sampled_indices = rng.sample(all_validator_indices, num_full_withdrawals + num_partial_withdrawals)
+    bound = min(len(state.validators), spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    assert num_full_withdrawals + num_partial_withdrawals <= bound
+    eligible_validator_indices = list(range(bound))
+    sampled_indices = rng.sample(eligible_validator_indices, num_full_withdrawals + num_partial_withdrawals)
     fully_withdrawable_indices = rng.sample(sampled_indices, num_full_withdrawals)
     partial_withdrawals_indices = list(set(sampled_indices).difference(set(fully_withdrawable_indices)))
 
