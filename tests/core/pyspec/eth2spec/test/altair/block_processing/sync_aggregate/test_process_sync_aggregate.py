@@ -202,6 +202,74 @@ def test_sync_committee_rewards_duplicate_committee_full_participation(spec, sta
 
 
 @with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_only_participate_first_one(spec, state):
+    committee_indices = compute_committee_indices(state)
+    committee_size = len(committee_indices)
+    committee_bits = [False] * committee_size
+
+    # Find duplicate indices that get selected twice
+    dup = {v for v in committee_indices if committee_indices.count(v) == 2}
+    assert len(dup) > 0
+    validator_index = dup.pop()
+    positions = [i for i, v in enumerate(committee_indices) if v == validator_index]
+    committee_bits[positions[0]] = True
+    committee_bits[positions[1]] = False
+
+    # Set validator's balance to 0
+    state.validators[validator_index].effective_balance = 0
+    state.balances[validator_index] = 0
+
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee_indices))
+
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+    # The validator gets reward first (balance > 0) and then gets the same amount of penalty (balance == 0)
+    assert state.balances[validator_index] == 0
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_only_participate_second_one(spec, state):
+    committee_indices = compute_committee_indices(state)
+    committee_size = len(committee_indices)
+    committee_bits = [False] * committee_size
+
+    # Find duplicate indices that get selected twice
+    dup = {v for v in committee_indices if committee_indices.count(v) == 2}
+    assert len(dup) > 0
+    validator_index = dup.pop()
+    positions = [i for i, v in enumerate(committee_indices) if v == validator_index]
+    committee_bits[positions[0]] = False
+    committee_bits[positions[1]] = True
+
+    # Set validator's balance to 0
+    state.validators[validator_index].effective_balance = 0
+    state.balances[validator_index] = 0
+
+    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+
+    # Preconditions of this test case
+    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
+    assert committee_size > len(set(committee_indices))
+
+    # Skip `validate_sync_committee_rewards` because it doesn't handle the balance computation order
+    # inside the for loop
+    yield from run_successful_sync_committee_test(
+        spec, state, committee_indices, committee_bits,
+        skip_reward_validation=True)
+
+    # The validator gets penalty first (balance is still 0) and then gets reward (balance > 0)
+    assert state.balances[validator_index] > 0
+
+
+@with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
