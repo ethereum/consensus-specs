@@ -23,7 +23,7 @@ from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 @with_all_phases
 @spec_state_test
-def test_success(spec, state):
+def test_one_basic_attestation(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -34,7 +34,7 @@ def test_success(spec, state):
 @spec_test
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
-def test_success_multi_proposer_index_iterations(spec, state):
+def test_multi_proposer_index_iterations(spec, state):
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
     attestation = get_valid_attestation(spec, state, signed=True)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
@@ -44,7 +44,7 @@ def test_success_multi_proposer_index_iterations(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_success_previous_epoch(spec, state):
+def test_previous_epoch(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     next_epoch_via_block(spec, state)
 
@@ -58,55 +58,55 @@ def test_invalid_attestation_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_empty_participants_zeroes_sig(spec, state):
+def test_invalid_empty_participants_zeroes_sig(spec, state):
     attestation = get_valid_attestation(spec, state, filter_participant_set=lambda comm: [])  # 0 participants
     attestation.signature = spec.BLSSignature(b'\x00' * 96)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_empty_participants_seemingly_valid_sig(spec, state):
+def test_invalid_empty_participants_seemingly_valid_sig(spec, state):
     attestation = get_valid_attestation(spec, state, filter_participant_set=lambda comm: [])  # 0 participants
     # Special BLS value, valid for zero pubkeys on some (but not all) BLS implementations.
     attestation.signature = spec.BLSSignature(b'\xc0' + b'\x00' * 95)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_before_inclusion_delay(spec, state):
+def test_invalid_before_inclusion_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     # do not increment slot to allow for inclusion delay
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_after_epoch_slots(spec, state):
+def test_invalid_after_epoch_slots(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     # increment past latest inclusion slot
     transition_to_slot_via_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH + 1)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_old_source_epoch(spec, state):
+def test_invalid_old_source_epoch(spec, state):
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 5)
     state.finalized_checkpoint.epoch = 2
     state.previous_justified_checkpoint.epoch = 3
@@ -121,19 +121,19 @@ def test_old_source_epoch(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_wrong_index_for_committee_signature(spec, state):
+def test_invalid_wrong_index_for_committee_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     attestation.data.index += 1
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 def reduce_state_committee_count_from_max(spec, state):
@@ -148,7 +148,7 @@ def reduce_state_committee_count_from_max(spec, state):
 @with_all_phases
 @spec_state_test
 @never_bls
-def test_wrong_index_for_slot_0(spec, state):
+def test_invalid_wrong_index_for_slot_0(spec, state):
     reduce_state_committee_count_from_max(spec, state)
 
     attestation = get_valid_attestation(spec, state)
@@ -157,13 +157,13 @@ def test_wrong_index_for_slot_0(spec, state):
     # Invalid index: current committees per slot is less than the max
     attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT - 1
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
 @never_bls
-def test_wrong_index_for_slot_1(spec, state):
+def test_invalid_wrong_index_for_slot_1(spec, state):
     reduce_state_committee_count_from_max(spec, state)
 
     current_epoch = spec.get_current_epoch(state)
@@ -175,7 +175,7 @@ def test_wrong_index_for_slot_1(spec, state):
     # Invalid index: off by one
     attestation.data.index = committee_count
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
@@ -188,12 +188,12 @@ def test_invalid_index(spec, state):
     # Invalid index: off by one (with respect to valid range) on purpose
     attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_mismatched_target_and_slot(spec, state):
+def test_invalid_mismatched_target_and_slot(spec, state):
     next_epoch_via_block(spec, state)
     next_epoch_via_block(spec, state)
 
@@ -202,24 +202,24 @@ def test_mismatched_target_and_slot(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_old_target_epoch(spec, state):
+def test_invalid_old_target_epoch(spec, state):
     assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
 
     attestation = get_valid_attestation(spec, state, signed=True)
 
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)  # target epoch will be too old to handle
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_future_target_epoch(spec, state):
+def test_invalid_future_target_epoch(spec, state):
     assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
 
     attestation = get_valid_attestation(spec, state)
@@ -236,12 +236,12 @@ def test_future_target_epoch(spec, state):
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_new_source_epoch(spec, state):
+def test_invalid_new_source_epoch(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -249,12 +249,12 @@ def test_new_source_epoch(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_source_root_is_target_root(spec, state):
+def test_invalid_source_root_is_target_root(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -262,7 +262,7 @@ def test_source_root_is_target_root(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
@@ -289,7 +289,7 @@ def test_invalid_current_source_root(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
@@ -315,12 +315,12 @@ def test_invalid_previous_source_root(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_bad_source_root(spec, state):
+def test_invalid_bad_source_root(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -328,24 +328,24 @@ def test_bad_source_root(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_too_many_aggregation_bits(spec, state):
+def test_invalid_too_many_aggregation_bits(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # one too many bits
     attestation.aggregation_bits.append(0b0)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 @with_all_phases
 @spec_state_test
-def test_too_few_aggregation_bits(spec, state):
+def test_invalid_too_few_aggregation_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -357,7 +357,7 @@ def test_too_few_aggregation_bits(spec, state):
     # one too few bits
     attestation.aggregation_bits = attestation.aggregation_bits[:-1]
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 #
@@ -366,7 +366,7 @@ def test_too_few_aggregation_bits(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_correct_min_inclusion_delay(spec, state):
+def test_correct_attestation_included_at_min_inclusion_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -375,7 +375,7 @@ def test_correct_min_inclusion_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_correct_sqrt_epoch_delay(spec, state):
+def test_correct_attestation_included_at_sqrt_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     next_slots(spec, state, spec.integer_squareroot(spec.SLOTS_PER_EPOCH))
 
@@ -384,7 +384,7 @@ def test_correct_sqrt_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_correct_epoch_delay(spec, state):
+def test_correct_attestation_included_at_one_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
     next_slots(spec, state, spec.SLOTS_PER_EPOCH)
 
@@ -393,13 +393,13 @@ def test_correct_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_correct_after_epoch_delay(spec, state):
+def test_invalid_correct_attestation_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     # increment past latest inclusion slot
     next_slots(spec, state, spec.SLOTS_PER_EPOCH + 1)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 #
@@ -408,7 +408,7 @@ def test_correct_after_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_min_inclusion_delay(spec, state):
+def test_incorrect_head_included_at_min_inclusion_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -420,7 +420,7 @@ def test_incorrect_head_min_inclusion_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_sqrt_epoch_delay(spec, state):
+def test_incorrect_head_included_at_sqrt_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.integer_squareroot(spec.SLOTS_PER_EPOCH))
 
@@ -432,7 +432,7 @@ def test_incorrect_head_sqrt_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_epoch_delay(spec, state):
+def test_incorrect_head_included_at_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.SLOTS_PER_EPOCH)
 
@@ -444,7 +444,7 @@ def test_incorrect_head_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_after_epoch_delay(spec, state):
+def test_invalid_incorrect_head_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
 
     # increment past latest inclusion slot
@@ -453,7 +453,7 @@ def test_incorrect_head_after_epoch_delay(spec, state):
     attestation.data.beacon_block_root = b'\x42' * 32
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 #
@@ -475,7 +475,7 @@ def test_incorrect_head_and_target_min_inclusion_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_and_target_sqrt_epoch_delay(spec, state):
+def test_incorrect_head_and_target_included_at_sqrt_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.integer_squareroot(spec.SLOTS_PER_EPOCH))
 
@@ -488,7 +488,7 @@ def test_incorrect_head_and_target_sqrt_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_and_target_epoch_delay(spec, state):
+def test_incorrect_head_and_target_included_at_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.SLOTS_PER_EPOCH)
 
@@ -501,7 +501,7 @@ def test_incorrect_head_and_target_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_head_and_target_after_epoch_delay(spec, state):
+def test_invalid_incorrect_head_and_target_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     # increment past latest inclusion slot
     next_slots(spec, state, spec.SLOTS_PER_EPOCH + 1)
@@ -510,7 +510,7 @@ def test_incorrect_head_and_target_after_epoch_delay(spec, state):
     attestation.data.target.root = b'\x42' * 32
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
 #
@@ -519,7 +519,7 @@ def test_incorrect_head_and_target_after_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_target_min_inclusion_delay(spec, state):
+def test_incorrect_target_included_at_min_inclusion_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -531,7 +531,7 @@ def test_incorrect_target_min_inclusion_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_target_sqrt_epoch_delay(spec, state):
+def test_incorrect_target_included_at_sqrt_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.integer_squareroot(spec.SLOTS_PER_EPOCH))
 
@@ -543,7 +543,7 @@ def test_incorrect_target_sqrt_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_target_epoch_delay(spec, state):
+def test_incorrect_target_included_at_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     next_slots(spec, state, spec.SLOTS_PER_EPOCH)
 
@@ -555,7 +555,7 @@ def test_incorrect_target_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_incorrect_target_after_epoch_delay(spec, state):
+def test_invalid_incorrect_target_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     # increment past latest inclusion slot
     next_slots(spec, state, spec.SLOTS_PER_EPOCH + 1)
@@ -563,4 +563,4 @@ def test_incorrect_target_after_epoch_delay(spec, state):
     attestation.data.target.root = b'\x42' * 32
     sign_attestation(spec, state, attestation)
 
-    yield from run_attestation_processing(spec, state, attestation, False)
+    yield from run_attestation_processing(spec, state, attestation, valid=False)

@@ -105,14 +105,14 @@ def run_bad_execution_test(spec, state):
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_execution_first_payload(spec, state):
+def test_invalid_bad_execution_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_execution_test(spec, state)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_execution_regular_payload(spec, state):
+def test_invalid_bad_execution_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_bad_execution_test(spec, state)
 
@@ -127,12 +127,12 @@ def test_bad_parent_hash_first_payload(spec, state):
     execution_payload.parent_hash = b'\x55' * 32
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=True)
+    yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_parent_hash_regular_payload(spec, state):
+def test_invalid_bad_parent_hash_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     next_slot(spec, state)
 
@@ -155,14 +155,14 @@ def run_bad_prev_randao_test(spec, state):
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_prev_randao_first_payload(spec, state):
+def test_invalid_bad_prev_randao_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_prev_randao_test(spec, state)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_pre_randao_regular_payload(spec, state):
+def test_invalid_bad_pre_randao_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_bad_prev_randao_test(spec, state)
 
@@ -181,14 +181,14 @@ def run_bad_everything_test(spec, state):
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_everything_first_payload(spec, state):
+def test_invalid_bad_everything_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_everything_test(spec, state)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_bad_everything_regular_payload(spec, state):
+def test_invalid_bad_everything_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_bad_everything_test(spec, state)
 
@@ -210,28 +210,28 @@ def run_bad_timestamp_test(spec, state, is_future):
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_future_timestamp_first_payload(spec, state):
+def test_invalid_future_timestamp_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_timestamp_test(spec, state, is_future=True)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_future_timestamp_regular_payload(spec, state):
+def test_invalid_future_timestamp_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_bad_timestamp_test(spec, state, is_future=True)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_past_timestamp_first_payload(spec, state):
+def test_invalid_past_timestamp_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_timestamp_test(spec, state, is_future=False)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_past_timestamp_regular_payload(spec, state):
+def test_invalid_past_timestamp_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_bad_timestamp_test(spec, state, is_future=False)
 
@@ -329,27 +329,27 @@ def run_randomized_non_validated_execution_fields_test(spec, state, execution_va
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_randomized_non_validated_execution_fields_first_payload__valid(spec, state):
+def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_randomized_non_validated_execution_fields_test(spec, state)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_randomized_non_validated_execution_fields_regular_payload__valid(spec, state):
+def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_randomized_non_validated_execution_fields_test(spec, state)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_randomized_non_validated_execution_fields_first_payload__invalid(spec, state):
+def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=False)
 
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_randomized_non_validated_execution_fields_regular_payload__invalid(spec, state):
+def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(spec, state):
     state = build_state_with_complete_transition(spec, state)
     yield from run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=False)

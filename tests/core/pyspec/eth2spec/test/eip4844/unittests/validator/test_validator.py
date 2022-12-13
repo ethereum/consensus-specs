@@ -49,5 +49,5 @@ def test_validate_blobs_sidecar_two_blobs(spec, state):
 
 @with_eip4844_and_later
 @spec_state_test
-def test_validate_blobs_sidecar_ten_blobs(spec, state):
-    _run_validate_blobs_sidecar_test(spec, state, blob_count=10)
+def test_validate_blobs_sidecar_max_blobs(spec, state):
+    _run_validate_blobs_sidecar_test(spec, state, blob_count=spec.MAX_BLOBS_PER_BLOCK)

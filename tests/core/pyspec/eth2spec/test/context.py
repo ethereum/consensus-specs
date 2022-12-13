@@ -259,6 +259,12 @@ def dump_skipping_message(reason: str) -> None:
         raise SkippedTest(message)
 
 
+def description(case_description: str):
+    def entry(fn):
+        return with_meta_tags({'description': case_description})(fn)
+    return entry
+
+
 def spec_test(fn):
     # Bls switch must be wrapped by vector_test,
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
@@ -268,7 +274,7 @@ def spec_test(fn):
     return vector_test()(bls_switch(fn))
 
 
-# shorthand for decorating @spec_test() @with_state @single_phase
+# shorthand for decorating @spec_test @with_state @single_phase
 def spec_state_test(fn):
     return spec_test(with_state(single_phase(fn)))
 
