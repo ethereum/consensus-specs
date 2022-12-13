@@ -175,7 +175,7 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
 
-    # For testing, `retrieve_blobs_sidecar` returns "TEST.
+    # For testing, `retrieve_blobs_sidecar` returns "TEST".
     # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
     if isinstance(sidecar, str):
         return True
