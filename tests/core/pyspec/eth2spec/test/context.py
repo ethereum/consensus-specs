@@ -596,8 +596,8 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
             if 'phases' in kw:
                 phases = {}
                 for fork in kw['phases']:
-                    phases[fork], output = \
-                        spec_with_config_overrides(_get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                    phases[fork], output = spec_with_config_overrides(
+                        _get_copy_of_spec(kw['phases'][fork]), config_overrides)
                     if emitted_fork == fork:
                         output_config = output
                 kw['phases'] = phases
