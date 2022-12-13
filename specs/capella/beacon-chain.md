@@ -8,11 +8,11 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
-- [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
+  - [Withdrawals processing](#withdrawals-processing)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Withdrawal`](#withdrawal)
@@ -58,8 +58,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
 
-## Constants
-
 ### Domain types
 
 | Name | Value |
@@ -79,6 +77,12 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value | Description |
 | - | - | - |
 | `MAX_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawals allowed in each payload |
+
+### Withdrawals processing
+
+| Name | Value |
+| - | - |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2**14 ) |
 
 ## Containers
 
@@ -288,7 +292,8 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
-    for _ in range(len(state.validators)):
+    bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    for _ in range(bound):
         validator = state.validators[validator_index]
         balance = state.balances[validator_index]
         if is_fully_withdrawable_validator(validator, balance, epoch):
@@ -312,7 +317,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
     return withdrawals
 ```
-        
+
 #### New `process_withdrawals`
 
 ```python
@@ -323,10 +328,21 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
         assert withdrawal == expected_withdrawal
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
-    if len(expected_withdrawals) > 0:
+
+    # Update the next withdrawal index if this block contained withdrawals
+    if len(expected_withdrawals) != 0:
         latest_withdrawal = expected_withdrawals[-1]
         state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
-        next_validator_index = ValidatorIndex((latest_withdrawal.validator_index + 1) % len(state.validators))
+
+    # Update the next validator index to start the next withdrawal sweep
+    if len(expected_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        # Next sweep starts after the latest withdrawal's validator index
+        next_validator_index = ValidatorIndex((expected_withdrawals[-1].validator_index + 1) % len(state.validators))
+        state.next_withdrawal_validator_index = next_validator_index
+    else:
+        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
+        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+        next_validator_index = ValidatorIndex(next_index % len(state.validators))
         state.next_withdrawal_validator_index = next_validator_index
 ```
 
