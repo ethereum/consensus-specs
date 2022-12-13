@@ -4,7 +4,7 @@ from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.forks import is_post_capella
+from eth2spec.test.helpers.forks import is_post_capella, is_post_eip4844
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -42,6 +42,7 @@ def compute_trie_root_from_indexed_data(data):
 
 
 # https://eips.ethereum.org/EIPS/eip-4895
+# https://eips.ethereum.org/EIPS/eip-4844
 def compute_el_header_block_hash(spec,
                                  payload_header,
                                  transactions_trie_root,
@@ -86,6 +87,9 @@ def compute_el_header_block_hash(spec,
     if is_post_capella(spec):
         # withdrawals_root
         execution_payload_header_rlp.append((Binary(32, 32), withdrawals_trie_root))
+    if is_post_eip4844(spec):
+        # excess_data_gas
+        execution_payload_header_rlp.append((big_endian_int, payload_header.excess_data_gas))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
