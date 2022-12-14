@@ -32,7 +32,7 @@ This document represents the changes to be made in the code of an "honest valida
 This document is an extension of the [Capella -- Honest Validator](../capella/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP4844](./beacon-chain.md) are requisite for this document and used throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP-4844](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Helpers

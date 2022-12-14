@@ -175,7 +175,7 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
     # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
 
-    # For testing, `retrieve_blobs_sidecar` returns "TEST.
+    # For testing, `retrieve_blobs_sidecar` returns "TEST".
     # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
     if isinstance(sidecar, str):
         return True
@@ -347,8 +347,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 ```
 
 ### Disabling Withdrawals
+
 During testing we avoid Capella-specific updates to the state transition. We do this by replacing the following functions with a no-op implementation:
 - `process_withdrawals`
 - `process_bls_to_execution_change`
 
-The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the PayloadAttributes used to update forkchoice does not contain withdrawals.
+The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the `PayloadAttributes` used to update forkchoice does not contain withdrawals.
