@@ -47,20 +47,20 @@ def run_is_valid_genesis_state(spec, state, valid=True):
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
-def test_is_valid_genesis_state_true(spec):
+def test_full_genesis_deposits(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
     state = create_valid_beacon_state(spec)
 
-    yield from run_is_valid_genesis_state(spec, state, valid=True)
+    yield from run_is_valid_genesis_state(spec, state)
 
 
 @with_all_phases
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
-def test_is_valid_genesis_state_false_invalid_timestamp(spec):
+def test_invalid_invalid_timestamp(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
@@ -74,21 +74,21 @@ def test_is_valid_genesis_state_false_invalid_timestamp(spec):
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
-def test_is_valid_genesis_state_true_more_balance(spec):
+def test_extra_balance(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
     state = create_valid_beacon_state(spec)
     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE + 1
 
-    yield from run_is_valid_genesis_state(spec, state, valid=True)
+    yield from run_is_valid_genesis_state(spec, state)
 
 
 @with_all_phases
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
-def test_is_valid_genesis_state_true_one_more_validator(spec):
+def test_one_more_validator(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
@@ -104,14 +104,14 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
-    yield from run_is_valid_genesis_state(spec, state, valid=True)
+    yield from run_is_valid_genesis_state(spec, state)
 
 
 @with_all_phases
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
-def test_is_valid_genesis_state_false_not_enough_validator(spec):
+def test_invalid_not_enough_validator_count(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 

@@ -110,7 +110,7 @@ def test_sync_committees_progress_misc_balances_not_genesis(spec, state):
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="too slow")
-def test_sync_committees_no_progress_not_boundary(spec, state):
+def test_sync_committees_no_progress_not_at_period_boundary(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
     slot_not_at_period_boundary = state.slot + spec.SLOTS_PER_EPOCH
     transition_to(spec, state, slot_not_at_period_boundary)

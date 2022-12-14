@@ -18,11 +18,18 @@ if __name__ == '__main__':
         help='the secret of trusted setup',
     )
     parser.add_argument(
-        "--length",
-        dest="length",
+        "--g1-length",
+        dest="g1_length",
         type=int,
         required=True,
-        help='the length of trusted setup',
+        help='the length of G1 trusted setup',
+    )
+    parser.add_argument(
+        "--g2-length",
+        dest="g2_length",
+        type=int,
+        required=True,
+        help='the length of G2 trusted setup',
     )
     parser.add_argument(
         "-o",
@@ -33,4 +40,4 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    dump_kzg_trusted_setup_files(args.secret, args.length, args.output_dir)
+    dump_kzg_trusted_setup_files(args.secret, args.g1_length, args.g2_length, args.output_dir)

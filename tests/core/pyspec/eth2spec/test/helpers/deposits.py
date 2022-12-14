@@ -208,25 +208,50 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     if not effective or not bls.KeyValidate(deposit.data.pubkey):
         assert len(state.validators) == pre_validator_count
         assert len(state.balances) == pre_validator_count
-        if validator_index < pre_validator_count:
+        if is_top_up:
             assert get_balance(state, validator_index) == pre_balance
     else:
-        if validator_index < pre_validator_count:
-            # top-up
+        if is_top_up:
+            # Top-ups do not change effective balance
+            assert state.validators[validator_index].effective_balance == pre_effective_balance
             assert len(state.validators) == pre_validator_count
             assert len(state.balances) == pre_validator_count
         else:
             # new validator
             assert len(state.validators) == pre_validator_count + 1
             assert len(state.balances) == pre_validator_count + 1
-        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
-
-        if is_top_up:
-            # Top-ups do not change effective balance
-            assert state.validators[validator_index].effective_balance == pre_effective_balance
-        else:
             effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
             effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
             assert state.validators[validator_index].effective_balance == effective_balance
 
+        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
+
     assert state.eth1_deposit_index == state.eth1_data.deposit_count
+
+
+def run_deposit_processing_with_specific_fork_version(
+        spec,
+        state,
+        fork_version,
+        valid=True,
+        effective=True):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    pubkey = pubkeys[validator_index]
+    privkey = privkeys[validator_index]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+
+    deposit_message = spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)
+    domain = spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=fork_version)
+    deposit_data = spec.DepositData(
+        pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
+        signature=bls.Sign(privkey, spec.compute_signing_root(deposit_message, domain))
+    )
+    deposit, root, _ = deposit_from_context(spec, [deposit_data], 0)
+
+    state.eth1_deposit_index = 0
+    state.eth1_data.deposit_root = root
+    state.eth1_data.deposit_count = 1
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=valid, effective=effective)

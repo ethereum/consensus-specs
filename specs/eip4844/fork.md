@@ -58,7 +58,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 ### Fork trigger
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now we assume the condition will be triggered at epoch `EIP4844_FORK_EPOCH`.
+For now, we assume the condition will be triggered at epoch `EIP4844_FORK_EPOCH`.
 
 Note that for the pure EIP-4844 networks, we don't apply `upgrade_to_eip4844` since it starts with EIP-4844 version logic.
 
