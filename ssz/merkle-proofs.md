@@ -397,17 +397,19 @@ We provide a function to convert generalized indices to a proof descriptor:
 
 ```python
 def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
-    # include all helper indices
-    indices = set(indices).union(get_helper_indices(indices))
+    # include all useful helper indices
+    indices = set().union(
+        *[get_helper_indices(index) for index in indices]
+    ).difference(
+        *[get_path_indices(index) for index in indices]
+    ).union(indices)
     # sort indices in-order
     indices = sorted(indices, key=bin)
 
     # convert indices to bitstring
-    prev_index = 1
     bitstring = ''
     for index in indices:
-        bitstring += '0' * max(index.bit_length() - prev_index.bit_length(), 0) + '1'
-        prev_index = index
+        bitstring += '0' * (len(bin(index)) - len(bin(index).rstrip('0'))) + '1'
 
     # append zero bits to byte-align the descriptor
     if len(bitstring) % 8 != 0:
