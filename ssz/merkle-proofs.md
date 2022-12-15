@@ -18,8 +18,8 @@
     - [`generalized_index_child`](#generalized_index_child)
     - [`generalized_index_parent`](#generalized_index_parent)
 - [Merkle multiproofs](#merkle-multiproofs)
-    - [`Static multiproofs`](#static-multiproofs)
-    - [`Dynamic multiproofs`](#dynamic-multiproofs)
+    - [Simple multiproofs](#simple-multiproofs)
+    - [Compact multiproofs](#compact-multiproofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -303,7 +303,7 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
     return sorted(all_helper_indices.difference(all_path_indices), reverse=True)
 ```
 
-### Static multiproofs
+### Simple multiproofs
 
 Now we provide the Merkle proof verification functions. First, for single item proofs:
 
@@ -360,23 +360,23 @@ def verify_merkle_multiproof(leaves: Sequence[Bytes32],
 
 Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.
 
-### Dynamic multiproofs
+### Compact multiproofs
 
-While generalized indices are useful for identifying specific elements of a merkle tree, they are inefficient when used directly to dynamically request specific leaves for a multiproof. This is because each generalized index must be encoded as a varint or some fixed-bitlength uint. N generalized indices would require somewhere between 2N to 8N bytes to be serialized.
+While generalized indices are useful for identifying specific elements of a merkle tree, they are inefficient when used directly to dynamically request specific nodes for a multiproof. This is because each generalized index must be encoded as a varint or some fixed-bitlength uint. N generalized indices would require somewhere between 2N to 8N bytes to be serialized.
 
-A more efficient multiproof descriptor encodes the "shape" a multiproof, rather than encoding the generalized indices individually. This shape can be encoded as a single bitlist that describes traversal through the merkle tree. Of note, in this format, leaf indices and helper indices are not treated separately, rather, the shape includes both and does not distinguish between them.
+A more efficient multiproof descriptor encodes the "shape" a multiproof, rather than encoding the generalized indices individually. This shape can be encoded as a single bitlist that describes traversal through the merkle tree. Of note, in this format, requested nodes and helper nodes are not treated separately, rather, the shape includes both and does not distinguish between them.
 
-We define the descriptor as a traversal through the merkle tree: starting from the root of the tree, traverse depth-first, left to right, encoding a zero bit if the node has a requested index as a descendent or a one bit if the node is a requested index.
+We define the descriptor as a traversal through the merkle tree: starting from the root of the tree, traverse depth-first, left to right, encoding a zero bit if the node has a descendent node in the proof or a one bit if the node is itself a node in the proof.
 
-This equates to 2N - 1 bits total required to encode N leaf/witness locations: N one bits and N-1 zero bits.
+This equates to 2N - 1 bits total required to encode N node locations: N one bits and N-1 zero bits.
 
 When the descriptor is serialized, up to 7 zero bits should be appended for byte-alignment.
 
-The proof leaves and witnesses should be ordered identically: depth-first, in-order.
+The proof nodes should be ordered identically: depth-first, in-order.
 
 For example, a multiproof for generalized index 42, along with helper indices, would be: 00100101111. As bytes: 0x25e0
 
-The proof leaf order would be: 4, 20, 42, 43, 11, 3
+The proof node order would be: 4, 20, 42, 43, 11, 3
 
 ```
         0               1
@@ -396,7 +396,7 @@ The proof leaf order would be: 4, 20, 42, 43, 11, 3
 We provide a function to convert generalized indices to a proof descriptor:
 
 ```python
-def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
+def compute_proof_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[GeneralizedIndex]:
     # include all useful helper indices
     indices = set().union(
         *[get_helper_indices(index) for index in indices]
@@ -404,7 +404,10 @@ def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
         *[get_path_indices(index) for index in indices]
     ).union(indices)
     # sort indices in-order
-    indices = sorted(indices, key=bin)
+    return sorted(indices, key=bin)
+
+def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
+    indices = compute_proof_indices(indices)
 
     # convert indices to bitstring
     bitstring = ''
@@ -424,18 +427,23 @@ def compute_proof_descriptor(indices: Sequence[GeneralizedIndex]) -> Bytes:
 Now we provide the Merkle proof verification functions.
 
 ```python
-def calculate_dynamic_multi_merkle_root(leaves: Sequence[Bytes32],
+def calculate_compact_multi_merkle_root(nodes: Sequence[Bytes32],
                                 descriptor: Bytes) -> Root:
-    return calculate_dynamic_multi_merkle_root_inner(
-        leaves,
-        compute_bits_from_proof_descriptor(descriptor),
-        [0, 0]
+    bits = compute_bits_from_proof_descriptor(descriptor)
+    ptr = [0, 0] # [bit_index, node_index]
+    root = calculate_compact_multi_merkle_root_inner(
+        nodes,
+        bits,
+        ptr
     )
+    assert ptr[0] == len(bits)
+    assert ptr[1] == len(nodes)
+    return root
 
 def compute_bits_from_proof_descriptor(descriptor: Bytes) -> Sequence[bool]:
     bitstring = ''.join(['{0:08b}'.format(byte) for byte in descriptor])
     last_one_index = bitstring.rindex('1')
-    assert len(bitstring) - last_one_index < 8
+    assert len(bitstring) - last_one_index <= 8
 
     count_0_vs_1 = 0
     bits = []
@@ -446,28 +454,27 @@ def compute_bits_from_proof_descriptor(descriptor: Bytes) -> Sequence[bool]:
             count_0_vs_1 -= 1
         else:
             count_0_vs_1 += 1
-        if count_0_vs_1 < 0:
-            assert i == last_one_index
+        assert (count_0_vs_1 < 0) == (i == last_one_index)
     return bits
 
-def calculate_dynamic_multi_merkle_root_inner(leaves: Sequence[Bytes32], bits: Sequence[bool], ptr: Tuple[int, int]) -> Bytes32:
+def calculate_compact_multi_merkle_root_inner(nodes: Sequence[Bytes32], bits: Sequence[bool], ptr: Tuple[int, int]) -> Bytes32:
     bit = bits[ptr[0]]
     ptr[0] += 1
     if bit:
-        leaf = leaves[ptr[1]]
+        node = nodes[ptr[1]]
         ptr[1] += 1
-        return leaf
+        return node
     else:
         return hash(
-            calculate_multi_merkle_root_inner(leaves, bits, ptr),
-            calculate_multi_merkle_root_inner(leaves, bits, ptr)
+            calculate_compact_multi_merkle_root_inner(nodes, bits, ptr),
+            calculate_compact_multi_merkle_root_inner(nodes, bits, ptr)
         )
 
 ```
 
 ```python
-def verify_dynamic_merkle_multiproof(leaves: Sequence[Bytes32],
+def verify_compact_merkle_multiproof(nodes: Sequence[Bytes32],
                              descriptor: Bytes,
                              root: Root) -> bool:
-    return calculate_multi_merkle_root(leaves, descriptor) == root
+    return calculate_compact_multi_merkle_root(nodes, descriptor) == root
 ```
