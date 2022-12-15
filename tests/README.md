@@ -10,12 +10,12 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    ```sh
    sudo apt install -y make git wget python3-venv gcc python3-dev
    ```
-1. Download the latest [consensus specs](https://github.com/ethereum/consensus-specs)
+2. Download the latest [consensus specs](https://github.com/ethereum/consensus-specs)
    ```sh
    git clone https://github.com/ethereum/consensus-specs.git
    cd consensus-specs
    ```
-1. Create the specifications and tests:   
+3. Create the specifications and tests:   
    ```sh
    make install_test
    make pyspec
@@ -31,12 +31,12 @@ To read more about creating the environment, [see here](core/pyspec/README.md).
    cd ~/consensus-specs
    . venv/bin/activate
    ```
-1. Run a sanity check test against Altair fork:
+2. Run a sanity check test against Altair fork:
    ```sh 
    cd tests/core/pyspec
    python -m pytest -k test_empty_block_transition --fork altair eth2spec
    ```
-1. The output should be similar to:
+3. The output should be similar to:
    ```
    ============================= test session starts ==============================
    platform linux -- Python 3.9.2, pytest-6.2.5, py-1.10.0, pluggy-1.0.0
@@ -114,7 +114,7 @@ In Python `yield` is used by [generators](https://wiki.python.org/moin/Generator
 we can treat it as a partial return statement that doesn't stop the function's processing, only adds to a list
 of return values. Here we add two values, the string `'pre'` and the initial state, to the list of return values.
 
-[You can read more about test generators and how the are used here](generators).
+[You can read more about test generators and how they are used here](generators).
 
 ```python
     block = build_empty_block_for_next_slot(spec, state)
@@ -417,7 +417,7 @@ In the last line you can see two conditions being asserted:
 
 1. `data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot` which verifies that the attestation doesn't
    arrive too early.
-1. `state.slot <= data.slot + SLOTS_PER_EPOCH` which verifies that the attestation doesn't
+2. `state.slot <= data.slot + SLOTS_PER_EPOCH` which verifies that the attestation doesn't
    arrive too late.
    
 This is how the consensus layer tests deal with edge cases, by asserting the conditions required for the
@@ -431,7 +431,7 @@ Now we'll write a similar test that verifies that being `SLOTS_PER_EPOCH` away i
 `test_after_epoch_slots` function. We need two changes:
 
 1. Call `transition_to_slot_via_block` with one less slot to advance
-1. Don't tell `run_attestation_processing` to return an empty post state.
+2. Don't tell `run_attestation_processing` to return an empty post state.
 
 The modified function is:
 

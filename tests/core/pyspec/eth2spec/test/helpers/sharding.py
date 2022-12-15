@@ -34,13 +34,14 @@ class ECDSASignature(Container):
 class BlobTransaction(Container):
     chain_id: uint256
     nonce: uint64
-    priority_fee_per_gas: uint256
-    max_basefee_per_gas: uint256
+    max_priority_fee_per_gas: uint256
+    max_fee_per_gas: uint256
     gas: uint64
     to: Union[None, Bytes20]  # Address = Bytes20
     value: uint256
     data: ByteList[MAX_CALLDATA_SIZE]
     access_list: List[AccessTuple, MAX_ACCESS_LIST_SIZE]
+    max_fee_per_data_gas: uint256
     blob_versioned_hashes: List[Bytes32, MAX_VERSIONED_HASHES_LIST_SIZE]
 
 
@@ -53,10 +54,16 @@ def get_sample_blob(spec, rng=None):
     if rng is None:
         rng = random.Random(5566)
 
-    return spec.Blob([
+    values = [
         rng.randint(0, spec.BLS_MODULUS - 1)
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
-    ])
+    ]
+
+    b = bytes()
+    for v in values:
+        b += v.to_bytes(32, spec.ENDIANNESS)
+
+    return spec.Blob(b)
 
 
 def get_sample_opaque_tx(spec, blob_count=1, rng=None):

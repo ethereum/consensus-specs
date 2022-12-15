@@ -41,6 +41,8 @@ CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
 
+SCRIPTS_DIR = ${CURRENT_DIR}/scripts
+
 export DAPP_SKIP_BUILD:=1
 export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
 export DAPP_LIB:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)/lib
@@ -103,12 +105,12 @@ install_test:
 # Testing against `minimal` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov=eth2spec.eip4844.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 # Testing against `minimal` config by default
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov=eth2spec.eip4844.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
@@ -140,8 +142,8 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella
+	&& pylint --rcfile $(LINTER_CONFIG_FILE) ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella ./eth2spec/eip4844 \
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella -p eth2spec.eip4844
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
@@ -194,6 +196,14 @@ $(TEST_VECTOR_DIR):
 	mkdir -p $@
 $(TEST_VECTOR_DIR)/:
 	$(info ignoring duplicate tests dir)
+
+gen_kzg_setups:
+	cd $(SCRIPTS_DIR); \
+	if ! test -d venv; then python3 -m venv venv; fi; \
+	. venv/bin/activate; \
+	pip3 install -r requirements.txt; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4096 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
 
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)

@@ -8,14 +8,11 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
-- [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
-  - [Misc](#misc)
-  - [State list lengths](#state-list-lengths)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
-- [Configuration](#configuration)
+  - [Withdrawals processing](#withdrawals-processing)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Withdrawal`](#withdrawal)
@@ -28,18 +25,13 @@
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
-  - [Beacon state mutators](#beacon-state-mutators)
-    - [`withdraw_balance`](#withdraw_balance)
   - [Predicates](#predicates)
     - [`has_eth1_withdrawal_credential`](#has_eth1_withdrawal_credential)
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Epoch processing](#epoch-processing)
-    - [Full withdrawals](#full-withdrawals)
-    - [Partial withdrawals](#partial-withdrawals)
-    - [Historical batches updates](#historical-batches-updates)
   - [Block processing](#block-processing)
+    - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_operations`](#modified-process_operations)
@@ -67,8 +59,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
 
-## Constants
-
 ### Domain types
 
 | Name | Value |
@@ -76,18 +66,6 @@ We define the following Python custom types for type hinting and readability:
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
 ## Preset
-
-### Misc
-
-| Name | Value |
-| - | - |
-| `MAX_PARTIAL_WITHDRAWALS_PER_EPOCH` | `uint64(2**8)` (= 256) |
-
-### State list lengths
-
-| Name | Value | Unit |
-| - | - | :-: |
-| `WITHDRAWAL_QUEUE_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | withdrawals enqueued in state |
 
 ### Max operations per block
 
@@ -101,7 +79,11 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `MAX_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawals allowed in each payload |
 
-## Configuration
+### Withdrawals processing
+
+| Name | Value |
+| - | - |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2**14 ) |
 
 ## Containers
 
@@ -255,33 +237,13 @@ class BeaconState(Container):
     # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
-    withdrawal_queue: List[Withdrawal, WITHDRAWAL_QUEUE_LIMIT]  # [New in Capella]
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
-    next_partial_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
+    next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
     # Deep history
     historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT] # Valid from Merge onwards
 ```
 
 ## Helpers
-
-### Beacon state mutators
-
-#### `withdraw_balance`
-
-```python
-def withdraw_balance(state: BeaconState, validator_index: ValidatorIndex, amount: Gwei) -> None:
-    # Decrease the validator's balance
-    decrease_balance(state, validator_index, amount)
-    # Create a corresponding withdrawal receipt
-    withdrawal = Withdrawal(
-        index=state.next_withdrawal_index,
-        validator_index=validator_index,
-        address=ExecutionAddress(state.validators[validator_index].withdrawal_credentials[12:]),
-        amount=amount,
-    )
-    state.next_withdrawal_index = WithdrawalIndex(state.next_withdrawal_index + 1)
-    state.withdrawal_queue.append(withdrawal)
-```
 
 ### Predicates
 
@@ -323,81 +285,6 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ## Beacon chain state transition function
 
-### Epoch processing
-
-```python
-def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)
-    process_inactivity_updates(state)
-    process_rewards_and_penalties(state)
-    process_registry_updates(state)
-    process_slashings(state)
-    process_eth1_data_reset(state)
-    process_effective_balance_updates(state)
-    process_slashings_reset(state)
-    process_randao_mixes_reset(state)
-    process_historical_batches_update(state)
-    process_participation_flag_updates(state)
-    process_sync_committee_updates(state)
-    process_full_withdrawals(state)  # [New in Capella]
-    process_partial_withdrawals(state)  # [New in Capella]
-
-```
-
-#### Full withdrawals
-
-*Note*: The function `process_full_withdrawals` is new.
-
-```python
-def process_full_withdrawals(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    for index in range(len(state.validators)):
-        balance = state.balances[index]
-        validator = state.validators[index]
-        if is_fully_withdrawable_validator(validator, balance, current_epoch):
-            withdraw_balance(state, ValidatorIndex(index), balance)
-```
-
-#### Partial withdrawals
-
-*Note*: The function `process_partial_withdrawals` is new.
-
-```python
-def process_partial_withdrawals(state: BeaconState) -> None:
-    partial_withdrawals_count = 0
-    # Begin where we left off last time
-    validator_index = state.next_partial_withdrawal_validator_index
-    for _ in range(len(state.validators)):
-        balance = state.balances[validator_index]
-        validator = state.validators[validator_index]
-        if is_partially_withdrawable_validator(validator, balance):
-            withdraw_balance(state, validator_index, balance - MAX_EFFECTIVE_BALANCE)
-            partial_withdrawals_count += 1
-
-        # Iterate to next validator to check for partial withdrawal
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-        # Exit if performed maximum allowable withdrawals
-        if partial_withdrawals_count == MAX_PARTIAL_WITHDRAWALS_PER_EPOCH:
-            break
-
-    state.next_partial_withdrawal_validator_index = validator_index
-```
-
-#### Historical batches updates
-
-*Note*: The function `process_historical_batches_update` replaces `process_historical_roots_update` in phase0.
-
-```python
-def process_historical_batches_update(state: BeaconState) -> None:
-    # Set historical block root accumulator
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        historical_batch = HistoricalBatchSummary(
-            block_batch_root=hash_tree_root(state.block_roots),
-            state_batch_root=hash_tree_root(state.state_roots))
-        state.historical_batches.append(historical_batch)
-```
-
 ### Block processing
 
 ```python
@@ -408,23 +295,70 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)
+    process_operations(state, block.body)  # [Modified in Capella]
     process_sync_aggregate(state, block.body.sync_aggregate)
+```
+
+#### New `get_expected_withdrawals`
+
+```python
+def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
+    epoch = get_current_epoch(state)
+    withdrawal_index = state.next_withdrawal_index
+    validator_index = state.next_withdrawal_validator_index
+    withdrawals: List[Withdrawal] = []
+    bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    for _ in range(bound):
+        validator = state.validators[validator_index]
+        balance = state.balances[validator_index]
+        if is_fully_withdrawable_validator(validator, balance, epoch):
+            withdrawals.append(Withdrawal(
+                index=withdrawal_index,
+                validator_index=validator_index,
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                amount=balance,
+            ))
+            withdrawal_index += WithdrawalIndex(1)
+        elif is_partially_withdrawable_validator(validator, balance):
+            withdrawals.append(Withdrawal(
+                index=withdrawal_index,
+                validator_index=validator_index,
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                amount=balance - MAX_EFFECTIVE_BALANCE,
+            ))
+            withdrawal_index += WithdrawalIndex(1)
+        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+            break
+        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+    return withdrawals
 ```
 
 #### New `process_withdrawals`
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    num_withdrawals = min(MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
-    dequeued_withdrawals = state.withdrawal_queue[:num_withdrawals]
+    expected_withdrawals = get_expected_withdrawals(state)
+    assert len(payload.withdrawals) == len(expected_withdrawals)
 
-    assert len(dequeued_withdrawals) == len(payload.withdrawals)
-    for dequeued_withdrawal, withdrawal in zip(dequeued_withdrawals, payload.withdrawals):
-        assert dequeued_withdrawal == withdrawal
+    for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
+        assert withdrawal == expected_withdrawal
+        decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
-    # Remove dequeued withdrawals from state
-    state.withdrawal_queue = state.withdrawal_queue[num_withdrawals:]
+    # Update the next withdrawal index if this block contained withdrawals
+    if len(expected_withdrawals) != 0:
+        latest_withdrawal = expected_withdrawals[-1]
+        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
+
+    # Update the next validator index to start the next withdrawal sweep
+    if len(expected_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        # Next sweep starts after the latest withdrawal's validator index
+        next_validator_index = ValidatorIndex((expected_withdrawals[-1].validator_index + 1) % len(state.validators))
+        state.next_withdrawal_validator_index = next_validator_index
+    else:
+        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
+        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+        next_validator_index = ValidatorIndex(next_index % len(state.validators))
+        state.next_withdrawal_validator_index = next_validator_index
 ```
 
 #### Modified `process_execution_payload`
