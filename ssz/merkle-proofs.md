@@ -18,8 +18,8 @@
     - [`generalized_index_child`](#generalized_index_child)
     - [`generalized_index_parent`](#generalized_index_parent)
 - [Merkle multiproofs](#merkle-multiproofs)
-    - [Simple multiproofs](#simple-multiproofs)
-    - [Compact multiproofs](#compact-multiproofs)
+  - [Simple multiproofs](#simple-multiproofs)
+  - [Compact multiproofs](#compact-multiproofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
