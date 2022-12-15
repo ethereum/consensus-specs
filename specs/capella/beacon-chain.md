@@ -30,6 +30,8 @@
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Historical batches updates](#historical-batches-updates)
   - [Block processing](#block-processing)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
@@ -209,7 +211,7 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT] # Frozen in Merge, replaced by historical_batches
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  # Frozen in Merge, replaced by historical_batches
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -239,8 +241,8 @@ class BeaconState(Container):
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
-    # Deep history
-    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT] # Valid from Merge onwards
+    # Deep history valid from Capella onwards
+    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
 ```
 
 ## Helpers
@@ -284,6 +286,40 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 ```
 
 ## Beacon chain state transition function
+
+### Epoch processing
+
+*Note*: The function `process_historical_batches_update` replaces `process_historical_roots_update` in Bellatrix.
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_batches_update(state)  # [Modified in Capella]
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
+```
+
+#### Historical batches updates
+
+```python
+def process_historical_batches_update(state: BeaconState) -> None:
+    # Set historical block root accumulator.
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        historical_batch = HistoricalBatchSummary(
+            block_batch_root=hash_tree_root(state.block_roots),
+            state_batch_root=hash_tree_root(state.state_roots),
+        )
+        state.historical_batches.append(historical_batch)
+```
 
 ### Block processing
 

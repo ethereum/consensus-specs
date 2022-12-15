@@ -1,3 +1,9 @@
+from eth2spec.test.helpers.constants import (
+    EIP4844,
+)
+from eth2spec.test.helpers.forks import (
+    is_post_capella,
+)
 from eth2spec.test.helpers.state import get_state_root
 from eth2spec.test.context import (
     spec_state_test,
@@ -61,3 +67,30 @@ def test_over_epoch_boundary(spec, state):
     yield 'slots', int(slots)
     spec.process_slots(state, state.slot + slots)
     yield 'post', state
+
+
+@with_all_phases
+@spec_state_test
+def test_historical_accumulator(spec, state):
+    pre_historical_roots = state.historical_roots.copy()
+
+    if is_post_capella(spec):
+        pre_historical_batches = state.historical_batches.copy()
+
+    yield 'pre', state
+    slots = spec.SLOTS_PER_HISTORICAL_ROOT
+    yield 'slots', int(slots)
+    spec.process_slots(state, state.slot + slots)
+    yield 'post', state
+
+    # check history update
+    if is_post_capella(spec):
+        # Frozen `historical_roots`
+        assert state.historical_roots == pre_historical_roots
+        if spec.fork == EIP4844:
+            # TODO: no-op for now in EIP4844 testnet
+            assert state.historical_batches == pre_historical_batches
+        else:
+            assert len(state.historical_batches) == len(pre_historical_batches) + 1
+    else:
+        assert len(state.historical_roots) == len(pre_historical_roots) + 1
