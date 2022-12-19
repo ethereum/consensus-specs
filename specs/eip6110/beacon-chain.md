@@ -1,4 +1,4 @@
-# DepositEIP -- The Beacon Chain
+# EIP-6110 -- The Beacon Chain
 
 ## Table of contents
 
@@ -36,7 +36,7 @@
 ## Introduction
 
 This is the beacon chain specification of in-protocol deposits processing mechanism.
-This mechanism relies on the changes proposed by the corresponding EIP.
+This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum.org/EIPS/eip-6110).
 
 *Note:* This specification is under development and should be used with care.
 
@@ -103,7 +103,7 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in DepositEIP]
+    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP-6110]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -127,7 +127,7 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    deposit_receipts_root: Root  # [New in DepositEIP]
+    deposit_receipts_root: Root  # [New in EIP-6110]
 ```
 
 #### `BeaconState`
@@ -173,7 +173,7 @@ class BeaconState(Container):
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    # DepositsEIP
+    # EIP-6110
     pending_deposits: List[IndexedDepositData, PENDING_DEPOSITS_LIMIT]
 ```
 
@@ -187,7 +187,7 @@ def process_epoch(state: BeaconState) -> None:
     process_inactivity_updates(state)
     process_rewards_and_penalties(state)
     # Run before registry and after finality updates
-    process_pending_deposits(state)  # [New in DepositsEIP]
+    process_pending_deposits(state)  # [New in EIP-6110]
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
@@ -269,11 +269,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
         process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in DepositsEIP]
-        process_deposit_receipts(state, block.body.execution_payload)  # [New in DepositsEIP]
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP-6110]
+        process_deposit_receipts(state, block.body.execution_payload)  # [New in EIP-6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in DepositsEIP]
+    process_operations(state, block.body)  # [Modified in EIP-6110]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
         
@@ -338,7 +338,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in DepositsEIP]
+        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP-6110]
     )
 ```
 
@@ -349,9 +349,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Prevent potential underflow introduced by mixing two deposit processing flows
-    unprocessed_deposits_count = max(0, state.eth1_data.deposit_count - state.eth1_deposit_index)  # [New in DepositsEIP]
+    unprocessed_deposits_count = max(0, state.eth1_data.deposit_count - state.eth1_deposit_index)  # [New in EIP-6110]
     # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, unprocessed_deposits_count)  # [Modified in DepositsEIP]
+    assert len(body.deposits) == min(MAX_DEPOSITS, unprocessed_deposits_count)  # [Modified in EIP-6110]
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
@@ -367,10 +367,10 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure DepositsEIP testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-6110 testing only.
 Modifications include:
 1. Use `DEPOSITS_EIP_FORK_VERSION` as the previous and current fork version.
-2. Utilize the DepositsEIP `BeaconBlockBody` when constructing the initial `latest_block_header`.
+2. Utilize the EIP-6110 `BeaconBlockBody` when constructing the initial `latest_block_header`.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
