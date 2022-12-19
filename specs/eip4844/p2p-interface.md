@@ -227,7 +227,7 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
+`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 
