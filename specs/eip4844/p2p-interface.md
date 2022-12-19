@@ -219,7 +219,7 @@ may not be available beyond the initial distribution via gossip.
 Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
 correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
 
-`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip.
+`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
 
 The request MUST be encoded as an SSZ-container.
 
