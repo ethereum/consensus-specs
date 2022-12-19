@@ -21,6 +21,7 @@ def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubk
         validator_index=validator_index,
         from_bls_pubkey=withdrawal_pubkey,
         to_execution_address=to_execution_address,
+        signature_epoch=spec.compute_epoch_at_slot(state.slot)
     )
 
     signing_root = spec.compute_signing_root(address_change, domain)

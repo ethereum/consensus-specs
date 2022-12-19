@@ -105,6 +105,7 @@ class BLSToExecutionChange(Container):
     validator_index: ValidatorIndex
     from_bls_pubkey: BLSPubkey
     to_execution_address: ExecutionAddress
+    signature_epoch: Epoch
 ```
 
 #### `SignedBLSToExecutionChange`
@@ -416,7 +417,7 @@ def process_bls_to_execution_change(state: BeaconState,
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
     assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
 
-    domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE)
+    domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE, address_change.signature_epoch)
     signing_root = compute_signing_root(address_change, domain)
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 
