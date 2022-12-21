@@ -164,15 +164,16 @@ def validate_blobs_sidecar(slot: Slot,
 
 #### `is_data_available`
 
-The implementation of `is_data_available` is meant to change with later sharding upgrades.
+The implementation of `is_data_available` will become more sophisticated during later sharding upgrades.
 Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
 and validate the sidecar with `validate_blobs_sidecar`.
 
-The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobsSidecar` has subsequently been pruned.
 
 ```python
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
+    # `retrieve_blobs_sidecar` is implementation and context dependent, raises an exception if not available.
+    # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
 
     # For testing, `retrieve_blobs_sidecar` returns "TEST".
