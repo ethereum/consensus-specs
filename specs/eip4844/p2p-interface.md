@@ -102,7 +102,7 @@ Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the same slot as the block that carries it -- i.e. `sidecar.beacon_block_slot == block.slot`.
+- _[REJECT]_ the `sidecar.beacon_block_slot` is for the same slot as the block that carries it -- i.e. `sidecar.beacon_block_slot == block.slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
 - _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 point
   -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
