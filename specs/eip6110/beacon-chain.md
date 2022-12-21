@@ -52,7 +52,7 @@ This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**10)` (= 1,024) | Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | Maximum number of deposit receipts allowed in each payload |
 
 ## Containers
 
