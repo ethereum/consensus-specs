@@ -249,7 +249,7 @@ def process_pending_deposits(state: BeaconState) -> None:
             break
 
         # Apply only finalized deposits
-        if pending_deposit.epoch > finalized_epoch:
+        if pending_deposit.epoch >= finalized_epoch:
             break
 
         # Skip already applied deposits
