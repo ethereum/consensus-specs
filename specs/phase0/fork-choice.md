@@ -178,9 +178,9 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 ```python
 def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
-    active_indices = get_active_validator_indices(state, get_current_epoch(state))
+    unslashed_and_active_indices = [i for i in get_active_validator_indices(state, get_current_epoch(state)) if not state.validators[i].slashed]
     attestation_score = Gwei(sum(
-        state.validators[i].effective_balance for i in active_indices
+        state.validators[i].effective_balance for i in unslashed_and_active_indices
         if (i in store.latest_messages
             and i not in store.equivocating_indices
             and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
