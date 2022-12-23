@@ -59,11 +59,16 @@ See Capella [state transition document](./beacon-chain.md#beaconblockbody) for f
 
 This topic is used to propagate signed bls to execution change messages to be included in future blocks.
 
+Let `head_state` be a post state of the head of canonical chain.
 The following validations MUST pass before forwarding the `signed_bls_to_execution_change` on the network:
 
 - _[IGNORE]_ The `signed_bls_to_execution_change` is the first valid signed bls to execution change received
   for the validator with index `signed_bls_to_execution_change.message.validator_index`.
-- _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation.
+- If `get_current_epoch(head_state) < CAPELLA_FORK_EPOCH`:
+  - _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation 
+  using `head_state.fork.current_version` in signing domain computation.
+- If `get_current_epoch(head_state) >= CAPELLA_FORK_EPOCH`:
+  - _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation.
 
 ### Transitioning the gossip
 
