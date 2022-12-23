@@ -226,7 +226,7 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
-In cases where a slot contains a `BlobSidecar` that does not contain any blobs, but contain non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`, `blobs_sidecar` MAY be skipped.
+In cases where a slot contains a `BlobSidecar` that does not contain any blobs, but contain non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`, `blobs_sidecar` may be skipped.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 `[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
