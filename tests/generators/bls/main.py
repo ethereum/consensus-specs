@@ -455,7 +455,7 @@ def case07_eth_fast_aggregate_verify():
         tampered_signature = aggregate_signature[:-4] + b'\xff\xff\xff\xff'
         identifier = f'{pubkeys_serial}_{encode_hex(message)}'
         assert not spec.eth_fast_aggregate_verify(pubkeys, message, tampered_signature)
-        yield 'eth_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'eth_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'pubkeys': pubkeys_serial,
                 'message': encode_hex(message),

@@ -70,6 +70,23 @@ In particular, the outer `state_transition` function defined in the Phase 0 docu
 ```python
 def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
     epoch = bellatrix.get_current_epoch(pre)
+    latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_hash=pre.latest_execution_payload_header.parent_hash,
+        fee_recipient=pre.latest_execution_payload_header.fee_recipient,
+        state_root=pre.latest_execution_payload_header.state_root,
+        receipts_root=pre.latest_execution_payload_header.receipts_root,
+        logs_bloom=pre.latest_execution_payload_header.logs_bloom,
+        prev_randao=pre.latest_execution_payload_header.prev_randao,
+        block_number=pre.latest_execution_payload_header.block_number,
+        gas_limit=pre.latest_execution_payload_header.gas_limit,
+        gas_used=pre.latest_execution_payload_header.gas_used,
+        timestamp=pre.latest_execution_payload_header.timestamp,
+        extra_data=pre.latest_execution_payload_header.extra_data,
+        base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
+        block_hash=pre.latest_execution_payload_header.block_hash,
+        transactions_root=pre.latest_execution_payload_header.transactions_root,
+        withdrawals_root=Root(),  # [New in Capella]
+    )
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -110,11 +127,10 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=pre.latest_execution_payload_header,
+        latest_execution_payload_header=latest_execution_payload_header,
         # Withdrawals
-        withdrawal_queue=[],
         next_withdrawal_index=WithdrawalIndex(0),
-        next_partial_withdrawal_validator_index=ValidatorIndex(0),
+        next_withdrawal_validator_index=ValidatorIndex(0),
     )
 
     return post

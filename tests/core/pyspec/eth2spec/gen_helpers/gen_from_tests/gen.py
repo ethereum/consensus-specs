@@ -49,7 +49,7 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
             preset_name=preset_name,
             runner_name=runner_name,
             handler_name=handler_name,
-            suite_name='pyspec_tests',
+            suite_name=getattr(tfn, 'suite_name', 'pyspec_tests'),
             case_name=case_name,
             # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
             case_fn=lambda: tfn(generator_mode=True, phase=phase, preset=preset_name, bls_active=bls_active)

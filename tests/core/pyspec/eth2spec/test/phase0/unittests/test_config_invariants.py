@@ -1,9 +1,11 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases,
-    is_post_altair, is_post_bellatrix,
 )
 from eth2spec.test.helpers.constants import MAX_UINT_64
+from eth2spec.test.helpers.forks import (
+    is_post_altair, is_post_bellatrix,
+)
 
 
 def check_bound(value, lower_bound, upper_bound):

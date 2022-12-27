@@ -51,40 +51,40 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(45
 
 @with_altair_and_later
 @spec_state_test
-def test_full_sync_committee_committee(spec, state):
+def test_sync_committee_committee__full(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
 @with_altair_and_later
 @spec_state_test
-def test_half_sync_committee_committee(spec, state):
+def test_sync_committee_committee__half(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5, rng=Random(1212))
 
 
 @with_altair_and_later
 @spec_state_test
-def test_empty_sync_committee_committee(spec, state):
+def test_sync_committee_committee__empty(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
 
 
 @with_altair_and_later
 @spec_state_test
-def test_full_sync_committee_committee_genesis(spec, state):
+def test_sync_committee_committee_genesis__full(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
 @with_altair_and_later
 @spec_state_test
-def test_half_sync_committee_committee_genesis(spec, state):
+def test_sync_committee_committee_genesis__half(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5, rng=Random(2323))
 
 
 @with_altair_and_later
 @spec_state_test
-def test_empty_sync_committee_committee_genesis(spec, state):
+def test_sync_committee_committee_genesis__empty(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
 
 
@@ -136,6 +136,6 @@ def test_inactivity_scores_full_participation_leaking(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # Full particiaption during a leak so all scores should decrease by 1
+    # Full participation during a leak so all scores should decrease by 1
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
         assert post == pre - 1
