@@ -33,7 +33,6 @@
       - [`process_execution_payload`](#process_execution_payload)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
-  - [Disabling Withdrawals](#disabling-withdrawals)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
