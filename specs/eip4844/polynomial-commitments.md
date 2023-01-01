@@ -370,8 +370,9 @@ def verify_kzg_proof_impl(polynomial_kzg: KZGCommitment,
 ```python
 def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     """
-    Compute KZG proof at point `z` with `polynomial` being in evaluation form
-    Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z)
+    Compute KZG proof at point `z` with `polynomial` being in evaluation form.
+    Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z).
+    Public method.
     """
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
