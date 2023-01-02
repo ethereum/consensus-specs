@@ -7,8 +7,8 @@ from eth2spec.test.helpers.epoch_processing import (
 )
 
 
-def run_process_historical_batches_update(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_historical_batches_update')
+def run_process_historical_summaries_update(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_historical_summaries_update')
 
 
 @with_eip4844_and_later
@@ -16,8 +16,8 @@ def run_process_historical_batches_update(spec, state):
 def test_no_op(spec, state):
     # skip ahead to near the end of the historical batch period (excl block before epoch processing)
     state.slot = spec.SLOTS_PER_HISTORICAL_ROOT - 1
-    historical_batches_len = len(state.historical_batches)
+    historical_summaries_len = len(state.historical_summaries)
 
-    yield from run_process_historical_batches_update(spec, state)
+    yield from run_process_historical_summaries_update(spec, state)
 
-    assert len(state.historical_batches) == historical_batches_len
+    assert len(state.historical_summaries) == historical_summaries_len

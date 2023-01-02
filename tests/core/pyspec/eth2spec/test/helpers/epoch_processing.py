@@ -25,8 +25,8 @@ def get_process_calls(spec):
         'process_effective_balance_updates',
         'process_slashings_reset',
         'process_randao_mixes_reset',
-        # Capella replaced `process_historical_roots_update` with `process_historical_batches_update`
-        'process_historical_batches_update' if is_post_capella(spec) else (
+        # Capella replaced `process_historical_roots_update` with `process_historical_summaries_update`
+        'process_historical_summaries_update' if is_post_capella(spec) else (
             'process_historical_roots_update'
         ),
         # Altair replaced `process_participation_record_updates` with `process_participation_flag_updates`

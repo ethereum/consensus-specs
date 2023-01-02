@@ -660,7 +660,7 @@ def get_empty_list_result(fn):  # type: ignore
 process_withdrawals = no_op(process_withdrawals)
 process_bls_to_execution_change = no_op(process_bls_to_execution_change)
 get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
-process_historical_batches_update = no_op(process_historical_batches_update)
+process_historical_summaries_update = no_op(process_historical_summaries_update)
 
 
 #

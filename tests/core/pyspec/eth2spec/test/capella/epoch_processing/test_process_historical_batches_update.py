@@ -8,20 +8,20 @@ from eth2spec.test.helpers.epoch_processing import (
 )
 
 
-def run_process_historical_batches_update(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_historical_batches_update')
+def run_process_historical_summaries_update(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_historical_summaries_update')
 
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_historical_batches_accumulator(spec, state):
+def test_historical_summaries_accumulator(spec, state):
     # skip ahead to near the end of the historical batch period (excl block before epoch processing)
     state.slot = spec.SLOTS_PER_HISTORICAL_ROOT - 1
-    pre_historical_batches = state.historical_batches.copy()
+    pre_historical_summaries = state.historical_summaries.copy()
 
-    yield from run_process_historical_batches_update(spec, state)
+    yield from run_process_historical_summaries_update(spec, state)
 
-    assert len(state.historical_batches) == len(pre_historical_batches) + 1
-    summary = state.historical_batches[len(state.historical_batches) - 1]
+    assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
+    summary = state.historical_summaries[len(state.historical_summaries) - 1]
     assert summary.block_batch_root == state.block_roots.hash_tree_root()
     assert summary.state_batch_root == state.state_roots.hash_tree_root()

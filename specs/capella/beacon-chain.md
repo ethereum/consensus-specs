@@ -18,7 +18,7 @@
     - [`Withdrawal`](#withdrawal)
     - [`BLSToExecutionChange`](#blstoexecutionchange)
     - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
-    - [`HistoricalBatchSummary`](#historicalbatchsummary)
+    - [`HistoricalSummary`](#historicalsummary)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -31,7 +31,7 @@
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
-    - [Historical batches updates](#historical-batches-updates)
+    - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
@@ -118,12 +118,12 @@ class SignedBLSToExecutionChange(Container):
     signature: BLSSignature
 ```
 
-#### `HistoricalBatchSummary`
+#### `HistoricalSummary`
 
 ```python
-class HistoricalBatchSummary(Container):
+class HistoricalSummary(Container):
     """
-    `HistoricalBatchSummary` matches the components of the phase0 HistoricalBatch
+    `HistoricalSummary` matches the components of the phase0 `HistoricalBatch`
     making the two hash_tree_root-compatible.
     """
     block_batch_root: Root
@@ -211,7 +211,7 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  # Frozen in Capella, replaced by historical_batches
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  # Frozen in Capella, replaced by historical_summaries
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -242,7 +242,7 @@ class BeaconState(Container):
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
     # Deep history valid from Capella onwards
-    historical_batches: List[HistoricalBatchSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
 ```
 
 ## Helpers
@@ -289,7 +289,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Epoch processing
 
-*Note*: The function `process_historical_batches_update` replaces `process_historical_roots_update` in Bellatrix.
+*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Bellatrix.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -302,23 +302,23 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    process_historical_batches_update(state)  # [Modified in Capella]
+    process_historical_summaries_update(state)  # [Modified in Capella]
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
 ```
 
-#### Historical batches updates
+#### Historical summaries updates
 
 ```python
-def process_historical_batches_update(state: BeaconState) -> None:
+def process_historical_summaries_update(state: BeaconState) -> None:
     # Set historical block root accumulator.
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        historical_batch = HistoricalBatchSummary(
+        historical_summary = HistoricalSummary(
             block_batch_root=hash_tree_root(state.block_roots),
             state_batch_root=hash_tree_root(state.state_roots),
         )
-        state.historical_batches.append(historical_batch)
+        state.historical_summaries.append(historical_summary)
 ```
 
 ### Block processing

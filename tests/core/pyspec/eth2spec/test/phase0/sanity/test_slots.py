@@ -75,7 +75,7 @@ def test_historical_accumulator(spec, state):
     pre_historical_roots = state.historical_roots.copy()
 
     if is_post_capella(spec):
-        pre_historical_batches = state.historical_batches.copy()
+        pre_historical_summaries = state.historical_summaries.copy()
 
     yield 'pre', state
     slots = spec.SLOTS_PER_HISTORICAL_ROOT
@@ -89,8 +89,8 @@ def test_historical_accumulator(spec, state):
         assert state.historical_roots == pre_historical_roots
         if spec.fork == EIP4844:
             # TODO: no-op for now in EIP4844 testnet
-            assert state.historical_batches == pre_historical_batches
+            assert state.historical_summaries == pre_historical_summaries
         else:
-            assert len(state.historical_batches) == len(pre_historical_batches) + 1
+            assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
     else:
         assert len(state.historical_roots) == len(pre_historical_roots) + 1
