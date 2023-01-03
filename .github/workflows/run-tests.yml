@@ -30,8 +30,19 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
+  precleanup:
+      runs-on: self-hosted
+      if: always()
+      steps:
+        - name: 'Cleanup build folder'
+          run: |
+            ls -la ./
+            rm -rf ./* || true
+            rm -rf ./.??* || true
+            ls -la ./
   setup-env:
     runs-on: self-hosted
+    needs: precleanup
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
@@ -43,9 +54,37 @@ jobs:
           path: ./*
           key: ${{ github.sha }}
 
-  pyspec-tests:
+  table_of_contents:
+   runs-on: self-hosted
+   needs: setup-env
+   steps:
+      - uses: actions/cache@v3.2.2
+        id: restore-build
+        with:
+          path: ./*
+          key: ${{ github.sha }}
+      - name: Check table of contents
+        run: sudo npm install -g doctoc@2 && make check_toc
+
+  codespell:
+   runs-on: self-hosted
+   needs: setup-env
+   steps:
+      - name: Check codespell
+        run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
+
+  lint:
     runs-on: self-hosted
     needs: setup-env
+    steps:
+      - name: Run linter for pyspec
+        run: make lint
+      - name: Run linter for test generators
+        run: make lint_generators
+
+  pyspec-tests:
+    runs-on: self-hosted
+    needs: [setup-env,lint,codespell,table_of_contents]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix","capella"]
@@ -80,32 +119,6 @@ jobs:
         with:
           name: test-${{ matrix.version }}
           path: tests/core/pyspec/test-reports
-
-  table_of_contents:
-     runs-on: self-hosted
-     needs: setup-env
-     steps:
-        - uses: actions/cache@v3.2.2
-          id: restore-build
-          with:
-            path: ./*
-            key: ${{ github.sha }}
-        - name: Check table of contents
-          run: sudo npm install -g doctoc@2 && make check_toc
-  codespell:
-     runs-on: self-hosted
-     needs: setup-env
-     steps:
-        - name: Check codespell
-          run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
-  lint: 
-      runs-on: self-hosted
-      needs: setup-env
-      steps:
-        - name: Run linter for pyspec
-          run: make lint
-        - name: Run linter for test generators
-          run: make lint_generators
 
   cleanup:
       runs-on: self-hosted
