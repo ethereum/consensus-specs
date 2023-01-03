@@ -106,3 +106,15 @@ jobs:
           run: make lint
         - name: Run linter for test generators
           run: make lint_generators
+
+  cleanup:
+      runs-on: self-hosted
+      needs: [setup-env,pyspec-tests,codespell,lint,table_of_contents]
+      if: always()
+      steps:
+        - name: 'Cleanup build folder'
+          run: |
+            ls -la ./
+            rm -rf ./* || true
+            rm -rf ./.??* || true
+            ls -la ./
