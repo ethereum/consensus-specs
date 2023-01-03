@@ -34,10 +34,10 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.2.0
         with:
           ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3.2.2
         id: cache-git
         with:
           path: ./*
@@ -50,7 +50,7 @@ jobs:
       matrix:
         version: ["phase0", "altair", "bellatrix","capella"]
     steps:
-      - uses: actions/cache@v3.0.10
+      - uses: actions/cache@v3.2.2
         id: restore-build
         with:
           path: ./*
@@ -75,7 +75,7 @@ jobs:
         run: make install_test
       - name: test-${{ matrix.version }}
         run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: test-${{ matrix.version }}
@@ -85,7 +85,7 @@ jobs:
      runs-on: self-hosted
      needs: setup-env
      steps:
-        - uses: actions/cache@v3.0.10
+        - uses: actions/cache@v3.2.2
           id: restore-build
           with:
             path: ./*
