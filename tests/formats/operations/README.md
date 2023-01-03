@@ -44,7 +44,7 @@ Operations:
 | `sync_aggregate`          | `SyncAggregate`              | `sync_aggregate`    | `process_sync_aggregate(state, sync_aggregate)` (new in Altair)                  |
 | `execution_payload`       | `ExecutionPayload`           | `execution_payload` | `process_execution_payload(state, execution_payload)` (new in Bellatrix)         |
 | `withdrawals`             | `ExecutionPayload`           | `execution_payload` | `process_withdrawals(state, execution_payload)` (new in Capella)                 |
-| `bls_to_execution_change` | `SignedBLSToExecutionChange` | `address_change`    | `process_bls_to_execution_change(state, signed_address_change)` (new in Capella) |
+| `bls_to_execution_change` | `SignedBLSToExecutionChange` | `address_change`    | `process_bls_to_execution_change(state, address_change)` (new in Capella) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 
