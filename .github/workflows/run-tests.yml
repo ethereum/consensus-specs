@@ -5,7 +5,7 @@ defaults:
     shell: zsh {0}
 
 env:
-  TEST_TYPE: "minimal"
+  TEST_PRESET_TYPE: "minimal"
   DEFAULT_BRANCH: "dev"
 
 # Run tests on workflow_Dispatch
@@ -17,7 +17,7 @@ on:
   pull_request:    
   workflow_dispatch:
     inputs:
-      test_type:
+      test_preset_type:
         default: minimal
         description: Type of test to run, either mainnet or minimal
         type: string
@@ -55,26 +55,26 @@ jobs:
         with:
           path: ./*
           key: ${{ github.sha }}
-      - name: set TEST_TYPE
-        if: github.event.inputs.test_type != ''        
+      - name: set TEST_PRESET_TYPE
+        if: github.event.inputs.test_preset_type != ''        
         run: |
-          echo "spec_test_type=${{ github.event.inputs.test_type || env.TEST_TYPE }}" >> $GITHUB_ENV
-      - name: set TEST_TYPE
+          echo "spec_test_preset_type=${{ github.event.inputs.test_preset_type || env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
+      - name: set TEST_PRESET_TYPE
         if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
         run: |
-          echo "spec_test_type=${{ env.TEST_TYPE}}" >> $GITHUB_ENV    
-      - name: set TEST_TYPE
+          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV    
+      - name: set TEST_PRESET_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
-          echo "spec_test_type=mainnet" >> $GITHUB_ENV    
-      - name: set TEST_TYPE
+          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV    
+      - name: set TEST_PRESET_TYPE
         if: github.event.schedule=='0 0 * * *'
         run: |
-          echo "spec_test_type=mainnet" >> $GITHUB_ENV
+          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
       - name: Install pyspec requirements
         run: make install_test
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_TYPE=${{env.spec_test_type}}
+        run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
       - uses: actions/upload-artifact@v2
         if: always()
         with:

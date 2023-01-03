@@ -13,7 +13,7 @@ SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_cont
 SOLIDITY_FILE_NAME = deposit_contract.json
 DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
 CONFIGS_DIR = ./configs
-TEST_TYPE ?= minimal
+TEST_PRESET_TYPE ?= minimal
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
@@ -105,21 +105,21 @@ install_test:
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.$(TEST_TYPE) --cov=eth2spec.altair.$(TEST_TYPE) --cov=eth2spec.bellatrix.$(TEST_TYPE) --cov=eth2spec.capella.$(TEST_TYPE) --cov=eth2spec.eip4844.$(TEST_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.$(TEST_PRESET_TYPE) --cov=eth2spec.altair.$(TEST_PRESET_TYPE) --cov=eth2spec.bellatrix.$(TEST_PRESET_TYPE) --cov=eth2spec.capella.$(TEST_PRESET_TYPE) --cov=eth2spec.eip4844.$(TEST_PRESET_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 # Testing against `minimal` or `mainnet` config by default
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.$(TEST_TYPE) --cov=eth2spec.altair.$(TEST_TYPE) --cov=eth2spec.bellatrix.$(TEST_TYPE) --cov=eth2spec.capella.$(TEST_TYPE) --cov=eth2spec.eip4844.$(TEST_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.$(TEST_PRESET_TYPE) --cov=eth2spec.altair.$(TEST_PRESET_TYPE) --cov=eth2spec.bellatrix.$(TEST_PRESET_TYPE) --cov=eth2spec.capella.$(TEST_PRESET_TYPE) --cov=eth2spec.eip4844.$(TEST_PRESET_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n auto --bls-type=milagro --preset=$(TEST_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=milagro --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n auto --bls-type=milagro  --preset=$(TEST_TYPE) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=milagro  --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
