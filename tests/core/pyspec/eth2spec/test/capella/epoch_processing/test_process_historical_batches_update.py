@@ -1,7 +1,6 @@
 from eth2spec.test.context import (
-    CAPELLA,
     spec_state_test,
-    with_phases,
+    with_capella_and_later,
 )
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with
@@ -12,7 +11,7 @@ def run_process_historical_summaries_update(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_historical_summaries_update')
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_historical_summaries_accumulator(spec, state):
     # skip ahead to near the end of the historical batch period (excl block before epoch processing)
