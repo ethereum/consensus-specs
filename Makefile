@@ -13,7 +13,7 @@ SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_cont
 SOLIDITY_FILE_NAME = deposit_contract.json
 DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
 CONFIGS_DIR = ./configs
-
+TEST_TYPE ?= minimal
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
@@ -23,13 +23,15 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SSZ_DIR)/*.md) \
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
+                 $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SPEC_DIR)/altair/**/*.md) \
                  $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
                  $(wildcard $(SPEC_DIR)/capella/*.md) \
                  $(wildcard $(SPEC_DIR)/custody/*.md) \
                  $(wildcard $(SPEC_DIR)/das/*.md) \
                  $(wildcard $(SPEC_DIR)/sharding/*.md) \
-                 $(wildcard $(SPEC_DIR)/eip4844/*.md)
+                 $(wildcard $(SPEC_DIR)/eip4844/*.md) \
+                 $(wildcard $(SSZ_DIR)/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
@@ -38,6 +40,8 @@ COV_INDEX_FILE=$(COV_HTML_OUT_DIR)/index.html
 CURRENT_DIR = ${CURDIR}
 LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
+
+SCRIPTS_DIR = ${CURRENT_DIR}/scripts
 
 export DAPP_SKIP_BUILD:=1
 export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
@@ -62,6 +66,8 @@ partial_clean:
 	rm -rf $(ETH2SPEC_MODULE_DIR)/phase0
 	rm -rf $(ETH2SPEC_MODULE_DIR)/altair
 	rm -rf $(ETH2SPEC_MODULE_DIR)/bellatrix
+	rm -rf $(ETH2SPEC_MODULE_DIR)/capella
+	rm -rf $(ETH2SPEC_MODULE_DIR)/eip4844
 	rm -rf $(COV_HTML_OUT_DIR)
 	rm -rf $(TEST_REPORT_DIR)
 	rm -rf eth2spec.egg-info dist build
@@ -90,30 +96,30 @@ generate_tests: $(GENERATOR_TARGETS)
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec:
-	. venv/bin/activate; python3 setup.py pyspecdev
+	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
 
 # installs the packages to run pyspec tests
 install_test:
 	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
 
-# Testing against `minimal` config by default
+# Testing against `minimal` or `mainnet` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.$(TEST_TYPE) --cov=eth2spec.altair.$(TEST_TYPE) --cov=eth2spec.bellatrix.$(TEST_TYPE) --cov=eth2spec.capella.$(TEST_TYPE) --cov=eth2spec.eip4844.$(TEST_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
-# Testing against `minimal` config by default
+# Testing against `minimal` or `mainnet` config by default
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.minimal --cov=eth2spec.altair.minimal --cov=eth2spec.bellatrix.minimal --cov=eth2spec.capella.minimal --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.$(TEST_TYPE) --cov=eth2spec.altair.$(TEST_TYPE) --cov=eth2spec.bellatrix.$(TEST_TYPE) --cov=eth2spec.capella.$(TEST_TYPE) --cov=eth2spec.eip4844.$(TEST_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
-	mkdir -p tests/core/pyspec/test-reports/eth2spec;
+	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --bls-type=milagro --fork=$(fork) --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=milagro --preset=$(TEST_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --bls-type=milagro --junitxml=eth2spec/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=milagro  --preset=$(TEST_TYPE) --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
@@ -129,19 +135,19 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 	rm $*.tmp
 
 codespell:
-	codespell . --skip ./.git -I .codespell-whitelist
+	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 
 # TODO: add future protocol upgrade patch packages to linting.
 # NOTE: we use `pylint` just for catching unused arguments in spec code
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --disable=all --enable unused-argument ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella
+	&& pylint --rcfile $(LINTER_CONFIG_FILE) ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella ./eth2spec/eip4844 \
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella -p eth2spec.eip4844
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE)
+	flake8 --config $(LINTER_CONFIG_FILE)
 
 compile_deposit_contract:
 	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)
@@ -190,6 +196,14 @@ $(TEST_VECTOR_DIR):
 	mkdir -p $@
 $(TEST_VECTOR_DIR)/:
 	$(info ignoring duplicate tests dir)
+
+gen_kzg_setups:
+	cd $(SCRIPTS_DIR); \
+	if ! test -d venv; then python3 -m venv venv; fi; \
+	. venv/bin/activate; \
+	pip3 install -r requirements.txt; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups; \
+	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4096 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
 
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)

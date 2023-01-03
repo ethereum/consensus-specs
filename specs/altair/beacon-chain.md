@@ -523,6 +523,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         if bls.Verify(pubkey, signing_root, deposit.data.signature):
             state.validators.append(get_validator_from_deposit(deposit))
             state.balances.append(amount)
+            # [New in Altair]
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
@@ -682,7 +683,7 @@ def process_sync_committee_updates(state: BeaconState) -> None:
 
 This helper function is only for initializing the state for pure Altair testnets and tests.
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified: (1) using `ALTAIR_FORK_VERSION` as the current fork version, (2) utilizing the Altair `BeaconBlockBody` when constructing the initial `latest_block_header`, and (3) adding initial sync committees.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified: (1) using `ALTAIR_FORK_VERSION` as the previous and current fork version, (2) utilizing the Altair `BeaconBlockBody` when constructing the initial `latest_block_header`, and (3) adding initial sync committees.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,

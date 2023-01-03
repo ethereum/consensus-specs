@@ -74,7 +74,7 @@ def compute_sync_committee_proposer_reward(spec, state, committee_indices, commi
     return spec.Gwei(participant_reward * participant_number)
 
 
-def compute_committee_indices(spec, state, committee=None):
+def compute_committee_indices(state, committee=None):
     """
     Given a ``committee``, calculate and return the related indices
     """
@@ -107,10 +107,11 @@ def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indic
                 committee_bits,
             )
 
-        assert post_state.balances[index] == pre_state.balances[index] + reward - penalty
+        balance = pre_state.balances[index] + reward
+        assert post_state.balances[index] == (0 if balance < penalty else balance - penalty)
 
 
-def run_sync_committee_processing(spec, state, block, expect_exception=False):
+def run_sync_committee_processing(spec, state, block, expect_exception=False, skip_reward_validation=False):
     """
     Processes everything up to the sync committee work, then runs the sync committee work in isolation, and
     produces a pre-state and post-state (None if exception) specifically for sync-committee processing changes.
@@ -129,20 +130,17 @@ def run_sync_committee_processing(spec, state, block, expect_exception=False):
     if expect_exception:
         assert pre_state.balances == state.balances
     else:
-        committee_indices = compute_committee_indices(
-            spec,
-            state,
-            state.current_sync_committee,
-        )
+        committee_indices = compute_committee_indices(state, state.current_sync_committee)
         committee_bits = block.body.sync_aggregate.sync_committee_bits
-        validate_sync_committee_rewards(
-            spec,
-            pre_state,
-            state,
-            committee_indices,
-            committee_bits,
-            block.proposer_index
-        )
+        if not skip_reward_validation:
+            validate_sync_committee_rewards(
+                spec,
+                pre_state,
+                state,
+                committee_indices,
+                committee_bits,
+                block.proposer_index
+            )
 
 
 def _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits):
@@ -160,6 +158,6 @@ def _build_block_for_next_slot_with_sync_participation(spec, state, committee_in
     return block
 
 
-def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
+def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits, skip_reward_validation=False):
     block = _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits)
-    yield from run_sync_committee_processing(spec, state, block)
+    yield from run_sync_committee_processing(spec, state, block, skip_reward_validation=skip_reward_validation)

@@ -88,7 +88,7 @@ def test_activation_queue_no_activation_no_finality(spec, state):
 def test_activation_queue_sorting(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
 
-    # try to activate more than the per-epoch churn linmit
+    # try to activate more than the per-epoch churn limit
     mock_activations = churn_limit * 2
 
     epoch = spec.get_current_epoch(state)

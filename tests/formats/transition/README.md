@@ -8,6 +8,7 @@ Clients should assume forks happen sequentially in the following manner:
 
 0. `phase0`
 1. `altair`
+2. `bellatrix`
 
 For example, if a test case has `post_fork` of `altair`, the test consumer should assume the test begins in `phase0` and use that specification to process the initial state and any blocks up until the fork epoch. After the fork happens, the test consumer should use the specification according to the `altair` fork to process the remaining data.
 
@@ -39,7 +40,7 @@ Blocks must be processed in order, following the main transition function
 Blocks are encoded as `SignedBeaconBlock`s from the relevant spec version
 as indicated by the `post_fork` and `fork_block` data in the `meta.yaml`.
 
-As blocks span fork boundaires, a `fork_block` number is given in
+As blocks span fork boundaries, a `fork_block` number is given in
 the `meta.yaml` to help resolve which blocks belong to which fork.
 
 The `fork_block` is the index in the test data of the **last** block

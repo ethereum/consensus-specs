@@ -45,5 +45,7 @@ Sub-transitions:
 - `participation_record_updates` (Phase 0 only)
 - `participation_flag_updates` (Altair)
 - `sync_committee_updates` (Altair)
+- `full_withdrawals` (Capella)
+- `partial_withdrawals` (Capella)
 
 The resulting state should match the expected `post` state.

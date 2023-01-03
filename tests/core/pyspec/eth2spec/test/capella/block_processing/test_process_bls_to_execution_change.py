@@ -1,7 +1,8 @@
-from eth2spec.utils import bls
-from eth2spec.test.helpers.keys import pubkeys, privkeys, pubkey_to_privkey
+from eth2spec.test.helpers.constants import CAPELLA
+from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_capella_and_later, always_bls
+from eth2spec.test.context import spec_state_test, expect_assertion_error, with_phases, always_bls
 
 
 def run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=True):
@@ -37,39 +38,14 @@ def run_bls_to_execution_change_processing(spec, state, signed_address_change, v
     yield 'post', state
 
 
-def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubkey=None):
-    if validator_index is None:
-        validator_index = 0
-
-    if withdrawal_pubkey is None:
-        key_index = -1 - validator_index
-        withdrawal_pubkey = pubkeys[key_index]
-        withdrawal_privkey = privkeys[key_index]
-    else:
-        withdrawal_privkey = pubkey_to_privkey[withdrawal_pubkey]
-
-    domain = spec.get_domain(state, spec.DOMAIN_BLS_TO_EXECUTION_CHANGE)
-    address_change = spec.BLSToExecutionChange(
-        validator_index=validator_index,
-        from_bls_pubkey=withdrawal_pubkey,
-        to_execution_address=b'\x42' * 20,
-    )
-
-    signing_root = spec.compute_signing_root(address_change, domain)
-    return spec.SignedBLSToExecutionChange(
-        message=address_change,
-        signature=bls.Sign(withdrawal_privkey, signing_root),
-    )
-
-
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_not_activated(spec, state):
     validator_index = 3
@@ -82,10 +58,12 @@ def test_success_not_activated(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert not spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_in_activation_queue(spec, state):
     validator_index = 3
@@ -98,10 +76,12 @@ def test_success_in_activation_queue(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert not spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_in_exit_queue(spec, state):
     validator_index = 3
@@ -114,7 +94,7 @@ def test_success_in_exit_queue(spec, state):
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_exited(spec, state):
     validator_index = 4
@@ -126,10 +106,12 @@ def test_success_exited(spec, state):
     signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert not spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 def test_success_withdrawable(spec, state):
     validator_index = 4
@@ -142,21 +124,23 @@ def test_success_withdrawable(spec, state):
     signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
-    assert spec.is_fully_withdrawable_validator(state.validators[validator_index], spec.get_current_epoch(state))
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
-def test_fail_val_index_out_of_range(spec, state):
+def test_invalid_val_index_out_of_range(spec, state):
     # Create for one validator beyond the validator list length
     signed_address_change = get_signed_address_change(spec, state, validator_index=len(state.validators))
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
-def test_fail_already_0x01(spec, state):
+def test_invalid_already_0x01(spec, state):
     # Create for one validator beyond the validator list length
     validator_index = len(state.validators) // 2
     validator = state.validators[validator_index]
@@ -166,9 +150,9 @@ def test_fail_already_0x01(spec, state):
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
-def test_fail_incorrect_from_bls_pubkey(spec, state):
+def test_invalid_incorrect_from_bls_pubkey(spec, state):
     # Create for one validator beyond the validator list length
     validator_index = 2
     signed_address_change = get_signed_address_change(
@@ -180,12 +164,12 @@ def test_fail_incorrect_from_bls_pubkey(spec, state):
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
 
 
-@with_capella_and_later
+@with_phases([CAPELLA])
 @spec_state_test
 @always_bls
-def test_fail_bad_signature(spec, state):
+def test_invalid_bad_signature(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
-    # Mutate sigature
+    # Mutate signature
     signed_address_change.signature = spec.BLSSignature(b'\x42' * 96)
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)

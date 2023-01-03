@@ -31,7 +31,7 @@ from eth2spec.test.context import (
 @spec_state_test
 @always_bls
 def test_invalid_signature_bad_domain(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -52,7 +52,7 @@ def test_invalid_signature_bad_domain(spec, state):
 @spec_state_test
 @always_bls
 def test_invalid_signature_missing_participant(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(2020)
     random_participant = rng.choice(committee_indices)
 
@@ -116,7 +116,7 @@ def test_invalid_signature_infinite_signature_with_single_participant(spec, stat
 @spec_state_test
 @always_bls
 def test_invalid_signature_extra_participant(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(3030)
     random_participant = rng.choice(committee_indices)
 
@@ -136,18 +136,22 @@ def test_invalid_signature_extra_participant(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
+def is_duplicate_sync_committee(committee_indices):
+    dup = {v for v in committee_indices if committee_indices.count(v) > 1}
+    return len(dup) > 0
+
+
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_nonduplicate_committee(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
-    committee_size = len(committee_indices)
-    committee_bits = [True] * committee_size
-    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+    committee_indices = compute_committee_indices(state)
 
     # Preconditions of this test case
-    assert active_validator_count > spec.SYNC_COMMITTEE_SIZE
-    assert committee_size == len(set(committee_indices))
+    assert not is_duplicate_sync_committee(committee_indices)
+
+    committee_size = len(committee_indices)
+    committee_bits = [True] * committee_size
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
@@ -156,14 +160,13 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
-    committee_size = len(committee_indices)
-    committee_bits = [False] * committee_size
-    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+    committee_indices = compute_committee_indices(state)
 
     # Preconditions of this test case
-    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
-    assert committee_size > len(set(committee_indices))
+    assert is_duplicate_sync_committee(committee_indices)
+
+    committee_size = len(committee_indices)
+    committee_bits = [False] * committee_size
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
@@ -172,15 +175,14 @@ def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_half_participation(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
+
+    # Preconditions of this test case
+    assert is_duplicate_sync_committee(committee_indices)
+
     committee_size = len(committee_indices)
     committee_bits = [True] * (committee_size // 2) + [False] * (committee_size // 2)
     assert len(committee_bits) == committee_size
-    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
-
-    # Preconditions of this test case
-    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
-    assert committee_size > len(set(committee_indices))
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
@@ -189,23 +191,121 @@ def test_sync_committee_rewards_duplicate_committee_half_participation(spec, sta
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_full_participation(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
-    committee_size = len(committee_indices)
-    committee_bits = [True] * committee_size
-    active_validator_count = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+    committee_indices = compute_committee_indices(state)
 
     # Preconditions of this test case
-    assert active_validator_count < spec.SYNC_COMMITTEE_SIZE
-    assert committee_size > len(set(committee_indices))
+    assert is_duplicate_sync_committee(committee_indices)
+
+    committee_size = len(committee_indices)
+    committee_bits = [True] * committee_size
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
+
+
+def _run_sync_committee_selected_twice(
+        spec, state,
+        pre_balance, participate_first_position, participate_second_position,
+        skip_reward_validation=False):
+    committee_indices = compute_committee_indices(state)
+
+    # Preconditions of this test case
+    assert is_duplicate_sync_committee(committee_indices)
+
+    committee_size = len(committee_indices)
+    committee_bits = [False] * committee_size
+
+    # Find duplicate indices that get selected twice
+    dup = {v for v in committee_indices if committee_indices.count(v) == 2}
+    assert len(dup) > 0
+    validator_index = dup.pop()
+    positions = [i for i, v in enumerate(committee_indices) if v == validator_index]
+    committee_bits[positions[0]] = participate_first_position
+    committee_bits[positions[1]] = participate_second_position
+
+    # Set validator's balance
+    state.balances[validator_index] = pre_balance
+    state.validators[validator_index].effective_balance = min(
+        pre_balance - pre_balance % spec.EFFECTIVE_BALANCE_INCREMENT,
+        spec.MAX_EFFECTIVE_BALANCE,
+    )
+
+    yield from run_successful_sync_committee_test(
+        spec, state, committee_indices, committee_bits,
+        skip_reward_validation=skip_reward_validation)
+
+    return validator_index
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_zero_balance_only_participate_first_one(spec, state):
+    validator_index = yield from _run_sync_committee_selected_twice(
+        spec,
+        state,
+        pre_balance=0,
+        participate_first_position=True,
+        participate_second_position=False,
+    )
+
+    # The validator gets reward first (balance > 0) and then gets the same amount of penalty (balance == 0)
+    assert state.balances[validator_index] == 0
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_zero_balance_only_participate_second_one(spec, state):
+    # Skip `validate_sync_committee_rewards` because it doesn't handle the balance computation order
+    # inside the for loop
+    validator_index = yield from _run_sync_committee_selected_twice(
+        spec,
+        state,
+        pre_balance=0,
+        participate_first_position=False,
+        participate_second_position=True,
+        skip_reward_validation=True,
+    )
+
+    # The validator gets penalty first (balance is still 0) and then gets reward (balance > 0)
+    assert state.balances[validator_index] > 0
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_participate_first_one(spec, state):
+    validator_index = yield from _run_sync_committee_selected_twice(
+        spec,
+        state,
+        pre_balance=spec.MAX_EFFECTIVE_BALANCE,
+        participate_first_position=True,
+        participate_second_position=False,
+    )
+
+    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE
+
+
+@with_altair_and_later
+@with_presets([MAINNET], reason="to create duplicate committee")
+@spec_state_test
+def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_participate_second_one(spec, state):
+    validator_index = yield from _run_sync_committee_selected_twice(
+        spec,
+        state,
+        pre_balance=spec.MAX_EFFECTIVE_BALANCE,
+        participate_first_position=False,
+        participate_second_position=True,
+    )
+
+    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE
 
 
 @with_altair_and_later
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
     committee_bits = [rng.choice([True, False]) for _ in committee_indices]
 
@@ -216,7 +316,7 @@ def test_sync_committee_rewards_not_full_participants(spec, state):
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_empty_participants(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     committee_bits = [False for _ in committee_indices]
 
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
@@ -226,7 +326,7 @@ def test_sync_committee_rewards_empty_participants(spec, state):
 @spec_state_test
 @always_bls
 def test_invalid_signature_past_block(spec, state):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
 
     for _ in range(2):
         # NOTE: need to transition twice to move beyond the degenerate case at genesis
@@ -280,7 +380,7 @@ def test_invalid_signature_previous_committee(spec, state):
     # Use the previous sync committee to produce the signature.
     # Ensure that the pubkey sets are different.
     assert set(old_sync_committee.pubkeys) != set(state.current_sync_committee.pubkeys)
-    committee_indices = compute_committee_indices(spec, state, old_sync_committee)
+    committee_indices = compute_committee_indices(state, old_sync_committee)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -322,7 +422,7 @@ def test_valid_signature_future_committee(spec, state):
     assert sync_committee != old_current_sync_committee
     assert sync_committee != old_next_sync_committee
 
-    committee_indices = compute_committee_indices(spec, state, sync_committee)
+    committee_indices = compute_committee_indices(state, sync_committee)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -344,7 +444,7 @@ def test_valid_signature_future_committee(spec, state):
 @always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
 def test_proposer_in_committee_without_participation(spec, state):
-    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    committee_indices = compute_committee_indices(state, state.current_sync_committee)
 
     # NOTE: seem to reliably be getting a matching proposer in the first epoch w/ ``MINIMAL`` preset.
     for _ in range(spec.SLOTS_PER_EPOCH):
@@ -385,7 +485,7 @@ def test_proposer_in_committee_without_participation(spec, state):
 @always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
 def test_proposer_in_committee_with_participation(spec, state):
-    committee_indices = compute_committee_indices(spec, state, state.current_sync_committee)
+    committee_indices = compute_committee_indices(state, state.current_sync_committee)
     participation = [True for _ in committee_indices]
 
     # NOTE: seem to reliably be getting a matching proposer in the first epoch w/ ``MINIMAL`` preset.
@@ -451,7 +551,7 @@ def test_sync_committee_with_participating_exited_member(spec, state):
     for _ in range(3):
         next_epoch_via_block(spec, state)
 
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
 
     exited_index = _exit_validator_from_committee_and_transition_state(
@@ -490,7 +590,7 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
     for _ in range(3):
         next_epoch_via_block(spec, state)
 
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
 
     exited_index = _exit_validator_from_committee_and_transition_state(
@@ -533,7 +633,7 @@ def test_sync_committee_with_participating_withdrawable_member(spec, state):
     for _ in range(3):
         next_epoch_via_block(spec, state)
 
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
 
     exited_index = _exit_validator_from_committee_and_transition_state(
@@ -572,7 +672,7 @@ def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
     for _ in range(3):
         next_epoch_via_block(spec, state)
 
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
 
     exited_index = _exit_validator_from_committee_and_transition_state(

@@ -11,16 +11,14 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
-  - [`is_data_available`](#is_data_available)
-  - [`hash_to_bls_field`](#hash_to_bls_field)
-  - [`compute_powers`](#compute_powers)
-  - [`vector_lincomb`](#vector_lincomb)
-  - [`verify_blobs_sidecar`](#verify_blobs_sidecar)
+  - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Block proposal](#block-proposal)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Blob commitments](#blob-commitments)
-  - [Beacon Block publishing time](#beacon-block-publishing-time)
+      - [Blob KZG commitments](#blob-kzg-commitments)
+    - [Constructing the `SignedBeaconBlockAndBlobsSidecar`](#constructing-the-signedbeaconblockandblobssidecar)
+      - [Block](#block)
+      - [Sidecar](#sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -31,156 +29,80 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Bellatrix -- Honest Validator](../bellatrix/validator.md) guide.
+This document is an extension of the [Capella -- Honest Validator](../capella/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP4844](./beacon-chain.md) are requisite for this document and used throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of EIP-4844](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Helpers
 
-### `is_data_available`
+### `get_blobs_and_kzg_commitments`
 
-The implementation of `is_data_available` is meant to change with later sharding upgrades.
-Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
-and verify the sidecar with `verify_blobs_sidecar`.
+The interface to retrieve blobs and corresponding kzg commitments.
 
-Without the sidecar the block may be processed further optimistically,
-but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` may be unified.
+Implementers may also retrieve blobs individually per transaction.
 
 ```python
-def is_data_available(slot: Slot, beacon_block_root: Root, kzgs: Sequence[KZGCommitment]):
-    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)  # implementation dependent, raises an exception if not available
-    verify_blobs_sidecar(slot, beacon_block_root, kzgs, sidecar)
-```
-
-### `hash_to_bls_field`
-
-```python
-def hash_to_bls_field(x: Container) -> BLSFieldElement:
-    """
-    This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
-    """
-    return int.from_bytes(hash_tree_root(x), "little") % BLS_MODULUS
-```
-
-### `compute_powers`
-```python
-def compute_powers(x: BLSFieldElement, n: uint64) -> List[BLSFieldElement]:
-    current_power = 1
-    powers = []
-    for _ in range(n):
-        powers.append(BLSFieldElement(current_power))
-        current_power = current_power * int(x) % BLS_MODULUS
-    return powers
-```
-
-### `vector_lincomb`
-
-```python
-def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
-    """
-    Given a list of vectors, compute the linear combination of each column with `scalars`, and return the resulting
-    vector.
-    """
-    r = [0]*len(vectors[0])
-    for v, a in zip(vectors, scalars):
-        for i, x in enumerate(v):
-            r[i] = (r[i] + a * x) % BLS_MODULUS
-    return [BLSFieldElement(x) for x in r]
-```
-
-### `verify_blobs_sidecar`
-
-```python
-def verify_blobs_sidecar(slot: Slot, beacon_block_root: Root,
-                         expected_kzgs: Sequence[KZGCommitment], blobs_sidecar: BlobsSidecar) -> None:
-    assert slot == blobs_sidecar.beacon_block_slot
-    assert beacon_block_root == blobs_sidecar.beacon_block_root
-    blobs = blobs_sidecar.blobs
-    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
-    assert len(expected_kzgs) == len(blobs)
-
-    # Generate random linear combination challenges
-    r = hash_to_bls_field([blobs, expected_kzgs])
-    r_powers = compute_powers(r, len(expected_kzgs))
-
-    # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = lincomb(expected_kzgs, r_powers)
-
-    # Create aggregated polynomial in evaluation form
-    aggregated_poly = vector_lincomb(blobs, r_powers)
-
-    # Generate challenge `x` and evaluate the aggregated polynomial at `x`
-    x = hash_to_bls_field([aggregated_poly, aggregated_poly_commitment])
-    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, x)
-
-    # Verify aggregated proof
-    assert verify_kzg_proof(aggregated_poly_commitment, x, y, kzg_aggregated_proof)
+def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment]]:
+    # pylint: disable=unused-argument
+    ...
 ```
 
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.
-Namely, the blob handling and the addition of `BlobsSidecar`.
+Namely, the blob handling and the addition of `SignedBeaconBlockAndBlobsSidecar`.
 
-### Block proposal
+### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
 
-##### Blob commitments
+##### Blob KZG commitments
 
-After retrieving the execution payload from the execution engine as specified in Bellatrix,
-the blobs are retrieved and processed: 
-
-```python
-# execution_payload = execution_engine.get_payload(payload_id)
-# block.body.execution_payload = execution_payload
-# ...
-
-kzgs, blobs = get_blobs(payload_id)
-
-# Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
-assert verify_kzgs_against_transactions(execution_payload.transactions, kzgs)
-
-# Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
-assert len(kzgs) == len(blobs) and [blob_to_kzg(blob) == kzg for blob, kzg in zip(blobs, kzgs)]
-
-# Update the block body 
-block.body.blob_kzgs = kzgs
-```
-
-The `blobs` should be held with the block in preparation of publishing.
-Without the `blobs`, the published block will effectively be ignored by honest validators.
-
-Note: This API is *unstable*. `get_blobs` and `get_payload` may be unified.
-Implementers may also retrieve blobs individually per transaction.
-
-### Beacon Block publishing time
-
-Before publishing a prepared beacon block proposal, the corresponding blobs are packaged into a sidecar object for distribution to the network:
+1. After retrieving the execution payload from the execution engine as specified in Capella,
+use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blobs_and_kzg_commitments(payload_id)`.
+2. Validate `blobs` and `blob_kzg_commitments`:
 
 ```python
-blobs_sidecar = BlobsSidecar(
-    beacon_block_root=hash_tree_root(beacon_block)
-    beacon_block_slot=beacon_block.slot
-    blobs=blobs,
-)
+def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
+                                       blobs: Sequence[Blob],
+                                       blob_kzg_commitments: Sequence[KZGCommitment]) -> None:
+    # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
+    assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
+
+    # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
+    assert len(blob_kzg_commitments) == len(blobs)
+    assert [blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments)]
 ```
 
-And then signed:
+3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
 
+#### Constructing the `SignedBeaconBlockAndBlobsSidecar`
+To construct a `SignedBeaconBlockAndBlobsSidecar`, a `signed_beacon_block_and_blobs_sidecar` is defined with the necessary context for block and sidecar proposal.
+
+##### Block
+Set `signed_beacon_block_and_blobs_sidecar.beacon_block = block` where `block` is obtained above.
+
+##### Sidecar
+Coupled with block, the corresponding blobs are packaged into a sidecar object for distribution to the network.
+
+Set `signed_beacon_block_and_blobs_sidecar.blobs_sidecar = sidecar` where `sidecar` is obtained from:
 ```python
-domain = get_domain(state, DOMAIN_BLOBS_SIDECAR, blobs_sidecar.beacon_block_slot / SLOTS_PER_EPOCH)
-signing_root = compute_signing_root(blobs_sidecar, domain)
-signature = bls.Sign(privkey, signing_root)
-signed_blobs_sidecar = SignedBlobsSidecar(message=blobs_sidecar, signature=signature)
+def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar:
+    return BlobsSidecar(
+        beacon_block_root=hash_tree_root(block),
+        beacon_block_slot=block.slot,
+        blobs=blobs,
+        kzg_aggregated_proof=compute_aggregate_kzg_proof(blobs),
+    )
 ```
 
-This `signed_blobs_sidecar` is then published to the global `blobs_sidecar` topic as soon as the `beacon_block` is published.
+This `signed_beacon_block_and_blobs_sidecar` is then published to the global `beacon_block_and_blobs_sidecar` topic.
 
-After publishing the sidecar peers on the network may request the sidecar through sync-requests, or a local user may be interested.
-The validator MUST hold on to blobs for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,
+After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
+The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,
 to ensure the data-availability of these blobs throughout the network.
 
-After `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` nodes MAY prune the blobs and/or stop serving them.
+After `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop serving them.

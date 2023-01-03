@@ -1,41 +1,10 @@
-from eth2spec.test.helpers.constants import FORKS_BEFORE_CAPELLA
+from eth_hash.auto import keccak
+from trie import HexaryTrie
+from rlp import encode
+from rlp.sedes import big_endian_int, Binary, List
 
-
-def build_empty_execution_payload(spec, state, randao_mix=None):
-    """
-    Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
-    """
-    latest = state.latest_execution_payload_header
-    timestamp = spec.compute_timestamp_at_slot(state, state.slot)
-    empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
-
-    if randao_mix is None:
-        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
-
-    payload = spec.ExecutionPayload(
-        parent_hash=latest.block_hash,
-        fee_recipient=spec.ExecutionAddress(),
-        state_root=latest.state_root,  # no changes to the state
-        receipts_root=b"no receipts here" + b"\x00" * 16,  # TODO: root of empty MPT may be better.
-        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
-        block_number=latest.block_number + 1,
-        prev_randao=randao_mix,
-        gas_limit=latest.gas_limit,  # retain same limit
-        gas_used=0,  # empty block, 0 gas
-        timestamp=timestamp,
-        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
-        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
-        block_hash=spec.Hash32(),
-        transactions=empty_txs,
-    )
-    if spec.fork not in FORKS_BEFORE_CAPELLA:
-        num_withdrawals = min(spec.MAX_WITHDRAWALS_PER_PAYLOAD, len(state.withdrawal_queue))
-        payload.withdrawals = state.withdrawal_queue[:num_withdrawals]
-
-    # TODO: real RLP + block hash logic would be nice, requires RLP and keccak256 dependency however.
-    payload.block_hash = spec.Hash32(spec.hash(payload.hash_tree_root() + b"FAKE RLP HASH"))
-
-    return payload
+from eth2spec.debug.random_value import get_random_bytes_list
+from eth2spec.test.helpers.forks import is_post_capella, is_post_eip4844
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -55,20 +24,194 @@ def get_execution_payload_header(spec, execution_payload):
         block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions)
     )
-    if spec.fork not in FORKS_BEFORE_CAPELLA:
+    if is_post_capella(spec):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
     return payload_header
 
 
+# https://eips.ethereum.org/EIPS/eip-2718
+def compute_trie_root_from_indexed_data(data):
+    """
+    Computes the root hash of `patriciaTrie(rlp(Index) => Data)` for a data array.
+    """
+    t = HexaryTrie(db={})
+    for i, obj in enumerate(data):
+        k = encode(i, big_endian_int)
+        t.set(k, obj)
+    return t.root_hash
+
+
+# https://eips.ethereum.org/EIPS/eip-4895
+# https://eips.ethereum.org/EIPS/eip-4844
+def compute_el_header_block_hash(spec,
+                                 payload_header,
+                                 transactions_trie_root,
+                                 withdrawals_trie_root=None):
+    """
+    Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
+    """
+    execution_payload_header_rlp = [
+        # parent_hash
+        (Binary(32, 32), payload_header.parent_hash),
+        # ommers_hash
+        (Binary(32, 32), bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
+        # coinbase
+        (Binary(20, 20), payload_header.fee_recipient),
+        # state_root
+        (Binary(32, 32), payload_header.state_root),
+        # txs_root
+        (Binary(32, 32), transactions_trie_root),
+        # receipts_root
+        (Binary(32, 32), payload_header.receipts_root),
+        # logs_bloom
+        (Binary(256, 256), payload_header.logs_bloom),
+        # difficulty
+        (big_endian_int, 0),
+        # number
+        (big_endian_int, payload_header.block_number),
+        # gas_limit
+        (big_endian_int, payload_header.gas_limit),
+        # gas_used
+        (big_endian_int, payload_header.gas_used),
+        # timestamp
+        (big_endian_int, payload_header.timestamp),
+        # extradata
+        (Binary(0, 32), payload_header.extra_data),
+        # prev_randao
+        (Binary(32, 32), payload_header.prev_randao),
+        # nonce
+        (Binary(8, 8), bytes.fromhex("0000000000000000")),
+        # base_fee_per_gas
+        (big_endian_int, payload_header.base_fee_per_gas),
+    ]
+    if is_post_capella(spec):
+        # withdrawals_root
+        execution_payload_header_rlp.append((Binary(32, 32), withdrawals_trie_root))
+    if is_post_eip4844(spec):
+        # excess_data_gas
+        execution_payload_header_rlp.append((big_endian_int, payload_header.excess_data_gas))
+
+    sedes = List([schema for schema, _ in execution_payload_header_rlp])
+    values = [value for _, value in execution_payload_header_rlp]
+    encoded = encode(values, sedes)
+
+    return spec.Hash32(keccak(encoded))
+
+
+# https://eips.ethereum.org/EIPS/eip-4895
+def get_withdrawal_rlp(spec, withdrawal):
+    withdrawal_rlp = [
+        # index
+        (big_endian_int, withdrawal.index),
+        # validator_index
+        (big_endian_int, withdrawal.validator_index),
+        # address
+        (Binary(20, 20), withdrawal.address),
+        # amount
+        (big_endian_int, spec.uint256(withdrawal.amount) * (10**9)),
+    ]
+
+    sedes = List([schema for schema, _ in withdrawal_rlp])
+    values = [value for _, value in withdrawal_rlp]
+    return encode(values, sedes)
+
+
+def compute_el_block_hash(spec, payload):
+    transactions_trie_root = compute_trie_root_from_indexed_data(payload.transactions)
+
+    if is_post_capella(spec):
+        withdrawals_encoded = [get_withdrawal_rlp(spec, withdrawal) for withdrawal in payload.withdrawals]
+        withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
+    else:
+        withdrawals_trie_root = None
+
+    payload_header = get_execution_payload_header(spec, payload)
+
+    return compute_el_header_block_hash(
+        spec,
+        payload_header,
+        transactions_trie_root,
+        withdrawals_trie_root,
+    )
+
+
+def build_empty_execution_payload(spec, state, randao_mix=None):
+    """
+    Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
+    """
+    latest = state.latest_execution_payload_header
+    timestamp = spec.compute_timestamp_at_slot(state, state.slot)
+    empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
+
+    if randao_mix is None:
+        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
+    payload = spec.ExecutionPayload(
+        parent_hash=latest.block_hash,
+        fee_recipient=spec.ExecutionAddress(),
+        state_root=latest.state_root,  # no changes to the state
+        receipts_root=spec.Bytes32(bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
+        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
+        block_number=latest.block_number + 1,
+        prev_randao=randao_mix,
+        gas_limit=latest.gas_limit,  # retain same limit
+        gas_used=0,  # empty block, 0 gas
+        timestamp=timestamp,
+        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
+        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
+        transactions=empty_txs,
+    )
+    if is_post_capella(spec):
+        payload.withdrawals = spec.get_expected_withdrawals(state)
+
+    payload.block_hash = compute_el_block_hash(spec, payload)
+
+    return payload
+
+
+def build_randomized_execution_payload(spec, state, rng):
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
+    execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
+    execution_payload.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32))
+    execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
+        get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
+    )
+    execution_payload.block_number = rng.randint(0, 10e10)
+    execution_payload.gas_limit = rng.randint(0, 10e10)
+    execution_payload.gas_used = rng.randint(0, 10e10)
+    extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
+    execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
+        get_random_bytes_list(rng, extra_data_length)
+    )
+    execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
+
+    num_transactions = rng.randint(0, 100)
+    execution_payload.transactions = [
+        spec.Transaction(get_random_bytes_list(rng, rng.randint(0, 1000)))
+        for _ in range(num_transactions)
+    ]
+
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+
+    return execution_payload
+
+
 def build_state_with_incomplete_transition(spec, state):
-    return build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    state = build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    assert not spec.is_merge_transition_complete(state)
+
+    return state
 
 
 def build_state_with_complete_transition(spec, state):
     pre_state_payload = build_empty_execution_payload(spec, state)
     payload_header = get_execution_payload_header(spec, pre_state_payload)
 
-    return build_state_with_execution_payload_header(spec, state, payload_header)
+    state = build_state_with_execution_payload_header(spec, state, payload_header)
+    assert spec.is_merge_transition_complete(state)
+
+    return state
 
 
 def build_state_with_execution_payload_header(spec, state, execution_payload_header):

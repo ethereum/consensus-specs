@@ -7,20 +7,21 @@ import os
 import re
 import string
 import textwrap
-from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar
+from typing import Dict, NamedTuple, List, Sequence, Optional, TypeVar, Tuple
 from abc import ABC, abstractmethod
 import ast
 import subprocess
 import sys
 import copy
 from collections import OrderedDict
+import json
 
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
 def installPackage(package: str):
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
 
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.16.5"
+RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
 try:
     import ruamel.yaml
 except ImportError:
@@ -45,6 +46,7 @@ PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
+EIP4844 = 'eip4844'
 
 
 # The helper functions that are used when defining constants
@@ -77,6 +79,7 @@ class VariableDefinition(NamedTuple):
     type_name: Optional[str]
     value: str
     comment: Optional[str]  # e.g. "noqa: E501"
+    type_hint: Optional[str]  # e.g., "Final"
 
 
 class SpecObject(NamedTuple):
@@ -119,7 +122,7 @@ def _get_self_type_from_source(source: str) -> Optional[str]:
     return args[0].annotation.id
 
 
-def _get_class_info_from_source(source: str) -> (str, Optional[str]):
+def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     class_def = ast.parse(source).body[0]
     base = class_def.bases[0]
     if isinstance(base, ast.Name):
@@ -138,6 +141,28 @@ def _is_constant_id(name: str) -> bool:
     return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
 
 
+def _load_kzg_trusted_setups(preset_name):
+    """
+    [TODO] it's not the final mainnet trusted setup.
+    We will update it after the KZG ceremony.
+    """
+    file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/testing_trusted_setups.json'
+
+    with open(file_path, 'r') as f:
+        json_data = json.load(f)
+
+    trusted_setup_G1 = json_data['setup_G1']
+    trusted_setup_G2 = json_data['setup_G2']
+    trusted_setup_G1_lagrange = json_data['setup_G1_lagrange']
+    roots_of_unity = json_data['roots_of_unity']
+
+    return trusted_setup_G1, trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
+
+ALL_KZG_SETUPS = {
+    'minimal': _load_kzg_trusted_setups('minimal'),
+    'mainnet': _load_kzg_trusted_setups('mainnet')
+}
+
 ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
 
 
@@ -151,21 +176,30 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
     return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
-def _parse_value(name: str, typed_value: str) -> VariableDefinition:
+def _parse_value(name: str, typed_value: str, type_hint: Optional[str]=None) -> VariableDefinition:
     comment = None
     if name == "BLS12_381_Q":
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
     if '(' not in typed_value:
-        return VariableDefinition(type_name=None, value=typed_value, comment=comment)
+        return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
     i = typed_value.index('(')
     type_name = typed_value[:i]
 
-    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment)
+    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
 
 
-def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) -> SpecObject:
+def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
+    comment = "noqa: E501"
+    kzg_setups = ALL_KZG_SETUPS[preset_name]
+    constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(kzg_setups[0]), comment, None)
+    constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[1]), comment, None)
+    constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(kzg_setups[2]), comment, None)
+    constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(kzg_setups[3]), comment, None)
+
+
+def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
     constant_vars: Dict[str, VariableDefinition] = {}
@@ -230,7 +264,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
                             custom_types[name] = value
                         continue
 
@@ -240,16 +274,23 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str]) ->
 
                     value_def = _parse_value(name, value)
                     if name in preset:
-                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment)
+                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment, None)
                     elif name in config:
-                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment)
+                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
+                        if name == 'ENDIANNESS':
+                            # Deal with mypy Literal typing check
+                            value_def = _parse_value(name, value, type_hint='Final')
                         constant_vars[name] = value_def
 
         elif isinstance(child, LinkRefDef):
             comment = _get_eth2_spec_comment(child)
             if comment == "skip":
                 should_skip = True
+
+    # Load KZG trusted setup from files
+    if any('KZG_SETUP' in name for name in constant_vars):
+        _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
 
     return SpecObject(
         functions=functions,
@@ -304,7 +345,7 @@ class SpecBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:  # TODO
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
         """
         The constants that are required for custom types.
         """
@@ -336,7 +377,7 @@ from dataclasses import (
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
@@ -432,7 +473,7 @@ get_attesting_indices = cache_this(
         return {}
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
         return {}
 
     @classmethod
@@ -457,6 +498,7 @@ class AltairSpecBuilder(Phase0SpecBuilder):
 from typing import NewType, Union as PyUnion
 
 from eth2spec.phase0 import {preset_name} as phase0
+from eth2spec.test.helpers.merkle import build_proof
 from eth2spec.utils.ssz.ssz_typing import Path
 '''
 
@@ -474,13 +516,19 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
-    return GeneralizedIndex(ssz_path.gindex())'''
+    return GeneralizedIndex(ssz_path.gindex())
+
+
+def compute_merkle_proof_for_state(state: BeaconState,
+                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+    return build_proof(state.get_backing(), index)'''
 
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         constants = {
             'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
+            'CURRENT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
             'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}
@@ -540,6 +588,7 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
 
@@ -547,11 +596,11 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls) -> str:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
-            'MAX_BYTES_PER_TRANSACTION': 'uint64(2**30)',
+            'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(), **constants}
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 #
@@ -567,14 +616,78 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
+#
+# EIP4844SpecBuilder
+#
+class EIP4844SpecBuilder(CapellaSpecBuilder):
+    fork: str = EIP4844
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.capella import {preset_name} as capella
+'''
+
+
+    @classmethod
+    def preparations(cls):
+        return super().preparations() + '\n' + '''
+T = TypeVar('T')  # For generic function
+'''
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() + '\n\n' + '''
+#
+# Temporarily disable Withdrawals functions for EIP4844 testnets
+#
+
+
+def no_op(fn):  # type: ignore
+    # pylint: disable=unused-argument
+    def wrapper(*args, **kw):  # type: ignore
+        return None
+    return wrapper
+
+
+def get_empty_list_result(fn):  # type: ignore
+    # pylint: disable=unused-argument
+    def wrapper(*args, **kw):  # type: ignore
+        return []
+    return wrapper
+
+
+process_withdrawals = no_op(process_withdrawals)
+process_bls_to_execution_change = no_op(process_bls_to_execution_change)
+get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
+
+
+#
+# End
+#
+
+def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
+    # pylint: disable=unused-argument
+    return "TEST"'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+        constants = {
+            'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
+            'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
+            'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
+        }
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
 }
 
 
-def is_spec_defined_type(value: str) -> bool:
-    return value.startswith('ByteList') or value.startswith('Union')
+def is_byte_vector(value: str) -> bool:
+    return value.startswith(('ByteVector'))
 
 
 def objects_to_spec(preset_name: str,
@@ -587,17 +700,8 @@ def objects_to_spec(preset_name: str,
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n    pass\n"
+                f"class {key}({value}):\n    pass\n" if not is_byte_vector(value) else f"class {key}({value}):  # type: ignore\n    pass\n"
                 for key, value in spec_object.custom_types.items()
-                if not is_spec_defined_type(value)
-            ]
-        )
-        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if is_spec_defined_type(value)]) > 0 else '')
-        + '\n\n'.join(
-            [
-                f"{key} = {value}\n"
-                for key, value in spec_object.custom_types.items()
-                if is_spec_defined_type(value)
             ]
         )
     )
@@ -611,7 +715,11 @@ def objects_to_spec(preset_name: str,
 
     protocols_spec = '\n\n\n'.join(format_protocol(k, v) for k, v in spec_object.protocols.items())
     for k in list(spec_object.functions):
-        if "ceillog2" in k or "floorlog2" in k:
+        if k in [
+            "ceillog2",
+            "floorlog2",
+            "compute_merkle_proof_for_state",
+        ]:
             del spec_object.functions[k]
     functions = builder.implement_optimizations(spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())
@@ -640,7 +748,10 @@ def objects_to_spec(preset_name: str,
 
     def format_constant(name: str, vardef: VariableDefinition) -> str:
         if vardef.type_name is None:
-            out = f'{name} = {vardef.value}'
+            if vardef.type_hint is None:
+                out = f'{name} = {vardef.value}'
+            else:
+                out = f'{name}: {vardef.type_hint} = {vardef.value}'
         else:
             out = f'{name} = {vardef.type_name}({vardef.value})'
         if vardef.comment is not None:
@@ -652,7 +763,7 @@ def objects_to_spec(preset_name: str,
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
-    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants()[x]), builder.hardcoded_custom_type_dep_constants()))
+    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants(spec_object)[x]), builder.hardcoded_custom_type_dep_constants(spec_object)))
     spec = (
             builder.imports(preset_name)
             + builder.preparations()
@@ -772,7 +883,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
     for k, v in conf.items():
         if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
-            # Everything is either byte data or an integer, with PRESET_BASE as one exception.
+            # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"
         else:
             out[k] = str(int(v))
@@ -810,7 +921,7 @@ def _build_spec(preset_name: str, fork: str,
                 source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
     preset = load_preset(preset_files)
     config = load_config(config_file)
-    all_specs = [get_spec(spec, preset, config) for spec in source_files]
+    all_specs = [get_spec(spec, preset, config, preset_name) for spec in source_files]
 
     spec_object = all_specs[0]
     for value in all_specs[1:]:
@@ -869,23 +980,26 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
+                    specs/altair/light-client/full-node.md
+                    specs/altair/light-client/light-client.md
+                    specs/altair/light-client/p2p-interface.md
+                    specs/altair/light-client/sync-protocol.md
                     specs/altair/beacon-chain.md
                     specs/altair/bls.md
                     specs/altair/fork.md
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
-                    specs/altair/sync-protocol.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA):
+            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -894,13 +1008,21 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork == CAPELLA:
+            if self.spec_fork in (CAPELLA, EIP4844):
                 self.md_doc_paths += """
                     specs/capella/beacon-chain.md
                     specs/capella/fork.md
                     specs/capella/fork-choice.md
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
+                """
+            if self.spec_fork == EIP4844:
+                self.md_doc_paths += """
+                    specs/eip4844/beacon-chain.md
+                    specs/eip4844/fork.md
+                    specs/eip4844/polynomial-commitments.md
+                    specs/eip4844/p2p-interface.md
+                    specs/eip4844/validator.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -1041,19 +1163,19 @@ setup(
     python_requires=">=3.8, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==3.7.7", "mypy==0.812", "pylint==2.12.2"],
-        "generator": ["python-snappy==0.5.4"],
+        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
+        "generator": ["python-snappy==0.6.1", "filelock"],
     },
     install_requires=[
-        "eth-utils>=1.3.0,<2",
-        "eth-typing>=2.1.0,<3.0.0",
-        "pycryptodome==3.9.4",
-        "py_ecc==5.2.0",
+        "eth-utils>=2.0.0,<3",
+        "eth-typing>=3.2.0,<4.0.0",
+        "pycryptodome==3.15.0",
+        "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "dataclasses==0.6",
-        "remerkleable==0.1.24",
+        "remerkleable==0.1.25",
+        "trie==2.0.2",
         RUAMEL_YAML_VERSION,
-        "lru-dict==1.1.6",
+        "lru-dict==1.1.8",
         MARKO_VERSION,
     ]
 )

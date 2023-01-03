@@ -1,7 +1,5 @@
 # Bellatrix -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -91,7 +89,7 @@ Bellatrix updates a few configuration values to move penalty parameters to their
 
 | Name | Value |
 | - | - |
-| `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
+| `TERMINAL_TOTAL_DIFFICULTY` | `58750000000000000000000` (Estimated: Sept 15, 2022)|
 | `TERMINAL_BLOCK_HASH` | `Hash32()` |
 | `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
 
@@ -298,8 +296,6 @@ def slash_validator(state: BeaconState,
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
 
-
-
 ## Beacon chain state transition function
 
 ### Execution engine
@@ -399,7 +395,7 @@ def process_slashings(state: BeaconState) -> None:
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Bellatrix testing only.
 Modifications include:
-1. Use `BELLATRIX_FORK_VERSION` as the current fork version.
+1. Use `BELLATRIX_FORK_VERSION` as the previous and current fork version.
 2. Utilize the Bellatrix `BeaconBlockBody` when constructing the initial `latest_block_header`.
 3. Initialize `latest_execution_payload_header`.
   If `execution_payload_header == ExecutionPayloadHeader()`, then the Merge has not yet occurred.

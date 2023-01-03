@@ -28,7 +28,7 @@ from eth2spec.test.context import (
 
 
 def _test_harness_for_randomized_test_case(spec, state, expect_duplicates=False, participation_fn=None):
-    committee_indices = compute_committee_indices(spec, state)
+    committee_indices = compute_committee_indices(state)
 
     if participation_fn:
         participating_indices = participation_fn(committee_indices)
