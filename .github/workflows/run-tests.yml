@@ -87,7 +87,7 @@ jobs:
     needs: [setup-env,lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix","capella"]
+        version: ["phase0", "altair", "bellatrix", "capella", "eip4844"]
     steps:
       - uses: actions/cache@v3.2.2
         id: restore-build
