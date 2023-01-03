@@ -61,7 +61,7 @@ class SignedBeaconBlockAndBlobsSidecar(Container):
 
 ## The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of EIP4844 to support upgraded types.
+Some gossip meshes are upgraded in the fork of EIP-4844 to support upgraded types.
 
 ### Topics and messages
 
@@ -78,10 +78,9 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 | - | - |
 | `beacon_block_and_blobs_sidecar` | `SignedBeaconBlockAndBlobsSidecar` (new) |
 
-
 #### Global topics
 
-EIP4844 introduces a new global topic for beacon block and blobs-sidecars.
+EIP-4844 introduces a new global topic for beacon block and blobs-sidecars.
 
 ##### `beacon_block`
 
@@ -97,16 +96,18 @@ This topic is used to propagate new signed and coupled beacon blocks and blobs s
 
 In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.
 Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
-- _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 Points.
+- _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 points
   -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
-- _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list.
+- _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. `sidecar.beacon_block_slot == block.slot`.
+- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
+  -- i.e. `sidecar.beacon_block_slot == block.slot`.
 - _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
-- _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 Point -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
-- _[REJECT]_ The KZG commitments in the block are valid against the provided blobs sidecar.
+- _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 point
+  -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
+- _[REJECT]_ The KZG commitments in the block are valid against the provided blobs sidecar
   -- i.e. `validate_blobs_sidecar(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments, sidecar)`
 
 ### Transitioning the gossip
@@ -147,10 +148,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
@@ -185,7 +186,7 @@ No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
 
-Clients MUST support requesting blocks and sidecars since the latest finalized epoch.
+Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
 Clients MUST respond with at least one block and sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
@@ -218,7 +219,7 @@ may not be available beyond the initial distribution via gossip.
 Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
 correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
 
-`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip.
+`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
 
 The request MUST be encoded as an SSZ-container.
 
@@ -226,7 +227,7 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
+`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 

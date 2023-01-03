@@ -89,8 +89,9 @@ but reusing the `mainnet` settings in public networks is a critical security req
 
 | Name | Value |
 | - | - |
+| `KZG_SETUP_G2_LENGTH` | `65` |
 | `KZG_SETUP_G1` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
-| `KZG_SETUP_G2` | `Vector[G2Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_G2` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
 | `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Helper functions
@@ -293,7 +294,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
                                            z: BLSFieldElement) -> BLSFieldElement:
     """
-    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z``.
+    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z`` that is not in the domain.
     Uses the barycentric formula:
        f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
@@ -369,8 +370,9 @@ def verify_kzg_proof_impl(polynomial_kzg: KZGCommitment,
 ```python
 def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     """
-    Compute KZG proof at point `z` with `polynomial` being in evaluation form
-    Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z)
+    Compute KZG proof at point `z` with `polynomial` being in evaluation form.
+    Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z).
+    Public method.
     """
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
