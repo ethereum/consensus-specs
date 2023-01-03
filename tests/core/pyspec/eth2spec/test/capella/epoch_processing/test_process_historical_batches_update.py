@@ -23,5 +23,5 @@ def test_historical_summaries_accumulator(spec, state):
 
     assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
     summary = state.historical_summaries[len(state.historical_summaries) - 1]
-    assert summary.block_batch_root == state.block_roots.hash_tree_root()
-    assert summary.state_batch_root == state.state_roots.hash_tree_root()
+    assert summary.block_summary_root == state.block_roots.hash_tree_root()
+    assert summary.state_summary_root == state.state_roots.hash_tree_root()

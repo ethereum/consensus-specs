@@ -126,8 +126,8 @@ class HistoricalSummary(Container):
     `HistoricalSummary` matches the components of the phase0 `HistoricalBatch`
     making the two hash_tree_root-compatible.
     """
-    block_batch_root: Root
-    state_batch_root: Root
+    block_summary_root: Root
+    state_summary_root: Root
 ```
 
 ### Extended Containers
@@ -315,8 +315,8 @@ def process_historical_summaries_update(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_summary = HistoricalSummary(
-            block_batch_root=hash_tree_root(state.block_roots),
-            state_batch_root=hash_tree_root(state.state_roots),
+            block_summary_root=hash_tree_root(state.block_roots),
+            state_summary_root=hash_tree_root(state.state_roots),
         )
         state.historical_summaries.append(historical_summary)
 ```
