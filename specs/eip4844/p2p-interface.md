@@ -141,8 +141,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`
-clients MUST support requesting blocks by root for pre-fork-epoch blocks.
+After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
+Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
