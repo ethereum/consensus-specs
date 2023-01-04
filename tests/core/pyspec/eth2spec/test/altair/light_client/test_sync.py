@@ -743,6 +743,55 @@ def test_eip4844_fork(spec, phases, state):
     yield from run_test_single_fork(spec, phases, state, EIP4844)
 
 
+def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
+    # Start test
+    test = yield from setup_test(spec, state, phases[fork_2], phases)
+
+    # Set up so that finalized is from `spec`, ...
+    finalized_block = spec.SignedBeaconBlock()
+    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_state = state.copy()
+
+    # ..., attested is from `fork_1`, ...
+    fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + '_FORK_EPOCH')
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_1_epoch) - 1)
+    state, _ = do_fork(state, spec, phases[fork_1], fork_1_epoch, with_block=False)
+    spec = phases[fork_1]
+    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_state = state.copy()
+
+    # ..., and signature is from `fork_2`
+    fork_2_epoch = getattr(phases[fork_2].config, fork_2.upper() + '_FORK_EPOCH')
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_2_epoch) - 1)
+    state, _ = do_fork(state, spec, phases[fork_2], fork_2_epoch, with_block=False)
+    spec = phases[fork_2]
+    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+
+    # Check that update applies
+    yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
+    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.next_sync_committee == finalized_state.next_sync_committee
+    assert test.store.best_valid_update is None
+    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+
+    # Finish test
+    yield from finish_test(test)
+
+
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, EIP4844])
+@spec_test
+@with_config_overrides({
+    'CAPELLA_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+    'EIP4844_FORK_EPOCH': 4,
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=EIP4844)
+@with_presets([MINIMAL], reason="too slow")
+def test_capella_eip4844_fork(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, CAPELLA, EIP4844)
+
+
 def run_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     # Start test (Legacy bootstrap with an upgraded store)
     test = yield from setup_test(spec, state, phases[fork], phases)
