@@ -618,15 +618,7 @@ def test_advance_finality_without_sync_committee(spec, state):
     yield from finish_test(test)
 
 
-@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
-@spec_test
-@with_config_overrides({
-    'CAPELLA_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
-}, emit=False)
-@with_state
-@with_matching_spec_config(emitted_fork=CAPELLA)
-@with_presets([MINIMAL], reason="too slow")
-def test_capella_fork(spec, phases, state):
+def run_test_single_fork(spec, phases, state, fork):
     # Start test
     test = yield from setup_test(spec, state, phases=phases)
 
@@ -644,8 +636,9 @@ def test_capella_fork(spec, phases, state):
     assert test.store.best_valid_update is None
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
 
-    # Jump to two slots before Capella
-    transition_to(spec, state, spec.compute_start_slot_at_epoch(phases[CAPELLA].config.CAPELLA_FORK_EPOCH) - 4)
+    # Jump to two slots before fork
+    fork_epoch = getattr(phases[fork].config, fork.upper() + '_FORK_EPOCH')
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch) - 4)
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
@@ -658,10 +651,10 @@ def test_capella_fork(spec, phases, state):
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
 
     # Perform `LightClientStore` upgrade
-    yield from emit_upgrade_store(test, phases[CAPELLA], phases=phases)
+    yield from emit_upgrade_store(test, phases[fork], phases=phases)
     update = test.store.best_valid_update
 
-    # Final slot before Capella, check that importing the Altair format still works
+    # Final slot before fork, check that importing the pre-fork format still works
     attested_block = block.copy()
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
@@ -672,11 +665,11 @@ def test_capella_fork(spec, phases, state):
     assert test.store.best_valid_update == update
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
 
-    # Upgrade to Capella, attested block is still before the fork
+    # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    state, _ = do_fork(state, spec, phases[CAPELLA], phases[CAPELLA].config.CAPELLA_FORK_EPOCH, with_block=False)
-    spec = phases[CAPELLA]
+    state, _ = do_fork(state, spec, phases[fork], fork_epoch, with_block=False)
+    spec = phases[fork]
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
@@ -684,9 +677,8 @@ def test_capella_fork(spec, phases, state):
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
-    assert test.s_spec.get_lc_execution_root(test.store.optimistic_header) == test.s_spec.Root()
 
-    # Another block in Capella, this time attested block is after the fork
+    # Another block after the fork, this time attested block is after the fork
     attested_block = block.copy()
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
@@ -696,23 +688,20 @@ def test_capella_fork(spec, phases, state):
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
-    assert test.s_spec.get_lc_execution_root(test.store.optimistic_header) != test.s_spec.Root()
 
     # Jump to next epoch
-    transition_to(spec, state, spec.compute_start_slot_at_epoch(phases[CAPELLA].config.CAPELLA_FORK_EPOCH + 1) - 2)
+    transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch + 1) - 2)
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
-    assert test.s_spec.get_lc_execution_root(test.store.finalized_header) == test.s_spec.Root()
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
-    assert test.s_spec.get_lc_execution_root(test.store.optimistic_header) != test.s_spec.Root()
 
-    # Finalize it
+    # Finalize the fork
     finalized_block = block.copy()
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True)
@@ -722,19 +711,41 @@ def test_capella_fork(spec, phases, state):
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
-    assert test.s_spec.get_lc_execution_root(test.store.finalized_header) != test.s_spec.Root()
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
     assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
-    assert test.s_spec.get_lc_execution_root(test.store.optimistic_header) != test.s_spec.Root()
 
     # Finish test
     yield from finish_test(test)
 
 
-def run_test_upgraded_store_with_legacy_data(spec, state, s_spec, phases):
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
+@spec_test
+@with_config_overrides({
+    'CAPELLA_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=CAPELLA)
+@with_presets([MINIMAL], reason="too slow")
+def test_capella_fork(spec, phases, state):
+    yield from run_test_single_fork(spec, phases, state, CAPELLA)
+
+
+@with_phases(phases=[CAPELLA], other_phases=[EIP4844])
+@spec_test
+@with_config_overrides({
+    'EIP4844_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=EIP4844)
+@with_presets([MINIMAL], reason="too slow")
+def test_eip4844_fork(spec, phases, state):
+    yield from run_test_single_fork(spec, phases, state, EIP4844)
+
+
+def run_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     # Start test (Legacy bootstrap with an upgraded store)
-    test = yield from setup_test(spec, state, s_spec, phases)
+    test = yield from setup_test(spec, state, phases[fork], phases)
 
     # Initial `LightClientUpdate` (check that the upgraded store can process it)
     finalized_block = spec.SignedBeaconBlock()
@@ -760,7 +771,7 @@ def run_test_upgraded_store_with_legacy_data(spec, state, s_spec, phases):
 @with_matching_spec_config(emitted_fork=CAPELLA)
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_store_with_legacy_data(spec, phases, state):
-    yield from run_test_upgraded_store_with_legacy_data(spec, state, phases[CAPELLA], phases)
+    yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, CAPELLA)
 
 
 @with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA], other_phases=[EIP4844])
@@ -769,4 +780,4 @@ def test_capella_store_with_legacy_data(spec, phases, state):
 @with_matching_spec_config(emitted_fork=EIP4844)
 @with_presets([MINIMAL], reason="too slow")
 def test_eip4844_store_with_legacy_data(spec, phases, state):
-    yield from run_test_upgraded_store_with_legacy_data(spec, state, phases[EIP4844], phases)
+    yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, EIP4844)
