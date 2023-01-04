@@ -32,7 +32,6 @@ if __name__ == "__main__":
     ]}
     capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
 
-    # TODO: add process_execution_payload tests
     eip4844_mods = capella_mods
 
     # TODO Custody Game testgen is disabled for now
