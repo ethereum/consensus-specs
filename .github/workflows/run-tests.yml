@@ -70,6 +70,11 @@ jobs:
    runs-on: self-hosted
    needs: setup-env
    steps:
+      - uses: actions/cache@v3.2.2
+        id: restore-build
+        with:
+          path: ./*
+          key: ${{ github.sha }}
       - name: Check codespell
         run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
 
@@ -77,6 +82,11 @@ jobs:
     runs-on: self-hosted
     needs: setup-env
     steps:
+      - uses: actions/cache@v3.2.2
+        id: restore-build
+        with:
+          path: ./*
+          key: ${{ github.sha }}
       - name: Run linter for pyspec
         run: make lint
       - name: Run linter for test generators
