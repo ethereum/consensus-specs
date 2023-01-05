@@ -660,6 +660,7 @@ def get_empty_list_result(fn):  # type: ignore
 process_withdrawals = no_op(process_withdrawals)
 process_bls_to_execution_change = no_op(process_bls_to_execution_change)
 get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
+process_historical_summaries_update = no_op(process_historical_summaries_update)
 
 
 #
@@ -1173,6 +1174,7 @@ setup(
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
         "remerkleable==0.1.25",
+        "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,

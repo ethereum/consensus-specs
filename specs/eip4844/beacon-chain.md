@@ -63,7 +63,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 
 | Name | Value |
 | - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(2**2)` (= 4) |
 
 ## Configuration
 
@@ -164,19 +164,19 @@ def validate_blobs_sidecar(slot: Slot,
 
 #### `is_data_available`
 
-The implementation of `is_data_available` is meant to change with later sharding upgrades.
+The implementation of `is_data_available` will become more sophisticated during later sharding upgrades.
 Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
 and validate the sidecar with `validate_blobs_sidecar`.
 
-Without the sidecar the block may be processed further optimistically,
-but MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
+The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobsSidecar` has subsequently been pruned.
 
 ```python
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
+    # `retrieve_blobs_sidecar` is implementation and context dependent, raises an exception if not available.
+    # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
     sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
 
-    # For testing, `retrieve_blobs_sidecar` returns "TEST.
+    # For testing, `retrieve_blobs_sidecar` returns "TEST".
     # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
     if isinstance(sidecar, str):
         return True
@@ -242,7 +242,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
 
-    # New in EIP-4844, note: Can sync optimistically without this condition, see note on `is_data_available`
+    # New in EIP-4844
     assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
 ```
 
@@ -348,8 +348,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 ```
 
 ### Disabling Withdrawals
+
 During testing we avoid Capella-specific updates to the state transition. We do this by replacing the following functions with a no-op implementation:
 - `process_withdrawals`
 - `process_bls_to_execution_change`
 
-The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the PayloadAttributes used to update forkchoice does not contain withdrawals.
+The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the `PayloadAttributes` used to update forkchoice does not contain withdrawals.

@@ -29,8 +29,8 @@ from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,
     compute_sync_committee_participant_reward_and_penalty,
 )
-from eth2spec.test.helpers.constants import PHASE0, MINIMAL
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.constants import PHASE0, EIP4844, MINIMAL
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_capella
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
@@ -43,7 +43,7 @@ from eth2spec.test.context import (
 
 @with_all_phases
 @spec_state_test
-def test_prev_slot_block_transition(spec, state):
+def test_invalid_prev_slot_block_transition(spec, state):
     # Go to clean slot
     spec.process_slots(state, state.slot + 1)
     # Make a block for it
@@ -64,7 +64,7 @@ def test_prev_slot_block_transition(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_same_slot_block_transition(spec, state):
+def test_invalid_same_slot_block_transition(spec, state):
     # Same slot on top of pre-state, but move out of slot 0 first.
     spec.process_slots(state, state.slot + 1)
 
@@ -161,7 +161,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
 
 @with_phases([PHASE0])
 @spec_state_test
-def test_proposal_for_genesis_slot(spec, state):
+def test_invalid_proposal_for_genesis_slot(spec, state):
     assert state.slot == spec.GENESIS_SLOT
 
     yield 'pre', state
@@ -184,7 +184,7 @@ def test_proposal_for_genesis_slot(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_parent_from_same_slot(spec, state):
+def test_invalid_parent_from_same_slot(spec, state):
     yield 'pre', state
 
     parent_block = build_empty_block_for_next_slot(spec, state)
@@ -211,7 +211,7 @@ def test_parent_from_same_slot(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_state_root(spec, state):
+def test_invalid_incorrect_state_root(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -227,7 +227,7 @@ def test_invalid_state_root(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_zero_block_sig(spec, state):
+def test_invalid_all_zeroed_sig(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -241,7 +241,7 @@ def test_zero_block_sig(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_block_sig(spec, state):
+def test_invalid_incorrect_block_sig(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -260,7 +260,7 @@ def test_invalid_block_sig(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_proposer_index_sig_from_expected_proposer(spec, state):
+def test_invalid_incorrect_proposer_index_sig_from_expected_proposer(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -282,7 +282,7 @@ def test_invalid_proposer_index_sig_from_expected_proposer(spec, state):
 @with_all_phases
 @spec_state_test
 @always_bls
-def test_invalid_proposer_index_sig_from_proposer_index(spec, state):
+def test_invalid_incorrect_proposer_index_sig_from_proposer_index(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -707,7 +707,7 @@ def test_high_proposer_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_expected_deposit_in_block(spec, state):
+def test_invalid_only_increase_deposit_count(spec, state):
     # Make the state expect a deposit, then don't provide it.
     state.eth1_data.deposit_count += 1
     yield 'pre', state
@@ -1026,7 +1026,10 @@ def test_balance_driven_status_transitions(spec, state):
 @always_bls
 def test_historical_batch(spec, state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
-    pre_historical_roots_len = len(state.historical_roots)
+    pre_historical_roots = state.historical_roots.copy()
+
+    if is_post_capella(spec):
+        pre_historical_summaries = state.historical_summaries.copy()
 
     yield 'pre', state
 
@@ -1038,7 +1041,18 @@ def test_historical_batch(spec, state):
 
     assert state.slot == block.slot
     assert spec.get_current_epoch(state) % (spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH) == 0
-    assert len(state.historical_roots) == pre_historical_roots_len + 1
+
+    # check history update
+    if is_post_capella(spec):
+        # Frozen `historical_roots`
+        assert state.historical_roots == pre_historical_roots
+        if spec.fork == EIP4844:
+            # TODO: no-op for now in EIP4844 testnet
+            assert state.historical_summaries == pre_historical_summaries
+        else:
+            assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
+    else:
+        assert len(state.historical_roots) == len(pre_historical_roots) + 1
 
 
 @with_all_phases

@@ -93,11 +93,11 @@ def get_lagrange(setup: Sequence[Optimized_Point3D]) -> Tuple[bytes]:
     return tuple(bls.G1_to_bytes48(multiply(fft_output[-i], inv_length)) for i in range(len(fft_output)))
 
 
-def dump_kzg_trusted_setup_files(secret: int, length: int, output_dir: str) -> None:
-    setup_g1 = generate_setup(bls.G1, secret, length)
-    setup_g2 = generate_setup(bls.G2, secret, length)
+def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, output_dir: str) -> None:
+    setup_g1 = generate_setup(bls.G1, secret, g1_length)
+    setup_g2 = generate_setup(bls.G2, secret, g2_length)
     setup_g1_lagrange = get_lagrange(setup_g1)
-    roots_of_unity = compute_roots_of_unity(length)
+    roots_of_unity = compute_roots_of_unity(g1_length)
 
     serailized_setup_g1 = [encode_hex(bls.G1_to_bytes48(p)) for p in setup_g1]
     serialized_setup_g2 = [encode_hex(bls.G2_to_bytes96(p)) for p in setup_g2]

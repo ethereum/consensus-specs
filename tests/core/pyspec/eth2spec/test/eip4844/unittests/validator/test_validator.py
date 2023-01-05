@@ -8,6 +8,9 @@ from eth2spec.test.context import (
     spec_state_test,
     with_eip4844_and_later,
 )
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_block_hash,
+)
 from eth2spec.test.helpers.sharding import (
     get_sample_opaque_tx,
 )
@@ -18,6 +21,7 @@ def _run_validate_blobs_sidecar_test(spec, state, blob_count):
     opaque_tx, blobs, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=blob_count)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     state_transition_and_sign_block(spec, state, block)
 
     blobs_sidecar = spec.get_blobs_sidecar(block, blobs)
@@ -45,5 +49,5 @@ def test_validate_blobs_sidecar_two_blobs(spec, state):
 
 @with_eip4844_and_later
 @spec_state_test
-def test_validate_blobs_sidecar_ten_blobs(spec, state):
-    _run_validate_blobs_sidecar_test(spec, state, blob_count=10)
+def test_validate_blobs_sidecar_max_blobs(spec, state):
+    _run_validate_blobs_sidecar_test(spec, state, blob_count=spec.MAX_BLOBS_PER_BLOCK)

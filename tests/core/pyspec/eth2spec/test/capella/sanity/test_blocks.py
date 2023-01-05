@@ -194,8 +194,8 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
 
 def _perform_valid_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
-        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4,
-        num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 4)
+        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2,
+        num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2)
 
     next_slot(spec, state)
     pre_next_withdrawal_index = state.next_withdrawal_index
@@ -240,7 +240,7 @@ def test_withdrawal_success_two_blocks(spec, state):
 
 @with_phases([CAPELLA])
 @spec_state_test
-def test_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
+def test_invalid_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
     _perform_valid_withdrawal(spec, state)
 
     # Block 2
