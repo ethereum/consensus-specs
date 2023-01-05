@@ -25,12 +25,12 @@ Each step includes checks to verify the expected impact on the `store` object.
 
 ```yaml
 finalized_header: {
-    slot: int,                -- Integer value from store.finalized_header.slot
-    beacon_root: string,      -- Encoded 32-byte value from store.finalized_header.hash_tree_root()
+    slot: int,                -- Integer value from store.finalized_header.beacon.slot
+    beacon_root: string,      -- Encoded 32-byte value from store.finalized_header.beacon.hash_tree_root()
 }
 optimistic_header: {
-    slot: int,                -- Integer value from store.optimistic_header.slot
-    beacon_root: string,      -- Encoded 32-byte value from store.optimistic_header.hash_tree_root()
+    slot: int,                -- Integer value from store.optimistic_header.beacon.slot
+    beacon_root: string,      -- Encoded 32-byte value from store.optimistic_header.beacon.hash_tree_root()
 }
 ```
 
