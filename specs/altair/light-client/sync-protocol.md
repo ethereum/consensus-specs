@@ -20,9 +20,9 @@
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
+  - [`is_valid_light_client_header`](#is_valid_light_client_header)
   - [`is_sync_committee_update`](#is_sync_committee_update)
   - [`is_finality_update`](#is_finality_update)
-  - [`is_valid_light_client_header`](#is_valid_light_client_header)
   - [`is_better_update`](#is_better_update)
   - [`is_next_sync_committee_known`](#is_next_sync_committee_known)
   - [`get_safety_threshold`](#get_safety_threshold)
@@ -162,6 +162,14 @@ class LightClientStore(object):
 
 ## Helper functions
 
+### `is_valid_light_client_header`
+
+```python
+def is_valid_light_client_header(header: LightClientHeader) -> bool:
+    # pylint: disable=unused-argument
+    return True
+```
+
 ### `is_sync_committee_update`
 
 ```python
@@ -174,14 +182,6 @@ def is_sync_committee_update(update: LightClientUpdate) -> bool:
 ```python
 def is_finality_update(update: LightClientUpdate) -> bool:
     return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
-```
-
-### `is_valid_light_client_header`
-
-```python
-def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    # pylint: disable=unused-argument
-    return True
 ```
 
 ### `is_better_update`
