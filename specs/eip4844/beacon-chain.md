@@ -22,8 +22,6 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
-    - [`is_data_available`](#is_data_available)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
@@ -145,46 +143,6 @@ class ExecutionPayloadHeader(Container):
 
 ### Misc
 
-#### `validate_blobs_sidecar`
-
-```python
-def validate_blobs_sidecar(slot: Slot,
-                           beacon_block_root: Root,
-                           expected_kzg_commitments: Sequence[KZGCommitment],
-                           blobs_sidecar: BlobsSidecar) -> None:
-    assert slot == blobs_sidecar.beacon_block_slot
-    assert beacon_block_root == blobs_sidecar.beacon_block_root
-    blobs = blobs_sidecar.blobs
-    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
-    assert len(expected_kzg_commitments) == len(blobs)
-
-    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
-```
-
-#### `is_data_available`
-
-The implementation of `is_data_available` will become more sophisticated during later sharding upgrades.
-Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
-and validate the sidecar with `validate_blobs_sidecar`.
-
-The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobsSidecar` has subsequently been pruned.
-
-```python
-def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_sidecar` is implementation and context dependent, raises an exception if not available.
-    # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-
-    # For testing, `retrieve_blobs_sidecar` returns "TEST".
-    # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
-    if isinstance(sidecar, str):
-        return True
-
-    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
-    return True
-```
-
-
 #### `kzg_commitment_to_versioned_hash`
 
 ```python
@@ -240,9 +198,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
-
-    # New in EIP-4844
-    assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
 ```
 
 #### Execution payload

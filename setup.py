@@ -992,6 +992,7 @@ class PySpecCommand(Command):
                 self.md_doc_paths += """
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
+                    specs/eip4844/fork-choice.md
                     specs/eip4844/polynomial-commitments.md
                     specs/eip4844/p2p-interface.md
                     specs/eip4844/validator.md
