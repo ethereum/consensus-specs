@@ -1,6 +1,3 @@
-from eth2spec.test.helpers.constants import (
-    EIP4844,
-)
 from eth2spec.test.helpers.forks import (
     is_post_capella,
 )
@@ -87,10 +84,6 @@ def test_historical_accumulator(spec, state):
     if is_post_capella(spec):
         # Frozen `historical_roots`
         assert state.historical_roots == pre_historical_roots
-        if spec.fork == EIP4844:
-            # TODO: no-op for now in EIP4844 testnet
-            assert state.historical_summaries == pre_historical_summaries
-        else:
-            assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
+        assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
     else:
         assert len(state.historical_roots) == len(pre_historical_roots) + 1

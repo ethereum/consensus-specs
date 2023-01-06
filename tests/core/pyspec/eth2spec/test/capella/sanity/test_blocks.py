@@ -1,7 +1,6 @@
 from eth2spec.test.context import (
-    with_phases, spec_state_test
+    with_capella_and_later, spec_state_test
 )
-from eth2spec.test.helpers.constants import CAPELLA
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -25,7 +24,7 @@ from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 # BLSToExecutionChange
 #
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_success_bls_change(spec, state):
     index = 0
@@ -48,7 +47,7 @@ def test_success_bls_change(spec, state):
     assert post_credentials[12:] == signed_address_change.message.to_execution_address
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_success_exit_and_bls_change(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -77,7 +76,7 @@ def test_success_exit_and_bls_change(spec, state):
     assert spec.is_fully_withdrawable_validator(validator, balance, validator.withdrawable_epoch)
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_invalid_duplicate_bls_changes_same_block(spec, state):
     index = 0
@@ -96,7 +95,7 @@ def test_invalid_duplicate_bls_changes_same_block(spec, state):
     yield 'post', None
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_block(spec, state):
     index = 0
@@ -124,7 +123,7 @@ def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_bloc
 # Withdrawals
 #
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
@@ -145,7 +144,7 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     assert len(spec.get_expected_withdrawals(state)) == 0
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_partial_withdrawal_in_epoch_transition(spec, state):
     index = state.next_withdrawal_index
@@ -169,7 +168,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     assert len(spec.get_expected_withdrawals(state)) == 0
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     assert len(state.validators) > spec.MAX_WITHDRAWALS_PER_PAYLOAD
@@ -221,7 +220,7 @@ def _perform_valid_withdrawal(spec, state):
     return pre_state, signed_block_1, pre_next_withdrawal_index
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_withdrawal_success_two_blocks(spec, state):
     pre_state, signed_block_1, pre_next_withdrawal_index = _perform_valid_withdrawal(spec, state)
@@ -238,7 +237,7 @@ def test_withdrawal_success_two_blocks(spec, state):
     yield 'post', state
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_invalid_withdrawal_fail_second_block_payload_isnt_compatible(spec, state):
     _perform_valid_withdrawal(spec, state)

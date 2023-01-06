@@ -1,8 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_phases,
+    with_capella_and_later,
 )
-from eth2spec.test.helpers.constants import CAPELLA
 from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -11,7 +10,7 @@ from eth2spec.test.helpers.deposits import (
 from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
 
-@with_phases([CAPELLA])
+@with_capella_and_later
 @spec_state_test
 def test_success_top_up_to_withdrawn_validator(spec, state):
     validator_index = 0
