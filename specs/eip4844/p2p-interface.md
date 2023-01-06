@@ -12,7 +12,6 @@ The specification of these changes continues in the same format as the network s
 
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`BlobsSidecar`](#blobssidecar)
     - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -40,16 +39,6 @@ The specification of these changes continues in the same format as the network s
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
-
-### `BlobsSidecar`
-
-```python
-class BlobsSidecar(Container):
-    beacon_block_root: Root
-    beacon_block_slot: Slot
-    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
-    kzg_aggregated_proof: KZGProof
-```
 
 ### `SignedBeaconBlockAndBlobsSidecar`
 

@@ -6,6 +6,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Containers](#containers)
+  - [`BlobsSidecar`](#blobssidecar)
 - [Helpers](#helpers)
     - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
     - [`is_data_available`](#is_data_available)
@@ -18,6 +20,18 @@
 ## Introduction
 
 This is the modification of the fork choice according to the executable beacon chain proposal.
+
+## Containers
+
+### `BlobsSidecar`
+
+```python
+class BlobsSidecar(Container):
+    beacon_block_root: Root
+    beacon_block_slot: Slot
+    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
+    kzg_aggregated_proof: KZGProof
+```
 
 ## Helpers
 
