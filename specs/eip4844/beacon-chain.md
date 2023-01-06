@@ -33,7 +33,6 @@
       - [`process_execution_payload`](#process_execution_payload)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
-  - [Disabling Withdrawals](#disabling-withdrawals)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -346,11 +345,3 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 
     return state
 ```
-
-### Disabling Withdrawals
-
-During testing we avoid Capella-specific updates to the state transition. We do this by replacing the following functions with a no-op implementation:
-- `process_withdrawals`
-- `process_bls_to_execution_change`
-
-The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the `PayloadAttributes` used to update forkchoice does not contain withdrawals.

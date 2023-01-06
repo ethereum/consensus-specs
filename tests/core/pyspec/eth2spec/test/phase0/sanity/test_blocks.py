@@ -29,7 +29,7 @@ from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,
     compute_sync_committee_participant_reward_and_penalty,
 )
-from eth2spec.test.helpers.constants import PHASE0, EIP4844, MINIMAL
+from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_capella
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
@@ -1046,11 +1046,7 @@ def test_historical_batch(spec, state):
     if is_post_capella(spec):
         # Frozen `historical_roots`
         assert state.historical_roots == pre_historical_roots
-        if spec.fork == EIP4844:
-            # TODO: no-op for now in EIP4844 testnet
-            assert state.historical_summaries == pre_historical_summaries
-        else:
-            assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
+        assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
     else:
         assert len(state.historical_roots) == len(pre_historical_roots) + 1
 
