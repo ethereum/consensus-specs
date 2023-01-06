@@ -22,8 +22,8 @@ This is the modification of the fork choice according to the executable beacon c
 
 #### `is_data_available`
 
-The implementation of `is_data_available` will become more sophisticated during later sharding upgrades.
-Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
+The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
+Initially, verification requires every verifying actor to retrieve the matching `BlobsSidecar`,
 and validate the sidecar with `validate_blobs_sidecar`.
 
 The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobsSidecar` has subsequently been pruned.
@@ -69,7 +69,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
 
     # [New in EIP-4844]
-    # Check if the block is available
+    # Check if blob data is available
+    # If not, this block MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments) 
 
     # Check the block is valid and compute the post-state
