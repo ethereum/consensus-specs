@@ -22,6 +22,7 @@
 - [Helper functions](#helper-functions)
   - [`is_sync_committee_update`](#is_sync_committee_update)
   - [`is_finality_update`](#is_finality_update)
+  - [`is_valid_light_client_header`](#is_valid_light_client_header)
   - [`is_better_update`](#is_better_update)
   - [`is_next_sync_committee_known`](#is_next_sync_committee_known)
   - [`get_safety_threshold`](#get_safety_threshold)
@@ -81,6 +82,8 @@ class LightClientHeader(Container):
     # Beacon block header
     beacon: BeaconBlockHeader
 ```
+
+Future upgrades may introduce additional fields to this structure, and validate them by extending [`is_valid_light_client_header`](#is_valid_light_client_header).
 
 ### `LightClientBootstrap`
 
@@ -171,6 +174,14 @@ def is_sync_committee_update(update: LightClientUpdate) -> bool:
 ```python
 def is_finality_update(update: LightClientUpdate) -> bool:
     return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+```
+
+### `is_valid_light_client_header`
+
+```python
+def is_valid_light_client_header(header: LightClientHeader) -> bool:
+    # pylint: disable=unused-argument
+    return True
 ```
 
 ### `is_better_update`
@@ -269,6 +280,7 @@ A light client maintains its state in a `store` object of type `LightClientStore
 ```python
 def initialize_light_client_store(trusted_block_root: Root,
                                   bootstrap: LightClientBootstrap) -> LightClientStore:
+    assert is_valid_light_client_header(bootstrap.header)
     assert hash_tree_root(bootstrap.header.beacon) == trusted_block_root
 
     assert is_valid_merkle_branch(
@@ -310,6 +322,7 @@ def validate_light_client_update(store: LightClientStore,
     assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify update does not skip a sync committee period
+    assert is_valid_light_client_header(update.attested_header)
     update_attested_slot = update.attested_header.beacon.slot
     update_finalized_slot = update.finalized_header.beacon.slot
     assert current_slot >= update.signature_slot > update_attested_slot >= update_finalized_slot
@@ -340,6 +353,7 @@ def validate_light_client_update(store: LightClientStore,
             assert update.finalized_header == LightClientHeader()
             finalized_root = Bytes32()
         else:
+            assert is_valid_light_client_header(update.finalized_header)
             finalized_root = hash_tree_root(update.finalized_header.beacon)
         assert is_valid_merkle_branch(
             leaf=finalized_root,
