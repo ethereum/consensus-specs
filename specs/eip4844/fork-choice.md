@@ -19,7 +19,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice according to the executable beacon chain proposal.
+This is the modification of the fork choice accompanying the EIP-4844 upgrade.
 
 ## Containers
 
