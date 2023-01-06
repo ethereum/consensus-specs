@@ -12,7 +12,6 @@ The specification of these changes continues in the same format as the network s
 
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`BlobsSidecar`](#blobssidecar)
     - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -40,16 +39,6 @@ The specification of these changes continues in the same format as the network s
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
-
-### `BlobsSidecar`
-
-```python
-class BlobsSidecar(Container):
-    beacon_block_root: Root
-    beacon_block_slot: Slot
-    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
-    kzg_aggregated_proof: KZGProof
-```
 
 ### `SignedBeaconBlockAndBlobsSidecar`
 
@@ -141,8 +130,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`
-clients MUST support requesting blocks by root for pre-fork-epoch blocks.
+After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
+Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -186,7 +175,7 @@ No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
 
-Clients MUST support requesting blocks and sidecars since the latest finalized epoch.
+Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
 Clients MUST respond with at least one block and sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
@@ -219,7 +208,7 @@ may not be available beyond the initial distribution via gossip.
 Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
 correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
 
-`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip.
+`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
 
 The request MUST be encoded as an SSZ-container.
 
@@ -227,7 +216,7 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS), current_epoch]`
+`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blocks on this range.
 

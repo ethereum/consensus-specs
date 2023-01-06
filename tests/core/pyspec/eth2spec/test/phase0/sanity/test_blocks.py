@@ -30,7 +30,7 @@ from eth2spec.test.helpers.sync_committee import (
     compute_sync_committee_participant_reward_and_penalty,
 )
 from eth2spec.test.helpers.constants import PHASE0, MINIMAL
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_capella
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
@@ -1026,7 +1026,10 @@ def test_balance_driven_status_transitions(spec, state):
 @always_bls
 def test_historical_batch(spec, state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
-    pre_historical_roots_len = len(state.historical_roots)
+    pre_historical_roots = state.historical_roots.copy()
+
+    if is_post_capella(spec):
+        pre_historical_summaries = state.historical_summaries.copy()
 
     yield 'pre', state
 
@@ -1038,7 +1041,14 @@ def test_historical_batch(spec, state):
 
     assert state.slot == block.slot
     assert spec.get_current_epoch(state) % (spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH) == 0
-    assert len(state.historical_roots) == pre_historical_roots_len + 1
+
+    # check history update
+    if is_post_capella(spec):
+        # Frozen `historical_roots`
+        assert state.historical_roots == pre_historical_roots
+        assert len(state.historical_summaries) == len(pre_historical_summaries) + 1
+    else:
+        assert len(state.historical_roots) == len(pre_historical_roots) + 1
 
 
 @with_all_phases
