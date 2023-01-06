@@ -22,7 +22,6 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
@@ -144,22 +143,6 @@ class ExecutionPayloadHeader(Container):
 ## Helper functions
 
 ### Misc
-
-#### `validate_blobs_sidecar`
-
-```python
-def validate_blobs_sidecar(slot: Slot,
-                           beacon_block_root: Root,
-                           expected_kzg_commitments: Sequence[KZGCommitment],
-                           blobs_sidecar: BlobsSidecar) -> None:
-    assert slot == blobs_sidecar.beacon_block_slot
-    assert beacon_block_root == blobs_sidecar.beacon_block_root
-    blobs = blobs_sidecar.blobs
-    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
-    assert len(expected_kzg_commitments) == len(blobs)
-
-    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
-```
 
 #### `kzg_commitment_to_versioned_hash`
 

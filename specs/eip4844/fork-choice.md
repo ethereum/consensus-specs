@@ -7,6 +7,7 @@
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
+    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
     - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
@@ -19,6 +20,22 @@
 This is the modification of the fork choice according to the executable beacon chain proposal.
 
 ## Helpers
+
+#### `validate_blobs_sidecar`
+
+```python
+def validate_blobs_sidecar(slot: Slot,
+                           beacon_block_root: Root,
+                           expected_kzg_commitments: Sequence[KZGCommitment],
+                           blobs_sidecar: BlobsSidecar) -> None:
+    assert slot == blobs_sidecar.beacon_block_slot
+    assert beacon_block_root == blobs_sidecar.beacon_block_root
+    blobs = blobs_sidecar.blobs
+    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
+    assert len(expected_kzg_commitments) == len(blobs)
+
+    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
+```
 
 #### `is_data_available`
 
