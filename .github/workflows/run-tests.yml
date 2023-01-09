@@ -30,7 +30,7 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  precleanup:
+  preclear:
       runs-on: self-hosted
       if: always()
       steps:
@@ -40,43 +40,37 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-  setup-env:
-    runs-on: self-hosted
-    needs: precleanup
-    steps:
+
+  table_of_contents:
+   runs-on: self-hosted
+   needs: preclear
+   steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
         with:
           ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
-      - uses: actions/cache@v3.2.2
-        id: cache-git
-        with:
-          path: ./*
-          key: ${{ github.sha }}
-
-  table_of_contents:
-   runs-on: self-hosted
-   needs: setup-env
-   steps:
-      - uses: actions/cache@v3.2.2
-        id: restore-build
-        with:
-          path: ./*
-          key: ${{ github.sha }}
       - name: Check table of contents
         run: sudo npm install -g doctoc@2 && make check_toc
 
   codespell:
    runs-on: self-hosted
-   needs: setup-env
+   needs: preclear
    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: Check codespell
         run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
 
   lint:
     runs-on: self-hosted
-    needs: setup-env
+    needs: preclear
     steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: Run linter for pyspec
         run: make lint
       - name: Run linter for test generators
@@ -84,16 +78,15 @@ jobs:
 
   pyspec-tests:
     runs-on: self-hosted
-    needs: [setup-env,lint,codespell,table_of_contents]
+    needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "eip4844"]
     steps:
-      - uses: actions/cache@v3.2.2
-        id: restore-build
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
         with:
-          path: ./*
-          key: ${{ github.sha }}
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: set TEST_PRESET_TYPE
         if: github.event.inputs.test_preset_type != ''        
         run: |
@@ -122,7 +115,7 @@ jobs:
 
   cleanup:
       runs-on: self-hosted
-      needs: [setup-env,pyspec-tests,codespell,lint,table_of_contents]
+      needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
       if: always()
       steps:
         - name: 'Cleanup build folder'
