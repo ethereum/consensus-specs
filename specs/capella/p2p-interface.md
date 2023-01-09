@@ -66,7 +66,7 @@ The following validations MUST pass before forwarding the `signed_bls_to_executi
   for the validator with index `signed_bls_to_execution_change.message.validator_index`.
 - If `get_current_epoch(head_state) < CAPELLA_FORK_EPOCH`:
   - _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation 
-  using `head_state.fork.current_version` in signing domain computation.
+  using `CAPELLA_FORK_VERSION` in signing domain computation.
 - If `get_current_epoch(head_state) >= CAPELLA_FORK_EPOCH`:
   - _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation.
 
