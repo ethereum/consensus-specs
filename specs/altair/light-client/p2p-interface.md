@@ -255,7 +255,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 ## Light clients
 
-Light clients using libp2p to stay in sync with the network SHOULD subscribe to the [`light_client_finality_update`](#light_client_finality_update) and [`light_client_optimistic_update`](#light_client_optimistic_update) pubsub topics and validate all received messages while the [light client sync process](./light-client.md#light-client-sync-process) supports processing `LightClientFinalityUpdate` and `LightClientOptimistic` structures.
+Light clients using libp2p to stay in sync with the network SHOULD subscribe to the [`light_client_finality_update`](#light_client_finality_update) and [`light_client_optimistic_update`](#light_client_optimistic_update) pubsub topics and validate all received messages while the [light client sync process](./light-client.md#light-client-sync-process) supports processing `LightClientFinalityUpdate` and `LightClientOptimisticUpdate` structures.
 
 Light clients MAY also collect historic light client data and make it available to other peers. If they do, they SHOULD advertise supported message endpoints in [the Req/Resp domain](#the-reqresp-domain), and MAY also update the contents of their [`Status`](../../phase0/p2p-interface.md#status) message to reflect the locally available light client data.
 
