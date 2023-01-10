@@ -653,35 +653,6 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-#
-# Temporarily disable Withdrawals functions for EIP4844 testnets
-#
-
-
-def no_op(fn):  # type: ignore
-    # pylint: disable=unused-argument
-    def wrapper(*args, **kw):  # type: ignore
-        return None
-    return wrapper
-
-
-def get_empty_list_result(fn):  # type: ignore
-    # pylint: disable=unused-argument
-    def wrapper(*args, **kw):  # type: ignore
-        return []
-    return wrapper
-
-
-process_withdrawals = no_op(process_withdrawals)
-process_bls_to_execution_change = no_op(process_bls_to_execution_change)
-get_expected_withdrawals = get_empty_list_result(get_expected_withdrawals)
-process_historical_summaries_update = no_op(process_historical_summaries_update)
-
-
-#
-# End
-#
-
 def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
     # pylint: disable=unused-argument
     return "TEST"'''
@@ -1045,6 +1016,7 @@ class PySpecCommand(Command):
                     specs/eip4844/light-client/sync-protocol.md
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
+                    specs/eip4844/fork-choice.md
                     specs/eip4844/polynomial-commitments.md
                     specs/eip4844/p2p-interface.md
                     specs/eip4844/validator.md

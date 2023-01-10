@@ -53,6 +53,11 @@ to validator withdrawals. Including:
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
   `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
 
+Another new feature is the new independent state and block historical accumulators
+that replace the original singular historical roots. With these accumulators, it becomes possible to validate
+the entire block history that led up to that particular state without any additional information
+beyond the state and the blocks.
+
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
