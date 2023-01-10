@@ -226,8 +226,6 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
-In cases where a slot contains a `BlobSidecar` that does not contain any blobs, but contain non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`, `blobs_sidecar` may be skipped.
-
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 `[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
@@ -249,11 +247,11 @@ disconnect and/or temporarily ban such an un-synced or semi-synced client.
 Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it,
 and no more than `MAX_REQUEST_BLOBS_SIDECARS` sidecars.
 
-Clients MAY skip to respond empty blobs sidecars.
-
 The following blobs sidecars, where they exist, MUST be sent in consecutive order.
 
 Clients MAY limit the number of blobs sidecars in the response.
+
+Clients MAY not want to rate limit `BlobSidecar` that does not contain any blobs, but contain non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`.
 
 The response MUST contain no more than `count` blobs sidecars.
 
