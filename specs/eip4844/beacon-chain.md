@@ -22,8 +22,6 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
-    - [`is_data_available`](#is_data_available)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
@@ -33,7 +31,6 @@
       - [`process_execution_payload`](#process_execution_payload)
     - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
-  - [Disabling Withdrawals](#disabling-withdrawals)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -146,45 +143,6 @@ class ExecutionPayloadHeader(Container):
 
 ### Misc
 
-#### `validate_blobs_sidecar`
-
-```python
-def validate_blobs_sidecar(slot: Slot,
-                           beacon_block_root: Root,
-                           expected_kzg_commitments: Sequence[KZGCommitment],
-                           blobs_sidecar: BlobsSidecar) -> None:
-    assert slot == blobs_sidecar.beacon_block_slot
-    assert beacon_block_root == blobs_sidecar.beacon_block_root
-    blobs = blobs_sidecar.blobs
-    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
-    assert len(expected_kzg_commitments) == len(blobs)
-
-    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
-```
-
-#### `is_data_available`
-
-The implementation of `is_data_available` is meant to change with later sharding upgrades.
-Initially, it requires every verifying actor to retrieve the matching `BlobsSidecar`,
-and validate the sidecar with `validate_blobs_sidecar`.
-
-The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded.
-
-```python
-def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_sidecar` is implementation dependent, raises an exception if not available.
-    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
-
-    # For testing, `retrieve_blobs_sidecar` returns "TEST.
-    # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
-    if isinstance(sidecar, str):
-        return True
-
-    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
-    return True
-```
-
-
 #### `kzg_commitment_to_versioned_hash`
 
 ```python
@@ -240,9 +198,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
-
-    # New in EIP-4844
-    assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)
 ```
 
 #### Execution payload
@@ -345,10 +300,3 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 
     return state
 ```
-
-### Disabling Withdrawals
-During testing we avoid Capella-specific updates to the state transition. We do this by replacing the following functions with a no-op implementation:
-- `process_withdrawals`
-- `process_bls_to_execution_change`
-
-The `get_expected_withdrawals` function is also modified to return an empty withdrawals list. As such, the PayloadAttributes used to update forkchoice does not contain withdrawals.

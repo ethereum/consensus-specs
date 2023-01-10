@@ -36,11 +36,7 @@ if __name__ == "__main__":
     ]}
     capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
 
-    _new_eip4844_mods = {key: 'eth2spec.test.eip4844.block_processing.test_process_' + key for key in [
-        'bls_to_execution_change',
-        'withdrawals',
-    ]}
-    eip4844_mods = combine_mods(_new_eip4844_mods, capella_mods)
+    eip4844_mods = capella_mods
 
     # TODO Custody Game testgen is disabled for now
     # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
