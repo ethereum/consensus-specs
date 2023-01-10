@@ -131,6 +131,8 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
+        # Deep history valid from Capella onwards
+        historical_summaries=pre.historical_summaries,
     )
 
     return post
