@@ -229,7 +229,7 @@ def test_valid_signature_from_staking_deposit_cli(spec, state):
 
     # Use mainnet `genesis_validators_root`
     state.genesis_validators_root = bytes.fromhex('4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95')
-    state.validators[1].withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(from_bls_pubkey)[1:]
+    state.validators[validator_index].withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(from_bls_pubkey)[1:]
 
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,
