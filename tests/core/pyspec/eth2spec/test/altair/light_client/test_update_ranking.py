@@ -37,7 +37,7 @@ def test_update_ranking(spec, state):
     # - `sig_finalized` / `sig_attested` --> Only signature in next sync committee period
     # - `att_finalized` / `att_attested` --> Attested header also in next sync committee period
     # - `fin_finalized` / `fin_attested` --> Finalized header also in next sync committee period
-    # - `lat_finalized` / `lat_attested` --> Like `fin`, but at a later `get_lc_beacon_slot(attested_header)`
+    # - `lat_finalized` / `lat_attested` --> Like `fin`, but at a later `attested_header.beacon.slot`
     next_slots(spec, state, spec.compute_start_slot_at_epoch(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 3) - 1)
     sig_finalized_block = state_transition_with_full_block(spec, state, True, True)
     _, _, state = next_slots_with_attestations(spec, state, spec.SLOTS_PER_EPOCH - 1, True, True)

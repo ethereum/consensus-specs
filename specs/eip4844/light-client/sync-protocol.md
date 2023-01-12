@@ -30,7 +30,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ```python
 def get_lc_execution_root(header: LightClientHeader) -> Root:
-    epoch = compute_epoch_at_slot(get_lc_beacon_slot(header))
+    epoch = compute_epoch_at_slot(header.beacon.slot)
 
     # [New in EIP4844]
     if epoch >= EIP4844_FORK_EPOCH:
@@ -64,7 +64,7 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 
 ```python
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    epoch = compute_epoch_at_slot(get_lc_beacon_slot(header))
+    epoch = compute_epoch_at_slot(header.beacon.slot)
 
     # [New in EIP4844]
     if epoch < EIP4844_FORK_EPOCH:

@@ -58,8 +58,8 @@ def needs_upgrade_to_eip4844(d_spec, s_spec):
 
 
 def check_lc_header_equal(d_spec, s_spec, data, upgraded):
-    assert s_spec.get_lc_beacon_slot(upgraded) == d_spec.get_lc_beacon_slot(data)
-    assert s_spec.get_lc_beacon_root(upgraded) == d_spec.get_lc_beacon_root(data)
+    assert upgraded.beacon.slot == data.beacon.slot
+    assert upgraded.beacon.hash_tree_root() == data.beacon.hash_tree_root()
     if is_post_capella(s_spec):
         if is_post_capella(d_spec):
             assert s_spec.get_lc_execution_root(upgraded) == d_spec.get_lc_execution_root(data)
@@ -197,32 +197,32 @@ def get_update_file_name(d_spec, update):
         suffix2 = "f"
     else:
         suffix2 = "x"
-    return f"update_{encode_hex(d_spec.get_lc_beacon_root(update.attested_header))}_{suffix1}{suffix2}"
+    return f"update_{encode_hex(update.attested_header.beacon.hash_tree_root())}_{suffix1}{suffix2}"
 
 
 def get_checks(s_spec, store):
     if is_post_capella(s_spec):
         return {
             "finalized_header": {
-                'slot': int(s_spec.get_lc_beacon_slot(store.finalized_header)),
-                'beacon_root': encode_hex(s_spec.get_lc_beacon_root(store.finalized_header)),
+                'slot': int(store.finalized_header.beacon.slot),
+                'beacon_root': encode_hex(store.finalized_header.beacon.hash_tree_root()),
                 'execution_root': encode_hex(s_spec.get_lc_execution_root(store.finalized_header)),
             },
             "optimistic_header": {
-                'slot': int(s_spec.get_lc_beacon_slot(store.optimistic_header)),
-                'beacon_root': encode_hex(s_spec.get_lc_beacon_root(store.optimistic_header)),
+                'slot': int(store.optimistic_header.beacon.slot),
+                'beacon_root': encode_hex(store.optimistic_header.beacon.hash_tree_root()),
                 'execution_root': encode_hex(s_spec.get_lc_execution_root(store.optimistic_header)),
             },
         }
 
     return {
         "finalized_header": {
-            'slot': int(s_spec.get_lc_beacon_slot(store.finalized_header)),
-            'beacon_root': encode_hex(s_spec.get_lc_beacon_root(store.finalized_header)),
+            'slot': int(store.finalized_header.beacon.slot),
+            'beacon_root': encode_hex(store.finalized_header.beacon.hash_tree_root()),
         },
         "optimistic_header": {
-            'slot': int(s_spec.get_lc_beacon_slot(store.optimistic_header)),
-            'beacon_root': encode_hex(s_spec.get_lc_beacon_root(store.optimistic_header)),
+            'slot': int(store.optimistic_header.beacon.slot),
+            'beacon_root': encode_hex(store.optimistic_header.beacon.hash_tree_root()),
         },
     }
 
@@ -317,10 +317,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Advance to next sync committee period
     # ```
@@ -343,10 +343,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Edge case: Signature in next period
     # ```
@@ -369,10 +369,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Edge case: Finalized header not included
     # ```
@@ -390,10 +390,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block=None)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Non-finalized case: Attested `next_sync_committee` is not finalized
     # ```
@@ -412,10 +412,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Force-update using timeout
     # ```
@@ -432,10 +432,10 @@ def test_light_client_sync(spec, state):
     attested_state = state.copy()
     next_slots(spec, state, spec.UPDATE_TIMEOUT - 1)
     yield from emit_force_update(test, spec, state)
-    assert spec.get_lc_beacon_slot(test.store.finalized_header) == store_state.slot
+    assert test.store.finalized_header.beacon.slot == store_state.slot
     assert test.store.next_sync_committee == store_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert spec.get_lc_beacon_slot(test.store.optimistic_header) == store_state.slot
+    assert test.store.optimistic_header.beacon.slot == store_state.slot
 
     # Edge case: Finalized header not included, after force-update
     # ```
@@ -451,10 +451,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block=None)
-    assert spec.get_lc_beacon_slot(test.store.finalized_header) == store_state.slot
+    assert test.store.finalized_header.beacon.slot == store_state.slot
     assert test.store.next_sync_committee == store_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Edge case: Finalized header older than store
     # ```
@@ -472,15 +472,15 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert spec.get_lc_beacon_slot(test.store.finalized_header) == store_state.slot
+    assert test.store.finalized_header.beacon.slot == store_state.slot
     assert test.store.next_sync_committee == store_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
     yield from emit_force_update(test, spec, state)
-    assert spec.get_lc_beacon_slot(test.store.finalized_header) == attested_state.slot
+    assert test.store.finalized_header.beacon.slot == attested_state.slot
     assert test.store.next_sync_committee == attested_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Advance to next sync committee period
     # ```
@@ -503,10 +503,10 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
     yield from finish_test(test)
@@ -533,10 +533,10 @@ def test_supply_sync_committee_from_past_update(spec, state):
 
     # Apply `LightClientUpdate` from the past, populating `store.next_sync_committee`
     yield from emit_update(test, spec, past_state, block, attested_state, attested_block, finalized_block)
-    assert spec.get_lc_beacon_slot(test.store.finalized_header) == state.slot
+    assert test.store.finalized_header.beacon.slot == state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert spec.get_lc_beacon_slot(test.store.optimistic_header) == state.slot
+    assert test.store.optimistic_header.beacon.slot == state.slot
 
     # Finish test
     yield from finish_test(test)
@@ -559,10 +559,10 @@ def test_advance_finality_without_sync_committee(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Advance finality into next sync committee period, but omit `next_sync_committee`
     transition_to(spec, state, compute_start_slot_at_next_sync_committee_period(spec, state))
@@ -578,10 +578,10 @@ def test_advance_finality_without_sync_committee(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, with_next=False)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert not spec.is_next_sync_committee_known(test.store)
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Advance finality once more, with `next_sync_committee` still unknown
     past_state = finalized_state
@@ -595,24 +595,24 @@ def test_advance_finality_without_sync_committee(spec, state):
 
     # Apply `LightClientUpdate` without `finalized_header` nor `next_sync_committee`
     update = yield from emit_update(test, spec, state, block, attested_state, attested_block, None, with_next=False)
-    assert spec.get_lc_beacon_slot(test.store.finalized_header) == past_state.slot
+    assert test.store.finalized_header.beacon.slot == past_state.slot
     assert not spec.is_next_sync_committee_known(test.store)
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Apply `LightClientUpdate` with `finalized_header` but no `next_sync_committee`
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, with_next=False)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert not spec.is_next_sync_committee_known(test.store)
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Apply full `LightClientUpdate`, supplying `next_sync_committee`
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
     yield from finish_test(test)
@@ -631,10 +631,10 @@ def run_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Jump to two slots before fork
     fork_epoch = getattr(phases[fork].config, fork.upper() + '_FORK_EPOCH')
@@ -645,10 +645,10 @@ def run_test_single_fork(spec, phases, state, fork):
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Perform `LightClientStore` upgrade
     yield from emit_upgrade_store(test, phases[fork], phases=phases)
@@ -660,10 +660,10 @@ def run_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
@@ -673,10 +673,10 @@ def run_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Another block after the fork, this time attested block is after the fork
     attested_block = block.copy()
@@ -684,10 +684,10 @@ def run_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Jump to next epoch
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch + 1) - 2)
@@ -696,10 +696,10 @@ def run_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update == update
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finalize the fork
     finalized_block = block.copy()
@@ -710,10 +710,10 @@ def run_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
     yield from finish_test(test)
@@ -770,10 +770,10 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
 
     # Check that update applies
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
     yield from finish_test(test)
@@ -805,10 +805,10 @@ def run_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.s_spec.get_lc_beacon_slot(test.store.finalized_header) == finalized_state.slot
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.s_spec.get_lc_beacon_slot(test.store.optimistic_header) == attested_state.slot
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
     yield from finish_test(test)
