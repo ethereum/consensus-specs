@@ -20,7 +20,7 @@ from .helpers.constants import (
 )
 from .helpers.forks import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
-from .helpers.genesis import create_genesis_state
+from .helpers.genesis import create_genesis_state, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX
 from .utils import (
     vector_test,
     with_meta_tags,
