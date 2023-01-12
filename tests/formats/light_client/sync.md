@@ -17,7 +17,7 @@ store_fork_digest: string         -- Encoded `ForkDigest`-context of `store` obj
 
 An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to initialize a local `store` object of type `LightClientStore` with `store_fork_digest` using `initialize_light_client_store(trusted_block_rooot, bootstrap)`. The SSZ type can be determined from `bootstrap_fork_digest`.
 
-If `store_fork_digest` differs from `bootstrap_fork_digest`, the `bootstrap` object may need upgrading before initializing the store.
+If `store_fork_digest` differs from `bootstrap_fork_digest`, the `bootstrap` object may need to be upgraded before initializing the store.
 
 ### `steps.yaml`
 
@@ -68,7 +68,7 @@ The function `process_light_client_update(store, update, current_slot, genesis_v
 }
 ```
 
-If `store_fork_digest` differs from `update_fork_digest`, the `update` object may need upgrading before initializing the store.
+If `store_fork_digest` differs from `update_fork_digest`, the `update` object may need to be upgraded before processing the update.
 
 After this step, the `store` object may have been updated.
 
@@ -84,7 +84,6 @@ The `store` should be upgraded to reflect the new `store_fork_digest`:
 ```
 
 After this step, the `store` object may have been updated.
-
 
 ## Condition
 
