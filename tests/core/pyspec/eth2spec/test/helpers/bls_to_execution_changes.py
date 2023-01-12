@@ -17,10 +17,10 @@ def get_signed_address_change(spec, state, validator_index=None, withdrawal_pubk
     if to_execution_address is None:
         to_execution_address = b'\x42' * 20
 
-    if fork_version is None:
-        domain = spec.get_domain(state, spec.DOMAIN_BLS_TO_EXECUTION_CHANGE)
-    else:
-        domain = spec.compute_domain(spec.DOMAIN_BLS_TO_EXECUTION_CHANGE, fork_version, state.genesis_validators_root)
+    domain = spec.compute_domain(
+        spec.DOMAIN_BLS_TO_EXECUTION_CHANGE,
+        fork_version=fork_version,
+        genesis_validators_root=state.genesis_validators_root)
 
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,
