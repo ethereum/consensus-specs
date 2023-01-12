@@ -240,6 +240,9 @@ The following blobs sidecars, where they exist, MUST be sent in consecutive orde
 
 Clients MAY limit the number of blobs sidecars in the response.
 
+An empty `BlobSidecar` is one that does not contain any blobs, but contains non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`.
+Clients MAY NOT want to consider empty `BlobSidecar`s in rate limiting logic.
+
 The response MUST contain no more than `count` blobs sidecars.
 
 Clients MUST respond with blobs sidecars from their view of the current fork choice
