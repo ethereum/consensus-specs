@@ -177,12 +177,8 @@ def test_invalid_bad_signature(spec, state):
 @with_capella_and_later
 @spec_state_test
 @always_bls
-def test_current_fork_version(spec, state):
-    """
-    It should be identical to the `test_success` test case.
-    It is just for comparing with `test_invalid_previous_fork_version`.
-    """
-    signed_address_change = get_signed_address_change(spec, state, fork_version=state.fork.current_version)
+def test_genesis_fork_version(spec, state):
+    signed_address_change = get_signed_address_change(spec, state, fork_version=spec.config.GENESIS_FORK_VERSION)
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
@@ -190,7 +186,25 @@ def test_current_fork_version(spec, state):
 @with_capella_and_later
 @spec_state_test
 @always_bls
+def test_invalid_current_fork_version(spec, state):
+    signed_address_change = get_signed_address_change(spec, state, fork_version=state.fork.current_version)
+
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
+
+
+@with_capella_and_later
+@spec_state_test
+@always_bls
 def test_invalid_previous_fork_version(spec, state):
     signed_address_change = get_signed_address_change(spec, state, fork_version=state.fork.previous_version)
+
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
+
+
+@with_capella_and_later
+@spec_state_test
+@always_bls
+def test_invalid_genesis_validators_root(spec, state):
+    signed_address_change = get_signed_address_change(spec, state, genesis_validators_root=b'\x99' * 32)
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)

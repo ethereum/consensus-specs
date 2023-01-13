@@ -472,7 +472,8 @@ def process_bls_to_execution_change(state: BeaconState,
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
     assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
 
-    domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE)
+    # Fork-agnostic domain since address changes are valid across forks
+    domain = compute_domain(DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root)
     signing_root = compute_signing_root(address_change, domain)
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 
