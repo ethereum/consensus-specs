@@ -199,3 +199,12 @@ def test_invalid_previous_fork_version(spec, state):
     signed_address_change = get_signed_address_change(spec, state, fork_version=state.fork.previous_version)
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
+
+
+@with_capella_and_later
+@spec_state_test
+@always_bls
+def test_invalid_genesis_validators_root(spec, state):
+    signed_address_change = get_signed_address_change(spec, state, genesis_validators_root=b'\x99' * 32)
+
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
