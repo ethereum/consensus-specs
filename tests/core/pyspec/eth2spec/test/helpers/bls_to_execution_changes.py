@@ -22,7 +22,7 @@ def get_signed_address_change(spec, state,
         to_execution_address = b'\x42' * 20
 
     if genesis_validators_root is None:
-        genesis_validators_root = spec.genesis_validators_root
+        genesis_validators_root = state.genesis_validators_root
 
     domain = spec.compute_domain(
         spec.DOMAIN_BLS_TO_EXECUTION_CHANGE,
