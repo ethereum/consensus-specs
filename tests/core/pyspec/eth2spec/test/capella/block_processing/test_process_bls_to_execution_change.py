@@ -1,7 +1,14 @@
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
-
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_capella_and_later, always_bls
+from eth2spec.test.helpers.constants import CAPELLA, MAINNET
+from eth2spec.test.context import (
+    always_bls,
+    expect_assertion_error,
+    spec_state_test,
+    with_capella_and_later,
+    with_presets,
+    with_phases,
+)
 
 
 def run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=True):
@@ -208,3 +215,31 @@ def test_invalid_genesis_validators_root(spec, state):
     signed_address_change = get_signed_address_change(spec, state, genesis_validators_root=b'\x99' * 32)
 
     yield from run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=False)
+
+
+@with_phases([CAPELLA])
+@with_presets([MAINNET], reason="use mainnet fork version")
+@spec_state_test
+@always_bls
+def test_valid_signature_from_staking_deposit_cli(spec, state):
+    validator_index = 1
+    from_bls_pubkey = bytes.fromhex('86248e64705987236ec3c41f6a81d96f98e7b85e842a1d71405b216fa75a9917512f3c94c85779a9729c927ea2aa9ed1')  # noqa: E501
+    to_execution_address = bytes.fromhex('3434343434343434343434343434343434343434')
+    signature = bytes.fromhex('8cf4219884b326a04f6664b680cd9a99ad70b5280745af1147477aa9f8b4a2b2b38b8688c6a74a06f275ad4e14c5c0c70e2ed37a15ece5bf7c0724a376ad4c03c79e14dd9f633a3d54abc1ce4e73bec3524a789ab9a69d4d06686a8a67c9e4dc')  # noqa: E501
+
+    # Use mainnet `genesis_validators_root`
+    state.genesis_validators_root = bytes.fromhex('4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95')
+    validator = state.validators[validator_index]
+    validator.withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(from_bls_pubkey)[1:]
+
+    address_change = spec.BLSToExecutionChange(
+        validator_index=validator_index,
+        from_bls_pubkey=from_bls_pubkey,
+        to_execution_address=to_execution_address,
+    )
+    signed_address_change = spec.SignedBLSToExecutionChange(
+        message=address_change,
+        signature=signature,
+    )
+
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
