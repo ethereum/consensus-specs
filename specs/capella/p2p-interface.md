@@ -61,6 +61,8 @@ This topic is used to propagate signed bls to execution change messages to be in
 
 The following validations MUST pass before forwarding the `signed_bls_to_execution_change` on the network:
 
+- _[IGNORE]_ `current_epoch >= CAPELLA_FORK_EPOCH`,
+  where `current_epoch` is defined by the current wall-clock time.
 - _[IGNORE]_ The `signed_bls_to_execution_change` is the first valid signed bls to execution change received
   for the validator with index `signed_bls_to_execution_change.message.validator_index`.
 - _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass validation.
