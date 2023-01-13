@@ -225,7 +225,7 @@ def test_valid_signature_from_staking_deposit_cli(spec, state):
     validator_index = 1
     from_bls_pubkey = bytes.fromhex('86248e64705987236ec3c41f6a81d96f98e7b85e842a1d71405b216fa75a9917512f3c94c85779a9729c927ea2aa9ed1')  # noqa: E501
     to_execution_address = bytes.fromhex('3434343434343434343434343434343434343434')
-    signature = bytes.fromhex('b9611626f18632086b6e05e161b1cb1f686ca0e920d12a2d7430e230e336d96b381099d1fda198949b727830088d70eb039e30ea213908a34a1d0d81b0c4c8fd23f38475f36c45ff98dd0906874387183d7583c60ad7bd1744a41ea68b5dfcb2')  # noqa: E501
+    signature = bytes.fromhex('8cf4219884b326a04f6664b680cd9a99ad70b5280745af1147477aa9f8b4a2b2b38b8688c6a74a06f275ad4e14c5c0c70e2ed37a15ece5bf7c0724a376ad4c03c79e14dd9f633a3d54abc1ce4e73bec3524a789ab9a69d4d06686a8a67c9e4dc')  # noqa: E501
 
     # Use mainnet `genesis_validators_root`
     state.genesis_validators_root = bytes.fromhex('4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95')
