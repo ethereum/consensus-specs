@@ -22,9 +22,9 @@ This document describes how to upgrade existing light client objects based on th
 A Capella `LightClientStore` can still process earlier light client data. In order to do so, that pre-Capella data needs to be locally upgraded to Capella before processing.
 
 ```python
-def upgrade_lc_header_to_capella(pre: BeaconBlockHeader) -> LightClientHeader:
+def upgrade_lc_header_to_capella(pre: altair.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
-        beacon=pre,
+        beacon=pre.beacon,
     )
 ```
 
