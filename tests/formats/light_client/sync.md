@@ -72,7 +72,7 @@ If `store_fork_digest` differs from `update_fork_digest`, the `update` object ma
 
 After this step, the `store` object may have been updated.
 
-#### `process_upgrade_store`
+#### `upgrade_store`
 
 The `store` should be upgraded to reflect the new `store_fork_digest`:
 

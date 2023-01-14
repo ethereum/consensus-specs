@@ -274,7 +274,7 @@ def emit_upgrade_store(test, new_s_spec, phases=None):
 
     yield from []  # Consistently enable `yield from` syntax in calling tests
     test.steps.append({
-        "process_upgrade_store": {
+        "upgrade_store": {
             "store_fork_digest": encode_hex(store_fork_digest),
             "checks": get_checks(test.s_spec, test.store),
         }
