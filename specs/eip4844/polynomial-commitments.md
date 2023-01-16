@@ -302,10 +302,12 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     assert width == FIELD_ELEMENTS_PER_BLOB
     inverse_width = bls_modular_inverse(BLSFieldElement(width))
 
-    # Make sure we won't divide by zero during division
-    assert z not in ROOTS_OF_UNITY
-
     roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+
+    # If we are asked to evaluate within the domain, we already know the answer
+    if z in roots_of_unity_brp:
+        eval_index = roots_of_unity_brp.index(z)
+        return BLSFieldElement(polynomial[eval_index])
 
     result = 0
     for i in range(width):

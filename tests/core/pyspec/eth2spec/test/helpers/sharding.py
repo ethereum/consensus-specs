@@ -66,6 +66,38 @@ def get_sample_blob(spec, rng=None):
     return spec.Blob(b)
 
 
+def eval_poly_in_coeff_form(spec, coeffs, x):
+    """
+    Evaluate a polynomial in coefficient form at 'x' using Horner's rule
+    """
+    total = 0
+    for a in reversed(coeffs):
+        total = (total * x + a) % spec.BLS_MODULUS
+    return total % spec.BLS_MODULUS
+
+
+def get_poly_in_both_forms(spec, rng=None):
+    """
+    Generate and return a random polynomial in both coefficient form and evaluation form
+    """
+    if rng is None:
+        rng = random.Random(5566)
+
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+
+    coeffs = [
+        rng.randint(0, spec.BLS_MODULUS - 1)
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
+
+    evals = [
+        eval_poly_in_coeff_form(spec, coeffs, int(z))
+        for z in roots_of_unity_brp
+    ]
+
+    return coeffs, evals
+
+
 def get_sample_opaque_tx(spec, blob_count=1, rng=None):
     blobs = []
     blob_kzg_commitments = []
