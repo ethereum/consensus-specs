@@ -42,8 +42,10 @@ def test_barycentric_outside_domain(spec, state):
     n_samples = 12
 
     for i in range(n_samples):
-        # Get a random evaluation point
+        # Get a random evaluation point and make sure it's not a root of unity
         z = rng.randint(0, spec.BLS_MODULUS - 1)
+        while z in roots_of_unity_brp:
+            z = rng.randint(0, spec.BLS_MODULUS - 1)
 
         # Get p(z) by evaluating poly in coefficient form
         p_z_coeff = eval_poly_in_coeff_form(spec, poly_coeff, z)
