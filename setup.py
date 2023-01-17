@@ -616,6 +616,21 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return super().sundry_functions() + '\n\n' + '''
+def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
+                                        index: GeneralizedIndex) -> Sequence[Bytes32]:
+    return build_proof(body.get_backing(), index)'''
+
+
+    @classmethod
+    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+        constants = {
+            'EXECUTION_PAYLOAD_INDEX': 'GeneralizedIndex(25)',
+        }
+        return {**super().hardcoded_ssz_dep_constants(), **constants}
+
 #
 # EIP4844SpecBuilder
 #
@@ -690,6 +705,7 @@ def objects_to_spec(preset_name: str,
         if k in [
             "ceillog2",
             "floorlog2",
+            "compute_merkle_proof_for_block_body",
             "compute_merkle_proof_for_state",
         ]:
             del spec_object.functions[k]
@@ -982,6 +998,10 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork in (CAPELLA, EIP4844):
                 self.md_doc_paths += """
+                    specs/capella/light-client/fork.md
+                    specs/capella/light-client/full-node.md
+                    specs/capella/light-client/p2p-interface.md
+                    specs/capella/light-client/sync-protocol.md
                     specs/capella/beacon-chain.md
                     specs/capella/fork.md
                     specs/capella/fork-choice.md
@@ -990,6 +1010,10 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork == EIP4844:
                 self.md_doc_paths += """
+                    specs/eip4844/light-client/fork.md
+                    specs/eip4844/light-client/full-node.md
+                    specs/eip4844/light-client/p2p-interface.md
+                    specs/eip4844/light-client/sync-protocol.md
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
                     specs/eip4844/fork-choice.md
