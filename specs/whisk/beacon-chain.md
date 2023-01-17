@@ -42,7 +42,6 @@ building upon the [phase0](../phase0/beacon-chain.md) specification.
 | `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
 | `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
 | `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7)` (= 128)     | number of validators shuffled per shuffle step              |
-| `WHISK_SHUFFLE_STEPS_PER_ROUND`    | `uint64(2**7)` (= 128)     | Number of stirs to complete a pass over all rows            |
 | `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
 | `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
 | `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
@@ -231,28 +230,22 @@ class BeaconBlockBody(bellatrix.BeaconBlockBody):
 ```
 
 ```python
-def get_squareshuffle_indices(s: uint64, r: uint64, k: uint64) -> Sequence[uint64]:
+def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
     """
-    Get indices of row `s` in round `r` assuming a square matrix of order `k`.
+    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set
     """
-    if r % 2 == 0: # rows get shuffled on even rounds
-        return [i + k * (s % k) for i in range(k)] # indices of row `s % k`
-    else: # columns get shuffled on odd rounds
-        return [s + k * (i % k) for i in range(k)] # indices of column `s % k`
+    indices = []
+    for i in WHISK_VALIDATORS_PER_SHUFFLE:
+        # XXX ensure we are not suffering from modulo bias
+        shuffle_index = uint256(hash(randao_reveal + uint_to_bytes(i))) % WHISK_CANDIDATE_TRACKERS_COUNT
+        indices.append(shuffle_index)
 
-
-def get_shuffle_indices(state: BeaconState, randao_reveal: BLSSignature, epoch: Epoch) -> Sequence[uint64]:
-    """
-    Return the indices that the Feistel permutation shuffles in this slot.
-    """
-    shuffle_round = state.slot // WHISK_SHUFFLE_STEPS_PER_ROUND
-    shuffled_row = uint256(hash(randao_reveal)) % WHISK_SHUFFLE_STEPS_PER_ROUND
-    return get_squareshuffle_indices(shuffled_row, shuffle_round, WHISK_VALIDATORS_PER_SHUFFLE)
+    return indices
 
 
 def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None:
     # Check the shuffle proof
-    shuffle_indices = get_shuffle_indices(state, body.randao_reveal, get_current_epoch(state))
+    shuffle_indices = get_shuffle_indices(body.randao_reveal)
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
     post_shuffle_trackers = body.whisk_post_shuffle_trackers
 
