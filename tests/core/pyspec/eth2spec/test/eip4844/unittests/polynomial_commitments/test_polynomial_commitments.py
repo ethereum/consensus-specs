@@ -41,7 +41,7 @@ def test_barycentric_outside_domain(spec, state):
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n_samples = 12
 
-    for i in range(n_samples):
+    for _ in range(n_samples):
         # Get a random evaluation point and make sure it's not a root of unity
         z = rng.randint(0, spec.BLS_MODULUS - 1)
         while z in roots_of_unity_brp:
