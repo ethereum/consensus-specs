@@ -112,10 +112,10 @@ Up to `MAX_BLS_TO_EXECUTION_CHANGES`, [`BLSToExecutionChange`](./beacon-chain.md
 
 ## Enabling validator withdrawals
 
-Validator balances are withdrawn periodically via an automatic process. For exited validators, the full balance is withdrawn. For active validators, the balance in excess of `MAX_EFFECTIVE_BALANCE` is withdrawn.
+Validator balances are fully or partially withdrawn via an automatic process.
 
-There is one prerequisite for this automated process:
-the validator's withdrawal credentials pointing to an execution layer address, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
+For validators, there is one prerequisite for this automated process:
+withdrawal credentials pointing to an execution layer address, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
 
 If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to participate in withdrawals the validator must 
 create a one-time message to change their withdrawal credential from the version authenticated with a BLS key to the

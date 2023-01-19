@@ -1,4 +1,4 @@
-# Capella -- The Beacon Chain
+# Revoke-pubkey-change -- The Beacon Chain
 
 ## Table of contents
 
@@ -8,17 +8,17 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
+- [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
-  - [Withdrawals processing](#withdrawals-processing)
 - [Containers](#containers)
-  - [New containers](#new-containers)
     - [`Withdrawal`](#withdrawal)
     - [`BLSToExecutionChange`](#blstoexecutionchange)
     - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
-    - [`HistoricalSummary`](#historicalsummary)
+  - [New containers](#new-containers)
+    - [`PubKeyChange`](#PubKeyChange)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -26,37 +26,24 @@
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
+    - 
     - [`has_eth1_withdrawal_credential`](#has_eth1_withdrawal_credential)
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Epoch processing](#epoch-processing)
-    - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
-    - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
-    - [New `process_withdrawals`](#new-process_withdrawals)
+    - [`get_expected_withdrawals`](#new-get_expected_withdrawals)
+    - [`process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_operations`](#modified-process_operations)
-    - [New `process_bls_to_execution_change`](#new-process_bls_to_execution_change)
+    - [`process_bls_to_execution_change`](#new-process_bls_to_execution_change)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
-
-Capella is a consensus-layer upgrade containing a number of features related
-to validator withdrawals. Including:
-* Automatic withdrawals of `withdrawable` validators.
-* Partial withdrawals sweep for validators with 0x01 withdrawal
-  credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
-* Operation to change from `BLS_WITHDRAWAL_PREFIX` to
-  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
-
-Another new feature is the new independent state and block historical accumulators
-that replace the original singular historical roots. With these accumulators, it becomes possible to validate
-the entire block history that led up to that particular state without any additional information
-beyond the state and the blocks.
+Revoke-pubkey-change (aka REVOKE) is a proposed consensus-layer upgrade containing a new feature allowing validators to change their signing key (pubkey).
 
 ## Custom types
 
@@ -64,76 +51,39 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
+| `PubKeyChangeIndex` | `uint64` | an index of a `PubKeyChange` |
+
+## Constants
 
 ### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
 ## Preset
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_BLS_TO_EXECUTION_CHANGES` | `2**4` (= 16) |
-
 ### Execution
-
-| Name | Value | Description |
-| - | - | - |
-| `MAX_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawals allowed in each payload |
-
-### Withdrawals processing
-
-| Name | Value |
-| - | - |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2**14 ) |
 
 ## Containers
 
 ### New containers
 
-#### `Withdrawal`
-
+#### `PubKeyChange`
 ```python
-class Withdrawal(Container):
-    index: WithdrawalIndex
+
+class PubKeyChange(Container):
+    index: PubKeyChangeIndex
     validator_index: ValidatorIndex
-    address: ExecutionAddress
-    amount: Gwei
+    address: BLSPubkey 
 ```
 
-#### `BLSToExecutionChange`
+<!--Since the REVOKE will be building upon the CAPELLA, the BLS_TO_EXECUTION_CHANGE message (used for changing the PoS PREFIX WITHDRAWAL credential to ETH1 Address - execution address) can be used to initiate PubKey Change-->
+<!--We can assume all the validators will be using ETH1 withdrawal credentials -->
 
-```python
-class BLSToExecutionChange(Container):
-    validator_index: ValidatorIndex
-    from_bls_pubkey: BLSPubkey
-    to_execution_address: ExecutionAddress
-```
+<!--The BLS_TO_EXECUTION_CHANGE can already enable changing the withdrawal credentials from using the POS withdrawal key to using the ETH1 address destination. Therefore creating a new xxToExecutionChange message is not required -->
 
-#### `SignedBLSToExecutionChange`
+<!--BLS_TO_EXECUTION_CHANGE is the message for changing the old POS PREFIX WITHDRAWAL credential to ETH1 withdrawal credentials-->
 
-```python
-class SignedBLSToExecutionChange(Container):
-    message: BLSToExecutionChange
-    signature: BLSSignature
-```
-
-#### `HistoricalSummary`
-
-```python
-class HistoricalSummary(Container):
-    """
-    `HistoricalSummary` matches the components of the phase0 `HistoricalBatch`
-    making the two hash_tree_root-compatible.
-    """
-    block_summary_root: Root
-    state_summary_root: Root
-```
+<!--For REVOKE we can assume using ETH1 withdrawal credentials - ETH1 address is what we need to use to initate the PubKey-Change -->
 
 ### Extended Containers
 
@@ -158,6 +108,7 @@ class ExecutionPayload(Container):
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]  # [New in Capella]
+    #pubkeychanges: List[PubKeyChange, MAX_PUBKEY_CHANGE_PER_PAYLOAD] # [New in Revoke] Note: Not required as PubKey-change will not need to make change in the Execution Layer (EL) state change in the execution payload.
 ```
 
 #### `ExecutionPayloadHeader`
@@ -181,6 +132,7 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root  # [New in Capella]
+    #pubkeychanges_root: Root # [New in Revoke] Note: Also don't need the root here
 ```
 
 #### `BeaconBlockBody`
@@ -204,8 +156,8 @@ class BeaconBlockBody(Container):
 ```
 
 #### `BeaconState`
-
 ```python
+
 class BeaconState(Container):
     # Versioning
     genesis_time: uint64
@@ -216,7 +168,7 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  # Frozen in Capella, replaced by historical_summaries
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -246,13 +198,34 @@ class BeaconState(Container):
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
-    # Deep history valid from Capella onwards
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
+    #Pubkey-change
+    next_pubkeychange_index: PubKeyChangeIndex # [New in Revoke]
+    next_pubkeychange_validator_index: ValidatorIndex  # [New in Revoke]
 ```
 
 ## Helpers
 
 ### Predicates
+
+#### `is_pubkey_changable`
+
+```python
+def is_pubkey_changable(validator: Validator, epoch: Epoch, newpubkey: BLSPubkey) -> bool: # [New in Revoke]
+    """
+    Check if ``validator`` signing key can be changed.
+    """
+
+    return (
+        has_eth1_withdrawal_credential(validator)
+        and validator.pubkey_change_epoch <= epoch
+        and validator.pubkey != validator.newpubkey ) #Define a newpubkey object
+
+        #TODO: Review with mentors if additional checks are required.
+
+        ## 1. Created validator with pubkey = newpubkey
+        ## 2. Revocation request, set newpubkey to revocation.newpubkey
+        ## 3. We have reached the revocation epoch, set pubkey = newpubkey
+```
 
 #### `has_eth1_withdrawal_credential`
 
@@ -292,40 +265,6 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ## Beacon chain state transition function
 
-### Epoch processing
-
-*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Bellatrix.
-
-```python
-def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)
-    process_inactivity_updates(state)
-    process_rewards_and_penalties(state)
-    process_registry_updates(state)
-    process_slashings(state)
-    process_eth1_data_reset(state)
-    process_effective_balance_updates(state)
-    process_slashings_reset(state)
-    process_randao_mixes_reset(state)
-    process_historical_summaries_update(state)  # [Modified in Capella]
-    process_participation_flag_updates(state)
-    process_sync_committee_updates(state)
-```
-
-#### Historical summaries updates
-
-```python
-def process_historical_summaries_update(state: BeaconState) -> None:
-    # Set historical block root accumulator.
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        historical_summary = HistoricalSummary(
-            block_summary_root=hash_tree_root(state.block_roots),
-            state_summary_root=hash_tree_root(state.state_roots),
-        )
-        state.historical_summaries.append(historical_summary)
-```
-
 ### Block processing
 
 ```python
@@ -333,79 +272,91 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
         process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
+        process_pubkeychanges(state, block.body.execution_payload) # [New in Revoke]
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE) # [Modified in Capella]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Capella]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### New `get_expected_withdrawals`
-
+#### New `get_expected_pubkeychange`
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
+def get_expected_pubkeychange(state: BeaconState) -> Sequence[PubKeyChange]:
     epoch = get_current_epoch(state)
-    withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
-    withdrawals: List[Withdrawal] = []
-    bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
-    for _ in range(bound):
+    pubkeychange_index = state.next_pubkeychange_index
+    validator_index = state.next_pubkeychange_validator_index
+    pubkeychanges: List[PubKeyChange] = []
+    for _ in range(len(state.validators)):
         validator = state.validators[validator_index]
-        balance = state.balances[validator_index]
-        if is_fully_withdrawable_validator(validator, balance, epoch):
-            withdrawals.append(Withdrawal(
-                index=withdrawal_index,
+        #balance = state.balances[validator_index]
+        if is_pubkey_changable(validator, epoch):
+            pubkeychanges.append(PubKeyChange(
+                index=pubkeychange_index,
                 validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance,
+                #address=?
             ))
-            withdrawal_index += WithdrawalIndex(1)
-        elif is_partially_withdrawable_validator(validator, balance):
-            withdrawals.append(Withdrawal(
-                index=withdrawal_index,
-                validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - MAX_EFFECTIVE_BALANCE,
-            ))
-            withdrawal_index += WithdrawalIndex(1)
-        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+            pubkeychange_index += PubKeyChangeIndex(1)
+            
+        if len(pubkeychanges) == MAX_PUBKEY_CHANGE_PER_PAYLOAD:
             break
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-    return withdrawals
+    return pubkeychanges
 ```
 
-#### New `process_withdrawals`
-
+#### New `process_pubkeychanges`
 ```python
-def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    expected_withdrawals = get_expected_withdrawals(state)
-    assert len(payload.withdrawals) == len(expected_withdrawals)
 
-    for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
-        assert withdrawal == expected_withdrawal
-        decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
+def process_pubkeychanges(state: BeaconState, payload: ExecutedPayLoad) -> None:
+    expected_pubkeychanges = get_expected_pubkeychanges(state)
+    assert len(payload.pubkeychanges) == len(expected_pubkeychanges)
 
-    # Update the next withdrawal index if this block contained withdrawals
-    if len(expected_withdrawals) != 0:
-        latest_withdrawal = expected_withdrawals[-1]
-        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
+    # Verify exit has not been initiated
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Pubkeychange must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= pubkeychange.epoch
+    # Verify signature - Check with mentor
+    # Whether the formating is different?
+    domain = get_domain(state, DOMAIN_PUBKEYCHANGE, pubkeychange.epoch)
+    signing_root = compute_signing_root(pubkeychange.domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_pubkeychange.signature)
 
-    # Update the next validator index to start the next withdrawal sweep
-    if len(expected_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex((expected_withdrawals[-1].validator_index + 1) % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
-    else:
-        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
-        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
+    # might need a different function.
+    # Question for Mentor - can we use existing withdrawal credentials
+    # with bls.Verify?
+
+    #initiate pubkeychange
+    initiate_pubkeychange(state, pubkeychange.validator_index, pubkeychange.newpubkey) # Need to check this - implement this function???s
+
 ```
+
+#### New `initiate_pubkeychanges`
+```python
+
+def initiate_pubkeychange(state: BeaconState, index: ValidatorIndex, newpubkey: BLSPubkey) -> None: # [New in Revoke]
+    """
+    TODO: Do we need to queue revocations? Decided not to queue the 
+    """
+    # set revocation epoch to current epoch + X.
+    # set newpubkey to  
+    # pubkey != newpubkey (we have an outstanding queued revocation)
+    # pubkey == pubkey (no outstanding revocations)
+
+    # Return if validator already initiated revocation
+    validator = state.validators[index]
+
+    # Set validator key revocation epoch
+    validator.newpubkey = newpubkey
+    validator.revocation_epoch = get_current_epoch(state) + Epoch(1)
+```
+
 
 #### Modified `process_execution_payload`
 
 *Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
-
+## Testing
 ```python
 def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
     # Verify consistency of the parent hash with respect to the previous execution payload header
@@ -433,9 +384,12 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
+        #withdrawals_root=hash_tree_root(payload.withdrawals),  # [New in Capella]
+        pubkeychanges_root=hash_tree_root(payload.pubkeychanges) # TODO: Verify if we require this for key change
     )
 ```
+    # Process PubKeyChange
+    
 
 #### Modified `process_operations`
 
@@ -456,6 +410,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)  # [New in Capella]
+    for_ops(body.prvkey_to_execution_changes, process_prvkey_to_execution_change) # [New in Revoke]
 ```
 
 #### New `process_bls_to_execution_change`
@@ -485,7 +440,7 @@ def process_bls_to_execution_change(state: BeaconState,
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Capella testing only.
+Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Capella testing only.
 Modifications include:
 1. Use `CAPELLA_FORK_VERSION` as the previous and current fork version.
 2. Utilize the Capella `BeaconBlockBody` when constructing the initial `latest_block_header`.
@@ -509,12 +464,17 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
     )
 
+
+    # Process PubKeyChange
+    
+
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
     for index, deposit in enumerate(deposits):
         deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
         state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
         process_deposit(state, deposit)
+
 
     # Process activations
     for index, validator in enumerate(state.validators):
@@ -536,4 +496,3 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     state.latest_execution_payload_header = execution_payload_header
 
     return state
-```
