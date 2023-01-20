@@ -85,17 +85,12 @@ This topic is used to propagate new signed and coupled beacon blocks and blobs s
 
 In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.
 Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
-- _[REJECT]_ The KZG commitments of the blobs are all correctly encoded compressed BLS G1 points
-  -- i.e. `all(bls.KeyValidate(commitment) for commitment in block.body.blob_kzg_commitments)`
 - _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list
   -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
 
 Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
 - _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
   -- i.e. `sidecar.beacon_block_slot == block.slot`.
-- _[REJECT]_ the `sidecar.blobs` are all well formatted, i.e. the `BLSFieldElement` in valid range (`x < BLS_MODULUS`).
-- _[REJECT]_ The KZG proof is a correctly encoded compressed BLS G1 point
-  -- i.e. `bls.KeyValidate(blobs_sidecar.kzg_aggregated_proof)`
 - _[REJECT]_ The KZG commitments in the block are valid against the provided blobs sidecar
   -- i.e. `validate_blobs_sidecar(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments, sidecar)`
 
