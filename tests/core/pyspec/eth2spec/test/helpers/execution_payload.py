@@ -171,6 +171,39 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     return payload
 
 
+def build_single_tx_execution_payload(spec, state, randao_mix=None):
+    """
+    Assuming a pre-state of the same slot, build a valid ExecutionPayload with a single mock transaction.
+    """
+    latest = state.latest_execution_payload_header
+    timestamp = spec.compute_timestamp_at_slot(state, state.slot)
+
+    if randao_mix is None:
+        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
+    payload = spec.ExecutionPayload(
+        parent_hash=latest.block_hash,
+        fee_recipient=spec.ExecutionAddress(),
+        state_root=latest.state_root,  # no changes to the state
+        receipts_root=spec.Bytes32(bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
+        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
+        block_number=latest.block_number + 1,
+        prev_randao=randao_mix,
+        gas_limit=latest.gas_limit,  # retain same limit
+        gas_used=0,  # empty block, 0 gas
+        timestamp=timestamp,
+        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
+        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
+        transactions=[spec.Transaction()],
+    )
+    if is_post_capella(spec):
+        payload.withdrawals = spec.get_expected_withdrawals(state)
+
+    payload.block_hash = compute_el_block_hash(spec, payload)
+
+    return payload
+
+
 def build_randomized_execution_payload(spec, state, rng):
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))

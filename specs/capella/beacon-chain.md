@@ -379,7 +379,11 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     expected_withdrawals = get_expected_withdrawals(state)
-    assert len(payload.withdrawals) == len(expected_withdrawals)
+    if len(payload.withdrawals) != len(expected_withdrawals):
+        # Allow fallback to empty payload when `engine_getPayload` fails
+        assert len(payload.transactions) == 0  # Block reward must be forfeited
+        assert len(payload.withdrawals) == 0
+        return
 
     for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
         assert withdrawal == expected_withdrawal
