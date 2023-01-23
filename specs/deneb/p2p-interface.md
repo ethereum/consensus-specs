@@ -119,13 +119,13 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
-| `EIP4844_FORK_VERSION`   | `eip4844.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 
 #### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
+After `DENEB_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
 Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
@@ -170,7 +170,7 @@ No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
 
-Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
+Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
 Clients MUST respond with at least one block and sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
@@ -211,7 +211,7 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
+`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blobs on this range.
 

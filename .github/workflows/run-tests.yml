@@ -83,7 +83,7 @@ jobs:
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "eip4844"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb"]
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0

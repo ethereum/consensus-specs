@@ -28,8 +28,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `EIP4844_FORK_VERSION` | `Version('0x04000000')` |
-| `EIP4844_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `DENEB_FORK_VERSION` | `Version('0x04000000')` |
+| `DENEB_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,8 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP4844_FORK_EPOCH:
-        return EIP4844_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
         return CAPELLA_FORK_VERSION
     if epoch >= BELLATRIX_FORK_EPOCH:
@@ -58,16 +58,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
 ### Fork trigger
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `EIP4844_FORK_EPOCH`.
+For now, we assume the condition will be triggered at epoch `DENEB_FORK_EPOCH`.
 
-Note that for the pure EIP-4844 networks, we don't apply `upgrade_to_eip4844` since it starts with EIP-4844 version logic.
+Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
 
 ### Upgrading the state
 
-Since the `eip4844.BeaconState` format is equal to the `capella.BeaconState` format, we only have to update `BeaconState.fork`.
+Since the `deneb.BeaconState` format is equal to the `capella.BeaconState` format, we only have to update `BeaconState.fork`.
 
 ```python
-def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
+def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
     epoch = capella.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
@@ -94,7 +94,7 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EIP4844_FORK_VERSION,  # [Modified in EIP4844]
+            current_version=DENEB_FORK_VERSION,  # [Modified in Deneb]
             epoch=epoch,
         ),
         # History
@@ -127,7 +127,7 @@ def upgrade_to_eip4844(pre: capella.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in EIP4844]
+        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Deneb]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
