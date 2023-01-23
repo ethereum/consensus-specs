@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_eip4844_and_later,
+    with_deneb_and_later,
 )
 from eth2spec.test.helpers.sharding import (
     get_sample_blob,
@@ -11,7 +11,7 @@ from eth2spec.test.helpers.sharding import (
 )
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_verify_kzg_proof(spec, state):
     x = 3
@@ -24,7 +24,7 @@ def test_verify_kzg_proof(spec, state):
     assert spec.verify_kzg_proof_impl(commitment, x, y, proof)
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_barycentric_outside_domain(spec, state):
     """
@@ -57,7 +57,7 @@ def test_barycentric_outside_domain(spec, state):
         assert p_z_coeff == p_z_eval
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_barycentric_within_domain(spec, state):
     """

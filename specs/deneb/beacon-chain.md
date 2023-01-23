@@ -249,7 +249,7 @@ def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> N
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-4844 testing only.
 
-The `BeaconState` initialization is unchanged, except for the use of the updated `eip4844.BeaconBlockBody` type 
+The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type 
 when initializing the first body-root.
 
 ```python
@@ -259,8 +259,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=EIP4844_FORK_VERSION,  # [Modified in EIP-4844] for testing only
-        current_version=EIP4844_FORK_VERSION,  # [Modified in EIP-4844]
+        previous_version=DENEB_FORK_VERSION,  # [Modified in Deneb] for testing only
+        current_version=DENEB_FORK_VERSION,  # [Modified in Deneb]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(

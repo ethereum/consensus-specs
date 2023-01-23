@@ -1,4 +1,4 @@
-# EIP4844 Light Client -- Sync Protocol
+# Deneb Light Client -- Sync Protocol
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This upgrade updates light client data to include the EIP4844 changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to EIP4844.
+This upgrade updates light client data to include the Denbeb changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to Deneb.
 
 Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
@@ -32,11 +32,11 @@ Additional documents describes the impact of the upgrade on certain roles:
 def get_lc_execution_root(header: LightClientHeader) -> Root:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in EIP4844]
-    if epoch >= EIP4844_FORK_EPOCH:
+    # [New in Deneb]
+    if epoch >= DENEB_FORK_EPOCH:
         return hash_tree_root(header.execution)
 
-    # [Modified in EIP4844]
+    # [Modified in Deneb]
     if epoch >= CAPELLA_FORK_EPOCH:
         execution_header = capella.ExecutionPayloadHeader(
             parent_hash=header.execution.parent_hash,
@@ -66,8 +66,8 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in EIP4844]
-    if epoch < EIP4844_FORK_EPOCH:
+    # [New in Deneb]
+    if epoch < DENEB_FORK_EPOCH:
         if header.execution.excess_data_gas != uint256(0):
             return False
 
