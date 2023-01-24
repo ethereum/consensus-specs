@@ -366,11 +366,10 @@ def compute_aggregated_poly_and_commitment(
 #### `compute_aggregate_kzg_proof`
 
 ```python
-def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
-    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
+def compute_aggregate_kzg_proof(blobs: Sequence[Blob],kzg_commitments: Sequence[KZGCommitment]) -> KZGProof:
     aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
         blobs,
-        commitments
+        kzg_commitments
     )
     return compute_kzg_proof(aggregated_poly, evaluation_challenge)
 ```
@@ -392,3 +391,4 @@ def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
     # Verify aggregated proof
     return verify_kzg_proof(aggregated_poly_commitment, evaluation_challenge, y, kzg_aggregated_proof)
 ```
+
