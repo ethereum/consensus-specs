@@ -56,10 +56,10 @@ Functions flagged as "Public method" MUST be provided by the underlying KZG libr
 | `G1Point` | `Bytes48` | |
 | `G2Point` | `Bytes96` | |
 | `BLSFieldElement` | `uint256` | `x < BLS_MODULUS` |
-| `KZGCommitment` | `Bytes48` | Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity |
+| `KZGCommitment` | `Bytes48` | Same as BLS standard "KeyValidate" check but allows the identity point |
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
-| `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | a polynomial in evaluation form |
-| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | a basic blob data |
+| `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | A polynomial in evaluation form |
+| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic blob data |
 
 ## Constants
 
