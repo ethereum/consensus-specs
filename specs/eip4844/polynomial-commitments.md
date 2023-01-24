@@ -35,6 +35,7 @@
     - [`verify_kzg_proof`](#verify_kzg_proof)
     - [`verify_kzg_proof_impl`](#verify_kzg_proof_impl)
     - [`compute_kzg_proof`](#compute_kzg_proof)
+    - [`compute_kzg_proof_impl`](#compute_kzg_proof_impl)
     - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
     - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
@@ -385,7 +386,7 @@ def compute_kzg_proof(blob: Blob, z: Bytes32) -> KZGProof:
 ```python
 def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     """
-    Helper function for compute_kzg_proof().
+    Helper function for compute_kzg_proof() and compute_aggregate_kzg_proof().
     """
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
