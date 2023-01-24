@@ -370,11 +370,22 @@ def verify_kzg_proof_impl(polynomial_kzg: KZGCommitment,
 #### `compute_kzg_proof`
 
 ```python
-def compute_kzg_proof(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
+def compute_kzg_proof(blob: Blob, z: Bytes32) -> KZGProof:
     """
-    Compute KZG proof at point `z` with `polynomial` being in evaluation form.
+    Compute KZG proof at point `z` for the polynomial represented by `blob`.
     Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z).
     Public method.
+    """
+    polynomial = blob_to_polynomial(blob)
+    return compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z))
+```
+
+#### `compute_kzg_proof_impl`
+
+```python
+def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
+    """
+    Helper function for compute_kzg_proof().
     """
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
@@ -430,7 +441,7 @@ def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
         blobs,
         commitments
     )
-    return compute_kzg_proof(aggregated_poly, evaluation_challenge)
+    return compute_kzg_proof_impl(aggregated_poly, evaluation_challenge)
 ```
 
 #### `verify_aggregate_kzg_proof`
