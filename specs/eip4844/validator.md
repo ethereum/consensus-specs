@@ -94,7 +94,7 @@ def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar
         beacon_block_root=hash_tree_root(block),
         beacon_block_slot=block.slot,
         blobs=blobs,
-        kzg_aggregated_proof=compute_aggregate_kzg_proof(blobs),
+        kzg_aggregated_proof=compute_aggregate_kzg_proof(blobs, block.blob_kzg_commitments),
     )
 ```
 
@@ -105,3 +105,4 @@ The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUES
 to ensure the data-availability of these blobs throughout the network.
 
 After `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop serving them.
+
