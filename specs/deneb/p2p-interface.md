@@ -213,7 +213,8 @@ Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 `[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
-and clients MUST support serving requests of blobs on this range.
+and clients MUST support serving requests of blobs on this range. Clients MUST not request 
+signed blobs sidecars outside of the range.
 
 Peers that are unable to reply to blobs sidecars requests within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
 epoch range SHOULD respond with error code `3: ResourceUnavailable`.
