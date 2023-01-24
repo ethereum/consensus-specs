@@ -43,7 +43,7 @@ This document is the beacon chain fork choice spec, part of Phase 0. It assumes 
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and update `store` by running:
 
 - `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
 - `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
