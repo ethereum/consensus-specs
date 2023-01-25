@@ -22,10 +22,10 @@ def get_execution_payload_header(spec, execution_payload):
         extra_data=execution_payload.extra_data,
         base_fee_per_gas=execution_payload.base_fee_per_gas,
         block_hash=execution_payload.block_hash,
-        transactions_root=spec.hash_tree_root(execution_payload.transactions)
+        transactions_htr=spec.hash_tree_root(execution_payload.transactions)
     )
     if is_post_capella(spec):
-        payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
+        payload_header.withdrawals_htr = spec.hash_tree_root(execution_payload.withdrawals)
     if is_post_eip4844(spec):
         payload_header.excess_data_gas = execution_payload.excess_data_gas
     return payload_header

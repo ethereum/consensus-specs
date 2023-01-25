@@ -43,7 +43,7 @@ def get_sample_genesis_execution_payload_header(spec,
         gas_limit=30000000,
         base_fee_per_gas=1000000000,
         block_hash=eth1_block_hash,
-        transactions_root=spec.Root(b'\x56' * 32),
+        transactions_htr=spec.Root(b'\x56' * 32),
     )
 
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")

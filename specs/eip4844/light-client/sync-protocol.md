@@ -52,8 +52,8 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
             extra_data=header.execution.extra_data,
             base_fee_per_gas=header.execution.base_fee_per_gas,
             block_hash=header.execution.block_hash,
-            transactions_root=header.execution.transactions_root,
-            withdrawals_root=header.execution.withdrawals_root,
+            transactions_htr=header.execution.transactions_htr,
+            withdrawals_htr=header.execution.withdrawals_htr,
         )
         return hash_tree_root(execution_header)
 

@@ -135,8 +135,8 @@ class ExecutionPayloadHeader(Container):
     excess_data_gas: uint256  # [New in EIP-4844]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
-    transactions_root: Root
-    withdrawals_root: Root
+    transactions_htr: Root
+    withdrawals_htr: Root
 ```
 
 ## Helper functions
@@ -232,8 +232,8 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         excess_data_gas=payload.excess_data_gas,  # [New in EIP-4844]
         block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
+        transactions_htr=hash_tree_root(payload.transactions),
+        withdrawals_htr=hash_tree_root(payload.withdrawals),
     )
 ```
 

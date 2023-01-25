@@ -200,7 +200,7 @@ class ExecutionPayloadHeader(Container):
     base_fee_per_gas: uint256
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
-    transactions_root: Root
+    transactions_htr: Root
 ```
 
 ## Helper functions
@@ -365,7 +365,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
+        transactions_htr=hash_tree_root(payload.transactions),
     )
 ```
 

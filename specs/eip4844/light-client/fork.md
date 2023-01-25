@@ -39,8 +39,8 @@ def upgrade_lc_header_to_eip4844(pre: capella.LightClientHeader) -> LightClientH
             extra_data=pre.execution.extra_data,
             base_fee_per_gas=pre.execution.base_fee_per_gas,
             block_hash=pre.execution.block_hash,
-            transactions_root=pre.execution.transactions_root,
-            withdrawals_root=pre.execution.withdrawals_root,
+            transactions_htr=pre.execution.transactions_htr,
+            withdrawals_htr=pre.execution.withdrawals_htr,
         ),
         execution_branch=pre.execution_branch,
     )

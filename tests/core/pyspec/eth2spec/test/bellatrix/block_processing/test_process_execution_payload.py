@@ -273,7 +273,7 @@ def run_non_empty_transactions_test(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert state.latest_execution_payload_header.transactions_root == execution_payload.transactions.hash_tree_root()
+    assert state.latest_execution_payload_header.transactions_htr == execution_payload.transactions.hash_tree_root()
 
 
 @with_bellatrix_and_later
@@ -299,7 +299,7 @@ def run_zero_length_transaction_test(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert state.latest_execution_payload_header.transactions_root == execution_payload.transactions.hash_tree_root()
+    assert state.latest_execution_payload_header.transactions_htr == execution_payload.transactions.hash_tree_root()
 
 
 @with_bellatrix_and_later

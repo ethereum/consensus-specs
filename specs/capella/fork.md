@@ -84,8 +84,8 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         extra_data=pre.latest_execution_payload_header.extra_data,
         base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
         block_hash=pre.latest_execution_payload_header.block_hash,
-        transactions_root=pre.latest_execution_payload_header.transactions_root,
-        withdrawals_root=Root(),  # [New in Capella]
+        transactions_htr=pre.latest_execution_payload_header.transactions_htr,
+        withdrawals_htr=Root(),  # [New in Capella]
     )
     post = BeaconState(
         # Versioning

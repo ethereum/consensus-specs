@@ -411,6 +411,6 @@ def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_
             extra_data=payload.extra_data,
             base_fee_per_gas=payload.base_fee_per_gas,
             block_hash=payload.block_hash,
-            transactions_root=hash_tree_root(payload.transactions),
+            transactions_htr=hash_tree_root(payload.transactions),
         )
 ```
