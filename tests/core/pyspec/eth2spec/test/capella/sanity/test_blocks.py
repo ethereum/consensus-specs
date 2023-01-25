@@ -3,6 +3,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
+    next_epoch_via_block,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -13,9 +14,13 @@ from eth2spec.test.helpers.state import (
     next_slot,
 )
 from eth2spec.test.helpers.withdrawals import (
+    set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
     prepare_expected_withdrawals,
+)
+from eth2spec.test.helpers.deposits import (
+    prepare_state_and_deposit,
 )
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
@@ -255,3 +260,76 @@ def test_invalid_withdrawal_fail_second_block_payload_isnt_compatible(spec, stat
 
     yield 'blocks', [signed_block_2]
     yield 'post', None
+
+
+#
+# Mix top-ups and withdrawals
+#
+
+
+@with_capella_and_later
+@spec_state_test
+def test_top_up_and_partial_withdrawal_validator(spec, state):
+    next_withdrawal_validator_index = 0
+    validator_index = next_withdrawal_validator_index + 1
+
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE)
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert not spec.is_partially_withdrawable_validator(validator, balance)
+
+    # Make a top-up balance to validator
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.deposits.append(deposit)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    assert spec.is_partially_withdrawable_validator(validator, balance)
+
+
+@with_capella_and_later
+@spec_state_test
+def test_top_up_and_fully_withdrawal_validator(spec, state):
+    """
+    Similar to `teste_process_deposit::test_success_top_up_to_withdrawn_validator` test.
+    """
+    next_withdrawal_validator_index = 0
+    validator_index = next_withdrawal_validator_index + 1
+
+    # Fully withdraw validator
+    set_validator_fully_withdrawable(spec, state, validator_index)
+    assert state.balances[validator_index] > 0
+    next_epoch_via_block(spec, state)
+    assert state.balances[validator_index] == 0
+    assert state.validators[validator_index].effective_balance > 0
+    next_epoch_via_block(spec, state)
+    assert state.validators[validator_index].effective_balance == 0
+
+    # Make a top-up balance to validator
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.deposits.append(deposit)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    current_epoch = spec.get_current_epoch(state)
+    assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
