@@ -37,6 +37,9 @@ ALL_FORK_UPGRADES = {
 ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
 AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
 AFTER_BELLATRIX_PRE_POST_FORKS = AFTER_BELLATRIX_UPGRADES.items()
+AFTER_CAPELLA_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
+                          if key not in [PHASE0, ALTAIR, BELLATRIX]}
+AFTER_CAPELLA_PRE_POST_FORKS = AFTER_CAPELLA_UPGRADES.items()
 
 #
 # Config
