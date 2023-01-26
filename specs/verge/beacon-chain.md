@@ -78,8 +78,8 @@ class ExecutionPayload(Container):
     base_fee_per_gas: uint256
     block_hash: Hash32  # Hash of execution block
     # Extra payload field
-    execution_witness: ExecutionWitness
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    execution_witness: ExecutionWitness
 ```
 
 #### `ExecutionPayloadHeader`
