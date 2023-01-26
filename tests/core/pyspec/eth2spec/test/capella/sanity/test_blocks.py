@@ -277,7 +277,7 @@ def test_invalid_withdrawal_fail_second_block_payload_isnt_compatible(spec, stat
 
 @with_capella_and_later
 @spec_state_test
-def test_top_up_and_partial_withdrawal_validator(spec, state):
+def test_top_up_and_partial_withdrawable_validator(spec, state):
     next_withdrawal_validator_index = 0
     validator_index = next_withdrawal_validator_index + 1
 
@@ -307,7 +307,7 @@ def test_top_up_and_partial_withdrawal_validator(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-def test_top_up_and_fully_withdrawal_validator(spec, state):
+def test_top_up_to_fully_withdrawn_validator(spec, state):
     """
     Similar to `teste_process_deposit::test_success_top_up_to_withdrawn_validator` test.
     """
@@ -323,7 +323,7 @@ def test_top_up_and_fully_withdrawal_validator(spec, state):
     next_epoch_via_block(spec, state)
     assert state.validators[validator_index].effective_balance == 0
 
-    # Make a top-up balance to validator
+    # Make a top-up deposit to validator
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
