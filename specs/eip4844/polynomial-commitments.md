@@ -37,11 +37,14 @@
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
     - [`verify_kzg_proof_impl`](#verify_kzg_proof_impl)
+    - [`verify_kzg_proof_multi`](#verify_kzg_proof_multi)
     - [`compute_kzg_proof`](#compute_kzg_proof)
     - [`compute_kzg_proof_impl`](#compute_kzg_proof_impl)
     - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
     - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
+    - [`verify_aggregate_kzg_proof_aggregation`](#verify_aggregate_kzg_proof_aggregation)
     - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
+    - [`verify_aggregate_kzg_proof_multi`](#verify_aggregate_kzg_proof_multi)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
