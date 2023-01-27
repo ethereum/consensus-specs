@@ -26,6 +26,8 @@ def get_execution_payload_header(spec, execution_payload):
     )
     if is_post_capella(spec):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
+    if is_post_eip4844(spec):
+        payload_header.excess_data_gas = execution_payload.excess_data_gas
     return payload_header
 
 
@@ -108,7 +110,7 @@ def get_withdrawal_rlp(spec, withdrawal):
         # address
         (Binary(20, 20), withdrawal.address),
         # amount
-        (big_endian_int, spec.uint256(withdrawal.amount) * (10**9)),
+        (big_endian_int, withdrawal.amount),
     ]
 
     sedes = List([schema for schema, _ in withdrawal_rlp])
