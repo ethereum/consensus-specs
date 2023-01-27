@@ -147,12 +147,14 @@ def test_success_one_partial_withdrawal(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-def test_success_max_per_slot(spec, state):
+def test_success_mixed_fully_and_partial_withdrawable(spec, state):
     num_full_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
     num_partial_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - num_full_withdrawals
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
         spec, state,
-        num_full_withdrawals=num_full_withdrawals, num_partial_withdrawals=num_partial_withdrawals)
+        num_full_withdrawals=num_full_withdrawals,
+        num_partial_withdrawals=num_partial_withdrawals,
+    )
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)

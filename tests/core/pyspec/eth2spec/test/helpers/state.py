@@ -38,8 +38,9 @@ def transition_to_slot_via_block(spec, state, slot):
     Transition to ``slot`` via an empty block transition
     """
     assert state.slot < slot
-    apply_empty_block(spec, state, slot)
+    signed_block = apply_empty_block(spec, state, slot)
     assert state.slot == slot
+    return signed_block
 
 
 def transition_to_valid_shard_slot(spec, state):
