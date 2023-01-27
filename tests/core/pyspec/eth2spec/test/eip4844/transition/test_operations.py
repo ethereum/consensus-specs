@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     with_fork_metas,
 )
 from eth2spec.test.helpers.constants import (
-    AFTER_CAPELLA_PRE_POST_FORKS,
+    AFTER_DENEB_PRE_POST_FORKS,
 )
 from eth2spec.test.helpers.fork_transition import (
     OperationType,
@@ -17,7 +17,7 @@ from eth2spec.test.helpers.fork_transition import (
 #
 
 @with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_CAPELLA_PRE_POST_FORKS])
+                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
 @always_bls
 def test_transition_with_btec_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
@@ -36,7 +36,7 @@ def test_transition_with_btec_right_after_fork(state, fork_epoch, spec, post_spe
 
 
 @with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_CAPELLA_PRE_POST_FORKS])
+                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
 @always_bls
 def test_transition_with_btec_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """

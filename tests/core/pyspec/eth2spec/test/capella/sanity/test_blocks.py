@@ -10,7 +10,6 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
     transition_to_slot_via_block,
-    next_epoch,
     next_slot,
 )
 from eth2spec.test.helpers.block import (
@@ -300,6 +299,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
+    # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
     validator = state.validators[validator_index]
     balance = state.balances[validator_index]
     assert spec.is_partially_withdrawable_validator(validator, balance)
@@ -332,15 +332,27 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     block.body.deposits.append(deposit)
 
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block_1 = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [signed_block]
+    assert spec.is_fully_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index],
+        spec.get_current_epoch(state)
+    )
+
+    # Apply an empty block
+    signed_block_2 = transition_to_slot_via_block(spec, state, state.slot + 1)
+
+    # With mainnet preset, it holds
+    if len(state.validators) <= spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP:
+        assert not spec.is_fully_withdrawable_validator(
+            state.validators[validator_index],
+            state.balances[validator_index],
+            spec.get_current_epoch(state)
+        )
+
+    yield 'blocks', [signed_block_1, signed_block_2]
     yield 'post', state
-
-    validator = state.validators[validator_index]
-    balance = state.balances[validator_index]
-    current_epoch = spec.get_current_epoch(state)
-    assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
 
 
 def _insert_validator(spec, state, balance):
@@ -367,9 +379,8 @@ def _insert_validator(spec, state, balance):
 def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
     validator_index = _insert_validator(spec, state, balance=initial_balance)
 
-    next_epoch(spec, state)
+    # To make it eligibile activation
     transition_to(spec, state, spec.compute_start_slot_at_epoch(2) - 1)
-
     assert not spec.is_active_validator(state.validators[validator_index], spec.get_current_epoch(state))
 
     yield 'pre', state
@@ -388,10 +399,8 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
         assert not spec.is_partially_withdrawable_validator(
             state.validators[validator_index], state.balances[validator_index])
 
-    # Getting attester rewards and getting partial withdrawals
-    for _ in range(2):
-        _, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
-        blocks += new_blocks
+    _, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
+    blocks += new_blocks
 
     yield 'blocks', blocks
     yield 'post', state
