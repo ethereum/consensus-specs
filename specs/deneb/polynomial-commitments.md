@@ -527,3 +527,28 @@ def verify_blob_kzg_proof_multi(blobs: Sequence[Blob],
 
     return verify_kzg_proof_multi(commitments, evaluation_challenges, ys, proofs)
 ```
+
+#### `verify_aggregate_kzg_proof_multi`
+
+```python
+def verify_aggregate_kzg_proof_multi(list_blobs: Sequence[Sequence[Blob]],
+                                     list_commitments_bytes: Sequence[Sequence[Bytes48]],
+                                     list_aggregated_proof_bytes: Sequence[Bytes48]) -> bool:
+    """
+    Given a list of blobs and an aggregated KZG proof, verify that they correspond to the provided commitments.
+
+    Public method.
+    """
+    
+    aggregated_poly_commitments, evaluation_challenges, ys = [], [], []
+    for blobs, commitments_bytes in zip(list_blobs, list_commitments_bytes):
+        aggregated_poly_commitment, evaluation_challenge, y = \
+            verify_aggregate_kzg_proof_aggregation(blobs, commitments_bytes)
+        aggregated_poly_commitments.append(aggregated_poly_commitment)
+        evaluation_challenges.append(evaluation_challenge)
+        ys.append(y)
+
+    list_aggregated_proof = [bytes_to_kzg_proof(proof) for proof in list_aggregated_proof_bytes]
+
+    return verify_kzg_proof_multi(aggregated_poly_commitments, evaluation_challenges, ys, list_aggregated_proof)
+```
