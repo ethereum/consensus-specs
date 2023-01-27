@@ -9,7 +9,6 @@ from eth2spec.test.helpers.state import (
     next_epoch_via_block,
     state_transition_and_sign_block,
     transition_to,
-    transition_to_slot_via_block,
     next_slot,
 )
 from eth2spec.test.helpers.block import (
@@ -341,7 +340,8 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
     )
 
     # Apply an empty block
-    signed_block_2 = transition_to_slot_via_block(spec, state, state.slot + 1)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block_2 = state_transition_and_sign_block(spec, state, block)
 
     # With mainnet preset, it holds
     if len(state.validators) <= spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP:
@@ -387,7 +387,8 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
 
     blocks = []
     # To activate
-    signed_block = transition_to_slot_via_block(spec, state, state.slot + 1)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
     blocks.append(signed_block)
 
     assert spec.is_active_validator(state.validators[validator_index], spec.get_current_epoch(state))
