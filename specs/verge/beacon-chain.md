@@ -40,8 +40,8 @@ This upgrade adds transaction execution to the beacon chain as part of the Verge
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `StateDiff` | `List[StemStateDiff, MAX_STEMS]` | Only valid if list is sorted by stems |
-| `BandersnatchGroupElement` | `Bytes32` | |
-| `BandersnatchFieldElement` | `Bytes32` | |
+| `BanderwagonGroupElement` | `Bytes32` | |
+| `BanderwagonFieldElement` | `Bytes32` | |
 | `Stem` | `Bytes31` | |
 
 ## Preset
@@ -140,19 +140,19 @@ StateDiff = List[StemStateDiff, MAX_STEMS]
 
 ```python
 class IpaProof(Container):
-    C_L = Vector[BandersnatchGroupElement, IPA_PROOF_DEPTH]
-    C_R = Vector[BandersnatchGroupElement, IPA_PROOF_DEPTH]
-    final_evaluation = BandersnatchFieldElement
+    C_L = Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
+    C_R = Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
+    final_evaluation = BanderwagonFieldElement
 ```
 
 #### `VerkleProof`
 
 ```python
 class VerkleProof(Container):
-    other_stems: List[Bytes32, MAX_STEMS]
+    other_stems: List[Bytes31, MAX_STEMS]
     depth_extension_present: List[uint8, MAX_STEMS]
-    commitments_by_path: List[BandersnatchGroupElement, MAX_STEMS * MAX_COMMITMENTS_PER_STEM]
-    D: BandersnatchGroupElement
+    commitments_by_path: List[BanderwagonGroupElement, MAX_STEMS * MAX_COMMITMENTS_PER_STEM]
+    D: BanderwagonGroupElement
     ipa_proof: IpaProof
 ```
 
