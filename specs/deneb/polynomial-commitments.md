@@ -540,15 +540,15 @@ def verify_aggregate_kzg_proof_multi(list_blobs: Sequence[Sequence[Blob]],
     Public method.
     """
     
-    aggregated_poly_commitments, evaluation_challenges, ys = [], [], []
-    for blobs, commitments_bytes in zip(list_blobs, list_commitments_bytes):
-        aggregated_poly_commitment, evaluation_challenge, y = \
-            verify_aggregate_kzg_proof_aggregation(blobs, commitments_bytes)
-        aggregated_poly_commitments.append(aggregated_poly_commitment)
+    commitments, evaluation_challenges, ys, proofs = [], [], [], []
+    for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
+        commitment = bytes_to_kzg_commitment(commitment_bytes)
+        commitments.append(commitment)
+        evaluation_challenge = compute_challenge(blob, commitment)
         evaluation_challenges.append(evaluation_challenge)
-        ys.append(y)
+        polynomial = blob_to_polynomial(blob)
+        ys.append(evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge))
+        proofs.append(bytes_to_kzg_proof(proof_bytes))
 
-    list_aggregated_proof = [bytes_to_kzg_proof(proof) for proof in list_aggregated_proof_bytes]
-
-    return verify_kzg_proof_multi(aggregated_poly_commitments, evaluation_challenges, ys, list_aggregated_proof)
+    return verify_kzg_proof_multi(commitments, evaluation_challenges, ys, proofs)
 ```
