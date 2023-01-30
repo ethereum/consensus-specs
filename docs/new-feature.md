@@ -3,7 +3,7 @@
 1. Create a folder under `./specs/features`.
 2. Choose the "previous fork" to extend: usually, use the scheduled or the lasted mainnet fork version.
 3. Write down your proposed `beacon-chain.md` change:
-    - Template: https://notes.ethereum.org/@hww/beacon-chain-template
+    - [Beacon Chain Spec Template](./beacon-chain-template.md)
     - Reference to the previous fork content
 4. Add `fork.md`: reference to the previous `fork.md` file.
 5. Make it executable:
