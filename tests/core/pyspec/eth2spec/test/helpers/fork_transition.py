@@ -9,6 +9,7 @@ from eth2spec.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
+from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.constants import (
     ALTAIR,
     BELLATRIX,
@@ -36,6 +37,7 @@ class OperationType(Enum):
     ATTESTER_SLASHING = auto()
     DEPOSIT = auto()
     VOLUNTARY_EXIT = auto()
+    BLS_TO_EXECUTION_CHANGE = auto()
 
 
 def _set_operations_by_dict(block, operation_dict):
@@ -267,6 +269,10 @@ def run_transition_with_operation(state,
         selected_validator_index = 0
         signed_exits = prepare_signed_exits(spec, state, [selected_validator_index])
         operation_dict = {'voluntary_exits': signed_exits}
+    elif operation_type == OperationType.BLS_TO_EXECUTION_CHANGE:
+        selected_validator_index = 0
+        bls_to_execution_changes = [get_signed_address_change(spec, state, selected_validator_index)]
+        operation_dict = {'bls_to_execution_changes': bls_to_execution_changes}
 
     def _check_state():
         if operation_type == OperationType.PROPOSER_SLASHING:
@@ -288,6 +294,9 @@ def run_transition_with_operation(state,
         elif operation_type == OperationType.VOLUNTARY_EXIT:
             validator = state.validators[selected_validator_index]
             assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
+        elif operation_type == OperationType.BLS_TO_EXECUTION_CHANGE:
+            validator = state.validators[selected_validator_index]
+            assert validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
 
     yield "pre", state
 

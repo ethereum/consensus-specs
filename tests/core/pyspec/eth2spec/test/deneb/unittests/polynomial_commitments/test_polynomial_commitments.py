@@ -18,7 +18,7 @@ def test_verify_kzg_proof(spec, state):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
-    proof = spec.compute_kzg_proof(polynomial, x)
+    proof = spec.compute_kzg_proof_impl(polynomial, x)
 
     y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert spec.verify_kzg_proof_impl(commitment, x, y, proof)
