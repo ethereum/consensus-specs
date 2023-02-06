@@ -47,6 +47,7 @@ ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 EIP4844 = 'eip4844'
+REVOKE = 'revoke'
 
 
 # The helper functions that are used when defining constants
@@ -92,6 +93,9 @@ class SpecObject(NamedTuple):
     ssz_dep_constants: Dict[str, str]  # the constants that depend on ssz_objects
     ssz_objects: Dict[str, str]
     dataclasses: Dict[str, str]
+
+
+
 
 
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
@@ -588,7 +592,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
 
@@ -614,7 +617,6 @@ class CapellaSpecBuilder(BellatrixSpecBuilder):
         return super().imports(preset_name) + f'''
 from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
-
 
 #
 # EIP4844SpecBuilder
@@ -652,14 +654,29 @@ def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[Blobs
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
+#
+# RevokeSpecBuilder
+#
+class RevokeSpecBuilder(CapellaSpecBuilder):
+    fork: str = REVOKE
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.utils import kzg
+#from eth2spec.bellatrix import {preset_name} as bellatrix
+from eth2spec.capella import {preset_name} as capella 
+'''
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder, RevokeSpecBuilder )
 }
 
 
-def is_byte_vector(value: str) -> bool:
-    return value.startswith(('ByteVector'))
+def is_spec_defined_type(value: str) -> bool:
+    return value.startswith(('ByteList', 'Union', 'Vector', 'List'))
 
 
 def objects_to_spec(preset_name: str,
@@ -672,8 +689,17 @@ def objects_to_spec(preset_name: str,
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n    pass\n" if not is_byte_vector(value) else f"class {key}({value}):  # type: ignore\n    pass\n"
+                f"class {key}({value}):\n    pass\n"
                 for key, value in spec_object.custom_types.items()
+                if not is_spec_defined_type(value)
+            ]
+        )
+        + ('\n\n' if len([key for key, value in spec_object.custom_types.items() if is_spec_defined_type(value)]) > 0 else '')
+        + '\n\n'.join(
+            [
+                f"{key} = {value}\n"
+                for key, value in spec_object.custom_types.items()
+                if is_spec_defined_type(value)
             ]
         )
     )
@@ -952,14 +978,15 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+                    REVOKE):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844, REVOKE):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
@@ -971,7 +998,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844, REVOKE):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -980,7 +1007,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork in (CAPELLA, EIP4844):
+            if self.spec_fork in (CAPELLA, REVOKE):
                 self.md_doc_paths += """
                     specs/capella/beacon-chain.md
                     specs/capella/fork.md
@@ -992,11 +1019,19 @@ class PySpecCommand(Command):
                 self.md_doc_paths += """
                     specs/eip4844/beacon-chain.md
                     specs/eip4844/fork.md
-                    specs/eip4844/fork-choice.md
                     specs/eip4844/polynomial-commitments.md
                     specs/eip4844/p2p-interface.md
                     specs/eip4844/validator.md
                 """
+            if self.spec_fork == REVOKE:
+                self.md_doc_paths += """
+                    specs/revoke/beacon-chain.md
+                    specs/revoke/fork.md
+                    specs/revoke/fork-choice.md
+                    specs/revoke/validator.md
+                    specs/revoke/p2p-interface.md
+                """
+
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
@@ -1146,7 +1181,6 @@ setup(
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
         "remerkleable==0.1.25",
-        "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
