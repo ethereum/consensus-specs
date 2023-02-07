@@ -16,8 +16,7 @@
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Blob KZG commitments](#blob-kzg-commitments)
-    - [Constructing the `SignedBeaconBlockAndBlobsSidecar`](#constructing-the-signedbeaconblockandblobssidecar)
-      - [Block](#block)
+    - [Constructing the `SignedBlobSidecar`](#constructing-the-signedblobsidecar)
       - [Sidecar](#sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
