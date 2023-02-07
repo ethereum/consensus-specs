@@ -1,4 +1,4 @@
-# EIP-4844 -- The Beacon Chain
+# Deneb -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -37,7 +37,7 @@
 
 ## Introduction
 
-This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an extension of the Capella upgrade.
+This upgrade adds blobs to the beacon chain as part of Deneb. This is an extension of the Capella upgrade.
 
 ## Custom types
 
@@ -86,9 +86,9 @@ class BeaconBlockBody(Container):
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
-    execution_payload: ExecutionPayload  # [Modified in EIP-4844]
+    execution_payload: ExecutionPayload  # [Modified in Deneb]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in EIP-4844]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in Deneb]
 ```
 
 #### `ExecutionPayload`
@@ -108,7 +108,7 @@ class ExecutionPayload(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint256  # [New in EIP-4844]
+    excess_data_gas: uint256  # [New in Deneb]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
@@ -132,7 +132,7 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint256  # [New in EIP-4844]
+    excess_data_gas: uint256  # [New in Deneb]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
@@ -152,7 +152,7 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
 
 #### `tx_peek_blob_versioned_hashes`
 
-This function retrieves the hashes from the `SignedBlobTransaction` as defined in EIP-4844, using SSZ offsets.
+This function retrieves the hashes from the `SignedBlobTransaction` as defined in Deneb, using SSZ offsets.
 Offsets are little-endian `uint32` values, as defined in the [SSZ specification](../../ssz/simple-serialize.md).
 See [the full details of `blob_versioned_hashes` offset calculation](https://gist.github.com/protolambda/23bd106b66f6d4bb854ce46044aa3ca3).
 
@@ -192,12 +192,12 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
         process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP-4844]
+        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Deneb]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(state, block.body)  # [New in EIP-4844]
+    process_blob_kzg_commitments(state, block.body)  # [New in Deneb]
 ```
 
 #### Execution payload
@@ -230,7 +230,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         timestamp=payload.timestamp,
         extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
-        excess_data_gas=payload.excess_data_gas,  # [New in EIP-4844]
+        excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
@@ -247,7 +247,7 @@ def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> N
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-4844 testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Deneb testing only.
 
 The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type 
 when initializing the first body-root.
