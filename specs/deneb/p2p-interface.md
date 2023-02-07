@@ -1,6 +1,6 @@
-# EIP-4844 -- Networking
+# Deneb -- Networking
 
-This document contains the consensus-layer networking specification for EIP-4844.
+This document contains the consensus-layer networking specification for Deneb.
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
@@ -50,7 +50,7 @@ class SignedBeaconBlockAndBlobsSidecar(Container):
 
 ## The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of EIP-4844 to support upgraded types.
+Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
 
 ### Topics and messages
 
@@ -69,7 +69,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 #### Global topics
 
-EIP-4844 introduces a new global topic for beacon block and blobs-sidecars.
+Deneb introduces a new global topic for beacon block and blobs-sidecars.
 
 ##### `beacon_block`
 
@@ -107,7 +107,7 @@ details on how to handle transitioning gossip topics for this upgrade.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-The EIP-4844 fork-digest is introduced to the `context` enum to specify EIP-4844 beacon block type.
+The Deneb fork-digest is introduced to the `context` enum to specify Deneb beacon block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 

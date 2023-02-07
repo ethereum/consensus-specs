@@ -1,4 +1,4 @@
-# EIP-4844 -- Fork Logic
+# Deneb -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to EIP-4844](#fork-to-eip-4844)
+- [Fork to Deneb](#fork-to-deneb)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document describes the process of EIP-4844 upgrade.
+This document describes the process of Deneb upgrade.
 
 ## Configuration
 
@@ -53,7 +53,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to EIP-4844
+## Fork to Deneb
 
 ### Fork trigger
 
@@ -82,7 +82,7 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         timestamp=pre.latest_execution_payload_header.timestamp,
         extra_data=pre.latest_execution_payload_header.extra_data,
         base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
-        excess_data_gas=uint256(0),  # [New in EIP-4844]
+        excess_data_gas=uint256(0),  # [New in Deneb]
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
