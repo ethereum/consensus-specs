@@ -10,23 +10,22 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Configuration](#configuration)
-  - [Containers](#containers)
-    - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BeaconBlockAndBlobsSidecarByRoot v1](#beaconblockandblobssidecarbyroot-v1)
-      - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
-- [Design decision rationale](#design-decision-rationale)
-  - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
+- [Configuration](#configuration)
+- [Containers](#containers)
+  - [`BlobSidecar`](#blobsidecar)
+  - [`SignedBlobSidecar`](#signedblobsidecar)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [`beacon_block`](#beacon_block)
+      - [`blob_sidecar_{index}`](#blob_sidecar_index)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+    - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -35,17 +34,31 @@ The specification of these changes continues in the same format as the network s
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                    | Maximum number of blobs sidecars in a single request                |
+| `MAX_REQUEST_BLOCKS_EIP4844`             | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
 
-### `SignedBeaconBlockAndBlobsSidecar`
+### `BlobSidecar`
 
 ```python
-class SignedBeaconBlockAndBlobsSidecar(Container):
-    beacon_block: SignedBeaconBlock
-    blobs_sidecar: BlobsSidecar
+class BlobSidecar(Container):
+    block_root: Root
+    index: BlobIndex # Index of blob in block
+    slot: Slot
+    block_parent_root: Root # Proposer shuffling determinant
+    proposer_index: ValidatorIndex
+    blob: Blob
+    kzg_commitment: KZGCommitment
+    kzg_proof: KZGProof # Allows for quick verification of kzg_commitment
+```
+
+### `SignedBlobSidecar`
+
+```python
+class SignedBlobSidecar(Container):
+    message: BlobSidecar
+    signature: Signature
 ```
 
 ## The gossip domain: gossipsub
@@ -65,34 +78,35 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `beacon_block_and_blobs_sidecar` | `SignedBeaconBlockAndBlobsSidecar` (new) |
+| `blob_sidecar_{index}` | `SignedBlobSidecar` (new) |
 
 #### Global topics
 
-EIP-4844 introduces a new global topic for beacon block and blobs-sidecars.
+EIP-4844 introduces new global topics for blob sidecars.
 
 ##### `beacon_block`
 
-This topic is deprecated and clients **MUST NOT** expose in their topic set to any peer. Implementers do not need to do
-anything beyond simply skip implementation, and it is explicitly called out as it is a departure from previous versioning
-of this topic.
+The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in EIP4844.
 
-Refer to [the section below](#transitioning-the-gossip) for details on how to transition the gossip.
+##### `blob_sidecar_{index}`
 
-##### `beacon_block_and_blobs_sidecar`
+This topic is used to propagate signed blob sidecars, one for each sidecar index.
 
-This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
+The following validations MUST pass before forwarding the `sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
-In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.
-Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
-- _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list
-  -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
-
-Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
-  -- i.e. `sidecar.beacon_block_slot == block.slot`.
-- _[REJECT]_ The KZG commitments in the block are valid against the provided blobs sidecar
-  -- i.e. `validate_blobs_sidecar(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments, sidecar)`
+- _[REJECT]_ The sidecar is for the correct topic --
+  i.e. `sidecar.index` matches the topic `{index}`.
+- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot --
+  i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
+- _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.slot, sidecar.proposer_index, sidecar.index)`.
+  -- Clients MUST discard blocks where multiple sidecars for the same proposer and index have been observed.
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot
+  in the context of the current shuffling (defined by `parent_root`/`slot`).
+  If the `proposer_index` cannot immediately be verified against the expected shuffling,
+  the sidecar MAY be queued for later processing while proposers for the block's branch are calculated --
+  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ### Transitioning the gossip
 
@@ -121,6 +135,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `EIP4844_FORK_VERSION`   | `eip4844.SignedBeaconBlock`   |
 
+No more than `MAX_REQUEST_BLOCKS_EIP4844` may be requested at a time.
+
 #### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
@@ -139,15 +155,23 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
-#### BeaconBlockAndBlobsSidecarByRoot v1
+No more than `MAX_REQUEST_BLOCKS_EIP4844` may be requested at a time.
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_block_and_blobs_sidecar_by_root/1/`
+#### BlobSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
 Request Content:
 
+```python
+class BlobIdentifier(Container):
+    block_root: Root
+    index: uint64
+```
+
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS]
+  List[BlobIdentifier, MAX_REQUEST_BLOCKS_EIP4844]
 )
 ```
 
@@ -155,29 +179,32 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlockAndBlobsSidecar, MAX_REQUEST_BLOCKS]
+  List[BlobSidecar, MAX_REQUEST_BLOCKS_EIP4844]
 )
 ```
 
-Requests blocks by block root (= `hash_tree_root(SignedBeaconBlockAndBlobsSidecar.beacon_block.message)`).
-The response is a list of `SignedBeaconBlockAndBlobsSidecar` whose length is less than or equal to the number of requests.
+Requests sidecars by block root and index.
+The response is a list of `BlobSidecar` whose length is less than or equal to the number of requests.
 It may be less in the case that the responding peer is missing blocks and sidecars.
 
-No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
+The response is unsigned, i.e. `BlobSidecar`, as the signature of the beacon block proposer
+may not be available beyond the initial distribution via gossip.
 
-`BeaconBlockAndBlobsSidecarByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
+No more than `MAX_REQUEST_BLOCKS_EIP4844` may be requested at a time.
+
+`BlobSidecarsByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
-Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the blob in the response.
 
-Clients MUST respond with at least one block and sidecar, if they have it.
+Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
 #### BlobsSidecarsByRange v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/blobs_sidecars_by_range/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
 Request Content:
 ```
@@ -188,16 +215,22 @@ Request Content:
 ```
 
 Response Content:
+
+```python
+class BlobSidecars(Container):
+  block_root: Root
+  List[BlobSidecar, MAX_BLOBS_PER_BLOCK]
+
 ```
 (
-  List[BlobsSidecar, MAX_REQUEST_BLOBS_SIDECARS]
+  List[BlobSidecars, MAX_REQUEST_BLOCKS_EIP4844]
 )
 ```
 
-Requests blobs sidecars in the slot range `[start_slot, start_slot + count)`,
+Requests blob sidecars in the slot range `[start_slot, start_slot + count)`,
 leading up to the current head block as selected by fork choice.
 
-The response is unsigned, i.e. `BlobsSidecarsByRange`, as the signature of the beacon block proposer
+The response is unsigned, i.e. `BlobSidecarsByRange`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
 
 Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
@@ -215,7 +248,7 @@ Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blobs on this range.
 
-Peers that are unable to reply to blobs sidecars requests within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
+Peers that are unable to reply to blob sidecar requests within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
 epoch range SHOULD respond with error code `3: ResourceUnavailable`.
 Such peers that are unable to successfully reply to this range of requests MAY get descored
 or disconnected at any time.
@@ -229,7 +262,7 @@ participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it,
-and no more than `MAX_REQUEST_BLOBS_SIDECARS` sidecars.
+and no more than `MAX_REQUEST_BLOCKS_EIP4844` sidecars.
 
 The following blobs sidecars, where they exist, MUST be sent in consecutive order.
 

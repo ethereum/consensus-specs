@@ -79,27 +79,30 @@ def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
 
 3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
 
-#### Constructing the `SignedBeaconBlockAndBlobsSidecar`
-To construct a `SignedBeaconBlockAndBlobsSidecar`, a `signed_beacon_block_and_blobs_sidecar` is defined with the necessary context for block and sidecar proposal.
-
-##### Block
-Set `signed_beacon_block_and_blobs_sidecar.beacon_block = block` where `block` is obtained above.
+#### Constructing the `SignedBlobSidecar`
+To construct a `SignedBlobSidecar`, a `signed_blob_sidecar` is defined with the necessary context for block and sidecar proposal.
 
 ##### Sidecar
-Coupled with block, the corresponding blobs are packaged into a sidecar object for distribution to the network.
 
-Set `signed_beacon_block_and_blobs_sidecar.blobs_sidecar = sidecar` where `sidecar` is obtained from:
+Coupled with block, the corresponding blobs are packaged into sidecar objects for distribution to the network.
+
+Each `sidecar` is obtained from:
 ```python
-def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar:
-    return BlobsSidecar(
-        beacon_block_root=hash_tree_root(block),
-        beacon_block_slot=block.slot,
-        blobs=blobs,
-        kzg_aggregated_proof=compute_aggregate_kzg_proof(blobs),
-    )
+def get_blob_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[BlobsSidecar]:
+  return [
+    BlobsSidecar(
+      block_root=hash_tree_root(block),
+      index=idx
+      slot=block.slot,
+      block_parent_root=block.parent_root,
+      blob=blob,
+      kzg_commitment=block.body.blob_kzg_commitments[idx],
+      kzg_aggregated_proof=compute_kzg_proof(blob),)
+    for idx, blob in enumerate(blobs)
+  ]
 ```
 
-This `signed_beacon_block_and_blobs_sidecar` is then published to the global `beacon_block_and_blobs_sidecar` topic.
+Each `sidecar` is then published to the global `blob_sidecar_{index}` topics according to its index.
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
 The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,

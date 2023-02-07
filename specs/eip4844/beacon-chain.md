@@ -44,6 +44,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `VersionedHash` | `Bytes32` | |
+| `BlobIndex` | `uint64` | |
 
 ## Constants
 
@@ -52,7 +53,7 @@ This upgrade adds blobs to the beacon chain as part of EIP-4844. This is an exte
 | Name | Value |
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | 
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
 
@@ -249,7 +250,7 @@ def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> N
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-4844 testing only.
 
-The `BeaconState` initialization is unchanged, except for the use of the updated `eip4844.BeaconBlockBody` type 
+The `BeaconState` initialization is unchanged, except for the use of the updated `eip4844.BeaconBlockBody` type
 when initializing the first body-root.
 
 ```python
