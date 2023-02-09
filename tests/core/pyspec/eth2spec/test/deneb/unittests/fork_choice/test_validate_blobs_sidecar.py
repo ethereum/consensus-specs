@@ -6,7 +6,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_eip4844_and_later,
+    with_deneb_and_later,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -29,25 +29,25 @@ def _run_validate_blobs_sidecar_test(spec, state, blob_count):
     spec.validate_blobs_sidecar(block.slot, block.hash_tree_root(), expected_commitments, blobs_sidecar)
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_validate_blobs_sidecar_zero_blobs(spec, state):
     _run_validate_blobs_sidecar_test(spec, state, blob_count=0)
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_validate_blobs_sidecar_one_blob(spec, state):
     _run_validate_blobs_sidecar_test(spec, state, blob_count=1)
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_validate_blobs_sidecar_two_blobs(spec, state):
     _run_validate_blobs_sidecar_test(spec, state, blob_count=2)
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_validate_blobs_sidecar_max_blobs(spec, state):
     _run_validate_blobs_sidecar_test(spec, state, blob_count=spec.MAX_BLOBS_PER_BLOCK)

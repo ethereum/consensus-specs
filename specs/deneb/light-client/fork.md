@@ -1,4 +1,4 @@
-# EIP4844 Light Client -- Fork Logic
+# Deneb Light Client -- Fork Logic
 
 ## Table of contents
 
@@ -15,14 +15,14 @@
 
 ## Introduction
 
-This document describes how to upgrade existing light client objects based on the [Capella specification](../../capella/light-client/sync-protocol.md) to EIP4844. This is necessary when processing pre-EIP4844 data with a post-EIP4844 `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
+This document describes how to upgrade existing light client objects based on the [Capella specification](../../capella/light-client/sync-protocol.md) to Deneb. This is necessary when processing pre-Deneb data with a post-Deneb `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
 
 ### Upgrading light client data
 
-A EIP4844 `LightClientStore` can still process earlier light client data. In order to do so, that pre-EIP4844 data needs to be locally upgraded to EIP4844 before processing.
+A Deneb `LightClientStore` can still process earlier light client data. In order to do so, that pre-Deneb data needs to be locally upgraded to Deneb before processing.
 
 ```python
-def upgrade_lc_header_to_eip4844(pre: capella.LightClientHeader) -> LightClientHeader:
+def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
         execution=ExecutionPayloadHeader(
@@ -47,21 +47,21 @@ def upgrade_lc_header_to_eip4844(pre: capella.LightClientHeader) -> LightClientH
 ```
 
 ```python
-def upgrade_lc_bootstrap_to_eip4844(pre: capella.LightClientBootstrap) -> LightClientBootstrap:
+def upgrade_lc_bootstrap_to_deneb(pre: capella.LightClientBootstrap) -> LightClientBootstrap:
     return LightClientBootstrap(
-        header=upgrade_lc_header_to_eip4844(pre.header),
+        header=upgrade_lc_header_to_deneb(pre.header),
         current_sync_committee=pre.current_sync_committee,
         current_sync_committee_branch=pre.current_sync_committee_branch,
     )
 ```
 
 ```python
-def upgrade_lc_update_to_eip4844(pre: capella.LightClientUpdate) -> LightClientUpdate:
+def upgrade_lc_update_to_deneb(pre: capella.LightClientUpdate) -> LightClientUpdate:
     return LightClientUpdate(
-        attested_header=upgrade_lc_header_to_eip4844(pre.attested_header),
+        attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
         next_sync_committee_branch=pre.next_sync_committee_branch,
-        finalized_header=upgrade_lc_header_to_eip4844(pre.finalized_header),
+        finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
         finality_branch=pre.finality_branch,
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
@@ -69,10 +69,10 @@ def upgrade_lc_update_to_eip4844(pre: capella.LightClientUpdate) -> LightClientU
 ```
 
 ```python
-def upgrade_lc_finality_update_to_eip4844(pre: capella.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
+def upgrade_lc_finality_update_to_deneb(pre: capella.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
-        attested_header=upgrade_lc_header_to_eip4844(pre.attested_header),
-        finalized_header=upgrade_lc_header_to_eip4844(pre.finalized_header),
+        attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
+        finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
         finality_branch=pre.finality_branch,
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
@@ -80,9 +80,9 @@ def upgrade_lc_finality_update_to_eip4844(pre: capella.LightClientFinalityUpdate
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_eip4844(pre: capella.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
+def upgrade_lc_optimistic_update_to_deneb(pre: capella.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
-        attested_header=upgrade_lc_header_to_eip4844(pre.attested_header),
+        attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )
@@ -90,20 +90,20 @@ def upgrade_lc_optimistic_update_to_eip4844(pre: capella.LightClientOptimisticUp
 
 ### Upgrading the store
 
-Existing `LightClientStore` objects based on Capella MUST be upgraded to EIP4844 before EIP4844 based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `EIP4844_FORK_EPOCH`.
+Existing `LightClientStore` objects based on Capella MUST be upgraded to Deneb before Deneb based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `DENEB_FORK_EPOCH`.
 
 ```python
-def upgrade_lc_store_to_eip4844(pre: capella.LightClientStore) -> LightClientStore:
+def upgrade_lc_store_to_deneb(pre: capella.LightClientStore) -> LightClientStore:
     if pre.best_valid_update is None:
         best_valid_update = None
     else:
-        best_valid_update = upgrade_lc_update_to_eip4844(pre.best_valid_update)
+        best_valid_update = upgrade_lc_update_to_deneb(pre.best_valid_update)
     return LightClientStore(
-        finalized_header=upgrade_lc_header_to_eip4844(pre.finalized_header),
+        finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         best_valid_update=best_valid_update,
-        optimistic_header=upgrade_lc_header_to_eip4844(pre.optimistic_header),
+        optimistic_header=upgrade_lc_header_to_deneb(pre.optimistic_header),
         previous_max_active_participants=pre.previous_max_active_participants,
         current_max_active_participants=pre.current_max_active_participants,
     )
