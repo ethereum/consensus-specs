@@ -1,4 +1,4 @@
-# EIP4844 Light Client -- Full Node
+# Deneb Light Client -- Full Node
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the EIP4844 upgrade.
+This upgrade adds information about the execution payload to light client data as part of the Deneb upgrade.
 
 ## Helper functions
 
@@ -47,8 +47,8 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             withdrawals_root=hash_tree_root(payload.withdrawals),
         )
 
-        # [New in EIP4844]
-        if epoch >= EIP4844_FORK_EPOCH:
+        # [New in Deneb]
+        if epoch >= DENEB_FORK_EPOCH:
             execution_header.excess_data_gas = payload.excess_data_gas
 
         execution_branch = compute_merkle_proof_for_block_body(block.message.body, EXECUTION_PAYLOAD_INDEX)

@@ -1,17 +1,17 @@
 from eth2spec.test.helpers.constants import (
-    EIP4844,
+    DENEB,
 )
 
 
-EIP4844_FORK_TEST_META_TAGS = {
-    'fork': EIP4844,
+DENEB_FORK_TEST_META_TAGS = {
+    'fork': DENEB,
 }
 
 
 def run_fork_test(post_spec, pre_state):
     yield 'pre', pre_state
 
-    post_state = post_spec.upgrade_to_eip4844(pre_state)
+    post_state = post_spec.upgrade_to_deneb(pre_state)
 
     # Stable fields
     stable_fields = [
@@ -57,7 +57,7 @@ def run_fork_test(post_spec, pre_state):
             assert getattr(pre_validator, field) == getattr(post_validator, field)
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
-    assert post_state.fork.current_version == post_spec.config.EIP4844_FORK_VERSION
+    assert post_state.fork.current_version == post_spec.config.DENEB_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
     yield 'post', post_state

@@ -7,12 +7,12 @@ from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phas
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
 from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.eip4844 import mainnet as spec_eip4844_mainnet, minimal as spec_eip4844_minimal
+from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
@@ -78,14 +78,14 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         ALTAIR: spec_altair_minimal,
         BELLATRIX: spec_bellatrix_minimal,
         CAPELLA: spec_capella_minimal,
-        EIP4844: spec_eip4844_minimal,
+        DENEB: spec_deneb_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
         BELLATRIX: spec_bellatrix_mainnet,
         CAPELLA: spec_capella_mainnet,
-        EIP4844: spec_eip4844_mainnet
+        DENEB: spec_deneb_mainnet
     },
 }
 
@@ -427,7 +427,7 @@ def with_all_phases_except(exclusion_phases):
 with_altair_and_later = with_all_phases_from(ALTAIR)
 with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
-with_eip4844_and_later = with_all_phases_from(EIP4844)
+with_deneb_and_later = with_all_phases_from(DENEB)
 
 
 def _get_preset_targets(kw):

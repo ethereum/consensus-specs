@@ -1,6 +1,6 @@
 
 from eth2spec.test.helpers.constants import (
-    EIP4844,
+    DENEB,
     MINIMAL,
 )
 from eth2spec.test.helpers.sharding import (
@@ -13,7 +13,7 @@ from eth2spec.test.context import (
 )
 
 
-@with_phases([EIP4844])
+@with_phases([DENEB])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_blob_to_kzg_commitment(spec, state):
