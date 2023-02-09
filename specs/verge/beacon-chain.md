@@ -79,7 +79,7 @@ class ExecutionPayload(Container):
     block_hash: Hash32  # Hash of execution block
     # Extra payload field
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    execution_witness: ExecutionWitness
+    execution_witness: ExecutionWitness  # [New in Verge]
 ```
 
 #### `ExecutionPayloadHeader`
