@@ -88,9 +88,9 @@ Blobs associated with a block are packaged into sidecar objects for distribution
 
 Each `sidecar` is obtained from:
 ```python
-def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[BlobsSidecar]:
+def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[BlobSidecar]:
     return [
-        BlobsSidecar(
+        BlobSidecar(
             block_root=hash_tree_root(block),
             index=index,
             slot=block.slot,
@@ -101,11 +101,24 @@ def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[Blo
         )
         for index, blob in enumerate(blobs)
     ]
+
 ```
 
-Each `sidecar` is then published to the global `blob_sidecar_{index}` topics according to its index.
+Then `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and to the global `blob_sidecar_{index}` topics according to its index.
+
+`signature` is obtained from:
+
+```python
+def get_blob_sidecar_signature(state: BeaconState,
+                               sidecar: BlobSidecar,
+                               privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(sidecar.slot))
+    signing_root = compute_signing_root(sidecar, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
+
 The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,
 to ensure the data-availability of these blobs throughout the network.
 

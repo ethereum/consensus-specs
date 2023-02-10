@@ -10,22 +10,22 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Configuration](#configuration)
-  - [Containers](#containers)
-    - [`BlobSidecar`](#blobsidecar)
-    - [`SignedBlobSidecar`](#signedblobsidecar)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`blob_sidecar_{index}`](#blob_sidecar_index)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
-      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+- [Configuration](#configuration)
+- [Containers](#containers)
+  - [`BlobSidecar`](#blobsidecar)
+  - [`SignedBlobSidecar`](#signedblobsidecar)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [`beacon_block`](#beacon_block)
+      - [`blob_sidecar_{index}`](#blob_sidecar_index)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
@@ -99,8 +99,9 @@ This topic is used to propagate signed blob sidecars, one for each sidecar index
 The following validations MUST pass before forwarding the `sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
 - _[REJECT]_ The sidecar is for the correct topic -- i.e. `sidecar.index` matches the topic `{index}`.
-- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
+- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[IGNORE]_ The blob's block's parent defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.slot, sidecar.proposer_index, sidecar.index)`.
   -- Clients MUST discard blocks where multiple sidecars for the same proposer and index have been observed.
@@ -140,9 +141,6 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-After `DENEB_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
-Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
-
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [1]: # (eth2spec: skip)
@@ -153,12 +151,15 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 #### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
+
+New in deneb.
 
 Request Content:
 
@@ -191,7 +192,7 @@ may not be available beyond the initial distribution via gossip.
 
 No more than `MAX_REQUEST_BLOBS_SIDECARS * MAX_BLOBS_PER_BLOCK` may be requested at a time.
 
-`BlobSidecarsByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
+`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
 
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
@@ -204,6 +205,8 @@ Clients MAY limit the number of blocks and sidecars in the response.
 #### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
+
+New in deneb.
 
 Request Content:
 ```
@@ -282,9 +285,9 @@ Clients MUST respond with blobs sidecars that are consistent from a single chain
 After the initial blobs sidecar, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-# Design decision rationale
+## Design decision rationale
 
-## Why are blobs relayed as a sidecar, separate from beacon blocks?
+### Why are blobs relayed as a sidecar, separate from beacon blocks?
 
 This "sidecar" design provides forward compatibility for further data increases by black-boxing `is_data_available()`:
 with full sharding `is_data_available()` can be replaced by data-availability-sampling (DAS)

@@ -53,7 +53,7 @@ def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments:
     sidecars = retrieve_blob_sidecars(slot, beacon_block_root)
 
     # For testing, `retrieve_blobs_sidecar` returns "TEST".
-    # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
+    # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
     if isinstance(sidecar, str):
         return True
 
