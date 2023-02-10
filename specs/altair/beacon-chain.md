@@ -612,6 +612,7 @@ def process_inactivity_updates(state: BeaconState) -> None:
         return
 
     unslashed_validator_indicies = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state))
+
     for index in get_eligible_validator_indices(state):
         # Increase the inactivity score of inactive validators
         if index in unslashed_validator_indicies:
