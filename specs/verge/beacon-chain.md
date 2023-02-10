@@ -114,10 +114,10 @@ class SuffixStateDiff(Container):
     suffix: Byte
 
     # Null means not currently present
-    current_value: Union[Null, Bytes32]
+    current_value: Optional[Bytes32]
 
     # Null means value not updated
-    new_value: Union[Null, Bytes32]
+    new_value: Optional[Bytes32]
 ```
 
 *Note*: on the Kaustinen testnet, `new_value` is ommitted from the container.
