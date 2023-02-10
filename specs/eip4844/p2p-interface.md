@@ -10,22 +10,24 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Configuration](#configuration)
-- [Containers](#containers)
-  - [`BlobSidecar`](#blobsidecar)
-  - [`SignedBlobSidecar`](#signedblobsidecar)
-- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [Topics and messages](#topics-and-messages)
-    - [Global topics](#global-topics)
-      - [`beacon_block`](#beacon_block)
-      - [`blob_sidecar_{index}`](#blob_sidecar_index)
-  - [Transitioning the gossip](#transitioning-the-gossip)
-- [The Req/Resp domain](#the-reqresp-domain)
-  - [Messages](#messages)
-    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
-    - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
+  - [Configuration](#configuration)
+  - [Containers](#containers)
+    - [`BlobSidecar`](#blobsidecar)
+    - [`SignedBlobSidecar`](#signedblobsidecar)
+  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+    - [Topics and messages](#topics-and-messages)
+      - [Global topics](#global-topics)
+        - [`beacon_block`](#beacon_block)
+        - [`blob_sidecar_{index}`](#blob_sidecar_index)
+    - [Transitioning the gossip](#transitioning-the-gossip)
+  - [The Req/Resp domain](#the-reqresp-domain)
+    - [Messages](#messages)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+- [Design decision rationale](#design-decision-rationale)
+  - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -35,6 +37,7 @@ The specification of these changes continues in the same format as the network s
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `MAX_REQUEST_BLOCKS_EIP4844`             | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
+| `MAX_REQUEST_BLOB_SIDECARS`              | `2**7` (= 128)                    | Maximum number of blob sidecars in a single request                 |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
 
 ## Containers
@@ -68,7 +71,8 @@ Some gossip meshes are upgraded in the fork of EIP-4844 to support upgraded type
 ### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
-The `beacon_block` topic is deprecated and replaced by the `beacon_block_and_blobs_sidecar` topic. All other topics remain stable.
+
+The `beacon_block` topic is modified to also support EIP4844 blocks and new topics are added per table below. All other topics remain stable.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
@@ -94,19 +98,14 @@ This topic is used to propagate signed blob sidecars, one for each sidecar index
 
 The following validations MUST pass before forwarding the `sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
-- _[REJECT]_ The sidecar is for the correct topic --
-  i.e. `sidecar.index` matches the topic `{index}`.
+- _[REJECT]_ The sidecar is for the correct topic -- i.e. `sidecar.index` matches the topic `{index}`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
-- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot --
-  i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.slot, sidecar.proposer_index, sidecar.index)`.
   -- Clients MUST discard blocks where multiple sidecars for the same proposer and index have been observed.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot
-  in the context of the current shuffling (defined by `parent_root`/`slot`).
-  If the `proposer_index` cannot immediately be verified against the expected shuffling,
-  the sidecar MAY be queued for later processing while proposers for the block's branch are calculated --
-  in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`).
+  If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ### Transitioning the gossip
 
@@ -171,7 +170,7 @@ class BlobIdentifier(Container):
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOCKS_EIP4844]
+  List[BlobIdentifier, MAX_REQUEST_BLOBS_SIDECARS * MAX_BLOBS_PER_BLOCK]
 )
 ```
 
@@ -179,7 +178,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOCKS_EIP4844]
+  List[BlobSidecar, MAX_REQUEST_BLOBS_SIDECARS * MAX_BLOBS_PER_BLOCK]
 )
 ```
 
@@ -190,7 +189,7 @@ It may be less in the case that the responding peer is missing blocks and sideca
 The response is unsigned, i.e. `BlobSidecar`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
 
-No more than `MAX_REQUEST_BLOCKS_EIP4844` may be requested at a time.
+No more than `MAX_REQUEST_BLOBS_SIDECARS * MAX_BLOBS_PER_BLOCK` may be requested at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
 
@@ -202,7 +201,7 @@ Clients MUST support requesting sidecars since `minimum_request_epoch`, where `m
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
-#### BlobsSidecarsByRange v1
+#### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
@@ -220,10 +219,11 @@ Response Content:
 class BlobSidecars(Container):
   block_root: Root
   List[BlobSidecar, MAX_BLOBS_PER_BLOCK]
+```
 
 ```
 (
-  List[BlobSidecars, MAX_REQUEST_BLOCKS_EIP4844]
+  List[BlobSidecars, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
