@@ -611,9 +611,10 @@ def process_inactivity_updates(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
+    unslashed_validator_indicies = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state))
     for index in get_eligible_validator_indices(state):
         # Increase the inactivity score of inactive validators
-        if index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)):
+        if index in unslashed_validator_indicies:
             state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
         else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
