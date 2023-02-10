@@ -1,4 +1,4 @@
-# EIP-4844 -- Fork Choice
+# Deneb -- Fork Choice
 
 ## Table of contents
 <!-- TOC -->
@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying the EIP-4844 upgrade.
+This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Containers
 
@@ -86,7 +86,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
     assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
 
-    # [New in EIP-4844]
+    # [New in Deneb]
     # Check if blob data is available
     # If not, this block MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments)

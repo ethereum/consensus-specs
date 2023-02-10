@@ -21,12 +21,12 @@ from eth2spec.test.utils.randomized_block_tests import (
     randomize_state_altair,
     randomize_state_bellatrix,
     randomize_state_capella,
-    randomize_state_eip4844,
+    randomize_state_deneb,
     random_block,
     random_block_altair_with_cycling_sync_committee_participation,
     random_block_bellatrix,
     random_block_capella,
-    random_block_eip4844,
+    random_block_deneb,
     last_slot_in_epoch,
     random_slot_in_epoch,
     penultimate_slot_in_epoch,
@@ -36,7 +36,7 @@ from eth2spec.test.utils.randomized_block_tests import (
     transition_to_leaking,
     transition_without_leak,
 )
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB
 
 
 # Ensure this many blocks are present in *each* randomized scenario
@@ -274,12 +274,12 @@ if __name__ == "__main__":
             state_randomizer=randomize_state_capella,
             block_randomizer=random_block_capella,
         )
-    if EIP4844 in sys.argv:
+    if DENEB in sys.argv:
         did_generate = True
         run_generate_tests_to_std_out(
-            EIP4844,
-            state_randomizer=randomize_state_eip4844,
-            block_randomizer=random_block_eip4844,
+            DENEB,
+            state_randomizer=randomize_state_deneb,
+            block_randomizer=random_block_deneb,
         )
     if not did_generate:
         warnings.warn("no phase given for test generation")

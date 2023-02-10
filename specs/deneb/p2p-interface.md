@@ -1,6 +1,6 @@
-# EIP-4844 -- Networking
+# Deneb -- Networking
 
-This document contains the consensus-layer networking specification for EIP-4844.
+This document contains the consensus-layer networking specification for Deneb.
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
@@ -36,7 +36,7 @@ The specification of these changes continues in the same format as the network s
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOCKS_EIP4844`             | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
+| `MAX_REQUEST_BLOCKS_DENEB`               | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
 | `MAX_REQUEST_BLOB_SIDECARS`              | `2**7` (= 128)                    | Maximum number of blob sidecars in a single request                 |
 | `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
 
@@ -66,13 +66,13 @@ class SignedBlobSidecar(Container):
 
 ## The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of EIP-4844 to support upgraded types.
+Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
 
 ### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 
-The `beacon_block` topic is modified to also support EIP4844 blocks and new topics are added per table below. All other topics remain stable.
+The `beacon_block` topic is modified to also support deneb blocks and new topics are added per table below. All other topics remain stable.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
@@ -86,11 +86,11 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 #### Global topics
 
-EIP-4844 introduces new global topics for blob sidecars.
+Deneb introduces new global topics for blob sidecars.
 
 ##### `beacon_block`
 
-The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in EIP4844.
+The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in deneb.
 
 ##### `blob_sidecar_{index}`
 
@@ -120,7 +120,7 @@ details on how to handle transitioning gossip topics for this upgrade.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-The EIP-4844 fork-digest is introduced to the `context` enum to specify EIP-4844 beacon block type.
+The Deneb fork-digest is introduced to the `context` enum to specify Deneb beacon block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -132,15 +132,15 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
-| `EIP4844_FORK_VERSION`   | `eip4844.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 
-No more than `MAX_REQUEST_BLOCKS_EIP4844` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 #### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-After `EIP4844_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
+After `DENEB_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
 Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
@@ -154,7 +154,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
-No more than `MAX_REQUEST_BLOCKS_EIP4844` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 #### BlobSidecarsByRoot v1
 
@@ -196,7 +196,7 @@ No more than `MAX_REQUEST_BLOBS_SIDECARS * MAX_BLOBS_PER_BLOCK` may be requested
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
-Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the blob in the response.
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the blob in the response.
 
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
@@ -244,7 +244,7 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, EIP4844_FORK_EPOCH), current_epoch]`
+`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blobs on this range.
 
@@ -262,7 +262,7 @@ participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it,
-and no more than `MAX_REQUEST_BLOCKS_EIP4844` sidecars.
+and no more than `MAX_REQUEST_BLOCKS_DENEB` sidecars.
 
 The following blobs sidecars, where they exist, MUST be sent in consecutive order.
 
