@@ -16,6 +16,9 @@ from eth2spec.test.altair.transition import (
     test_slashing as test_altair_slashing,
     test_operations as test_altair_operations,
 )
+from eth2spec.test.eip4844.transition import (
+    test_operations as test_eip4844_operations,
+)
 
 
 def create_provider(tests_src, preset_name: str, pre_fork_name: str, post_fork_name: str) -> gen_typing.TestProvider:
@@ -37,14 +40,14 @@ def create_provider(tests_src, preset_name: str, pre_fork_name: str, post_fork_n
 
 
 if __name__ == "__main__":
-    altair_tests = (
+    all_tests = (
         test_altair_transition,
         test_altair_activations_and_exits,
         test_altair_leaking,
         test_altair_slashing,
         test_altair_operations,
+        test_eip4844_operations,
     )
-    all_tests = altair_tests
     for transition_test_module in all_tests:
         for pre_fork, post_fork in ALL_PRE_POST_FORKS:
             gen_runner.run_generator("transition", [
