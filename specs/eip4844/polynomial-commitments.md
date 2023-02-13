@@ -475,8 +475,8 @@ def compute_blob_kzg_proof(blob: Blob) -> KZGProof:
     Public method.
     """
     commitment = blob_to_kzg_commitment(blob)
-    evaluation_challenge = compute_challenge(blob, commitment)
     polynomial = blob_to_polynomial(blob)
+    evaluation_challenge = compute_challenge(polynomial, commitment)
     return compute_kzg_proof_impl(polynomial, evaluation_challenge)
 ```
 
@@ -493,8 +493,8 @@ def verify_blob_kzg_proof(blob: Blob,
     """
     commitment = bytes_to_kzg_commitment(commitment_bytes)
 
-    evaluation_challenge = compute_challenge(blob, commitment)
     polynomial = blob_to_polynomial(blob)
+    evaluation_challenge = compute_challenge(polynomial, commitment)
 
     # Evaluate polynomial at `evaluation_challenge` (evaluation function checks for div-by-zero)
     y = evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge)
@@ -520,9 +520,9 @@ def verify_blob_kzg_proof_multi(blobs: Sequence[Blob],
     for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
         commitment = bytes_to_kzg_commitment(commitment_bytes)
         commitments.append(commitment)
-        evaluation_challenge = compute_challenge(blob, commitment)
-        evaluation_challenges.append(evaluation_challenge)
         polynomial = blob_to_polynomial(blob)
+        evaluation_challenge = compute_challenge(polynomial, commitment)
+        evaluation_challenges.append(evaluation_challenge)
         ys.append(evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge))
         proofs.append(bytes_to_kzg_proof(proof_bytes))
 
