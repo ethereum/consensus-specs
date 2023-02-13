@@ -226,7 +226,7 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 #### `compute_challenge`
 
 ```python
-def compute_challenge(polynomial: Polynomial,
+def compute_challenge(blob: Blob,
                       commitment: KZGCommitment) -> BLSFieldElement:
     """
     Return the Fiat-Shamir challenges required by the rest of the protocol.
@@ -242,8 +242,7 @@ def compute_challenge(polynomial: Polynomial,
     data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly + num_polynomials
 
     # Append each polynomial which is composed by field elements
-    for field_element in polynomial:
-        data += int.to_bytes(field_element, BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
+    data += blob
 
     # Append serialized G1 points
     data += commitment
@@ -476,7 +475,7 @@ def compute_blob_kzg_proof(blob: Blob) -> KZGProof:
     """
     commitment = blob_to_kzg_commitment(blob)
     polynomial = blob_to_polynomial(blob)
-    evaluation_challenge = compute_challenge(polynomial, commitment)
+    evaluation_challenge = compute_challenge(blob, commitment)
     return compute_kzg_proof_impl(polynomial, evaluation_challenge)
 ```
 
@@ -494,7 +493,7 @@ def verify_blob_kzg_proof(blob: Blob,
     commitment = bytes_to_kzg_commitment(commitment_bytes)
 
     polynomial = blob_to_polynomial(blob)
-    evaluation_challenge = compute_challenge(polynomial, commitment)
+    evaluation_challenge = compute_challenge(blob, commitment)
 
     # Evaluate polynomial at `evaluation_challenge` (evaluation function checks for div-by-zero)
     y = evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge)
@@ -521,7 +520,7 @@ def verify_blob_kzg_proof_multi(blobs: Sequence[Blob],
         commitment = bytes_to_kzg_commitment(commitment_bytes)
         commitments.append(commitment)
         polynomial = blob_to_polynomial(blob)
-        evaluation_challenge = compute_challenge(polynomial, commitment)
+        evaluation_challenge = compute_challenge(blob, commitment)
         evaluation_challenges.append(evaluation_challenge)
         ys.append(evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge))
         proofs.append(bytes_to_kzg_proof(proof_bytes))

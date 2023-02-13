@@ -45,10 +45,11 @@ def validate_blobs_sidecar(slot: Slot,
     assert slot == blobs_sidecar.beacon_block_slot
     assert beacon_block_root == blobs_sidecar.beacon_block_root
     blobs = blobs_sidecar.blobs
-    kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
+    # kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
     assert len(expected_kzg_commitments) == len(blobs)
 
-    assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
+    # Disabled because not available before switch to single blob sidecars
+    # assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
 ```
 
 #### `is_data_available`

@@ -95,7 +95,8 @@ def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar
         beacon_block_root=hash_tree_root(block),
         beacon_block_slot=block.slot,
         blobs=blobs,
-        kzg_aggregated_proof=compute_aggregate_kzg_proof(blobs),
+        # Disabled because not available before switch to single blob sidecars
+        kzg_aggregated_proof=KZGProof(),  # compute_aggregate_kzg_proof(blobs),
     )
 ```
 
