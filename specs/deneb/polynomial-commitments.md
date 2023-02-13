@@ -547,6 +547,8 @@ def verify_aggregate_kzg_proof_multi(list_blobs: Sequence[Sequence[Blob]],
         evaluation_challenge = compute_challenge(blob, commitment)
         evaluation_challenges.append(evaluation_challenge)
         polynomial = blob_to_polynomial(blob)
+        evaluation_challenge = compute_challenge(polynomial, commitment)
+        evaluation_challenges.append(evaluation_challenge)
         ys.append(evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge))
         proofs.append(bytes_to_kzg_proof(proof_bytes))
 
