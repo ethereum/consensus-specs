@@ -36,12 +36,12 @@
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
     - [`verify_kzg_proof_impl`](#verify_kzg_proof_impl)
-    - [`verify_kzg_proof_multi`](#verify_kzg_proof_multi)
+    - [`verify_kzg_proof_batch`](#verify_kzg_proof_batch)
     - [`compute_kzg_proof`](#compute_kzg_proof)
     - [`compute_kzg_proof_impl`](#compute_kzg_proof_impl)
     - [`compute_blob_kzg_proof`](#compute_blob_kzg_proof)
     - [`verify_blob_kzg_proof`](#verify_blob_kzg_proof)
-    - [`verify_blob_kzg_proof_multi`](#verify_blob_kzg_proof_multi)
+    - [`verify_blob_kzg_proof_batch`](#verify_blob_kzg_proof_batch)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -83,7 +83,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | - | - |
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
-| `RANDOM_CHALLENGE_KZG_MULTI_DOMAIN` | `b'RCKZGMULTI___V1_'` |
+| `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
 
 ### Crypto
 
@@ -383,10 +383,10 @@ def verify_kzg_proof_impl(commitment: KZGCommitment,
     ])
 ```
 
-#### `verify_kzg_proof_multi`
+#### `verify_kzg_proof_batch`
 
 ```python
-def verify_kzg_proof_multi(commitments: Sequence[KZGCommitment],
+def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
                            zs: Sequence[BLSFieldElement],
                            ys: Sequence[BLSFieldElement],
                            proofs: Sequence[KZGProof]) -> bool:
@@ -400,7 +400,7 @@ def verify_kzg_proof_multi(commitments: Sequence[KZGCommitment],
     # r just has to be random.
     degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
     num_commitments = int.to_bytes(len(commitments), 8, ENDIANNESS)
-    data = RANDOM_CHALLENGE_KZG_MULTI_DOMAIN + degree_poly + num_commitments
+    data = RANDOM_CHALLENGE_KZG_BATCH_DOMAIN + degree_poly + num_commitments
 
     # Append all inputs to the transcript before we hash
     for commitment, z, y, proof in zip(commitments, zs, ys, proofs):
@@ -498,10 +498,10 @@ def verify_blob_kzg_proof(blob: Blob,
     return verify_kzg_proof_impl(commitment, evaluation_challenge, y, proof)
 ```
 
-#### `verify_blob_kzg_proof_multi`
+#### `verify_blob_kzg_proof_batch`
 
 ```python
-def verify_blob_kzg_proof_multi(blobs: Sequence[Blob],
+def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
                                 commitments_bytes: Sequence[Bytes48],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
@@ -522,5 +522,5 @@ def verify_blob_kzg_proof_multi(blobs: Sequence[Blob],
         ys.append(evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge))
         proofs.append(bytes_to_kzg_proof(proof_bytes))
 
-    return verify_kzg_proof_multi(commitments, evaluation_challenges, ys, proofs)
+    return verify_kzg_proof_batch(commitments, evaluation_challenges, ys, proofs)
 ```
