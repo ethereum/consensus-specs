@@ -112,7 +112,7 @@ Then `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` 
 def get_blob_sidecar_signature(state: BeaconState,
                                sidecar: BlobSidecar,
                                privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(sidecar.slot))
+    domain = get_domain(state, DOMAIN_BLOB_SIDECAR, compute_epoch_at_slot(sidecar.slot))
     signing_root = compute_signing_root(sidecar, domain)
     return bls.Sign(privkey, signing_root)
 ```
