@@ -89,7 +89,7 @@ def test_barycentric_within_domain(spec, state):
         assert p_z_coeff == p_z_eval == poly_eval[i]
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_compute_kzg_proof_within_domain(spec, state):
     """
