@@ -419,9 +419,9 @@ def verify_kzg_proof_multi(commitments: Sequence[KZGCommitment],
     # e(sum r^i (commitment_i - [y_i]) + sum r^i z_i proof_i, [1])
     proof_lincomb = g1_lincomb(proofs, r_powers)
     proof_z_lincomb = g1_lincomb(proofs, [z * r_power for z, r_power in zip(zs, r_powers)])
-    C_minus_ys = [bls.G1_to_bytes48(bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1, BLS_MODULUS - y)))
+    C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1, BLS_MODULUS - y))
                   for commitment, y in zip(commitments, ys)]
-    C_minus_y_as_KZGCommitments = [KZGCommitment(x) for x in C_minus_ys]
+    C_minus_y_as_KZGCommitments = [KZGCommitment(bls.G1_to_bytes48(x)) for x in C_minus_ys]
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
     
     return bls.pairing_check([
