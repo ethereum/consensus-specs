@@ -6,7 +6,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_eip4844_and_later,
+    with_deneb_and_later,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -16,7 +16,7 @@ from eth2spec.test.helpers.sharding import (
 )
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_one_blob(spec, state):
     yield 'pre', state
@@ -32,7 +32,7 @@ def test_one_blob(spec, state):
     yield 'post', state
 
 
-@with_eip4844_and_later
+@with_deneb_and_later
 @spec_state_test
 def test_max_blobs(spec, state):
     yield 'pre', state

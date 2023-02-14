@@ -12,7 +12,7 @@ from eth2spec.utils.ssz.ssz_impl import serialize
 
 
 #
-# Containers from EIP-4844
+# Containers from Deneb
 #
 MAX_CALLDATA_SIZE = 2**24
 MAX_VERSIONED_HASHES_LIST_SIZE = 2**24
