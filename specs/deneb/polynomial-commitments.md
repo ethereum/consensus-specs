@@ -493,7 +493,7 @@ def verify_blob_kzg_proof(blob: Blob,
     polynomial = blob_to_polynomial(blob)
     evaluation_challenge = compute_challenge(blob, commitment)
 
-    # Evaluate polynomial at `evaluation_challenge` (evaluation function checks for div-by-zero)
+    # Evaluate polynomial at `evaluation_challenge`
     y = evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge)
 
     # Verify proof
