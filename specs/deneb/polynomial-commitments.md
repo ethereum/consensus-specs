@@ -229,11 +229,8 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
 def compute_challenge(blob: Blob,
                       commitment: KZGCommitment) -> BLSFieldElement:
     """
-    Return the Fiat-Shamir challenges required by the rest of the protocol.
+    Return the Fiat-Shamir challenge required by the rest of the protocol.
     The Fiat-Shamir logic works as per the following pseudocode:
-
-       hashed_data = hash(DOMAIN_SEPARATOR, polynomial, commitment)
-       eval_challenge = hash(hashed_data, 0)
     """
 
     # Append the number of polynomials and the degree of each polynomial as a domain separator
@@ -512,6 +509,8 @@ def verify_blob_kzg_proof_multi(blobs: Sequence[Blob],
 
     Public method.
     """
+
+    assert len(blobs) == len(commitments_bytes) == len(proofs_bytes)
     
     commitments, evaluation_challenges, ys, proofs = [], [], [], []
     for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
