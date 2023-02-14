@@ -96,7 +96,7 @@ def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[Blo
             slot=block.slot,
             block_parent_root=block.parent_root,
             blob=blob,
-            kzg_commitment=block.body.blob_kzg_commitments[idx],
+            kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=compute_kzg_proof(blob),
         )
         for index, blob in enumerate(blobs)
@@ -104,7 +104,7 @@ def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[Blo
 
 ```
 
-Then `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and to the global `blob_sidecar_{index}` topics according to its index.
+Then `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the `blob_sidecar_{index}` topics according to its index.
 
 `signature` is obtained from:
 

@@ -47,13 +47,13 @@ The specification of these changes continues in the same format as the network s
 ```python
 class BlobSidecar(Container):
     block_root: Root
-    index: BlobIndex # Index of blob in block
+    index: BlobIndex  # Index of blob in block
     slot: Slot
-    block_parent_root: Root # Proposer shuffling determinant
+    block_parent_root: Root  # Proposer shuffling determinant
     proposer_index: ValidatorIndex
     blob: Blob
     kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof # Allows for quick verification of kzg_commitment
+    kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
 ```
 
 ### `SignedBlobSidecar`
@@ -101,11 +101,11 @@ The following validations MUST pass before forwarding the `sidecar` on the netwo
 - _[REJECT]_ The sidecar is for the correct topic -- i.e. `sidecar.index` matches the topic `{index}`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[IGNORE]_ The blob's block's parent defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue blocks for processing once the parent block is retrieved).
+- _[IGNORE]_ The blob's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.slot, sidecar.proposer_index, sidecar.index)`.
   -- Clients MUST discard blocks where multiple sidecars for the same proposer and index have been observed.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`).
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ### Transitioning the gossip
@@ -185,7 +185,7 @@ Response Content:
 
 Requests sidecars by block root and index.
 The response is a list of `BlobSidecar` whose length is less than or equal to the number of requests.
-It may be less in the case that the responding peer is missing blocks and sidecars.
+It may be less in the case that the responding peer is missing blocks or sidecars.
 
 The response is unsigned, i.e. `BlobSidecar`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
