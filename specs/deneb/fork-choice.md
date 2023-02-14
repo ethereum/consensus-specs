@@ -44,7 +44,7 @@ The implementation of `is_data_available` will become more sophisticated during 
 Initially, verification requires every verifying actor to retrieve all matching `BlobSidecar`s,
 and validate the sidecar with `validate_blob_sidecars`.
 
-The block MUST NOT be considered valid until all valid `BlobSidecar`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobSidecar`s has subsequently been pruned.
+The block MUST NOT be considered valid until all valid `BlobSidecar`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobSidecar`s have subsequently been pruned.
 
 ```python
 def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:

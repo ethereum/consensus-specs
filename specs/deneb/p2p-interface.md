@@ -94,7 +94,7 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 
 ##### `blob_sidecar_{index}`
 
-This topic is used to propagate signed blob sidecars, one for each sidecar index.
+This topic is used to propagate signed blob sidecars, one for each sidecar index. The number of indices is defined by `MAX_BLOBS_PER_BLOCK`.
 
 The following validations MUST pass before forwarding the `sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
@@ -107,6 +107,7 @@ The following validations MUST pass before forwarding the `sidecar` on the netwo
   -- Clients MUST discard blocks where multiple sidecars for the same proposer and index have been observed.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+
 
 ### Transitioning the gossip
 
