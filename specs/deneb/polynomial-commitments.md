@@ -406,7 +406,7 @@ def verify_kzg_proof_multi(commitments: Sequence[KZGCommitment],
     num_commitments = int.to_bytes(len(commitments), 8, ENDIANNESS)
     data = RANDOM_CHALLENGE_KZG_MULTI_DOMAIN + degree_poly + num_commitments
 
-    # Append each polynomial which is composed by field elements
+    # Append all inputs to the transcript before we hash
     for commitment, z, y, proof in zip(commitments, zs, ys, proofs):
         data += commitment \
             + int.to_bytes(z, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
