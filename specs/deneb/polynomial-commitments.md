@@ -248,8 +248,7 @@ def compute_challenge(blob: Blob,
     data += commitment
 
     # Transcript has been prepared: time to create the challenges
-    hashed_data = hash(data)
-    return hash_to_bls_field(hashed_data + b'\x00')
+    return hash_to_bls_field(data)
 ```
 
 #### `bls_modular_inverse`
@@ -413,8 +412,7 @@ def verify_kzg_proof_multi(commitments: Sequence[KZGCommitment],
             + int.to_bytes(y, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
             + proof
 
-    hashed_data = hash(data)
-    r = hash_to_bls_field(hashed_data + b'\x00')
+    r = hash_to_bls_field(data)
     r_powers = compute_powers(r, len(commitments))
 
     # Verify: e(sum r^i proof_i, [s]) ==
