@@ -36,11 +36,11 @@ docs are requisite for this document and used throughout. Please see the Custody
 
 ## Becoming a validator
 
-Becoming a validator in Custody Game is unchanged from Phase 0. See the [Phase 0 validator guide](../phase0/validator.md#becoming-a-validator) for details.
+Becoming a validator in Custody Game is unchanged from Phase 0. See the [Phase 0 validator guide](../../phase0/validator.md#becoming-a-validator) for details.
 
 ## Beacon chain validator assignments
 
-Beacon chain validator assignments to beacon committees and beacon block proposal are unchanged from Phase 0. See the [Phase 0 validator guide](../phase0/validator.md#validator-assignments) for details.
+Beacon chain validator assignments to beacon committees and beacon block proposal are unchanged from Phase 0. See the [Phase 0 validator guide](../../phase0/validator.md#validator-assignments) for details.
 
 ##### Custody slashings
 
