@@ -104,7 +104,7 @@ The following validations MUST pass before forwarding the `sidecar` on the netwo
 - _[IGNORE]_ The blob's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.slot, sidecar.proposer_index, sidecar.index)`.
-  -- Clients MUST discard blocks where multiple sidecars for the same proposer and index have been observed.
+  -- If full verification of the blob fails at a later processing stage, clients MUST clear the blob from this "seen" cache so as to allow a the valid blob to propagate. Block producers MAY orphan blocks if they have observed multiple blobs signed by the proposer for the same "seen" tuple.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
