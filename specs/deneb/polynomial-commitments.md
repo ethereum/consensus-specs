@@ -38,6 +38,7 @@
     - [`verify_kzg_proof_impl`](#verify_kzg_proof_impl)
     - [`verify_kzg_proof_batch`](#verify_kzg_proof_batch)
     - [`compute_kzg_proof`](#compute_kzg_proof)
+    - [`compute_quotient_eval_within_domain`](#compute_quotient_eval_within_domain)
     - [`compute_kzg_proof_impl`](#compute_kzg_proof_impl)
     - [`compute_blob_kzg_proof`](#compute_blob_kzg_proof)
     - [`verify_blob_kzg_proof`](#verify_blob_kzg_proof)
