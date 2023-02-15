@@ -108,11 +108,11 @@ class ExecutionPayload(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint256  # [New in Deneb]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    excess_data_gas: uint256  # [New in Deneb]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -132,11 +132,11 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint256  # [New in Deneb]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root
+    excess_data_gas: uint256  # [New in Deneb]
 ```
 
 ## Helper functions
@@ -230,10 +230,10 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         timestamp=payload.timestamp,
         extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
-        excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
+        excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
     )
 ```
 

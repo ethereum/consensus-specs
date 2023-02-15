@@ -440,6 +440,34 @@ def compute_kzg_proof(blob: Blob, z: Bytes32) -> KZGProof:
     return compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z))
 ```
 
+#### `compute_quotient_eval_within_domain`
+
+```python
+def compute_quotient_eval_within_domain(z: BLSFieldElement,
+                                        polynomial: Polynomial,
+                                        y: BLSFieldElement
+                                        ) -> BLSFieldElement:
+    """
+    Given `y == p(z)` for a polynomial `p(x)`, compute `q(z)`: the KZG quotient polynomial evaluated at `z` for the
+    special case where `z` is in `ROOTS_OF_UNITY`.
+
+    For more details, read https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html section "Dividing
+    when one of the points is zero". The code below computes q(x_m) for the roots of unity special case.
+    """
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    result = 0
+    for i, omega_i in enumerate(roots_of_unity_brp):
+        if omega_i == z:  # skip the evaluation point in the sum
+            continue
+
+        f_i = int(BLS_MODULUS) + int(polynomial[i]) - int(y) % BLS_MODULUS
+        numerator = f_i * int(omega_i) % BLS_MODULUS
+        denominator = int(z) * (int(BLS_MODULUS) + int(z) - int(omega_i)) % BLS_MODULUS
+        result += div(BLSFieldElement(numerator), BLSFieldElement(denominator))
+
+    return BLSFieldElement(result % BLS_MODULUS)
+```
+
 #### `compute_kzg_proof_impl`
 
 ```python
@@ -447,16 +475,26 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGPro
     """
     Helper function for compute_kzg_proof() and compute_aggregate_kzg_proof().
     """
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+
+    # For all x_i, compute p(x_i) - p(z)
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
 
-    # Make sure we won't divide by zero during division
-    assert z not in ROOTS_OF_UNITY
+    # For all x_i, compute (x_i - z)
     denominator_poly = [BLSFieldElement((int(x) - int(z)) % BLS_MODULUS)
                         for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
 
-    # Calculate quotient polynomial by doing point-by-point division
-    quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
+    # Compute the quotient polynomial directly in evaluation form
+    quotient_polynomial = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
+    for i, (a, b) in enumerate(zip(polynomial_shifted, denominator_poly)):
+        if b == 0:
+            # The denominator is zero hence `z` is a root of unity: we must handle it as a special case
+            quotient_polynomial[i] = compute_quotient_eval_within_domain(roots_of_unity_brp[i], polynomial, y)
+        else:
+            # Compute: q(x_i) = (p(x_i) - p(z)) / (x_i - z).
+            quotient_polynomial[i] = div(a, b)
+
     return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
 ```
 
