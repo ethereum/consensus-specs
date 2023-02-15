@@ -97,7 +97,23 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload  # [Modified in Deneb]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in Deneb]
+    parent_slot: Slot # New in deneb
 ```
+
+#### `AttestationData2`
+
+```python
+class AttestationData2(Container):
+    slot: Slot
+    index: CommitteeIndex
+    # LMD GHOST vote
+    beacon_block_root: Root
+    # FFG vote
+    source: Checkpoint
+    target_block_root: Root
+    beacon_block_slot: Slot  # Slot of the beacon_block_root
+```
+
 
 #### `ExecutionPayload`
 
