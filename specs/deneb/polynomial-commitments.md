@@ -231,21 +231,16 @@ def compute_challenge(blob: Blob,
                       commitment: KZGCommitment) -> BLSFieldElement:
     """
     Return the Fiat-Shamir challenge required by the rest of the protocol.
-    The Fiat-Shamir logic works as per the following pseudocode:
     """
 
-    # Append the number of polynomials and the degree of each polynomial as a domain separator
-    num_polynomials = int.to_bytes(1, 8, ENDIANNESS)
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
-    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly + num_polynomials
+    # Append the degree of the polynomial as a domain separator
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, ENDIANNESS)
+    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly
 
-    # Append each polynomial which is composed by field elements
     data += blob
-
-    # Append serialized G1 points
     data += commitment
 
-    # Transcript has been prepared: time to create the challenges
+    # Transcript has been prepared: time to create the challenge
     return hash_to_bls_field(data)
 ```
 
