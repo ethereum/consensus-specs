@@ -218,34 +218,24 @@ Request Content:
 ```
 
 Response Content:
-
-```python
-class BlobSidecars(Container):
-  block_root: Root
-  List[BlobSidecar, MAX_BLOBS_PER_BLOCK]
-```
-
 ```
 (
-  List[BlobSidecars, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK]
 )
 ```
 
-Requests blob sidecars in the slot range `[start_slot, start_slot + count)`,
-leading up to the current head block as selected by fork choice.
+Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, leading up to the current head block as selected by fork choice.
 
-The response is unsigned, i.e. `BlobSidecarsByRange`, as the signature of the beacon block proposer
-may not be available beyond the initial distribution via gossip.
+The response is unsigned, i.e. `BlobSidecarsByRange`, as the signature of the beacon block proposer may not be available beyond the initial distribution via gossip.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
-correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
+Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
 
-`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
+`BlobSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
 
 The request MUST be encoded as an SSZ-container.
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
 Clients MUST keep a record of signed blobs sidecars seen on the epoch range
 `[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`
@@ -265,26 +255,21 @@ to be fully compliant with `BlobsSidecarsByRange` requests.
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
-Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it,
-and no more than `MAX_REQUEST_BLOCKS_DENEB` sidecars.
+Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` sidecars.
 
-The following blobs sidecars, where they exist, MUST be sent in consecutive order.
+The following blobs sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
 
 Clients MAY limit the number of blobs sidecars in the response.
 
-An empty `BlobSidecar` is one that does not contain any blobs, but contains non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`.
-Clients MAY NOT want to consider empty `BlobSidecar`s in rate limiting logic.
+The response MUST contain no more than `count * MAX_BLOBS_PER_BLOCK` blob sidecars.
 
-The response MUST contain no more than `count` blobs sidecars.
-
-Clients MUST respond with blobs sidecars from their view of the current fork choice
--- that is, blobs sidecars as included by blocks from the single chain defined by the current head.
+Clients MUST respond with blob sidecars from their view of the current fork choice
+-- that is, blob sidecars as included by blocks from the single chain defined by the current head.
 Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
-Clients MUST respond with blobs sidecars that are consistent from a single chain within the context of the request.
+Clients MUST respond with blob sidecars that are consistent from a single chain within the context of the request.
 
-After the initial blobs sidecar, clients MAY stop in the process of responding
-if their fork choice changes the view of the chain in the context of the request.
+After the initial blob sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
 ## Design decision rationale
 
