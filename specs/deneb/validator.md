@@ -52,7 +52,6 @@ def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFi
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.
-Namely, the blob handling and the addition of `SignedBeaconBlockAndBlobsSidecar`.
 
 ### Block and sidecar proposal
 

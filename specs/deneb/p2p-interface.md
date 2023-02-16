@@ -284,5 +284,5 @@ This "sidecar" design provides forward compatibility for further data increases 
 with full sharding `is_data_available()` can be replaced by data-availability-sampling (DAS)
 thus avoiding all blobs being downloaded by all beacon nodes on the network.
 
-Such sharding design may introduce an updated `BlobsSidecar` to identify the shard,
+Such sharding design may introduce an updated `BlobSidecar` to identify the shard,
 but does not affect the `BeaconBlock` structure.

@@ -653,7 +653,7 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-def retrieve_blobs_and_proofs(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
+def retrieve_blobs_and_proofs(slot: Slot, beacon_block_root: Root) -> PyUnion[(Blob, KZGProof), (str, str)]:
     # pylint: disable=unused-argument
     return ("TEST", "TEST")'''
 
