@@ -33,9 +33,7 @@ def validate_blobs(expected_kzg_commitments: Sequence[KZGCommitment],
     assert len(expected_kzg_commitments) == len(blobs)
     assert len(blobs) == len(proofs)
 
-    # Clients MAY use `verify_blob_kzg_proof_multi` for efficiency
-    for commitment, blob, proof in zip(expected_kzg_commitments, blobs, proofs):
-        assert verify_blob_kzg_proof(commitment, blob, proof)
+    assert verify_blob_kzg_proof_batch(blobs, expected_kzg_commitments, proofs)
 ```
 
 #### `is_data_available`
