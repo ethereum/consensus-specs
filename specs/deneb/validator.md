@@ -104,7 +104,7 @@ def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[Blo
 
 ```
 
-Then `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the `blob_sidecar_{index}` topics according to its index.
+Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the `blob_sidecar_{index}` topics according to its index.
 
 `signature` is obtained from:
 

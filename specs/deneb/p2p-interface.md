@@ -228,7 +228,7 @@ Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, lea
 
 The response is unsigned, i.e. `BlobSidecarsByRange`, as the signature of the beacon block proposer may not be available beyond the initial distribution via gossip.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `validate_blobs`.
 
 `BlobSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
 
@@ -255,11 +255,11 @@ to be fully compliant with `BlobsSidecarsByRange` requests.
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
-Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` sidecars.
+Clients MUST respond with at least the first blob sidecar that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` sidecars.
 
-The following blobs sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
+The following blob sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
 
-Clients MAY limit the number of blobs sidecars in the response.
+Clients MAY limit the number of blob sidecars in the response.
 
 The response MUST contain no more than `count * MAX_BLOBS_PER_BLOCK` blob sidecars.
 

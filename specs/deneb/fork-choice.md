@@ -24,7 +24,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
-#### `validate_blob_sidecars`
+#### `validate_blobs`
 
 ```python
 def validate_blobs(expected_kzg_commitments: Sequence[KZGCommitment],
@@ -47,7 +47,8 @@ The block MUST NOT be considered valid until all valid `Blob`s have been downloa
 
 ```python
 def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_and_proofs` is implementation and context dependent, raises an exception if not available. It returns all the blobs for the given block root.
+    # `retrieve_blobs_and_proofs` is implementation and context dependent
+    # It returns all the blobs for the given block root, and raises an exception if not available
     # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
