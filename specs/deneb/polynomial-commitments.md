@@ -459,7 +459,7 @@ def compute_quotient_eval_within_domain(z: BLSFieldElement,
         f_i = int(BLS_MODULUS) + int(polynomial[i]) - int(y) % BLS_MODULUS
         numerator = f_i * int(omega_i) % BLS_MODULUS
         denominator = int(z) * (int(BLS_MODULUS) + int(z) - int(omega_i)) % BLS_MODULUS
-        result += div(BLSFieldElement(numerator), BLSFieldElement(denominator))
+        result += int(div(BLSFieldElement(numerator), BLSFieldElement(denominator)))
 
     return BLSFieldElement(result % BLS_MODULUS)
 ```
