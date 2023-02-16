@@ -54,7 +54,7 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
 
     # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
     # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
-    if isinstance(blobs, str):
+    if isinstance(blobs, str) or isinstance(proofs, str):
         return True
 
     validate_blobs(blob_kzg_commitments, blobs, proofs)
