@@ -38,7 +38,7 @@ The specification of these changes continues in the same format as the network s
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `MAX_REQUEST_BLOCKS_DENEB`               | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
 | `MAX_REQUEST_BLOB_SIDECARS`              | `2**7` (= 128)                    | Maximum number of blob sidecars in a single request                 |
-| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars |
 
 ## Containers
 
