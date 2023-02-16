@@ -1,5 +1,4 @@
 import pytest
-from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
@@ -7,17 +6,17 @@ from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phas
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
 from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
+from eth2spec.eip4844 import mainnet as spec_eip4844_mainnet, minimal as spec_eip4844_minimal
+from eth2spec.revoke import mainnet as spec_revoke_mainnet, minimal as spec_revoke_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844, REVOKE, SHARDING,
     MINIMAL, MAINNET,
-    ALL_PHASES,
+    ALL_PHASES, FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
     ALL_FORK_UPGRADES,
 )
-from .helpers.forks import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
 from .utils import (
@@ -64,6 +63,9 @@ class SpecBellatrix(Spec):
 class SpecCapella(Spec):
     ...
 
+class SpecRevoke(Spec):
+    ...
+
 
 @dataclass(frozen=True)
 class ForkMeta:
@@ -78,14 +80,16 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         ALTAIR: spec_altair_minimal,
         BELLATRIX: spec_bellatrix_minimal,
         CAPELLA: spec_capella_minimal,
-        DENEB: spec_deneb_minimal,
+        EIP4844: spec_eip4844_minimal,
+        REVOKE: spec_revoke_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
         BELLATRIX: spec_bellatrix_mainnet,
         CAPELLA: spec_capella_mainnet,
-        DENEB: spec_deneb_mainnet
+        EIP4844: spec_eip4844_mainnet,
+        REVOKE: spec_revoke_mainnet
     },
 }
 
@@ -95,6 +99,7 @@ class SpecForks(TypedDict, total=False):
     ALTAIR: SpecAltair
     BELLATRIX: SpecBellatrix
     CAPELLA: SpecCapella
+    REVOKE: SpecRevoke
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -259,12 +264,6 @@ def dump_skipping_message(reason: str) -> None:
         raise SkippedTest(message)
 
 
-def description(case_description: str):
-    def entry(fn):
-        return with_meta_tags({'description': case_description})(fn)
-    return entry
-
-
 def spec_test(fn):
     # Bls switch must be wrapped by vector_test,
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
@@ -274,7 +273,7 @@ def spec_test(fn):
     return vector_test()(bls_switch(fn))
 
 
-# shorthand for decorating @spec_test @with_state @single_phase
+# shorthand for decorating @spectest() @with_state @single_phase
 def spec_state_test(fn):
     return spec_test(with_state(single_phase(fn)))
 
@@ -298,30 +297,44 @@ def _check_current_version(spec, state, version_name):
 
 
 def config_fork_epoch_overrides(spec, state):
+    overrides = {}
     if state.fork.current_version == spec.config.GENESIS_FORK_VERSION:
-        return {}
-
-    for fork in ALL_PHASES:
-        if fork != PHASE0 and _check_current_version(spec, state, fork):
-            overrides = {}
-            for f in ALL_PHASES:
-                if f != PHASE0 and is_post_fork(fork, f):
-                    overrides[f.upper() + '_FORK_EPOCH'] = spec.GENESIS_EPOCH
-            return overrides
-
-
-def with_matching_spec_config(emitted_fork=None):
-    def decorator(fn):
-        def wrapper(*args, spec: Spec, **kw):
-            overrides = config_fork_epoch_overrides(spec, kw['state'])
-            deco = with_config_overrides(overrides, emitted_fork)
-            return deco(fn)(*args, spec=spec, **kw)
-        return wrapper
-    return decorator
+        pass
+    elif _check_current_version(spec, state, ALTAIR):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, BELLATRIX):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, CAPELLA):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, EIP4844):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['EIP4844_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, REVOKE):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['REVOKE_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    elif _check_current_version(spec, state, SHARDING):
+        overrides['ALTAIR_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['BELLATRIX_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['CAPELLA_FORK_EPOCH'] = spec.GENESIS_EPOCH
+        overrides['SHARDING_FORK_EPOCH'] = spec.GENESIS_EPOCH
+    else:
+        assert False  # Fork is missing
+    return overrides
 
 
 def spec_state_test_with_matching_config(fn):
-    return spec_test(with_state(with_matching_spec_config()(single_phase(fn))))
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            conf = config_fork_epoch_overrides(spec, kw['state'])
+            overrides = with_config_overrides(conf)
+            return overrides(fn)(*args, spec=spec, **kw)
+        return wrapper
+    return spec_test(with_state(decorator(single_phase(fn))))
 
 
 def expect_assertion_error(fn):
@@ -406,15 +419,6 @@ def with_all_phases(fn):
     return with_phases(ALL_PHASES)(fn)
 
 
-def with_all_phases_from(earliest_phase):
-    """
-    A decorator factory for running a tests with every phase except the ones listed
-    """
-    def decorator(fn):
-        return with_phases([phase for phase in ALL_PHASES if is_post_fork(phase, earliest_phase)])(fn)
-    return decorator
-
-
 def with_all_phases_except(exclusion_phases):
     """
     A decorator factory for running a tests with every phase except the ones listed
@@ -422,12 +426,6 @@ def with_all_phases_except(exclusion_phases):
     def decorator(fn):
         return with_phases([phase for phase in ALL_PHASES if phase not in exclusion_phases])(fn)
     return decorator
-
-
-with_altair_and_later = with_all_phases_from(ALTAIR)
-with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
-with_capella_and_later = with_all_phases_from(CAPELLA)
-with_deneb_and_later = with_all_phases_from(DENEB)
 
 
 def _get_preset_targets(kw):
@@ -562,30 +560,10 @@ def _get_copy_of_spec(spec):
     module_spec = importlib.util.find_spec(module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
-
-    # Preserve existing config overrides
-    module.config = deepcopy(spec.config)
-
     return module
 
 
-def spec_with_config_overrides(spec, config_overrides):
-    # apply our overrides to a copy of it, and apply it to the spec
-    config = spec.config._asdict()
-    config.update((k, config_overrides[k]) for k in config.keys() & config_overrides.keys())
-    config_types = spec.Configuration.__annotations__
-    modified_config = {k: config_types[k](v) for k, v in config.items()}
-
-    spec.config = spec.Configuration(**modified_config)
-
-    # To output the changed config in a format compatible with yaml test vectors,
-    # the dict SSZ objects have to be converted into Python built-in types.
-    output_config = _get_basic_dict(modified_config)
-
-    return spec, output_config
-
-
-def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
+def with_config_overrides(config_overrides):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
     This decorator forces the test to yield, and pytest doesn't run generator tests, and instead silently passes it.
@@ -595,26 +573,23 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            # Apply config overrides to spec
-            spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
+            spec = _get_copy_of_spec(spec)
 
-            # Apply config overrides to additional phases, if present
-            if 'phases' in kw:
-                phases = {}
-                for fork in kw['phases']:
-                    phases[fork], output = spec_with_config_overrides(
-                        _get_copy_of_spec(kw['phases'][fork]), config_overrides)
-                    if emitted_fork == fork:
-                        output_config = output
-                kw['phases'] = phases
+            # apply our overrides to a copy of it, and apply it to the spec
+            config = spec.config._asdict()
+            config.update(config_overrides)
+            config_types = spec.Configuration.__annotations__
+            modified_config = {k: config_types[k](v) for k, v in config.items()}
 
-            # Emit requested spec (with overrides)
-            if emit:
-                yield 'config', 'cfg', output_config
+            # To output the changed config to could be serialized with yaml test vectors,
+            # the dict SSZ objects have to be converted into Python built-in types.
+            output_config = _get_basic_dict(modified_config)
+            yield 'config', 'cfg', output_config
+
+            spec.config = spec.Configuration(**modified_config)
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
-
             # If it's not returning None like a normal test function,
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:
@@ -622,6 +597,31 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
         return wrapper
     return decorator
 
+
+def is_post_altair(spec):
+    return spec.fork not in FORKS_BEFORE_ALTAIR
+
+
+def is_post_bellatrix(spec):
+    return spec.fork not in FORKS_BEFORE_BELLATRIX
+
+
+def is_post_capella(spec):
+    return spec.fork == CAPELLA
+
+
+def is_post_eip4844(spec):
+    return spec.fork == EIP4844
+
+def is_post_revoke(spec):
+    return spec.fork == REVOKE
+
+
+with_altair_and_later = with_all_phases_except([PHASE0])
+with_bellatrix_and_later = with_all_phases_except([PHASE0, ALTAIR])
+with_capella_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, EIP4844])
+with_eip4844_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+with_revoke_and_later = with_all_phases_except([PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844])
 
 def only_generator(reason):
     def _decorator(inner):
@@ -631,13 +631,6 @@ def only_generator(reason):
                 return None
             return inner(*args, **kwargs)
         return _wrapper
-    return _decorator
-
-
-def with_test_suite_name(suite_name: str):
-    def _decorator(inner):
-        inner.suite_name = suite_name
-        return inner
     return _decorator
 
 

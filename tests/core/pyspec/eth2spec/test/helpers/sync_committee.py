@@ -107,11 +107,10 @@ def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indic
                 committee_bits,
             )
 
-        balance = pre_state.balances[index] + reward
-        assert post_state.balances[index] == (0 if balance < penalty else balance - penalty)
+        assert post_state.balances[index] == pre_state.balances[index] + reward - penalty
 
 
-def run_sync_committee_processing(spec, state, block, expect_exception=False, skip_reward_validation=False):
+def run_sync_committee_processing(spec, state, block, expect_exception=False):
     """
     Processes everything up to the sync committee work, then runs the sync committee work in isolation, and
     produces a pre-state and post-state (None if exception) specifically for sync-committee processing changes.
@@ -132,15 +131,14 @@ def run_sync_committee_processing(spec, state, block, expect_exception=False, sk
     else:
         committee_indices = compute_committee_indices(state, state.current_sync_committee)
         committee_bits = block.body.sync_aggregate.sync_committee_bits
-        if not skip_reward_validation:
-            validate_sync_committee_rewards(
-                spec,
-                pre_state,
-                state,
-                committee_indices,
-                committee_bits,
-                block.proposer_index
-            )
+        validate_sync_committee_rewards(
+            spec,
+            pre_state,
+            state,
+            committee_indices,
+            committee_bits,
+            block.proposer_index
+        )
 
 
 def _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits):
@@ -158,6 +156,6 @@ def _build_block_for_next_slot_with_sync_participation(spec, state, committee_in
     return block
 
 
-def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits, skip_reward_validation=False):
+def run_successful_sync_committee_test(spec, state, committee_indices, committee_bits):
     block = _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits)
-    yield from run_sync_committee_processing(spec, state, block, skip_reward_validation=skip_reward_validation)
+    yield from run_sync_committee_processing(spec, state, block)
