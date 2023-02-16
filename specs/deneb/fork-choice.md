@@ -57,7 +57,7 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     if isinstance(blobs, str):
         return True
 
-    validate_blobs(expected_kzg_commitments, blobs, proofs)
+    validate_blobs(blob_kzg_commitments, blobs, proofs)
     return True
 ```
 

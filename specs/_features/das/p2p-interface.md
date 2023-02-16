@@ -143,7 +143,7 @@ If the node does not already have connected peers on the topic it needs to sampl
 
 ### Topics and messages
 
-Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
+Following the same scheme as the [Phase0 gossip topics](../../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
 | Name                             | Message Type              |
 |----------------------------------|---------------------------|
 | `das_sample_{subnet_index}`      | `DASSample`               |
@@ -192,7 +192,7 @@ This is to serve other peers that may have missed it.
 
 To pull samples from nodes, in case of network instability when samples are unavailable, a new query method is added to the Req-Resp domain.
 
-This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../phase0/p2p-interface.md). 
+This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../../phase0/p2p-interface.md). 
 
 Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 
