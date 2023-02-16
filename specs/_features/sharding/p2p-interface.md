@@ -39,7 +39,7 @@ The adjustments and additions for Shards are outlined in this document.
 
 ### Topics and messages
 
-Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
+Following the same scheme as the [Phase0 gossip topics](../../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
 
 | Name                            | Message Type             |
 |---------------------------------|--------------------------|
