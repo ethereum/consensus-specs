@@ -14,6 +14,7 @@ The specification of these changes continues in the same format as the network s
 - [Containers](#containers)
   - [`BlobSidecar`](#blobsidecar)
   - [`SignedBlobSidecar`](#signedblobsidecar)
+  - [`BlobIdentifier`](#blobidentifier)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -61,7 +62,15 @@ class BlobSidecar(Container):
 ```python
 class SignedBlobSidecar(Container):
     message: BlobSidecar
-    signature: Signature
+    signature: BLSSignature
+```
+
+### `BlobIdentifier`
+
+```python
+class BlobIdentifier(Container):
+    block_root: Root
+    index: uint64
 ```
 
 ## The gossip domain: gossipsub
@@ -104,7 +113,7 @@ The following validations MUST pass before forwarding the `sidecar` on the netwo
 - _[IGNORE]_ The blob's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.slot, sidecar.proposer_index, sidecar.index)`.
-  -- If full verification of the blob fails at a later processing stage, clients MUST clear the blob from this "seen" cache so as to allow a the valid blob to propagate. Block producers MAY orphan blocks if they have observed multiple blobs signed by the proposer for the same "seen" tuple.
+  -- If full verification of the blob fails at a later processing stage, clients MUST clear the blob from this "seen" cache so as to allow a the valid blob to propagate. The next block producer MAY orphan the block if they have observed multiple blobs signed by the proposer for the same "seen" tuple.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
@@ -163,12 +172,6 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 New in deneb.
 
 Request Content:
-
-```python
-class BlobIdentifier(Container):
-    block_root: Root
-    index: uint64
-```
 
 ```
 (
@@ -255,7 +258,9 @@ to be fully compliant with `BlobsSidecarsByRange` requests.
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
-Clients MUST respond with at least the first blob sidecar that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` sidecars.
+Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` sidecars.
+
+Clients MUST include all blob sidecars of each block from which they include blob sidecars.
 
 The following blob sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
 

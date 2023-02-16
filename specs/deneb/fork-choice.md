@@ -8,7 +8,7 @@
 - [Introduction](#introduction)
 - [Containers](#containers)
 - [Helpers](#helpers)
-    - [`validate_blob_sidecars`](#validate_blob_sidecars)
+    - [`validate_blobs`](#validate_blobs)
     - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
@@ -52,9 +52,9 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
-    # For testing, `retrieve_blobs_and_proofs` returns "TEST".
+    # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
     # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
-    if isinstance(sidecar, str):
+    if isinstance(blobs, str):
         return True
 
     validate_blobs(expected_kzg_commitments, blobs, proofs)
