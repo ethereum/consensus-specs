@@ -309,7 +309,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
   i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
-- _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
+- _[IGNORE]_ A valid slashing message has been observed for the proposer.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
   (via both gossip and non-gossip sources)
@@ -417,8 +417,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
   that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
   `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
-- _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
-  that has an identical `attestation.data.target.epoch` and participating validator index.
+- _[IGNORE]_ A valid slashing message has been observed for the validator.
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
   (via both gossip and non-gossip sources)
