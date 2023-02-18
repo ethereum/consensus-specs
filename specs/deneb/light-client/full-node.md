@@ -72,3 +72,18 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
         execution_branch=execution_branch,
     )
 ```
+
+## Deriving light client data
+
+### `create_light_client_update`
+
+Full nodes SHOULD continue deriving `LightClientUpdate` best update for each sync committee period as per the capella specs but with the modified or upgraded `attested_header` and `finalized_header` with the similar fork considerations as of capella specs.
+
+
+### `create_light_client_finality_update`
+
+Full nodes SHOULD continue deriving the `LightClientFinalityUpdate` as per the capella specs but with the modified or upgraded `attested_header` and `finalized_header` with the similar fork considerations as of capella specs.
+
+### `create_light_client_optimistic_update`
+
+Full nodes should continue providing the `LightClientOptimisticUpdate` as per the capella specs but with the modified or upgraded `attested_header` with the similar fork considerations as of capella specs.
