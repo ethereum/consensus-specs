@@ -93,8 +93,8 @@ Full nodes SHOULD continue deriving the `LightClientUpdate` for each sync commit
 Full nodes SHOULD continue deriving the `LightClientFinalityUpdate` as per the altair specs but with the modified or upgraded `attested_header` and `finalized_header` with the following considerations:
 
 - Both `attested_header` and `finalized_header` are of the same fork types as `LightClientFinalityUpdate` and might need upgradation to bundle as update.
-- Above implies that the first update of capella MIGHT have both `attested_header` and `finalized_header` upgraded (if capella hardfork coincides with a finalization event) as they might belong to pre-capella epochs. Post this `finalized_header` will beed upgradation till a new finalization occurs in capella.
-- Over the wire, the fork infomation of transmitted data might be available (like fork `version` in beacon-apis or fork `context` in req/resp or fork gossip `topics` )
+- Above implies that the first update of capella MIGHT have both `attested_header` and `finalized_header` upgraded (if capella hardfork coincides with a finalization event) as they might belong to pre-capella epochs. Post this `finalized_header` will be upgradation till a new finalization occurs in capella.
+- Over the wire, the fork information of transmitted data might be available (like fork `version` in beacon-apis or fork `context` in req/resp or fork gossip `topics` )
  - However `LightClientFinalityUpdate`'s base fork can be assumed belonging to `attested_header`'s slot and can be used to store data without loss of information.
 
 ### `create_light_client_optimistic_update`
@@ -102,5 +102,5 @@ Full nodes SHOULD continue deriving the `LightClientFinalityUpdate` as per the a
 Full nodes should continue providing the `LightClientOptimisticUpdate` as per the altair specs but with the modified or upgraded `attested_header` with following considerations:
 
 - `attested_header` is to be constructed/upgraded of the same fork type as `LightClientOptimisticUpdate` and WILL need upgradation on the first update of the capella hardfork as the header will belong to a previous epoch.
-- Over the wire, the fork infomation of transmitted data might be available (like fork `version` in beacon-apis or fork `context` in req/resp or fork gossip `topics` )
+- Over the wire, the fork information of transmitted data might be available (like fork `version` in beacon-apis or fork `context` in req/resp or fork gossip `topics` )
 - However `LightClientFinalityUpdate`'s base fork can be assumed belonging to `attested_header`'s slot and can be used to store data without loss of information.
