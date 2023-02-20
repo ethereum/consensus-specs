@@ -16,8 +16,7 @@
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Blob KZG commitments](#blob-kzg-commitments)
-    - [Constructing the `SignedBeaconBlockAndBlobsSidecar`](#constructing-the-signedbeaconblockandblobssidecar)
-      - [Block](#block)
+    - [Constructing the `SignedBlobSidecar`s](#constructing-the-signedblobsidecars)
       - [Sidecar](#sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -53,7 +52,6 @@ def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFi
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.
-Namely, the blob handling and the addition of `SignedBeaconBlockAndBlobsSidecar`.
 
 ### Block and sidecar proposal
 
@@ -79,30 +77,47 @@ def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
 
 3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
 
-#### Constructing the `SignedBeaconBlockAndBlobsSidecar`
-To construct a `SignedBeaconBlockAndBlobsSidecar`, a `signed_beacon_block_and_blobs_sidecar` is defined with the necessary context for block and sidecar proposal.
+#### Constructing the `SignedBlobSidecar`s
 
-##### Block
-Set `signed_beacon_block_and_blobs_sidecar.beacon_block = block` where `block` is obtained above.
+To construct a `SignedBlobSidecar`, a `signed_blob_sidecar` is defined with the necessary context for block and sidecar proposal.
 
 ##### Sidecar
-Coupled with block, the corresponding blobs are packaged into a sidecar object for distribution to the network.
 
-Set `signed_beacon_block_and_blobs_sidecar.blobs_sidecar = sidecar` where `sidecar` is obtained from:
+Blobs associated with a block are packaged into sidecar objects for distribution to the network.
+
+Each `sidecar` is obtained from:
 ```python
-def get_blobs_sidecar(block: BeaconBlock, blobs: Sequence[Blob]) -> BlobsSidecar:
-    return BlobsSidecar(
-        beacon_block_root=hash_tree_root(block),
-        beacon_block_slot=block.slot,
-        blobs=blobs,
-        # Disabled because not available before switch to single blob sidecars
-        kzg_aggregated_proof=KZGProof(),  # compute_aggregate_kzg_proof(blobs),
-    )
+def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[BlobSidecar]:
+    return [
+        BlobSidecar(
+            block_root=hash_tree_root(block),
+            index=index,
+            slot=block.slot,
+            block_parent_root=block.parent_root,
+            blob=blob,
+            kzg_commitment=block.body.blob_kzg_commitments[index],
+            kzg_proof=compute_blob_kzg_proof(blob),
+        )
+        for index, blob in enumerate(blobs)
+    ]
+
 ```
 
-This `signed_beacon_block_and_blobs_sidecar` is then published to the global `beacon_block_and_blobs_sidecar` topic.
+Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the `blob_sidecar_{index}` topics according to its index.
+
+`signature` is obtained from:
+
+```python
+def get_blob_sidecar_signature(state: BeaconState,
+                               sidecar: BlobSidecar,
+                               privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BLOB_SIDECAR, compute_epoch_at_slot(sidecar.slot))
+    signing_root = compute_signing_root(sidecar, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
+
 The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,
 to ensure the data-availability of these blobs throughout the network.
 

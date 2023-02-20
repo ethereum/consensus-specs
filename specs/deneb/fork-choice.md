@@ -7,9 +7,8 @@
 
 - [Introduction](#introduction)
 - [Containers](#containers)
-  - [`BlobsSidecar`](#blobssidecar)
 - [Helpers](#helpers)
-    - [`validate_blobs_sidecar`](#validate_blobs_sidecar)
+    - [`validate_blobs`](#validate_blobs)
     - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
@@ -23,55 +22,40 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Containers
 
-### `BlobsSidecar`
-
-```python
-class BlobsSidecar(Container):
-    beacon_block_root: Root
-    beacon_block_slot: Slot
-    blobs: List[Blob, MAX_BLOBS_PER_BLOCK]
-    kzg_aggregated_proof: KZGProof
-```
-
 ## Helpers
 
-#### `validate_blobs_sidecar`
+#### `validate_blobs`
 
 ```python
-def validate_blobs_sidecar(slot: Slot,
-                           beacon_block_root: Root,
-                           expected_kzg_commitments: Sequence[KZGCommitment],
-                           blobs_sidecar: BlobsSidecar) -> None:
-    assert slot == blobs_sidecar.beacon_block_slot
-    assert beacon_block_root == blobs_sidecar.beacon_block_root
-    blobs = blobs_sidecar.blobs
-    # kzg_aggregated_proof = blobs_sidecar.kzg_aggregated_proof
+def validate_blobs(expected_kzg_commitments: Sequence[KZGCommitment],
+                   blobs: Sequence[Blob],
+                   proofs: Sequence[KZGProof]) -> None:
     assert len(expected_kzg_commitments) == len(blobs)
+    assert len(blobs) == len(proofs)
 
-    # Disabled because not available before switch to single blob sidecars
-    # assert verify_aggregate_kzg_proof(blobs, expected_kzg_commitments, kzg_aggregated_proof)
+    assert verify_blob_kzg_proof_batch(blobs, expected_kzg_commitments, proofs)
 ```
 
 #### `is_data_available`
 
 The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
-Initially, verification requires every verifying actor to retrieve the matching `BlobsSidecar`,
-and validate the sidecar with `validate_blobs_sidecar`.
+Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `validate_blobs`.
 
-The block MUST NOT be considered valid until a valid `BlobsSidecar` has been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `BlobsSidecar` has subsequently been pruned.
+The block MUST NOT be considered valid until all valid `Blob`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `Blob`s have subsequently been pruned.
 
 ```python
-def is_data_available(slot: Slot, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_sidecar` is implementation and context dependent, raises an exception if not available.
+def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+    # `retrieve_blobs_and_proofs` is implementation and context dependent
+    # It returns all the blobs for the given block root, and raises an exception if not available
     # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-    sidecar = retrieve_blobs_sidecar(slot, beacon_block_root)
+    blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
-    # For testing, `retrieve_blobs_sidecar` returns "TEST".
-    # TODO: Remove it once we have a way to inject `BlobsSidecar` into tests.
-    if isinstance(sidecar, str):
+    # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
+    # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
+    if isinstance(blobs, str) or isinstance(proofs, str):
         return True
 
-    validate_blobs_sidecar(slot, beacon_block_root, blob_kzg_commitments, sidecar)
+    validate_blobs(blob_kzg_commitments, blobs, proofs)
     return True
 ```
 
@@ -103,7 +87,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Deneb]
     # Check if blob data is available
     # If not, this block MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments) 
+    assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()

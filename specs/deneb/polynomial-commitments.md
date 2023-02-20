@@ -411,15 +411,18 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
     # Verify: e(sum r^i proof_i, [s]) ==
     # e(sum r^i (commitment_i - [y_i]) + sum r^i z_i proof_i, [1])
     proof_lincomb = g1_lincomb(proofs, r_powers)
-    proof_z_lincomb = g1_lincomb(proofs, [z * r_power for z, r_power in zip(zs, r_powers)])
+    proof_z_lincomb = g1_lincomb(
+        proofs,
+        [BLSFieldElement((int(z) * int(r_power)) % BLS_MODULUS) for z, r_power in zip(zs, r_powers)],
+    )
     C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1, BLS_MODULUS - y))
                   for commitment, y in zip(commitments, ys)]
     C_minus_y_as_KZGCommitments = [KZGCommitment(bls.G1_to_bytes48(x)) for x in C_minus_ys]
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
     
     return bls.pairing_check([
-        [proof_lincomb, bls.neg(KZG_SETUP_G2[1])],
-        [bls.add(C_minus_y_lincomb, proof_z_lincomb), bls.G2]
+        [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[1]))],
+        [bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)), bls.G2]
     ])
 ```
 
