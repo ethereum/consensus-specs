@@ -479,7 +479,7 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGPro
 
     # For all x_i, compute (x_i - z)
     denominator_poly = [BLSFieldElement((int(x) - int(z)) % BLS_MODULUS)
-                        for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
+                        for x in roots_of_unity_brp]
 
     # Compute the quotient polynomial directly in evaluation form
     quotient_polynomial = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
