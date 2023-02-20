@@ -70,7 +70,7 @@ class SignedBlobSidecar(Container):
 ```python
 class BlobIdentifier(Container):
     block_root: Root
-    index: uint64
+    index: BlobIndex
 ```
 
 ## The gossip domain: gossipsub
