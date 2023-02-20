@@ -469,7 +469,7 @@ def compute_quotient_eval_within_domain(z: BLSFieldElement,
 ```python
 def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
     """
-    Helper function for compute_kzg_proof().
+    Helper function for `compute_kzg_proof()` and `compute_blob_kzg_proof()`.
     """
     roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
 
