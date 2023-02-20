@@ -171,6 +171,14 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 New in deneb.
 
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
+
 Request Content:
 
 ```
@@ -211,6 +219,14 @@ Clients MAY limit the number of blocks and sidecars in the response.
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
 New in deneb.
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 
 Request Content:
 ```
