@@ -1,0 +1,128 @@
+name: Run spec tests and linter
+
+defaults:
+  run:
+    shell: zsh {0}
+
+env:
+  TEST_PRESET_TYPE: "minimal"
+  DEFAULT_BRANCH: "dev"
+
+# Run tests on workflow_Dispatch
+on: 
+  push:
+    branches:
+      - dev 
+      - master
+  pull_request:    
+  workflow_dispatch:
+    inputs:
+      test_preset_type:
+        default: minimal
+        description: Type of test to run, either mainnet or minimal
+        type: string
+        required: true
+      commitRef:
+        description: The branch, tag or SHA to checkout and build from
+        default: dev
+        required: true  
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  preclear:
+      runs-on: self-hosted
+      if: always()
+      steps:
+        - name: 'Cleanup build folder'
+          run: |
+            ls -la ./
+            rm -rf ./* || true
+            rm -rf ./.??* || true
+            ls -la ./
+
+  table_of_contents:
+   runs-on: self-hosted
+   needs: preclear
+   steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
+      - name: Check table of contents
+        run: sudo npm install -g doctoc@2 && make check_toc
+
+  codespell:
+   runs-on: self-hosted
+   needs: preclear
+   steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
+      - name: Check codespell
+        run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
+
+  lint:
+    runs-on: self-hosted
+    needs: preclear
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
+      - name: Install pyspec requirements
+        run: make install_test
+      - name: Run linter for pyspec
+        run: make lint
+      - name: Run linter for test generators
+        run: make lint_generators
+
+  pyspec-tests:
+    runs-on: self-hosted
+    needs: [preclear,lint,codespell,table_of_contents]
+    strategy:
+      matrix:
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb"]
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+        with:
+          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
+      - name: set TEST_PRESET_TYPE
+        if: github.event.inputs.test_preset_type != ''        
+        run: |
+          echo "spec_test_preset_type=${{ github.event.inputs.test_preset_type || env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
+      - name: set TEST_PRESET_TYPE
+        if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
+        run: |
+          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV    
+      - name: set TEST_PRESET_TYPE
+        if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
+        run: |
+          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV    
+      - name: set TEST_PRESET_TYPE
+        if: github.event.schedule=='0 0 * * *'
+        run: |
+          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
+      - name: Install pyspec requirements
+        run: make install_test
+      - name: test-${{ matrix.version }}
+        run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-${{ matrix.version }}
+          path: tests/core/pyspec/test-reports
+
+  cleanup:
+      runs-on: self-hosted
+      needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
+      if: always()
+      steps:
+        - name: 'Cleanup build folder'
+          run: |
+            ls -la ./
+            rm -rf ./* || true
+            rm -rf ./.??* || true
+            ls -la ./

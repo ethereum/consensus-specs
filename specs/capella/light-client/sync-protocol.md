@@ -1,0 +1,82 @@
+# Capella Light Client -- Sync Protocol
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
+
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Introduction](#introduction)
+- [Constants](#constants)
+- [Containers](#containers)
+  - [Modified `LightClientHeader`](#modified-lightclientheader)
+- [Helper functions](#helper-functions)
+  - [`get_lc_execution_root`](#get_lc_execution_root)
+  - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
+## Introduction
+
+This upgrade adds information about the execution payload to light client data as part of the Capella upgrade. It extends the [Altair Light Client specifications](../../altair/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Altair based deployments to Capella.
+
+Additional documents describes the impact of the upgrade on certain roles:
+- [Full node](./full-node.md)
+- [Networking](./p2p-interface.md)
+
+## Constants
+
+| Name | Value |
+| - | - |
+| `EXECUTION_PAYLOAD_INDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
+
+## Containers
+
+### Modified `LightClientHeader`
+
+```python
+class LightClientHeader(Container):
+    # Beacon block header
+    beacon: BeaconBlockHeader
+    # Execution payload header corresponding to `beacon.body_root` (from Capella onward)
+    execution: ExecutionPayloadHeader
+    execution_branch: Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]
+```
+
+## Helper functions
+
+### `get_lc_execution_root`
+
+```python
+def get_lc_execution_root(header: LightClientHeader) -> Root:
+    epoch = compute_epoch_at_slot(header.beacon.slot)
+
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return hash_tree_root(header.execution)
+
+    return Root()
+```
+
+### Modified `is_valid_light_client_header`
+
+```python
+def is_valid_light_client_header(header: LightClientHeader) -> bool:
+    epoch = compute_epoch_at_slot(header.beacon.slot)
+
+    if epoch < CAPELLA_FORK_EPOCH:
+        return (
+            header.execution == ExecutionPayloadHeader()
+            and header.execution_branch == [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]
+        )
+
+    return is_valid_merkle_branch(
+        leaf=get_lc_execution_root(header),
+        branch=header.execution_branch,
+        depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
+        index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
+        root=header.beacon.body_root,
+    )
+```

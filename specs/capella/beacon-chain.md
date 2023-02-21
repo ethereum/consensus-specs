@@ -18,6 +18,7 @@
     - [`Withdrawal`](#withdrawal)
     - [`BLSToExecutionChange`](#blstoexecutionchange)
     - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
+    - [`HistoricalSummary`](#historicalsummary)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -29,6 +30,8 @@
     - [`is_fully_withdrawable_validator`](#is_fully_withdrawable_validator)
     - [`is_partially_withdrawable_validator`](#is_partially_withdrawable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
@@ -49,6 +52,11 @@ to validator withdrawals. Including:
   credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
   `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
+
+Another new feature is the new independent state and block historical accumulators
+that replace the original singular historical roots. With these accumulators, it becomes possible to validate
+the entire block history that led up to that particular state without any additional information
+beyond the state and the blocks.
 
 ## Custom types
 
@@ -113,6 +121,18 @@ class BLSToExecutionChange(Container):
 class SignedBLSToExecutionChange(Container):
     message: BLSToExecutionChange
     signature: BLSSignature
+```
+
+#### `HistoricalSummary`
+
+```python
+class HistoricalSummary(Container):
+    """
+    `HistoricalSummary` matches the components of the phase0 `HistoricalBatch`
+    making the two hash_tree_root-compatible.
+    """
+    block_summary_root: Root
+    state_summary_root: Root
 ```
 
 ### Extended Containers
@@ -196,7 +216,7 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  # Frozen in Capella, replaced by historical_summaries
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
@@ -222,10 +242,12 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Capella]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
+    # Deep history valid from Capella onwards
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
 ```
 
 ## Helpers
@@ -269,6 +291,40 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 ```
 
 ## Beacon chain state transition function
+
+### Epoch processing
+
+*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Bellatrix.
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_summaries_update(state)  # [Modified in Capella]
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
+```
+
+#### Historical summaries updates
+
+```python
+def process_historical_summaries_update(state: BeaconState) -> None:
+    # Set historical block root accumulator.
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        historical_summary = HistoricalSummary(
+            block_summary_root=hash_tree_root(state.block_roots),
+            state_summary_root=hash_tree_root(state.state_roots),
+        )
+        state.historical_summaries.append(historical_summary)
+```
 
 ### Block processing
 
@@ -416,7 +472,8 @@ def process_bls_to_execution_change(state: BeaconState,
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
     assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
 
-    domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE)
+    # Fork-agnostic domain since address changes are valid across forks
+    domain = compute_domain(DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root)
     signing_root = compute_signing_root(address_change, domain)
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 

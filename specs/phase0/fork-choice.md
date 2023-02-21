@@ -43,11 +43,12 @@ This document is the beacon chain fork choice spec, part of Phase 0. It assumes 
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and update `store` by running:
 
 - `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
 - `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
 - `on_attestation(store, attestation)` whenever an attestation `attestation` is received
+- `on_attester_slashing(store, attester_slashing)` whenever an attester slashing `attester_slashing` is received
 
 Any of the above handlers that trigger an unhandled exception (e.g. a failed assert or an out-of-range list access) are considered invalid. Invalid calls to handlers must not modify `store`.
 
@@ -193,10 +194,7 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     proposer_score = Gwei(0)
     # Boost is applied if ``root`` is an ancestor of ``proposer_boost_root``
     if get_ancestor(store, store.proposer_boost_root, store.blocks[root].slot) == root:
-        num_validators = len(get_active_validator_indices(state, get_current_epoch(state)))
-        avg_balance = get_total_active_balance(state) // num_validators
-        committee_size = num_validators // SLOTS_PER_EPOCH
-        committee_weight = committee_size * avg_balance
+        committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
         proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
     return attestation_score + proposer_score
 

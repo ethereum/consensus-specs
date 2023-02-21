@@ -129,8 +129,10 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         # Execution-layer
         latest_execution_payload_header=latest_execution_payload_header,
         # Withdrawals
-        next_withdrawal_index=WithdrawalIndex(0),
-        next_withdrawal_validator_index=ValidatorIndex(0),
+        next_withdrawal_index=WithdrawalIndex(0),  # [New in Capella]
+        next_withdrawal_validator_index=ValidatorIndex(0),  # [New in Capella]
+        # Deep history valid from Capella onwards
+        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),  # [New in Capella]
     )
 
     return post

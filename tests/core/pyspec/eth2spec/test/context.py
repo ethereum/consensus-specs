@@ -1,4 +1,5 @@
 import pytest
+from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
@@ -6,12 +7,12 @@ from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phas
 from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
 from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.eip4844 import mainnet as spec_eip4844_mainnet, minimal as spec_eip4844_minimal
+from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
@@ -77,14 +78,14 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         ALTAIR: spec_altair_minimal,
         BELLATRIX: spec_bellatrix_minimal,
         CAPELLA: spec_capella_minimal,
-        EIP4844: spec_eip4844_minimal,
+        DENEB: spec_deneb_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
         ALTAIR: spec_altair_mainnet,
         BELLATRIX: spec_bellatrix_mainnet,
         CAPELLA: spec_capella_mainnet,
-        EIP4844: spec_eip4844_mainnet
+        DENEB: spec_deneb_mainnet
     },
 }
 
@@ -309,14 +310,18 @@ def config_fork_epoch_overrides(spec, state):
             return overrides
 
 
-def spec_state_test_with_matching_config(fn):
+def with_matching_spec_config(emitted_fork=None):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            conf = config_fork_epoch_overrides(spec, kw['state'])
-            overrides = with_config_overrides(conf)
-            return overrides(fn)(*args, spec=spec, **kw)
+            overrides = config_fork_epoch_overrides(spec, kw['state'])
+            deco = with_config_overrides(overrides, emitted_fork)
+            return deco(fn)(*args, spec=spec, **kw)
         return wrapper
-    return spec_test(with_state(decorator(single_phase(fn))))
+    return decorator
+
+
+def spec_state_test_with_matching_config(fn):
+    return spec_test(with_state(with_matching_spec_config()(single_phase(fn))))
 
 
 def expect_assertion_error(fn):
@@ -422,7 +427,7 @@ def with_all_phases_except(exclusion_phases):
 with_altair_and_later = with_all_phases_from(ALTAIR)
 with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
-with_eip4844_and_later = with_all_phases_from(EIP4844)
+with_deneb_and_later = with_all_phases_from(DENEB)
 
 
 def _get_preset_targets(kw):
@@ -557,10 +562,30 @@ def _get_copy_of_spec(spec):
     module_spec = importlib.util.find_spec(module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
+
+    # Preserve existing config overrides
+    module.config = deepcopy(spec.config)
+
     return module
 
 
-def with_config_overrides(config_overrides):
+def spec_with_config_overrides(spec, config_overrides):
+    # apply our overrides to a copy of it, and apply it to the spec
+    config = spec.config._asdict()
+    config.update((k, config_overrides[k]) for k in config.keys() & config_overrides.keys())
+    config_types = spec.Configuration.__annotations__
+    modified_config = {k: config_types[k](v) for k, v in config.items()}
+
+    spec.config = spec.Configuration(**modified_config)
+
+    # To output the changed config in a format compatible with yaml test vectors,
+    # the dict SSZ objects have to be converted into Python built-in types.
+    output_config = _get_basic_dict(modified_config)
+
+    return spec, output_config
+
+
+def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
     This decorator forces the test to yield, and pytest doesn't run generator tests, and instead silently passes it.
@@ -570,23 +595,26 @@ def with_config_overrides(config_overrides):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            spec = _get_copy_of_spec(spec)
+            # Apply config overrides to spec
+            spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
 
-            # apply our overrides to a copy of it, and apply it to the spec
-            config = spec.config._asdict()
-            config.update(config_overrides)
-            config_types = spec.Configuration.__annotations__
-            modified_config = {k: config_types[k](v) for k, v in config.items()}
+            # Apply config overrides to additional phases, if present
+            if 'phases' in kw:
+                phases = {}
+                for fork in kw['phases']:
+                    phases[fork], output = spec_with_config_overrides(
+                        _get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                    if emitted_fork == fork:
+                        output_config = output
+                kw['phases'] = phases
 
-            # To output the changed config to could be serialized with yaml test vectors,
-            # the dict SSZ objects have to be converted into Python built-in types.
-            output_config = _get_basic_dict(modified_config)
-            yield 'config', 'cfg', output_config
-
-            spec.config = spec.Configuration(**modified_config)
+            # Emit requested spec (with overrides)
+            if emit:
+                yield 'config', 'cfg', output_config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
+
             # If it's not returning None like a normal test function,
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:

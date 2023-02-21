@@ -9,11 +9,12 @@ from eth2spec.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
+from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.constants import (
     ALTAIR,
     BELLATRIX,
     CAPELLA,
-    EIP4844,
+    DENEB,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -36,6 +37,7 @@ class OperationType(Enum):
     ATTESTER_SLASHING = auto()
     DEPOSIT = auto()
     VOLUNTARY_EXIT = auto()
+    BLS_TO_EXECUTION_CHANGE = auto()
 
 
 def _set_operations_by_dict(block, operation_dict):
@@ -151,8 +153,8 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
         state = post_spec.upgrade_to_bellatrix(state)
     elif post_spec.fork == CAPELLA:
         state = post_spec.upgrade_to_capella(state)
-    elif post_spec.fork == EIP4844:
-        state = post_spec.upgrade_to_eip4844(state)
+    elif post_spec.fork == DENEB:
+        state = post_spec.upgrade_to_deneb(state)
 
     assert state.fork.epoch == fork_epoch
 
@@ -165,9 +167,9 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
     elif post_spec.fork == CAPELLA:
         assert state.fork.previous_version == post_spec.config.BELLATRIX_FORK_VERSION
         assert state.fork.current_version == post_spec.config.CAPELLA_FORK_VERSION
-    elif post_spec.fork == EIP4844:
+    elif post_spec.fork == DENEB:
         assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.EIP4844_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.DENEB_FORK_VERSION
 
     if with_block:
         return state, _state_transition_and_sign_block_at_slot(post_spec, state, operation_dict=operation_dict)
@@ -267,6 +269,10 @@ def run_transition_with_operation(state,
         selected_validator_index = 0
         signed_exits = prepare_signed_exits(spec, state, [selected_validator_index])
         operation_dict = {'voluntary_exits': signed_exits}
+    elif operation_type == OperationType.BLS_TO_EXECUTION_CHANGE:
+        selected_validator_index = 0
+        bls_to_execution_changes = [get_signed_address_change(spec, state, selected_validator_index)]
+        operation_dict = {'bls_to_execution_changes': bls_to_execution_changes}
 
     def _check_state():
         if operation_type == OperationType.PROPOSER_SLASHING:
@@ -288,6 +294,9 @@ def run_transition_with_operation(state,
         elif operation_type == OperationType.VOLUNTARY_EXIT:
             validator = state.validators[selected_validator_index]
             assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
+        elif operation_type == OperationType.BLS_TO_EXECUTION_CHANGE:
+            validator = state.validators[selected_validator_index]
+            assert validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
 
     yield "pre", state
 

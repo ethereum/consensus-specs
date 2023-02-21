@@ -4,7 +4,7 @@ from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.forks import is_post_capella, is_post_eip4844
+from eth2spec.test.helpers.forks import is_post_capella, is_post_deneb
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -26,6 +26,8 @@ def get_execution_payload_header(spec, execution_payload):
     )
     if is_post_capella(spec):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
+    if is_post_deneb(spec):
+        payload_header.excess_data_gas = execution_payload.excess_data_gas
     return payload_header
 
 
@@ -87,7 +89,7 @@ def compute_el_header_block_hash(spec,
     if is_post_capella(spec):
         # withdrawals_root
         execution_payload_header_rlp.append((Binary(32, 32), withdrawals_trie_root))
-    if is_post_eip4844(spec):
+    if is_post_deneb(spec):
         # excess_data_gas
         execution_payload_header_rlp.append((big_endian_int, payload_header.excess_data_gas))
 
@@ -108,7 +110,7 @@ def get_withdrawal_rlp(spec, withdrawal):
         # address
         (Binary(20, 20), withdrawal.address),
         # amount
-        (big_endian_int, spec.uint256(withdrawal.amount) * (10**9)),
+        (big_endian_int, withdrawal.amount),
     ]
 
     sedes = List([schema for schema, _ in withdrawal_rlp])
