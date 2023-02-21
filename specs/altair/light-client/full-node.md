@@ -162,7 +162,8 @@ def create_light_client_finality_update(update: LightClientUpdate) -> LightClien
 
 Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
 
-Full nodes SHOULD provide the `LightClientFinalityUpdate` with higher `sync_committee` participation than the one defined in general `LightClientUpdate`.  Refering to `sync-protocol.md`, the number of participants SHOULD provide super majority (2/3) of the `sync_committee` for the `LightClientFinalityUpdate` to be considered.   
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with higher `sync_committee` participation than the one defined in general `LightClientUpdate`.  Refering to `sync-protocol.md`, the number of participants SHOULD provide super majority (2/3) of the `sync_committee` for the `LightClientFinalityUpdate` to be considered.
+For `finality` event publishing, if there is no super majority votes, then full nodes SHOULD NOT publish, SHOULD wait until the criteria met to publish.
 
 ### `create_light_client_optimistic_update`
 
