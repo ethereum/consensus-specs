@@ -242,7 +242,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Capella]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]

@@ -19,7 +19,7 @@ tests/core/pyspec/eth2spec/phase0/
 tests/core/pyspec/eth2spec/altair/
 tests/core/pyspec/eth2spec/bellatrix/
 tests/core/pyspec/eth2spec/capella/
-tests/core/pyspec/eth2spec/eip4844/
+tests/core/pyspec/eth2spec/deneb/
 
 # coverage reports
 .htmlcov

@@ -16,8 +16,8 @@ from eth2spec.test.altair.transition import (
     test_slashing as test_altair_slashing,
     test_operations as test_altair_operations,
 )
-from eth2spec.test.eip4844.transition import (
-    test_operations as test_eip4844_operations,
+from eth2spec.test.deneb.transition import (
+    test_operations as test_deneb_operations,
 )
 
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         test_altair_leaking,
         test_altair_slashing,
         test_altair_operations,
-        test_eip4844_operations,
+        test_deneb_operations,
     )
     for transition_test_module in all_tests:
         for pre_fork, post_fork in ALL_PRE_POST_FORKS:
