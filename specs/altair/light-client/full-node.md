@@ -118,7 +118,7 @@ def create_light_client_update(state: BeaconState,
     update.attested_header = block_to_light_client_header(attested_block)
 
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
-    if update_attested_period == update_signature_period:
+    if update_attested_period == update_signature_period and sum(block.message.body.sync_aggregate.sync_committee_bits) * 3 >= len(block.message.body.sync_aggregate.sync_committee_bits) * 2:
         update.next_sync_committee = attested_state.next_sync_committee
         update.next_sync_committee_branch = compute_merkle_proof_for_state(
             attested_state, NEXT_SYNC_COMMITTEE_INDEX)
@@ -144,11 +144,13 @@ Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `
 - `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.beacon.slot`
 - `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.beacon.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
 - Only `LightClientUpdate` with `next_sync_committee` as selected by fork choice are provided, regardless of ranking by `is_better_update`. To uniquely identify a non-finalized sync committee fork, all of `period`, `current_sync_committee` and `next_sync_committee` need to be incorporated, as sync committees may reappear over time.
+- `next_sync_committee` SHOULD only be added when there is a super majority of `sync_aggregate.sync_committee_bits` for the current sync committee.  Referring to `sync-protocol.md`.
 
 ### `create_light_client_finality_update`
 
 ```python
 def create_light_client_finality_update(update: LightClientUpdate) -> LightClientFinalityUpdate:
+    assert(sum(update.sync_aggregate.sync_committee_bits) * 3 >= len(update.sync_aggregate.sync_committee_bits) * 2)
     return LightClientFinalityUpdate(
         attested_header=update.attested_header,
         finalized_header=update.finalized_header,
@@ -159,6 +161,8 @@ def create_light_client_finality_update(update: LightClientUpdate) -> LightClien
 ```
 
 Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
+
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with higher `sync_committee` participation than the one defined in general `LightClientUpdate`.  Refering to `sync-protocol.md`, the number of participants SHOULD provide super majority (2/3) of the `sync_committee` for the `LightClientFinalityUpdate` to be considered.   
 
 ### `create_light_client_optimistic_update`
 
