@@ -142,8 +142,8 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --rcfile $(LINTER_CONFIG_FILE) ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella ./eth2spec/deneb \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella -p eth2spec.deneb
+	&& pylint --rcfile $(LINTER_CONFIG_FILE) ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella ./eth2spec/deneb ./eth2spec/eip6110 \
+	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella -p eth2spec.deneb -p eth2spec.eip6110
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
