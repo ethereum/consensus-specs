@@ -184,7 +184,6 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex
     # EIP-6110
     deposit_receipt_start_index: uint64
-    deposit_receipt_next_index: uint64
 ```
 
 ## Beacon chain state transition function
@@ -228,9 +227,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in EIP-6110]
     if is_execution_enabled(state, body):
         for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
-        # Signify the end of transition to in-protocol deposits logic
-        if state.eth1_deposit_index >= state.deposit_receipt_start_index
-            state.eth1_deposit_index = state.deposit_receipt_next_index
 ```
 
 #### New `get_validator_from_deposit_receipt`
@@ -259,7 +255,9 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     if state.deposit_receipt_start_index == NOT_SET_DEPOSIT_RECEIPT_START_INDEX:
         state.deposit_receipt_start_index = deposit_receipt.index
 
-    state.deposit_receipt_next_index = deposit_receipt.index + 1
+    # Signify the end of transition to in-protocol deposit logic
+    if state.eth1_deposit_index >= state.deposit_receipt_start_index
+        state.eth1_deposit_index = deposit_receipt.index + 1
 
     pubkey = deposit_receipt.pubkey
     amount = deposit_receipt.amount
@@ -294,6 +292,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Skip already processed deposits
     if state.eth1_deposit_index >= state.deposit_receipt_start_index:
+        state.eth1_deposit_index += 1
         return
 
     # Verify the Merkle branch
