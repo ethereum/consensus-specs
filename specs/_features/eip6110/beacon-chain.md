@@ -396,7 +396,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX, #  [New in EIP6110]
+        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP6110]
     )
 
     # Process deposits
