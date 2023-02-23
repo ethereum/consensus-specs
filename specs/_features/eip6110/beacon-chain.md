@@ -47,7 +47,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `NOT_SET_DEPOSIT_RECEIPT_START_INDEX` | `2**64 - 1` |
+| `NOT_SET_DEPOSIT_RECEIPTS_START_INDEX` | `2**64 - 1` |
 
 ## Preset
 
@@ -183,7 +183,7 @@ class BeaconState(Container):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     # EIP-6110
-    deposit_receipt_start_index: uint64
+    deposit_receipts_start_index: uint64
 ```
 
 ## Beacon chain state transition function
@@ -252,11 +252,11 @@ def get_validator_from_deposit_receipt(deposit_receipt: DepositReceipt) -> Valid
 ```python
 def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
     # Set deposit receipt start index
-    if state.deposit_receipt_start_index == NOT_SET_DEPOSIT_RECEIPT_START_INDEX:
-        state.deposit_receipt_start_index = deposit_receipt.index
+    if state.deposit_receipts_start_index == NOT_SET_DEPOSIT_RECEIPTS_START_INDEX:
+        state.deposit_receipts_start_index = deposit_receipt.index
 
     # Signify the end of transition to in-protocol deposit logic
-    if state.eth1_deposit_index >= state.deposit_receipt_start_index
+    if state.eth1_deposit_index >= state.deposit_receipts_start_index
         state.eth1_deposit_index = deposit_receipt.index + 1
 
     pubkey = deposit_receipt.pubkey
@@ -291,7 +291,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Skip already processed deposits
-    if state.eth1_deposit_index >= state.deposit_receipt_start_index:
+    if state.eth1_deposit_index >= state.deposit_receipts_start_index:
         state.eth1_deposit_index += 1
         return
 
@@ -393,7 +393,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipt_start_index = NOT_SET_DEPOSIT_RECEIPT_START_INDEX,
+        deposit_receipts_start_index = NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,
     )
 
     # Process deposits
