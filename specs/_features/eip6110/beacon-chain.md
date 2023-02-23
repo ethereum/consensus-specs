@@ -182,6 +182,8 @@ class BeaconState(Container):
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
+    # Deep history valid from Capella onwards
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
     # EIP-6110
     deposit_receipts_start_index: uint64
 ```
@@ -256,7 +258,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         state.deposit_receipts_start_index = deposit_receipt.index
 
     # Signify the end of transition to in-protocol deposit logic
-    if state.eth1_deposit_index >= state.deposit_receipts_start_index
+    if state.eth1_deposit_index >= state.deposit_receipts_start_index:
         state.eth1_deposit_index = deposit_receipt.index + 1
 
     pubkey = deposit_receipt.pubkey
@@ -265,15 +267,15 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
-            pubkey=deposit.data.pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount,
+            pubkey=deposit_receipt.pubkey,
+            withdrawal_credentials=deposit_receipt.withdrawal_credentials,
+            amount=deposit_receipt.amount,
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, deposit.data.signature):
-            state.validators.append(get_validator_from_deposit_receipt(deposit))
+        if bls.Verify(pubkey, signing_root, deposit_receipt.signature):
+            state.validators.append(get_validator_from_deposit_receipt(deposit_receipt))
             state.balances.append(amount)
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
@@ -393,7 +395,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index = NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,
+        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,
     )
 
     # Process deposits

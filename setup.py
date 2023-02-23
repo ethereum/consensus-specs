@@ -47,6 +47,7 @@ ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
+EIP6110 = 'eip6110'
 
 
 # The helper functions that are used when defining constants
@@ -667,9 +668,22 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
+#
+# EIP6110SpecBuilder
+#
+class EIP6110SpecBuilder(CapellaSpecBuilder):
+    fork: str = EIP6110
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.capella import {preset_name} as capella
+'''
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder)
 }
 
 
@@ -968,14 +982,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
@@ -987,7 +1001,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB):
+            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -996,7 +1010,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork in (CAPELLA, DENEB):
+            if self.spec_fork in (CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/capella/light-client/fork.md
                     specs/capella/light-client/full-node.md
@@ -1020,6 +1034,11 @@ class PySpecCommand(Command):
                     specs/deneb/polynomial-commitments.md
                     specs/deneb/p2p-interface.md
                     specs/deneb/validator.md
+                """
+            if self.spec_fork == EIP6110:
+                self.md_doc_paths += """
+                    specs/_features/eip6110/beacon-chain.md
+                    specs/_features/eip6110/fork.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
