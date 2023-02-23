@@ -64,8 +64,6 @@ Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since i
 
 ### Upgrading the state
 
-Since the `deneb.BeaconState` format is equal to the `capella.BeaconState` format, we only have to update `BeaconState.fork`.
-
 ```python
 def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
     epoch = capella.get_current_epoch(pre)
@@ -82,10 +80,10 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         timestamp=pre.latest_execution_payload_header.timestamp,
         extra_data=pre.latest_execution_payload_header.extra_data,
         base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
-        excess_data_gas=uint256(0),  # [New in Deneb]
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
+        excess_data_gas=uint256(0),  # [New in Deneb]
     )
     post = BeaconState(
         # Versioning
