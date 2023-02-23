@@ -375,8 +375,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-6110 testing only.
 Modifications include:
-1. Use `DEPOSITS_EIP_FORK_VERSION` as the previous and current fork version.
+1. Use `EIP6110_FORK_VERSION` as the previous and current fork version.
 2. Utilize the EIP-6110 `BeaconBlockBody` when constructing the initial `latest_block_header`.
+3. Add `deposit_receipts_start_index` variable to the genesis state initialization.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -385,8 +386,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=CAPELLA_FORK_VERSION,  # [Modified in Capella] for testing only
-        current_version=CAPELLA_FORK_VERSION,  # [Modified in Capella]
+        previous_version=EIP6110_FORK_VERSION,  # [Modified in EIP6110] for testing only
+        current_version=EIP6110_FORK_VERSION,  # [Modified in EIP6110]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
@@ -395,7 +396,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,
+        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX, #  [New in EIP6110]
     )
 
     # Process deposits

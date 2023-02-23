@@ -135,7 +135,7 @@ def upgrade_to_eip6110(pre: capella.BeaconState) -> BeaconState:
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         # EIP-6110
-        deposit_receipts_start_index=0,  # [New in EIP-6110]
+        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP-6110]
     )
 
     return post
