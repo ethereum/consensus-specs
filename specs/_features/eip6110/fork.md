@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to Deneb](#fork-to-deneb)
+- [Fork to EIP-6110](#fork-to-eip-6110)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document describes the process of Deneb upgrade.
+This document describes the process of EIP-6110 upgrade.
 
 ## Configuration
 
@@ -53,14 +53,14 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to Deneb
+## Fork to EIP-6110
 
 ### Fork trigger
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
 For now, we assume the condition will be triggered at epoch `EIP6110_FORK_EPOCH`.
 
-Note that for the pure Deneb networks, we don't apply `upgrade_to_eip6110` since it starts with Deneb version logic.
+Note that for the pure EIP-6110 networks, we don't apply `upgrade_to_eip6110` since it starts with EIP-6110 version logic.
 
 ### Upgrading the state
 
