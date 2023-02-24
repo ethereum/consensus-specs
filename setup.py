@@ -1174,6 +1174,8 @@ setup(
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
-        "py_arkworks_bls12381==0.3.1"
+        "py_arkworks_bls12381==0.3.1",
+        "setuptools==67.4.0",
+        "setuptools-rust==1.5.2",
     ]
 )
