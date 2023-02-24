@@ -273,7 +273,7 @@ def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
     assert len(points) == len(scalars)
-    result = bls.Z1
+    result = bls.Z1()
     for x, a in zip(points, scalars):
         result = bls.add(result, bls.multiply(bls.bytes48_to_G1(x), a))
     return KZGCommitment(bls.G1_to_bytes48(result))
@@ -371,10 +371,10 @@ def verify_kzg_proof_impl(commitment: KZGCommitment,
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
     # Verify: P - y = Q * (X - z)
-    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2, BLS_MODULUS - z))
-    P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1, BLS_MODULUS - y))
+    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2(), BLS_MODULUS - z))
+    P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), BLS_MODULUS - y))
     return bls.pairing_check([
-        [P_minus_y, bls.neg(bls.G2)],
+        [P_minus_y, bls.neg(bls.G2())],
         [bls.bytes48_to_G1(proof), X_minus_z]
     ])
 ```
@@ -415,14 +415,14 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
         proofs,
         [BLSFieldElement((int(z) * int(r_power)) % BLS_MODULUS) for z, r_power in zip(zs, r_powers)],
     )
-    C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1, BLS_MODULUS - y))
+    C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), BLS_MODULUS - y))
                   for commitment, y in zip(commitments, ys)]
     C_minus_y_as_KZGCommitments = [KZGCommitment(bls.G1_to_bytes48(x)) for x in C_minus_ys]
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
     
     return bls.pairing_check([
         [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[1]))],
-        [bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)), bls.G2]
+        [bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)), bls.G2()]
     ])
 ```
 
@@ -561,3 +561,4 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
 
     return verify_kzg_proof_batch(commitments, evaluation_challenges, ys, proofs)
 ```
+
