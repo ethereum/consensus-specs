@@ -44,7 +44,7 @@ def pytest_addoption(parser):
         help="bls-default: make tests that are not dependent on BLS run without BLS"
     )
     parser.addoption(
-        "--bls-type", action="store", type=str, default="py_ecc", choices=["py_ecc", "milagro"],
+        "--bls-type", action="store", type=str, default="py_ecc", choices=["py_ecc", "milagro", "arkworks"],
         help="bls-type: use 'pyecc' or 'milagro' implementation for BLS"
     )
 
@@ -88,5 +88,7 @@ def bls_type(request):
         bls_utils.use_py_ecc()
     elif bls_type == "milagro":
         bls_utils.use_milagro()
+    elif bls_type == "arkworks":
+        bls_utils.use_arkworks()
     else:
         raise Exception(f"unrecognized bls type: {bls_type}")
