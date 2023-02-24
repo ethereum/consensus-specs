@@ -138,33 +138,40 @@ def pairing_check(values):
     )
     return final_exponentiation == py_ecc_GT.one()
 
+
 # Performs point addition of `lhs` and `rhs`
 # The points can either be in G1 or G2
 def add(lhs, rhs):
     return py_ecc_add(lhs, rhs)
 
-# Performs Scalar multiplication between 
+
+# Performs Scalar multiplication between
 # `point` and `scalar`
 # `point` can either be in G1 or G2
 def multiply(point, scalar):
     return py_ecc_mul(point, scalar)
+
 
 # Returns the point negation of `point`
 # `point` can either be in G1 or G2
 def neg(point):
     return py_ecc_neg(point)
 
+
 # Returns the identity point in G1
 def Z1():
     return py_ecc_Z1
+
 
 # Returns the chosen generator point in G1
 def G1():
     return py_ecc_G1
 
+
 # Returns the chosen generator point in G2
 def G2():
     return py_ecc_G2
+
 
 # Serializes a point in G1
 # Returns a bytearray of size 48 as
@@ -172,31 +179,33 @@ def G2():
 def G1_to_bytes48(point):
     return py_ecc_G1_to_bytes48(point)
 
+
 # Serializes a point in G2
 # Returns a bytearray of size 96 as
 # we use the compressed format
 def G2_to_bytes48(point):
     return py_ecc_G2_to_bytes96(point)
 
+
 # Deserializes a purported compressed serialized
 # point in G1
-# 
-# - No subgroup checks are performed  
+# - No subgroup checks are performed
 # - If the bytearray is not a valid serialization
 # of a point in G1, then this method will raise
 # an exception
 def bytes48_to_G1(bytes48):
     return py_ecc_bytes48_to_G1(bytes48)
 
+
 # Deserializes a purported compressed serialized
 # point in G2
-# 
 # - No subgroup checks are performed
 # - If the bytearray is not a valid serialization
 # of a point in G2, then this method will raise
 # an exception
 def bytes96_to_G2(bytes96):
     return py_ecc_bytes96_to_G2(bytes96)
+
 
 @only_with_bls(alt_return=True)
 def KeyValidate(pubkey):
