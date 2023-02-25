@@ -29,6 +29,19 @@ import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
 
 import py_arkworks_bls12381 as arkworks_bls  # noqa: F401 for BLS switching option
 
+class fastest_bls:
+    G1 = arkworks_G1
+    G2 = arkworks_G2
+    Scalar = arkworks_Scalar
+    GT = arkworks_GT
+    _AggregatePKs = milagro_bls._AggregatePKs
+    Sign = milagro_bls.Sign
+    Verify = milagro_bls.Verify
+    Aggregate = milagro_bls.Aggregate
+    AggregateVerify = milagro_bls.AggregateVerify
+    FastAggregateVerify = milagro_bls.FastAggregateVerify
+    SkToPk = milagro_bls.SkToPk
+
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
@@ -63,6 +76,14 @@ def use_py_ecc():
     """
     global bls
     bls = py_ecc_bls
+
+
+def use_fastest():
+    """
+    Shortcut to use Milagro for signatures and Arkworks for other BLS operations
+    """
+    global bls
+    bls = fastest_bls
 
 
 def only_with_bls(alt_return=None):
@@ -156,16 +177,14 @@ def AggregatePKs(pubkeys):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def SkToPk(SK):
-    if bls == arkworks_bls: # no signature API in arkworks
+    if bls == py_ecc_bls or bls == arkworks_bls: # no signature API in arkworks
         return py_ecc_bls.SkToPk(SK)
-    elif bls == py_ecc_bls:
-        return bls.SkToPk(SK)
     else:
         return bls.SkToPk(SK.to_bytes(32, 'big'))
 
 
 def pairing_check(values):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         p_q_1, p_q_2 = values
         g1s = [p_q_1[0], p_q_2[0]]
         g2s = [p_q_1[1], p_q_2[1]]
@@ -182,7 +201,7 @@ def pairing_check(values):
 # Performs point addition of `lhs` and `rhs`
 # The points can either be in G1 or G2
 def add(lhs, rhs):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return lhs + rhs
     return py_ecc_add(lhs, rhs)
 
@@ -191,7 +210,7 @@ def add(lhs, rhs):
 # `point` and `scalar`
 # `point` can either be in G1 or G2
 def multiply(point, scalar):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         int_as_bytes = scalar.to_bytes(32, 'little')
         scalar = arkworks_Scalar.from_le_bytes(int_as_bytes)
         return point * scalar
@@ -201,28 +220,28 @@ def multiply(point, scalar):
 # Returns the point negation of `point`
 # `point` can either be in G1 or G2
 def neg(point):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return -point
     return py_ecc_neg(point)
 
 
 # Returns the identity point in G1
 def Z1():
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.identity()
     return py_ecc_Z1
 
 
 # Returns the chosen generator point in G1
 def G1():
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1()
     return py_ecc_G1
 
 
 # Returns the chosen generator point in G2
 def G2():
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G2()
     return py_ecc_G2
 
@@ -231,7 +250,7 @@ def G2():
 # Returns a bytearray of size 48 as
 # we use the compressed format
 def G1_to_bytes48(point):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return point.to_compressed_bytes()
     return py_ecc_G1_to_bytes48(point)
 
@@ -240,7 +259,7 @@ def G1_to_bytes48(point):
 # Returns a bytearray of size 96 as
 # we use the compressed format
 def G2_to_bytes96(point):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return point.to_compressed_bytes()
     return py_ecc_G2_to_bytes96(point)
 
@@ -252,7 +271,7 @@ def G2_to_bytes96(point):
 # of a point in G1, then this method will raise
 # an exception
 def bytes48_to_G1(bytes48):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.from_compressed_bytes_unchecked(bytes48)
     return py_ecc_bytes48_to_G1(bytes48)
 
@@ -264,7 +283,7 @@ def bytes48_to_G1(bytes48):
 # of a point in G2, then this method will raise
 # an exception
 def bytes96_to_G2(bytes96):
-    if bls == arkworks_bls:
+    if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G2.from_compressed_bytes_unchecked(bytes96)
     return py_ecc_bytes96_to_G2(bytes96)
 
