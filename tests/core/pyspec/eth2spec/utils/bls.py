@@ -9,8 +9,7 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     neg as py_ecc_neg,
     pairing as py_ecc_pairing,
     final_exponentiate as py_ecc_final_exponentiate,
-    FQ12 as py_ecc_GT,
-    curve_order
+    FQ12 as py_ecc_GT
 )
 from py_ecc.bls.g2_primitives import (  # noqa: F401
     G1_to_pubkey as py_ecc_G1_to_bytes48,
@@ -52,10 +51,9 @@ def use_milagro():
 
 def use_arkworks():
     """
-    Shortcut to use Milagro as BLS library
+    Shortcut to use Arkworks as BLS library
     """
     global bls
-    print("Using arkworks bls")
     bls = arkworks_bls
 
 
@@ -172,7 +170,7 @@ def pairing_check(values):
         g1s = [p_q_1[0], p_q_2[0]]
         g2s = [p_q_1[1], p_q_2[1]]
         return arkworks_GT.multi_pairing(g1s, g2s) == arkworks_GT.one()
-    elif bls == py_ecc_bls:
+    else:
         p_q_1, p_q_2 = values
         final_exponentiation = py_ecc_final_exponentiate(
             py_ecc_pairing(p_q_1[1], p_q_1[0], final_exponentiate=False)
