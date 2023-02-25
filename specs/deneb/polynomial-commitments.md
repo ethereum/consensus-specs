@@ -323,7 +323,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
         a = BLSFieldElement(int(polynomial[i]) * int(roots_of_unity_brp[i]) % BLS_MODULUS)
         b = BLSFieldElement((int(BLS_MODULUS) + int(z) - int(roots_of_unity_brp[i])) % BLS_MODULUS)
         result += int(div(a, b) % BLS_MODULUS)
-    result = result * int(pow(z, width, BLS_MODULUS) - 1) * int(inverse_width)
+    result = result * int(BLS_MODULUS + pow(z, width, BLS_MODULUS) - 1) * int(inverse_width)
     return BLSFieldElement(result % BLS_MODULUS)
 ```
 
