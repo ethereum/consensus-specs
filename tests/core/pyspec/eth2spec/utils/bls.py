@@ -29,6 +29,7 @@ import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
 
 import py_arkworks_bls12381 as arkworks_bls  # noqa: F401 for BLS switching option
 
+
 class fastest_bls:
     G1 = arkworks_G1
     G2 = arkworks_G2
@@ -41,6 +42,7 @@ class fastest_bls:
     AggregateVerify = milagro_bls.AggregateVerify
     FastAggregateVerify = milagro_bls.FastAggregateVerify
     SkToPk = milagro_bls.SkToPk
+
 
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
@@ -103,7 +105,7 @@ def only_with_bls(alt_return=None):
 @only_with_bls(alt_return=True)
 def Verify(PK, message, signature):
     try:
-        if bls == arkworks_bls: # no signature API in arkworks
+        if bls == arkworks_bls:  # no signature API in arkworks
             result = py_ecc_bls.Verify(PK, message, signature)
         else:
             result = bls.Verify(PK, message, signature)
@@ -116,7 +118,7 @@ def Verify(PK, message, signature):
 @only_with_bls(alt_return=True)
 def AggregateVerify(pubkeys, messages, signature):
     try:
-        if bls == arkworks_bls: # no signature API in arkworks
+        if bls == arkworks_bls:  # no signature API in arkworks
             result = py_ecc_bls.AggregateVerify(list(pubkeys), list(messages), signature)
         else:
             result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
@@ -129,7 +131,7 @@ def AggregateVerify(pubkeys, messages, signature):
 @only_with_bls(alt_return=True)
 def FastAggregateVerify(pubkeys, message, signature):
     try:
-        if bls == arkworks_bls: # no signature API in arkworks
+        if bls == arkworks_bls:  # no signature API in arkworks
             result = py_ecc_bls.FastAggregateVerify(list(pubkeys), message, signature)
         else:
             result = bls.FastAggregateVerify(list(pubkeys), message, signature)
@@ -141,14 +143,14 @@ def FastAggregateVerify(pubkeys, message, signature):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Aggregate(signatures):
-    if bls == arkworks_bls: # no signature API in arkworks
+    if bls == arkworks_bls:  # no signature API in arkworks
         return py_ecc_bls.Aggregate(signatures)
     return bls.Aggregate(signatures)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Sign(SK, message):
-    if bls == arkworks_bls: # no signature API in arkworks
+    if bls == arkworks_bls:  # no signature API in arkworks
         return py_ecc_bls.Sign(SK, message)
     elif bls == py_ecc_bls:
         return bls.Sign(SK, message)
@@ -169,7 +171,7 @@ def AggregatePKs(pubkeys):
         # milagro_bls._AggregatePKs checks KeyValidate internally
         pass
 
-    if bls == arkworks_bls: # no signature API in arkworks
+    if bls == arkworks_bls:  # no signature API in arkworks
         return py_ecc_bls._AggregatePKs(list(pubkeys))
 
     return bls._AggregatePKs(list(pubkeys))
@@ -177,7 +179,7 @@ def AggregatePKs(pubkeys):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def SkToPk(SK):
-    if bls == py_ecc_bls or bls == arkworks_bls: # no signature API in arkworks
+    if bls == py_ecc_bls or bls == arkworks_bls:  # no signature API in arkworks
         return py_ecc_bls.SkToPk(SK)
     else:
         return bls.SkToPk(SK.to_bytes(32, 'big'))
