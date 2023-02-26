@@ -32,10 +32,11 @@ def field_element_bytes(x):
     return int.to_bytes(x % spec.BLS_MODULUS, 32, "little")
 
 BLOB_ALL_ZEROS = spec.Blob()
-BLOB_RANDOM_VALID = spec.Blob(b''.join([field_element_bytes((2^128 - 1) * n) for n in range(4096)]))
+BLOB_RANDOM_VALID1 = spec.Blob(b''.join([field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS)) for n in range(4096)]))
+BLOB_RANDOM_VALID2 = spec.Blob(b''.join([field_element_bytes(pow(3, n + 256, spec.BLS_MODULUS)) for n in range(4096)]))
 BLOB_INVALID = spec.Blob(b'\xFF' * 4096 * 32)
 
-VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_RANDOM_VALID]
+VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_RANDOM_VALID1, BLOB_RANDOM_VALID2]
 INVALID_BLOBS = [BLOB_INVALID]
 VALID_ZS = [x.to_bytes(32, spec.ENDIANNESS) for x in [0, 1, 15, 2**150 - 1, spec.BLS_MODULUS - 1]]
 INVALID_ZS = [x.to_bytes(32, spec.ENDIANNESS) for x in [spec.BLS_MODULUS, 2**256 - 1]]
@@ -63,7 +64,7 @@ def case01_compute_kzg_proof():
                 'output': encode_hex(proof)
             }
     # Edge case: Invalid blob
-    expect_exception(spec.compute_kzg_proof, BLOB_INVALID, 0)
+    expect_exception(spec.compute_kzg_proof, BLOB_INVALID, VALID_ZS[0])
     yield 'compute_kzg_proof_case_invalid_blob', {
         'input': {
             'blob': encode_hex(BLOB_INVALID),
@@ -77,6 +78,172 @@ def case01_compute_kzg_proof():
         'input': {
             'blob': encode_hex(BLOB_ALL_ZEROS),
             'z': encode_hex(INVALID_ZS[0]),
+        },
+        'output': None
+    }
+
+def case02_blob_to_kzg_commitment():
+    # Valid cases
+    for blob in VALID_BLOBS:
+        commitment = spec.blob_to_kzg_commitment(blob)
+        identifier = f'{encode_hex(hash(blob))}'
+        yield f'blob_to_kzg_commitment_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'blob': encode_hex(blob),
+            },
+            'output': encode_hex(commitment)
+        }
+    # Edge case: Invalid blob
+    expect_exception(spec.blob_to_kzg_commitment, BLOB_INVALID)
+    yield 'blob_to_kzg_commitment_case_invalid_blob', {
+        'input': {
+            'blob': encode_hex(BLOB_INVALID)
+        },
+        'output': None
+    }
+
+def case03_verify_kzg_proof():
+    # Valid cases
+    for blob in VALID_BLOBS:
+        for z in VALID_ZS:
+            proof = spec.compute_kzg_proof(blob, z)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            y = (
+                spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z))
+            ).to_bytes(32, spec.ENDIANNESS)
+            assert spec.verify_kzg_proof(commitment, z, y, proof)
+            identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}_correct'
+            yield f'verify_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+                'input': {
+                    'commitment': encode_hex(commitment),
+                    'z': encode_hex(z),
+                    'y': encode_hex(y),
+                    'proof': encode_hex(proof),
+                },
+                'output': True
+            }
+
+    # Incorrect proofs
+    for blob in VALID_BLOBS:
+        for z in VALID_ZS:
+            proof = spec.Bytes48(bls.G1_to_bytes48(
+                bls.add(bls.bytes48_to_G1(spec.compute_kzg_proof(blob, z)), bls.G1())
+            ))
+            commitment = spec.blob_to_kzg_commitment(blob)
+            y = (
+                spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z))
+            ).to_bytes(32, spec.ENDIANNESS)
+            assert not spec.verify_kzg_proof(commitment, z, y, proof)
+            identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}_incorrect'
+            yield f'verify_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+                'input': {
+                    'commitment': encode_hex(commitment),
+                    'z': encode_hex(z),
+                    'y': encode_hex(y),
+                    'proof': encode_hex(proof),
+                },
+                'output': False
+            }
+
+    # Edge case: Invalid z
+    blob, z = VALID_BLOBS[0], VALID_ZS[0]
+    proof = spec.compute_kzg_proof(blob, z)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    y = (
+        spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z))
+    ).to_bytes(32, spec.ENDIANNESS)
+    z = INVALID_ZS[0]
+    expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_invalid_z', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid y
+    blob, z = VALID_BLOBS[1], VALID_ZS[1]
+    proof = spec.compute_kzg_proof(blob, z)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    y = INVALID_ZS[0]
+    expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_invalid_y', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid proof, not in G1
+    blob, z = VALID_BLOBS[2], VALID_ZS[0]
+    proof = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
+        "0123456789abcdef0123456789abcdef0123456789abcdef")
+    commitment = spec.blob_to_kzg_commitment(blob)
+    y = VALID_ZS[1]
+    expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_proof_not_in_G1', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid proof, not on curve
+    blob, z = VALID_BLOBS[2], VALID_ZS[2]
+    proof = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
+        "0123456789abcdef0123456789abcdef0123456789abcde0")
+    commitment = spec.blob_to_kzg_commitment(blob)
+    y = VALID_ZS[1]
+    expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_proof_not_on_curve', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid commitment, not in G1
+    blob, z = VALID_BLOBS[2], VALID_ZS[2]
+    proof = spec.compute_kzg_proof(blob, z)
+    commitment = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
+        "0123456789abcdef0123456789abcdef0123456789abcdef")
+    y = VALID_ZS[1]
+    expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_commitment_not_in_G1', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid commitment, not on curve
+    blob, z = VALID_BLOBS[2], VALID_ZS[2]
+    proof = spec.compute_kzg_proof(blob, z)
+    commitment = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
+        "0123456789abcdef0123456789abcdef0123456789abcde0")
+    y = VALID_ZS[1]
+    expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_commitment_not_on_curve', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
         },
         'output': None
     }
@@ -110,4 +277,6 @@ if __name__ == "__main__":
     gen_runner.run_generator("bls", [
         # PHASE0
         create_provider(PHASE0, 'compute_kzg_proof', case01_compute_kzg_proof),
+        create_provider(PHASE0, 'blob_to_kzg_commitment', case02_blob_to_kzg_commitment),
+        create_provider(PHASE0, 'verify_kzg_proof', case03_verify_kzg_proof),
     ])

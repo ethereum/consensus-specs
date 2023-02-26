@@ -371,8 +371,8 @@ def verify_kzg_proof_impl(commitment: KZGCommitment,
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
     # Verify: P - y = Q * (X - z)
-    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2(), BLS_MODULUS - z))
-    P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), BLS_MODULUS - y))
+    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2(), (BLS_MODULUS - z) % BLS_MODULUS))
+    P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), (BLS_MODULUS - y) % BLS_MODULUS))
     return bls.pairing_check([
         [P_minus_y, bls.neg(bls.G2())],
         [bls.bytes48_to_G1(proof), X_minus_z]
@@ -415,7 +415,7 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
         proofs,
         [BLSFieldElement((int(z) * int(r_power)) % BLS_MODULUS) for z, r_power in zip(zs, r_powers)],
     )
-    C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), BLS_MODULUS - y))
+    C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), (BLS_MODULUS - y) % BLS_MODULUS))
                   for commitment, y in zip(commitments, ys)]
     C_minus_y_as_KZGCommitments = [KZGCommitment(bls.G1_to_bytes48(x)) for x in C_minus_ys]
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
