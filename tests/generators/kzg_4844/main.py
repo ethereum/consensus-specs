@@ -9,15 +9,12 @@ from eth_utils import (
     encode_hex,
     int_to_big_endian,
 )
-import milagro_bls_binding as milagro_bls
 
 from eth2spec.utils import bls
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, DENEB
+from eth2spec.test.helpers.constants import DENEB
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.deneb import spec
-
-
 
 
 def expect_exception(func, *args):
@@ -28,8 +25,10 @@ def expect_exception(func, *args):
     else:
         raise Exception("should have raised exception")
 
+
 def field_element_bytes(x):
     return int.to_bytes(x % spec.BLS_MODULUS, 32, "little")
+
 
 BLOB_ALL_ZEROS = spec.Blob()
 BLOB_RANDOM_VALID1 = spec.Blob(b''.join([field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS)) for n in range(4096)]))
@@ -41,14 +40,17 @@ INVALID_BLOBS = [BLOB_INVALID]
 VALID_ZS = [x.to_bytes(32, spec.ENDIANNESS) for x in [0, 1, 15, 2**150 - 1, spec.BLS_MODULUS - 1]]
 INVALID_ZS = [x.to_bytes(32, spec.ENDIANNESS) for x in [spec.BLS_MODULUS, 2**256 - 1]]
 
+
 def hash(x):
     return sha256(x).digest()
+
 
 def int_to_hex(n: int, byte_length: int = None) -> str:
     byte_value = int_to_big_endian(n)
     if byte_length:
         byte_value = byte_value.rjust(byte_length, b'\x00')
     return encode_hex(byte_value)
+
 
 def case01_compute_kzg_proof():
     # Valid cases
@@ -82,6 +84,7 @@ def case01_compute_kzg_proof():
         'output': None
     }
 
+
 def case02_blob_to_kzg_commitment():
     # Valid cases
     for blob in VALID_BLOBS:
@@ -101,6 +104,7 @@ def case02_blob_to_kzg_commitment():
         },
         'output': None
     }
+
 
 def case03_verify_kzg_proof():
     # Valid cases
@@ -183,7 +187,7 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid proof, not in G1
     blob, z = VALID_BLOBS[2], VALID_ZS[0]
     proof = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-        "0123456789abcdef0123456789abcdef0123456789abcdef")
+                          "0123456789abcdef0123456789abcdef0123456789abcdef")
     commitment = spec.blob_to_kzg_commitment(blob)
     y = VALID_ZS[1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
@@ -200,7 +204,7 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid proof, not on curve
     blob, z = VALID_BLOBS[2], VALID_ZS[2]
     proof = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-        "0123456789abcdef0123456789abcdef0123456789abcde0")
+                          "0123456789abcdef0123456789abcdef0123456789abcde0")
     commitment = spec.blob_to_kzg_commitment(blob)
     y = VALID_ZS[1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
@@ -218,7 +222,7 @@ def case03_verify_kzg_proof():
     blob, z = VALID_BLOBS[2], VALID_ZS[2]
     proof = spec.compute_kzg_proof(blob, z)
     commitment = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-        "0123456789abcdef0123456789abcdef0123456789abcdef")
+                               "0123456789abcdef0123456789abcdef0123456789abcdef")
     y = VALID_ZS[1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_not_in_G1', {
@@ -235,7 +239,7 @@ def case03_verify_kzg_proof():
     blob, z = VALID_BLOBS[2], VALID_ZS[2]
     proof = spec.compute_kzg_proof(blob, z)
     commitment = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-        "0123456789abcdef0123456789abcdef0123456789abcde0")
+                               "0123456789abcdef0123456789abcdef0123456789abcde0")
     y = VALID_ZS[1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_not_on_curve', {
@@ -247,6 +251,7 @@ def case03_verify_kzg_proof():
         },
         'output': None
     }
+
 
 def create_provider(fork_name: SpecForkName,
                     handler_name: str,
@@ -272,11 +277,12 @@ def create_provider(fork_name: SpecForkName,
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
+
 if __name__ == "__main__":
     bls.use_arkworks()  
     gen_runner.run_generator("bls", [
-        # PHASE0
-        create_provider(PHASE0, 'compute_kzg_proof', case01_compute_kzg_proof),
-        create_provider(PHASE0, 'blob_to_kzg_commitment', case02_blob_to_kzg_commitment),
-        create_provider(PHASE0, 'verify_kzg_proof', case03_verify_kzg_proof),
+        # DENEB
+        create_provider(DENEB, 'compute_kzg_proof', case01_compute_kzg_proof),
+        create_provider(DENEB, 'blob_to_kzg_commitment', case02_blob_to_kzg_commitment),
+        create_provider(DENEB, 'verify_kzg_proof', case03_verify_kzg_proof),
     ])
