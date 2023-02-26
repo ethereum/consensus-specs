@@ -279,7 +279,7 @@ def create_provider(fork_name: SpecForkName,
 
 
 if __name__ == "__main__":
-    bls.use_arkworks()  
+    bls.use_arkworks()
     gen_runner.run_generator("bls", [
         # DENEB
         create_provider(DENEB, 'compute_kzg_proof', case01_compute_kzg_proof),
