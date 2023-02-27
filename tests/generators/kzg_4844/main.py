@@ -255,14 +255,38 @@ def case03_verify_kzg_proof():
     }
 
 
-def case04_verify_blob_kzg_proof():
+def case04_compute_blob_kzg_proof():
+    # Valid cases
+    for blob in VALID_BLOBS:
+        proof = spec.compute_blob_kzg_proof(blob)
+        identifier = f'{encode_hex(hash(blob))}'
+        yield f'compute_blob_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'blob': encode_hex(blob),
+                'proof': encode_hex(proof),
+            },
+            'output': True
+        }
+
+    # Edge case: Invalid blob
+    blob = BLOB_INVALID
+    expect_exception(spec.compute_blob_kzg_proof, blob)
+    yield 'compute_blob_kzg_proof_case_invalid_blob', {
+        'input': {
+            'blob': encode_hex(blob),
+        },
+        'output': None
+    }
+
+
+def case05_verify_blob_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
         proof = spec.compute_blob_kzg_proof(blob)
         commitment = spec.blob_to_kzg_commitment(blob)
         assert spec.verify_blob_kzg_proof(blob, commitment, proof)
         identifier = f'{encode_hex(hash(blob))}_correct'
-        yield f'verify_kzg_blob_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'verify_blob_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'blob': encode_hex(blob),
                 'commitment': encode_hex(commitment),
@@ -280,7 +304,7 @@ def case04_verify_blob_kzg_proof():
             commitment = spec.blob_to_kzg_commitment(blob)
             assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
             identifier = f'{encode_hex(hash(blob))}_incorrect'
-            yield f'verify_kzg_blob_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            yield f'verify_blob_kzg_proof_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
                     'blob': encode_hex(blob),
                     'commitment': encode_hex(commitment),
@@ -296,7 +320,7 @@ def case04_verify_blob_kzg_proof():
     commitment = bls.G1_to_bytes48(bls.G1())
     print(commitment)
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-    yield 'verify_kzg_blob_kzg_proof_case_proof_not_in_G1', {
+    yield 'verify_blob_kzg_proof_case_proof_not_in_G1', {
         'input': {
             'blob': encode_hex(blob),
             'commitment': encode_hex(commitment),
@@ -306,12 +330,12 @@ def case04_verify_blob_kzg_proof():
     }
 
     # Edge case: Invalid proof, not on curve
-    blob= VALID_BLOBS[1]
+    blob = VALID_BLOBS[1]
     proof = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
                           "0123456789abcdef0123456789abcdef0123456789abcde0")
     commitment = bls.G1_to_bytes48(bls.G1())
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-    yield 'verify_kzg_blob_kzg_proof_case_proof_not_on_curve', {
+    yield 'verify_blob_kzg_proof_case_proof_not_on_curve', {
         'input': {
             'blob': encode_hex(blob),
             'commitment': encode_hex(commitment),
@@ -321,12 +345,12 @@ def case04_verify_blob_kzg_proof():
     }
 
     # Edge case: Invalid commitment, not in G1
-    blob= VALID_BLOBS[0]
+    blob = VALID_BLOBS[0]
     proof = bls.G1_to_bytes48(bls.G1())
     commitment = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
                                "0123456789abcdef0123456789abcdef0123456789abcdef")
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-    yield 'verify_kzg_blob_kzg_proof_case_commitment_not_in_G1', {
+    yield 'verify_blob_kzg_proof_case_commitment_not_in_G1', {
         'input': {
             'blob': encode_hex(blob),
             'commitment': encode_hex(commitment),
@@ -341,7 +365,7 @@ def case04_verify_blob_kzg_proof():
     commitment = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
                                "0123456789abcdef0123456789abcdef0123456789abcde0")
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-    yield 'verify_kzg_blob_kzg_proof_case_not_on_curve', {
+    yield 'verify_blob_kzg_proof_case_not_on_curve', {
         'input': {
             'blob': encode_hex(blob),
             'commitment': encode_hex(commitment),
@@ -355,7 +379,7 @@ def case04_verify_blob_kzg_proof():
     proof = bls.G1_to_bytes48(bls.G1())
     commitment = bls.G1_to_bytes48(bls.G1())
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-    yield 'verify_kzg_blob_kzg_proof_case_invalid_blob', {
+    yield 'verify_blob_kzg_proof_case_invalid_blob', {
         'input': {
             'blob': encode_hex(blob),
             'commitment': encode_hex(commitment),
@@ -397,5 +421,6 @@ if __name__ == "__main__":
         create_provider(DENEB, 'compute_kzg_proof', case01_compute_kzg_proof),
         create_provider(DENEB, 'blob_to_kzg_commitment', case02_blob_to_kzg_commitment),
         create_provider(DENEB, 'verify_kzg_proof', case03_verify_kzg_proof),
-        create_provider(DENEB, 'verify_blob_kzg_proof', case04_verify_blob_kzg_proof),
+        create_provider(DENEB, 'verify_blob_kzg_proof', case04_compute_blob_kzg_proof),
+        create_provider(DENEB, 'verify_blob_kzg_proof', case05_verify_blob_kzg_proof),
     ])
