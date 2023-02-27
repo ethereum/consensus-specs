@@ -417,11 +417,11 @@ def case06_verify_blob_kzg_proof_batch():
     )
     proofs_incorrect = [proof_incorrect] + proofs[1:]
     assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
-    yield f'verify_blob_kzg_proof_batch_case_invalid_proof', {
+    yield 'verify_blob_kzg_proof_batch_case_invalid_proof', {
         'input': {
-                'blobs': encode_hex_list(VALID_BLOBS),
-                'commitments': encode_hex_list(commitments),
-                'proofs': encode_hex_list(proofs_incorrect),
+            'blobs': encode_hex_list(VALID_BLOBS),
+            'commitments': encode_hex_list(commitments),
+            'proofs': encode_hex_list(proofs_incorrect),
         },
         'output': False
     }
