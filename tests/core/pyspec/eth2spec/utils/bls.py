@@ -253,7 +253,7 @@ def G2():
 # we use the compressed format
 def G1_to_bytes48(point):
     if bls == arkworks_bls or bls == fastest_bls:
-        return point.to_compressed_bytes()
+        return bytes(point.to_compressed_bytes())
     return py_ecc_G1_to_bytes48(point)
 
 
@@ -262,7 +262,7 @@ def G1_to_bytes48(point):
 # we use the compressed format
 def G2_to_bytes96(point):
     if bls == arkworks_bls or bls == fastest_bls:
-        return point.to_compressed_bytes()
+        return bytes(point.to_compressed_bytes())
     return py_ecc_G2_to_bytes96(point)
 
 
