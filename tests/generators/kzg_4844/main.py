@@ -101,7 +101,7 @@ def case01_blob_to_kzg_commitment():
     for blob in INVALID_BLOBS:
         identifier = f'{encode_hex(hash(blob))}'
         expect_exception(spec.blob_to_kzg_commitment, BLOB_INVALID)
-        yield 'blob_to_kzg_commitment_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'blob_to_kzg_commitment_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'blob': encode_hex(blob)
             },
