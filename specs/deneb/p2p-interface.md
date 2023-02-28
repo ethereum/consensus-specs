@@ -183,7 +183,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOBS_SIDECARS]
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
@@ -191,7 +191,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOBS_SIDECARS]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
@@ -202,7 +202,7 @@ It may be less in the case that the responding peer is missing blocks or sidecar
 The response is unsigned, i.e. `BlobSidecar`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
 
-No more than `MAX_REQUEST_BLOBS_SIDECARS` may be requested at a time.
+No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
 
