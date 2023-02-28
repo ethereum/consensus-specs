@@ -23,14 +23,10 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
-                 $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SPEC_DIR)/altair/**/*.md) \
-                 $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
-                 $(wildcard $(SPEC_DIR)/capella/*.md) $(wildcard $(SPEC_DIR)/capella/**/*.md) \
-                 $(wildcard $(SPEC_DIR)/deneb/*.md) $(wildcard $(SPEC_DIR)/deneb/**/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/custody/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/das/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/sharding/*.md) \
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/*/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/_features/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
 ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb
