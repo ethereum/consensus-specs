@@ -200,9 +200,11 @@ def pairing_check(values):
         return final_exponentiation == py_ecc_GT.one()
 
 
-# Performs point addition of `lhs` and `rhs`
-# The points can either be in G1 or G2
 def add(lhs, rhs):
+    """
+    Performs point addition of `lhs` and `rhs`.
+    The points can either be in G1 or G2.
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return lhs + rhs
     return py_ecc_add(lhs, rhs)
