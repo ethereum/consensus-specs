@@ -200,18 +200,22 @@ def pairing_check(values):
         return final_exponentiation == py_ecc_GT.one()
 
 
-# Performs point addition of `lhs` and `rhs`
-# The points can either be in G1 or G2
 def add(lhs, rhs):
+    """
+    Performs point addition of `lhs` and `rhs`.
+    The points can either be in G1 or G2.
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return lhs + rhs
     return py_ecc_add(lhs, rhs)
 
 
-# Performs Scalar multiplication between
-# `point` and `scalar`
-# `point` can either be in G1 or G2
 def multiply(point, scalar):
+    """
+    Performs Scalar multiplication between
+    `point` and `scalar`.
+    `point` can either be in G1 or G2
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         int_as_bytes = scalar.to_bytes(32, 'little')
         scalar = arkworks_Scalar.from_le_bytes(int_as_bytes)
@@ -219,72 +223,88 @@ def multiply(point, scalar):
     return py_ecc_mul(point, scalar)
 
 
-# Returns the point negation of `point`
-# `point` can either be in G1 or G2
 def neg(point):
+    """
+    Returns the point negation of `point`
+    `point` can either be in G1 or G2
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return -point
     return py_ecc_neg(point)
 
 
-# Returns the identity point in G1
 def Z1():
+    """
+    Returns the identity point in G1
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.identity()
     return py_ecc_Z1
 
 
-# Returns the chosen generator point in G1
 def G1():
+    """
+    Returns the chosen generator point in G1
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1()
     return py_ecc_G1
 
 
-# Returns the chosen generator point in G2
 def G2():
+    """
+    Returns the chosen generator point in G2
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G2()
     return py_ecc_G2
 
 
-# Serializes a point in G1
-# Returns a bytearray of size 48 as
-# we use the compressed format
 def G1_to_bytes48(point):
+    """
+    Serializes a point in G1.
+    Returns a bytearray of size 48 as
+    we use the compressed format
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return bytes(point.to_compressed_bytes())
     return py_ecc_G1_to_bytes48(point)
 
 
-# Serializes a point in G2
-# Returns a bytearray of size 96 as
-# we use the compressed format
 def G2_to_bytes96(point):
+    """
+    Serializes a point in G2.
+    Returns a bytearray of size 96 as
+    we use the compressed format
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return bytes(point.to_compressed_bytes())
     return py_ecc_G2_to_bytes96(point)
 
 
-# Deserializes a purported compressed serialized
-# point in G1
-# - No subgroup checks are performed
-# - If the bytearray is not a valid serialization
-# of a point in G1, then this method will raise
-# an exception
 def bytes48_to_G1(bytes48):
+    """
+    Deserializes a purported compressed serialized
+    point in G1.
+        - No subgroup checks are performed
+        - If the bytearray is not a valid serialization
+        of a point in G1, then this method will raise
+        an exception
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.from_compressed_bytes_unchecked(bytes48)
     return py_ecc_bytes48_to_G1(bytes48)
 
 
-# Deserializes a purported compressed serialized
-# point in G2
-# - No subgroup checks are performed
-# - If the bytearray is not a valid serialization
-# of a point in G2, then this method will raise
-# an exception
 def bytes96_to_G2(bytes96):
+    """
+    Deserializes a purported compressed serialized
+    point in G2.
+        - No subgroup checks are performed
+        - If the bytearray is not a valid serialization
+        of a point in G2, then this method will raise
+        an exception
+    """
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G2.from_compressed_bytes_unchecked(bytes96)
     return py_ecc_bytes96_to_G2(bytes96)
