@@ -282,7 +282,6 @@ def G2_to_bytes96(point):
     return py_ecc_G2_to_bytes96(point)
 
 
-
 def bytes48_to_G1(bytes48):
     """
     Deserializes a purported compressed serialized
