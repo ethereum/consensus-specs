@@ -557,7 +557,7 @@ def create_provider(fork_name: SpecForkName,
             yield gen_typing.TestCase(
                 fork_name=fork_name,
                 preset_name='general',
-                runner_name='bls',
+                runner_name='kzg',
                 handler_name=handler_name,
                 suite_name='small',
                 case_name=case_name,
