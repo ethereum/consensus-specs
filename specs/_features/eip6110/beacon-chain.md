@@ -192,8 +192,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Prevent potential underflow introduced by mixing two deposit processing flows
     # [New in EIP-6110]
+    # Prevent potential underflow introduced by mixing two deposit processing flows
     if state.eth1_data.deposit_count > state.eth1_deposit_index:
         assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
     else:
