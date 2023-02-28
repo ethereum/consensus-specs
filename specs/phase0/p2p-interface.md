@@ -743,7 +743,7 @@ For example, requesting blocks starting at `start_slot=2` and `count=4` would re
 In cases where a slot is empty for a given slot number, no block is returned.
 For example, if slot 4 were empty in the previous example, the returned array would contain `[2, 3, 5]`.
 
-`step` is deprecated and must be set to 1. Clients may respond with a single block if a larger step is returned during the deprecation transition period.
+`step` is deprecated and must be set to 1. Clients MUST respond with a single block if a larger step is returned during the deprecation transition period.
 
 `/eth2/beacon_chain/req/beacon_blocks_by_range/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
