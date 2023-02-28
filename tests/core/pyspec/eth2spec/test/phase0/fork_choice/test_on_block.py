@@ -729,14 +729,14 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) > 0
+    assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
 
     # Ensure that boost is removed after slot is over
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
             spec.config.SECONDS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
+    assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
 
     next_slots(spec, state, 3)
     block = build_empty_block_for_next_slot(spec, state)
@@ -747,14 +747,14 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) > 0
+    assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
 
     # Ensure that boost is removed after slot is over
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
             spec.config.SECONDS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_latest_attesting_balance(store, spec.hash_tree_root(block)) == 0
+    assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
 
     test_steps.append({
         'checks': {
