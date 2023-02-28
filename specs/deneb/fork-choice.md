@@ -63,7 +63,7 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
 
 ### `on_block`
 
-*Note*: The only modification is the addition of the verification of transition block conditions.
+*Note*: The only modification is the addition of the blob data availability check.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:

@@ -38,7 +38,7 @@ The specification of these changes continues in the same format as the network s
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `MAX_REQUEST_BLOCKS_DENEB`               | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
-| `MAX_REQUEST_BLOB_SIDECARS`              | `2**7` (= 128)                    | Maximum number of blob sidecars in a single request                 |
+| `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK`      | Maximum number of blob sidecars in a single request                 |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars |
 
 ## Containers
@@ -108,10 +108,10 @@ This topic is used to propagate signed blob sidecars, one for each sidecar index
 The following validations MUST pass before forwarding the `sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
 - _[REJECT]_ The sidecar is for the correct topic -- i.e. `sidecar.index` matches the topic `{index}`.
-- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future blocks for processing at the appropriate slot).
+- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[IGNORE]_ The blob's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue blocks for processing once the parent block is retrieved).
-- _[REJECT]_ The blob's block's parent (defined by `sidecar.block_parent_root`) passes validation.
+- _[IGNORE]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
+- _[REJECT]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) passes validation.
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.block_root, sidecar.index)`.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
@@ -183,7 +183,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK]
+  List[BlobIdentifier, MAX_REQUEST_BLOBS_SIDECARS]
 )
 ```
 
@@ -191,7 +191,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK]
+  List[BlobSidecar, MAX_REQUEST_BLOBS_SIDECARS]
 )
 ```
 
@@ -202,7 +202,7 @@ It may be less in the case that the responding peer is missing blocks or sidecar
 The response is unsigned, i.e. `BlobSidecar`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
 
-No more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` may be requested at a time.
+No more than `MAX_REQUEST_BLOBS_SIDECARS` may be requested at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
 
@@ -239,7 +239,7 @@ Request Content:
 Response Content:
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
@@ -274,7 +274,7 @@ to be fully compliant with `BlobSidecarsByRange` requests.
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
-Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS * MAX_BLOBS_PER_BLOCK` sidecars.
+Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS` sidecars.
 
 Clients MUST include all blob sidecars of each block from which they include blob sidecars.
 
