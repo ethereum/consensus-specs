@@ -10,12 +10,10 @@
 - [Constants](#constants)
   - [Misc](#misc)
 - [Preset](#preset)
-  - [State list lengths](#state-list-lengths)
   - [Execution](#execution)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`DepositReceipt`](#depositreceipt)
-    - [`IndexedDepositData`](#indexeddepositdata)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -23,7 +21,8 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_operations`](#modified-process_operations)
-    - [New `get_validator_from_deposit_receipt`](#new-get_validator_from_deposit_receipt)
+    - [New `get_validator_from_deposit_data`](#new-get_validator_from_deposit_data)
+    - [New `apply_deposit`](#new-apply_deposit)
     - [New `process_deposit_receipt`](#new-process_deposit_receipt)
     - [Modified `process_deposit`](#modified-process_deposit)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
@@ -51,12 +50,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Preset
 
-### State list lengths
-
-| Name | Value |
-| - | - |
-| `PENDING_DEPOSITS_LIMIT` | `2**32` (= 4,294,967,296) |
-
 ### Execution
 
 | Name | Value | Description |
@@ -76,17 +69,6 @@ class DepositReceipt(Container):
     amount: Gwei
     signature: BLSSignature
     index: uint64
-```
-
-#### `IndexedDepositData`
-
-```python
-class IndexedDepositData(Container):
-    pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-    index: uint64
-    epoch: Epoch
 ```
 
 ### Extended Containers
@@ -211,9 +193,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Prevent potential underflow introduced by mixing two deposit processing flows
-    unprocessed_deposits_count = max(0, state.eth1_data.deposit_count - state.eth1_deposit_index)  # [New in EIP-6110]
-    # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, unprocessed_deposits_count)  # [Modified in EIP-6110]
+    # [New in EIP-6110]
+    if state.eth1_data.deposit_count > state.eth1_deposit_index:
+        assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+    else:
+        assert len(body.deposits) == 0
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
@@ -231,16 +215,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
-#### New `get_validator_from_deposit_receipt`
+#### New `get_validator_from_deposit_data`
 
 ```python
-def get_validator_from_deposit_receipt(deposit_receipt: DepositReceipt) -> Validator:
-    amount = deposit_receipt.amount
+def get_validator_from_deposit_data(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
     effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
 
     return Validator(
-        pubkey=deposit_receipt.pubkey,
-        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
@@ -248,6 +231,39 @@ def get_validator_from_deposit_receipt(deposit_receipt: DepositReceipt) -> Valid
         effective_balance=effective_balance,
     )
 ```
+
+#### New `apply_deposit`
+
+```python
+def apply_deposit(state: BeaconState,
+                  pubkey: BLSPubkey,
+                  withdrawal_credentials: Bytes32,
+                  amount: uint64,
+                  signature: BLSSignature,
+                  ) -> None:
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    if pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        deposit_message = DepositMessage(
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            amount=amount,
+        )
+        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+        signing_root = compute_signing_root(deposit_message, domain)
+        # Initialize validator if the deposit signature is valid
+        if bls.Verify(pubkey, signing_root, signature):
+            state.validators.append(get_validator_from_deposit_data(pubkey, withdrawal_credentials, amount))
+            state.balances.append(amount)
+            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
+            state.inactivity_scores.append(uint64(0))
+    else:
+        # Increase balance by deposit amount
+        index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        increase_balance(state, index, amount)
+```
+
 
 #### New `process_deposit_receipt`
 
@@ -261,34 +277,18 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     if state.eth1_deposit_index >= state.deposit_receipts_start_index:
         state.eth1_deposit_index = deposit_receipt.index + 1
 
-    pubkey = deposit_receipt.pubkey
-    amount = deposit_receipt.amount
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
-    if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        deposit_message = DepositMessage(
-            pubkey=deposit_receipt.pubkey,
-            withdrawal_credentials=deposit_receipt.withdrawal_credentials,
-            amount=deposit_receipt.amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, deposit_receipt.signature):
-            state.validators.append(get_validator_from_deposit_receipt(deposit_receipt))
-            state.balances.append(amount)
-            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(uint64(0))
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
+    apply_deposit(
+        state=state, 
+        pubkey=deposit_receipt.pubkey,
+        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
+        amount=deposit_receipt.amount,
+        signature=deposit_receipt.signature,
+    )
 ```
 
 #### Modified `process_deposit`
 
-*Note*: The function `process_deposit` is modified to prevent deposits from being processed in the second time (due to `process_deposit_receipt`).
+*Note*: The function `process_deposit` is modified to prevent deposits from being processed the second time (due to `process_deposit_receipt`).
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
@@ -310,29 +310,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Deposits must be processed in order
     state.eth1_deposit_index += 1
 
-    pubkey = deposit.data.pubkey
-    amount = deposit.data.amount
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
-    if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        deposit_message = DepositMessage(
-            pubkey=deposit.data.pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, deposit.data.signature):
-            state.validators.append(get_validator_from_deposit(deposit))
-            state.balances.append(amount)
-            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(uint64(0))
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
+    apply_deposit(
+        state=state, 
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        amount=deposit.data.amount,
+        signature=deposit.data.signature,
+    )
 ```
 
 #### Modified `process_execution_payload`
