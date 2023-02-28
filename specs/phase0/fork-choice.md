@@ -18,7 +18,7 @@
     - [`get_current_slot`](#get_current_slot)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
-    - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
+    - [`get_weight`](#get_weight)
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_head`](#get_head)
@@ -174,10 +174,10 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
         return root
 ```
 
-#### `get_latest_attesting_balance`
+#### `get_weight`
 
 ```python
-def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
+def get_weight(store: Store, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     attestation_score = Gwei(sum(
@@ -197,7 +197,6 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
         committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
         proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
     return attestation_score + proposer_score
-
 ```
 
 #### `filter_block_tree`
@@ -270,7 +269,7 @@ def get_head(store: Store) -> Root:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring block with lexicographically higher root
-        head = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
+        head = max(children, key=lambda root: (get_weight(store, root), root))
 ```
 
 #### `should_update_justified_checkpoint`
