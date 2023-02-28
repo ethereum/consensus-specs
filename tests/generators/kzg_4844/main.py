@@ -70,7 +70,7 @@ BLOB_INVALID_CLOSE = spec.Blob(b''.join(
 VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_RANDOM_VALID1, BLOB_RANDOM_VALID2,
                BLOB_RANDOM_VALID3, BLOB_ALL_MODULUS_MINUS_ONE, BLOB_ALMOST_ZERO]
 INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE]
-VALID_ZS = [field_element_bytes(x) for x in [0, 1, 2, pow(5, 1235, spec.BLS_MODULUS), spec.BLS_MODULUS - 1]]
+VALID_ZS = [field_element_bytes(x) for x in [0, 1, 2, pow(5, 1235, spec.BLS_MODULUS), spec.BLS_MODULUS - 1, spec.ROOTS_OF_UNITY[1]]]
 INVALID_ZS = [x.to_bytes(32, spec.ENDIANNESS) for x in [spec.BLS_MODULUS, 2**256 - 1, 2**256 - 2**128]]
 
 
