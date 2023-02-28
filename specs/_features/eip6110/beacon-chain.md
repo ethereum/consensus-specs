@@ -47,7 +47,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `NOT_SET_DEPOSIT_RECEIPTS_START_INDEX` | `2**64 - 1` |
+| `NOT_SET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` |
 
 ## Preset
 
@@ -292,6 +292,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+    # [New in EIP-6110]
     # Skip already processed deposits
     if state.eth1_deposit_index >= state.deposit_receipts_start_index:
         state.eth1_deposit_index += 1
@@ -325,7 +326,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         if bls.Verify(pubkey, signing_root, deposit.data.signature):
             state.validators.append(get_validator_from_deposit(deposit))
             state.balances.append(amount)
-            # [New in Altair]
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
