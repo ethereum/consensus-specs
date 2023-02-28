@@ -9,7 +9,7 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     neg as py_ecc_neg,
     pairing as py_ecc_pairing,
     final_exponentiate as py_ecc_final_exponentiate,
-    FQ12 as py_ecc_GT
+    FQ12 as py_ecc_GT,
 )
 from py_ecc.bls.g2_primitives import (  # noqa: F401
     G1_to_pubkey as py_ecc_G1_to_bytes48,
@@ -21,7 +21,7 @@ from py_arkworks_bls12381 import (
     G1Point as arkworks_G1,
     G2Point as arkworks_G2,
     Scalar as arkworks_Scalar,
-    GT as arkworks_GT
+    GT as arkworks_GT,
 )
 
 

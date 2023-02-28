@@ -47,7 +47,7 @@ def pytest_addoption(parser):
         "--bls-type", action="store", type=str, default="py_ecc", choices=["py_ecc", "milagro", "arkworks", "fastest"],
         help=(
             "bls-type: use specified BLS implementation;"
-            "fastest' uses milagro for signatures and arkworks for everything else (e.g. KZG)"
+            "fastest: use milagro for signatures and arkworks for everything else (e.g. KZG)"
         )
     )
 
