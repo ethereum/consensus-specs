@@ -454,9 +454,9 @@ def case06_verify_blob_kzg_proof_batch():
     expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, proofs_invalid_notG1)
     yield 'verify_blob_kzg_proof_batch_case_proof_not_in_G1', {
         'input': {
-            'blob': encode_hex_list(VALID_BLOBS),
-            'commitment': encode_hex_list(commitments),
-            'proof': encode_hex_list(proofs_invalid_notG1),
+            'blobs': encode_hex_list(VALID_BLOBS),
+            'commitments': encode_hex_list(commitments),
+            'proofs': encode_hex_list(proofs_invalid_notG1),
         },
         'output': None
     }
@@ -466,9 +466,9 @@ def case06_verify_blob_kzg_proof_batch():
     expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, proofs_invalid_notCurve)
     yield 'verify_blob_kzg_proof_batch_case_proof_not_on_curve', {
         'input': {
-            'blob': encode_hex_list(VALID_BLOBS),
-            'commitment': encode_hex_list(commitments),
-            'proof': encode_hex_list(proofs_invalid_notCurve),
+            'blobs': encode_hex_list(VALID_BLOBS),
+            'commitments': encode_hex_list(commitments),
+            'proofs': encode_hex_list(proofs_invalid_notCurve),
         },
         'output': None
     }
