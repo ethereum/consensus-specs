@@ -22,4 +22,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `verify_kzg_proof` handler should verify the KZG proof for evaluating the polynomial represented by `blob` at `z` resulting in the value `y`, and the result should match the expected `output`. If the commitment or proof are invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve) or `z` or `y` are not a valid BLS field element, it should error, i.e. the output should be `None`.
+The `verify_kzg_proof` handler should verify the KZG proof for evaluating the polynomial represented by `blob` at `z` resulting in the value `y`, and the result should match the expected `output`. If the commitment or proof is invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve) or `z` or `y` are not a valid BLS field element, it should error, i.e. the output should be `null`.
