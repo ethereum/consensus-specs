@@ -653,9 +653,9 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
+def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZGProof], Tuple[str, str]]:
     # pylint: disable=unused-argument
-    return "TEST"'''
+    return ("TEST", "TEST")'''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
@@ -1169,7 +1169,7 @@ setup(
         "pycryptodome==3.15.0",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.25",
+        "remerkleable==0.1.27",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
