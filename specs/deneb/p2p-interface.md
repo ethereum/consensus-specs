@@ -280,6 +280,10 @@ Clients MUST include all blob sidecars of each block from which they include blo
 
 The following blob sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
 
+Slots that do not contain known blobs MUST be skipped, mimicking the behaviour
+of the `BlocksByRange` request. Only response chunks with known blobs should
+therefore be sent.
+
 Clients MAY limit the number of blob sidecars in the response.
 
 The response MUST contain no more than `count * MAX_BLOBS_PER_BLOCK` blob sidecars.
