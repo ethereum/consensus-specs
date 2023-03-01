@@ -20,4 +20,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `verify_blob_kzg_proof_batch` handler should verify that `commitments` are correct KZG commitments to `blobs` by using the blob KZG proofs `proofs`, and the result should match the expected `output`. If any of the the commitments or proofs are invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve) or any blob is invalid (e.g. incorrect length or one of the 32 byte blocks does not represent a BLS field element), it should error, i.e. the output should be `None`.
+The `verify_blob_kzg_proof_batch` handler should verify that `commitments` are correct KZG commitments to `blobs` by using the blob KZG proofs `proofs`, and the result should match the expected `output`. If any of the commitments or proofs are invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve) or any blob is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element), it should error, i.e. the output should be `null`.
