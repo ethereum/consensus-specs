@@ -172,7 +172,7 @@ def AggregatePKs(pubkeys):
         pass
 
     if bls == arkworks_bls:  # no signature API in arkworks
-        return py_ecc_bls._AggregatePKs(list(pubkeys))
+        return milagro_bls._AggregatePKs(list(pubkeys))
 
     return bls._AggregatePKs(list(pubkeys))
 
