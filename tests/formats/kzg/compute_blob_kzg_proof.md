@@ -18,4 +18,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `compute_blob_kzg_proof` handler should compute the blob KZG proof for `blob`, and the result should match the expected `output`. If the blob is invalid (e.g. incorrect length or one of the 32 byte blocks does not represent a BLS field element) it should error, i.e. the output should be `None`.
+The `compute_blob_kzg_proof` handler should compute the blob KZG proof for `blob`, and the result should match the expected `output`. If the blob is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element) it should error, i.e. the output should be `null`.
