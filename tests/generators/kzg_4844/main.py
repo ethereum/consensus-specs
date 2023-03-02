@@ -101,7 +101,7 @@ def case01_blob_to_kzg_commitment():
     # Edge case: Invalid blobs
     for blob in INVALID_BLOBS:
         identifier = f'{encode_hex(hash(blob))}'
-        expect_exception(spec.blob_to_kzg_commitment, BLOB_INVALID)
+        expect_exception(spec.blob_to_kzg_commitment, blob)
         yield f'blob_to_kzg_commitment_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'blob': encode_hex(blob)
