@@ -118,7 +118,7 @@ def get_blob_sidecar_signature(state: BeaconState,
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
 
-The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` epochs and serve when capable,
+The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs and serve when capable,
 to ensure the data-availability of these blobs throughout the network.
 
-After `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop serving them.
+After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop serving them.
