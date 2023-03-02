@@ -21,10 +21,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_operations`](#modified-process_operations)
-    - [New `get_validator_from_deposit_data`](#new-get_validator_from_deposit_data)
-    - [New `apply_deposit`](#new-apply_deposit)
     - [New `process_deposit_receipt`](#new-process_deposit_receipt)
-    - [Modified `process_deposit`](#modified-process_deposit)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Testing](#testing)
 
@@ -36,7 +33,7 @@
 This is the beacon chain specification of in-protocol deposits processing mechanism.
 This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum.org/EIPS/eip-6110).
 
-*Note:* This specification is under development and should be used with care.
+*Note:* This specification is built upon [Capella](../../capella/beacon_chain.md) and is under active development.
 
 ## Constants
 
@@ -192,10 +189,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # [New in EIP-6110]
-    # Prevent potential underflow introduced by mixing two deposit processing flows
-    if state.eth1_data.deposit_count > state.eth1_deposit_index:
-        assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+    # [Modified in EIP-6110]
+    # Disable former deposit mechanism once all prior deposits are processed
+    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
+    if state.eth1_deposit_index < eth1_deposit_index_limit:
+        assert len(body.deposits) == min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
         assert len(body.deposits) == 0
 
@@ -215,61 +213,12 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
-#### New `get_validator_from_deposit_data`
-
-```python
-def get_validator_from_deposit_data(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
-    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-
-    return Validator(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
-    )
-```
-
-#### New `apply_deposit`
-
-```python
-def apply_deposit(state: BeaconState,
-                  pubkey: BLSPubkey,
-                  withdrawal_credentials: Bytes32,
-                  amount: uint64,
-                  signature: BLSSignature) -> None:
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
-    if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        deposit_message = DepositMessage(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            amount=amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, signature):
-            state.validators.append(get_validator_from_deposit_data(pubkey, withdrawal_credentials, amount))
-            state.balances.append(amount)
-            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(uint64(0))
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
-```
-
-
 #### New `process_deposit_receipt`
 
 ```python
 def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
     # Set deposit receipt start index
-    if state.deposit_receipts_start_index == NOT_SET_DEPOSIT_RECEIPTS_START_INDEX:
+    if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
         state.deposit_receipts_start_index = deposit_receipt.index
 
     # Signify the end of transition to in-protocol deposit logic
@@ -282,39 +231,6 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         withdrawal_credentials=deposit_receipt.withdrawal_credentials,
         amount=deposit_receipt.amount,
         signature=deposit_receipt.signature,
-    )
-```
-
-#### Modified `process_deposit`
-
-*Note*: The function `process_deposit` is modified to prevent deposits from being processed the second time (due to `process_deposit_receipt`).
-
-```python
-def process_deposit(state: BeaconState, deposit: Deposit) -> None:
-    # [New in EIP-6110]
-    # Skip already processed deposits
-    if state.eth1_deposit_index >= state.deposit_receipts_start_index:
-        state.eth1_deposit_index += 1
-        return
-
-    # Verify the Merkle branch
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(deposit.data),
-        branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
-        index=state.eth1_deposit_index,
-        root=state.eth1_data.deposit_root,
-    )
-
-    # Deposits must be processed in order
-    state.eth1_deposit_index += 1
-
-    apply_deposit(
-        state=state, 
-        pubkey=deposit.data.pubkey,
-        withdrawal_credentials=deposit.data.withdrawal_credentials,
-        amount=deposit.data.amount,
-        signature=deposit.data.signature,
     )
 ```
 
@@ -379,7 +295,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index=NOT_SET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP6110]
+        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP6110]
     )
 
     # Process deposits

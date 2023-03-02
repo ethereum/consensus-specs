@@ -1835,19 +1835,46 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def get_validator_from_deposit(deposit: Deposit) -> Validator:
-    amount = deposit.data.amount
+def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
     effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
 
     return Validator(
-        pubkey=deposit.data.pubkey,
-        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
         effective_balance=effective_balance,
     )
+```
+
+```python
+def apply_deposit(state: BeaconState,
+                  pubkey: BLSPubkey,
+                  withdrawal_credentials: Bytes32,
+                  amount: uint64,
+                  signature: BLSSignature) -> None:
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        deposit_message = DepositMessage(
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            amount=amount,
+        )
+        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+        signing_root = compute_signing_root(deposit_message, domain)
+        if not bls.Verify(pubkey, signing_root, signature):
+            return
+
+        # Add validator and balance entries
+        state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+        state.balances.append(amount)
+    else:
+        # Increase balance by deposit amount
+        index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        increase_balance(state, index, amount)
 ```
 
 ```python
@@ -1864,28 +1891,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Deposits must be processed in order
     state.eth1_deposit_index += 1
 
-    pubkey = deposit.data.pubkey
-    amount = deposit.data.amount
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        deposit_message = DepositMessage(
-            pubkey=deposit.data.pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
-            return
-
-        # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(deposit))
-        state.balances.append(amount)
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
+    apply_deposit(
+        state=state,
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        amount=deposit.data.amount,
+        signature=deposit.data.signature,
+    )
 ```
 
 ##### Voluntary exits
