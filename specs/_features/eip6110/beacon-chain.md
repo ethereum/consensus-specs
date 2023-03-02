@@ -46,7 +46,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `NOT_SET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` |
+| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` |
 
 ## Preset
 
@@ -166,7 +166,7 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    # EIP-6110
+    # [New in EIP-6110]
     deposit_receipts_start_index: uint64
 ```
 
@@ -239,8 +239,7 @@ def apply_deposit(state: BeaconState,
                   pubkey: BLSPubkey,
                   withdrawal_credentials: Bytes32,
                   amount: uint64,
-                  signature: BLSSignature,
-                  ) -> None:
+                  signature: BLSSignature) -> None:
     validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
