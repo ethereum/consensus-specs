@@ -49,7 +49,7 @@ def evaluate_blob_at(blob, z):
         spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z))
     )
 
-
+G1 = bls.G1_to_bytes48(bls.G1())
 P1_NOT_IN_G1 = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
                              "0123456789abcdef0123456789abcdef0123456789abcdef")
 P1_NOT_ON_CURVE = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
@@ -345,7 +345,7 @@ def case05_verify_blob_kzg_proof():
     # Edge case: Invalid proof, not in G1
     blob = VALID_BLOBS[2]
     proof = P1_NOT_IN_G1
-    commitment = bls.G1_to_bytes48(bls.G1())
+    commitment = G1
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_proof_not_in_G1', {
         'input': {
@@ -359,7 +359,7 @@ def case05_verify_blob_kzg_proof():
     # Edge case: Invalid proof, not on curve
     blob = VALID_BLOBS[1]
     proof = P1_NOT_ON_CURVE
-    commitment = bls.G1_to_bytes48(bls.G1())
+    commitment = G1
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_proof_not_on_curve', {
         'input': {
@@ -372,7 +372,7 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid commitment, not in G1
     blob = VALID_BLOBS[0]
-    proof = bls.G1_to_bytes48(bls.G1())
+    proof = G1
     commitment = P1_NOT_IN_G1
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_commitment_not_in_G1', {
@@ -386,7 +386,7 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid commitment, not on curve
     blob = VALID_BLOBS[2]
-    proof = bls.G1_to_bytes48(bls.G1())
+    proof = G1
     commitment = P1_NOT_ON_CURVE
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_commitment_not_on_curve', {
@@ -400,8 +400,8 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid blob
     for blob in INVALID_BLOBS:
-        proof = bls.G1_to_bytes48(bls.G1())
-        commitment = bls.G1_to_bytes48(bls.G1())
+        proof = G1
+        commitment = G1
         expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
         identifier = f'{encode_hex(hash(blob))}'
         yield f'verify_blob_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -435,10 +435,7 @@ def case06_verify_blob_kzg_proof_batch():
         }
 
     # Incorrect proof
-    proof_incorrect = bls.G1_to_bytes48(
-        bls.add(bls.bytes48_to_G1(proofs[0]), bls.G1())
-    )
-    proofs_incorrect = [proof_incorrect] + proofs[1:]
+    proofs_incorrect = [bls_add_one(proofs[0])] + proofs[1:]
     assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
     yield 'verify_blob_kzg_proof_batch_case_invalid_proof', {
         'input': {
