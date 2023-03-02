@@ -49,6 +49,7 @@ def evaluate_blob_at(blob, z):
         spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z))
     )
 
+
 G1 = bls.G1_to_bytes48(bls.G1())
 P1_NOT_IN_G1 = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
                              "0123456789abcdef0123456789abcdef0123456789abcdef")
