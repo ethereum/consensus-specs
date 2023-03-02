@@ -131,7 +131,7 @@ def case02_compute_kzg_proof():
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
         yield f'compute_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
-                'blob': encode_hex(BLOB_INVALID),
+                'blob': encode_hex(blob),
                 'z': encode_hex(z),
             },
             'output': None
