@@ -221,10 +221,6 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
         state.deposit_receipts_start_index = deposit_receipt.index
 
-    # Signify the end of transition to in-protocol deposit logic
-    if state.eth1_deposit_index >= state.deposit_receipts_start_index:
-        state.eth1_deposit_index = deposit_receipt.index + 1
-
     apply_deposit(
         state=state, 
         pubkey=deposit_receipt.pubkey,
