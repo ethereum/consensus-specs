@@ -27,7 +27,11 @@ def expect_exception(func, *args):
 
 
 def field_element_bytes(x):
-    return int.to_bytes(x % spec.BLS_MODULUS, 32, "little")
+    return int.to_bytes(x % spec.BLS_MODULUS, 32, spec.ENDIANNESS)
+
+
+def field_element_bytes_unchecked(x):
+    return int.to_bytes(x, 32, spec.ENDIANNESS)
 
 
 def encode_hex_list(a):
@@ -67,13 +71,29 @@ BLOB_INVALID = spec.Blob(b'\xFF' * 4096 * 32)
 BLOB_INVALID_CLOSE = spec.Blob(b''.join(
     [BLS_MODULUS_BYTES if n == 2111 else field_element_bytes(0) for n in range(4096)]
 ))
+BLOB_INVALID_LENGTH_PLUS_ONE = BLOB_RANDOM_VALID1 + b"\x00"
+BLOB_INVALID_LENGTH_MINUS_ONE = BLOB_RANDOM_VALID1[:-1]
 
 VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_RANDOM_VALID1, BLOB_RANDOM_VALID2,
                BLOB_RANDOM_VALID3, BLOB_ALL_MODULUS_MINUS_ONE, BLOB_ALMOST_ZERO]
-INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE]
-VALID_ZS = [field_element_bytes(x) for x in [0, 1, 2, pow(5, 1235, spec.BLS_MODULUS),
-            spec.BLS_MODULUS - 1, spec.ROOTS_OF_UNITY[1]]]
-INVALID_ZS = [x.to_bytes(32, spec.ENDIANNESS) for x in [spec.BLS_MODULUS, 2**256 - 1, 2**256 - 2**128]]
+INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE, BLOB_INVALID_LENGTH_PLUS_ONE, BLOB_INVALID_LENGTH_MINUS_ONE]
+
+Z_VALID1 = field_element_bytes(0)
+Z_VALID2 = field_element_bytes(1)
+Z_VALID3 = field_element_bytes(2)
+Z_VALID4 = field_element_bytes(pow(5, 1235, spec.BLS_MODULUS))
+Z_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
+Z_VALID6 = field_element_bytes(spec.ROOTS_OF_UNITY[1])
+VALID_ZS = [Z_VALID1, Z_VALID2, Z_VALID3, Z_VALID4, Z_VALID5,  Z_VALID6]
+
+Z_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
+Z_INVALID_MODULUS_PLUS_ONE = field_element_bytes_unchecked(spec.BLS_MODULUS + 1)
+Z_INVALID_UINT256_MIN = field_element_bytes_unchecked(2**256 - 1)
+Z_INVALID_UINT256_MAX = field_element_bytes_unchecked(2**256 - 2**128)
+Z_INVALID_LENGTH_PLUS_ONE = VALID_ZS[0] + b"\x00"
+Z_INVALID_LENGTH_MINUS_ONE = VALID_ZS[0][:-1]
+INVALID_ZS = [Z_INVALID_EQUAL_TO_MODULUS, Z_INVALID_MODULUS_PLUS_ONE, Z_INVALID_UINT256_MIN,
+              Z_INVALID_UINT256_MAX, Z_INVALID_LENGTH_PLUS_ONE, Z_INVALID_LENGTH_MINUS_ONE]
 
 
 def hash(x):

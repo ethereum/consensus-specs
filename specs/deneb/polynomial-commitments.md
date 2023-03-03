@@ -72,7 +72,10 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | Name | Value | Notes |
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
+| `BYTES_PER_COMMITMENT` | `uint64(48)` | |
+| `BYTES_PER_PROOF` | `uint64(48)` | |
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
+| `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 
 
@@ -169,6 +172,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     Convert untrusted bytes to a trusted and validated BLS scalar field element.
     This function does not accept inputs greater than the BLS modulus.
     """
+    assert len(b) == BYTES_PER_FIELD_ELEMENT
     field_element = int.from_bytes(b, ENDIANNESS)
     assert field_element < BLS_MODULUS
     return BLSFieldElement(field_element)
@@ -195,6 +199,7 @@ def bytes_to_kzg_commitment(b: Bytes48) -> KZGCommitment:
     """
     Convert untrusted bytes into a trusted and validated KZGCommitment.
     """
+    assert len(b) == BYTES_PER_COMMITMENT
     validate_kzg_g1(b)
     return KZGCommitment(b)
 ```
@@ -206,6 +211,7 @@ def bytes_to_kzg_proof(b: Bytes48) -> KZGProof:
     """
     Convert untrusted bytes into a trusted and validated KZGProof.
     """
+    assert len(b) == BYTES_PER_PROOF
     validate_kzg_g1(b)
     return KZGProof(b)
 ```
@@ -338,6 +344,7 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
     """
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
     return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
 ```
 
@@ -345,8 +352,8 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
 
 ```python
 def verify_kzg_proof(commitment_bytes: Bytes48,
-                     z: Bytes32,
-                     y: Bytes32,
+                     z_bytes: Bytes32,
+                     y_bytes: Bytes32,
                      proof_bytes: Bytes48) -> bool:
     """
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
@@ -354,8 +361,8 @@ def verify_kzg_proof(commitment_bytes: Bytes48,
     Public method.
     """
     return verify_kzg_proof_impl(bytes_to_kzg_commitment(commitment_bytes),
-                                 bytes_to_bls_field(z),
-                                 bytes_to_bls_field(y),
+                                 bytes_to_bls_field(z_bytes),
+                                 bytes_to_bls_field(y_bytes),
                                  bytes_to_kzg_proof(proof_bytes))
 ```
 
@@ -435,6 +442,7 @@ def compute_kzg_proof(blob: Blob, z: Bytes32) -> KZGProof:
     Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z).
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
     polynomial = blob_to_polynomial(blob)
     return compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z))
 ```
@@ -505,6 +513,7 @@ def compute_blob_kzg_proof(blob: Blob) -> KZGProof:
     Given a blob, return the KZG proof that is used to verify it against the commitment.
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
     commitment = blob_to_kzg_commitment(blob)
     polynomial = blob_to_polynomial(blob)
     evaluation_challenge = compute_challenge(blob, commitment)
@@ -522,6 +531,8 @@ def verify_blob_kzg_proof(blob: Blob,
 
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
+
     commitment = bytes_to_kzg_commitment(commitment_bytes)
 
     polynomial = blob_to_polynomial(blob)
@@ -551,6 +562,7 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
     
     commitments, evaluation_challenges, ys, proofs = [], [], [], []
     for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
+        assert len(blob) == BYTES_PER_BLOB
         commitment = bytes_to_kzg_commitment(commitment_bytes)
         commitments.append(commitment)
         polynomial = blob_to_polynomial(blob)
