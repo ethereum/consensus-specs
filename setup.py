@@ -1,6 +1,6 @@
-from setuptools import setup, find_packages, Command
-from setuptools.command.build_py import build_py
-from distutils import dir_util
+import setup, find_packages, Command
+command.build_py import build_py
+ distutils import dir_util
 from distutils.util import convert_path
 from pathlib import Path
 import os
@@ -15,15 +15,10 @@ import sys
 import copy
 from collections import OrderedDict
 import json
-
-
-# NOTE: have to programmatically include third-party dependencies in `setup.py`.
-def installPackage(package: str):
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
-try:
-    import ruamel.yaml
+installPackage(package: str):
+check_call([sys.executable, '-m', 'pip', 'install', package])
+"ruamel.yaml==0.17.21"
+import ruamel.yaml
 except ImportError:
     installPackage(RUAMEL_YAML_VERSION)
 
@@ -1088,19 +1083,14 @@ class BuildPyCommand(build_py):
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
         super(BuildPyCommand, self).run()
-
-
 class PyspecDevCommand(Command):
     """Build the markdown files in-place to their source location for testing."""
     description = "Build the markdown files in-place to their source location for testing."
     user_options = []
-
     def initialize_options(self):
         pass
-
     def finalize_options(self):
         pass
-
     def run_pyspec_cmd(self, spec_fork: str, **opts):
         cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
         cmd_obj.spec_fork = spec_fork
@@ -1108,13 +1098,11 @@ class PyspecDevCommand(Command):
         cmd_obj.out_dir = os.path.join(eth2spec_dir, spec_fork)
         for k, v in opts.items():
             setattr(cmd_obj, k, v)
-        self.run_command('pyspec')
-
+        self.run_command('pyspec'
     def run(self):
         print("running build_py command")
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
-
 commands = {
     'pyspec': PySpecCommand,
     'build_py': BuildPyCommand,
@@ -1134,7 +1122,6 @@ with open("README.md", "rt", encoding="utf8") as f:
 # See https://www.python.org/dev/peps/pep-0440/#public-version-identifiers
 with open(os.path.join('tests', 'core', 'pyspec', 'eth2spec', 'VERSION.txt')) as f:
     spec_version = f.read().strip()
-
 setup(
     name='eth2spec',
     version=spec_version,
