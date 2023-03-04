@@ -501,7 +501,7 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[
 #### `compute_blob_kzg_proof`
 
 ```python
-def compute_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes32) -> KZGProof:
+def compute_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes48) -> KZGProof:
     """
     Given a blob, return the KZG proof that is used to verify it against the commitment.
     This method does not verify that the commitment is correct with respect to `blob`.
