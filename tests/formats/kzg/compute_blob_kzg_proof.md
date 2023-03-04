@@ -9,7 +9,7 @@ The test data is declared in a `data.yaml` file:
 ```yaml
 input:
   blob: Blob -- the data blob
-  commitment: Bytes32 -- the commitment to the blob
+  commitment: Bytes48 -- the commitment to the blob
 output: KZGProof -- The blob KZG proof
 ```
 
