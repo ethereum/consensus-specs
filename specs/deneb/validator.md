@@ -96,7 +96,7 @@ def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[Blo
             block_parent_root=block.parent_root,
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
-            kzg_proof=compute_blob_kzg_proof(blob),
+            kzg_proof=compute_blob_kzg_proof(blob, block.body.blob_kzg_commitments[index]),
         )
         for index, blob in enumerate(blobs)
     ]

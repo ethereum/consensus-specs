@@ -9,10 +9,12 @@ The test data is declared in a `data.yaml` file:
 ```yaml
 input:
   blob: Blob -- the data blob
+  commitment: Bytes32 -- the commitment to the blob
 output: KZGProof -- The blob KZG proof
 ```
 
 - `blob` here is encoded as a string: hexadecimal encoding of `4096 * 32 = 131072` bytes, prefixed with `0x`.
+- `commitment` here is encoded as a string: hexadecimal encoding of `32` bytes, prefixed with `0x`.
 
 All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 

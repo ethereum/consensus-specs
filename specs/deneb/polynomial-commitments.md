@@ -429,14 +429,15 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
 #### `compute_kzg_proof`
 
 ```python
-def compute_kzg_proof(blob: Blob, z: Bytes32) -> KZGProof:
+def compute_kzg_proof(blob: Blob, z: Bytes32) -> Tuple[KZGProof, Bytes32]:
     """
     Compute KZG proof at point `z` for the polynomial represented by `blob`.
     Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z).
     Public method.
     """
     polynomial = blob_to_polynomial(blob)
-    return compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z))
+    proof, y = compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z))
+    return proof, y.to_bytes(BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
 ```
 
 #### `compute_quotient_eval_within_domain`
@@ -470,7 +471,7 @@ def compute_quotient_eval_within_domain(z: BLSFieldElement,
 #### `compute_kzg_proof_impl`
 
 ```python
-def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
+def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[KZGProof, BLSFieldElement]:
     """
     Helper function for `compute_kzg_proof()` and `compute_blob_kzg_proof()`.
     """
@@ -494,21 +495,23 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGPro
             # Compute: q(x_i) = (p(x_i) - p(z)) / (x_i - z).
             quotient_polynomial[i] = div(a, b)
 
-    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
+    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial)), y
 ```
 
 #### `compute_blob_kzg_proof`
 
 ```python
-def compute_blob_kzg_proof(blob: Blob) -> KZGProof:
+def compute_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes32) -> KZGProof:
     """
     Given a blob, return the KZG proof that is used to verify it against the commitment.
+    This method does not verify that the commitment is correct with respect to `blob`.
     Public method.
     """
-    commitment = blob_to_kzg_commitment(blob)
+    commitment = bytes_to_kzg_commitment(commitment_bytes)
     polynomial = blob_to_polynomial(blob)
     evaluation_challenge = compute_challenge(blob, commitment)
-    return compute_kzg_proof_impl(polynomial, evaluation_challenge)
+    proof, y = compute_kzg_proof_impl(polynomial, evaluation_challenge)
+    return proof
 ```
 
 #### `verify_blob_kzg_proof`
