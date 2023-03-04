@@ -303,8 +303,10 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
                                            z: BLSFieldElement) -> BLSFieldElement:
     """
-    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z`` that is not in the domain.
-    Uses the barycentric formula:
+    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z``.
+    - When ``z`` is in the domain, the evaluation can be found by indexing the polynomial at the
+    position that ``z`` is in the domain.
+    - When ``z`` is not in the domain, the barycentric formula is used:
        f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
     width = len(polynomial)
