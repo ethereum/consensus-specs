@@ -10,7 +10,7 @@ The test data is declared in a `data.yaml` file:
 input:
   blob: Blob -- the data blob representing a polynomial
   z: Bytes32 -- bytes encoding the BLS field element at which the polynomial should be evaluated
-output: Tuple[KZGProof, y] -- The KZG proof and the value y = f(z)
+output: Tuple[KZGProof, Bytes32] -- The KZG proof and the value y = f(z)
 ```
 
 - `blob` here is encoded as a string: hexadecimal encoding of `4096 * 32 = 131072` bytes, prefixed with `0x`.
