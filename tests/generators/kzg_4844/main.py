@@ -78,20 +78,20 @@ VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_RANDOM_VALID1, BLOB_RANDOM_VALID2,
                BLOB_RANDOM_VALID3, BLOB_ALL_MODULUS_MINUS_ONE, BLOB_ALMOST_ZERO]
 INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE, BLOB_INVALID_LENGTH_PLUS_ONE, BLOB_INVALID_LENGTH_MINUS_ONE]
 
-Z_VALID1 = field_element_bytes(0)
-Z_VALID2 = field_element_bytes(1)
-Z_VALID3 = field_element_bytes(2)
-Z_VALID4 = field_element_bytes(pow(5, 1235, spec.BLS_MODULUS))
-Z_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
-Z_VALID6 = field_element_bytes(spec.ROOTS_OF_UNITY[1])
-VALID_ZS = [Z_VALID1, Z_VALID2, Z_VALID3, Z_VALID4, Z_VALID5, Z_VALID6]
+FE_VALID1 = field_element_bytes(0)
+FE_VALID2 = field_element_bytes(1)
+FE_VALID3 = field_element_bytes(2)
+FE_VALID4 = field_element_bytes(pow(5, 1235, spec.BLS_MODULUS))
+FE_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
+FE_VALID6 = field_element_bytes(spec.ROOTS_OF_UNITY[1])
+VALID_FIELD_ELEMENTS = [FE_VALID1, FE_VALID2, FE_VALID3, FE_VALID4, FE_VALID5, FE_VALID6]
 
 FE_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
 FE_INVALID_MODULUS_PLUS_ONE = field_element_bytes_unchecked(spec.BLS_MODULUS + 1)
 FE_INVALID_UINT256_MAX = field_element_bytes_unchecked(2**256 - 1)
 FE_INVALID_UINT256_MID = field_element_bytes_unchecked(2**256 - 2**128)
-FE_INVALID_LENGTH_PLUS_ONE = VALID_ZS[0] + b"\x00"
-FE_INVALID_LENGTH_MINUS_ONE = VALID_ZS[0][:-1]
+FE_INVALID_LENGTH_PLUS_ONE = VALID_FIELD_ELEMENTS[0] + b"\x00"
+FE_INVALID_LENGTH_MINUS_ONE = VALID_FIELD_ELEMENTS[0][:-1]
 INVALID_FIELD_ELEMENTS = [FE_INVALID_EQUAL_TO_MODULUS, FE_INVALID_MODULUS_PLUS_ONE,
                           FE_INVALID_UINT256_MAX, FE_INVALID_UINT256_MID,
                           FE_INVALID_LENGTH_PLUS_ONE, FE_INVALID_LENGTH_MINUS_ONE]
@@ -135,7 +135,7 @@ def case01_blob_to_kzg_commitment():
 def case02_compute_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
-        for z in VALID_ZS:
+        for z in VALID_FIELD_ELEMENTS:
             proof = spec.compute_kzg_proof(blob, z)
             identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
             yield f'compute_kzg_proof_case_valid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -148,7 +148,7 @@ def case02_compute_kzg_proof():
 
     # Edge case: Invalid blobs
     for blob in INVALID_BLOBS:
-        z = VALID_ZS[0]
+        z = VALID_FIELD_ELEMENTS[0]
         expect_exception(spec.compute_kzg_proof, blob, z)
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
         yield f'compute_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -176,7 +176,7 @@ def case02_compute_kzg_proof():
 def case03_verify_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
-        for z in VALID_ZS:
+        for z in VALID_FIELD_ELEMENTS:
             proof = spec.compute_kzg_proof(blob, z)
             commitment = spec.blob_to_kzg_commitment(blob)
             y = evaluate_blob_at(blob, z)
@@ -194,7 +194,7 @@ def case03_verify_kzg_proof():
 
     # Incorrect proofs
     for blob in VALID_BLOBS:
-        for z in VALID_ZS:
+        for z in VALID_FIELD_ELEMENTS:
             proof = bls_add_one(spec.compute_kzg_proof(blob, z))
             commitment = spec.blob_to_kzg_commitment(blob)
             y = evaluate_blob_at(blob, z)
@@ -212,10 +212,10 @@ def case03_verify_kzg_proof():
 
     # Edge case: Invalid z
     for z in INVALID_FIELD_ELEMENTS:
-        blob, validz = VALID_BLOBS[4], VALID_ZS[1]
+        blob, validz = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
         proof = spec.compute_kzg_proof(blob, validz)
         commitment = spec.blob_to_kzg_commitment(blob)
-        y = VALID_ZS[3]
+        y = VALID_FIELD_ELEMENTS[3]
         expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
         yield f'verify_kzg_proof_case_invalid_z_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -230,7 +230,7 @@ def case03_verify_kzg_proof():
 
     # Edge case: Invalid y
     for y in INVALID_FIELD_ELEMENTS:
-        blob, z = VALID_BLOBS[4], VALID_ZS[1]
+        blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
         proof = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
         expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
@@ -246,10 +246,10 @@ def case03_verify_kzg_proof():
         }
 
     # Edge case: Invalid proof, not in G1
-    blob, z = VALID_BLOBS[2], VALID_ZS[0]
+    blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[0]
     proof = P1_NOT_IN_G1
     commitment = spec.blob_to_kzg_commitment(blob)
-    y = VALID_ZS[1]
+    y = VALID_FIELD_ELEMENTS[1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_proof_not_in_G1', {
         'input': {
@@ -262,10 +262,10 @@ def case03_verify_kzg_proof():
     }
 
     # Edge case: Invalid proof, not on curve
-    blob, z = VALID_BLOBS[3], VALID_ZS[1]
+    blob, z = VALID_BLOBS[3], VALID_FIELD_ELEMENTS[1]
     proof = P1_NOT_ON_CURVE
     commitment = spec.blob_to_kzg_commitment(blob)
-    y = VALID_ZS[1]
+    y = VALID_FIELD_ELEMENTS[1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_proof_not_on_curve', {
         'input': {
@@ -280,8 +280,8 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid proof, too few bytes
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob)
-    z = VALID_ZS[4]
-    y = VALID_ZS[3]
+    z = VALID_FIELD_ELEMENTS[4]
+    y = VALID_FIELD_ELEMENTS[3]
     proof = spec.compute_kzg_proof(blob, z)[:-1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_proof_too_few_bytes', {
@@ -297,8 +297,8 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid proof, too many bytes
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob)
-    z = VALID_ZS[4]
-    y = VALID_ZS[3]
+    z = VALID_FIELD_ELEMENTS[4]
+    y = VALID_FIELD_ELEMENTS[3]
     proof = spec.compute_kzg_proof(blob, z) + b"\x00"
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_proof_too_many_bytes', {
@@ -312,10 +312,10 @@ def case03_verify_kzg_proof():
     }
 
     # Edge case: Invalid commitment, not in G1
-    blob, z = VALID_BLOBS[4], VALID_ZS[3]
+    blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[3]
     proof = spec.compute_kzg_proof(blob, z)
     commitment = P1_NOT_IN_G1
-    y = VALID_ZS[2]
+    y = VALID_FIELD_ELEMENTS[2]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_not_in_G1', {
         'input': {
@@ -328,10 +328,10 @@ def case03_verify_kzg_proof():
     }
 
     # Edge case: Invalid commitment, not on curve
-    blob, z = VALID_BLOBS[1], VALID_ZS[4]
+    blob, z = VALID_BLOBS[1], VALID_FIELD_ELEMENTS[4]
     proof = spec.compute_kzg_proof(blob, z)
     commitment = P1_NOT_ON_CURVE
-    y = VALID_ZS[3]
+    y = VALID_FIELD_ELEMENTS[3]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_not_on_curve', {
         'input': {
@@ -346,8 +346,8 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid commitment, too few bytes
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob)[:-1]
-    z = VALID_ZS[4]
-    y = VALID_ZS[3]
+    z = VALID_FIELD_ELEMENTS[4]
+    y = VALID_FIELD_ELEMENTS[3]
     proof = spec.compute_kzg_proof(blob, z)
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_too_few_bytes', {
@@ -363,8 +363,8 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid commitment, too many bytes
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob) + b"\x00"
-    z = VALID_ZS[4]
-    y = VALID_ZS[3]
+    z = VALID_FIELD_ELEMENTS[4]
+    y = VALID_FIELD_ELEMENTS[3]
     proof = spec.compute_kzg_proof(blob, z)
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_too_many_bytes', {
