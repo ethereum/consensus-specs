@@ -510,7 +510,7 @@ def compute_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes48) -> KZGProof:
     commitment = bytes_to_kzg_commitment(commitment_bytes)
     polynomial = blob_to_polynomial(blob)
     evaluation_challenge = compute_challenge(blob, commitment)
-    proof, y = compute_kzg_proof_impl(polynomial, evaluation_challenge)
+    proof, _ = compute_kzg_proof_impl(polynomial, evaluation_challenge)
     return proof
 ```
 
