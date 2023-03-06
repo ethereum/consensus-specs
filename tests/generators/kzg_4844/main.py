@@ -84,7 +84,7 @@ Z_VALID3 = field_element_bytes(2)
 Z_VALID4 = field_element_bytes(pow(5, 1235, spec.BLS_MODULUS))
 Z_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
 Z_VALID6 = field_element_bytes(spec.ROOTS_OF_UNITY[1])
-VALID_ZS = [Z_VALID1, Z_VALID2, Z_VALID3, Z_VALID4, Z_VALID5,  Z_VALID6]
+VALID_ZS = [Z_VALID1, Z_VALID2, Z_VALID3, Z_VALID4, Z_VALID5, Z_VALID6]
 
 Z_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
 Z_INVALID_MODULUS_PLUS_ONE = field_element_bytes_unchecked(spec.BLS_MODULUS + 1)
