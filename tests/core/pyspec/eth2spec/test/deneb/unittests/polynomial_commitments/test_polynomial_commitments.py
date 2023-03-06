@@ -9,6 +9,24 @@ from eth2spec.test.helpers.sharding import (
     get_poly_in_both_forms,
     eval_poly_in_coeff_form,
 )
+from eth2spec.utils import bls
+
+
+BLS_MODULUS = bls.curve_order
+
+
+def bls_add_one(x):
+    """
+    Adds "one" (actually bls.G1()) to a compressed group element.
+    Useful to compute definitely incorrect proofs.
+    """
+    return bls.G1_to_bytes48(
+        bls.add(bls.bytes48_to_G1(x), bls.G1())
+    )
+
+
+def field_element_bytes(x):
+    return int.to_bytes(x % BLS_MODULUS, 32, "little")
 
 
 @with_deneb_and_later
@@ -18,10 +36,51 @@ def test_verify_kzg_proof(spec, state):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
+    proof = spec.compute_kzg_proof(blob, field_element_bytes(x))
+
+    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
+    assert spec.verify_kzg_proof(commitment, field_element_bytes(x), field_element_bytes(y), proof)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_verify_kzg_proof_incorrect_proof(spec, state):
+    x = 3465
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    polynomial = spec.blob_to_polynomial(blob)
+    proof = spec.compute_kzg_proof(blob, field_element_bytes(x))
+    proof = bls_add_one(proof)
+
+    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
+    assert not spec.verify_kzg_proof(commitment, field_element_bytes(x), field_element_bytes(y), proof)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_verify_kzg_proof_impl(spec, state):
+    x = spec.BLS_MODULUS - 1
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    polynomial = spec.blob_to_polynomial(blob)
     proof = spec.compute_kzg_proof_impl(polynomial, x)
 
     y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert spec.verify_kzg_proof_impl(commitment, x, y, proof)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_verify_kzg_proof_impl_incorrect_proof(spec, state):
+    x = 324561
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    polynomial = spec.blob_to_polynomial(blob)
+    proof = spec.compute_kzg_proof_impl(polynomial, x)
+    proof = bls_add_one(proof)
+
+    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
+    assert not spec.verify_kzg_proof_impl(commitment, x, y, proof)
 
 
 @with_deneb_and_later
@@ -107,3 +166,42 @@ def test_compute_kzg_proof_within_domain(spec, state):
 
         y = spec.evaluate_polynomial_in_evaluation_form(polynomial, z)
         assert spec.verify_kzg_proof_impl(commitment, z, y, proof)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_verify_blob_kzg_proof(spec, state):
+    """
+    Create and verify KZG proof that p(z) == y
+    where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
+    """
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.compute_blob_kzg_proof(blob)
+
+    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_verify_blob_kzg_proof_incorrect_proof(spec, state):
+    """
+    Create and verify KZG proof that p(z) == y
+    where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
+    """
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.compute_blob_kzg_proof(blob)
+    proof = bls_add_one(proof)
+
+    assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_validate_kzg_g1(spec, state):
+    """
+    Verify that `validate_kzg_g1` allows the neutral element in G1
+    """
+
+    spec.validate_kzg_g1(bls.G1_to_bytes48(bls.Z1()))
