@@ -86,14 +86,15 @@ Z_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
 Z_VALID6 = field_element_bytes(spec.ROOTS_OF_UNITY[1])
 VALID_ZS = [Z_VALID1, Z_VALID2, Z_VALID3, Z_VALID4, Z_VALID5, Z_VALID6]
 
-Z_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
-Z_INVALID_MODULUS_PLUS_ONE = field_element_bytes_unchecked(spec.BLS_MODULUS + 1)
-Z_INVALID_UINT256_MAX = field_element_bytes_unchecked(2**256 - 1)
-Z_INVALID_UINT256_MID = field_element_bytes_unchecked(2**256 - 2**128)
-Z_INVALID_LENGTH_PLUS_ONE = VALID_ZS[0] + b"\x00"
-Z_INVALID_LENGTH_MINUS_ONE = VALID_ZS[0][:-1]
-INVALID_ZS = [Z_INVALID_EQUAL_TO_MODULUS, Z_INVALID_MODULUS_PLUS_ONE, Z_INVALID_UINT256_MAX,
-              Z_INVALID_UINT256_MID, Z_INVALID_LENGTH_PLUS_ONE, Z_INVALID_LENGTH_MINUS_ONE]
+FE_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
+FE_INVALID_MODULUS_PLUS_ONE = field_element_bytes_unchecked(spec.BLS_MODULUS + 1)
+FE_INVALID_UINT256_MAX = field_element_bytes_unchecked(2**256 - 1)
+FE_INVALID_UINT256_MID = field_element_bytes_unchecked(2**256 - 2**128)
+FE_INVALID_LENGTH_PLUS_ONE = VALID_ZS[0] + b"\x00"
+FE_INVALID_LENGTH_MINUS_ONE = VALID_ZS[0][:-1]
+INVALID_FIELD_ELEMENTS = [FE_INVALID_EQUAL_TO_MODULUS, FE_INVALID_MODULUS_PLUS_ONE,
+                          FE_INVALID_UINT256_MAX, FE_INVALID_UINT256_MID,
+                          FE_INVALID_LENGTH_PLUS_ONE, FE_INVALID_LENGTH_MINUS_ONE]
 
 
 def hash(x):
@@ -159,7 +160,7 @@ def case02_compute_kzg_proof():
         }
 
     # Edge case: Invalid z
-    for z in INVALID_ZS:
+    for z in INVALID_FIELD_ELEMENTS:
         blob = VALID_BLOBS[4]
         expect_exception(spec.compute_kzg_proof, blob, z)
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
@@ -210,7 +211,7 @@ def case03_verify_kzg_proof():
             }
 
     # Edge case: Invalid z
-    for z in INVALID_ZS:
+    for z in INVALID_FIELD_ELEMENTS:
         blob, validz = VALID_BLOBS[4], VALID_ZS[1]
         proof = spec.compute_kzg_proof(blob, validz)
         commitment = spec.blob_to_kzg_commitment(blob)
@@ -228,7 +229,7 @@ def case03_verify_kzg_proof():
         }
 
     # Edge case: Invalid y
-    for y in INVALID_ZS:
+    for y in INVALID_FIELD_ELEMENTS:
         blob, z = VALID_BLOBS[4], VALID_ZS[1]
         proof = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
