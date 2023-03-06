@@ -72,10 +72,10 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | Name | Value | Notes |
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
-| `BYTES_PER_COMMITMENT` | `uint64(48)` | |
-| `BYTES_PER_PROOF` | `uint64(48)` | |
+| `BYTES_PER_COMMITMENT` | `uint64(48)` | The number of bytes in a KZG commitment |
+| `BYTES_PER_PROOF` | `uint64(48)` | The number of bytes in a KZG proof |
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
-| `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | |
+| `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 
 
