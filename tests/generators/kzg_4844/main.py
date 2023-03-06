@@ -581,6 +581,18 @@ def case06_verify_blob_kzg_proof_batch():
             'output': True
         }
 
+    # Incorrect proof
+    proofs_incorrect = [bls_add_one(proofs[0])] + proofs[1:]
+    assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
+    yield 'verify_blob_kzg_proof_batch_case_invalid_proof', {
+        'input': {
+            'blobs': encode_hex_list(VALID_BLOBS),
+            'commitments': encode_hex_list(commitments),
+            'proofs': encode_hex_list(proofs_incorrect),
+        },
+        'output': False
+    }
+
     # Edge case: Invalid blobs
     for blob in INVALID_BLOBS:
         blobs_invalid = VALID_BLOBS[:4] + [blob] + VALID_BLOBS[5:]
@@ -594,18 +606,6 @@ def case06_verify_blob_kzg_proof_batch():
             },
             'output': None
         }
-
-    # Incorrect proof
-    proofs_incorrect = [bls_add_one(proofs[0])] + proofs[1:]
-    assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
-    yield 'verify_blob_kzg_proof_batch_case_invalid_proof', {
-        'input': {
-            'blobs': encode_hex_list(VALID_BLOBS),
-            'commitments': encode_hex_list(commitments),
-            'proofs': encode_hex_list(proofs_incorrect),
-        },
-        'output': False
-    }
 
     # Edge case: Invalid proof, not in G1
     proofs_invalid_notG1 = [P1_NOT_IN_G1] + proofs[1:]
