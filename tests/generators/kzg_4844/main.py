@@ -279,8 +279,8 @@ def case03_verify_kzg_proof():
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob)
     z = VALID_FIELD_ELEMENTS[4]
-    y = VALID_FIELD_ELEMENTS[3]
-    proof = spec.compute_kzg_proof(blob, z)[:-1]
+    proof, y = spec.compute_kzg_proof(blob, z)
+    proof = proof[:-1]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_proof_too_few_bytes', {
         'input': {
@@ -296,8 +296,8 @@ def case03_verify_kzg_proof():
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob)
     z = VALID_FIELD_ELEMENTS[4]
-    y = VALID_FIELD_ELEMENTS[3]
-    proof = spec.compute_kzg_proof(blob, z) + b"\x00"
+    proof, y = spec.compute_kzg_proof(blob, z)
+    proof = proof + b"\x00"
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_proof_too_many_bytes', {
         'input': {
@@ -343,8 +343,7 @@ def case03_verify_kzg_proof():
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob)[:-1]
     z = VALID_FIELD_ELEMENTS[4]
-    y = VALID_FIELD_ELEMENTS[3]
-    proof = spec.compute_kzg_proof(blob, z)
+    proof, y = spec.compute_kzg_proof(blob, z)
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_too_few_bytes', {
         'input': {
@@ -360,8 +359,7 @@ def case03_verify_kzg_proof():
     blob = VALID_BLOBS[1]
     commitment = spec.blob_to_kzg_commitment(blob) + b"\x00"
     z = VALID_FIELD_ELEMENTS[4]
-    y = VALID_FIELD_ELEMENTS[3]
-    proof = spec.compute_kzg_proof(blob, z)
+    proof, y = spec.compute_kzg_proof(blob, z)
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_too_many_bytes', {
         'input': {
@@ -489,8 +487,8 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid proof, too few bytes
     blob = VALID_BLOBS[1]
-    proof = spec.compute_blob_kzg_proof(blob)[:-1]
     commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.compute_blob_kzg_proof(blob, commitment)[:-1]
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_proof_too_few_bytes', {
         'input': {
@@ -503,8 +501,8 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid proof, too many bytes
     blob = VALID_BLOBS[1]
-    proof = spec.compute_blob_kzg_proof(blob) + b"\x00"
     commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.compute_blob_kzg_proof(blob, commitment) + b"\x00"
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_proof_too_many_bytes', {
         'input': {
@@ -545,8 +543,9 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid commitment, too few bytes
     blob = VALID_BLOBS[1]
-    proof = spec.compute_blob_kzg_proof(blob)
-    commitment = spec.blob_to_kzg_commitment(blob)[:-1]
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.compute_blob_kzg_proof(blob, commitment)
+    commitment = commitment[:-1]
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_commitment_too_few_bytes', {
         'input': {
@@ -559,8 +558,9 @@ def case05_verify_blob_kzg_proof():
 
     # Edge case: Invalid commitment, too many bytes
     blob = VALID_BLOBS[1]
-    proof = spec.compute_blob_kzg_proof(blob)
-    commitment = spec.blob_to_kzg_commitment(blob) + b"\x00"
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.compute_blob_kzg_proof(blob, commitment)
+    commitment = commitment + b"\x00"
     expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
     yield 'verify_blob_kzg_proof_case_commitment_too_many_bytes', {
         'input': {
