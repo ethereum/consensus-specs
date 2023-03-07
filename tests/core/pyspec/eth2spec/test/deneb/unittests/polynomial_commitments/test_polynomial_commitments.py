@@ -12,7 +12,7 @@ from eth2spec.test.helpers.sharding import (
 from eth2spec.utils import bls
 
 
-BLS_MODULUS = bls.curve_order
+BLS_MODULUS = bls.BLS_MODULUS
 
 
 def bls_add_one(x):

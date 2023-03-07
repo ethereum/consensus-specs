@@ -12,6 +12,7 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     FQ12 as py_ecc_GT,
 )
 from py_ecc.bls.g2_primitives import (  # noqa: F401
+    curve_order as BLS_MODULUS,
     G1_to_pubkey as py_ecc_G1_to_bytes48,
     pubkey_to_G1 as py_ecc_bytes48_to_G1,
     G2_to_signature as py_ecc_G2_to_bytes96,
