@@ -1,7 +1,8 @@
 import random
 
 from eth2spec.test.context import (
-    spec_state_test,
+    spec_test,
+    single_phase,
     with_deneb_and_later,
     expect_assertion_error
 )
@@ -35,8 +36,9 @@ def field_element_bytes(x):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_verify_kzg_proof(spec, state):
+@spec_test
+@single_phase
+def test_verify_kzg_proof(spec):
     """
     Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
     """
@@ -51,8 +53,9 @@ def test_verify_kzg_proof(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_verify_kzg_proof_incorrect_proof(spec, state):
+@spec_test
+@single_phase
+def test_verify_kzg_proof_incorrect_proof(spec):
     """
     Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
     """
@@ -68,8 +71,9 @@ def test_verify_kzg_proof_incorrect_proof(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_verify_kzg_proof_impl(spec, state):
+@spec_test
+@single_phase
+def test_verify_kzg_proof_impl(spec):
     """
     Test the implementation functions (taking field element arguments) for computing and verifying KZG proofs.
     """
@@ -84,8 +88,9 @@ def test_verify_kzg_proof_impl(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_verify_kzg_proof_impl_incorrect_proof(spec, state):
+@spec_test
+@single_phase
+def test_verify_kzg_proof_impl_incorrect_proof(spec):
     """
     Test the implementation function `verify_kzg_proof` fails on an incorrect proof.
     """
@@ -101,8 +106,9 @@ def test_verify_kzg_proof_impl_incorrect_proof(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_barycentric_outside_domain(spec, state):
+@spec_test
+@single_phase
+def test_barycentric_outside_domain(spec):
     """
     Test barycentric formula correctness by using it to evaluate a polynomial at a bunch of points outside its domain
     (the roots of unity).
@@ -134,8 +140,9 @@ def test_barycentric_outside_domain(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_barycentric_within_domain(spec, state):
+@spec_test
+@single_phase
+def test_barycentric_within_domain(spec):
     """
     Test barycentric formula correctness by using it to evaluate a polynomial at all the points of its domain
     (the roots of unity).
@@ -166,8 +173,9 @@ def test_barycentric_within_domain(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_compute_kzg_proof_within_domain(spec, state):
+@spec_test
+@single_phase
+def test_compute_kzg_proof_within_domain(spec):
     """
     Create and verify KZG proof that p(z) == y
     where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
@@ -186,8 +194,9 @@ def test_compute_kzg_proof_within_domain(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_verify_blob_kzg_proof(spec, state):
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof(spec):
     """
     Test the functions to compute and verify a blob KZG proof
     """
@@ -199,8 +208,9 @@ def test_verify_blob_kzg_proof(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_verify_blob_kzg_proof_incorrect_proof(spec, state):
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_incorrect_proof(spec):
     """
     Check that `verify_blob_kzg_proof` fails on an incorrect proof
     """
@@ -213,8 +223,9 @@ def test_verify_blob_kzg_proof_incorrect_proof(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_validate_kzg_g1_generator(spec, state):
+@spec_test
+@single_phase
+def test_validate_kzg_g1_generator(spec):
     """
     Verify that `validate_kzg_g1` allows the generator G1
     """
@@ -223,8 +234,9 @@ def test_validate_kzg_g1_generator(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_validate_kzg_g1_neutral_element(spec, state):
+@spec_test
+@single_phase
+def test_validate_kzg_g1_neutral_element(spec):
     """
     Verify that `validate_kzg_g1` allows the neutral element in G1
     """
@@ -233,8 +245,9 @@ def test_validate_kzg_g1_neutral_element(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_validate_kzg_g1_not_in_g1(spec, state):
+@spec_test
+@single_phase
+def test_validate_kzg_g1_not_in_g1(spec):
     """
     Verify that `validate_kzg_g1` fails on point not in G1
     """
@@ -243,8 +256,9 @@ def test_validate_kzg_g1_not_in_g1(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_validate_kzg_g1_not_on_curve(spec, state):
+@spec_test
+@single_phase
+def test_validate_kzg_g1_not_on_curve(spec):
     """
     Verify that `validate_kzg_g1` fails on point not in G1
     """
@@ -253,8 +267,9 @@ def test_validate_kzg_g1_not_on_curve(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_bytes_to_bls_field_zero(spec, state):
+@spec_test
+@single_phase
+def test_bytes_to_bls_field_zero(spec):
     """
     Verify that `bytes_to_bls_field` handles zero
     """
@@ -263,8 +278,9 @@ def test_bytes_to_bls_field_zero(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_bytes_to_bls_field_modulus_minus_one(spec, state):
+@spec_test
+@single_phase
+def test_bytes_to_bls_field_modulus_minus_one(spec):
     """
     Verify that `bytes_to_bls_field` handles modulus minus one
     """
@@ -273,8 +289,9 @@ def test_bytes_to_bls_field_modulus_minus_one(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_bytes_to_bls_field_modulus(spec, state):
+@spec_test
+@single_phase
+def test_bytes_to_bls_field_modulus(spec):
     """
     Verify that `bytes_to_bls_field` fails on BLS modulus
     """
@@ -285,8 +302,9 @@ def test_bytes_to_bls_field_modulus(spec, state):
 
 
 @with_deneb_and_later
-@spec_state_test
-def test_bytes_to_bls_field_max(spec, state):
+@spec_test
+@single_phase
+def test_bytes_to_bls_field_max(spec):
     """
     Verify that `bytes_to_bls_field` fails on 2**256 - 1
     """
