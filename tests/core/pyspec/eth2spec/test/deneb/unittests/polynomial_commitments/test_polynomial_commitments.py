@@ -3,6 +3,7 @@ import random
 from eth2spec.test.context import (
     spec_state_test,
     with_deneb_and_later,
+    expect_assertion_error
 )
 from eth2spec.test.helpers.sharding import (
     get_sample_blob,
@@ -10,9 +11,13 @@ from eth2spec.test.helpers.sharding import (
     eval_poly_in_coeff_form,
 )
 from eth2spec.utils import bls
+from eth2spec.utils.bls import BLS_MODULUS
 
-
-BLS_MODULUS = bls.BLS_MODULUS
+G1 = bls.G1_to_bytes48(bls.G1())
+P1_NOT_IN_G1 = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
+                             "0123456789abcdef0123456789abcdef0123456789abcdef")
+P1_NOT_ON_CURVE = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
+                                "0123456789abcdef0123456789abcdef0123456789abcde0")
 
 
 def bls_add_one(x):
@@ -32,6 +37,9 @@ def field_element_bytes(x):
 @with_deneb_and_later
 @spec_state_test
 def test_verify_kzg_proof(spec, state):
+    """
+    Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
+    """
     x = 3
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -45,6 +53,9 @@ def test_verify_kzg_proof(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_verify_kzg_proof_incorrect_proof(spec, state):
+    """
+    Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
+    """
     x = 3465
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -59,6 +70,9 @@ def test_verify_kzg_proof_incorrect_proof(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_verify_kzg_proof_impl(spec, state):
+    """
+    Test the implementation functions (taking field element arguments) for computing and verifying KZG proofs.
+    """
     x = spec.BLS_MODULUS - 1
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -72,6 +86,9 @@ def test_verify_kzg_proof_impl(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_verify_kzg_proof_impl_incorrect_proof(spec, state):
+    """
+    Test the implementation function `verify_kzg_proof` fails on an incorrect proof.
+    """
     x = 324561
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -172,8 +189,7 @@ def test_compute_kzg_proof_within_domain(spec, state):
 @spec_state_test
 def test_verify_blob_kzg_proof(spec, state):
     """
-    Create and verify KZG proof that p(z) == y
-    where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
+    Test the functions to compute and verify a blob KZG proof
     """
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -186,8 +202,7 @@ def test_verify_blob_kzg_proof(spec, state):
 @spec_state_test
 def test_verify_blob_kzg_proof_incorrect_proof(spec, state):
     """
-    Create and verify KZG proof that p(z) == y
-    where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
+    Check that `verify_blob_kzg_proof` fails on an incorrect proof
     """
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -199,9 +214,81 @@ def test_verify_blob_kzg_proof_incorrect_proof(spec, state):
 
 @with_deneb_and_later
 @spec_state_test
-def test_validate_kzg_g1(spec, state):
+def test_validate_kzg_g1_generator(spec, state):
+    """
+    Verify that `validate_kzg_g1` allows the generator G1
+    """
+
+    spec.validate_kzg_g1(bls.G1_to_bytes48(bls.G1()))
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_validate_kzg_g1_neutral_element(spec, state):
     """
     Verify that `validate_kzg_g1` allows the neutral element in G1
     """
 
     spec.validate_kzg_g1(bls.G1_to_bytes48(bls.Z1()))
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_validate_kzg_g1_not_in_g1(spec, state):
+    """
+    Verify that `validate_kzg_g1` fails on point not in G1
+    """
+
+    expect_assertion_error(lambda: spec.validate_kzg_g1(P1_NOT_IN_G1))
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_validate_kzg_g1_not_on_curve(spec, state):
+    """
+    Verify that `validate_kzg_g1` fails on point not in G1
+    """
+
+    expect_assertion_error(lambda: spec.validate_kzg_g1(P1_NOT_ON_CURVE))
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_bytes_to_bls_field_zero(spec, state):
+    """
+    Verify that `bytes_to_bls_field` handles zero
+    """
+
+    spec.bytes_to_bls_field(b"\0" * 32)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_bytes_to_bls_field_modulus_minus_one(spec, state):
+    """
+    Verify that `bytes_to_bls_field` handles modulus minus one
+    """
+
+    spec.bytes_to_bls_field((BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.ENDIANNESS))
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_bytes_to_bls_field_modulus(spec, state):
+    """
+    Verify that `bytes_to_bls_field` fails on BLS modulus
+    """
+
+    expect_assertion_error(lambda: spec.bytes_to_bls_field(
+        BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.ENDIANNESS)
+    ))
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_bytes_to_bls_field_max(spec, state):
+    """
+    Verify that `bytes_to_bls_field` fails on 2**256 - 1
+    """
+
+    expect_assertion_error(lambda: spec.bytes_to_bls_field(b"\xFF" * 32))
