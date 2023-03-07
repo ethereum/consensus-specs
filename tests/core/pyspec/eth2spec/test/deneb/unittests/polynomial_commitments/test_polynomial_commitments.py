@@ -73,7 +73,7 @@ def test_verify_kzg_proof_impl(spec, state):
     """
     Test the implementation functions (taking field element arguments) for computing and verifying KZG proofs.
     """
-    x = spec.BLS_MODULUS - 1
+    x = BLS_MODULUS - 1
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
@@ -119,9 +119,9 @@ def test_barycentric_outside_domain(spec, state):
 
     for _ in range(n_samples):
         # Get a random evaluation point and make sure it's not a root of unity
-        z = rng.randint(0, spec.BLS_MODULUS - 1)
+        z = rng.randint(0, BLS_MODULUS - 1)
         while z in roots_of_unity_brp:
-            z = rng.randint(0, spec.BLS_MODULUS - 1)
+            z = rng.randint(0, BLS_MODULUS - 1)
 
         # Get p(z) by evaluating poly in coefficient form
         p_z_coeff = eval_poly_in_coeff_form(spec, poly_coeff, z)
