@@ -136,14 +136,14 @@ def case02_compute_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
         for z in VALID_FIELD_ELEMENTS:
-            proof = spec.compute_kzg_proof(blob, z)
+            proof, y = spec.compute_kzg_proof(blob, z)
             identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
             yield f'compute_kzg_proof_case_valid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 'input': {
                     'blob': encode_hex(blob),
                     'z': encode_hex(z),
                 },
-                'output': encode_hex(proof)
+                'output': (encode_hex(proof), encode_hex(y))
             }
 
     # Edge case: Invalid blobs
@@ -177,9 +177,8 @@ def case03_verify_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
         for z in VALID_FIELD_ELEMENTS:
-            proof = spec.compute_kzg_proof(blob, z)
+            proof, y = spec.compute_kzg_proof(blob, z)
             commitment = spec.blob_to_kzg_commitment(blob)
-            y = evaluate_blob_at(blob, z)
             assert spec.verify_kzg_proof(commitment, z, y, proof)
             identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
             yield f'verify_kzg_proof_case_correct_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -195,9 +194,9 @@ def case03_verify_kzg_proof():
     # Incorrect proofs
     for blob in VALID_BLOBS:
         for z in VALID_FIELD_ELEMENTS:
-            proof = bls_add_one(spec.compute_kzg_proof(blob, z))
+            proof_orig, y = spec.compute_kzg_proof(blob, z)
+            proof = bls_add_one(proof_orig)
             commitment = spec.blob_to_kzg_commitment(blob)
-            y = evaluate_blob_at(blob, z)
             assert not spec.verify_kzg_proof(commitment, z, y, proof)
             identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
             yield f'verify_kzg_proof_case_incorrect_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -213,9 +212,8 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid z
     for z in INVALID_FIELD_ELEMENTS:
         blob, validz = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
-        proof = spec.compute_kzg_proof(blob, validz)
+        proof, y = spec.compute_kzg_proof(blob, validz)
         commitment = spec.blob_to_kzg_commitment(blob)
-        y = VALID_FIELD_ELEMENTS[3]
         expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
         yield f'verify_kzg_proof_case_invalid_z_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -231,7 +229,7 @@ def case03_verify_kzg_proof():
     # Edge case: Invalid y
     for y in INVALID_FIELD_ELEMENTS:
         blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
-        proof = spec.compute_kzg_proof(blob, z)
+        proof, _ = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
         expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(y)}'
@@ -313,9 +311,8 @@ def case03_verify_kzg_proof():
 
     # Edge case: Invalid commitment, not in G1
     blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[3]
-    proof = spec.compute_kzg_proof(blob, z)
+    proof, y = spec.compute_kzg_proof(blob, z)
     commitment = P1_NOT_IN_G1
-    y = VALID_FIELD_ELEMENTS[2]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_not_in_G1', {
         'input': {
@@ -329,9 +326,8 @@ def case03_verify_kzg_proof():
 
     # Edge case: Invalid commitment, not on curve
     blob, z = VALID_BLOBS[1], VALID_FIELD_ELEMENTS[4]
-    proof = spec.compute_kzg_proof(blob, z)
+    proof, y = spec.compute_kzg_proof(blob, z)
     commitment = P1_NOT_ON_CURVE
-    y = VALID_FIELD_ELEMENTS[3]
     expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
     yield 'verify_kzg_proof_case_commitment_not_on_curve', {
         'input': {
@@ -381,32 +377,62 @@ def case03_verify_kzg_proof():
 def case04_compute_blob_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
-        proof = spec.compute_blob_kzg_proof(blob)
+        commitment = spec.blob_to_kzg_commitment(blob)
+        proof = spec.compute_blob_kzg_proof(blob, commitment)
         identifier = f'{encode_hex(hash(blob))}'
         yield f'compute_blob_kzg_proof_case_valid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'blob': encode_hex(blob),
+                'commitment': encode_hex(commitment),
             },
             'output': encode_hex(proof)
         }
 
     # Edge case: Invalid blob
     for blob in INVALID_BLOBS:
-        expect_exception(spec.compute_blob_kzg_proof, blob)
+        commitment = G1
+        expect_exception(spec.compute_blob_kzg_proof, blob, commitment)
         identifier = f'{encode_hex(hash(blob))}'
         yield f'compute_blob_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'blob': encode_hex(blob),
+                'commitment': encode_hex(commitment),
             },
             'output': None
         }
+
+    # Edge case: Invalid commitment, not in G1
+    commitment = P1_NOT_IN_G1
+    blob = VALID_BLOBS[1]
+    expect_exception(spec.compute_blob_kzg_proof, blob, commitment)
+    identifier = f'{encode_hex(hash(blob))}'
+    yield 'compute_blob_kzg_proof_case_invalid_commitment_not_in_G1', {
+        'input': {
+            'blob': encode_hex(blob),
+            'commitment': encode_hex(commitment),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid commitment, not on curve
+    commitment = P1_NOT_ON_CURVE
+    blob = VALID_BLOBS[1]
+    expect_exception(spec.compute_blob_kzg_proof, blob, commitment)
+    identifier = f'{encode_hex(hash(blob))}'
+    yield 'compute_blob_kzg_proof_case_invalid_commitment_not_on_curve', {
+        'input': {
+            'blob': encode_hex(blob),
+            'commitment': encode_hex(commitment),
+        },
+        'output': None
+    }
 
 
 def case05_verify_blob_kzg_proof():
     # Valid cases
     for blob in VALID_BLOBS:
-        proof = spec.compute_blob_kzg_proof(blob)
         commitment = spec.blob_to_kzg_commitment(blob)
+        proof = spec.compute_blob_kzg_proof(blob, commitment)
         assert spec.verify_blob_kzg_proof(blob, commitment, proof)
         identifier = f'{encode_hex(hash(blob))}'
         yield f'verify_blob_kzg_proof_case_correct_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -420,8 +446,8 @@ def case05_verify_blob_kzg_proof():
 
     # Incorrect proofs
     for blob in VALID_BLOBS:
-        proof = bls_add_one(spec.compute_blob_kzg_proof(blob))
         commitment = spec.blob_to_kzg_commitment(blob)
+        proof = bls_add_one(spec.compute_blob_kzg_proof(blob, commitment))
         assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
         identifier = f'{encode_hex(hash(blob))}'
         yield f'verify_blob_kzg_proof_case_incorrect_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
@@ -566,8 +592,8 @@ def case06_verify_blob_kzg_proof_batch():
     proofs = []
     commitments = []
     for blob in VALID_BLOBS:
-        proofs.append(spec.compute_blob_kzg_proof(blob))
         commitments.append(spec.blob_to_kzg_commitment(blob))
+        proofs.append(spec.compute_blob_kzg_proof(blob, commitments[-1]))
 
     for i in range(len(proofs)):
         assert spec.verify_blob_kzg_proof_batch(VALID_BLOBS[:i], commitments[:i], proofs[:i])

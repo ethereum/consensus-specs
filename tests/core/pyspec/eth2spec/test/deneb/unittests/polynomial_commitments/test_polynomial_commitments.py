@@ -18,9 +18,8 @@ def test_verify_kzg_proof(spec, state):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
-    proof = spec.compute_kzg_proof_impl(polynomial, x)
+    proof, y = spec.compute_kzg_proof_impl(polynomial, x)
 
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert spec.verify_kzg_proof_impl(commitment, x, y, proof)
 
 
@@ -103,7 +102,6 @@ def test_compute_kzg_proof_within_domain(spec, state):
     roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
 
     for i, z in enumerate(roots_of_unity_brp):
-        proof = spec.compute_kzg_proof_impl(polynomial, z)
+        proof, y = spec.compute_kzg_proof_impl(polynomial, z)
 
-        y = spec.evaluate_polynomial_in_evaluation_form(polynomial, z)
         assert spec.verify_kzg_proof_impl(commitment, z, y, proof)
