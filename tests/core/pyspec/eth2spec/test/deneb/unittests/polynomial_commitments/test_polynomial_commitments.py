@@ -42,14 +42,12 @@ def test_verify_kzg_proof(spec):
     """
     Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
     """
-    x = 3
+    x = field_element_bytes(3)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
-    polynomial = spec.blob_to_polynomial(blob)
-    proof = spec.compute_kzg_proof(blob, field_element_bytes(x))
+    proof, y = spec.compute_kzg_proof(blob, x)
 
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
-    assert spec.verify_kzg_proof(commitment, field_element_bytes(x), field_element_bytes(y), proof)
+    assert spec.verify_kzg_proof(commitment, x, y, proof)
 
 
 @with_deneb_and_later
@@ -59,15 +57,13 @@ def test_verify_kzg_proof_incorrect_proof(spec):
     """
     Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = 3465
+    x = field_element_bytes(3465)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
-    polynomial = spec.blob_to_polynomial(blob)
-    proof = spec.compute_kzg_proof(blob, field_element_bytes(x))
+    proof, y = spec.compute_kzg_proof(blob, x)
     proof = bls_add_one(proof)
 
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
-    assert not spec.verify_kzg_proof(commitment, field_element_bytes(x), field_element_bytes(y), proof)
+    assert not spec.verify_kzg_proof(commitment, x, y, proof)
 
 
 @with_deneb_and_later
@@ -81,9 +77,8 @@ def test_verify_kzg_proof_impl(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
-    proof = spec.compute_kzg_proof_impl(polynomial, x)
+    proof, y = spec.compute_kzg_proof_impl(polynomial, x)
 
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert spec.verify_kzg_proof_impl(commitment, x, y, proof)
 
 
@@ -98,10 +93,9 @@ def test_verify_kzg_proof_impl_incorrect_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
-    proof = spec.compute_kzg_proof_impl(polynomial, x)
+    proof, y = spec.compute_kzg_proof_impl(polynomial, x)
     proof = bls_add_one(proof)
 
-    y = spec.evaluate_polynomial_in_evaluation_form(polynomial, x)
     assert not spec.verify_kzg_proof_impl(commitment, x, y, proof)
 
 
@@ -187,9 +181,8 @@ def test_compute_kzg_proof_within_domain(spec):
     roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
 
     for i, z in enumerate(roots_of_unity_brp):
-        proof = spec.compute_kzg_proof_impl(polynomial, z)
+        proof, y = spec.compute_kzg_proof_impl(polynomial, z)
 
-        y = spec.evaluate_polynomial_in_evaluation_form(polynomial, z)
         assert spec.verify_kzg_proof_impl(commitment, z, y, proof)
 
 
@@ -202,7 +195,7 @@ def test_verify_blob_kzg_proof(spec):
     """
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.compute_blob_kzg_proof(blob)
+    proof = spec.compute_blob_kzg_proof(blob, commitment)
 
     assert spec.verify_blob_kzg_proof(blob, commitment, proof)
 
@@ -216,7 +209,7 @@ def test_verify_blob_kzg_proof_incorrect_proof(spec):
     """
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.compute_blob_kzg_proof(blob)
+    proof = spec.compute_blob_kzg_proof(blob, commitment)
     proof = bls_add_one(proof)
 
     assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
