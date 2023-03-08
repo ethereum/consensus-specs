@@ -387,7 +387,8 @@ def validate_light_client_update(store: LightClientStore,
         pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
         if bit
     ]
-    fork_version = compute_fork_version(compute_epoch_at_slot(update.signature_slot))
+    fork_version_slot = max(update.signature_slot, 1) - 1
+    fork_version = compute_fork_version(compute_epoch_at_slot(fork_version_slot))
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header.beacon, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
