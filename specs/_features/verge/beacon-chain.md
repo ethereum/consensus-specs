@@ -102,7 +102,7 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     # Extra payload fields
-    execution_witness: ExecutionWitness
+    execution_witness_root: Root # [New in Verge]
 ```
 
 ### New containers
@@ -138,8 +138,8 @@ StateDiff = List[StemStateDiff, MAX_STEMS]
 
 ```python
 class IpaProof(Container):
-    C_L = Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
-    C_R = Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
+    c_l: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
+    c_r: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
     final_evaluation = BanderwagonFieldElement
 ```
 
@@ -150,7 +150,7 @@ class VerkleProof(Container):
     other_stems: List[Bytes31, MAX_STEMS]
     depth_extension_present: List[uint8, MAX_STEMS]
     commitments_by_path: List[BanderwagonGroupElement, MAX_STEMS * MAX_COMMITMENTS_PER_STEM]
-    D: BanderwagonGroupElement
+    d: BanderwagonGroupElement
     ipa_proof: IpaProof
 ```
 
