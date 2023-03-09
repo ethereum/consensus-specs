@@ -146,10 +146,6 @@ finalized_checkpoint: {
     epoch: int,               -- Integer value from store.finalized_checkpoint.epoch
     root: string,             -- Encoded 32-byte value from store.finalized_checkpoint.root
 }
-best_justified_checkpoint: {
-    epoch: int,               -- Integer value from store.best_justified_checkpoint.epoch
-    root: string,             -- Encoded 32-byte value from store.best_justified_checkpoint.root
-}
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
 ```
 
@@ -160,7 +156,6 @@ For example:
     head: {slot: 32, root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'}
     justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
     finalized_checkpoint: {epoch: 2, root: '0x40d32d6283ec11c53317a46808bc88f55657d93b95a1af920403187accf48f4f'}
-    best_justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
     proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
 ```
 

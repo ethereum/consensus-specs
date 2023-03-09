@@ -7,6 +7,8 @@ if __name__ == "__main__":
         'get_head',
         'on_block',
         'ex_ante',
+        'reorg',
+        'withholding',
     ]}
     # No additional Altair specific finality tests, yet.
     altair_mods = phase_0_mods
