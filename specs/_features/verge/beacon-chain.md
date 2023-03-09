@@ -112,10 +112,8 @@ class ExecutionPayloadHeader(Container):
 ```python
 class SuffixStateDiff(Container):
     suffix: Byte
-
     # Null means not currently present
     current_value: Optional[Bytes32]
-
     # Null means value not updated
     new_value: Optional[Bytes32]
 ```

@@ -136,7 +136,7 @@ def upgrade_to_verge(pre: capella.BeaconState) -> BeaconState:
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         # FIXME most likely wrong
-        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),  # [New in Capella]
+        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),
     )
 
     return post
