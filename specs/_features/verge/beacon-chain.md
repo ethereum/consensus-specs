@@ -138,8 +138,8 @@ StateDiff = List[StemStateDiff, MAX_STEMS]
 
 ```python
 class IpaProof(Container):
-    c_l: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
-    c_r: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
+    cl: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
+    cr: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
     final_evaluation = BanderwagonFieldElement
 ```
 
