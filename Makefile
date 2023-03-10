@@ -23,15 +23,17 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/phase0/*.md) \
-                 $(wildcard $(SPEC_DIR)/altair/*.md) $(wildcard $(SPEC_DIR)/altair/**/*.md) \
-                 $(wildcard $(SPEC_DIR)/bellatrix/*.md) \
-                 $(wildcard $(SPEC_DIR)/capella/*.md) $(wildcard $(SPEC_DIR)/capella/**/*.md) \
-                 $(wildcard $(SPEC_DIR)/deneb/*.md) $(wildcard $(SPEC_DIR)/deneb/**/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/custody/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/das/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/sharding/*.md) \
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/*/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/_features/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
+
+ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb
+# The parameters for commands. Use `foreach` to avoid listing specs again.
+COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
+PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), ./eth2spec/$S)
+MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), -p eth2spec.$S)
 
 COV_HTML_OUT=.htmlcov
 COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
@@ -63,15 +65,14 @@ partial_clean:
 	rm -f .coverage
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
-	rm -rf $(ETH2SPEC_MODULE_DIR)/phase0
-	rm -rf $(ETH2SPEC_MODULE_DIR)/altair
-	rm -rf $(ETH2SPEC_MODULE_DIR)/bellatrix
-	rm -rf $(ETH2SPEC_MODULE_DIR)/capella
-	rm -rf $(ETH2SPEC_MODULE_DIR)/deneb
 	rm -rf $(COV_HTML_OUT_DIR)
 	rm -rf $(TEST_REPORT_DIR)
 	rm -rf eth2spec.egg-info dist build
-	rm -rf build
+	rm -rf build;
+	@for spec_name in $(ALL_EXECUTABLE_SPECS) ; do \
+		echo $$spec_name; \
+		rm -rf $(ETH2SPEC_MODULE_DIR)/$$spec_name; \
+	done
 
 clean: partial_clean
 	rm -rf venv
@@ -105,21 +106,21 @@ install_test:
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls --cov=eth2spec.phase0.$(TEST_PRESET_TYPE) --cov=eth2spec.altair.$(TEST_PRESET_TYPE) --cov=eth2spec.bellatrix.$(TEST_PRESET_TYPE) --cov=eth2spec.capella.$(TEST_PRESET_TYPE) --cov=eth2spec.deneb.$(TEST_PRESET_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n 4 --disable-bls $(COVERAGE_SCOPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 # Testing against `minimal` or `mainnet` config by default
 find_test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls --cov=eth2spec.phase0.$(TEST_PRESET_TYPE) --cov=eth2spec.altair.$(TEST_PRESET_TYPE) --cov=eth2spec.bellatrix.$(TEST_PRESET_TYPE) --cov=eth2spec.capella.$(TEST_PRESET_TYPE) --cov=eth2spec.deneb.$(TEST_PRESET_TYPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -k=$(K) --disable-bls $(COVERAGE_SCOPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 16 --bls-type=milagro --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n 16 --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 16 --bls-type=milagro  --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n 16 --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
@@ -137,13 +138,11 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 codespell:
 	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 
-# TODO: add future protocol upgrade patch packages to linting.
-# NOTE: we use `pylint` just for catching unused arguments in spec code
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --rcfile $(LINTER_CONFIG_FILE) ./eth2spec/phase0 ./eth2spec/altair ./eth2spec/bellatrix ./eth2spec/capella ./eth2spec/deneb \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) -p eth2spec.phase0 -p eth2spec.altair -p eth2spec.bellatrix -p eth2spec.capella -p eth2spec.deneb
+	&& pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
+	&& mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \

@@ -37,7 +37,7 @@ from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 @with_capella_and_later
 @spec_state_test
-def test_success_bls_change(spec, state):
+def test_bls_change(spec, state):
     index = 0
     signed_address_change = get_signed_address_change(spec, state, validator_index=index)
     pre_credentials = state.validators[index].withdrawal_credentials
@@ -60,7 +60,46 @@ def test_success_bls_change(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-def test_success_exit_and_bls_change(spec, state):
+def test_deposit_and_bls_change(spec, state):
+    initial_registry_len = len(state.validators)
+    initial_balances_len = len(state.balances)
+
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    signed_address_change = get_signed_address_change(
+        spec, state,
+        validator_index=validator_index,
+        withdrawal_pubkey=deposit.data.pubkey,  # Deposit helper defaults to use pubkey as withdrawal credential
+    )
+
+    deposit_credentials = deposit.data.withdrawal_credentials
+    assert deposit_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.deposits.append(deposit)
+    block.body.bls_to_execution_changes.append(signed_address_change)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert len(state.validators) == initial_registry_len + 1
+    assert len(state.balances) == initial_balances_len + 1
+    validator_credentials = state.validators[validator_index].withdrawal_credentials
+    assert deposit_credentials != validator_credentials
+    assert validator_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    assert validator_credentials[1:12] == b'\x00' * 11
+    assert validator_credentials[12:] == signed_address_change.message.to_execution_address
+
+
+@with_capella_and_later
+@spec_state_test
+def test_exit_and_bls_change(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
