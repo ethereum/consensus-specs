@@ -158,6 +158,17 @@ def Sign(SK, message):
         return bls.Sign(SK.to_bytes(32, 'big'), message)
 
 
+@only_with_bls(alt_return=True)
+def KeyValidate(pubkey):
+    try:
+        # Fallback to py_ecc as milagro_bls_binding has no KeyValidate binding
+        result = py_ecc_bls.KeyValidate(pubkey)
+    except Exception:
+        result = False
+    finally:
+        return result
+
+
 @only_with_bls(alt_return=STUB_COORDINATES)
 def signature_to_G2(signature):
     return _signature_to_G2(signature)
