@@ -72,7 +72,7 @@ def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
 
     # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
     assert len(blob_kzg_commitments) == len(blobs)
-    assert [blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments)]
+    assert all(blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments))
 ```
 
 3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
