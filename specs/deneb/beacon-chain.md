@@ -203,7 +203,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Deneb]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)
+    process_operations(state, block.body)  # [Modified in Deneb]
     process_sync_aggregate(state, block.body.sync_aggregate)
     process_blob_kzg_commitments(state, block.body)  # [New in Deneb]
 ```
@@ -244,6 +244,48 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
     )
 ```
+
+#### Modified `process_operations`
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Deneb]
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+```
+
+##### Modified `process_voluntary_exit`
+
+```python
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
+    # Verify exit has not been initiated
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Exits must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= voluntary_exit.epoch
+    # Verify the validator has been active long enough
+    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    # Verify signature
+    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, min(voluntary_exit.epoch, CAPELLA_FORK_EPOCH))  # [Modified in Deneb]
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    # Initiate exit
+    initiate_validator_exit(state, voluntary_exit.validator_index)
+```
+
 
 #### Blob KZG commitments
 
