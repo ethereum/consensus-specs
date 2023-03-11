@@ -53,14 +53,15 @@ def test_validate_blobs_and_kzg_commitments(spec, state):
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    # state_transition_and_sign_block(spec, state, block)
 
     blob_sidecars = spec.get_blob_sidecars(block, blobs)
     blobs = [sidecar.blob for sidecar in blob_sidecars]
+    proofs = [sidecar.kzg_proof for sidecar in blob_sidecars]
 
     spec.validate_blobs_and_kzg_commitments(block.body.execution_payload,
                                             blobs,
-                                            blob_kzg_commitments)
+                                            blob_kzg_commitments,
+                                            proofs)
 
 
 @with_deneb_and_later
@@ -79,11 +80,39 @@ def test_validate_blobs_and_kzg_commitments_missing_blob(spec, state):
 
     blob_sidecars = spec.get_blob_sidecars(block, blobs)
     blobs = [sidecar.blob for sidecar in blob_sidecars][:-1]
+    proofs = [sidecar.kzg_proof for sidecar in blob_sidecars]
 
     expect_assertion_error(lambda: 
         spec.validate_blobs_and_kzg_commitments(block.body.execution_payload,
                                                 blobs,
-                                                blob_kzg_commitments)
+                                                blob_kzg_commitments,
+                                                proofs)
+    )
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_validate_blobs_and_kzg_commitments_missing_proof(spec, state):
+    """
+    Test `validate_blobs_and_kzg_commitments`
+    """
+    blob_count = 4
+    block = build_empty_block_for_next_slot(spec, state)
+    opaque_tx, blobs, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=blob_count)
+    block.body.blob_kzg_commitments = blob_kzg_commitments
+    block.body.execution_payload.transactions = [opaque_tx]
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    # state_transition_and_sign_block(spec, state, block)
+
+    blob_sidecars = spec.get_blob_sidecars(block, blobs)
+    blobs = [sidecar.blob for sidecar in blob_sidecars]
+    proofs = [sidecar.kzg_proof for sidecar in blob_sidecars][:-1]
+
+    expect_assertion_error(lambda: 
+        spec.validate_blobs_and_kzg_commitments(block.body.execution_payload,
+                                                blobs,
+                                                blob_kzg_commitments,
+                                                proofs)
     )
 
 
@@ -103,11 +132,13 @@ def test_validate_blobs_and_kzg_commitments_incorrect_blob(spec, state):
 
     blob_sidecars = spec.get_blob_sidecars(block, blobs)
     blobs = [sidecar.blob for sidecar in blob_sidecars]
+    proofs = [sidecar.kzg_proof for sidecar in blob_sidecars]
 
     blobs[1] = spec.Blob(blobs[1][:13] + bytes([(blobs[1][13] + 1) % 256]) + blobs[1][14:])
 
     expect_assertion_error(lambda: 
         spec.validate_blobs_and_kzg_commitments(block.body.execution_payload,
                                                 blobs,
-                                                blob_kzg_commitments)
+                                                blob_kzg_commitments,
+                                                proofs)
     )

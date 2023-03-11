@@ -44,7 +44,7 @@ Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` 
 Implementers may also retrieve blobs individually per transaction.
 
 ```python
-def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment]]:
+def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment], Sequence[KZGProof]]:
     # pylint: disable=unused-argument
     ...
 ```
@@ -66,13 +66,14 @@ use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blo
 ```python
 def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
                                        blobs: Sequence[Blob],
-                                       blob_kzg_commitments: Sequence[KZGCommitment]) -> None:
+                                       blob_kzg_commitments: Sequence[KZGCommitment],
+                                       blob_kzg_proofs: Sequence[KZGProof]) -> None:
     # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
     assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
 
     # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
-    assert len(blob_kzg_commitments) == len(blobs)
-    assert all(blob_to_kzg_commitment(blob) == commitment for blob, commitment in zip(blobs, blob_kzg_commitments))
+    assert len(blob_kzg_commitments) == len(blobs) == len(blob_kzg_proofs)
+    assert verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, blob_kzg_proofs)
 ```
 
 3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
