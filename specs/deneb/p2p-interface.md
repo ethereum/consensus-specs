@@ -73,6 +73,17 @@ class BlobIdentifier(Container):
     index: BlobIndex
 ```
 
+### Helpers
+
+#### `verify_sidecar_signature`
+
+```python
+def verify_blob_sidecar_signature(state: BeaconState, signed_blob_sidecar: SignedBlobSidecar) -> bool:
+    proposer = state.validators[signed_blob_sidecar.message.proposer_index]
+    signing_root = compute_signing_root(signed_blob_sidecar.message, get_domain(state, DOMAIN_BLOB_SIDECAR))
+    return bls.Verify(proposer.pubkey, signing_root, signed_blob_sidecar.signature)
+```
+
 ## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.

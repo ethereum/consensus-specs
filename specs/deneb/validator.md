@@ -44,7 +44,8 @@ Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` 
 Implementers may also retrieve blobs individually per transaction.
 
 ```python
-def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment], Sequence[KZGProof]]:
+def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> \
+        Tuple[Sequence[BLSFieldElement], Sequence[KZGCommitment], Sequence[KZGProof]]:
     # pylint: disable=unused-argument
     ...
 ```
@@ -88,7 +89,9 @@ Blobs associated with a block are packaged into sidecar objects for distribution
 
 Each `sidecar` is obtained from:
 ```python
-def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[BlobSidecar]:
+def get_blob_sidecars(block: BeaconBlock,
+                      blobs: Sequence[Blob],
+                      blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
     return [
         BlobSidecar(
             block_root=hash_tree_root(block),
@@ -97,7 +100,7 @@ def get_blob_sidecars(block: BeaconBlock, blobs: Sequence[Blob]) -> Sequence[Blo
             block_parent_root=block.parent_root,
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
-            kzg_proof=compute_blob_kzg_proof(blob, block.body.blob_kzg_commitments[index]),
+            kzg_proof=blob_kzg_proofs[index],
         )
         for index, blob in enumerate(blobs)
     ]
