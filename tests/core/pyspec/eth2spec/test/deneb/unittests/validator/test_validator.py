@@ -16,28 +16,6 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.keys import (
     pubkey_to_privkey
 )
-from eth2spec.utils import bls
-from eth2spec.utils.bls import BLS_MODULUS
-
-G1 = bls.G1_to_bytes48(bls.G1())
-P1_NOT_IN_G1 = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-                             "0123456789abcdef0123456789abcdef0123456789abcdef")
-P1_NOT_ON_CURVE = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-                                "0123456789abcdef0123456789abcdef0123456789abcde0")
-
-
-def bls_add_one(x):
-    """
-    Adds "one" (actually bls.G1()) to a compressed group element.
-    Useful to compute definitely incorrect proofs.
-    """
-    return bls.G1_to_bytes48(
-        bls.add(bls.bytes48_to_G1(x), bls.G1())
-    )
-
-
-def field_element_bytes(x):
-    return int.to_bytes(x % BLS_MODULUS, 32, "little")
 
 
 @with_deneb_and_later
