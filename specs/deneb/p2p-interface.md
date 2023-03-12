@@ -15,6 +15,8 @@ The specification of these changes continues in the same format as the network s
   - [`BlobSidecar`](#blobsidecar)
   - [`SignedBlobSidecar`](#signedblobsidecar)
   - [`BlobIdentifier`](#blobidentifier)
+  - [Helpers](#helpers)
+    - [`verify_sidecar_signature`](#verify_sidecar_signature)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
