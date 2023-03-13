@@ -109,7 +109,7 @@ The `Store` is responsible for tracking information required for the fork choice
 
 - `justified_checkpoint`: the justified checkpoint being used as the starting point for the LMD GHOST fork choice algorithm.
 - `finalized_checkpoint`: the highest finalized checkpoint that was seen. In general, the fork choice will consider only those blocks that are not conflicting with this checkpoint.
-- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these track the highest justified & finalized checkpoints resp., without regard to whether on-chain ***realization***, i.e., FFG processing of new attestations, has occured. This is an important distinction from `justified_checkpoint` & `finalized_checkpoint`, because they will only track the checkpoints that are realized on-chain. Note that on-chain processing of FFG information only happens at epoch boundaries.
+- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these track the highest justified & finalized checkpoints resp., without regard to whether on-chain ***realization***, i.e., FFG processing of new attestations, has occurred. This is an important distinction from `justified_checkpoint` & `finalized_checkpoint`, because they will only track the checkpoints that are realized on-chain. Note that on-chain processing of FFG information only happens at epoch boundaries.
 - `unrealized_justifications`: stores a map of block root to the unrealized justified checkpoint observed in that block.
 
 ```python
@@ -231,10 +231,10 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
     """
     Compute the voting source checkpoint in the case that block with root ``block_root``
     is chosen as the head block
-    """    
+    """
     block = store.blocks[block_root]
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
-    block_epoch = compute_epoch_at_slot(block.slot)    
+    block_epoch = compute_epoch_at_slot(block.slot)
     if current_epoch > block_epoch:
         # The block is from a prior epoch, the voting source will be pulled-up.
         return store.unrealized_justifications[block_root]
@@ -242,7 +242,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
         # The block is not from a prior epoch, therefore the voting source is
         # not pulled up.
         head_state = store.block_states[block_root]
-        return head_state.current_justified_checkpoint    
+        return head_state.current_justified_checkpoint
 
 ```
 
