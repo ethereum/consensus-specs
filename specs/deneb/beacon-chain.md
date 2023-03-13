@@ -279,7 +279,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # Verify the validator has been active long enough
     assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     # Verify signature
-    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, min(voluntary_exit.epoch, CAPELLA_FORK_EPOCH))  # [Modified in Deneb]
+    domain = compute_domain(DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root)  # [Modified in Deneb]
     signing_root = compute_signing_root(voluntary_exit, domain)
     assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
