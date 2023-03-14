@@ -189,11 +189,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     block = store.blocks[root]
     if block.slot > slot:
         return get_ancestor(store, block.parent_root, slot)
-    elif block.slot == slot:
-        return root
-    else:
-        # root is older than queried slot, thus a skip slot. Return most recent root prior to slot
-        return root
+    return root
 ```
 
 #### `get_weight`
@@ -274,9 +270,8 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
         or voting_source.epoch == store.justified_checkpoint.epoch
     )
 
-    # If the block should be pulled-up due to previous epoch being justified, also check
-    # that the unrealized justification is higher than the store's justified
-    # checkpoint, and the voting source is not more than two epochs ago.
+    # If the previous epoch is justified, the block should be pulled-up. In this case, check that unrealized
+    # justification is higher than the store and that the voting source is not more than two epochs ago
     if not correct_justified and is_previous_epoch_justified(store):
         correct_justified = (
             store.unrealized_justifications[block_root].epoch >= store.justified_checkpoint.epoch and
@@ -404,7 +399,7 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
         store.proposer_boost_root = Root()
 
     # If a new epoch, pull-up justification and finalization from previous epoch
-    if  current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0:
+    if current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0:
         update_checkpoints(store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint)
 ```
 
@@ -470,9 +465,7 @@ def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
 ##### `update_latest_messages`
 
 ```python
-def update_latest_messages(store: Store,
-                           attesting_indices: Sequence[ValidatorIndex],
-                           attestation: Attestation) -> None:
+def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
     non_equivocating_attesting_indices = [i for i in attesting_indices if i not in store.equivocating_indices]
