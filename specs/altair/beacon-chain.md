@@ -43,7 +43,7 @@
     - [Modified `slash_validator`](#modified-slash_validator)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
-    - [Modified `process_deposit`](#modified-process_deposit)
+    - [Modified `apply_deposit`](#modified-apply_deposit)
     - [Sync aggregate processing](#sync-aggregate-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
@@ -489,39 +489,29 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
-#### Modified `process_deposit`
+#### Modified `apply_deposit`
 
-*Note*: The function `process_deposit` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
+*Note*: The function `apply_deposit` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
 
 ```python
-def process_deposit(state: BeaconState, deposit: Deposit) -> None:
-    # Verify the Merkle branch
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(deposit.data),
-        branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
-        index=state.eth1_deposit_index,
-        root=state.eth1_data.deposit_root,
-    )
-
-    # Deposits must be processed in order
-    state.eth1_deposit_index += 1
-
-    pubkey = deposit.data.pubkey
-    amount = deposit.data.amount
+def apply_deposit(state: BeaconState,
+                  pubkey: BLSPubkey,
+                  withdrawal_credentials: Bytes32,
+                  amount: uint64,
+                  signature: BLSSignature) -> None:
     validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
-            pubkey=deposit.data.pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount,
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            amount=amount,
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, deposit.data.signature):
-            state.validators.append(get_validator_from_deposit(deposit))
+        if bls.Verify(pubkey, signing_root, signature):
+            state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
             state.balances.append(amount)
             # [New in Altair]
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))

@@ -29,7 +29,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb
+ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb eip6110
 # The parameters for commands. Use `foreach` to avoid listing specs again.
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), ./eth2spec/$S)
