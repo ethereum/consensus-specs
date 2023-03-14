@@ -38,5 +38,5 @@ def get_eth1_deposit_count(state: BeaconState) -> uint64:
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         return min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
-        return 0
+        return uint64(0)
 ```
