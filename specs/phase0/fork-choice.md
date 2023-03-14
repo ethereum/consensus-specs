@@ -107,9 +107,9 @@ def is_previous_epoch_justified(store: Store) -> bool:
 
 The `Store` is responsible for tracking information required for the fork choice algorithm. The important fields being tracked are described below:
 
-- `justified_checkpoint`: the justified checkpoint being used as the starting point for the LMD GHOST fork choice algorithm.
-- `finalized_checkpoint`: the highest finalized checkpoint that was seen. In general, the fork choice will consider only those blocks that are not conflicting with this checkpoint.
-- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these track the highest justified & finalized checkpoints resp., without regard to whether on-chain ***realization***, i.e., FFG processing of new attestations, has occurred. This is an important distinction from `justified_checkpoint` & `finalized_checkpoint`, because they will only track the checkpoints that are realized on-chain. Note that on-chain processing of FFG information only happens at epoch boundaries.
+- `justified_checkpoint`: the justified checkpoint used as the starting point for the LMD GHOST fork choice algorithm.
+- `finalized_checkpoint`: the highest known finalized checkpoint. The fork choice only considers blocks that are not conflicting with this checkpoint.
+- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these track the highest justified & finalized checkpoints resp., without regard to whether on-chain ***realization*** has occurred, i.e. FFG processing of new attestations within the state transition function. This is an important distinction from `justified_checkpoint` & `finalized_checkpoint`, because they will only track the checkpoints that are realized on-chain. Note that on-chain processing of FFG information only happens at epoch boundaries.
 - `unrealized_justifications`: stores a map of block root to the unrealized justified checkpoint observed in that block.
 
 ```python
@@ -229,18 +229,16 @@ def get_weight(store: Store, root: Root) -> Gwei:
 ```python
 def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
     """
-    Compute the voting source checkpoint in the case that block with root ``block_root``
-    is chosen as the head block
+    Compute the voting source checkpoint in event that block with root ``block_root`` is the head block
     """
     block = store.blocks[block_root]
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     block_epoch = compute_epoch_at_slot(block.slot)
     if current_epoch > block_epoch:
-        # The block is from a prior epoch, the voting source will be pulled-up.
+        # The block is from a prior epoch, the voting source will be pulled-up
         return store.unrealized_justifications[block_root]
     else:
-        # The block is not from a prior epoch, therefore the voting source is
-        # not pulled up.
+        # The block is not from a prior epoch, therefore the voting source is not pulled up
         head_state = store.block_states[block_root]
         return head_state.current_justified_checkpoint
 
@@ -248,7 +246,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 
 #### `filter_block_tree`
 
-*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made by the recursive logic in this function) MUST have `block_root` as `store.justified_checkpoint`.
+*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made by the recursive logic in this function) MUST set `block_root` to `store.justified_checkpoint`.
 
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
@@ -270,7 +268,7 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     voting_source = get_voting_source(store, block_root)
 
-    # The voting source should be at the same height as the store's justified checkpoint.
+    # The voting source should be at the same height as the store's justified checkpoint
     correct_justified = (
         store.justified_checkpoint.epoch == GENESIS_EPOCH
         or voting_source.epoch == store.justified_checkpoint.epoch
@@ -378,19 +376,15 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
     # Pull up the post-state of the block to the next epoch boundary
     process_justification_and_finalization(state)
 
-    # Store the unrealized justification.
     store.unrealized_justifications[block_root] = state.current_justified_checkpoint
-
-    # Update unrealized checkpoints in store if necessary
     update_unrealized_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 
-    # If the block is from a prior epoch, apply the realized values.
+    # If the block is from a prior epoch, apply the realized values
     block_epoch = compute_epoch_at_slot(store.blocks[block_root].slot)
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     if block_epoch < current_epoch:
         update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 ```
-
 
 #### `on_tick` helpers
 
@@ -400,21 +394,18 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
 def on_tick_per_slot(store: Store, time: uint64) -> None:
     previous_slot = get_current_slot(store)
 
-    # update store time
+    # Update store time
     store.time = time
 
     current_slot = get_current_slot(store)
 
-    # Reset store.proposer_boost_root if this is a new slot
+    # If this is a new slot, reset store.proposer_boost_root
     if current_slot > previous_slot:
         store.proposer_boost_root = Root()
 
-    # Not a new epoch, return
-    if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
-        return
-
-    # Pull-up justification and finalization from previous epoch
-    update_checkpoints(store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint)
+    # If a new epoch, pull-up justification and finalization from previous epoch
+    if  current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0:
+        update_checkpoints(store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint)
 ```
 
 #### `on_attestation` helpers
@@ -447,8 +438,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     # Check that the epoch number and slot number are matching
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
 
-    # Attestations target be for a known block.
-    # If target block is unknown, delay consideration until the block is found.
+    # Attestation target must be for a known block. If target block is unknown, delay consideration until block is found
     assert target.root in store.blocks
 
     # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
@@ -498,8 +488,8 @@ def update_latest_messages(store: Store,
 
 ```python
 def on_tick(store: Store, time: uint64) -> None:
-    # If the ``store.time`` falls behind, catch up slot by slot to
-    # ensure that every previous slot will be processed with ``on_tick_per_slot``.
+    # If the ``store.time`` falls behind, while loop catches up slot by slot
+    # to ensure that every previous slot is processed with ``on_tick_per_slot``
     tick_slot = (time - store.genesis_time) // SECONDS_PER_SLOT
     while get_current_slot(store) < tick_slot:
         previous_time = store.genesis_time + (get_current_slot(store) + 1) * SECONDS_PER_SLOT
@@ -543,7 +533,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 
-    # Eagerly compute unrealized justification and finality.
+    # Eagerly compute unrealized justification and finality
     compute_pulled_up_tip(store, block_root)
 ```
 
