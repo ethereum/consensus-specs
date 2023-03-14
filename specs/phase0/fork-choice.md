@@ -24,7 +24,7 @@
     - [`get_head`](#get_head)
     - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
     - [`on_attestation` helpers](#on_attestation-helpers)
-      - [`validate_target_epoch_against_current_time`](#validate_target_epoch_against_current_time)
+      - [`is_target_epoch_in_recent_epochs`](#is_target_epoch_in_recent_epochs)
       - [`validate_on_attestation`](#validate_on_attestation)
       - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
       - [`update_latest_messages`](#update_latest_messages)
@@ -296,10 +296,10 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
 #### `on_attestation` helpers
 
 
-##### `validate_target_epoch_against_current_time`
+##### `is_target_epoch_in_recent_epochs`
 
 ```python
-def validate_target_epoch_against_current_time(store: Store, attestation: Attestation) -> None:
+def is_target_epoch_in_recent_epochs(store: Store, attestation: Attestation) -> bool:
     target = attestation.data.target
 
     # Attestations must be from the current or previous epoch
@@ -307,7 +307,7 @@ def validate_target_epoch_against_current_time(store: Store, attestation: Attest
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
     # If attestation target is from a future epoch, delay consideration until the epoch arrives
-    assert target.epoch in [current_epoch, previous_epoch]
+    return target.epoch in [current_epoch, previous_epoch]
 ```
 
 ##### `validate_on_attestation`
@@ -318,7 +318,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 
     # If the given attestation is not from a beacon block message, we have to check the target epoch scope.
     if not is_from_block:
-        validate_target_epoch_against_current_time(store, attestation)
+        assert is_target_epoch_in_recent_epochs(store, attestation)
 
     # Check that the epoch number and slot number are matching
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
@@ -459,7 +459,8 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
     assert is_valid_indexed_attestation(target_state, indexed_attestation)
 
     # Update latest messages for attesting indices
-    update_latest_messages(store, indexed_attestation.attesting_indices, attestation)
+    if is_target_epoch_in_recent_epochs(store, attestation):
+        update_latest_messages(store, indexed_attestation.attesting_indices, attestation)
 ```
 
 #### `on_attester_slashing`
