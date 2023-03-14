@@ -44,8 +44,9 @@ Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` 
 Implementers may also retrieve blobs individually per transaction.
 
 ```python
-def get_blobs_and_kzg_commitments(payload_id: PayloadId) -> \
-        Tuple[Sequence[Blob], Sequence[KZGCommitment], Sequence[KZGProof]]:
+def get_blobs_and_kzg_commitments(
+    payload_id: PayloadId
+) -> Tuple[Sequence[Blob], Sequence[KZGCommitment], Sequence[KZGProof]]:
     # pylint: disable=unused-argument
     ...
 ```
