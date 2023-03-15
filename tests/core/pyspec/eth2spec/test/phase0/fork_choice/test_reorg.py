@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases,
+    with_altair_and_later,
     with_presets,
 )
 from eth2spec.test.helpers.constants import (
@@ -35,7 +35,7 @@ from eth2spec.test.helpers.state import (
 TESTING_PRESETS = [MINIMAL]
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
@@ -250,7 +250,7 @@ def _run_delayed_justification(spec, state, attemped_reorg, is_justifying_previo
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_simple_attempted_reorg_delayed_justification_current_epoch(spec, state):
@@ -401,7 +401,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_include_votes_another_empty_chain_with_enough_ffg_votes_current_epoch(spec, state):
@@ -412,7 +412,7 @@ def test_include_votes_another_empty_chain_with_enough_ffg_votes_current_epoch(s
         spec, state, enough_ffg=True, is_justifying_previous_epoch=False)
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_include_votes_another_empty_chain_without_enough_ffg_votes_current_epoch(spec, state):
@@ -423,7 +423,7 @@ def test_include_votes_another_empty_chain_without_enough_ffg_votes_current_epoc
         spec, state, enough_ffg=False, is_justifying_previous_epoch=False)
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_delayed_justification_current_epoch(spec, state):
@@ -443,7 +443,7 @@ def test_delayed_justification_current_epoch(spec, state):
     yield from _run_delayed_justification(spec, state, attemped_reorg=False, is_justifying_previous_epoch=False)
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_delayed_justification_previous_epoch(spec, state):
@@ -460,7 +460,7 @@ def test_delayed_justification_previous_epoch(spec, state):
     yield from _run_delayed_justification(spec, state, attemped_reorg=False, is_justifying_previous_epoch=True)
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_simple_attempted_reorg_delayed_justification_previous_epoch(spec, state):
@@ -483,7 +483,7 @@ def test_simple_attempted_reorg_delayed_justification_previous_epoch(spec, state
     yield from _run_delayed_justification(spec, state, attemped_reorg=True, is_justifying_previous_epoch=True)
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_include_votes_another_empty_chain_with_enough_ffg_votes_previous_epoch(spec, state):

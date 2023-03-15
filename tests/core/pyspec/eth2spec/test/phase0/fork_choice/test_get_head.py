@@ -2,7 +2,6 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases,
     with_altair_and_later,
     with_presets,
 )
@@ -38,7 +37,7 @@ from eth2spec.test.helpers.state import (
 rng = random.Random(1001)
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_genesis(spec, state):
     test_steps = []
@@ -62,7 +61,7 @@ def test_genesis(spec, state):
         yield 'description', 'meta', f"Although it's not phase 0, we may use {spec.fork} spec to start testnets."
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_chain_no_attestations(spec, state):
     test_steps = []
@@ -91,7 +90,7 @@ def test_chain_no_attestations(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_split_tie_breaker_no_attestations(spec, state):
     test_steps = []
@@ -130,7 +129,7 @@ def test_split_tie_breaker_no_attestations(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_shorter_chain_but_heavier_weight(spec, state):
     test_steps = []
@@ -170,7 +169,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_filtered_block_tree(spec, state):
@@ -247,7 +246,7 @@ def test_filtered_block_tree(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):
     test_steps = []
@@ -302,7 +301,7 @@ def test_proposer_boost_correct_head(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_discard_equivocations_on_attester_slashing(spec, state):
     test_steps = []
@@ -374,7 +373,7 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_discard_equivocations_slashed_validator_censoring(spec, state):
@@ -636,7 +635,7 @@ We cannot generate a block that:
 The block being a descendant of store.justified_checkpoint.root is necessary because
 filter_block_tree descends the tree starting at store.justified_checkpoint.root
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_incorrect_finalized(spec, state):
     # Check that the store doesn't allow for a head block that has:
