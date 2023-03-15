@@ -15,6 +15,8 @@ The specification of these changes continues in the same format as the network s
   - [`BlobSidecar`](#blobsidecar)
   - [`SignedBlobSidecar`](#signedblobsidecar)
   - [`BlobIdentifier`](#blobidentifier)
+  - [Helpers](#helpers)
+    - [`verify_sidecar_signature`](#verify_sidecar_signature)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -73,6 +75,17 @@ class BlobIdentifier(Container):
     index: BlobIndex
 ```
 
+### Helpers
+
+#### `verify_sidecar_signature`
+
+```python
+def verify_blob_sidecar_signature(state: BeaconState, signed_blob_sidecar: SignedBlobSidecar) -> bool:
+    proposer = state.validators[signed_blob_sidecar.message.proposer_index]
+    signing_root = compute_signing_root(signed_blob_sidecar.message, get_domain(state, DOMAIN_BLOB_SIDECAR))
+    return bls.Verify(proposer.pubkey, signing_root, signed_blob_sidecar.signature)
+```
+
 ## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
@@ -113,7 +126,7 @@ The following validations MUST pass before forwarding the `sidecar` on the netwo
 - _[IGNORE]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
 - _[REJECT]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) passes validation.
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `sidecar.block_parent_root`).
-- _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid with respect to the `sidecar.proposer_index` pubkey.
+- _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid as verified by `verify_sidecar_signature`.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.block_root, sidecar.index)`.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
