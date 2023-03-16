@@ -18,14 +18,13 @@ from eth2spec.test.helpers.sharding import (
 
 def _run_validate_blobs(spec, state, blob_count):
     block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, blobs, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=blob_count)
+    opaque_tx, blobs, blob_kzg_commitments, kzg_proofs = get_sample_opaque_tx(spec, blob_count=blob_count)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     state_transition_and_sign_block(spec, state, block)
 
-    # Also test the proof generation in `get_blob_sidecars`
-    blob_sidecars = spec.get_blob_sidecars(block, blobs)
+    blob_sidecars = spec.get_blob_sidecars(block, blobs, kzg_proofs)
     blobs = [sidecar.blob for sidecar in blob_sidecars]
     kzg_proofs = [sidecar.kzg_proof for sidecar in blob_sidecars]
     spec.validate_blobs(blob_kzg_commitments, blobs, kzg_proofs)
