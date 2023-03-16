@@ -31,7 +31,7 @@ def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         spec,
         signature_state,
-        signature_slot,
+        max(signature_slot, 1) - 1,
         committee_indices[:num_participants],
     )
     sync_aggregate = spec.SyncAggregate(
