@@ -252,10 +252,11 @@ def compute_challenge(blob: Blob,
 ```python
 def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
     """
-    Compute the modular inverse of x
-    i.e. return y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
+    Compute the modular inverse of x (for x != 0)
+    i.e. return y such that x * y % BLS_MODULUS == 1
     """
-    return BLSFieldElement(pow(x, -1, BLS_MODULUS)) if x != 0 else BLSFieldElement(0)
+    assert (int(x) % BLS_MODULUS) != 0
+    return BLSFieldElement(pow(x, -1, BLS_MODULUS))
 ```
 
 #### `div`
