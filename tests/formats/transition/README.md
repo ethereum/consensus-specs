@@ -40,7 +40,7 @@ Blocks must be processed in order, following the main transition function
 Blocks are encoded as `SignedBeaconBlock`s from the relevant spec version
 as indicated by the `post_fork` and `fork_block` data in the `meta.yaml`.
 
-As blocks span fork boundaires, a `fork_block` number is given in
+As blocks span fork boundaries, a `fork_block` number is given in
 the `meta.yaml` to help resolve which blocks belong to which fork.
 
 The `fork_block` is the index in the test data of the **last** block

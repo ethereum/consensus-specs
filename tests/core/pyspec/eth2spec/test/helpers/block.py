@@ -1,5 +1,5 @@
-from eth2spec.test.context import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls

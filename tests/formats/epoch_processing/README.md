@@ -41,7 +41,8 @@ Sub-transitions:
 - `effective_balance_updates`
 - `slashings_reset`
 - `randao_mixes_reset`
-- `historical_roots_update`
+- `historical_roots_update` (Phase0, Altair, Bellatrix only)
+- `historical_summaries_update` (Capella)
 - `participation_record_updates` (Phase 0 only)
 - `participation_flag_updates` (Altair)
 - `sync_committee_updates` (Altair)

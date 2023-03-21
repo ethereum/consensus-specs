@@ -8,11 +8,11 @@ The test data is declared in a `data.yaml` file:
 
 ```yaml
 input: List[BLS Signature] -- list of input BLS signatures
-output: BLS Signature -- expected output, single BLS signature or empty.
+output: BLS Signature -- expected output, single BLS signature or `null`.
 ```
 
 - `BLS Signature` here is encoded as a string: hexadecimal encoding of 96 bytes (192 nibbles), prefixed with `0x`.
-- No output value if the input is invalid.
+- output value is `null` if the input is invalid.
 
 All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 

@@ -18,7 +18,6 @@ def run_on_tick(spec, store, time, new_justified_checkpoint=False):
     assert store.time == time
 
     if new_justified_checkpoint:
-        assert store.justified_checkpoint == store.best_justified_checkpoint
         assert store.justified_checkpoint.epoch > previous_justified_checkpoint.epoch
         assert store.justified_checkpoint.root != previous_justified_checkpoint.root
     else:
@@ -32,12 +31,12 @@ def test_basic(spec, state):
     run_on_tick(spec, store, store.time + 1)
 
 
+"""
 @with_all_phases
 @spec_state_test
 def test_update_justified_single_on_store_finalized_chain(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
 
-    # [Mock store.best_justified_checkpoint]
     # Create a block at epoch 1
     next_epoch(spec, state)
     block = build_empty_block_for_next_slot(spec, state)
@@ -58,8 +57,6 @@ def test_update_justified_single_on_store_finalized_chain(spec, state):
     state_transition_and_sign_block(spec, state, block)
     store.blocks[block.hash_tree_root()] = block
     store.block_states[block.hash_tree_root()] = state
-    # Mock store.best_justified_checkpoint
-    store.best_justified_checkpoint = state.current_justified_checkpoint.copy()
 
     run_on_tick(
         spec,
@@ -67,6 +64,7 @@ def test_update_justified_single_on_store_finalized_chain(spec, state):
         store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
         new_justified_checkpoint=True
     )
+"""
 
 
 @with_all_phases
@@ -89,7 +87,6 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
         root=block.hash_tree_root(),
     )
 
-    # [Mock store.best_justified_checkpoint]
     # Create a block at epoch 1
     state = init_state.copy()
     next_epoch(spec, state)
@@ -112,79 +109,9 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     state_transition_and_sign_block(spec, state, block)
     store.blocks[block.hash_tree_root()] = block.copy()
     store.block_states[block.hash_tree_root()] = state.copy()
-    # Mock store.best_justified_checkpoint
-    store.best_justified_checkpoint = state.current_justified_checkpoint.copy()
 
     run_on_tick(
         spec,
         store,
         store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
     )
-
-
-@with_all_phases
-@spec_state_test
-def test_no_update_same_slot_at_epoch_boundary(spec, state):
-    store = get_genesis_forkchoice_store(spec, state)
-    seconds_per_epoch = spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
-
-    store.best_justified_checkpoint = spec.Checkpoint(
-        epoch=store.justified_checkpoint.epoch + 1,
-        root=b'\x55' * 32,
-    )
-
-    # set store time to already be at epoch boundary
-    store.time = seconds_per_epoch
-
-    run_on_tick(spec, store, store.time + 1)
-
-
-@with_all_phases
-@spec_state_test
-def test_no_update_not_epoch_boundary(spec, state):
-    store = get_genesis_forkchoice_store(spec, state)
-
-    store.best_justified_checkpoint = spec.Checkpoint(
-        epoch=store.justified_checkpoint.epoch + 1,
-        root=b'\x55' * 32,
-    )
-
-    run_on_tick(spec, store, store.time + spec.config.SECONDS_PER_SLOT)
-
-
-@with_all_phases
-@spec_state_test
-def test_no_update_new_justified_equal_epoch(spec, state):
-    store = get_genesis_forkchoice_store(spec, state)
-    seconds_per_epoch = spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
-
-    store.best_justified_checkpoint = spec.Checkpoint(
-        epoch=store.justified_checkpoint.epoch + 1,
-        root=b'\x55' * 32,
-    )
-
-    store.justified_checkpoint = spec.Checkpoint(
-        epoch=store.best_justified_checkpoint.epoch,
-        root=b'\44' * 32,
-    )
-
-    run_on_tick(spec, store, store.time + seconds_per_epoch)
-
-
-@with_all_phases
-@spec_state_test
-def test_no_update_new_justified_later_epoch(spec, state):
-    store = get_genesis_forkchoice_store(spec, state)
-    seconds_per_epoch = spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
-
-    store.best_justified_checkpoint = spec.Checkpoint(
-        epoch=store.justified_checkpoint.epoch + 1,
-        root=b'\x55' * 32,
-    )
-
-    store.justified_checkpoint = spec.Checkpoint(
-        epoch=store.best_justified_checkpoint.epoch + 1,
-        root=b'\44' * 32,
-    )
-
-    run_on_tick(spec, store, store.time + seconds_per_epoch)

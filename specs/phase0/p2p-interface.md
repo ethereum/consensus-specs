@@ -745,6 +745,8 @@ For example, if slot 4 were empty in the previous example, the returned array wo
 
 `step` is deprecated and must be set to 1. Clients may respond with a single block if a larger step is returned during the deprecation transition period.
 
+`/eth2/beacon_chain/req/beacon_blocks_by_range/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
+
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
 The request MUST be encoded as an SSZ-container.
@@ -830,6 +832,8 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 
 Clients MUST respond with at least one block, if they have it.
 Clients MAY limit the number of blocks in the response.
+
+`/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
 #### Ping
 
@@ -1327,7 +1331,7 @@ Requests are segregated by protocol ID to:
    1. This has the benefit that clients can explicitly choose which RFCs to deploy
       without buying into all other RFCs that may be included in that top-level version.
    2. Affording this level of granularity with a top-level protocol would imply creating as many variants
-      (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
+      (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs in-flight, O(n^2).
 7. Allow us to simplify the payload of requests.
   Request-id’s and method-ids no longer need to be sent.
   The encoding/request type and version can all be handled by the framework.

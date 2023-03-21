@@ -1,7 +1,5 @@
 # Bellatrix -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -91,7 +89,7 @@ Bellatrix updates a few configuration values to move penalty parameters to their
 
 | Name | Value |
 | - | - |
-| `TERMINAL_TOTAL_DIFFICULTY` | **TBD** |
+| `TERMINAL_TOTAL_DIFFICULTY` | `58750000000000000000000` (Estimated: Sept 15, 2022)|
 | `TERMINAL_BLOCK_HASH` | `Hash32()` |
 | `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
 
@@ -297,8 +295,6 @@ def slash_validator(state: BeaconState,
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
-
-
 
 ## Beacon chain state transition function
 

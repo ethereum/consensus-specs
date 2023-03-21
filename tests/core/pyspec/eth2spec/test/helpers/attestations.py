@@ -2,9 +2,10 @@ from lru import LRU
 
 from typing import List
 
-from eth2spec.test.context import expect_assertion_error, is_post_altair
+from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.forks import is_post_altair
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -186,7 +187,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
         spec.process_attestation(state, attestation)
 
 
-def _get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None):
+def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None):
     committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
     for index in range(committees_per_slot):
         def participants_filter(comm):
@@ -251,15 +252,17 @@ def state_transition_with_full_block(spec,
                                      fill_cur_epoch,
                                      fill_prev_epoch,
                                      participation_fn=None,
-                                     sync_aggregate=None):
+                                     sync_aggregate=None,
+                                     block=None):
     """
-    Build and apply a block with attestions at the calculated `slot_to_attest` of current epoch and/or previous epoch.
+    Build and apply a block with attestations at the calculated `slot_to_attest` of current epoch and/or previous epoch.
     """
-    block = build_empty_block_for_next_slot(spec, state)
+    if block is None:
+        block = build_empty_block_for_next_slot(spec, state)
     if fill_cur_epoch and state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
         slot_to_attest = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
         if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(state)):
-            attestations = _get_valid_attestation_at_slot(
+            attestations = get_valid_attestation_at_slot(
                 state,
                 spec,
                 slot_to_attest,
@@ -269,7 +272,7 @@ def state_transition_with_full_block(spec,
                 block.body.attestations.append(attestation)
     if fill_prev_epoch:
         slot_to_attest = state.slot - spec.SLOTS_PER_EPOCH + 1
-        attestations = _get_valid_attestation_at_slot(
+        attestations = get_valid_attestation_at_slot(
             state,
             spec,
             slot_to_attest,
@@ -297,7 +300,7 @@ def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, f
         slots = state.slot % spec.SLOTS_PER_EPOCH
         for slot_offset in range(slots):
             target_slot = state.slot - slot_offset
-            attestations += _get_valid_attestation_at_slot(
+            attestations += get_valid_attestation_at_slot(
                 state,
                 spec,
                 target_slot,
@@ -308,7 +311,7 @@ def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, f
         slots = spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH
         for slot_offset in range(1, slots):
             target_slot = state.slot - (state.slot % spec.SLOTS_PER_EPOCH) - slot_offset
-            attestations += _get_valid_attestation_at_slot(
+            attestations += get_valid_attestation_at_slot(
                 state,
                 spec,
                 target_slot,

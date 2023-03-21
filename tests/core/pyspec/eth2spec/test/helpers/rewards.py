@@ -2,7 +2,7 @@ from random import Random
 from lru import LRU
 
 from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
-from eth2spec.test.context import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
 from eth2spec.test.helpers.state import (
     next_epoch,
 )
@@ -206,7 +206,7 @@ def run_get_inclusion_delay_deltas(spec, state):
             rewarded_proposer_indices.add(earliest_attestation.proposer_index)
 
     # Ensure all expected proposers have been rewarded
-    # Track rewarde indices
+    # Track reward indices
     proposing_indices = [a.proposer_index for a in eligible_attestations]
     for index in proposing_indices:
         if index in rewarded_proposer_indices:

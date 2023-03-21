@@ -14,30 +14,35 @@ CAPELLA = SpecForkName('capella')
 SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
-EIP4844 = SpecForkName('eip4844')
+DENEB = SpecForkName('deneb')
 
 # The forks that pytest can run with.
 ALL_PHASES = (
     # Formal forks
     PHASE0, ALTAIR, BELLATRIX, CAPELLA,
     # Experimental patches
-    EIP4844,
+    DENEB,
 )
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX)
+TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB)
 
-FORKS_BEFORE_ALTAIR = (PHASE0,)
-FORKS_BEFORE_BELLATRIX = (PHASE0, ALTAIR)
-FORKS_BEFORE_CAPELLA = (PHASE0, ALTAIR, BELLATRIX)
+# TODO: no DENEB fork tests now. Should add when we figure out the content of Capella.
 ALL_FORK_UPGRADES = {
     # pre_fork_name: post_fork_name
     PHASE0: ALTAIR,
     ALTAIR: BELLATRIX,
     BELLATRIX: CAPELLA,
+    CAPELLA: DENEB,
 }
 ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
-AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key not in FORKS_BEFORE_ALTAIR}
+AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
 AFTER_BELLATRIX_PRE_POST_FORKS = AFTER_BELLATRIX_UPGRADES.items()
+AFTER_CAPELLA_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
+                          if key not in [PHASE0, ALTAIR]}
+AFTER_CAPELLA_PRE_POST_FORKS = AFTER_CAPELLA_UPGRADES.items()
+AFTER_DENEB_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
+                        if key not in [PHASE0, ALTAIR, BELLATRIX]}
+AFTER_DENEB_PRE_POST_FORKS = AFTER_DENEB_UPGRADES.items()
 
 #
 # Config

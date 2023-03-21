@@ -1,0 +1,8 @@
+# Mainnet preset - Deneb
+
+# Misc
+# ---------------------------------------------------------------
+# `uint64(4096)`
+FIELD_ELEMENTS_PER_BLOB: 4096
+# `uint64(2**2)` (= 4)
+MAX_BLOBS_PER_BLOCK: 4

@@ -1,6 +1,11 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, EIP4844,
-    FORKS_BEFORE_ALTAIR, FORKS_BEFORE_BELLATRIX,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB,
+)
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_header_block_hash,
+)
+from eth2spec.test.helpers.forks import (
+    is_post_altair, is_post_bellatrix, is_post_capella,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -20,9 +25,6 @@ def build_mock_validator(spec, i: int, balance: int):
         effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     )
 
-    if spec.fork in (CAPELLA):
-        validator.fully_withdrawn_epoch = spec.FAR_FUTURE_EPOCH
-
     return validator
 
 
@@ -30,7 +32,7 @@ def get_sample_genesis_execution_payload_header(spec,
                                                 eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b'\x55' * 32
-    return spec.ExecutionPayloadHeader(
+    payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
         fee_recipient=b'\x42' * 20,
         state_root=b'\x20' * 32,
@@ -43,6 +45,21 @@ def get_sample_genesis_execution_payload_header(spec,
         block_hash=eth1_block_hash,
         transactions_root=spec.Root(b'\x56' * 32),
     )
+
+    transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+
+    if is_post_capella(spec):
+        withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    else:
+        withdrawals_trie_root = None
+
+    payload_header.block_hash = compute_el_header_block_hash(
+        spec,
+        payload_header,
+        transactions_trie_root,
+        withdrawals_trie_root,
+    )
+    return payload_header
 
 
 def create_genesis_state(spec, validator_balances, activation_threshold):
@@ -60,9 +77,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == CAPELLA:
         previous_version = spec.config.BELLATRIX_FORK_VERSION
         current_version = spec.config.CAPELLA_FORK_VERSION
-    elif spec.fork == EIP4844:
-        previous_version = spec.config.BELLATRIX_FORK_VERSION
-        current_version = spec.config.EIP4844_FORK_VERSION
+    elif spec.fork == DENEB:
+        previous_version = spec.config.CAPELLA_FORK_VERSION
+        current_version = spec.config.DENEB_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -91,7 +108,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
-        if spec.fork not in FORKS_BEFORE_ALTAIR:
+        if is_post_altair(spec):
             state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(spec.uint64(0))
@@ -99,13 +116,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
 
-    if spec.fork not in FORKS_BEFORE_ALTAIR:
+    if is_post_altair(spec):
         # Fill in sync committees
         # Note: A duplicate committee is assigned for the current and next committee at genesis
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
-    if spec.fork not in FORKS_BEFORE_BELLATRIX:
+    if is_post_bellatrix(spec):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,
