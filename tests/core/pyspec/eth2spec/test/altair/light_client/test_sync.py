@@ -668,10 +668,9 @@ def run_test_single_fork(spec, phases, state, fork):
     # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    state, _ = do_fork(state, spec, phases[fork], fork_epoch, with_block=False)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork], state)
+    state, block = do_fork(state, spec, phases[fork], fork_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork]
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -755,18 +754,16 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
     # ..., attested is from `fork_1`, ...
     fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + '_FORK_EPOCH')
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_1_epoch) - 1)
-    state, _ = do_fork(state, spec, phases[fork_1], fork_1_epoch, with_block=False)
+    state, attested_block = do_fork(state, spec, phases[fork_1], fork_1_epoch)
     spec = phases[fork_1]
-    attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
 
     # ..., and signature is from `fork_2`
     fork_2_epoch = getattr(phases[fork_2].config, fork_2.upper() + '_FORK_EPOCH')
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_2_epoch) - 1)
-    state, _ = do_fork(state, spec, phases[fork_2], fork_2_epoch, with_block=False)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork_2], state)
+    state, block = do_fork(state, spec, phases[fork_2], fork_2_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork_2]
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
 
     # Check that update applies
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)

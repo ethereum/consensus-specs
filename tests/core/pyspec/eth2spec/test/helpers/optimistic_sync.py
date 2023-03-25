@@ -177,7 +177,7 @@ def get_opt_head_block_root(spec, mega_store):
             return head
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring block with lexicographically higher root
-        head = max(children, key=lambda root: (spec.get_latest_attesting_balance(store, root), root))
+        head = max(children, key=lambda root: (spec.get_weight(store, root), root))
 
 
 def is_invalidated(mega_store, block_root):

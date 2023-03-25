@@ -1,4 +1,4 @@
-# Deneb -- Fork Logic
+# EIP-6110 -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to Deneb](#fork-to-deneb)
+- [Fork to EIP-6110](#fork-to-eip-6110)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document describes the process of Deneb upgrade.
+This document describes the process of EIP-6110 upgrade.
 
 ## Configuration
 
@@ -28,8 +28,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `DENEB_FORK_VERSION` | `Version('0x04000000')` |
-| `DENEB_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `EIP6110_FORK_VERSION` | `Version('0x05000000')` |
+| `EIP6110_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,8 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
+    if epoch >= EIP6110_FORK_EPOCH:
+        return EIP6110_FORK_EPOCH
     if epoch >= CAPELLA_FORK_EPOCH:
         return CAPELLA_FORK_VERSION
     if epoch >= BELLATRIX_FORK_EPOCH:
@@ -53,19 +53,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to Deneb
+## Fork to EIP-6110
 
 ### Fork trigger
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `DENEB_FORK_EPOCH`.
+For now, we assume the condition will be triggered at epoch `EIP6110_FORK_EPOCH`.
 
-Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
+Note that for the pure EIP-6110 networks, we don't apply `upgrade_to_eip6110` since it starts with EIP-6110 version logic.
 
 ### Upgrading the state
 
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP6110_FORK_EPOCH`,
+an irregular state change is made to upgrade to EIP-6110.
+
 ```python
-def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
+def upgrade_to_eip6110(pre: capella.BeaconState) -> BeaconState:
     epoch = capella.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
@@ -83,7 +86,7 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        excess_data_gas=uint256(0),  # [New in Deneb]
+        deposit_receipts_root=Root(),  # [New in EIP-6110]
     )
     post = BeaconState(
         # Versioning
@@ -92,7 +95,7 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=DENEB_FORK_VERSION,  # [Modified in Deneb]
+            current_version=EIP6110_FORK_VERSION,  # [Modified in EIP-6110]
             epoch=epoch,
         ),
         # History
@@ -125,12 +128,14 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Deneb]
+        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in EIP-6110]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
+        # EIP-6110
+        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP-6110]
     )
 
     return post

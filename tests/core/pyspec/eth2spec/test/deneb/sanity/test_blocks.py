@@ -22,7 +22,7 @@ def test_one_blob(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, _, blob_kzg_commitments = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
@@ -38,7 +38,7 @@ def test_max_blobs(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, _, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=spec.MAX_BLOBS_PER_BLOCK)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=spec.MAX_BLOBS_PER_BLOCK)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)

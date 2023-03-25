@@ -11,6 +11,7 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
+  - [Domain types](#domain-types)
   - [Blob](#blob)
 - [Preset](#preset)
   - [Execution](#execution)
@@ -44,15 +45,22 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `VersionedHash` | `Bytes32` | |
+| `BlobIndex` | `uint64` | |
 
 ## Constants
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_BLOB_SIDECAR` | `DomainType('0x0B000000')` |
 
 ### Blob
 
 | Name | Value |
 | - | - |
 | `BLOB_TX_TYPE` | `uint8(0x05)` |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | 
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
 
@@ -249,7 +257,7 @@ def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> N
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Deneb testing only.
 
-The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type 
+The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type
 when initializing the first body-root.
 
 ```python
