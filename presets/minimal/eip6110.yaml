@@ -1,0 +1,6 @@
+# Minimal preset - EIP6110
+
+# Execution
+# ---------------------------------------------------------------
+# [customized]
+MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
