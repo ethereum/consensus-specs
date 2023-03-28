@@ -511,24 +511,24 @@ def apply_deposit(state: BeaconState,
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
-            index = assign_index_to_deposit(state)
-            update_list(state.validators, index, get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
-            update_list(state.balances, index, amount)
+            index = get_index_for_new_validator(state)
+            update_or_append_to_list(state.validators, index, get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+            update_or_append_to_list(state.balances, index, amount)
             # [New in Altair]
-            update_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-            update_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-            update_list(state.inactivity_scores, index, uint64(0))
+            update_or_append_to_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            update_or_append_to_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            update_or_append_to_list(state.inactivity_scores, index, uint64(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
         increase_balance(state, index, amount)
 
 
-def assign_index_to_deposit(state: BeaconState) -> int:
+def get_index_for_new_validator(state: BeaconState) -> int:
     return len(state.validators)
 
 
-def update_list(list: List, index: int, value: Any) -> None:
+def update_or_append_to_list(list: List, index: int, value: Any) -> None:
     if index == len(list):
         list.append(value)
     else:
