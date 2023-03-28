@@ -511,16 +511,28 @@ def apply_deposit(state: BeaconState,
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
-            state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
-            state.balances.append(amount)
+            index = assign_index_to_deposit(state)
+            update_list(state.validators, index, get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+            update_list(state.balances, index, amount)
             # [New in Altair]
-            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(uint64(0))
+            update_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            update_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            update_list(state.inactivity_scores, index, uint64(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
         increase_balance(state, index, amount)
+
+
+def assign_index_to_deposit(state: BeaconState) -> int:
+    return len(state.validators)
+
+
+def update_list(list: List, index: int, value: Any) -> None:
+    if index == len(list):
+        list.append(value)
+    else:
+        list[index] = value
 ```
 
 #### Sync aggregate processing
