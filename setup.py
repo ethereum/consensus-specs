@@ -1039,7 +1039,7 @@ class PySpecCommand(Command):
                 self.md_doc_paths += """
                     specs/_features/eip6110/light-client/fork.md
                     specs/_features/eip6110/light-client/full-node.md
-                    specs/deneb/light-client/p2p-interface.md
+                    specs/_features/eip6110/light-client/p2p-interface.md
                     specs/_features/eip6110/light-client/sync-protocol.md
                     specs/_features/eip6110/beacon-chain.md
                     specs/_features/eip6110/fork.md
