@@ -45,8 +45,9 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
     Check if ``validator`` index can be re-assigned to a new deposit.
     """
     return (
-      validator.withdrawable_epoch < epoch - REUSE_VALIDATOR_INDEX_DELAY
-      and balance == 0
+        epoch > REUSE_VALIDATOR_INDEX_DELAY
+        and validator.withdrawable_epoch < epoch - REUSE_VALIDATOR_INDEX_DELAY
+        and balance == 0
     )
 ```
 
