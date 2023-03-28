@@ -512,7 +512,8 @@ def apply_deposit(state: BeaconState,
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
             index = get_index_for_new_validator(state)
-            update_or_append_to_list(state.validators, index, get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+            validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
+            update_or_append_to_list(state.validators, index, validator)
             update_or_append_to_list(state.balances, index, amount)
             # [New in Altair]
             update_or_append_to_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
