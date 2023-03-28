@@ -4,7 +4,11 @@ from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.forks import is_post_capella, is_post_deneb
+from eth2spec.test.helpers.forks import (
+    is_post_capella,
+    is_post_deneb,
+    is_post_eip6110,
+)
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -28,6 +32,8 @@ def get_execution_payload_header(spec, execution_payload):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
     if is_post_deneb(spec):
         payload_header.excess_data_gas = execution_payload.excess_data_gas
+    if is_post_eip6110(spec):
+        payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
     return payload_header
 
 
@@ -48,7 +54,8 @@ def compute_trie_root_from_indexed_data(data):
 def compute_el_header_block_hash(spec,
                                  payload_header,
                                  transactions_trie_root,
-                                 withdrawals_trie_root=None):
+                                 withdrawals_trie_root=None,
+                                 deposit_receipts_trie_root=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
@@ -92,6 +99,10 @@ def compute_el_header_block_hash(spec,
     if is_post_deneb(spec):
         # excess_data_gas
         execution_payload_header_rlp.append((big_endian_int, payload_header.excess_data_gas))
+    if is_post_eip6110(spec):
+        # TODO: RLP or SSZ for `deposit_receipts_root`
+        # FIXME: if using RLP, we need to implement `get_deposit_receipt_rlp` helper
+        ...
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
@@ -165,6 +176,9 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     )
     if is_post_capella(spec):
         payload.withdrawals = spec.get_expected_withdrawals(state)
+    if is_post_eip6110(spec):
+        # just to be clear
+        payload.deposit_receipts = []
 
     payload.block_hash = compute_el_block_hash(spec, payload)
 
