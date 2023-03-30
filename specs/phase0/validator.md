@@ -91,8 +91,10 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
-| `ATTESTATION_SUBNET_EXTRA_BITS` | 0 | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
-| `SUBNETS_PER_NODE` | 2 | The number of long-lived subnets a beacon node should be subscribed to. |
+| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
+| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
+| `ATTESTATION_SUBNET_PREFIX_BITS` | `(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `SUBNET_DURATION_IN_EPOCHS` | `2` | |
 
 ## Containers
 
@@ -611,20 +613,19 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 * Remain subscribed to `SUBNETS_PER_NODE` for `SUBNET_DURATION_IN_EPOCHS` epochs.
 * Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
-* Select these subnets based on their node-id as specified by the following
-	`compute_subnets(node_id,epoch)` function.
+* Select these subnets based on their node-id as specified by the following `compute_subnets(node_id,epoch)` function.
 
 ```python
-ATTESTATION_SUBNET_PREFIX_BITS = ceil(log2(ATTESTATION_SUBNET_COUNT)) + ATTESTATION_SUBNET_EXTRA_BITS
+def compute_subnet(node_id: int, epoch: Epoch, index: int) -> int:
+    node_id_prefix = node_id >> (256 - ATTESTATION_SUBNET_PREFIX_BITS)
+    permutation_seed = hash(uint_to_bytes(epoch // SUBNET_DURATION_IN_EPOCHS))
+    permutated_prefix = compute_shuffled_index(node_id_prefix, 1 << ATTESTATION_SUBNET_PREFIX_BITS, permutation_seed)
+    return (permutated_prefix + index) % ATTESTATION_SUBNET_COUNT
+```
 
-def compute_subnet(node_id, epoch, index):
-	  node_id_prefix = node_id >> (256 - ATTESTATION_SUBNET_PREFIX_BITS)
-	  permutation_seed = hash(uint_to_bytes(epoch // SUBNET_DURATION_IN_EPOCHS))
-	  permutated_prefix = compute_shuffled_index(node_id_prefix, 1 << ATTESTATION_SUBNET_PREFIX_BITS, permutation_seed)
-	  return (permutated_prefix + index) % ATTESTATION_SUBNET_COUNT
-
-def compute_subnets(node_id, epoch):
-	  return [compute_subnet(node_id, epoch, idx) for idx in range(SUBNETS_PER_NODE)]
+```python
+def compute_subnets(node_id: int, epoch: Epoch) -> Sequence[int]:
+    return [compute_subnet(node_id, epoch, idx) for idx in range(SUBNETS_PER_NODE)]
 ```
 
 *Note*: Nodes should subscribe to new subnets and remain subscribed to old subnets for at least one epoch. Nodes should pick a random duration to unsubscribe from old subnets to smooth the transition on the exact epoch boundary of which the shuffling changes. 

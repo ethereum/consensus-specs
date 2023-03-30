@@ -75,7 +75,7 @@ def test_time(spec, state):
 @with_all_phases
 @spec_state_test
 def test_networking(spec, state):
-    assert spec.RANDOM_SUBNETS_PER_VALIDATOR <= spec.ATTESTATION_SUBNET_COUNT
+    assert spec.SUBNETS_PER_NODE <= spec.ATTESTATION_SUBNET_COUNT
 
 
 @with_all_phases
