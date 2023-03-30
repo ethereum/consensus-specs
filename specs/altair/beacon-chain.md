@@ -525,11 +525,11 @@ def apply_deposit(state: BeaconState,
         increase_balance(state, index, amount)
 
 
-def get_index_for_new_validator(state: BeaconState) -> int:
-    return len(state.validators)
+def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
+    return ValidatorIndex(len(state.validators))
 
 
-def update_or_append_to_list(list: List, index: int, value: Any) -> None:
+def update_or_append_to_list(list: List, index: ValidatorIndex, value: Any) -> None:
     if index == len(list):
         list.append(value)
     else:

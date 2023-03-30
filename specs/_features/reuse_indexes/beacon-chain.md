@@ -1,4 +1,4 @@
-# Reuse indexes -- The Beacon Chain
+# Reuse indices -- The Beacon Chain
 
 ## Table of contents
 
@@ -31,7 +31,7 @@ This is the beacon chain specification to assign new deposits to existing valida
 
 | Name | Value | Unit | Duration |
 | - | - | - |
-| `REUSE_VALIDATOR_INDEX_DELAY` | `uint64(2**16)` (= 65,536) | epochs | ~1 year |
+| `REUSE_VALIDATOR_INDEX_DELAY` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
 ## Helper functions
 
@@ -45,8 +45,7 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
     Check if ``validator`` index can be re-assigned to a new deposit.
     """
     return (
-        epoch > REUSE_VALIDATOR_INDEX_DELAY
-        and validator.withdrawable_epoch < epoch - REUSE_VALIDATOR_INDEX_DELAY
+        epoch > validator.withdrawable_epoch + REUSE_VALIDATOR_INDEX_DELAY
         and balance == 0
     )
 ```
@@ -58,9 +57,9 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
 #### Modified `get_index_for_new_validator`
 
 ```python
-def get_index_for_new_validator(state: BeaconState) -> int:
+def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
     for index, validator in enumerate(state.validators):
         if is_reusable_validator(validator, state.balances[index], get_current_epoch(state)):
-            return index
-    return len(state.validators)
+            return ValidatorIndex(index)
+    return ValidatorIndex(len(state.validators))
 ```
