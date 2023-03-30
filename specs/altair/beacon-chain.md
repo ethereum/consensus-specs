@@ -30,6 +30,8 @@
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
     - [`has_flag`](#has_flag)
+    - [`get_index_for_new_validator`](#get_index_for_new_validator)
+    - [`set_or_append_list`](#set_or_append_list)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_next_sync_committee_indices`](#get_next_sync_committee_indices)
     - [`get_next_sync_committee`](#get_next_sync_committee)
@@ -246,6 +248,23 @@ def has_flag(flags: ParticipationFlags, flag_index: int) -> bool:
     """
     flag = ParticipationFlags(2**flag_index)
     return flags & flag == flag
+```
+
+#### `get_index_for_new_validator`
+
+```python
+def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
+    return ValidatorIndex(len(state.validators))
+```
+
+#### `set_or_append_list`
+
+```python
+def set_or_append_list(list: List[Any], index: ValidatorIndex, value: Any) -> None:
+    if index == len(list):
+        list.append(value)
+    else:
+        list[index] = value
 ```
 
 ### Beacon state accessors
@@ -513,27 +532,16 @@ def apply_deposit(state: BeaconState,
         if bls.Verify(pubkey, signing_root, signature):
             index = get_index_for_new_validator(state)
             validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
-            update_or_append_to_list(state.validators, index, validator)
-            update_or_append_to_list(state.balances, index, amount)
+            set_or_append_list(state.validators, index, validator)
+            set_or_append_list(state.balances, index, amount)
             # [New in Altair]
-            update_or_append_to_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-            update_or_append_to_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-            update_or_append_to_list(state.inactivity_scores, index, uint64(0))
+            set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            set_or_append_list(state.inactivity_scores, index, uint64(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
         increase_balance(state, index, amount)
-
-
-def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
-    return ValidatorIndex(len(state.validators))
-
-
-def update_or_append_to_list(list: List, index: ValidatorIndex, value: Any) -> None:
-    if index == len(list):
-        list.append(value)
-    else:
-        list[index] = value
 ```
 
 #### Sync aggregate processing
