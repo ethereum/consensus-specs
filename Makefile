@@ -225,13 +225,15 @@ detect_generator_error_log: $(TEST_VECTOR_DIR)
 install_docs:
 	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[docs];
 
-build_docs:
-	. venv/bin/activate; 
+copy_docs:
 	cp -r $(SPEC_DIR) $(DOCS_DIR);
 	cp -r $(SYNC_DIR) $(DOCS_DIR);
 	cp -r $(SSZ_DIR) $(DOCS_DIR);
 	cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR);
 	cp $(CURRENT_DIR)/README.md $(DOCS_DIR)/README.md
+
+build_docs: copy_docs
+	. venv/bin/activate;
 	mkdocs build
 
 serve_docs:
