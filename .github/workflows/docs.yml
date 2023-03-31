@@ -23,4 +23,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG_FILE: mkdocs.yml
           EXTRA_PACKAGES: build-base
-          GITHUB_DOMAIN: hwwhww.github.io
