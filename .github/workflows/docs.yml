@@ -1,25 +1,24 @@
 
-name: Publish docs via GitHub Pages
+name: Publish docs
 on:
   push:
     branches:
-      - master
-
+      - master 
+permissions:
+  contents: write
 jobs:
-  build:
-    name: Deploy docs
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
-        uses: actions/checkout@v2
-
+      - uses: actions/checkout@v3
       - name: Build docs
         run: make copy_docs
-
-      - name: Deploy docs
-        uses: mhausenblas/mkdocs-deploy-gh-pages@master
-        # Or use mhausenblas/mkdocs-deploy-gh-pages@nomaterial to build without the mkdocs-material theme
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONFIG_FILE: mkdocs.yml
-          EXTRA_PACKAGES: build-base
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - uses: actions/cache@v2
+        with:
+          key: ${{ github.ref }}
+          path: .cache
+      - run: pip install mkdocs-material 
+      - run: mkdocs gh-deploy --force
