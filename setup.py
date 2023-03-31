@@ -46,7 +46,8 @@ PHASE0 = 'phase0'
 ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
-EIP4844 = 'eip4844'
+DENEB = 'deneb'
+EIP6110 = 'eip6110'
 
 
 # The helper functions that are used when defining constants
@@ -632,10 +633,10 @@ def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
         return {**super().hardcoded_ssz_dep_constants(), **constants}
 
 #
-# EIP4844SpecBuilder
+# DenebSpecBuilder
 #
-class EIP4844SpecBuilder(CapellaSpecBuilder):
-    fork: str = EIP4844
+class DenebSpecBuilder(CapellaSpecBuilder):
+    fork: str = DENEB
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -653,9 +654,9 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
+def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZGProof], Tuple[str, str]]:
     # pylint: disable=unused-argument
-    return "TEST"'''
+    return ("TEST", "TEST")'''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
@@ -667,9 +668,22 @@ def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[Blobs
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
+#
+# EIP6110SpecBuilder
+#
+class EIP6110SpecBuilder(CapellaSpecBuilder):
+    fork: str = EIP6110
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.capella import {preset_name} as capella
+'''
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, EIP4844SpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder)
 }
 
 
@@ -968,14 +982,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
@@ -987,7 +1001,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA, EIP4844):
+            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -996,7 +1010,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork in (CAPELLA, EIP4844):
+            if self.spec_fork in (CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/capella/light-client/fork.md
                     specs/capella/light-client/full-node.md
@@ -1008,18 +1022,23 @@ class PySpecCommand(Command):
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
                 """
-            if self.spec_fork == EIP4844:
+            if self.spec_fork == DENEB:
                 self.md_doc_paths += """
-                    specs/eip4844/light-client/fork.md
-                    specs/eip4844/light-client/full-node.md
-                    specs/eip4844/light-client/p2p-interface.md
-                    specs/eip4844/light-client/sync-protocol.md
-                    specs/eip4844/beacon-chain.md
-                    specs/eip4844/fork.md
-                    specs/eip4844/fork-choice.md
-                    specs/eip4844/polynomial-commitments.md
-                    specs/eip4844/p2p-interface.md
-                    specs/eip4844/validator.md
+                    specs/deneb/light-client/fork.md
+                    specs/deneb/light-client/full-node.md
+                    specs/deneb/light-client/p2p-interface.md
+                    specs/deneb/light-client/sync-protocol.md
+                    specs/deneb/beacon-chain.md
+                    specs/deneb/fork.md
+                    specs/deneb/fork-choice.md
+                    specs/deneb/polynomial-commitments.md
+                    specs/deneb/p2p-interface.md
+                    specs/deneb/validator.md
+                """
+            if self.spec_fork == EIP6110:
+                self.md_doc_paths += """
+                    specs/_features/eip6110/beacon-chain.md
+                    specs/_features/eip6110/fork.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -1169,10 +1188,11 @@ setup(
         "pycryptodome==3.15.0",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.25",
+        "remerkleable==0.1.27",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
+        "py_arkworks_bls12381==0.3.4",
     ]
 )

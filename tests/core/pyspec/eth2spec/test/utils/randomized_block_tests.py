@@ -88,7 +88,7 @@ def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fractio
     return scenario_state
 
 
-def randomize_state_eip4844(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+def randomize_state_deneb(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     scenario_state = randomize_state_capella(spec,
                                              state,
                                              stats,
@@ -232,10 +232,10 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
     return block
 
 
-def random_block_eip4844(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_capella(spec, state, signed_blocks, scenario_state)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-    opaque_tx, _, blob_kzg_commitments = get_sample_opaque_tx(spec, blob_count=1)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=1)
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     block.body.blob_kzg_commitments = blob_kzg_commitments

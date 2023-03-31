@@ -16,7 +16,7 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     MINIMAL,
     ALL_PHASES,
 )
@@ -24,7 +24,7 @@ from eth2spec.test.helpers.fork_transition import (
     do_fork,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_capella, is_post_eip4844,
+    is_post_capella, is_post_deneb,
     is_post_fork,
 )
 from eth2spec.test.helpers.light_client import (
@@ -53,8 +53,8 @@ def needs_upgrade_to_capella(d_spec, s_spec):
     return is_post_capella(s_spec) and not is_post_capella(d_spec)
 
 
-def needs_upgrade_to_eip4844(d_spec, s_spec):
-    return is_post_eip4844(s_spec) and not is_post_eip4844(d_spec)
+def needs_upgrade_to_deneb(d_spec, s_spec):
+    return is_post_deneb(s_spec) and not is_post_deneb(d_spec)
 
 
 def check_lc_header_equal(d_spec, s_spec, data, upgraded):
@@ -80,8 +80,8 @@ def upgrade_lc_bootstrap_to_store(d_spec, s_spec, data):
         upgraded = s_spec.upgrade_lc_bootstrap_to_capella(upgraded)
         check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
 
-    if needs_upgrade_to_eip4844(d_spec, s_spec):
-        upgraded = s_spec.upgrade_lc_bootstrap_to_eip4844(upgraded)
+    if needs_upgrade_to_deneb(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_bootstrap_to_deneb(upgraded)
         check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
 
     return upgraded
@@ -103,8 +103,8 @@ def upgrade_lc_update_to_store(d_spec, s_spec, data):
         upgraded = s_spec.upgrade_lc_update_to_capella(upgraded)
         check_lc_update_equal(d_spec, s_spec, data, upgraded)
 
-    if needs_upgrade_to_eip4844(d_spec, s_spec):
-        upgraded = s_spec.upgrade_lc_update_to_eip4844(upgraded)
+    if needs_upgrade_to_deneb(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_update_to_deneb(upgraded)
         check_lc_update_equal(d_spec, s_spec, data, upgraded)
 
     return upgraded
@@ -130,8 +130,8 @@ def upgrade_lc_store_to_new_spec(d_spec, s_spec, data):
         upgraded = s_spec.upgrade_lc_store_to_capella(upgraded)
         check_lc_store_equal(d_spec, s_spec, data, upgraded)
 
-    if needs_upgrade_to_eip4844(d_spec, s_spec):
-        upgraded = s_spec.upgrade_lc_store_to_eip4844(upgraded)
+    if needs_upgrade_to_deneb(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_store_to_deneb(upgraded)
         check_lc_store_equal(d_spec, s_spec, data, upgraded)
 
     return upgraded
@@ -145,8 +145,8 @@ class LightClientSyncTest(object):
 
 
 def get_store_fork_version(s_spec):
-    if is_post_eip4844(s_spec):
-        return s_spec.config.EIP4844_FORK_VERSION
+    if is_post_deneb(s_spec):
+        return s_spec.config.DENEB_FORK_VERSION
     if is_post_capella(s_spec):
         return s_spec.config.CAPELLA_FORK_VERSION
     return s_spec.config.ALTAIR_FORK_VERSION
@@ -668,10 +668,9 @@ def run_test_single_fork(spec, phases, state, fork):
     # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    state, _ = do_fork(state, spec, phases[fork], fork_epoch, with_block=False)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork], state)
+    state, block = do_fork(state, spec, phases[fork], fork_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork]
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -731,16 +730,16 @@ def test_capella_fork(spec, phases, state):
     yield from run_test_single_fork(spec, phases, state, CAPELLA)
 
 
-@with_phases(phases=[CAPELLA], other_phases=[EIP4844])
+@with_phases(phases=[CAPELLA], other_phases=[DENEB])
 @spec_test
 @with_config_overrides({
-    'EIP4844_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+    'DENEB_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
 }, emit=False)
 @with_state
-@with_matching_spec_config(emitted_fork=EIP4844)
+@with_matching_spec_config(emitted_fork=DENEB)
 @with_presets([MINIMAL], reason="too slow")
-def test_eip4844_fork(spec, phases, state):
-    yield from run_test_single_fork(spec, phases, state, EIP4844)
+def test_deneb_fork(spec, phases, state):
+    yield from run_test_single_fork(spec, phases, state, DENEB)
 
 
 def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
@@ -755,18 +754,16 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
     # ..., attested is from `fork_1`, ...
     fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + '_FORK_EPOCH')
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_1_epoch) - 1)
-    state, _ = do_fork(state, spec, phases[fork_1], fork_1_epoch, with_block=False)
+    state, attested_block = do_fork(state, spec, phases[fork_1], fork_1_epoch)
     spec = phases[fork_1]
-    attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
 
     # ..., and signature is from `fork_2`
     fork_2_epoch = getattr(phases[fork_2].config, fork_2.upper() + '_FORK_EPOCH')
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_2_epoch) - 1)
-    state, _ = do_fork(state, spec, phases[fork_2], fork_2_epoch, with_block=False)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork_2], state)
+    state, block = do_fork(state, spec, phases[fork_2], fork_2_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork_2]
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
 
     # Check that update applies
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
@@ -779,17 +776,17 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
     yield from finish_test(test)
 
 
-@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, EIP4844])
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB])
 @spec_test
 @with_config_overrides({
     'CAPELLA_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
-    'EIP4844_FORK_EPOCH': 4,
+    'DENEB_FORK_EPOCH': 4,
 }, emit=False)
 @with_state
-@with_matching_spec_config(emitted_fork=EIP4844)
+@with_matching_spec_config(emitted_fork=DENEB)
 @with_presets([MINIMAL], reason="too slow")
-def test_capella_eip4844_fork(spec, phases, state):
-    yield from run_test_multi_fork(spec, phases, state, CAPELLA, EIP4844)
+def test_capella_deneb_fork(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
 
 
 def run_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
@@ -823,10 +820,10 @@ def test_capella_store_with_legacy_data(spec, phases, state):
     yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, CAPELLA)
 
 
-@with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA], other_phases=[EIP4844])
+@with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA], other_phases=[DENEB])
 @spec_test
 @with_state
-@with_matching_spec_config(emitted_fork=EIP4844)
+@with_matching_spec_config(emitted_fork=DENEB)
 @with_presets([MINIMAL], reason="too slow")
-def test_eip4844_store_with_legacy_data(spec, phases, state):
-    yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, EIP4844)
+def test_deneb_store_with_legacy_data(spec, phases, state):
+    yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, DENEB)

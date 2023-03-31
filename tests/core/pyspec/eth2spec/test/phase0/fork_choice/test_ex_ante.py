@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     MAINNET,
     spec_state_test,
-    with_all_phases,
+    with_altair_and_later,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import (
@@ -31,7 +31,7 @@ def _apply_base_block_a(spec, state, store, test_steps):
     assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_ex_ante_vanilla(spec, state):
     """
@@ -118,7 +118,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     return proposer_score // base_effective_balance + 1
 
 
-@with_all_phases
+@with_altair_and_later
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):
@@ -191,7 +191,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_ex_ante_sandwich_without_attestations(spec, state):
     """
@@ -254,7 +254,7 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @spec_state_test
 def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     """
@@ -335,7 +335,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_altair_and_later
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
