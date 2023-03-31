@@ -1181,6 +1181,7 @@ setup(
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
         "generator": ["python-snappy==0.6.1", "filelock"],
+        "docs": ["mkdocs==1.4.2"]
     },
     install_requires=[
         "eth-utils>=2.0.0,<3",
