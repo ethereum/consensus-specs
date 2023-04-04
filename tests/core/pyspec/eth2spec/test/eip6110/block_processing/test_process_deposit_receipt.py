@@ -4,6 +4,8 @@ from eth2spec.test.helpers.deposits import (
     run_deposit_receipt_processing,
     run_deposit_receipt_processing_with_specific_fork_version
 )
+from eth2spec.test.helpers.state import next_epoch_via_block
+from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
 
 @with_eip6110_and_later
@@ -224,10 +226,57 @@ def test_key_validate_invalid_decompression(spec, state):
 @with_eip6110_and_later
 @spec_state_test
 @always_bls
-def test_ineffective_deposit_with_bad_fork_version(spec, state):
+def test_ineffective_deposit_with_previous_fork_version(spec, state):
+    # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
+    # It's an ineffective deposit because it fails at BLS sig verification.
+    # NOTE: it was effective in Altair.
+    assert state.fork.previous_version != state.fork.current_version
+
     yield from run_deposit_receipt_processing_with_specific_fork_version(
         spec,
         state,
-        fork_version=spec.Version('0xAaBbCcDd'),
+        fork_version=state.fork.previous_version,
         effective=False,
     )
+
+
+@with_eip6110_and_later
+@spec_state_test
+@always_bls
+def test_effective_deposit_with_genesis_fork_version(spec, state):
+    assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
+
+    yield from run_deposit_receipt_processing_with_specific_fork_version(
+        spec,
+        state,
+        fork_version=spec.config.GENESIS_FORK_VERSION,
+    )
+
+
+@with_eip6110_and_later
+@spec_state_test
+def test_success_top_up_to_withdrawn_validator(spec, state):
+    validator_index = 0
+
+    # Fully withdraw validator
+    set_validator_fully_withdrawable(spec, state, validator_index)
+    assert state.balances[validator_index] > 0
+    next_epoch_via_block(spec, state)
+    assert state.balances[validator_index] == 0
+    assert state.validators[validator_index].effective_balance > 0
+    next_epoch_via_block(spec, state)
+    assert state.validators[validator_index].effective_balance == 0
+
+    # Make a top-up balance to validator
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit_receipt = prepare_deposit_receipt(spec, validator_index, amount, len(state.validators), signed=True)
+
+    yield from run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index)
+
+    assert state.balances[validator_index] == amount
+    assert state.validators[validator_index].effective_balance == 0
+
+    validator = state.validators[validator_index]
+    balance = state.balances[validator_index]
+    current_epoch = spec.get_current_epoch(state)
+    assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
