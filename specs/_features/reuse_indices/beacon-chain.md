@@ -30,7 +30,7 @@ This is the beacon chain specification to assign new deposits to existing valida
 ### Time parameters
 
 | Name | Value | Unit | Duration |
-| - | - | - |
+| - | - | - | - |
 | `REUSE_VALIDATOR_INDEX_DELAY` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
 ## Helper functions
