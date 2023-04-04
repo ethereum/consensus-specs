@@ -260,7 +260,7 @@ def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
 #### `set_or_append_list`
 
 ```python
-def set_or_append_list(list: List[Any], index: ValidatorIndex, value: Any) -> None:
+def set_or_append_list(list: List, index: ValidatorIndex, value: Any) -> None:
     if index == len(list):
         list.append(value)
     else:

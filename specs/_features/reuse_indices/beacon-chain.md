@@ -9,7 +9,7 @@
 - [Introduction](#introduction)
 - [Preset](#preset)
   - [Time parameters](#time-parameters)
-- [Helpers](#helpers)
+- [Helper functions](#helper-functions)
   - [Predicates](#predicates)
     - [`is_reusable_validator`](#is_reusable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
