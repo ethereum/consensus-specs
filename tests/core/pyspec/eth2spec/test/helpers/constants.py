@@ -27,13 +27,13 @@ ALL_PHASES = (
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110)
 
-# TODO: no EIP6110 fork tests now.
 ALL_FORK_UPGRADES = {
     # pre_fork_name: post_fork_name
     PHASE0: ALTAIR,
     ALTAIR: BELLATRIX,
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
+    DENEB: EIP6110,
 }
 ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
 AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
@@ -42,7 +42,7 @@ AFTER_CAPELLA_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
                           if key not in [PHASE0, ALTAIR]}
 AFTER_CAPELLA_PRE_POST_FORKS = AFTER_CAPELLA_UPGRADES.items()
 AFTER_DENEB_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
-                        if key not in [PHASE0, ALTAIR, BELLATRIX, EIP6110]}
+                        if key not in [PHASE0, ALTAIR, BELLATRIX]}
 AFTER_DENEB_PRE_POST_FORKS = AFTER_DENEB_UPGRADES.items()
 
 #
