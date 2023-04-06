@@ -1,3 +1,13 @@
 site_name: Consensus Specs
 site_url: https://example.com/
-theme: readthedocs
+theme:
+  name: material
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      use_pygments: true
+      pygments_lang_class: true
+      linenums: true
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.superfences
