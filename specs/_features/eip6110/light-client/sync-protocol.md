@@ -1,4 +1,4 @@
-# Deneb Light Client -- Sync Protocol
+# EIP-6110 Light Client -- Sync Protocol
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

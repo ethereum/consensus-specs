@@ -1,4 +1,4 @@
-# Deneb Light Client -- Full Node
+# EIP-6110 Light Client -- Full Node
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Deneb upgrade.
+This upgrade adds information about the execution payload to light client data as part of the EIP-6110 upgrade.
 
 ## Helper functions
 

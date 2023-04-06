@@ -1,4 +1,4 @@
-# eip6110 Light Client -- Fork Logic
+# EIP-6110 Light Client -- Fork Logic
 
 ## Table of contents
 
