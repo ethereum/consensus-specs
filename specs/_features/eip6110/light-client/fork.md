@@ -15,14 +15,14 @@
 
 ## Introduction
 
-This document describes how to upgrade existing light client objects based on the [Capella specification](../../capella/light-client/sync-protocol.md) to eip6110. This is necessary when processing pre-eip6110 data with a post-eip6110 `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
+This document describes how to upgrade existing light client objects based on the [Deneb specification](../../deneb/light-client/sync-protocol.md) to eip6110. This is necessary when processing pre-eip6110 data with a post-eip6110 `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
 
 ### Upgrading light client data
 
 A eip6110 `LightClientStore` can still process earlier light client data. In order to do so, that pre-eip6110 data needs to be locally upgraded to eip6110 before processing.
 
 ```python
-def upgrade_lc_header_to_eip6110(pre: capella.LightClientHeader) -> LightClientHeader:
+def upgrade_lc_header_to_eip6110(pre: deneb.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
         execution=ExecutionPayloadHeader(
@@ -41,14 +41,15 @@ def upgrade_lc_header_to_eip6110(pre: capella.LightClientHeader) -> LightClientH
             block_hash=pre.execution.block_hash,
             transactions_root=pre.execution.transactions_root,
             withdrawals_root=pre.execution.withdrawals_root,
-            deposit_receipts_root=Root(),
+            excess_data_gas=pre.execution.excess_data_gas,
+            deposit_receipts_root=Root(),  # [New in EIP6110]
         ),
         execution_branch=pre.execution_branch,
     )
 ```
 
 ```python
-def upgrade_lc_bootstrap_to_eip6110(pre: capella.LightClientBootstrap) -> LightClientBootstrap:
+def upgrade_lc_bootstrap_to_eip6110(pre: deneb.LightClientBootstrap) -> LightClientBootstrap:
     return LightClientBootstrap(
         header=upgrade_lc_header_to_eip6110(pre.header),
         current_sync_committee=pre.current_sync_committee,
@@ -57,7 +58,7 @@ def upgrade_lc_bootstrap_to_eip6110(pre: capella.LightClientBootstrap) -> LightC
 ```
 
 ```python
-def upgrade_lc_update_to_eip6110(pre: capella.LightClientUpdate) -> LightClientUpdate:
+def upgrade_lc_update_to_eip6110(pre: deneb.LightClientUpdate) -> LightClientUpdate:
     return LightClientUpdate(
         attested_header=upgrade_lc_header_to_eip6110(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
@@ -70,7 +71,7 @@ def upgrade_lc_update_to_eip6110(pre: capella.LightClientUpdate) -> LightClientU
 ```
 
 ```python
-def upgrade_lc_finality_update_to_eip6110(pre: capella.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
+def upgrade_lc_finality_update_to_eip6110(pre: deneb.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_eip6110(pre.attested_header),
         finalized_header=upgrade_lc_header_to_eip6110(pre.finalized_header),
@@ -81,7 +82,7 @@ def upgrade_lc_finality_update_to_eip6110(pre: capella.LightClientFinalityUpdate
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_eip6110(pre: capella.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
+def upgrade_lc_optimistic_update_to_eip6110(pre: deneb.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
         attested_header=upgrade_lc_header_to_eip6110(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,
@@ -91,10 +92,10 @@ def upgrade_lc_optimistic_update_to_eip6110(pre: capella.LightClientOptimisticUp
 
 ### Upgrading the store
 
-Existing `LightClientStore` objects based on Capella MUST be upgraded to eip6110 before eip6110 based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `eip6110_FORK_EPOCH`.
+Existing `LightClientStore` objects based on Deneb MUST be upgraded to eip6110 before eip6110 based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `EIP6110_FORK_EPOCH`.
 
 ```python
-def upgrade_lc_store_to_eip6110(pre: capella.LightClientStore) -> LightClientStore:
+def upgrade_lc_store_to_eip6110(pre: deneb.LightClientStore) -> LightClientStore:
     if pre.best_valid_update is None:
         best_valid_update = None
     else:

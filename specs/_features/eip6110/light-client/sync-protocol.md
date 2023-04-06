@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This upgrade updates light client data to include the EIP-6110 changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to EIP-6110.
+This upgrade updates light client data to include the EIP-6110 changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Deneb Light Client specifications](../../deneb/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Deneb based deployments to EIP-6110.
 
 Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
@@ -32,11 +32,9 @@ Additional documents describes the impact of the upgrade on certain roles:
 def get_lc_execution_root(header: LightClientHeader) -> Root:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in EIP-6110]
-    if epoch >= EIP6110_FORK_EPOCH:
+    if epoch >= DENEB_FORK_EPOCH:
         return hash_tree_root(header.execution)
 
-    # [Modified in EIP-6110]
     if epoch >= CAPELLA_FORK_EPOCH:
         execution_header = capella.ExecutionPayloadHeader(
             parent_hash=header.execution.parent_hash,
@@ -68,7 +66,11 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
     # [New in EIP-6110]
     if epoch < EIP6110_FORK_EPOCH:
-        if header.execution.withdrawals_root != Root():
+        if header.execution.deposit_receipts_root != Root():
+            return False
+
+    if epoch < DENEB_FORK_EPOCH:
+        if header.execution.excess_data_gas != uint256(0):
             return False
 
     if epoch < CAPELLA_FORK_EPOCH:

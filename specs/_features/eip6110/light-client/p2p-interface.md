@@ -26,7 +26,7 @@
 
 ## Networking
 
-The [Capella light client networking specification](../../capella/light-client/p2p-interface.md) is extended to exchange [EIP-6110 light client data](./sync-protocol.md).
+The [Deneb light client networking specification](../../deneb/light-client/p2p-interface.md) is extended to exchange [EIP-6110 light client data](./sync-protocol.md).
 
 ### The gossip domain: gossipsub
 
@@ -43,6 +43,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 | `GENESIS_FORK_VERSION`                                 | n/a                                 |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientFinalityUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientFinalityUpdate` |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientFinalityUpdate`   |
 | `EIP6110_FORK_VERSION` and later                       | `eip6110.LightClientFinalityUpdate` |
 
 ###### `light_client_optimistic_update`
@@ -54,6 +55,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 | `GENESIS_FORK_VERSION`                                 | n/a                                   |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientOptimisticUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientOptimisticUpdate` |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientOptimisticUpdate`   |
 | `EIP6110_FORK_VERSION` and later                       | `eip6110.LightClientOptimisticUpdate` |
 
 ### The Req/Resp domain
@@ -69,6 +71,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 | `GENESIS_FORK_VERSION`                                 | n/a                                |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientBootstrap`      |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientBootstrap`     |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientBootstrap`       |
 | `EIP6110_FORK_VERSION` and later                       | `eip6110.LightClientBootstrap`     |
 
 ##### LightClientUpdatesByRange
@@ -80,6 +83,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 | `GENESIS_FORK_VERSION`                                 | n/a                              |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientUpdate`       |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientUpdate`      |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientUpdate`        |
 | `EIP6110_FORK_VERSION` and later                       | `eip6110.LightClientUpdate`      |
 
 ##### GetLightClientFinalityUpdate
@@ -91,6 +95,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 | `GENESIS_FORK_VERSION`                                 | n/a                                 |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientFinalityUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientFinalityUpdate` |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientFinalityUpdate`   |
 | `EIP6110_FORK_VERSION` and later                       | `eip6110.LightClientFinalityUpdate` |
 
 ##### GetLightClientOptimisticUpdate
@@ -102,4 +107,5 @@ The [Capella light client networking specification](../../capella/light-client/p
 | `GENESIS_FORK_VERSION`                                 | n/a                                   |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientOptimisticUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientOptimisticUpdate` |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientOptimisticUpdate`   |
 | `EIP6110_FORK_VERSION` and later                       | `eip6110.LightClientOptimisticUpdate` |

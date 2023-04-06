@@ -47,7 +47,10 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             withdrawals_root=hash_tree_root(payload.withdrawals),
         )
 
-        # [New in Deneb]
+        if epoch >= DENEB_FORK_EPOCH:
+            execution_header.excess_data_gas = payload.excess_data_gas
+
+        # [New in EIP6110]
         if epoch >= EIP6110_FORK_EPOCH:
             execution_header.deposit_receipts_root = hash_tree_root(payload.deposit_receipts)
 
