@@ -6,6 +6,8 @@ theme:
   features:
     - navigation.tabs
 markdown_extensions:
+  - toc:
+      permalink: true
   - pymdownx.highlight:
       use_pygments: true
       pygments_lang_class: true
