@@ -1,5 +1,5 @@
 site_name: Consensus Specs
-site_url: https://example.com/
+site_url: https://ethereum.github.io/consensus-specs/
 repo_url: https://github.com/ethereum/consensus-specs
 theme:
   name: material
