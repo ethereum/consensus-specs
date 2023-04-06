@@ -1,21 +1,36 @@
 site_name: Consensus Specs
 site_url: https://ethereum.github.io/consensus-specs/
+repo_name: ethereum/consensus-specs
 repo_url: https://github.com/ethereum/consensus-specs
 theme:
   name: material
+  palette:
+    - scheme: default
+      primary: black
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - navigation.tabs
+    - search
 markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.highlight:
       use_pygments: true
       noclasses: true
-      pygments_style: 'colorful'
+      pygments_style: monokai
       linenums: true
       anchor_linenums: true
   - pymdownx.superfences
   - mdx_truly_sane_lists
-
 plugins:
-    - awesome-pages
+  - search
+  - awesome-pages
+extra_css:
+  - stylesheets/extra.css
