@@ -10,7 +10,8 @@ markdown_extensions:
       permalink: true
   - pymdownx.highlight:
       use_pygments: true
-      pygments_lang_class: true
+      noclasses: true
+      pygments_style: 'colorful'
       linenums: true
       anchor_linenums: true
   - pymdownx.superfences
