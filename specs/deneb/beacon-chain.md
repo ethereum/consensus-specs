@@ -26,6 +26,7 @@
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
+    - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -189,6 +190,30 @@ def verify_kzg_commitments_against_transactions(transactions: Sequence[Transacti
         if tx[0] == BLOB_TX_TYPE:
             all_versioned_hashes += tx_peek_blob_versioned_hashes(tx)
     return all_versioned_hashes == [kzg_commitment_to_versioned_hash(commitment) for commitment in kzg_commitments]
+```
+
+#### Modified `compute_proposer_index`
+
+*Note:* Disallowing slashed validator to become a proposer is the only modification of this function.
+
+```python
+def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
+    """
+    Return from ``indices`` a random index sampled by effective balance.
+    """
+    assert len(indices) > 0
+    MAX_RANDOM_BYTE = 2**8 - 1
+    i = uint64(0)
+    total = uint64(len(indices))
+    while True:
+        candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
+        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        # [Modified in Deneb]
+        slashed = state.validators[candidate_index].slashed
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte and not slashed:
+            return candidate_index
+        i += 1
 ```
 
 ## Beacon chain state transition function

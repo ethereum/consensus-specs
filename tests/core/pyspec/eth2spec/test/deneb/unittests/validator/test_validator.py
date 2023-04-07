@@ -2,7 +2,9 @@ from eth2spec.test.context import (
     always_bls,
     spec_state_test,
     with_deneb_and_later,
-    expect_assertion_error
+    expect_assertion_error,
+    with_phases,
+    PHASE0, ALTAIR, CAPELLA,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -156,3 +158,23 @@ def test_blob_sidecar_signature_incorrect(spec, state):
     signed_blob_sidecar = spec.SignedBlobSidecar(message=blob_sidecars[1], signature=sidecar_signature)
 
     assert not spec.verify_blob_sidecar_signature(state, signed_blob_sidecar)
+
+
+@with_phases([PHASE0, ALTAIR, CAPELLA])
+@spec_state_test
+def test_slashed_validator_elected_for_proposal(spec, state):
+    spec.process_slots(state, state.slot + 1)
+    slashed_proposer_index = spec.get_beacon_proposer_index(state)
+    spec.slash_validator(state, slashed_proposer_index)
+
+    assert spec.get_beacon_proposer_index(state) == slashed_proposer_index
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_slashed_validator_not_elected_for_proposal(spec, state):
+    spec.process_slots(state, state.slot + 1)
+    slashed_proposer_index = spec.get_beacon_proposer_index(state)
+    spec.slash_validator(state, slashed_proposer_index)
+
+    assert spec.get_beacon_proposer_index(state) != slashed_proposer_index
