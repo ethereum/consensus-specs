@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+    sign_block,
 )
 from eth2spec.test.context import (
     spec_state_test,
@@ -27,7 +28,8 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
     If ``valid == False``, run expecting ``AssertionError``
     """
     yield 'pre', state
-    yield 'block', block
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield 'blocks', [signed_block]
 
     if not valid:
         expect_assertion_error(lambda: spec.process_block(state, block))
