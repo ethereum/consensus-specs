@@ -286,7 +286,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
-    proposer = state.validators[get_latest_block_proposer_index(state)]
+    proposer = state.validators[get_latest_block_proposer_index(state)]  # [Modified in Deneb]
     signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
     assert bls.Verify(proposer.pubkey, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
