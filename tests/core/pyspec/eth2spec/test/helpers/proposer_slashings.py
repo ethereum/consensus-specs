@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.block_header import sign_block_header
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_deneb
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.sync_committee import (
@@ -24,6 +24,8 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
     proposer_index = spec.get_beacon_proposer_index(state)
+    if is_post_deneb(spec):
+        proposer_index = spec.get_latest_block_proposer_index(state)
     slash_penalty = state.validators[slashed_index].effective_balance // get_min_slashing_penalty_quotient(spec)
     whistleblower_reward = state.validators[slashed_index].effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
 

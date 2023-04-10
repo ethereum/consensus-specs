@@ -4,6 +4,7 @@ from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.forks import is_post_deneb
 
 
 def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True):
@@ -16,6 +17,12 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
     """
 
     pre_state = state.copy()
+
+    # Makes `get_latest_block_proposer_index` respond properly
+    if is_post_deneb(spec):
+        block = build_empty_block_for_next_slot(spec, state)
+        spec.process_slots(state, state.slot + 1)
+        spec.process_block_header(state, block)
 
     yield 'pre', state
     yield 'proposer_slashing', proposer_slashing
