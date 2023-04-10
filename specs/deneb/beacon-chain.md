@@ -27,8 +27,13 @@
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
     - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
+    - [New `get_latest_block_proposer_index`](#new-get_latest_block_proposer_index)
+    - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
+    - [Modified `process_randao`](#modified-process_randao)
+    - [Modified `process_attestation`](#modified-process_attestation)
+    - [Modified `process_sync_aggregate`](#modified-process_sync_aggregate)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
     - [Blob KZG commitments](#blob-kzg-commitments)
@@ -216,6 +221,46 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
         i += 1
 ```
 
+#### New `get_latest_block_proposer_index`
+
+```python
+def get_latest_block_proposer_index(state: BeaconState) -> ValidatorIndex:
+    """
+    Return validator index of the latest block proposer.
+    """
+    return state.latest_block_header.proposer_index
+```
+
+#### Modified `slash_validator`
+
+*Note:* The only change to this function is a switch to `get_latest_block_proposer_index`.
+
+```python
+def slash_validator(state: BeaconState,
+                    slashed_index: ValidatorIndex,
+                    whistleblower_index: ValidatorIndex=None) -> None:
+    """
+    Slash the validator with index ``slashed_index``.
+    """
+    epoch = get_current_epoch(state)
+    initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
+    validator.slashed = True
+    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
+    decrease_balance(state, slashed_index, slashing_penalty)
+
+    # Apply proposer and whistleblower rewards
+    proposer_index = get_latest_block_proposer_index(state)  # [Modified in Deneb]
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
+```
+
 ## Beacon chain state transition function
 
 ### Block processing
@@ -226,12 +271,101 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     if is_execution_enabled(state, block.body):
         process_withdrawals(state, block.body.execution_payload)
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Deneb]
-    process_randao(state, block.body)
+    process_randao(state, block.body)  # [Modified in Deneb]
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)
-    process_sync_aggregate(state, block.body.sync_aggregate)
+    process_operations(state, block.body)  # [Modified in Deneb]
+    process_sync_aggregate(state, block.body.sync_aggregate)  # [Modified in Deneb]
     process_blob_kzg_commitments(state, block.body)  # [New in Deneb]
 ```
+
+#### Modified `process_randao`
+
+*Note:* The only change to this function is a switch to `get_latest_block_proposer_index`.
+
+```python
+def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
+    epoch = get_current_epoch(state)
+    # Verify RANDAO reveal
+    proposer = state.validators[get_latest_block_proposer_index(state)]
+    signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
+    assert bls.Verify(proposer.pubkey, signing_root, body.randao_reveal)
+    # Mix in RANDAO reveal
+    mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
+    state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
+```
+
+#### Modified `process_attestation`
+
+*Note:* The only change to this function is a switch to `get_latest_block_proposer_index`.
+
+```python
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    data = attestation.data
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
+    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
+
+    committee = get_beacon_committee(state, data.slot, data.index)
+    assert len(attestation.aggregation_bits) == len(committee)
+
+    # Participation flag indices
+    participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
+
+    # Verify signature
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+
+    # Update epoch participation flags
+    if data.target.epoch == get_current_epoch(state):
+        epoch_participation = state.current_epoch_participation
+    else:
+        epoch_participation = state.previous_epoch_participation
+
+    proposer_reward_numerator = 0
+    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
+            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+                proposer_reward_numerator += get_base_reward(state, index) * weight
+
+    # Reward proposer
+    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
+    increase_balance(state, get_latest_block_proposer_index(state), proposer_reward)  # [Modified in Deneb]
+```
+
+#### Modified `process_sync_aggregate`
+
+*Note:* The only change to this function is a switch to `get_latest_block_proposer_index`.
+
+```python
+def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
+    # Verify sync committee aggregate signature signing over the previous slot block root
+    committee_pubkeys = state.current_sync_committee.pubkeys
+    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits) if bit]
+    previous_slot = max(state.slot, Slot(1)) - Slot(1)
+    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
+    signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
+    assert eth_fast_aggregate_verify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
+
+    # Compute participant and proposer rewards
+    total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
+    max_participant_rewards = Gwei(total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
+    participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
+    proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
+
+    # Apply participant and proposer rewards
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
+    for participant_index, participation_bit in zip(committee_indices, sync_aggregate.sync_committee_bits):
+        if participation_bit:
+            increase_balance(state, participant_index, participant_reward)
+            increase_balance(state, get_latest_block_proposer_index(state), proposer_reward)  # [Modified in Deneb]
+        else:
+            decrease_balance(state, participant_index, participant_reward)
+```
+
 
 #### Execution payload
 

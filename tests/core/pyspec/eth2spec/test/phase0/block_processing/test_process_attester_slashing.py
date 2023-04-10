@@ -15,6 +15,8 @@ from eth2spec.test.helpers.state import (
     get_balance,
     next_epoch_via_block,
 )
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.forks import is_post_deneb
 
 
 def run_attester_slashing_processing(spec, state, attester_slashing, valid=True):
@@ -25,6 +27,12 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
+
+    # Makes `get_latest_block_proposer_index` respond properly
+    if is_post_deneb(spec):
+        block = build_empty_block_for_next_slot(spec, state)
+        spec.process_slots(state, state.slot + 1)
+        spec.process_block_header(state, block)
 
     yield 'pre', state
     yield 'attester_slashing', attester_slashing
