@@ -1,12 +1,10 @@
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
-    sign_block,
 )
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
     EIP6110,
-    expect_assertion_error,
 )
 from eth2spec.test.helpers.deposits import (
     build_deposit_data,
