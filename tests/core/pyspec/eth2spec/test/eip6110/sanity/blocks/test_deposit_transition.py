@@ -17,6 +17,9 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.state import (
+    state_transition_and_sign_block
+)
 
 
 def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True):
@@ -28,24 +31,20 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
     If ``valid == False``, run expecting ``AssertionError``
     """
     yield 'pre', state
-    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+
+    signed_block = state_transition_and_sign_block(spec, state, block, not valid)
+
     yield 'blocks', [signed_block]
-
-    if not valid:
-        expect_assertion_error(lambda: spec.process_block(state, block))
-        yield 'post', None
-        return
-
-    spec.process_block(state, block)
-    yield 'post', state
+    yield 'post', state if valid else None
 
     # Check that deposits are applied
-    expected_pubkeys = [d.data.pubkey for d in block.body.deposits]
-    deposit_receipts = block.body.execution_payload.deposit_receipts
-    expected_pubkeys = expected_pubkeys + [d.pubkey for d in deposit_receipts if (d.pubkey not in top_up_keys)]
-    actual_pubkeys = [v.pubkey for v in state.validators[len(state.validators) - len(expected_pubkeys):]]
+    if valid:
+        expected_pubkeys = [d.data.pubkey for d in block.body.deposits]
+        deposit_receipts = block.body.execution_payload.deposit_receipts
+        expected_pubkeys = expected_pubkeys + [d.pubkey for d in deposit_receipts if (d.pubkey not in top_up_keys)]
+        actual_pubkeys = [v.pubkey for v in state.validators[len(state.validators) - len(expected_pubkeys):]]
 
-    assert actual_pubkeys == expected_pubkeys
+        assert actual_pubkeys == expected_pubkeys
 
 
 def prepare_state_and_block(spec,
@@ -53,7 +52,8 @@ def prepare_state_and_block(spec,
                             deposit_cnt,
                             deposit_receipt_cnt,
                             first_deposit_receipt_index=0,
-                            deposit_receipts_start_index=None):
+                            deposit_receipts_start_index=None,
+                            eth1_data_deposit_count=None):
     deposits = []
     deposit_receipts = []
     keypair_index = len(state.validators)
@@ -79,8 +79,10 @@ def prepare_state_and_block(spec,
 
     if deposit_root:
         state.eth1_deposit_index = 0
+        if not eth1_data_deposit_count:
+            eth1_data_deposit_count = deposit_cnt
         state.eth1_data = spec.Eth1Data(deposit_root=deposit_root,
-                                        deposit_count=deposit_cnt,
+                                        deposit_count=eth1_data_deposit_count,
                                         block_hash=state.eth1_data.block_hash)
 
     # Prepare deposit receipts
@@ -104,9 +106,6 @@ def prepare_state_and_block(spec,
     block.body.deposits = deposits
     block.body.execution_payload.deposit_receipts = deposit_receipts
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-
-    # Advance a slot
-    spec.process_slots(state, block.slot)
 
     return state, block
 
@@ -148,10 +147,8 @@ def test_deposit_transition__process_max_eth1_deposits(spec, state):
                                            deposit_cnt=spec.MAX_DEPOSITS,
                                            deposit_receipt_cnt=1,
                                            first_deposit_receipt_index=spec.MAX_DEPOSITS + 1,
-                                           deposit_receipts_start_index=spec.MAX_DEPOSITS)
-    state.eth1_data = spec.Eth1Data(deposit_root=state.eth1_data.deposit_root,
-                                    deposit_count=23,
-                                    block_hash=state.eth1_data.block_hash)
+                                           deposit_receipts_start_index=spec.MAX_DEPOSITS,
+                                           eth1_data_deposit_count=23)
 
     yield from run_deposit_transition_block(spec, state, block)
 
@@ -177,10 +174,8 @@ def test_deposit_transition__invalid_not_enough_eth1_deposits(spec, state):
                                            deposit_cnt=3,
                                            deposit_receipt_cnt=1,
                                            first_deposit_receipt_index=29,
-                                           deposit_receipts_start_index=23)
-    state.eth1_data = spec.Eth1Data(deposit_root=state.eth1_data.deposit_root,
-                                    deposit_count=17,
-                                    block_hash=state.eth1_data.block_hash)
+                                           deposit_receipts_start_index=23,
+                                           eth1_data_deposit_count=17)
 
     yield from run_deposit_transition_block(spec, state, block, valid=False)
 
@@ -193,10 +188,8 @@ def test_deposit_transition__invalid_too_many_eth1_deposits(spec, state):
                                            deposit_cnt=3,
                                            deposit_receipt_cnt=1,
                                            first_deposit_receipt_index=11,
-                                           deposit_receipts_start_index=7)
-    state.eth1_data = spec.Eth1Data(deposit_root=state.eth1_data.deposit_root,
-                                    deposit_count=2,
-                                    block_hash=state.eth1_data.block_hash)
+                                           deposit_receipts_start_index=7,
+                                           eth1_data_deposit_count=2)
 
     yield from run_deposit_transition_block(spec, state, block, valid=False)
 
@@ -210,10 +203,8 @@ def test_deposit_transition__invalid_eth1_deposits_overlap_in_protocol_deposits(
                                            deposit_cnt=spec.MAX_DEPOSITS,
                                            deposit_receipt_cnt=1,
                                            first_deposit_receipt_index=spec.MAX_DEPOSITS,
-                                           deposit_receipts_start_index=spec.MAX_DEPOSITS - 1)
-    state.eth1_data = spec.Eth1Data(deposit_root=state.eth1_data.deposit_root,
-                                    deposit_count=23,
-                                    block_hash=state.eth1_data.block_hash)
+                                           deposit_receipts_start_index=spec.MAX_DEPOSITS - 1,
+                                           eth1_data_deposit_count=23)
 
     yield from run_deposit_transition_block(spec, state, block, valid=False)
 
