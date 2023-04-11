@@ -19,13 +19,15 @@ if __name__ == "__main__":
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
     capella_mods = bellatrix_mods  # No additional Capella specific fork choice tests
-    deneb_mods = capella_mods  # No additional Capella specific fork choice tests
+    deneb_mods = capella_mods  # No additional Deneb specific fork choice tests
+    eip6110_mods = deneb_mods  # No additional EIP6110 specific fork choice tests
 
     all_mods = {
         ALTAIR: altair_mods,
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
+        EIP6110: eip6110_mods,
     }
 
     run_state_test_generators(runner_name="fork_choice", all_mods=all_mods)

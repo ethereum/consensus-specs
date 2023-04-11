@@ -8,11 +8,13 @@ if __name__ == "__main__":
     ]}
     capella_mods = bellatrix_mods
     deneb_mods = capella_mods
+    eip6110_mods = deneb_mods
 
     all_mods = {
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
+        EIP6110: eip6110_mods,
     }
 
     run_state_test_generators(runner_name="sync", all_mods=all_mods)

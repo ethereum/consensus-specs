@@ -8,6 +8,7 @@ if __name__ == "__main__":
     bellatrix_mods = altair_mods  # No additional Bellatrix specific finality tests
     capella_mods = bellatrix_mods  # No additional Capella specific finality tests
     deneb_mods = capella_mods  # No additional Deneb specific finality tests
+    eip6110_mods = deneb_mods  # No additional EIP6110 specific finality tests
 
     all_mods = {
         PHASE0: phase_0_mods,
@@ -15,6 +16,7 @@ if __name__ == "__main__":
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
+        EIP6110: eip6110_mods,
     }
 
     run_state_test_generators(runner_name="finality", all_mods=all_mods)
