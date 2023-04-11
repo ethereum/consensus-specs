@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110
 from eth2spec.gen_helpers.gen_from_tests.gen import combine_mods, run_state_test_generators
 
 
