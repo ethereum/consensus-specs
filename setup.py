@@ -1007,6 +1007,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/fork.md
                     specs/bellatrix/fork-choice.md
                     specs/bellatrix/validator.md
+                    specs/bellatrix/vanity.md
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
@@ -1020,6 +1021,7 @@ class PySpecCommand(Command):
                     specs/capella/fork.md
                     specs/capella/fork-choice.md
                     specs/capella/validator.md
+                    specs/capella/vanity.md
                     specs/capella/p2p-interface.md
                 """
             if self.spec_fork == DENEB:
@@ -1034,6 +1036,7 @@ class PySpecCommand(Command):
                     specs/deneb/polynomial-commitments.md
                     specs/deneb/p2p-interface.md
                     specs/deneb/validator.md
+                    specs/deneb/vanity.md
                 """
             if self.spec_fork == EIP6110:
                 self.md_doc_paths += """
