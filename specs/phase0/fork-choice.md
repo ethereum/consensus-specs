@@ -264,19 +264,13 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     voting_source = get_voting_source(store, block_root)
 
-    # The voting source should be at the same height as the store's justified checkpoint
+    # The voting source should be either at the same height as the store's justified checkpoint or
+    # not more than two epochs ago
     correct_justified = (
         store.justified_checkpoint.epoch == GENESIS_EPOCH
         or voting_source.epoch == store.justified_checkpoint.epoch
+        or voting_source.epoch + 2 >= current_epoch
     )
-
-    # If the previous epoch is justified, the block should be pulled-up. In this case, check that unrealized
-    # justification is higher than the store and that the voting source is not more than two epochs ago
-    if not correct_justified and is_previous_epoch_justified(store):
-        correct_justified = (
-            store.unrealized_justifications[block_root].epoch >= store.justified_checkpoint.epoch and
-            voting_source.epoch + 2 >= current_epoch
-        )
 
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     correct_finalized = (
