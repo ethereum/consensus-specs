@@ -612,22 +612,21 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 * Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
 * Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
-* Select these subnets based on their node-id as specified by the following `compute_subnets(node_id,epoch)` function.
+* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id,epoch)` function.
 
 ```python
-def compute_subnet(node_id: int, epoch: Epoch, index: int) -> int:
+def compute_subscribed_subnet(node_id: int, epoch: Epoch, index: int) -> int:
     node_id_prefix = node_id >> (256 - ATTESTATION_SUBNET_PREFIX_BITS)
-    permutation_seed = hash(uint_to_bytes(epoch // EPOCHS_PER_SUBNET_SUBSCRIPTION))
+    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
+    permutation_seed = hash(uint_to_bytes((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     permutated_prefix = compute_shuffled_index(node_id_prefix, 1 << ATTESTATION_SUBNET_PREFIX_BITS, permutation_seed)
     return (permutated_prefix + index) % ATTESTATION_SUBNET_COUNT
 ```
 
 ```python
-def compute_subnets(node_id: int, epoch: Epoch) -> Sequence[int]:
-    return [compute_subnet(node_id, epoch, idx) for idx in range(SUBNETS_PER_NODE)]
+def compute_subscribed_subnets(node_id: int, epoch: Epoch) -> Sequence[int]:
+    return [compute_subscribed_subnet(node_id, epoch, idx) for idx in range(SUBNETS_PER_NODE)]
 ```
-
-*Note*: Nodes should subscribe to new subnets and remain subscribed to old subnets for at least one epoch. Nodes should pick a random duration to unsubscribe from old subnets to smooth the transition on the exact epoch boundary of which the shuffling changes. 
 
 *Note*: When preparing for a hard fork, a validator must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 
