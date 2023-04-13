@@ -15,7 +15,7 @@
 
 TBD
 
-### Block confirmation
+## Block confirmation rule
 
 ```python
 def get_current_epoch_store(store: Store) -> Epoch:
@@ -66,27 +66,6 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 ```
 
 ```python
-def get_descendants_in_current_epoch(store: Store, block_root: Root) -> Set[Root]:
-    block = store.blocks[block_root]
-    children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
-    ] 
-
-    descendants = set()
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
-
-    if compute_epoch_at_slot(block.slot) == current_epoch:
-        descendants.add(block_root)
-
-    if any(children):
-        for child in children:
-            descendants.update(get_descendants_in_current_epoch(store, child))
-
-    return descendants
-```
-
-```python
 def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Root):
     state = store.block_states[block_root]
     assert get_current_epoch_store(store) == get_current_epoch(state)
@@ -131,18 +110,15 @@ def get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(store: Store
 ```
 
 ```python
-def isConfirmed(store: Store, max_adversary_percentage: int, block_root: Root):
+def isConfirmed(store: Store, max_adversary_percentage: int, block_to_be_confirmed_root: Root):
     block = store.blocks[block_root]
+    current_epoch = get_current_epoch_store(store)
+
+    assert compute_epoch_at_slot(block.slot) == current_epoch
+
     block_state = store.block_states[block_root]
     current_slot = get_current_slot(store)
-    current_epoch = compute_epoch_at_slot(current_slot)
-
-    block_to_be_confirmed_root = block_root
     
-    if compute_epoch_at_slot(block.slot) < current_epoch:
-        descendants_in_current_epoch = [{'block_root': descendant, 'support': get_weight(store, descendant)} for descendant in get_descendants_in_current_epoch(store, block_root)]
-        block_to_be_confirmed_root = max(descendants_in_current_epoch, key=lambda x: x['support'])['block_root']
-
     block_to_be_confirmed_state = store.block_states[block_to_be_confirmed_root]
 
     block_to_be_confirmed_checkpoint_state = store.block_states[block_to_be_confirmed_state.current_justified_checkpoint]
@@ -167,6 +143,29 @@ def isConfirmed(store: Store, max_adversary_percentage: int, block_root: Root):
 def get_safe_execution_payload_hash(store: Store) -> Hash32:
     # TBD   
     pass
+```
+
+## Old functions kept for reference
+
+```python
+def get_descendants_in_current_epoch(store: Store, block_root: Root) -> Set[Root]:
+    block = store.blocks[block_root]
+    children = [
+        root for root in store.blocks.keys()
+        if store.blocks[root].parent_root == block_root
+    ] 
+
+    descendants = set()
+    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+
+    if compute_epoch_at_slot(block.slot) == current_epoch:
+        descendants.add(block_root)
+
+    if any(children):
+        for child in children:
+            descendants.update(get_descendants_in_current_epoch(store, child))
+
+    return descendants
 ```
 
 *Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
