@@ -48,24 +48,6 @@ def get_beacon_committee_weight_between_slots(state: BeaconState, from_slot: Slo
 ```
 
 ```python
-def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
-    children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
-    ] 
-
-    if any(children):
-        leaves = set()
-        for child in children:
-            leaves.update(get_leaf_block_roots(store, child))
-
-        return leaves        
-    else:
-        return set([block_root])
-
-```
-
-```python
 def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Root):
     state = store.block_states[block_root]
     assert get_current_epoch_store(store) == get_current_epoch(state)
@@ -166,6 +148,24 @@ def get_descendants_in_current_epoch(store: Store, block_root: Root) -> Set[Root
             descendants.update(get_descendants_in_current_epoch(store, child))
 
     return descendants
+```
+
+```python
+def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
+    children = [
+        root for root in store.blocks.keys()
+        if store.blocks[root].parent_root == block_root
+    ] 
+
+    if any(children):
+        leaves = set()
+        for child in children:
+            leaves.update(get_leaf_block_roots(store, child))
+
+        return leaves        
+    else:
+        return set([block_root])
+
 ```
 
 *Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
