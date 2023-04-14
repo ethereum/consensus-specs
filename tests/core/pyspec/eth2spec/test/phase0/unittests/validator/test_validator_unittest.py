@@ -2,7 +2,8 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls, with_phases, with_all_phases,
 )
-from eth2spec.test.helpers.constants import PHASE0
+
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
@@ -476,3 +477,12 @@ def test_get_aggregate_and_proof_signature(spec, state):
         privkey=privkey,
         pubkey=pubkey,
     )
+
+
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@spec_state_test
+def test_slashed_validator_elected_for_proposal(spec, state):
+    proposer_index = spec.get_beacon_proposer_index(state)
+    state.validators[proposer_index].slashed = True
+
+    assert spec.get_beacon_proposer_index(state) == proposer_index
