@@ -60,7 +60,7 @@ def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Roo
 def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot) -> bool:
     block = store.blocks[block_root]
     justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    parent_block = store.blocks[block.parent]
+    parent_block = store.blocks[block.parent_root]
     support = get_weight(store, block_root)
     maximum_weight = get_beacon_committee_weight_between_slots(justified_checkpoint_state, parent_block.slot + 1, current_slot)
     return support * 200 >= (1 + 2 * max_adversary_percentage) * maximum_weight
@@ -78,7 +78,7 @@ def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
         else:
             return (
                 isOneConfirmed(store, max_adversary_percentage, block_root, current_slot) and
-                isLMDConfirmed(store, max_adversary_percentage, block.parent, current_slot)
+                isLMDConfirmed(store, max_adversary_percentage, block.parent_root, current_slot)
             )
 ```
 
