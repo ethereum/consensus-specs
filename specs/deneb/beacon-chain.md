@@ -59,7 +59,7 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 
 | Name | Value |
 | - | - |
-| `BLOB_TX_TYPE` | `uint8(0x05)` |
+| `BLOB_TX_TYPE` | `uint8(0x03)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
