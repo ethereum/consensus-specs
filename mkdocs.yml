@@ -1,7 +1,6 @@
-site_name: Consensus Specs
+site_name: Ethereum Consensus Specs
 site_url: https://ethereum.github.io/consensus-specs/
 repo_name: ethereum/consensus-specs
-repo_url: https://github.com/ethereum/consensus-specs
 theme:
   name: material
   palette:
@@ -21,16 +20,21 @@ theme:
 markdown_extensions:
   - toc:
       permalink: true
+  - pymdownx.superfences
   - pymdownx.highlight:
       use_pygments: true
       noclasses: true
       pygments_style: monokai
       linenums: true
       anchor_linenums: true
-  - pymdownx.superfences
-  - mdx_truly_sane_lists
+  - mdx_truly_sane_lists:
+      nested_indent: 4
 plugins:
   - search
   - awesome-pages
 extra_css:
   - stylesheets/extra.css
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ethereum/consensus-specs
