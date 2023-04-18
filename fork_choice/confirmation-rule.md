@@ -26,7 +26,7 @@ def get_current_epoch_store(store: Store) -> Epoch:
 ```python
 def get_complete_beacon_committee_at_slot(state: BeaconState, slot: Slot) -> Sequence[ValidatorIndex]:
     epoch = compute_epoch_at_slot(slot)
-    validator_indexes = []
+    validator_indexes = [] # type: List[ValidatorIndex]
     for i in get_committee_count_per_slot(state, epoch):
         validator_indexes.append(get_beacon_committee(state, slot, i))
 
@@ -37,9 +37,9 @@ def get_complete_beacon_committee_at_slot(state: BeaconState, slot: Slot) -> Seq
 def get_beacon_committee_weight_between_slots(state: BeaconState, from_slot: Slot, to_slot: Slot) -> Gwei:
     validator_index_set = set()
     for slot in range(from_slot, to_slot + 1):
-        validator_index_set.add(set(get_complete_beacon_committee_at_slot(state, slot)))
+        validator_index_set.add(set(get_complete_beacon_committee_at_slot(state, Slot(slot))))
 
-    total_weight = 0
+    total_weight = Gwei(0)
 
     for validator_index in validator_index_set:
         total_weight += state.validators[validator_index].effective_balance
@@ -48,7 +48,7 @@ def get_beacon_committee_weight_between_slots(state: BeaconState, from_slot: Slo
 ```
 
 ```python
-def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Root):
+def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Root) -> Gwei:
     state = store.block_states[block_root]
     assert get_current_epoch_store(store) == get_current_epoch(state)
     current_attestations = get_matching_target_attestations(state, get_current_epoch(state))
@@ -62,12 +62,12 @@ def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
     justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
     parent_block = store.blocks[block.parent_root]
     support = get_weight(store, block_root)
-    maximum_weight = get_beacon_committee_weight_between_slots(justified_checkpoint_state, parent_block.slot + 1, current_slot)
+    maximum_weight = get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot)
     return support * 200 >= (1 + 2 * max_adversary_percentage) * maximum_weight
 ```
 
 ```python
-def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot):
+def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot) -> bool:
     if block_root == store.finalized_checkpoint.root:
         return True 
     else:
@@ -83,15 +83,15 @@ def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
 ```
 
 ```python
-def get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(store: Store, block_root: Root, current_slot: Slot):
+def get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(store: Store, block_root: Root, current_slot: Slot) -> Gwei:
     state = store.block_states[block_root]
-    first_slot_next_epoch = compute_start_slot_at_epoch(get_current_epoch(state) + 1) 
-    return get_beacon_committee_weight_between_slots(current_slot + 1, first_slot_next_epoch - 1)
+    first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(get_current_epoch(state) + 1))
+    return get_beacon_committee_weight_between_slots(state, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
 
 ```
 
 ```python
-def isConfirmed(store: Store, max_adversary_percentage: int, block_root: Root):
+def isConfirmed(store: Store, max_adversary_percentage: int, block_root: Root) -> bool:
     block = store.blocks[block_root]
     current_epoch = get_current_epoch_store(store)
 
@@ -121,6 +121,7 @@ def isConfirmed(store: Store, max_adversary_percentage: int, block_root: Root):
 ```python
 def get_safe_execution_payload_hash(store: Store) -> Hash32:
     # TBD   
+    store
     pass
 ```
 
