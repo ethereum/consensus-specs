@@ -33,7 +33,7 @@
 This is the beacon chain specification of in-protocol deposits processing mechanism.
 This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum.org/EIPS/eip-6110).
 
-*Note:* This specification is built upon [Capella](../../capella/beacon_chain.md) and is under active development.
+*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Constants
 
