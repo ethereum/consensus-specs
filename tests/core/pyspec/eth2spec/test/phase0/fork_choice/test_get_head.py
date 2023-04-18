@@ -724,7 +724,11 @@ def test_incorrect_finalized(spec, state):
     assert store.voting_source[last_fork_block_root].epoch == store.justified_checkpoint.epoch
     assert store.finalized_checkpoint.epoch != spec.GENESIS_EPOCH
     finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert store.finalized_checkpoint.root != spec.get_checkpoint_block(store, block_root, store.finalized_checkpoint.epoch)
+    assert store.finalized_checkpoint.root != spec.get_checkpoint_block(
+        store,
+        block_root,
+        store.finalized_checkpoint.epoch
+    )
     assert spec.get_head(store) != last_fork_block_root
     assert spec.get_head(store) == head_root
 

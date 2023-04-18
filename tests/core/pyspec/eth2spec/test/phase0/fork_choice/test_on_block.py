@@ -352,7 +352,11 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
         # NOTE: Do not call `on_tick` here
         yield from add_block(spec, store, block, test_steps)
 
-    ancestor_at_finalized_slot = spec.get_checkpoint_block(store, pre_store_justified_checkpoint_root, store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_checkpoint_block(
+        store,
+        pre_store_justified_checkpoint_root,
+        store.finalized_checkpoint.epoch
+    )
     assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
 
     assert store.finalized_checkpoint == another_state.finalized_checkpoint
@@ -427,7 +431,11 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     for block in all_blocks:
         yield from tick_and_add_block(spec, store, block, test_steps)
 
-    ancestor_at_finalized_slot = spec.get_checkpoint_block(store, pre_store_justified_checkpoint_root, store.finalized_checkpoint.epoch)
+    ancestor_at_finalized_slot = spec.get_checkpoint_block(
+        store,
+        pre_store_justified_checkpoint_root,
+        store.finalized_checkpoint.epoch
+    )
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
     assert store.finalized_checkpoint == another_state.finalized_checkpoint
