@@ -56,7 +56,7 @@ def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
     maximum_support = get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot)
 
     committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    proposer_score = (committee_weight * config.PROPOSER_SCORE_BOOST) // 100
+    proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
 
     # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + max_adversary_percentage/100 =
     # support / maximum_support > 1/2 + proposer_score / (2 * maximum_support) + max_adversary_percentage/100
