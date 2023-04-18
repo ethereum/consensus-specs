@@ -317,7 +317,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 - _[REJECT]_ The block is from a higher slot than its parent.
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` -- i.e.
-  `get_ancestor_at_epoch_boundary(store, block.parent_root, store.finalized_checkpoint.epoch)
+  `get_checkpoint_block(store, block.parent_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot
   in the context of the current shuffling (defined by `parent_root`/`slot`).
@@ -356,7 +356,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
-  `get_ancestor_at_epoch_boundary(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
+  `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 
 
@@ -425,9 +425,9 @@ The following validations MUST pass before forwarding the `attestation` on the s
   (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
-  `get_ancestor_at_epoch_boundary(store, attestation.data.beacon_block_root, attestation.data.target.epoch) == attestation.data.target.root`
+  `get_checkpoint_block(store, attestation.data.beacon_block_root, attestation.data.target.epoch) == attestation.data.target.root`
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
-  `get_ancestor_at_epoch_boundary(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch)
+  `get_checkpoint_block(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 
 

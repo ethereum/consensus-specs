@@ -82,7 +82,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert store.finalized_checkpoint.root == get_ancestor_at_epoch_boundary(
+    assert store.finalized_checkpoint.root == get_checkpoint_block(
         store,
         block.parent_root,
         store.finalized_checkpoint.epoch,
