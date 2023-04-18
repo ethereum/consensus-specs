@@ -198,7 +198,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
 ```python
 def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     """
-    Compute the epoch boundary block for epoch ``epoch`` in the chain of block ``root``
+    Compute the checkpoint block for epoch ``epoch`` in the chain of block ``root``
     """
     epoch_first_slot = compute_start_slot_at_epoch(epoch)
     return get_ancestor(store, root, epoch_first_slot)
