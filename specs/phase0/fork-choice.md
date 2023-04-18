@@ -290,13 +290,15 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
             voting_source.epoch + 2 >= current_epoch
         )
 
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+
     correct_finalized = (
         store.finalized_checkpoint.epoch == GENESIS_EPOCH
-        or store.finalized_checkpoint.root == get_checkpoint_block(
-            store,
-            block_root,
-            store.finalized_checkpoint.epoch,
-        )
+        or store.finalized_checkpoint.root == finalized_checkpoint_block
     )
 
     # If expected finalized/justified, add to viable block-tree and signal viability to parent.
@@ -520,11 +522,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert store.finalized_checkpoint.root == get_checkpoint_block(
+    finalized_checkpoint_block = get_checkpoint_block(
         store,
         block.parent_root,
         store.finalized_checkpoint.epoch,
     )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block    
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
