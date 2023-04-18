@@ -292,7 +292,7 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
 
     finalized_checkpoint_block = get_checkpoint_block(
         store,
-        block.parent_root,
+        block_root,
         store.finalized_checkpoint.epoch,
     )
 
