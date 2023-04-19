@@ -35,4 +35,4 @@ The theme for Deneb is the blobfish 🐟.
 
 ### Fork transition
 
-When Deneb is activated, themed art MAY be displayed. This confirms to the user that blob transactions are now available. The condition to check is that `compute_fork_version` for `compute_epoch_at_slot` reports `DENEB_FORK_VERSION` for the chain head, but an earlier fork version for its parent. Art MAY be displayed repeatedly in case of reorgs around the fork transition.
+When Deneb is triggered, themed art MAY be displayed. This confirms to the user that blob transactions are now available. The condition to check is that `compute_fork_version` for `compute_epoch_at_slot` at the chain head as selected by fork choice transitions from an earlier fork version to `DENEB_FORK_VERSION`. Art MAY be displayed repeatedly in case of reorgs around the fork transition.

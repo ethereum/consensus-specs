@@ -36,7 +36,7 @@ The theme for Bellatrix is the panda 🐼.
 
 ### Merge transition
 
-When the merge transition completes, themed art MAY be displayed. This confirms to the user that they correctly configured the engine API connection. The condition to check is that `is_merge_transition_complete` reports `True` for the chain head, but `False` for its parent. Art MAY be displayed repeatedly in case of reorgs around the merge transition.
+When the merge transition completes, themed art MAY be displayed. This confirms to the user that they correctly configured the engine API connection. The condition to check is that `is_merge_transition_complete` at the chain head as selected by fork choice transitions from `False` to `True`. Art MAY be displayed repeatedly in case of reorgs around the merge transition.
 
 ### Merge finalization
 
