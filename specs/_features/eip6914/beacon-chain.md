@@ -1,4 +1,4 @@
-# Reuse indices -- The Beacon Chain
+EIP-6914 -- The Beacon Chain
 
 ## Table of contents
 
@@ -21,7 +21,7 @@
 
 ## Introduction
 
-This is the beacon chain specification to assign new deposits to existing validator records that have withdrawn long ago.
+This is the beacon chain specification to assign new deposits to existing validator records. Refers to [EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
 
 *Note:* This specification is built upon [Capella](../../capella/beacon_chain.md) and is under active development.
 
