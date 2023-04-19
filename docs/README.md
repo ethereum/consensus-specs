@@ -1,6 +1,6 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
-[![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
+[![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 To learn more about proof-of-stake and sharding, see the [PoS documentation](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/), [sharding documentation](https://ethereum.org/en/upgrades/sharding/) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
@@ -64,10 +64,6 @@ The following are the broad design goals for the Ethereum proof-of-stake consens
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
-
-## Online viewer of the latest release (latest `master` branch)
-
-[Ethereum Consensus Specs](https://ethereum.github.io/consensus-specs/)
 
 ## Consensus spec tests
 
