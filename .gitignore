@@ -35,3 +35,11 @@ tests/core/pyspec/eth2spec/test_results.xml
 
 # TOC tool outputs temporary files
 *.tmp
+
+# docs reader build
+docs/specs
+docs/sync
+docs/ssz
+docs/fork_choice
+docs/README.md
+site
