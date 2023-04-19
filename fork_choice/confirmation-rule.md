@@ -52,11 +52,11 @@ def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
     block = store.blocks[block_root]
     justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
     parent_block = store.blocks[block.parent_root]
-    support = get_weight(store, block_root)
-    maximum_support = get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot)
+    support = int(get_weight(store, block_root))
+    maximum_support = int(get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
 
     committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
 
     # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + max_adversary_percentage/100 =
     # support / maximum_support > 1/2 + proposer_score / (2 * maximum_support) + max_adversary_percentage/100
@@ -154,18 +154,22 @@ def will_block_checkpoint_be_justified_by_end_of_the_current_epoch(
 
     current_slot = get_current_slot(store)
 
-    total_active_balance = get_total_active_balance(block_checkpoint_state)
+    total_active_balance = int(get_total_active_balance(block_checkpoint_state))
 
-    remaining_ffg_voting_weight = get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(block_checkpoint_state, current_slot)
+    remaining_ffg_voting_weight = int(get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(block_checkpoint_state, current_slot))
 
-    ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = get_ffg_weight_supporting_checkpoint_for_block(store, block_root)
+    ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_weight_supporting_checkpoint_for_block(store, block_root))
 
-    max_ffg_weight_the_adversary_can_subtract_from_ffg_support = min(
-        get_ffg_voting_weight_in_current_epoch_until_current_slot(block_checkpoint_state, current_slot) * max_adversary_percentage / 100 + 1, 
-        max_weight_adversary_is_willing_to_get_slashed
+    max_ffg_weight_the_adversary_can_subtract_from_ffg_support = int(
+        min(
+            get_ffg_voting_weight_in_current_epoch_until_current_slot(block_checkpoint_state, current_slot) * max_adversary_percentage / 100 + 1, 
+            max_weight_adversary_is_willing_to_get_slashed,
+            ffg_weight_supporting_checkpoint_for_block_to_be_confirmed
+        )
     )
     
     # ffg_weight_supporting_checkpoint_for_block_to_be_confirmed - max_ffg_weight_the_adversary_can_subtract_from_ffg_support + (1 - max_adversary_percentage/100) * remaining_ffg_voting_weight >= 2/3 * total_active_balance
+    # multiply both sides by 300
     return ffg_weight_supporting_checkpoint_for_block_to_be_confirmed * 300 + (300 - 3 * max_adversary_percentage) * remaining_ffg_voting_weight - max_ffg_weight_the_adversary_can_subtract_from_ffg_support * 300 >= 200 * total_active_balance    
 ```
 
@@ -179,7 +183,11 @@ def isConfirmed(
     current_slot = get_current_slot(store)
     current_epoch = get_current_epoch_store(store)
 
+    block = store.blocks[block_root]
     block_state = store.block_states[block_root]
+
+    # We can only apply isConfirmed to blocks created in the current epoch
+    assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return (
         isLMDConfirmed(store, max_adversary_percentage, block_root, current_slot) and
