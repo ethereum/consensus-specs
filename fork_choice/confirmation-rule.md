@@ -103,13 +103,11 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
     ] 
 
     if any(children):
-        leaves = set()
-        for child in children:
-            leaves.update(get_leaf_block_roots(store, child))
+        leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
 
         return leaves        
     else:
-        return set([block_root])
+        return set(block_root)
 
 ```
 
@@ -137,11 +135,12 @@ def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Roo
 ```
 
 ```python
-def will_block_checkpoint_be_justified_by_end_of_the_current_epoch(
+def will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(
     store: Store, 
     max_adversary_percentage: int, 
     max_weight_adversary_is_willing_to_get_slashed: int, 
-    block_root: Root
+    block_root: Root,
+    current_slot: Slot
 ) -> bool:
     block = store.blocks[block_root]
     assert get_current_epoch_store(store) == compute_epoch_at_slot(block.slot)
@@ -151,8 +150,6 @@ def will_block_checkpoint_be_justified_by_end_of_the_current_epoch(
     # The following could be replaced by get_checkpoint_block once merged in
     block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch) 
     block_checkpoint_state = store.block_states[block_checkpoint_root]   
-
-    current_slot = get_current_slot(store)
 
     total_active_balance = int(get_total_active_balance(block_checkpoint_state))
 
@@ -191,7 +188,7 @@ def isConfirmed(
 
     return (
         isLMDConfirmed(store, max_adversary_percentage, block_root, current_slot) and
-        will_block_checkpoint_be_justified_by_end_of_the_current_epoch(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root) and
+        will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root, current_slot) and
         block_state.current_justified_checkpoint.epoch + 1 == current_epoch
     )
 
@@ -203,7 +200,7 @@ def isConfirmed(
 def get_safe_execution_payload_hash(store: Store) -> Hash32:
     # TBD   
     store
-    return None
+    return Hash32(0)
 ```
 
 ## Old functions kept for reference
