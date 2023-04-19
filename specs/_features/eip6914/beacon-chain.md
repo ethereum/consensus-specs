@@ -31,7 +31,7 @@ This is the beacon chain specification to assign new deposits to existing valida
 
 | Name | Value | Unit | Duration |
 | - | - | - | - |
-| `REUSE_VALIDATOR_INDEX_DELAY` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
+| `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
 ## Helper functions
 
@@ -45,7 +45,7 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
     Check if ``validator`` index can be re-assigned to a new deposit.
     """
     return (
-        epoch > validator.withdrawable_epoch + REUSE_VALIDATOR_INDEX_DELAY
+        epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX
         and balance == 0
     )
 ```
