@@ -20,6 +20,7 @@
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
   - [Vectors, containers, lists](#vectors-containers-lists)
+  - [Optional](#optional)
   - [Union](#union)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
