@@ -111,27 +111,34 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 
 ```
 
+NOTE: The following should be removed once PR#3308 is merge
+
+```python
+def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
+    """
+    Compute the checkpoint block for epoch ``epoch`` in the chain of block ``root``
+    """
+    epoch_first_slot = compute_start_slot_at_epoch(epoch)
+    return get_ancestor(store, root, epoch_first_slot)
+```
+
 ```python
 def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Root) -> Gwei:
-
     block = store.blocks[block_root]
     assert get_current_epoch_store(store) == compute_epoch_at_slot(block.slot)
 
     current_epoch = get_current_epoch_store(store)
 
-    leave_roots = get_leaf_block_roots(store, block_root)
-
-    attestations_in_leaves: Set[PendingAttestation] = set().union(*[store.block_states[root].current_epoch_attestations for root in leave_roots])
-
-    # The following could be replaced by get_checkpoint_block once merged in
     block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
-
-    attestations_in_leaves_for_block_checkpoint = {a for a in attestations_in_leaves if a.data.target.root == block_checkpoint_root}
 
     block_checkpoint_state = store.block_states[block_checkpoint_root]
 
-    return get_attesting_balance(block_checkpoint_state, list(attestations_in_leaves_for_block_checkpoint))
+    active_indices = get_active_validator_indices(block_checkpoint_state, current_epoch)
 
+    return Gwei(sum(
+        block_checkpoint_state.validators[i].effective_balance for i in active_indices
+        if get_checkpoint_block(store, store.latest_messages[i].root, current_epoch) == block_checkpoint_root
+    ))
 ```
 
 ```python
