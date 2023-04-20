@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../eth2.0-ef-exec-specs"
+		}
+	],
+	"settings": {}
+}

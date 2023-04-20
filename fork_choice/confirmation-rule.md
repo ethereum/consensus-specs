@@ -6,7 +6,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
+- [Helper Functions](#helper-functions)
+- [Confirmation Rule](#confirmation-rule)
+- [Old functions kept for reference](#old-functions-kept-for-reference)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -15,7 +17,8 @@
 
 TBD
 
-## Block confirmation rule
+## Helper Functions
+
 
 ```python
 def get_current_epoch_store(store: Store) -> Epoch:
@@ -61,7 +64,7 @@ def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
     # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + max_adversary_percentage/100 =
     # support / maximum_support > 1/2 + proposer_score / (2 * maximum_support) + max_adversary_percentage/100
     # multiply both sides by (maximum_support * 100) =>
-    return support * 100 > 50 * maximum_support + 50 * proposer_score + max_adversary_percentage * maximum_support
+    return 100 * support > 50 * maximum_support + 50 * proposer_score + max_adversary_percentage * maximum_support
 ```
 
 ```python
@@ -80,6 +83,35 @@ def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
             )
 ```
 
+```python
+def get_highest_adversary_weight_percentage_for_one_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
+    block = store.blocks[block_root]
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    parent_block = store.blocks[block.parent_root]
+    support = int(get_weight(store, block_root))
+    maximum_support = int(get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
+
+    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
+    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
+
+    return (100 * support - 50 * proposer_score) // maximum_support - 50
+```
+
+```python
+def get_highest_adversary_weight_percentage_for_LMD_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
+    if block_root == store.finalized_checkpoint.root:
+        return 100 // 3 
+    else:
+        block = store.blocks[block_root]
+        finalized_block = store.blocks[store.finalized_checkpoint.root]
+        if block.slot <= finalized_block.slot:
+            return -1
+        else:
+            return min(
+                get_highest_adversary_weight_percentage_for_one_confirmation(store, block_root, current_slot),
+                get_highest_adversary_weight_percentage_for_LMD_confirmation(store, block.parent_root, current_slot)
+            )
+```
 
 ```python
 def get_ffg_voting_weight_in_current_epoch_until_current_slot(state: BeaconState, current_slot: Slot) -> Gwei:
@@ -177,6 +209,8 @@ def will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(
     return ffg_weight_supporting_checkpoint_for_block_to_be_confirmed * 300 + (300 - 3 * max_adversary_percentage) * remaining_ffg_voting_weight - max_ffg_weight_the_adversary_can_subtract_from_ffg_support * 300 >= 200 * total_active_balance    
 ```
 
+## Confirmation Rule
+
 ```python
 def isConfirmed(
     store: Store, 
@@ -199,15 +233,6 @@ def isConfirmed(
         block_state.current_justified_checkpoint.epoch + 1 == current_epoch
     )
 
-```
-
-## `get_safe_execution_payload_hash`
-
-```python
-def get_safe_execution_payload_hash(store: Store) -> Hash32:
-    # TBD   
-    store
-    return Hash32(0)
 ```
 
 ## Old functions kept for reference
