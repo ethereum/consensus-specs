@@ -245,7 +245,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     if is_execution_enabled(state, block.body):
         process_withdrawals(state, block.body.execution_payload)
         process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Deneb]
-    process_randao(state, block.body) 
+    process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
