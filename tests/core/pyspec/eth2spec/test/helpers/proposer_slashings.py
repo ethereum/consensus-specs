@@ -24,8 +24,6 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
     proposer_index = spec.get_beacon_proposer_index(state)
-    if is_post_deneb(spec):
-        proposer_index = spec.get_latest_block_proposer_index(state)
     slash_penalty = state.validators[slashed_index].effective_balance // get_min_slashing_penalty_quotient(spec)
     whistleblower_reward = state.validators[slashed_index].effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
 

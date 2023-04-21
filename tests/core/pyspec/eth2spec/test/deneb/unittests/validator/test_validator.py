@@ -161,6 +161,7 @@ def test_blob_sidecar_signature_incorrect(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_slashed_validator_not_elected_for_proposal(spec, state):
+    spec.process_slots(state, state.slot + 1)
     proposer_index = spec.get_beacon_proposer_index(state)
     state.validators[proposer_index].slashed = True
 

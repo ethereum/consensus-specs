@@ -18,7 +18,7 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
 
     pre_state = state.copy()
 
-    # Makes `get_latest_block_proposer_index` respond properly
+    # Makes `get_beacon_proposer_index` respond properly
     if is_post_deneb(spec):
         block = build_empty_block_for_next_slot(spec, state)
         spec.process_slots(state, state.slot + 1)

@@ -28,7 +28,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    # Makes `get_latest_block_proposer_index` respond properly
+    # Makes `get_beacon_proposer_index` respond properly
     if is_post_deneb(spec):
         block = build_empty_block_for_next_slot(spec, state)
         spec.process_slots(state, state.slot + 1)
