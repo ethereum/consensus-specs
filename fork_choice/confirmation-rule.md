@@ -51,7 +51,7 @@ def get_beacon_committee_weight_between_slots(state: BeaconState, from_slot: Slo
 ```
 
 ```python
-def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot) -> bool:
+def is_one_confirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot) -> bool:
     block = store.blocks[block_root]
     justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
     parent_block = store.blocks[block.parent_root]
@@ -68,7 +68,7 @@ def isOneConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
 ```
 
 ```python
-def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot) -> bool:
+def is_LMD_confirmed(store: Store, max_adversary_percentage: int, block_root: Root, current_slot: Slot) -> bool:
     if block_root == store.finalized_checkpoint.root:
         return True 
     else:
@@ -78,8 +78,8 @@ def isLMDConfirmed(store: Store, max_adversary_percentage: int, block_root: Root
             return False
         else:
             return (
-                isOneConfirmed(store, max_adversary_percentage, block_root, current_slot) and
-                isLMDConfirmed(store, max_adversary_percentage, block.parent_root, current_slot)
+                is_one_confirmed(store, max_adversary_percentage, block_root, current_slot) and
+                is_LMD_confirmed(store, max_adversary_percentage, block.parent_root, current_slot)
             )
 ```
 
@@ -259,7 +259,7 @@ def get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_
 ## Confirmation Rule
 
 ```python
-def isConfirmed(
+def is_confirmed(
     store: Store, 
     max_adversary_percentage: int, 
     max_weight_adversary_is_willing_to_get_slashed: int, 
@@ -275,7 +275,7 @@ def isConfirmed(
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return (
-        isLMDConfirmed(store, max_adversary_percentage, block_root, current_slot) and
+        is_LMD_confirmed(store, max_adversary_percentage, block_root, current_slot) and
         will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root, current_slot) and
         block_state.current_justified_checkpoint.epoch + 1 == current_epoch
     )
