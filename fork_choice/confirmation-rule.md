@@ -94,7 +94,8 @@ def get_highest_adversary_weight_percentage_for_one_confirmation(store: Store, b
     committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
     proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
 
-    return (100 * support - 50 * proposer_score) // maximum_support - 50
+    # the "-1" in the numerator is to return a "<=" rather than a "<" value
+    return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
 ```
 
 ```python
@@ -209,6 +210,52 @@ def will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(
     return ffg_weight_supporting_checkpoint_for_block_to_be_confirmed * 300 + (300 - 3 * max_adversary_percentage) * remaining_ffg_voting_weight - max_ffg_weight_the_adversary_can_subtract_from_ffg_support * 300 >= 200 * total_active_balance    
 ```
 
+```python
+def get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_end_of_the_current_epoch(
+    store: Store, 
+    block_root: Root,
+    current_slot: Slot
+) -> int:
+    # We assume max_weight_adversary_is_willing_to_get_slashed = + infinity
+
+    block = store.blocks[block_root]
+    assert get_current_epoch_store(store) == compute_epoch_at_slot(block.slot)
+
+    current_epoch = get_current_epoch_store(store)
+
+    # The following could be replaced by get_checkpoint_block once merged in
+    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch) 
+    block_checkpoint_state = store.block_states[block_checkpoint_root]   
+
+    total_active_balance = int(get_total_active_balance(block_checkpoint_state))
+
+    ffg_voting_weight_so_far = get_ffg_voting_weight_in_current_epoch_until_current_slot(block_checkpoint_state, current_slot)
+
+    remaining_ffg_voting_weight = int(get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(block_checkpoint_state, current_slot))
+
+    ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_weight_supporting_checkpoint_for_block(store, block_root))
+
+    # First, we check whether max_adversary_percentage >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far * 100
+
+    # We want to check whether
+    # (1 - ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far) * remaining_ffg_voting_weight >= 2/3 * total_active_balance
+    # multiplying each side by 3 * ffg_voting_weight_so_far, we get (assuming ffg_voting_weight_so_far != 0):
+    
+    if ffg_voting_weight_so_far > 0 and 3 * (ffg_voting_weight_so_far - ffg_weight_supporting_checkpoint_for_block_to_be_confirmed) * remaining_ffg_voting_weight >= 2 * total_active_balance * ffg_voting_weight_so_far:
+        # We know that max_adversary_percentage >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far
+        # then 
+        # max_adversary_percentage <=  
+        # (1 - (2/3 * total_active_balance / remaining_ffg_voting_weight)) * 100
+        # multiplying top and bottom by 3 * remaining_ffg_voting_weight, we get:
+        return (300 * remaining_ffg_voting_weight - 200 * total_active_balance) // (3 * remaining_ffg_voting_weight)
+    else:
+        # We know that  max_adversary_percentage <= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far
+        # then
+        # max_adversary_percentage < (2/3 - (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)/total_active_balance) * 100 
+        # by multiplying top and bottom by 3 * total_active_balance, we get
+        return (200 * total_active_balance - 300 * (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)) // (3 * total_active_balance)
+```
+
 ## Confirmation Rule
 
 ```python
@@ -232,7 +279,25 @@ def isConfirmed(
         will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root, current_slot) and
         block_state.current_justified_checkpoint.epoch + 1 == current_epoch
     )
+```
 
+```python
+def get_maximum_adversary_percentage_for_confirmation(
+    store: Store, 
+    block_root: Root
+) -> int:
+    current_slot = get_current_slot(store)
+    current_epoch = get_current_epoch_store(store)
+
+    block = store.blocks[block_root]
+
+    # We can only confirm blocks created in the current epoch
+    assert compute_epoch_at_slot(block.slot) == current_epoch
+
+    return min(
+        get_highest_adversary_weight_percentage_for_LMD_confirmation(store, block_root, current_slot),
+        get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_end_of_the_current_epoch(store, block_root, current_slot)
+    )
 ```
 
 ## Old functions kept for reference
