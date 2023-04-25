@@ -616,10 +616,14 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 ```python
 def compute_subscribed_subnet(node_id: int, epoch: Epoch, index: int) -> int:
-    node_id_prefix = node_id >> (256 - ATTESTATION_SUBNET_PREFIX_BITS)
+    node_id_prefix = node_id >> (256 - int(ATTESTATION_SUBNET_PREFIX_BITS))
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(uint_to_bytes((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
-    permutated_prefix = compute_shuffled_index(node_id_prefix, 1 << ATTESTATION_SUBNET_PREFIX_BITS, permutation_seed)
+    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    permutated_prefix = compute_shuffled_index(
+        node_id_prefix,
+        1 << int(ATTESTATION_SUBNET_PREFIX_BITS),
+        permutation_seed,
+    )
     return (permutated_prefix + index) % ATTESTATION_SUBNET_COUNT
 ```
 
