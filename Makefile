@@ -19,6 +19,11 @@ GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
 GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
+# Documents
+DOCS_DIR = ./docs
+SSZ_DIR = ./ssz
+SYNC_DIR = ./sync
+FORK_CHOICE_DIR = ./fork_choice
 
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
@@ -214,3 +219,23 @@ detect_generator_incomplete: $(TEST_VECTOR_DIR)
 
 detect_generator_error_log: $(TEST_VECTOR_DIR)
 	[ -f $(GENERATOR_ERROR_LOG_FILE) ] && echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists" || echo "[PASSED] error log file does not exist"
+
+
+# For docs reader
+install_docs:
+	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[docs];
+
+copy_docs:
+	cp -r $(SPEC_DIR) $(DOCS_DIR);
+	cp -r $(SYNC_DIR) $(DOCS_DIR);
+	cp -r $(SSZ_DIR) $(DOCS_DIR);
+	cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR);
+	cp $(CURRENT_DIR)/README.md $(DOCS_DIR)/README.md
+
+build_docs: copy_docs
+	. venv/bin/activate;
+	mkdocs build
+
+serve_docs:
+	. venv/bin/activate; 
+	mkdocs serve

@@ -1,0 +1,5 @@
+nav:
+    - 'Index': index.md
+    - 'Altair': specs/altair/light-client/sync-protocol
+    - 'Capella': specs/capella/light-client/sync-protocol
+    - 'Deneb': specs/deneb/light-client/sync-protocol
