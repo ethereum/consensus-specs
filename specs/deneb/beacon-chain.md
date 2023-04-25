@@ -68,7 +68,7 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 
 | Name | Value |
 | - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**2)` (= 4) |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(2**10)` (= 1024) |
 
 ## Configuration
 
