@@ -106,7 +106,7 @@ def get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(state: Beaco
 
 ```
 
-NOTE: The following should be removed once PR#3308 is merge
+NOTE: The following should be removed once PR#3308 is merged
 
 ```python
 def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
@@ -118,22 +118,41 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
 ```
 
 ```python
+def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
+    children = [
+        root for root in store.blocks.keys()
+        if store.blocks[root].parent_root == block_root
+    ] 
+
+    if any(children):
+        leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
+
+        return leaves        
+    else:
+        return set(block_root)
+
+```
+
+```python
 def get_ffg_weight_supporting_checkpoint_for_block(store: Store, block_root: Root) -> Gwei:
+
     block = store.blocks[block_root]
     assert get_current_epoch_store(store) == compute_epoch_at_slot(block.slot)
 
     current_epoch = get_current_epoch_store(store)
 
-    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
+    leave_roots = get_leaf_block_roots(store, block_root)
+
+    # current_epoch_attestations contains only attestations with source matching block.current_justified_checkpoint
+    attestations_in_leaves: Set[PendingAttestation] = set().union(*[store.block_states[root].current_epoch_attestations for root in leave_roots])
+
+    block_checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
+
+    attestations_in_leaves_for_block_checkpoint = {a for a in attestations_in_leaves if a.data.target.root == block_checkpoint_root}
 
     block_checkpoint_state = store.block_states[block_checkpoint_root]
 
-    active_indices = get_active_validator_indices(block_checkpoint_state, current_epoch)
-
-    return Gwei(sum(
-        block_checkpoint_state.validators[i].effective_balance for i in active_indices
-        if get_checkpoint_block(store, store.latest_messages[i].root, current_epoch) == block_checkpoint_root
-    ))
+    return get_attesting_balance(block_checkpoint_state, list(attestations_in_leaves_for_block_checkpoint))
 ```
 
 ```python
@@ -365,19 +384,22 @@ def get_descendants_in_current_epoch(store: Store, block_root: Root) -> Set[Root
 ```
 
 ```python
-def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
-    children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
-    ] 
+def get_ffg_weight_supporting_checkpoint_for_block_using_latest_messages(store: Store, block_root: Root) -> Gwei:
+    block = store.blocks[block_root]
+    assert get_current_epoch_store(store) == compute_epoch_at_slot(block.slot)
 
-    if any(children):
-        leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
+    current_epoch = get_current_epoch_store(store)
 
-        return leaves        
-    else:
-        return set(block_root)
+    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
 
+    block_checkpoint_state = store.block_states[block_checkpoint_root]
+
+    active_indices = get_active_validator_indices(block_checkpoint_state, current_epoch)
+
+    return Gwei(sum(
+        block_checkpoint_state.validators[i].effective_balance for i in active_indices
+        if get_checkpoint_block(store, store.latest_messages[i].root, current_epoch) == block_checkpoint_root
+    ))
 ```
 
 *Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
