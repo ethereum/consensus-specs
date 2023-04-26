@@ -6,8 +6,12 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Helper Functions](#helper-functions)
-- [Confirmation Rule](#confirmation-rule)
+- [Boolean Confirmation Rule](#boolean-confirmation-rule)
+  - [Helper Functions](#helper-functions)
+  - [Main Function](#main-function)
+- [Confirmation Score](#confirmation-score)
+  - [Helper Functions](#helper-functions-1)
+  - [Main Function](#main-function-1)
 - [Old functions kept for reference](#old-functions-kept-for-reference)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -17,7 +21,9 @@
 
 TBD
 
-## Helper Functions
+## Boolean Confirmation Rule
+
+### Helper Functions
 
 
 ```python
@@ -84,37 +90,6 @@ def is_LMD_confirmed(store: Store, max_adversary_percentage: int, block_root: Ro
 ```
 
 ```python
-def get_highest_adversary_weight_percentage_for_one_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
-    block = store.blocks[block_root]
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    parent_block = store.blocks[block.parent_root]
-    support = int(get_weight(store, block_root))
-    maximum_support = int(get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
-
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
-
-    # the "-1" in the numerator is to return a "<=" rather than a "<" value
-    return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
-```
-
-```python
-def get_highest_adversary_weight_percentage_for_LMD_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
-    if block_root == store.finalized_checkpoint.root:
-        return 100 // 3 
-    else:
-        block = store.blocks[block_root]
-        finalized_block = store.blocks[store.finalized_checkpoint.root]
-        if block.slot <= finalized_block.slot:
-            return -1
-        else:
-            return min(
-                get_highest_adversary_weight_percentage_for_one_confirmation(store, block_root, current_slot),
-                get_highest_adversary_weight_percentage_for_LMD_confirmation(store, block.parent_root, current_slot)
-            )
-```
-
-```python
 def get_ffg_voting_weight_in_current_epoch_until_current_slot(state: BeaconState, current_slot: Slot) -> Gwei:
     first_slot_current_epoch = compute_start_slot_at_epoch(compute_epoch_at_slot(current_slot))
     return get_beacon_committee_weight_between_slots(state, first_slot_current_epoch, current_slot)
@@ -125,22 +100,6 @@ def get_ffg_voting_weight_in_current_epoch_until_current_slot(state: BeaconState
 def get_remaining_ffg_voting_weight_to_the_end_of_the_current_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
     return get_beacon_committee_weight_between_slots(state, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
-
-```
-
-```python
-def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
-    children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
-    ] 
-
-    if any(children):
-        leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
-
-        return leaves        
-    else:
-        return set(block_root)
 
 ```
 
@@ -210,6 +169,66 @@ def will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(
     return ffg_weight_supporting_checkpoint_for_block_to_be_confirmed * 300 + (300 - 3 * max_adversary_percentage) * remaining_ffg_voting_weight - max_ffg_weight_the_adversary_can_subtract_from_ffg_support * 300 >= 200 * total_active_balance    
 ```
 
+### Main Function
+
+```python
+def is_confirmed(
+    store: Store, 
+    max_adversary_percentage: int, 
+    max_weight_adversary_is_willing_to_get_slashed: int, 
+    block_root: Root
+) -> bool:
+    current_slot = get_current_slot(store)
+    current_epoch = get_current_epoch_store(store)
+
+    block = store.blocks[block_root]
+    block_state = store.block_states[block_root]
+
+    # We can only apply isConfirmed to blocks created in the current epoch
+    assert compute_epoch_at_slot(block.slot) == current_epoch
+
+    return (
+        is_LMD_confirmed(store, max_adversary_percentage, block_root, current_slot) and
+        will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root, current_slot) and
+        block_state.current_justified_checkpoint.epoch + 1 == current_epoch
+    )
+```
+
+## Confirmation Score
+
+### Helper Functions
+
+```python
+def get_highest_adversary_weight_percentage_for_one_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
+    block = store.blocks[block_root]
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    parent_block = store.blocks[block.parent_root]
+    support = int(get_weight(store, block_root))
+    maximum_support = int(get_beacon_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
+
+    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
+    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
+
+    # the "-1" in the numerator is to return a "<=" rather than a "<" value
+    return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
+```
+
+```python
+def get_highest_adversary_weight_percentage_for_LMD_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
+    if block_root == store.finalized_checkpoint.root:
+        return 100 // 3 
+    else:
+        block = store.blocks[block_root]
+        finalized_block = store.blocks[store.finalized_checkpoint.root]
+        if block.slot <= finalized_block.slot:
+            return -1
+        else:
+            return min(
+                get_highest_adversary_weight_percentage_for_one_confirmation(store, block_root, current_slot),
+                get_highest_adversary_weight_percentage_for_LMD_confirmation(store, block.parent_root, current_slot)
+            )
+```
+
 ```python
 def get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_end_of_the_current_epoch(
     store: Store, 
@@ -256,30 +275,7 @@ def get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_
         return (200 * total_active_balance - 300 * (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)) // (3 * total_active_balance)
 ```
 
-## Confirmation Rule
-
-```python
-def is_confirmed(
-    store: Store, 
-    max_adversary_percentage: int, 
-    max_weight_adversary_is_willing_to_get_slashed: int, 
-    block_root: Root
-) -> bool:
-    current_slot = get_current_slot(store)
-    current_epoch = get_current_epoch_store(store)
-
-    block = store.blocks[block_root]
-    block_state = store.block_states[block_root]
-
-    # We can only apply isConfirmed to blocks created in the current epoch
-    assert compute_epoch_at_slot(block.slot) == current_epoch
-
-    return (
-        is_LMD_confirmed(store, max_adversary_percentage, block_root, current_slot) and
-        will_block_checkpoint_be_justified_by_the_end_of_the_current_epoch(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root, current_slot) and
-        block_state.current_justified_checkpoint.epoch + 1 == current_epoch
-    )
-```
+### Main Function
 
 ```python
 def get_maximum_adversary_percentage_for_confirmation(
@@ -321,6 +317,22 @@ def get_descendants_in_current_epoch(store: Store, block_root: Root) -> Set[Root
             descendants.update(get_descendants_in_current_epoch(store, child))
 
     return descendants
+```
+
+```python
+def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
+    children = [
+        root for root in store.blocks.keys()
+        if store.blocks[root].parent_root == block_root
+    ] 
+
+    if any(children):
+        leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
+
+        return leaves        
+    else:
+        return set(block_root)
+
 ```
 
 *Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
