@@ -12,6 +12,7 @@
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-1)
   - [Main Function](#main-function-1)
+- [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
 - [Old functions kept for reference](#old-functions-kept-for-reference)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -298,6 +299,46 @@ def get_maximum_adversary_percentage_for_confirmation(
         get_highest_adversary_weight_percentage_for_LMD_confirmation(store, block_root, current_slot),
         get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_end_of_the_current_epoch(store, block_root, current_slot)
     )
+```
+
+## `get_safe_execution_payload_hash`
+
+```python
+def get_safe_execution_payload_hash(
+    store: Store, 
+    max_adversary_percentage: int, 
+    max_weight_adversary_is_willing_to_get_slashed: int
+) -> Hash32:
+    head_root = get_head(store)
+
+    confirmed_block_root = find_confirmed_block(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, head_root)
+    confirmed_block = store.blocks[confirmed_block_root]
+
+    if compute_epoch_at_slot(confirmed_block.slot) >= BELLATRIX_FORK_EPOCH:
+        return confirmed_block.body.execution_payload.block_hash
+    else:
+        return Hash32()
+```
+
+```python
+def find_confirmed_block(
+    store: Store, 
+    max_adversary_percentage: int, 
+    max_weight_adversary_is_willing_to_get_slashed: int, 
+    block_root: Root
+) -> Root:
+
+    block = store.blocks[block_root]
+    current_epoch = get_current_epoch_store(store)
+
+    if compute_epoch_at_slot(block.slot) != current_epoch:
+        return store.finalized_checkpoint.root
+
+    if is_confirmed(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block_root):
+        return block_root
+    else:
+        return find_confirmed_block(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block.parent_root)
+
 ```
 
 ## Old functions kept for reference
