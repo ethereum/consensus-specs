@@ -23,6 +23,8 @@ TBD
 
 ## Boolean Confirmation Rule
 
+This section specifies the algorithm to use to determine whether a block is confirmed.
+
 ### Helper Functions
 
 
@@ -195,6 +197,8 @@ def is_confirmed(
 ```
 
 ## Confirmation Score
+
+This section specifies the algorithm to use to calculate the maximum admissible amount of adversarial weight in order to consider a given block confirmed.
 
 ### Helper Functions
 
