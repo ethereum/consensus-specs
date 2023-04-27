@@ -13,23 +13,23 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
   - [Warning](#warning)
-- [Modifications in Bellatrix](#modifications-in-bellatrix)
-  - [Configuration](#configuration)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+  - [Modifications in Bellatrix](#modifications-in-bellatrix)
+    - [Configuration](#configuration)
+    - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+      - [Topics and messages](#topics-and-messages)
+        - [Global topics](#global-topics)
+          - [`beacon_block`](#beacon_block)
+      - [Transitioning the gossip](#transitioning-the-gossip)
+    - [The Req/Resp domain](#the-reqresp-domain)
+      - [Messages](#messages)
+        - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+        - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
 - [Design decision rationale](#design-decision-rationale)
-  - [Gossipsub](#gossipsub)
-    - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
-  - [Req/Resp](#reqresp)
-    - [Why was the max chunk response size increased at Bellatrix?](#why-was-the-max-chunk-response-size-increased-at-bellatrix)
-    - [Why allow invalid payloads on the P2P network?](#why-allow-invalid-payloads-on-the-p2p-network)
+    - [Gossipsub](#gossipsub)
+      - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
+    - [Req/Resp](#reqresp)
+      - [Why was the max chunk response size increased at Bellatrix?](#why-was-the-max-chunk-response-size-increased-at-bellatrix)
+      - [Why allow invalid payloads on the P2P network?](#why-allow-invalid-payloads-on-the-p2p-network)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -39,9 +39,9 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 This document is currently illustrative for early Bellatrix testnets and some parts are subject to change.
 Refer to the note in the [validator guide](./validator.md) for further details.
 
-# Modifications in Bellatrix
+## Modifications in Bellatrix
 
-## Configuration
+### Configuration
 
 This section outlines modifications constants that are used in this spec.
 
@@ -50,11 +50,11 @@ This section outlines modifications constants that are used in this spec.
 | `GOSSIP_MAX_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at Bellatrix upgrade. |
 | `MAX_CHUNK_SIZE_BELLATRIX` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses starting at Bellatrix upgrade. |
 
-## The gossip domain: gossipsub
+### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Bellatrix to support upgraded types.
 
-### Topics and messages
+#### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 All topics remain stable except the beacon block topic which is updated with the modified type.
@@ -76,11 +76,11 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 Note that the `ForkDigestValue` path segment of the topic separates the old and the new `beacon_block` topics.
 
-#### Global topics
+##### Global topics
 
 Bellatrix changes the type of the global beacon block topic.
 
-##### `beacon_block`
+###### `beacon_block`
 
 The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in Bellatrix.
 Specifically, this type changes with the addition of `execution_payload` to the inner `BeaconBlockBody`.
@@ -107,12 +107,12 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
 The following gossip validation from prior specifications MUST NOT be applied if the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
   - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
-### Transitioning the gossip
+#### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics.
 
-## The Req/Resp domain
+### The Req/Resp domain
 
 Non-faulty, [optimistic](/sync/optimistic.md) nodes may send blocks which
 result in an INVALID response from an execution engine. To prevent network
@@ -122,9 +122,9 @@ down-scored or disconnected. Transmission of a block which is invalid due to
 any consensus layer rules (i.e., *not* execution layer rules) MAY result in
 down-scoring or disconnection.
 
-### Messages
+#### Messages
 
-#### BeaconBlocksByRange v2
+##### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -146,7 +146,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
-#### BeaconBlocksByRoot v2
+##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -165,9 +165,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 # Design decision rationale
 
-## Gossipsub
+### Gossipsub
 
-### Why was the max gossip message size increased at Bellatrix?
+#### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
 field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in
@@ -190,9 +190,9 @@ order of 128 KiB in the worst case and the current gas limit (~30M) bounds max b
 than 2 MiB today, this marginal difference in theoretical bounds will have zero
 impact on network functionality and security.
 
-## Req/Resp
+### Req/Resp
 
-### Why was the max chunk response size increased at Bellatrix?
+#### Why was the max chunk response size increased at Bellatrix?
 
 Similar to the discussion about the maximum gossip size increase, the
 `ExecutionPayload` type can cause `BeaconBlock`s to exceed the 1 MiB bounds put
@@ -204,7 +204,7 @@ valid block sizes in the range of gas limits expected in the medium term.
 As with both gossip and req/rsp maximum values, type-specific limits should
 always by simultaneously respected.
 
-### Why allow invalid payloads on the P2P network?
+#### Why allow invalid payloads on the P2P network?
 
 The specification allows blocks with invalid execution payloads to propagate across
 gossip and via RPC calls. The reasoning for this is as follows:
