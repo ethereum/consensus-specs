@@ -308,6 +308,11 @@ def get_maximum_adversary_percentage_for_confirmation(
     store: Store, 
     block_root: Root
 ) -> int:
+    """
+    Return -1 in the case that `block_root` cannot be confirmed even by assuming no adversary weight,
+    otherwise it returns the maximum percentage of adversary weight that is admissible in order to 
+    consider `block_root` confirmed.
+    """
     current_slot = get_current_slot(store)
     current_epoch = get_current_epoch_store(store)
 
