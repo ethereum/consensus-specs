@@ -226,6 +226,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at the current slot.
     """
+    # [New in Deneb]
     if state.latest_block_header.slot == state.slot:
         return state.latest_block_header.proposer_index
     
