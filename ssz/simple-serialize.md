@@ -191,7 +191,7 @@ A `Union`:
 ```python
 if value.value is None:
     assert value.selector == 0
-    return b"\x00"
+    return b""
 else:
     serialized_bytes = serialize(value.value)
     serialized_selector_index = value.selector.to_bytes(1, "little")
@@ -210,14 +210,14 @@ Deserialization can be implemented using a recursive algorithm. The deserializat
 * Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
 * In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
 * In the case of optional, if the serialized data has length 0, it represents `None`. Otherwise, the first byte of the deserialization scope must be checked to be `0x01`, the remainder of the scope is deserialized same as `T`.
-* In the case of unions, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
+* In the case of unions, if the serialized data has length 0, it represents `None`. Otherwise, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type (cannot refer to `None`).
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
 
 - Offsets: out of order, out of range, mismatching minimum element size.
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
-- An out-of-bounds selected index in an `Union`
+- An out-of-bounds selected index in an `Union`, or a `None` value for a type that doesn't support it.
 
 Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
