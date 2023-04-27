@@ -104,7 +104,6 @@ An SSZ object is called zeroed (and thus, `is_zero(object)` returns true) if it 
 
 - Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
 - Containers with no fields are illegal.
-- Optionals wrapping types that may serialize to `[]` (`List[type, N]`, nested `Optional`) are illegal.
 - The `None` type option in a `Union` type is only legal as the first option (i.e. with index zero).
 
 ## Serialization
@@ -174,7 +173,7 @@ return b"".join(fixed_parts + variable_parts)
 if value is None:
     return b""
 else:
-    return serialize(value)
+    return b"\x01" + serialize(value)
 ```
 
 ### Union
@@ -210,7 +209,7 @@ Deserialization can be implemented using a recursive algorithm. The deserializat
   * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
 * Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
 * In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
-* In the case of optional, if the serialized data has length 0, it represents `None`. Otherwise, deserialize same as the underlying type.
+* In the case of optional, if the serialized data has length 0, it represents `None`. Otherwise, the first byte of the deserialization scope must be checked to be `0x01`, the remainder of the scope is deserialized same as `T`.
 * In the case of unions, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
