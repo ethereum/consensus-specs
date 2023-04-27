@@ -322,22 +322,9 @@ def get_maximum_adversary_percentage_for_confirmation(
 
 ## `get_safe_execution_payload_hash`
 
-```python
-def get_safe_execution_payload_hash(
-    store: Store, 
-    max_adversary_percentage: int, 
-    max_weight_adversary_is_willing_to_get_slashed: int
-) -> Hash32:
-    head_root = get_head(store)
+This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` engine api call.
 
-    confirmed_block_root = find_confirmed_block(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, head_root)
-    confirmed_block = store.blocks[confirmed_block_root]
-
-    if compute_epoch_at_slot(confirmed_block.slot) >= BELLATRIX_FORK_EPOCH:
-        return confirmed_block.body.execution_payload.block_hash
-    else:
-        return Hash32()
-```
+### Helper
 
 ```python
 def find_confirmed_block(
@@ -359,6 +346,27 @@ def find_confirmed_block(
         return find_confirmed_block(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, block.parent_root)
 
 ```
+
+### Main Function
+
+```python
+def get_safe_execution_payload_hash(
+    store: Store, 
+    max_adversary_percentage: int, 
+    max_weight_adversary_is_willing_to_get_slashed: int
+) -> Hash32:
+    head_root = get_head(store)
+
+    confirmed_block_root = find_confirmed_block(store, max_adversary_percentage, max_weight_adversary_is_willing_to_get_slashed, head_root)
+    confirmed_block = store.blocks[confirmed_block_root]
+
+    if compute_epoch_at_slot(confirmed_block.slot) >= BELLATRIX_FORK_EPOCH:
+        return confirmed_block.body.execution_payload.block_hash
+    else:
+        return Hash32()
+```
+
+*Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
 
 ## Old functions kept for reference
 
@@ -401,5 +409,3 @@ def get_ffg_weight_supporting_checkpoint_for_block_using_latest_messages(store: 
         if get_checkpoint_block(store, store.latest_messages[i].root, current_epoch) == block_checkpoint_root
     ))
 ```
-
-*Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
