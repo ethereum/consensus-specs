@@ -221,6 +221,8 @@ def is_confirmed(
 ## Confirmation Score
 
 This section specifies the algorithm to use to calculate the maximum admissible amount of adversarial weight in order to consider a given block confirmed.
+This under the assumption that the adversary is willing to get as much stake as possible slashed in order to
+prevent a block from being confirmed.
 
 ### Helper Functions
 
@@ -235,6 +237,8 @@ def get_highest_adversary_weight_percentage_for_one_confirmation(store: Store, b
     committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
     proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
 
+    # We need to return a value max_adversary_percentage such that the following inequality is true
+    # 100 * support > 50 * maximum_support + 50 * proposer_score + max_adversary_percentage * maximum_support
     # the "-1" in the numerator is to return a "<=" rather than a "<" value
     return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
 ```
@@ -261,8 +265,6 @@ def get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_
     block_root: Root,
     current_slot: Slot
 ) -> int:
-    # We assume max_weight_adversary_is_willing_to_get_slashed = + infinity
-
     block = store.blocks[block_root]
     assert get_current_epoch_store(store) == compute_epoch_at_slot(block.slot)
 
@@ -280,25 +282,45 @@ def get_max_adversary_percentage_to_ensure_block_checkpoint_is_justified_by_the_
 
     ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_weight_supporting_checkpoint_for_block(store, block_root))
 
-    # First, we check whether max_adversary_percentage >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far * 100
+    # We assume max_weight_adversary_is_willing_to_get_slashed = + infinity
+    # So, we want to return a value max_adversary_percentage such that the following statement is true
 
-    # We want to check whether
+    # ffg_weight_supporting_checkpoint_for_block_to_be_confirmed 
+    # - min(ffg_weight_supporting_checkpoint_for_block_to_be_confirmed, ffg_voting_weight_so_far  * max_adversary_percentage / 100) 
+    # + (1 - max_adversary_percentage/100) * remaining_ffg_voting_weight 
+    # >= 2/3 * total_active_balance    
+
+    # First, we check whether max_adversary_percentage >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far * 100
+    # To do this we check whether in the case that max_adversary_percentage == ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far * 100
+    # our target statement is true
+    # This amount to checking that
     # (1 - ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far) * remaining_ffg_voting_weight >= 2/3 * total_active_balance
     # multiplying each side by 3 * ffg_voting_weight_so_far, we get (assuming ffg_voting_weight_so_far != 0):
     
     if ffg_voting_weight_so_far > 0 and 3 * (ffg_voting_weight_so_far - ffg_weight_supporting_checkpoint_for_block_to_be_confirmed) * remaining_ffg_voting_weight >= 2 * total_active_balance * ffg_voting_weight_so_far:
         # We know that max_adversary_percentage >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far
-        # then 
+
+        # Then our target statement reduces to 
+        # (1 - max_adversary_percentage/100) * remaining_ffg_voting_weight >= 2/3 * total_active_balance    
+
+        # Therefore
         # max_adversary_percentage <=  
-        # (1 - (2/3 * total_active_balance / remaining_ffg_voting_weight)) * 100
-        # multiplying top and bottom by 3 * remaining_ffg_voting_weight, we get:
+        # (1 - (2/3 * total_active_balance / remaining_ffg_voting_weight)) * 100 =
+        # by bringing all to the denominator (3 * remaining_ffg_voting_weight), we get
         return (300 * remaining_ffg_voting_weight - 200 * total_active_balance) // (3 * remaining_ffg_voting_weight)
     else:
         # We know that  max_adversary_percentage <= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far
-        # then
-        # max_adversary_percentage < (2/3 - (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)/total_active_balance) * 100 
-        # by multiplying top and bottom by 3 * total_active_balance, we get
-        return (200 * total_active_balance - 300 * (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)) // (3 * total_active_balance)
+        # Then our target statement reduces to
+
+        # ffg_weight_supporting_checkpoint_for_block_to_be_confirmed 
+        # - ffg_voting_weight_so_far  * max_adversary_percentage / 100
+        # + (1 - max_adversary_percentage/100) * remaining_ffg_voting_weight 
+        # >= 2/3 * total_active_balance  
+
+        # Therfore:
+        # max_adversary_percentage <= ((ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)/total_active_balance - 2/3) * 100 
+        # by bringing all to the denominator (3 * total_active_balance), we get
+        return (300 * (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight) - 200 * total_active_balance) // (3 * total_active_balance)
 ```
 
 ### Main Function
