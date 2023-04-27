@@ -13,6 +13,8 @@
   - [Helper Functions](#helper-functions-1)
   - [Main Function](#main-function-1)
 - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
+  - [Helper](#helper)
+  - [Main Function](#main-function-2)
 - [Old functions kept for reference](#old-functions-kept-for-reference)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
