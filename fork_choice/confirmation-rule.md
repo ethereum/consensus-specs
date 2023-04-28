@@ -93,13 +93,6 @@ def is_LMD_confirmed(store: Store, max_adversary_percentage: int, block_root: Ro
 ```
 
 ```python
-def get_current_vote_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
-    # Returns the total weight of votes for this epoch from committees up til the current slot
-    first_slot_current_epoch = compute_start_slot_at_epoch(compute_epoch_at_slot(current_slot))
-    return get_committee_weight_between_slots(state, first_slot_current_epoch, current_slot)
-```
-
-```python
 def get_future_vote_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
     # Returns the total weight of votes for this epoch from future committees after the current slot
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
@@ -178,11 +171,14 @@ def is_ffg_confirmed(
 
     remaining_ffg_voting_weight = int(get_future_vote_weight_in_epoch(block_checkpoint_state, current_slot))
 
+    current_vote_weight_in_epoch = total_active_balance - remaining_ffg_voting_weight
+    assert current_vote_weight_in_epoch >= 0
+
     ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_support(store, block_root))
 
     max_ffg_weight_the_adversary_can_subtract_from_ffg_support = int(
         min(
-            get_current_vote_weight_in_epoch(block_checkpoint_state, current_slot) * max_adversary_percentage / 100 + 1,
+            (current_vote_weight_in_epoch * max_adversary_percentage - 1) // 100 + 1,
             max_adversarial_slashing,
             ffg_weight_supporting_checkpoint_for_block_to_be_confirmed
         )
@@ -276,9 +272,10 @@ def get_score_for_FFG_confirmation(
 
     total_active_balance = int(get_total_active_balance(block_checkpoint_state))
 
-    ffg_voting_weight_so_far = get_current_vote_weight_in_epoch(block_checkpoint_state, current_slot)
-
     remaining_ffg_voting_weight = int(get_future_vote_weight_in_epoch(block_checkpoint_state, current_slot))
+
+    ffg_voting_weight_so_far = total_active_balance - remaining_ffg_voting_weight
+    assert ffg_voting_weight_so_far >= 0
 
     ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_support(store, block_root))
 
@@ -437,4 +434,11 @@ def get_ffg_support_using_latest_messages(store: Store, block_root: Root) -> Gwe
         block_checkpoint_state.validators[i].effective_balance for i in active_indices
         if get_checkpoint_block(store, store.latest_messages[i].root, current_epoch) == block_checkpoint_root
     ))
+```
+
+```python
+def get_current_vote_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
+    # Returns the total weight of votes for this epoch from committees up til the current slot
+    first_slot_current_epoch = compute_start_slot_at_epoch(compute_epoch_at_slot(current_slot))
+    return get_committee_weight_between_slots(state, first_slot_current_epoch, current_slot)
 ```
