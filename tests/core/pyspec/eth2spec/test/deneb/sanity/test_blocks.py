@@ -25,6 +25,7 @@ def run_block_with_blobs(spec, state, blob_count):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=blob_count)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
+    block.body.execution_payload.excess_data_gas = 2
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state, block)
 

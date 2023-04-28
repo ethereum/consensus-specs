@@ -165,6 +165,8 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     )
     if is_post_capella(spec):
         payload.withdrawals = spec.get_expected_withdrawals(state)
+    if is_post_deneb(spec):
+        payload.excess_data_gas = 0
 
     payload.block_hash = compute_el_block_hash(spec, payload)
 
