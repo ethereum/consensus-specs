@@ -588,7 +588,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
         pass
 
-    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 

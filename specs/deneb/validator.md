@@ -11,7 +11,11 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
-  - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
+  - [`BlobsBundle`](#blobsbundle)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -36,17 +40,40 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ## Helpers
 
-### `get_blobs_and_kzg_commitments`
-
-The interface to retrieve blobs and corresponding kzg commitments.
-
-Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` may be unified.
-Implementers may also retrieve blobs individually per transaction.
+### `BlobsBundle`
 
 ```python
-def get_blobs_and_kzg_commitments(
-    payload_id: PayloadId
-) -> Tuple[Sequence[Blob], Sequence[KZGCommitment], Sequence[KZGProof]]:
+@dataclass
+class BlobsBundle(object):
+    commitments: Sequence[KZGCommitment]
+    proofs: Sequence[KZGProof]
+    blobs: Sequence[Blob]
+```
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle objects.
+    """
     # pylint: disable=unused-argument
     ...
 ```
@@ -62,7 +89,8 @@ All validator responsibilities remain unchanged other than those noted below.
 ##### Blob KZG commitments
 
 1. After retrieving the execution payload from the execution engine as specified in Capella,
-use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blobs_and_kzg_commitments(payload_id)`.
+use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_proofs`
+via `get_payload(payload_id).blobs_bundle`.
 2. Validate `blobs` and `blob_kzg_commitments`:
 
 ```python
