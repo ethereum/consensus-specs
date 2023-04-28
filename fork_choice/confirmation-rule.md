@@ -219,7 +219,7 @@ def is_confirmed(
 
 ## Confirmation Score
 
-A confirmation score is the maximum amount of adversarial weight that a confirmed block can tolerate.
+The confirmation score for a block is the maximum adversarial percentage weight that a confirmed block can tolerate.
 This section specifies the algorithm to calculate the confirmation score of a given block.
 This under the assumption that the adversary is willing to get as much stake as possible slashed to
 prevent a block from being confirmed.
