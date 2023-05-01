@@ -18,6 +18,7 @@
     - [`get_current_slot`](#get_current_slot)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
+    - [`get_checkpoint_block`](#get_checkpoint_block)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
@@ -190,6 +191,17 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     return root
 ```
 
+#### `get_checkpoint_block`
+
+```python
+def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
+    """
+    Compute the checkpoint block for epoch ``epoch`` in the chain of block ``root``
+    """
+    epoch_first_slot = compute_start_slot_at_epoch(epoch)
+    return get_ancestor(store, root, epoch_first_slot)
+```
+
 #### `get_weight`
 
 ```python
@@ -276,10 +288,15 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
             voting_source.epoch + 2 >= current_epoch
         )
 
-    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block_root,
+        store.finalized_checkpoint.epoch,
+    )
+
     correct_finalized = (
         store.finalized_checkpoint.epoch == GENESIS_EPOCH
-        or store.finalized_checkpoint.root == get_ancestor(store, block_root, finalized_slot)
+        or store.finalized_checkpoint.root == finalized_checkpoint_block
     )
 
     # If expected finalized/justified, add to viable block-tree and signal viability to parent.
@@ -440,8 +457,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
 
     # LMD vote must be consistent with FFG vote target
-    target_slot = compute_start_slot_at_epoch(target.epoch)
-    assert target.root == get_ancestor(store, attestation.data.beacon_block_root, target_slot)
+    assert target.root == get_checkpoint_block(store, attestation.data.beacon_block_root, target.epoch)
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
@@ -504,7 +520,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block    
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
