@@ -105,7 +105,7 @@ Implementations:
 - [Old approach in Go](https://github.com/protolambda/go-kate/blob/master/recovery.go)
 
 ```python
-def recover_data(data: Sequence[Optional[Sequence[Point]]]) -> Sequence[Point]:
+def recover_data(data: Sequence[PyOptional[Sequence[Point]]]) -> Sequence[Point]:
     """Given an a subset of half or more of subgroup-aligned ranges of values, recover the None values."""
     ...
 ```
@@ -183,7 +183,7 @@ def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommit
 ```
 
 ```python
-def reconstruct_extended_data(samples: Sequence[Optional[DASSample]]) -> Sequence[Point]:
+def reconstruct_extended_data(samples: Sequence[PyOptional[DASSample]]) -> Sequence[Point]:
     # Instead of recovering with a point-by-point approach, recover the samples by recovering missing subgroups.
     subgroups = [None if sample is None else reverse_bit_order_list(sample.data) for sample in samples]
     return recover_data(subgroups)

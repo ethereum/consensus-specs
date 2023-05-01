@@ -215,7 +215,7 @@ A validator can get committee assignments for a given epoch using the following 
 def get_committee_assignment(state: BeaconState,
                              epoch: Epoch,
                              validator_index: ValidatorIndex
-                             ) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
+                             ) -> PyOptional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:

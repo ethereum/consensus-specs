@@ -60,7 +60,7 @@ def notify_forkchoice_updated(self: ExecutionEngine,
                               head_block_hash: Hash32,
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
-                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                              payload_attributes: PyOptional[PayloadAttributes]) -> PyOptional[PayloadId]:
     ...
 ```
 
@@ -101,7 +101,7 @@ class PowBlock(Container):
 
 ### `get_pow_block`
 
-Let `get_pow_block(block_hash: Hash32) -> Optional[PowBlock]` be the function that given the hash of the PoW block returns its data.
+Let `get_pow_block(block_hash: Hash32) -> PyOptional[PowBlock]` be the function that given the hash of the PoW block returns its data.
 It may result in `None` if the requested block is not yet available.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this information from an execution client.

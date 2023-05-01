@@ -73,7 +73,7 @@ def prepare_execution_payload(state: BeaconState,
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+                              execution_engine: ExecutionEngine) -> PyOptional[PayloadId]:
     if not is_merge_transition_complete(state):
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
         is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH

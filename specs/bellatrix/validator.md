@@ -39,7 +39,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 ### `get_pow_block_at_terminal_total_difficulty`
 
 ```python
-def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
+def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]) -> PyOptional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain.values():
         block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
@@ -58,7 +58,7 @@ def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]
 ### `get_terminal_pow_block`
 
 ```python
-def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
+def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> PyOptional[PowBlock]:
     if TERMINAL_BLOCK_HASH != Hash32():
         # Terminal block hash override takes precedence over terminal total difficulty
         if TERMINAL_BLOCK_HASH in pow_chain:
@@ -122,7 +122,7 @@ def prepare_execution_payload(state: BeaconState,
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+                              execution_engine: ExecutionEngine) -> PyOptional[PayloadId]:
     if not is_merge_transition_complete(state):
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
         is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
@@ -157,7 +157,7 @@ def prepare_execution_payload(state: BeaconState,
 2. Set `block.body.execution_payload = get_execution_payload(payload_id, execution_engine)`, where:
 
 ```python
-def get_execution_payload(payload_id: Optional[PayloadId], execution_engine: ExecutionEngine) -> ExecutionPayload:
+def get_execution_payload(payload_id: PyOptional[PayloadId], execution_engine: ExecutionEngine) -> ExecutionPayload:
     if payload_id is None:
         # Pre-merge, empty payload
         return ExecutionPayload()

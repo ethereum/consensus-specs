@@ -378,7 +378,8 @@ from dataclasses import (
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
+    Any, Callable, Dict, Set, Sequence, Tuple, TypeVar, NamedTuple, Final,
+    Optional as PyOptional
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
@@ -564,7 +565,7 @@ from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector,
 ExecutionState = Any
 
 
-def get_pow_block(hash: Bytes32) -> Optional[PowBlock]:
+def get_pow_block(hash: Bytes32) -> PyOptional[PowBlock]:
     return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0))
 
 
@@ -585,7 +586,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                                  payload_attributes: PyOptional[PayloadAttributes]) -> PyOptional[PayloadId]:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
@@ -815,7 +816,7 @@ ignored_dependencies = [
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
-    'Optional', 'Sequence',
+    'PyOptional', 'Sequence',
 ]
 
 
