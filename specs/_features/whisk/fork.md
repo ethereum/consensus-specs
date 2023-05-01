@@ -32,7 +32,7 @@ Warning: this configuration is not definitive.
 | Name                 | Value                   |
 | -------------------- | ----------------------- |
 | `WHISK_FORK_VERSION` | `Version('0x05000000')` |
-| `WHISK_FORK_EPOCH`   | **TBD**                 |
+| `WHISK_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to WHISK
 
@@ -46,15 +46,21 @@ This ensures that we drop right into the beginning of the shuffling phase but wi
 def whisk_get_initial_commitments(validator_index: ValidatorIndex):
     # TODO
     pass
+```
 
+```python
 def whisk_candidate_selection(state: BeaconState, epoch: Epoch):
     # TODO
     pass
+```
 
+```python
 def whisk_proposer_selection(state: BeaconState, epoch: Epoch):
     # TODO
     pass
+```
 
+```python
 def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
     epoch = bellatrix.get_current_epoch(pre)
     post = BeaconState(
@@ -118,6 +124,7 @@ def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
     whisk_candidate_selection(post, epoch - WHISK_PROPOSER_SELECTION_GAP - 1)
     whisk_proposer_selection(post, epoch)
 
-    # Do a final round of candidate selection. We need it so that we have something to shuffle over the upcoming shuffling phase
+    # Do a final round of candidate selection.
+    # We need it so that we have something to shuffle over the upcoming shuffling phase.
     whisk_candidate_selection(post, epoch)
 ```

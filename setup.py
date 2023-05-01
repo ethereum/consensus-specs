@@ -686,7 +686,7 @@ from eth2spec.deneb import {preset_name} as deneb
 # WhiskSpecBuilder
 #
 class WhiskSpecBuilder(CapellaSpecBuilder):
-    fork: str = Whisk
+    fork: str = WHISK
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -1024,7 +1024,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork in (CAPELLA, DENEB, EIP6110):
+            if self.spec_fork in (CAPELLA, DENEB, EIP6110, WHISK):
                 self.md_doc_paths += """
                     specs/capella/light-client/fork.md
                     specs/capella/light-client/full-node.md
@@ -1060,8 +1060,8 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork == WHISK:
                 self.md_doc_paths += """
-                    specs/whisk/beacon-chain.md
-                    specs/whisk/fork.md
+                    specs/_features/whisk/beacon-chain.md
+                    specs/_features/whisk/fork.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
