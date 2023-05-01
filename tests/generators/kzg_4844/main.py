@@ -708,7 +708,7 @@ def case06_verify_blob_kzg_proof_batch():
     # Edge case: Invalid commitment, too few bytes
     commitments_invalid_tooFewBytes = commitments[:3] + [commitments[3][:-1]] + commitments[4:]
     expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, commitments_invalid_tooFewBytes)
-    yield 'verify_blob_kzg_proof_batch_case_too_few_bytes', {
+    yield 'verify_blob_kzg_proof_batch_case_commitment_too_few_bytes', {
         'input': {
             'blobs': encode_hex_list(VALID_BLOBS),
             'commitments': encode_hex_list(commitments_invalid_tooFewBytes),
@@ -720,7 +720,7 @@ def case06_verify_blob_kzg_proof_batch():
     # Edge case: Invalid commitment, too many bytes
     commitments_invalid_tooManyBytes = commitments[:3] + [commitments[3] + b"\x00"] + commitments[4:]
     expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, commitments_invalid_tooManyBytes)
-    yield 'verify_blob_kzg_proof_batch_case_too_many_bytes', {
+    yield 'verify_blob_kzg_proof_batch_case_commitment_too_many_bytes', {
         'input': {
             'blobs': encode_hex_list(VALID_BLOBS),
             'commitments': encode_hex_list(commitments_invalid_tooManyBytes),

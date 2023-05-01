@@ -65,6 +65,10 @@ Documentation on the different components used during spec writing can be found 
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
 
+## Online viewer of the latest release (latest `master` branch)
+
+[Ethereum Consensus Specs](https://ethereum.github.io/consensus-specs/)
+
 ## Consensus spec tests
 
 Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
