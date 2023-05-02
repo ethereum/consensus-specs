@@ -671,13 +671,13 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
 #
 # EIP6110SpecBuilder
 #
-class EIP6110SpecBuilder(CapellaSpecBuilder):
+class EIP6110SpecBuilder(DenebSpecBuilder):
     fork: str = EIP6110
 
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
-from eth2spec.capella import {preset_name} as capella
+from eth2spec.deneb import {preset_name} as deneb
 '''
 
 
@@ -1022,7 +1022,7 @@ class PySpecCommand(Command):
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
                 """
-            if self.spec_fork == DENEB:
+            if self.spec_fork in (DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/deneb/light-client/fork.md
                     specs/deneb/light-client/full-node.md
@@ -1037,6 +1037,10 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork == EIP6110:
                 self.md_doc_paths += """
+                    specs/_features/eip6110/light-client/fork.md
+                    specs/_features/eip6110/light-client/full-node.md
+                    specs/_features/eip6110/light-client/p2p-interface.md
+                    specs/_features/eip6110/light-client/sync-protocol.md
                     specs/_features/eip6110/beacon-chain.md
                     specs/_features/eip6110/fork.md
                 """
