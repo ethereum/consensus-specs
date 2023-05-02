@@ -10,32 +10,35 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Configuration](#configuration)
-- [Containers](#containers)
-  - [`BlobSidecar`](#blobsidecar)
-  - [`SignedBlobSidecar`](#signedblobsidecar)
-  - [`BlobIdentifier`](#blobidentifier)
-  - [Helpers](#helpers)
-    - [`verify_sidecar_signature`](#verify_sidecar_signature)
-- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [Topics and messages](#topics-and-messages)
-    - [Global topics](#global-topics)
-      - [`beacon_block`](#beacon_block)
-      - [`blob_sidecar_{index}`](#blob_sidecar_index)
-  - [Transitioning the gossip](#transitioning-the-gossip)
-- [The Req/Resp domain](#the-reqresp-domain)
-  - [Messages](#messages)
-    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
-    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+- [Modifications in Deneb](#modifications-in-deneb)
+  - [Configuration](#configuration)
+  - [Containers](#containers)
+    - [`BlobSidecar`](#blobsidecar)
+    - [`SignedBlobSidecar`](#signedblobsidecar)
+    - [`BlobIdentifier`](#blobidentifier)
+    - [Helpers](#helpers)
+      - [`verify_blob_sidecar_signature`](#verify_blob_sidecar_signature)
+  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+    - [Topics and messages](#topics-and-messages)
+      - [Global topics](#global-topics)
+        - [`beacon_block`](#beacon_block)
+        - [`blob_sidecar_{index}`](#blob_sidecar_index)
+    - [Transitioning the gossip](#transitioning-the-gossip)
+  - [The Req/Resp domain](#the-reqresp-domain)
+    - [Messages](#messages)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-## Configuration
+## Modifications in Deneb
+
+### Configuration
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
@@ -43,9 +46,9 @@ The specification of these changes continues in the same format as the network s
 | `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK`      | Maximum number of blob sidecars in a single request                 |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars |
 
-## Containers
+### Containers
 
-### `BlobSidecar`
+#### `BlobSidecar`
 
 ```python
 class BlobSidecar(Container):
@@ -59,7 +62,7 @@ class BlobSidecar(Container):
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
 ```
 
-### `SignedBlobSidecar`
+#### `SignedBlobSidecar`
 
 ```python
 class SignedBlobSidecar(Container):
@@ -67,7 +70,7 @@ class SignedBlobSidecar(Container):
     signature: BLSSignature
 ```
 
-### `BlobIdentifier`
+#### `BlobIdentifier`
 
 ```python
 class BlobIdentifier(Container):
@@ -75,9 +78,9 @@ class BlobIdentifier(Container):
     index: BlobIndex
 ```
 
-### Helpers
+#### Helpers
 
-#### `verify_sidecar_signature`
+##### `verify_blob_sidecar_signature`
 
 ```python
 def verify_blob_sidecar_signature(state: BeaconState, signed_blob_sidecar: SignedBlobSidecar) -> bool:
@@ -86,11 +89,11 @@ def verify_blob_sidecar_signature(state: BeaconState, signed_blob_sidecar: Signe
     return bls.Verify(proposer.pubkey, signing_root, signed_blob_sidecar.signature)
 ```
 
-## The gossip domain: gossipsub
+### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
 
-### Topics and messages
+#### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 
@@ -106,19 +109,19 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 | - | - |
 | `blob_sidecar_{index}` | `SignedBlobSidecar` (new) |
 
-#### Global topics
+##### Global topics
 
 Deneb introduces new global topics for blob sidecars.
 
-##### `beacon_block`
+###### `beacon_block`
 
 The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in deneb.
 
-##### `blob_sidecar_{index}`
+###### `blob_sidecar_{index}`
 
 This topic is used to propagate signed blob sidecars, one for each sidecar index. The number of indices is defined by `MAX_BLOBS_PER_BLOCK`.
 
-The following validations MUST pass before forwarding the `sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
+The following validations MUST pass before forwarding the `signed_blob_sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
 - _[REJECT]_ The sidecar is for the correct topic -- i.e. `sidecar.index` matches the topic `{index}`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
@@ -126,22 +129,22 @@ The following validations MUST pass before forwarding the `sidecar` on the netwo
 - _[IGNORE]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
 - _[REJECT]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) passes validation.
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `sidecar.block_parent_root`).
-- _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid as verified by `verify_sidecar_signature`.
+- _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid as verified by `verify_blob_sidecar_signature`.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.block_root, sidecar.index)`.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 
-### Transitioning the gossip
+#### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics for this upgrade.
 
-## The Req/Resp domain
+### The Req/Resp domain
 
-### Messages
+#### Messages
 
-#### BeaconBlocksByRange v2
+##### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -161,7 +164,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
-#### BeaconBlocksByRoot v2
+##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -179,7 +182,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
-#### BlobSidecarsByRoot v1
+##### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
@@ -228,7 +231,7 @@ Clients MUST support requesting sidecars since `minimum_request_epoch`, where `m
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
-#### BlobSidecarsByRange v1
+##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 

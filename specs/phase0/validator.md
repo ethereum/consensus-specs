@@ -162,7 +162,7 @@ The `withdrawal_credentials` field must be such that:
 * `withdrawal_credentials[1:12] == b'\x00' * 11`
 * `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
-After the merge of the current Ethereum application layer into the Beacon Chain,
+After the merge of the current Ethereum execution layer into the Beacon Chain,
 withdrawals to `eth1_withdrawal_address` will simply be increases to the account's ETH balance that do **NOT** trigger any EVM execution.
 
 ### Submit deposit
