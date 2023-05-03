@@ -1180,7 +1180,7 @@ setup(
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],
     py_modules=["eth2spec"],
     cmdclass=commands,
-    python_requires=">=3.8, <4",
+    python_requires=">=3.9, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
