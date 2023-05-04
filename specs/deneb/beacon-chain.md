@@ -24,6 +24,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
+    - [`get_blob_versioned_hashes`](#get_blob_versioned_hashes)
     - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
     - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -158,25 +159,16 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
-#### `tx_peek_blob_versioned_hashes`
+#### `get_blob_versioned_hashes`
 
-This function retrieves the hashes from the `SignedBlobTransaction` as defined in Deneb, using SSZ offsets.
-Offsets are little-endian `uint32` values, as defined in the [SSZ specification](../../ssz/simple-serialize.md).
-See [the full details of `blob_versioned_hashes` offset calculation](https://gist.github.com/protolambda/23bd106b66f6d4bb854ce46044aa3ca3).
+`get_blob_versioned_hashes(signed_blob_tx_rlp: bytes) -> Sequence[VersionedHash]` function gets `blob_versioned_hashes` list from a RLP-encoded signed blob transaction input. The new transaction type definition is defined in [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844#new-transaction-type).
+
+#### `tx_peek_blob_versioned_hashes`
 
 ```python
 def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedHash]:
     assert opaque_tx[0] == BLOB_TX_TYPE
-    message_offset = 1 + uint32.decode_bytes(opaque_tx[1:5])
-    # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 + 32 = 188
-    blob_versioned_hashes_offset = (
-        message_offset
-        + uint32.decode_bytes(opaque_tx[(message_offset + 188):(message_offset + 192)])
-    )
-    return [
-        VersionedHash(opaque_tx[x:(x + 32)])
-        for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)
-    ]
+    return get_blob_versioned_hashes(opaque_tx[1:])
 ```
 
 #### `verify_kzg_commitments_against_transactions`

@@ -641,6 +641,7 @@ class DenebSpecBuilder(CapellaSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return super().imports(preset_name) + f'''
+from eth2spec.utils.rlp import rlp, SignedBlobTransaction
 from eth2spec.capella import {preset_name} as capella
 '''
 
@@ -654,6 +655,11 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
+def get_blob_versioned_hashes(signed_blob_tx_rlp: bytes) -> Sequence[VersionedHash]:
+    decoded_tx = rlp.decode(signed_blob_tx_rlp, SignedBlobTransaction)
+    return [VersionedHash(x) for x in decoded_tx.blob_versioned_hashes]
+
+
 def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZGProof], Tuple[str, str]]:
     # pylint: disable=unused-argument
     return ("TEST", "TEST")'''
