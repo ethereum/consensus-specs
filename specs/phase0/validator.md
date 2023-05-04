@@ -612,7 +612,7 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 * Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
 * Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
-* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id,epoch)` function.
+* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
 
 ```python
 def compute_subscribed_subnet(node_id: int, epoch: Epoch, index: int) -> int:
@@ -629,7 +629,7 @@ def compute_subscribed_subnet(node_id: int, epoch: Epoch, index: int) -> int:
 
 ```python
 def compute_subscribed_subnets(node_id: int, epoch: Epoch) -> Sequence[int]:
-    return [compute_subscribed_subnet(node_id, epoch, idx) for idx in range(SUBNETS_PER_NODE)]
+    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
 *Note*: When preparing for a hard fork, a validator must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
