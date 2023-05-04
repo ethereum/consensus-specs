@@ -10,6 +10,7 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
@@ -82,6 +83,15 @@ A validator is an entity that participates in the consensus of the Ethereum proo
 
 All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Deposit Contract](./deposit-contract.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `NodeID`   | `uint256` | node identifier   |
+| `SubnetID` | `uint64`  | subnet identifier |
+
 ## Constants
 
 ### Misc
@@ -94,6 +104,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
 | `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
 
 ## Containers
 
@@ -515,7 +526,9 @@ The `subnet_id` for the `attestation` is calculated with:
 - Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)`.
 
 ```python
-def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:
+def compute_subnet_for_attestation(committees_per_slot: uint64,
+                                   slot: Slot,
+                                   committee_index: CommitteeIndex) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
@@ -523,7 +536,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
+    return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation
@@ -615,8 +628,8 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 * Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
 
 ```python
-def compute_subscribed_subnet(node_id: int, epoch: Epoch, index: int) -> int:
-    node_id_prefix = node_id >> (256 - int(ATTESTATION_SUBNET_PREFIX_BITS))
+def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
+    node_id_prefix = node_id >> (NODE_ID_BITS - int(ATTESTATION_SUBNET_PREFIX_BITS))
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
     permutated_prefix = compute_shuffled_index(
@@ -624,11 +637,11 @@ def compute_subscribed_subnet(node_id: int, epoch: Epoch, index: int) -> int:
         1 << int(ATTESTATION_SUBNET_PREFIX_BITS),
         permutation_seed,
     )
-    return (permutated_prefix + index) % ATTESTATION_SUBNET_COUNT
+    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ```python
-def compute_subscribed_subnets(node_id: int, epoch: Epoch) -> Sequence[int]:
+def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
     return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
