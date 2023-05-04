@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110
 
 
 if __name__ == "__main__":
@@ -38,6 +38,11 @@ if __name__ == "__main__":
 
     deneb_mods = capella_mods
 
+    _new_eip6110_mods = {key: 'eth2spec.test.eip6110.block_processing.test_process_' + key for key in [
+        'deposit_receipt',
+    ]}
+    eip6110_mods = combine_mods(_new_eip6110_mods, deneb_mods)
+
     # TODO Custody Game testgen is disabled for now
     # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
     #     'attestation',
@@ -54,6 +59,7 @@ if __name__ == "__main__":
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
+        EIP6110: eip6110_mods,
     }
 
     run_state_test_generators(runner_name="operations", all_mods=all_mods)
