@@ -4,7 +4,8 @@ from eth2spec.test.context import (
     spec_test,
     single_phase,
     with_deneb_and_later,
-    expect_assertion_error
+    expect_assertion_error,
+    always_bls
 )
 from eth2spec.test.helpers.sharding import (
     get_sample_blob,
@@ -263,6 +264,7 @@ def test_validate_kzg_g1_neutral_element(spec):
 @with_deneb_and_later
 @spec_test
 @single_phase
+@always_bls
 def test_validate_kzg_g1_not_in_g1(spec):
     """
     Verify that `validate_kzg_g1` fails on point not in G1
@@ -274,6 +276,7 @@ def test_validate_kzg_g1_not_in_g1(spec):
 @with_deneb_and_later
 @spec_test
 @single_phase
+@always_bls
 def test_validate_kzg_g1_not_on_curve(spec):
     """
     Verify that `validate_kzg_g1` fails on point not in G1

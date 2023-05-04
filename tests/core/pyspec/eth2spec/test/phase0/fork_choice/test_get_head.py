@@ -479,7 +479,7 @@ def test_voting_source_within_two_epoch(spec, state):
     - store.voting_source[block_root].epoch != store.justified_checkpoint.epoch, and
     - store.unrealized_justifications[block_root].epoch >= store.justified_checkpoint.epoch, and
     - store.voting_source[block_root].epoch + 2 >= current_epoch, and
-    - store.finalized_checkpoint.root == get_ancestor(store, block_root, finalized_slot)
+    - store.finalized_checkpoint.root == get_checkpoint_block(store, block_root, store.finalized_checkpoint.epoch)
     """
     test_steps = []
     # Initialization
@@ -536,8 +536,11 @@ def test_voting_source_within_two_epoch(spec, state):
     assert store.unrealized_justifications[last_fork_block_root].epoch >= store.justified_checkpoint.epoch
     # assert store.voting_source[last_fork_block_root].epoch + 2 >= \
     #     spec.compute_epoch_at_slot(spec.get_current_slot(store))
-    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert store.finalized_checkpoint.root == spec.get_ancestor(store, last_fork_block_root, finalized_slot)
+    assert store.finalized_checkpoint.root == spec.get_checkpoint_block(
+        store,
+        last_fork_block_root,
+        store.finalized_checkpoint.epoch
+    )
     assert spec.get_head(store) == last_fork_block_root
 
     yield 'steps', test_steps
@@ -552,7 +555,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     - store.voting_source[block_root].epoch != store.justified_checkpoint.epoch, and
     - store.unrealized_justifications[block_root].epoch >= store.justified_checkpoint.epoch, and
     - store.voting_source[block_root].epoch + 2 < current_epoch, and
-    - store.finalized_checkpoint.root == get_ancestor(store, block_root, finalized_slot)
+    - store.finalized_checkpoint.root == get_checkpoint_block(store, block_root, store.finalized_checkpoint.epoch)
     """
     test_steps = []
     # Initialization
@@ -617,8 +620,11 @@ def test_voting_source_beyond_two_epoch(spec, state):
     assert store.unrealized_justifications[last_fork_block_root].epoch >= store.justified_checkpoint.epoch
     # assert store.voting_source[last_fork_block_root].epoch + 2 < \
     #     spec.compute_epoch_at_slot(spec.get_current_slot(store))
-    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert store.finalized_checkpoint.root == spec.get_ancestor(store, last_fork_block_root, finalized_slot)
+    assert store.finalized_checkpoint.root == spec.get_checkpoint_block(
+        store,
+        last_fork_block_root,
+        store.finalized_checkpoint.epoch
+    )
     assert spec.get_head(store) == correct_head
 
     yield 'steps', test_steps
@@ -641,7 +647,7 @@ def test_incorrect_finalized(spec, state):
     # Check that the store doesn't allow for a head block that has:
     # - store.voting_source[block_root].epoch == store.justified_checkpoint.epoch, and
     # - store.finalized_checkpoint.epoch != GENESIS_EPOCH, and
-    # - store.finalized_checkpoint.root != get_ancestor(store, block_root, finalized_slot)
+    # - store.finalized_checkpoint.root != get_checkpoint_block(store, block_root, store.finalized_checkpoint.epoch)
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -718,7 +724,11 @@ def test_incorrect_finalized(spec, state):
     assert store.voting_source[last_fork_block_root].epoch == store.justified_checkpoint.epoch
     assert store.finalized_checkpoint.epoch != spec.GENESIS_EPOCH
     finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert store.finalized_checkpoint.root != spec.get_ancestor(store, last_fork_block_root, finalized_slot)
+    assert store.finalized_checkpoint.root != spec.get_checkpoint_block(
+        store,
+        block_root,
+        store.finalized_checkpoint.epoch
+    )
     assert spec.get_head(store) != last_fork_block_root
     assert spec.get_head(store) == head_root
 
