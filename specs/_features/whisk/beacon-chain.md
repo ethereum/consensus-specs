@@ -95,6 +95,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
+    # pylint: disable=unused-argument
     pass
 ```
 
@@ -106,6 +107,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
+    # pylint: disable=unused-argument
     pass
 ```
 

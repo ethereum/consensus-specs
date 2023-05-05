@@ -45,18 +45,21 @@ This ensures that we drop right into the beginning of the shuffling phase but wi
 ```python
 def whisk_get_initial_commitments(validator_index: ValidatorIndex):
     # TODO
+    # pylint: disable=unused-argument
     pass
 ```
 
 ```python
 def whisk_candidate_selection(state: BeaconState, epoch: Epoch):
     # TODO
+    # pylint: disable=unused-argument
     pass
 ```
 
 ```python
 def whisk_proposer_selection(state: BeaconState, epoch: Epoch):
     # TODO
+    # pylint: disable=unused-argument
     pass
 ```
 
