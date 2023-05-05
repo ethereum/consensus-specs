@@ -10,6 +10,8 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -37,6 +39,14 @@ All behaviors and definitions defined in this document, and documents it extends
 
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Constants
+
+### Misc
+
+| Name | Value | Unit |
+| - | - | :-: |
+| `BLOB_SIDECAR_SUBNET_COUNT` | `4` | The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ## Helpers
 
@@ -136,7 +146,7 @@ def get_blob_sidecars(block: BeaconBlock,
 
 ```
 
-Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the `blob_sidecar_{index}` topics according to its index.
+Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
 
 `signature` is obtained from:
 
@@ -147,6 +157,15 @@ def get_blob_sidecar_signature(state: BeaconState,
     domain = get_domain(state, DOMAIN_BLOB_SIDECAR, compute_epoch_at_slot(sidecar.slot))
     signing_root = compute_signing_root(sidecar, domain)
     return bls.Sign(privkey, signing_root)
+```
+
+The `subnet_id` for the `signed_sidecar` is calculated with:
+- Let `blob_index = signed_sidecar.message.index`.
+- Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
+
+```python
+def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> uint64:
+    return uint64(blob_index % BLOB_SIDECAR_SUBNET_COUNT)
 ```
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
