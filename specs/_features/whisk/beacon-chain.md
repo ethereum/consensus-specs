@@ -74,7 +74,9 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
     TODO: Deneb will introduces this helper too. Should delete it once it's rebased to post-Deneb.
     """
-    return int.from_bytes(b, "little") % BLS_MODULUS
+    field_element = int.from_bytes(b, ENDIANNESS)
+    assert field_element < BLS_MODULUS
+    return BLSFieldElement(field_element)
 ```
 
 | Name               | Value                                                                           |
@@ -96,7 +98,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
     # pylint: disable=unused-argument
-    pass
+    return True
 ```
 
 ```python
@@ -108,7 +110,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
     # pylint: disable=unused-argument
-    pass
+    return True
 ```
 
 ## Epoch processing
@@ -401,21 +403,35 @@ def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> B
 ```
 
 ```python
-def get_validator_from_deposit(state: BeaconState, deposit: Deposit) -> Validator:
-    old_validator = bellatrix.get_validator_from_deposit(deposit)
+def get_initial_commitments(k: BLSFieldElement) -> Tuple[BLSG1Point, WhiskTracker]:
+    return (
+        BLSG1ScalarMultiply(k, BLS_G1_GENERATOR),
+        WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR))
+    )
+```
+
+```python
+def get_validator_from_deposit_whisk(
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    withdrawal_credentials: Bytes32,
+    amount: uint64
+) -> Validator:
+    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators)))
+    whisk_k_commitment, whisk_tracker = get_initial_commitments(k)
 
     validator = Validator(
-        pubkey=old_validator.pubkey,
-        withdrawal_credentials=old_validator.withdrawal_credentials,
-        activation_eligibility_epoch=old_validator.activation_eligibility_epoch,
-        activation_epoch=old_validator.activation_epoch,
-        exit_epoch=old_validator.exit_epoch,
-        withdrawable_epoch=old_validator.withdrawable_epoch,
-        effective_balance=old_validator.effective_balance,
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
+        activation_epoch=FAR_FUTURE_EPOCH,
+        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+        effective_balance=effective_balance,
         # Whisk fields
-        whisk_tracker=WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)),
-        whisk_k_commitment=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR),
+        whisk_tracker=whisk_tracker,
+        whisk_k_commitment=whisk_k_commitment,
     )
     return validator
 ```
@@ -448,7 +464,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, deposit.data.signature):
-            state.validators.append(get_validator_from_deposit(state, deposit))  # [Change in Whisk]
+            state.validators.append(
+                get_validator_from_deposit_whisk(state, pubkey, deposit.data.withdrawal_credentials, amount)
+            )  # [Change in Whisk]
             state.balances.append(amount)
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
