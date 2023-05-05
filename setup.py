@@ -694,6 +694,15 @@ class WhiskSpecBuilder(CapellaSpecBuilder):
 from eth2spec.capella import {preset_name} as capella
 '''
 
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+        # Necessary for custom types `WhiskShuffleProof` and `WhiskTrackerProof`
+        constants = {
+            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
+            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
+        }
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
+
 
 spec_builders = {
     builder.fork: builder

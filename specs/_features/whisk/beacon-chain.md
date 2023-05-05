@@ -54,10 +54,12 @@ building upon the [phase0](../phase0/beacon-chain.md) specification.
 
 ### BLS
 
-| Name              | SSZ equivalent | Description                   |
-| ----------------- | -------------- | ----------------------------- |
-| `BLSFieldElement` | `uint256`      | BLS12-381 scalar              |
-| `BLSG1Point`      | `Bytes48`      | compressed BLS12-381 G1 point |
+| Name                | SSZ equivalent                           | Description                   |
+| ------------------- | ---------------------------------------- | ----------------------------- |
+| `BLSFieldElement`   | `uint256`                                | BLS12-381 scalar              |
+| `BLSG1Point`        | `Bytes48`                                | compressed BLS12-381 G1 point |
+| `WhiskShuffleProof` | `ByteList[WHISK_MAX_SHUFFLE_PROOF_SIZE]` | Serialized shuffle proof      |
+| `WhiskTrackerProof` | `ByteList[WHISK_MAX_OPENING_PROOF_SIZE]` | Serialized tracker proof      |
 
 *Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
 
@@ -88,7 +90,7 @@ Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and al
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
                              M: BLSG1Point,
-                             shuffle_proof: ByteList[WHISK_MAX_SHUFFLE_PROOF_SIZE]) -> bool:
+                             shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
@@ -99,7 +101,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
 ```python
 def IsValidWhiskOpeningProof(tracker: WhiskTracker,
                              k_commitment: BLSG1Point,
-                             tracker_proof: ByteList[WHISK_MAX_OPENING_PROOF_SIZE]) -> bool:
+                             tracker_proof: WhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
@@ -236,7 +238,7 @@ class BeaconBlock(Container):
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
-    whisk_opening_proof: ByteList[WHISK_MAX_OPENING_PROOF_SIZE]  # [New in Whisk]
+    whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
 ```
 
 ```python
@@ -296,9 +298,9 @@ class BeaconBlockBody(capella.BeaconBlockBody):
     # Capella operations
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
-    whisk_shuffle_proof: ByteList[WHISK_MAX_SHUFFLE_PROOF_SIZE]  # [New in Whisk]
+    whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
     whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
-    whisk_registration_proof: ByteList[WHISK_MAX_OPENING_PROOF_SIZE]  # [New in Whisk]
+    whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # [New in Whisk]
 ```
